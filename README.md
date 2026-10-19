@@ -223,5 +223,6 @@ defaults delete MediaViewerApp
 - 実装計画: `specs/001-three-pane-media-viewer/plan.md`
 - タスク: `specs/001-three-pane-media-viewer/tasks.md`
 - 憲章: `.specify/memory/constitution.md`（v1.1.0）
+- 開発の振り返り: `docs/retrospective/2026-10-19-startup-debugging.md`
 - 進捗: 実装タスク T001〜T078 は完了。T079（Accessibility Inspector）と T080（手動シナリオの記録）は
   手動確認待ちです。
