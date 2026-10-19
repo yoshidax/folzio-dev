@@ -7,7 +7,9 @@ public final class BrowserModel {
     public private(set) var listing: FolderListing
     public private(set) var selection: SelectionState
     public private(set) var preview: PreviewContent
+    public private(set) var stopPlaybackSignal = 0
     public var screenMaxPixel: Int
+    public var playbackRequest: PlaybackOptions { settings.playback }
     public var sortOrder: SortOrder {
         didSet {
             guard sortOrder != oldValue else { return }
@@ -62,6 +64,10 @@ public final class BrowserModel {
         }
         prefetchTasks.removeAll()
 
+        if case .video = preview {
+            stopPlaybackSignal &+= 1
+        }
+
         selection = SelectionState()
         preview = .empty
         listing = FolderListing(folder: url, files: [], state: .loading)
@@ -81,7 +87,11 @@ public final class BrowserModel {
     }
 
     public func select(_ urls: Set<URL>, focused: URL?) {
+        let previousFocused = selection.focused
         selection = SelectionState(selected: urls, focused: focused)
+        if previousFocused != focused {
+            stopPlaybackSignal &+= 1
+        }
         loadPreview(for: focused)
         schedulePrefetch(around: focused)
     }

@@ -6,7 +6,10 @@ final class PreviewViewController: NSViewController {
     private let model: BrowserModel
     private let decoder: any ImageDecoding
     private let imageView = ImagePreviewView()
+    private let videoView = VideoPreviewView()
+    private let containerView = NSView()
     private var animatedTask: Task<Void, Never>?
+    private var configuredVideoURL: URL?
 
     init(model: BrowserModel, decoder: any ImageDecoding) {
         self.model = model
@@ -19,10 +22,39 @@ final class PreviewViewController: NSViewController {
         fatalError("init(coder:) is not supported")
     }
 
-    var primaryFocusView: NSView { imageView }
+    var primaryFocusView: NSView {
+        if case .video = model.preview {
+            return videoView
+        }
+        return imageView
+    }
+
+    func togglePlayback() {
+        guard !videoView.isHidden else { return }
+        videoView.togglePlayPause()
+    }
 
     override func loadView() {
-        view = imageView
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        videoView.translatesAutoresizingMaskIntoConstraints = false
+        videoView.isHidden = true
+
+        containerView.addSubview(imageView)
+        containerView.addSubview(videoView)
+
+        NSLayoutConstraint.activate([
+            imageView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            imageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            imageView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+
+            videoView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            videoView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            videoView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            videoView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+        ])
+
+        view = containerView
     }
 
     override func viewDidLoad() {
@@ -46,6 +78,7 @@ final class PreviewViewController: NSViewController {
         withObservationTracking {
             _ = model.preview
             _ = model.selection.focused
+            _ = model.stopPlaybackSignal
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.updateFromModel()
@@ -59,29 +92,66 @@ final class PreviewViewController: NSViewController {
         case .empty:
             animatedTask?.cancel()
             animatedTask = nil
+            stopVideo()
+            showImageView()
             imageView.showEmpty()
         case let .loading(url):
             animatedTask?.cancel()
             animatedTask = nil
+            stopVideo()
+            showImageView()
             imageView.showLoading(fileName: url.lastPathComponent)
         case let .image(decoded):
             animatedTask?.cancel()
             animatedTask = nil
+            stopVideo()
+            showImageView()
             imageView.showImage(
                 decoded,
                 fileName: model.selection.focused?.lastPathComponent ?? ""
             )
         case let .animatedImage(url):
+            stopVideo()
+            showImageView()
             loadAnimatedImage(url)
-        case .video:
+        case let .video(url):
             animatedTask?.cancel()
             animatedTask = nil
             imageView.showEmpty()
+            showVideoView()
+            if configuredVideoURL != url {
+                configuredVideoURL = url
+                let playback = model.playbackRequest
+                videoView.configure(
+                    url: url,
+                    autoplay: playback.autoplay,
+                    loop: playback.loop,
+                    fileName: url.lastPathComponent
+                )
+            }
         case let .unavailable(name, reason):
             animatedTask?.cancel()
             animatedTask = nil
+            stopVideo()
+            showImageView()
             imageView.showUnavailable(name: name, reason: reason)
         }
+    }
+
+    private func showImageView() {
+        imageView.isHidden = false
+        videoView.isHidden = true
+    }
+
+    private func showVideoView() {
+        imageView.isHidden = true
+        videoView.isHidden = false
+    }
+
+    private func stopVideo() {
+        videoView.stop()
+        videoView.isHidden = true
+        configuredVideoURL = nil
     }
 
     private func loadAnimatedImage(_ url: URL) {

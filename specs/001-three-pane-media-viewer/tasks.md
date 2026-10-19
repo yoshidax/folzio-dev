@@ -265,24 +265,24 @@ quickstart.md の手動シナリオで検証する。
 
 **Independent Test**: quickstart.md「US2」の手順（自動ループ、自動再生オフ、ループオフ、別ファイル選択で停止）
 
-- [ ] T041 [US2] `Sources/MediaViewerCore/Browser/BrowserModel.swift` に動画の制御を追加する:
+- [X] T041 [US2] `Sources/MediaViewerCore/Browser/BrowserModel.swift` に動画の制御を追加する:
   - `focused` が動画なら `.video(URL)` にする
   - 再生の指示 `playbackRequest`（`autoplay`, `loop`）を `SettingsStore.playback` から公開する
   - フォーカスが変わったら、新しい状態にする前に `stopPlaybackSignal` を発行する（FR-034）
-- [ ] T042 [US2] `Tests/MediaViewerCoreTests/BrowserModelVideoTests.swift` に動画制御のテストを書く:
+- [X] T042 [US2] `Tests/MediaViewerCoreTests/BrowserModelVideoTests.swift` に動画制御のテストを書く:
   - 動画を選んだときに `.video` と、設定どおりの `autoplay` / `loop` が出ること
   - 動画から画像へフォーカスを移したときに停止の合図が先に出ること
-- [ ] T043 [US2] `Sources/MediaViewerApp/Preview/VideoPreviewView.swift` を作成する:
+- [X] T043 [US2] `Sources/MediaViewerApp/Preview/VideoPreviewView.swift` を作成する:
   - `AVPlayerView`（`controlsStyle = .inline`、`showsFullScreenToggleButton = false`）に `AVQueuePlayer` を接続する
   - `loop` が true なら `AVPlayerLooper` を使い、false なら1回だけ再生して終端で止める
   - `autoplay` が false なら先頭フレームで停止して表示する
   - 停止の合図を受けたら `pause()` し、looper とアイテムを解放して音声も止める
   - a11y ラベルはファイル名とする
-- [ ] T044 [US2] `Sources/MediaViewerApp/Preview/PreviewViewController.swift` で `.video` のときに `VideoPreviewView` を表示し、
+- [X] T044 [US2] `Sources/MediaViewerApp/Preview/PreviewViewController.swift` で `.video` のときに `VideoPreviewView` を表示し、
   他の状態では外すよう切り替える
-- [ ] T045 [US2] `Sources/MediaViewerApp/FileList/ListModeView.swift` で、フォーカス中の項目が動画のときに Space キーで
+- [X] T045 [US2] `Sources/MediaViewerApp/FileList/ListModeView.swift` で、フォーカス中の項目が動画のときに Space キーで
   再生 / 一時停止を切り替える（`PreviewViewController` に転送する）
-- [ ] T046 [US2] `Sources/MediaViewerApp/Settings/SettingsWindowController.swift` を作成し、⌘, で開く:
+- [X] T046 [US2] `Sources/MediaViewerApp/Settings/SettingsWindowController.swift` を作成し、⌘, で開く:
   - 「動画」区分にチェックボックス「動画を自動再生する」（`playback.autoplay`）と
     「動画をループ再生する」（`playback.loop`）を置く
   - 変更は即座に `SettingsStore` に保存し、次に選択する動画から反映する。再起動は不要

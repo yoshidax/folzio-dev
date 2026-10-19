@@ -65,6 +65,9 @@ final class MainSplitViewController: NSSplitViewController {
         ))
 
         splitView.autosaveName = "MainSplit"
+        fileListViewController.onTogglePlayback = { [weak self] in
+            self?.previewViewController.togglePlayback()
+        }
         installFocusMenuItems()
     }
 

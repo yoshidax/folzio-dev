@@ -2,11 +2,25 @@ import AppKit
 import MediaViewerCore
 
 @MainActor
+private final class FileListTableView: NSTableView {
+    var onSpace: (() -> Bool)?
+
+    override func keyDown(with event: NSEvent) {
+        if event.charactersIgnoringModifiers == " ", onSpace?() == true {
+            return
+        }
+        super.keyDown(with: event)
+    }
+}
+
+@MainActor
 final class ListModeView: NSView {
     private let model: BrowserModel
     private let scrollView = NSScrollView()
-    private let tableView = NSTableView()
+    private let tableView = FileListTableView()
     private let dateFormatter: DateFormatter
+
+    var onTogglePlayback: (() -> Void)?
 
     private var lastURLs: [URL] = []
     private var isApplyingSelection = false
@@ -40,6 +54,16 @@ final class ListModeView: NSView {
         tableView.allowsEmptySelection = true
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.onSpace = { [weak self] in
+            guard let self,
+                  let focused = self.model.selection.focused,
+                  let kind = MediaKind(fileExtension: focused.pathExtension),
+                  kind.isVideo else {
+                return false
+            }
+            self.onTogglePlayback?()
+            return true
+        }
 
         addColumn(identifier: "name", title: "名前", width: 220)
         addColumn(identifier: "creationDate", title: "作成日", width: 150)

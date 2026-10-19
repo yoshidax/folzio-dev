@@ -21,6 +21,11 @@ final class FileListViewController: NSViewController {
 
     var primaryFocusView: NSView { listModeView.focusView }
 
+    var onTogglePlayback: (() -> Void)? {
+        get { listModeView.onTogglePlayback }
+        set { listModeView.onTogglePlayback = newValue }
+    }
+
     override func loadView() {
         let container = NSView()
 
