@@ -456,31 +456,31 @@ quickstart.md の手動シナリオで検証する。
 
 **Purpose**: 外部の変更の反映（FR-042）、性能の計測（原則 II）、a11y と憲章への適合の確認
 
-- [ ] T072 [P] `Sources/MediaViewerCore/FileSystem/FileSystemWatcher.swift` に `FileSystemWatching` の FSEvents 実装を作る:
+- [X] T072 [P] `Sources/MediaViewerCore/FileSystem/FileSystemWatcher.swift` に `FileSystemWatching` の FSEvents 実装を作る:
   - `FSEventStreamCreate` に `kFSEventStreamCreateFlagFileEvents` と `kFSEventStreamCreateFlagUseCFTypes` を渡す
   - `watch(_:)` で監視対象が変わったらストリームを作り直す
   - 発生したパスの親フォルダが監視対象に含まれるものだけを、0.3 秒のデバウンスで `events` に流す
-- [ ] T073 `Sources/MediaViewerCore/Browser/BrowserModel.swift` に `handleFileSystemEvent(_:)` を実装する（T072 に依存）:
+- [X] T073 `Sources/MediaViewerCore/Browser/BrowserModel.swift` に `handleFileSystemEvent(_:)` を実装する（T072 に依存）:
   - 表示中のフォルダが含まれていれば一覧を読み直し、選択を保つ。消えたファイルは選択から外す
   - `focused` が消えたらプレビューを `.empty` にする
   - 表示中のフォルダ自体が消えた場合は親フォルダを選択する
-- [ ] T074 `Tests/MediaViewerCoreTests/FileSystemWatcherTests.swift` に、外部変更の反映のテストを書く:
+- [X] T074 `Tests/MediaViewerCoreTests/FileSystemWatcherTests.swift` に、外部変更の反映のテストを書く:
   - 一時フォルダを監視し、ファイルの追加・削除・名前変更で 2 秒以内にイベントが届くこと
   - それを受けた `BrowserModel` の一覧・選択・プレビューが更新されること
-- [ ] T075 `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` で、展開中のノードと表示中のフォルダを
+- [X] T075 `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` で、展開中のノードと表示中のフォルダを
   `FileSystemWatcher.watch` に渡し、イベントで該当ノードの子を読み直す
-- [ ] T076 [P] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に、quickstart.md「性能の検証」の
+- [X] T076 [P] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に、quickstart.md「性能の検証」の
   基準値を計測するテストを書く。基準値を超えたら失敗させる:
   - 24MP JPEG のデコード（スクリーン長辺 5120px）が 0.5 秒以内
   - キャッシュ済みの隣接ファイルへの切替（`BrowserModel.moveFocus` からプレビュー確定まで）が 0.1 秒以内
   - `huge(count: 10_000)` の `mediaFiles(in:)` と並べ替えが 1 秒以内
   - 1億画素の PNG のデコードが完了し、`DecodedImage.byteCost` がスクリーンサイズ相当であること
   - 連続 100 回のフォーカス移動の後も `DecodedImageCache.totalCost` が 256MB 以下であること
-- [ ] T077 起動から前回フォルダの一覧表示までの時間（SC-002: 2 秒以内）と、動画の再生開始までの時間
+- [X] T077 起動から前回フォルダの一覧表示までの時間（SC-002: 2 秒以内）と、動画の再生開始までの時間
   （SC-010: 1 秒以内）を、`os_signpost` で計測できるようにする:
   - signpost は `Sources/MediaViewerApp/App/AppDelegate.swift` と `Sources/MediaViewerApp/Preview/VideoPreviewView.swift` に入れる
   - 計測手順を quickstart.md「性能の検証」に追記する
-- [ ] T078 [P] 憲章 原則 I の確認として、`Sources/` 内に `URLSession`・`Network`・`NWConnection`・`http` の参照がないことを
+- [X] T078 [P] 憲章 原則 I の確認として、`Sources/` 内に `URLSession`・`Network`・`NWConnection`・`http` の参照がないことを
   `scripts/check-no-network.sh`（grep。見つかれば終了コード 1）で確認できるようにし、実行する
 - [ ] T079 Accessibility Inspector で、3ペイン・サムネイルのセル・プレビュー・設定ウインドウ・確認ダイアログのラベルを確認する。
   不足があれば各ビューで `setAccessibilityLabel` を補う（原則 III）

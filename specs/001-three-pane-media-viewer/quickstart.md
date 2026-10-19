@@ -108,3 +108,38 @@ scripts/make-fixtures.sh ~/MediaViewerFixtures
 | 10,000 ファイルのフォルダの最初の表示 | 1 秒以内。読み込み中もスクロールできる | SC-003 |
 | 1080p 動画の選択から再生開始まで | 1 秒以内 | SC-010 |
 | デコード済みプレビューのキャッシュ | 256MB を超えない | 憲章 原則 II、research.md R8 |
+
+### os_signpost による起動・動画再生の計測（SC-002・SC-010）
+
+起動から一覧表示までの時間と、動画の再生要求から再生開始までの時間を os_signpost の
+インターバルとして記録する。Instruments の「Points of Interest」で確認できる。
+
+- subsystem: `local.my-img-viewer.MediaViewer`
+- category: `Performance`
+- インターバル名:
+  - `LaunchToList`: `applicationDidFinishLaunching` の開始から、最初のフォルダ一覧が
+    `.loaded` / `.empty` / `.denied` / `.failed` のいずれかになって表示されるまで（SC-002）
+  - `VideoPlaybackStart`: 動画の再生要求から、プレイヤーが最初に `.playing` になるまで（SC-010）
+
+Instruments（Points of Interest）で計測する手順:
+
+1. Instruments を開き、「Points of Interest」テンプレートを選ぶ
+2. 対象に `.build/MediaViewer.app` を指定して記録を開始し、アプリを起動する
+3. タイムラインを subsystem `local.my-img-viewer.MediaViewer` / category `Performance` で絞り込み、
+   `LaunchToList` の長さを読む。目標は 2 秒以内
+4. `mixed/` の mp4 を選び、`VideoPlaybackStart` の長さを読む。自動再生がオフの場合は Space で
+   再生を開始してから読む。目標は 1 秒以内
+
+コマンドラインで記録する場合:
+
+```bash
+xcrun xctrace record \
+  --template 'Points of Interest' \
+  --output launch.trace \
+  --launch -- .build/MediaViewer.app
+
+open launch.trace
+```
+
+`launch.trace` を Instruments で開き、同じ subsystem / category とインターバル名で絞り込む。
+手動操作が必要な `VideoPlaybackStart` は、記録中に動画を選んで再生を開始する。

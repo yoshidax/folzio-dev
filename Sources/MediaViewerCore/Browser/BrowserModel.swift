@@ -135,6 +135,25 @@ public final class BrowserModel {
         }
     }
 
+    public func handleFileSystemEvent(_ folders: Set<URL>) async {
+        let current = listing.folder.standardizedFileURL
+        guard folders.contains(where: { $0.standardizedFileURL == current }) else {
+            return
+        }
+
+        var isDirectory: ObjCBool = false
+        let exists = FileManager.default.fileExists(
+            atPath: listing.folder.path,
+            isDirectory: &isDirectory
+        )
+        guard exists, isDirectory.boolValue else {
+            await selectFolder(listing.folder.deletingLastPathComponent())
+            return
+        }
+
+        await reloadCurrentFolder()
+    }
+
     public func moveFocus(_ direction: FocusDirection) {
         let files = listing.files
         guard !files.isEmpty else { return }

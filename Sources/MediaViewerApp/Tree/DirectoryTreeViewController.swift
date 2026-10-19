@@ -19,24 +19,28 @@ final class DirectoryTreeViewController: NSViewController {
     private let lister: any DirectoryListing
     private let volumes: any VolumeProviding
     private let coordinator: FileOperationCoordinator
+    private let watcher: any FileSystemWatching
     private let outlineView = NSOutlineView()
     private let scrollView = NSScrollView()
 
     private var roots: [Node] = []
     private var volumeTask: Task<Void, Never>?
     private var revealTask: Task<Void, Never>?
+    private var eventTask: Task<Void, Never>?
     private var didReveal = false
 
     init(
         model: BrowserModel,
         lister: any DirectoryListing,
         volumes: any VolumeProviding,
-        coordinator: FileOperationCoordinator
+        coordinator: FileOperationCoordinator,
+        watcher: any FileSystemWatching
     ) {
         self.model = model
         self.lister = lister
         self.volumes = volumes
         self.coordinator = coordinator
+        self.watcher = watcher
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -153,6 +157,18 @@ final class DirectoryTreeViewController: NSViewController {
                 self.applyRoots(newRoots)
             }
         }
+
+        eventTask = Task { [weak self] in
+            guard let self else { return }
+            for await changed in self.watcher.events {
+                await self.model.handleFileSystemEvent(changed)
+                await self.reloadExpandedNodes(in: changed)
+                self.updateWatchSet()
+            }
+        }
+
+        observeDisplayedFolder()
+        updateWatchSet()
     }
 
     override func viewDidAppear() {
@@ -177,6 +193,7 @@ final class DirectoryTreeViewController: NSViewController {
             return node
         }
         outlineView.reloadData()
+        updateWatchSet()
     }
 
     private func reveal(_ target: URL) async {
@@ -241,6 +258,90 @@ final class DirectoryTreeViewController: NSViewController {
             node.folder.accessState = error == .accessDenied ? .denied : .accessible
             outlineView.reloadItem(node, reloadChildren: true)
         }
+        updateWatchSet()
+    }
+
+    private func observeDisplayedFolder() {
+        withObservationTracking {
+            _ = model.listing.folder
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.updateWatchSet()
+                self?.observeDisplayedFolder()
+            }
+        }
+    }
+
+    private func updateWatchSet() {
+        var folders: Set<URL> = [model.listing.folder.standardizedFileURL]
+        for node in flattenedNodes(from: roots) where outlineView.isItemExpanded(node) {
+            folders.insert(node.url.standardizedFileURL)
+        }
+        watcher.watch(folders)
+    }
+
+    private func reloadExpandedNodes(in changed: Set<URL>) async {
+        let changedURLs = Set(changed.map(\.standardizedFileURL))
+        let targets = flattenedNodes(from: roots).filter { node in
+            node.children != nil
+                && outlineView.isItemExpanded(node)
+                && changedURLs.contains(node.url.standardizedFileURL)
+        }
+        for node in targets {
+            await reloadChildren(of: node)
+        }
+    }
+
+    private func reloadChildren(of node: Node) async {
+        let selectedURL = selectedNode?.url
+
+        do {
+            let urls = try await lister.subfolders(of: node.url)
+            let children = urls.map { url in
+                Node(folder: FolderNode(
+                    url: url,
+                    name: url.lastPathComponent,
+                    kind: .folder,
+                    accessState: .accessible
+                ))
+            }
+            node.children = children
+            node.folder.children = children.map(\.folder)
+            node.folder.accessState = .accessible
+            outlineView.reloadItem(node, reloadChildren: true)
+            outlineView.expandItem(node)
+        } catch {
+            node.children = []
+            node.folder.children = []
+            node.folder.accessState = error == .accessDenied ? .denied : .accessible
+            outlineView.reloadItem(node, reloadChildren: true)
+        }
+
+        if let selectedURL, let row = rowForURL(selectedURL) {
+            outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        }
+    }
+
+    private func flattenedNodes(from nodes: [Node]) -> [Node] {
+        var result: [Node] = []
+        for node in nodes {
+            result.append(node)
+            if let children = node.children {
+                result.append(contentsOf: flattenedNodes(from: children))
+            }
+        }
+        return result
+    }
+
+    private func rowForURL(_ url: URL) -> Int? {
+        let target = url.standardizedFileURL
+        guard let node = flattenedNodes(from: roots).first(where: {
+            $0.url.standardizedFileURL == target
+        }) else {
+            return nil
+        }
+        let row = outlineView.row(forItem: node)
+        return row >= 0 ? row : nil
     }
 }
 
@@ -379,11 +480,20 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
+        updateWatchSet()
         let row = outlineView.selectedRow
         guard row >= 0, let node = outlineView.item(atRow: row) as? Node else { return }
         Task { [weak self] in
             await self?.model.selectFolder(node.url)
         }
+    }
+
+    func outlineViewItemDidExpand(_ notification: Notification) {
+        updateWatchSet()
+    }
+
+    func outlineViewItemDidCollapse(_ notification: Notification) {
+        updateWatchSet()
     }
 }
 

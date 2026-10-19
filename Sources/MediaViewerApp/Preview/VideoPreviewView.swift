@@ -1,13 +1,22 @@
 import AVFoundation
 import AVKit
 import AppKit
+import os
 
 @MainActor
 final class VideoPreviewView: NSView {
     private let playerView = AVPlayerView()
+    private let performanceSignposter = OSSignposter(
+        subsystem: "local.my-img-viewer.MediaViewer",
+        category: "Performance"
+    )
     private var player: AVQueuePlayer?
     private var looper: AVPlayerLooper?
     private var endObserver: NSObjectProtocol?
+    private var timeControlObservation: NSKeyValueObservation?
+    private var playbackIntervalState: OSSignpostIntervalState?
+    private var playbackIntervalStarted = false
+    private var playbackGeneration = 0
 
     init() {
         super.init(frame: .zero)
@@ -51,7 +60,15 @@ final class VideoPreviewView: NSView {
         playerView.player = player
         setAccessibilityLabel(fileName)
 
+        let generation = playbackGeneration
+        timeControlObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] _, _ in
+            Task { @MainActor in
+                self?.handleTimeControlStatusChange(generation: generation)
+            }
+        }
+
         if autoplay {
+            beginPlaybackIntervalIfNeeded()
             player.play()
         } else {
             player.pause()
@@ -60,6 +77,13 @@ final class VideoPreviewView: NSView {
     }
 
     func stop() {
+        playbackGeneration &+= 1
+        endPlaybackInterval()
+        playbackIntervalStarted = false
+
+        timeControlObservation?.invalidate()
+        timeControlObservation = nil
+
         player?.pause()
         looper?.disableLooping()
         looper = nil
@@ -80,8 +104,30 @@ final class VideoPreviewView: NSView {
         if player.rate != 0 {
             player.pause()
         } else {
+            beginPlaybackIntervalIfNeeded()
             player.play()
         }
+    }
+
+    private func beginPlaybackIntervalIfNeeded() {
+        guard !playbackIntervalStarted else { return }
+        playbackIntervalStarted = true
+        playbackIntervalState = performanceSignposter.beginInterval("VideoPlaybackStart")
+    }
+
+    private func endPlaybackInterval() {
+        guard let state = playbackIntervalState else { return }
+        playbackIntervalState = nil
+        performanceSignposter.endInterval("VideoPlaybackStart", state)
+    }
+
+    private func handleTimeControlStatusChange(generation: Int) {
+        guard generation == playbackGeneration,
+              let player,
+              player.timeControlStatus == .playing else {
+            return
+        }
+        endPlaybackInterval()
     }
 
     private func setup() {

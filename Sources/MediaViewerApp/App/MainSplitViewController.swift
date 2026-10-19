@@ -1,5 +1,6 @@
 import AppKit
 import MediaViewerCore
+import Observation
 
 private final class NotificationTokens: @unchecked Sendable {
     var tokens: [NSObjectProtocol] = []
@@ -7,16 +8,25 @@ private final class NotificationTokens: @unchecked Sendable {
 
 @MainActor
 final class MainSplitViewController: NSSplitViewController {
+    private let model: BrowserModel
     private let treeViewController: DirectoryTreeViewController
     private let fileListViewController: FileListViewController
     private let previewViewController: PreviewViewController
     private let fileOperationCoordinator: FileOperationCoordinator
+    private var didObserveInitialListingChange = false
+    private var didNotifyInitialListingDisplayed = false
     private var appliedInitialPositions = false
     private var installedFocusMenu = false
     private var treeSplitItem: NSSplitViewItem?
     private var fileListSplitItem: NSSplitViewItem?
     private var panesCollapsedForFullScreen = false
     private var isAppInitiatedFullScreenTransition = false
+
+    var onInitialListingDisplayed: (() -> Void)? {
+        didSet {
+            deliverInitialListingIfReady()
+        }
+    }
 
     init() {
         let settings = SettingsStore(defaults: .standard)
@@ -30,6 +40,7 @@ final class MainSplitViewController: NSSplitViewController {
             settings: settings
         )
         let volumes = VolumeProvider(changes: MainSplitViewController.makeVolumeChanges())
+        let fileSystemWatcher = FileSystemWatcher()
         let thumbnailProvider = ThumbnailProvider()
         let coordinator = FileOperationCoordinator(
             model: model,
@@ -37,12 +48,14 @@ final class MainSplitViewController: NSSplitViewController {
             settings: settings
         )
         self.fileOperationCoordinator = coordinator
+        self.model = model
 
         self.treeViewController = DirectoryTreeViewController(
             model: model,
             lister: lister,
             volumes: volumes,
-            coordinator: coordinator
+            coordinator: coordinator,
+            watcher: fileSystemWatcher
         )
         self.fileListViewController = FileListViewController(
             model: model,
@@ -103,6 +116,40 @@ final class MainSplitViewController: NSSplitViewController {
             self?.togglePreviewFullScreen()
         }
         installFocusMenuItems()
+        observeInitialListingState()
+    }
+
+    private func observeInitialListingState() {
+        withObservationTracking {
+            _ = model.listing.state
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.handleInitialListingStateChange()
+            }
+        }
+    }
+
+    private func handleInitialListingStateChange() {
+        didObserveInitialListingChange = true
+        deliverInitialListingIfReady()
+        if !didNotifyInitialListingDisplayed {
+            observeInitialListingState()
+        }
+    }
+
+    private func deliverInitialListingIfReady() {
+        guard didObserveInitialListingChange, !didNotifyInitialListingDisplayed else { return }
+
+        switch model.listing.state {
+        case .loading:
+            return
+        case .loaded, .empty, .denied, .failed:
+            break
+        }
+
+        guard let onInitialListingDisplayed else { return }
+        didNotifyInitialListingDisplayed = true
+        onInitialListingDisplayed()
     }
 
     override func viewDidAppear() {
