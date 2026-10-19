@@ -93,56 +93,56 @@ quickstart.md の手動シナリオで検証する。
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T011 [P] `Sources/MediaViewerCore/Model/MediaKind.swift` に `MediaKind` を実装する:
+- [X] T011 [P] `Sources/MediaViewerCore/Model/MediaKind.swift` に `MediaKind` を実装する:
   - ケースと拡張子の対応: `jpeg`(jpg, jpeg)、`png`、`gif`、`webp`、`mp4`、`mov`
   - `init?(fileExtension:)` は「大文字小文字を区別しない」。表以外の拡張子では `nil` を返す
   - `isVideo` プロパティを持ち、型は `Sendable` とする
-- [ ] T012 [P] `Sources/MediaViewerCore/Model/MediaFile.swift` に `MediaFile` を実装する:
+- [X] T012 [P] `Sources/MediaViewerCore/Model/MediaFile.swift` に `MediaFile` を実装する:
   - フィールド: `url`, `name`, `kind`, `typeDescription`, `creationDate: Date?`, `fileSize: Int64`
   - `url` を同一性のキーとして `Identifiable` / `Hashable` に準拠させ、`Sendable` とする
-- [ ] T013 [P] `Sources/MediaViewerCore/Model/FolderNode.swift` に `FolderNode` を実装する。
+- [X] T013 [P] `Sources/MediaViewerCore/Model/FolderNode.swift` に `FolderNode` を実装する。
   フィールドは `url`, `name`, `kind`(`.home`/`.volume`/`.folder`), `children: [FolderNode]?`
   （`nil` は未読み込み）, `accessState`(`.unknown`/`.accessible`/`.denied`)
-- [ ] T014 [P] `Sources/MediaViewerCore/Model/BrowserState.swift` を実装する:
+- [X] T014 [P] `Sources/MediaViewerCore/Model/BrowserState.swift` を実装する:
   - `FolderListing`: `folder`, `files`, `state`(`.loading`/`.loaded`/`.empty`/`.denied`/`.failed(String)`)
   - `SelectionState`: `selected: Set<URL>`, `focused: URL?`
   - `PreviewContent`: `.empty`, `.loading(URL)`, `.image(DecodedImage)`, `.animatedImage(URL)`, `.video(URL)`,
     `.unavailable(name: String, reason: String)`
   - `FocusDirection`: `.previous` / `.next`
-- [ ] T015 [P] `Sources/MediaViewerCore/Model/Settings.swift` に、data-model.md の表どおりの既定値で設定型を実装する:
+- [X] T015 [P] `Sources/MediaViewerCore/Model/Settings.swift` に、data-model.md の表どおりの既定値で設定型を実装する:
   - `DisplayMode`(`.list`/`.thumbnails`)
   - `SortOrder`: `column` は `.name`/`.creationDate`/`.kind`、`ascending`。既定は名前の昇順
   - `ViewSettings`: `displayMode` 既定 `.list`、`thumbnailSize` 既定 128（「48〜512 の範囲に丸める」）、
     `sortOrder`、`lastFolder: URL?`
   - `PlaybackOptions`: `autoplay` 既定 true、`loop` 既定 true
   - `ConfirmationOptions`: `confirmBeforeFileOperations` 既定 true
-- [ ] T016 `Sources/MediaViewerCore/Settings/SettingsStore.swift` に `SettingsStore(defaults: UserDefaults)` を実装する
+- [X] T016 `Sources/MediaViewerCore/Settings/SettingsStore.swift` に `SettingsStore(defaults: UserDefaults)` を実装する
   （T015 に依存）:
   - キー名は contracts/settings.md の表のとおり（`view.displayMode`, `view.thumbnailSize`, `view.sort.column`,
     `view.sort.ascending`, `view.lastFolderPath`, `playback.autoplay`, `playback.loop`, `fileOps.confirmBeforeExecuting`）
   - 型や範囲が不正な値は既定値に戻す
   - `viewSettings` / `playback` / `confirmation` を読み書きできるようにする
-- [ ] T017 `Sources/MediaViewerCore/Model/Sorting.swift` に `sorted(_:by:)` を実装する:
+- [X] T017 `Sources/MediaViewerCore/Model/Sorting.swift` に `sorted(_:by:)` を実装する:
   - 名前の比較は `localizedStandardCompare`（Finder と同じ自然順）で行う
   - 作成日の比較では `nil` を最後に置く。種類は `typeDescription` で比較する
   - 同じ値が並んだ場合は、名前の自然順を第2キーにする
-- [ ] T018 [P] `Tests/MediaViewerCoreTests/MediaKindTests.swift` に `MediaKind` のテストを書く:
+- [X] T018 [P] `Tests/MediaViewerCoreTests/MediaKindTests.swift` に `MediaKind` のテストを書く:
   6形式の全拡張子を大文字・小文字・混在で判定できること、`txt`/`pdf`/`heic`/空文字で `nil` になること
-- [ ] T019 [P] `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` に `SettingsStore` のテストを書く:
+- [X] T019 [P] `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` に `SettingsStore` のテストを書く:
   - テストごとに専用のスイート名で `UserDefaults` を作り、終了時に削除する
   - 既定値、保存した値の往復、`thumbnailSize` の 10→48 / 900→512 の丸め、不正な文字列が既定値に戻ることを確認する
-- [ ] T020 [P] `Tests/MediaViewerCoreTests/SortingTests.swift` に `sorted(_:by:)` のテストを書く:
+- [X] T020 [P] `Tests/MediaViewerCoreTests/SortingTests.swift` に `sorted(_:by:)` のテストを書く:
   `img2` < `img10` の自然順、昇順・降順、作成日が `nil` の項目の位置、同じ値のときの第2キー
-- [ ] T021 `Sources/MediaViewerApp/App/MainSplitViewController.swift` を作成する:
+- [X] T021 `Sources/MediaViewerApp/App/MainSplitViewController.swift` を作成する:
   - `NSSplitViewController` に縦3ペインの `NSSplitViewItem` を置く。中身はこの時点では空のプレースホルダ
   - 分割は `splitView.isVertical = true`（左右に並ぶ）とする
   - 初期幅は 220 / 360 / 残り、最小幅は「最小幅 160 / 240 / 320 pt」とする
   - ウインドウの幅を変えたときにプレビューペインが伸び縮みするよう、プレビューの `holdingPriority` を最も低くする
   - `splitView.autosaveName = "MainSplit"` を設定する
-- [ ] T022 `Sources/MediaViewerApp/App/MainWindowController.swift` を作成し、AppDelegate から開く:
+- [X] T022 `Sources/MediaViewerApp/App/MainWindowController.swift` を作成し、AppDelegate から開く:
   - タイトルは `MediaViewer` とし、中身に `MainSplitViewController` を置く
   - `minSize` は最小幅の合計（720pt）+ 仕切りの幅以上とし、ウインドウの位置と大きさは自動保存する
-- [ ] T023 `Sources/MediaViewerApp/App/MainMenu.swift` を作成する:
+- [X] T023 `Sources/MediaViewerApp/App/MainMenu.swift` を作成する:
   - contracts/keyboard-and-menus.md「メニューバー」の骨組み（アプリ名 / ファイル / 編集 / 表示）を組み、
     `NSApp.mainMenu` に設定する
   - 項目はこの時点では「設定…（⌘,）」「終了（⌘Q）」と標準の編集項目のみ。各ストーリーで追加する
