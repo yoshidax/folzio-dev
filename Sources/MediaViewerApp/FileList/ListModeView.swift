@@ -4,8 +4,19 @@ import MediaViewerCore
 @MainActor
 private final class FileListTableView: NSTableView {
     var onSpace: (() -> Bool)?
+    var onReturn: (() -> Bool)?
 
     override func keyDown(with event: NSEvent) {
+        if event.specialKey == .carriageReturn
+            || event.specialKey == .enter
+            || event.charactersIgnoringModifiers == "\r" {
+            let disallowed: NSEvent.ModifierFlags = [.command, .option, .control]
+            if event.modifierFlags.intersection(disallowed).isEmpty,
+               onReturn?() == true {
+                return
+            }
+        }
+
         if event.charactersIgnoringModifiers == " ", onSpace?() == true {
             return
         }
@@ -21,6 +32,12 @@ final class ListModeView: NSView {
     private let dateFormatter: DateFormatter
 
     var onTogglePlayback: (() -> Void)?
+    var onRename: ((URL, String) async -> Void)?
+
+    var contextMenu: NSMenu? {
+        get { tableView.menu }
+        set { tableView.menu = newValue }
+    }
 
     private static let sortEntries: [(column: SortColumn, title: String)] = [
         (.name, "名前"),
@@ -33,6 +50,9 @@ final class ListModeView: NSView {
     private var isSyncingSortDescriptors = false
     private var sortMenuInstalled = false
     private var sortMenuItems: [NSMenuItem] = []
+    private var renamingURL: URL?
+    private var renamingOriginalName: String?
+    private var isFinishingRename = false
 
     init(model: BrowserModel) {
         self.model = model
@@ -69,6 +89,9 @@ final class ListModeView: NSView {
         tableView.allowsEmptySelection = true
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.registerForDraggedTypes([.fileURL])
+        tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
+        tableView.setDraggingSourceOperationMask(.copy, forLocal: false)
         tableView.onSpace = { [weak self] in
             guard let self,
                   let focused = self.model.selection.focused,
@@ -78,6 +101,9 @@ final class ListModeView: NSView {
             }
             self.onTogglePlayback?()
             return true
+        }
+        tableView.onReturn = { [weak self] in
+            self?.beginRenaming() ?? false
         }
 
         addColumn(identifier: "name", title: "名前", width: 220)
@@ -125,6 +151,9 @@ final class ListModeView: NSView {
 
         isApplyingSelection = true
         if urls != lastURLs {
+            if renamingURL != nil {
+                finishRenaming(commit: false)
+            }
             lastURLs = urls
             tableView.reloadData()
         }
@@ -213,6 +242,95 @@ final class ListModeView: NSView {
         model.sortOrder = SortOrder(column: column, ascending: ascending)
         updateSortMenuItems()
     }
+
+    @discardableResult
+    func beginRenaming() -> Bool {
+        guard renamingURL == nil else { return false }
+
+        let selected = model.selection.selected
+        guard selected.count == 1,
+              let focused = model.selection.focused,
+              selected.contains(focused),
+              let row = model.listing.files.firstIndex(where: { $0.url == focused }),
+              let window = tableView.window else {
+            return false
+        }
+
+        tableView.scrollRowToVisible(row)
+        tableView.layoutSubtreeIfNeeded()
+        guard let cell = tableView.view(
+            atColumn: 0,
+            row: row,
+            makeIfNecessary: true
+        ) as? NSTableCellView,
+            let field = cell.textField else {
+            return false
+        }
+
+        renamingURL = focused
+        renamingOriginalName = field.stringValue
+        field.stringValue = focused.lastPathComponent
+        setEditingAppearance(field, editing: true)
+
+        guard window.makeFirstResponder(field) else {
+            finishRenaming(commit: false)
+            return false
+        }
+
+        if let editor = field.currentEditor() as? NSTextView {
+            let baseName = (field.stringValue as NSString).deletingPathExtension
+            editor.selectedRange = NSRange(location: 0, length: (baseName as NSString).length)
+        }
+        return true
+    }
+
+    private func finishRenaming(commit: Bool, newNameOverride: String? = nil) {
+        guard !isFinishingRename,
+              let url = renamingURL,
+              let oldName = renamingOriginalName else {
+            return
+        }
+        isFinishingRename = true
+        defer { isFinishingRename = false }
+
+        renamingURL = nil
+        renamingOriginalName = nil
+
+        var newName = oldName
+        if let row = model.listing.files.firstIndex(where: { $0.url == url }),
+           let cell = tableView.view(
+               atColumn: 0,
+               row: row,
+               makeIfNecessary: false
+           ) as? NSTableCellView,
+           let field = cell.textField {
+            let rawName = newNameOverride ?? field.stringValue
+            newName = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+            setEditingAppearance(field, editing: false)
+            field.stringValue = oldName
+        }
+
+        if let window = tableView.window,
+           window.firstResponder !== tableView {
+            window.makeFirstResponder(tableView)
+        }
+
+        guard commit, !newName.isEmpty, newName != oldName else { return }
+        let handler = onRename
+        Task { @MainActor in
+            await handler?(url, newName)
+        }
+    }
+
+    private func setEditingAppearance(_ field: NSTextField, editing: Bool) {
+        field.isEditable = editing
+        field.isSelectable = editing
+        field.isBordered = false
+        field.isBezeled = false
+        field.drawsBackground = editing
+        field.backgroundColor = editing ? .textBackgroundColor : .clear
+        field.focusRingType = editing ? .default : .none
+    }
 }
 
 extension ListModeView: NSTableViewDataSource {
@@ -256,6 +374,8 @@ extension ListModeView: NSTableViewDelegate {
             let text = NSTextField(labelWithString: "")
             text.translatesAutoresizingMaskIntoConstraints = false
             text.lineBreakMode = .byTruncatingMiddle
+            text.delegate = self
+            setEditingAppearance(text, editing: false)
             cell.addSubview(text)
             cell.textField = text
 
@@ -264,6 +384,10 @@ extension ListModeView: NSTableViewDelegate {
                 text.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
                 text.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
             ])
+        }
+
+        if let textField = cell.textField, renamingURL != file.url {
+            setEditingAppearance(textField, editing: false)
         }
 
         switch tableColumn.identifier.rawValue {
@@ -299,5 +423,39 @@ extension ListModeView: NSTableViewDelegate {
             : nil
 
         model.select(Set(urls), focused: focused)
+    }
+}
+
+extension ListModeView: NSTextFieldDelegate {
+    func control(
+        _ control: NSControl,
+        textView: NSTextView,
+        doCommandBy commandSelector: Selector
+    ) -> Bool {
+        guard renamingURL != nil else { return false }
+        if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+            finishRenaming(commit: true, newNameOverride: textView.string)
+            return true
+        }
+        if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+            finishRenaming(commit: false)
+            return true
+        }
+        return false
+    }
+
+    func controlTextDidEndEditing(_ obj: Notification) {
+        guard renamingURL != nil, !isFinishingRename else { return }
+        finishRenaming(commit: true)
+    }
+}
+
+extension ListModeView {
+    func tableView(
+        _ tableView: NSTableView,
+        pasteboardWriterForRow row: Int
+    ) -> NSPasteboardWriting? {
+        guard row >= 0, row < model.listing.files.count else { return nil }
+        return model.listing.files[row].url as NSURL
     }
 }

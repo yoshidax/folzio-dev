@@ -1,0 +1,73 @@
+import Foundation
+import Testing
+@testable import MediaViewerCore
+
+@Suite("NameValidation")
+struct NameValidationTests {
+    private let file = URL(fileURLWithPath: "/tmp/a.jpg")
+    private let existingNames: Set<String> = ["a.jpg", "photo.png"]
+
+    @Test("空・不正な文字・先頭のドット・大文字小文字だけ異なる名前を拒否する", arguments: [
+        "",
+        "   ",
+        "a/b.jpg",
+        "a:b.jpg",
+        ".hidden.jpg",
+        "A.JPG",
+    ])
+    func rejectsInvalidNames(name: String) {
+        guard case .invalid(let reason) = validateNewName(name, for: file, existingNames: existingNames) else {
+            Issue.record("\(String(reflecting: name)) was accepted")
+            return
+        }
+        #expect(!reason.isEmpty)
+    }
+
+    @Test("拡張子が変わる場合は確認を求める")
+    func asksForExtensionChange() {
+        #expect(
+            validateNewName("a.png", for: file, existingNames: existingNames)
+                == .needsExtensionChangeConfirmation
+        )
+        #expect(
+            validateNewName("a", for: file, existingNames: existingNames)
+                == .needsExtensionChangeConfirmation
+        )
+    }
+
+    @Test("拡張子が同じ名前は受け入れる")
+    func acceptsValidName() {
+        #expect(validateNewName("b.jpg", for: file, existingNames: existingNames) == .ok)
+        #expect(validateNewName("B.JPG", for: file, existingNames: existingNames) == .ok)
+    }
+
+    @Test("対象のファイル自身と同じ名前は衝突として拒否する")
+    func rejectsSameName() {
+        #expect(validateNewName("a.jpg", for: file, existingNames: existingNames) == .invalid(reason: "同じ名前の項目がすでに存在します"))
+    }
+
+    @Test("uniqueName は 2 から連番を振る")
+    func numbersUniqueNames() {
+        #expect(uniqueName(for: "a.jpg", existingNames: []) == "a 2.jpg")
+        #expect(uniqueName(for: "a.jpg", existingNames: ["a.jpg"]) == "a 2.jpg")
+        #expect(uniqueName(for: "a.jpg", existingNames: ["a.jpg", "a 2.jpg"]) == "a 3.jpg")
+    }
+
+    @Test("既存の連番の続きから採番する")
+    func continuesExistingCounter() {
+        #expect(uniqueName(for: "c 2.jpg", existingNames: ["c 2.jpg"]) == "c 3.jpg")
+        #expect(uniqueName(for: "c 2.jpg", existingNames: ["c 2.jpg", "c 3.jpg"]) == "c 4.jpg")
+    }
+
+    @Test("大文字小文字を区別せずに衝突を判定する")
+    func detectsCaseInsensitiveCollisions() {
+        #expect(uniqueName(for: "a.jpg", existingNames: ["A.JPG"]) == "a 2.jpg")
+        #expect(uniqueName(for: "a.jpg", existingNames: ["A.JPG", "A 2.JPG"]) == "a 3.jpg")
+    }
+
+    @Test("拡張子のない名前にも連番を付ける")
+    func handlesNameWithoutExtension() {
+        #expect(uniqueName(for: "notes", existingNames: ["notes"]) == "notes 2")
+        #expect(uniqueName(for: "notes", existingNames: ["NOTES", "notes 2"]) == "notes 3")
+    }
+}

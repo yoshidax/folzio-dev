@@ -6,8 +6,10 @@ final class FileListViewController: NSViewController {
     private let model: BrowserModel
     private let settings: SettingsStore
     private let thumbnailProvider: any ThumbnailProviding
+    private let coordinator: FileOperationCoordinator
     private let listModeView: ListModeView
     private let thumbnailModeView: ThumbnailModeView
+    private lazy var fileContextMenu = FileContextMenu(host: self)
     private let messageLabel = NSTextField(wrappingLabelWithString: "")
     private let progressIndicator = NSProgressIndicator()
     private let bottomBar = NSView()
@@ -23,12 +25,14 @@ final class FileListViewController: NSViewController {
     init(
         model: BrowserModel,
         settings: SettingsStore,
-        thumbnailProvider: any ThumbnailProviding
+        thumbnailProvider: any ThumbnailProviding,
+        coordinator: FileOperationCoordinator
     ) {
         let viewSettings = settings.viewSettings
         self.model = model
         self.settings = settings
         self.thumbnailProvider = thumbnailProvider
+        self.coordinator = coordinator
         self.listModeView = ListModeView(model: model)
         self.thumbnailModeView = ThumbnailModeView(
             model: model,
@@ -40,6 +44,10 @@ final class FileListViewController: NSViewController {
         )
         super.init(nibName: nil, bundle: nil)
         thumbnailModeView.thumbnailSize = initialThumbnailSize
+        fileContextMenu.install(
+            listModeView: listModeView,
+            thumbnailModeView: thumbnailModeView
+        )
     }
 
     @available(*, unavailable)
@@ -56,6 +64,28 @@ final class FileListViewController: NSViewController {
     var onTogglePlayback: (() -> Void)? {
         get { listModeView.onTogglePlayback }
         set { listModeView.onTogglePlayback = newValue }
+    }
+
+    var onRename: ((URL, String) async -> Void)? {
+        get { listModeView.onRename }
+        set {
+            listModeView.onRename = newValue
+            thumbnailModeView.onRename = newValue
+        }
+    }
+
+    var selectedFileURLs: [URL] {
+        let selected = model.selection.selected
+        guard !selected.isEmpty else { return [] }
+        var urls = model.listing.files.map(\.url).filter(selected.contains)
+        for url in selected where !urls.contains(url) {
+            urls.append(url)
+        }
+        return urls
+    }
+
+    private var isEditingText: Bool {
+        view.window?.firstResponder is NSTextView
     }
 
     override func loadView() {
@@ -320,6 +350,94 @@ final class FileListViewController: NSViewController {
         return false
     }
 
+    @objc func copy(_ sender: Any?) {
+        let urls = selectedFileURLs
+        guard !urls.isEmpty else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects(urls as [NSURL])
+    }
+
+    @objc func paste(_ sender: Any?) {
+        guard !isEditingText else { return }
+        let folder = model.listing.folder
+        Task { @MainActor in
+            await coordinator.paste(into: folder, move: false)
+        }
+    }
+
+    @objc func movePaste(_ sender: Any?) {
+        guard !isEditingText else { return }
+        let folder = model.listing.folder
+        Task { @MainActor in
+            await coordinator.paste(into: folder, move: true)
+        }
+    }
+
+    @objc func duplicate(_ sender: Any?) {
+        guard !isEditingText else { return }
+        let urls = selectedFileURLs
+        guard !urls.isEmpty else { return }
+        Task { @MainActor in
+            await coordinator.duplicate(urls)
+        }
+    }
+
+    @objc func rename(_ sender: Any?) {
+        guard !isEditingText else { return }
+        let selected = model.selection.selected
+        guard selected.count == 1,
+              let focused = model.selection.focused,
+              selected.contains(focused) else {
+            return
+        }
+
+        switch displayMode {
+        case .list:
+            _ = listModeView.beginRenaming()
+        case .thumbnails:
+            guard let window = view.window else { return }
+            window.makeFirstResponder(thumbnailModeView.focusView)
+            guard let event = NSEvent.keyEvent(
+                with: .keyDown,
+                location: .zero,
+                modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: window.windowNumber,
+                context: nil,
+                characters: "\r",
+                charactersIgnoringModifiers: "\r",
+                isARepeat: false,
+                keyCode: 36
+            ) else {
+                return
+            }
+            thumbnailModeView.focusView.keyDown(with: event)
+        }
+    }
+
+    @objc func moveToTrash(_ sender: Any?) {
+        guard !isEditingText else { return }
+        let urls = selectedFileURLs
+        guard !urls.isEmpty else { return }
+        Task { @MainActor in
+            await coordinator.trash(urls)
+        }
+    }
+
+    @objc func open(_ sender: Any?) {
+        guard !isEditingText else { return }
+        for url in selectedFileURLs {
+            _ = NSWorkspace.shared.open(url)
+        }
+    }
+
+    @objc func revealInFinder(_ sender: Any?) {
+        let urls = selectedFileURLs
+        guard !urls.isEmpty else { return }
+        NSWorkspace.shared.activateFileViewerSelecting(urls)
+    }
+
     @objc private func showThumbnails(_ sender: Any?) {
         setDisplayMode(.thumbnails)
     }
@@ -338,5 +456,38 @@ final class FileListViewController: NSViewController {
 
     @objc private func thumbnailSizeSliderChanged(_ sender: NSSlider) {
         setThumbnailSize(sender.doubleValue, persist: true)
+    }
+}
+
+extension FileListViewController: NSMenuItemValidation {
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if isEditingText {
+            switch menuItem.action {
+            case #selector(open(_:)),
+                 #selector(moveToTrash(_:)),
+                 #selector(rename(_:)),
+                 #selector(duplicate(_:)),
+                 #selector(revealInFinder(_:)):
+                return false
+            default:
+                break
+            }
+        }
+
+        switch menuItem.action {
+        case #selector(copy(_:)),
+             #selector(open(_:)),
+             #selector(revealInFinder(_:)),
+             #selector(moveToTrash(_:)),
+             #selector(duplicate(_:)):
+            return !selectedFileURLs.isEmpty
+        case #selector(rename(_:)):
+            return model.selection.selected.count == 1
+                && model.selection.focused != nil
+        case #selector(paste(_:)), #selector(movePaste(_:)):
+            return FileContextMenu.pasteboardHasFileURLs()
+        default:
+            return true
+        }
     }
 }

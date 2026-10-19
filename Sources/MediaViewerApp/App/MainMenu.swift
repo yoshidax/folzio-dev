@@ -12,7 +12,7 @@ final class MainMenu {
 
         let settingsItem = NSMenuItem(
             title: "設定…",
-            action: Selector(("showSettings:")),
+            action: #selector(AppDelegate.showSettings(_:)),
             keyEquivalent: ","
         )
         settingsItem.target = nil
@@ -29,7 +29,33 @@ final class MainMenu {
 
         let fileMenuItem = NSMenuItem()
         mainMenu.addItem(fileMenuItem)
-        fileMenuItem.submenu = NSMenu(title: "ファイル")
+        let fileMenu = NSMenu(title: "ファイル")
+        fileMenuItem.submenu = fileMenu
+
+        let openItem = NSMenuItem(
+            title: "開く",
+            action: #selector(FileListViewController.open(_:)),
+            keyEquivalent: "o"
+        )
+        openItem.target = nil
+        fileMenu.addItem(openItem)
+
+        let revealItem = NSMenuItem(
+            title: "Finder に表示",
+            action: #selector(FileListViewController.revealInFinder(_:)),
+            keyEquivalent: ""
+        )
+        revealItem.target = nil
+        fileMenu.addItem(revealItem)
+        fileMenu.addItem(.separator())
+
+        let fileTrashItem = NSMenuItem(
+            title: "ゴミ箱に入れる",
+            action: #selector(FileListViewController.moveToTrash(_:)),
+            keyEquivalent: String(UnicodeScalar(NSBackspaceCharacter)!)
+        )
+        fileTrashItem.target = nil
+        fileMenu.addItem(fileTrashItem)
 
         let editMenuItem = NSMenuItem()
         mainMenu.addItem(editMenuItem)
@@ -43,12 +69,41 @@ final class MainMenu {
         editMenu.addItem(NSMenuItem(title: "カット", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
         editMenu.addItem(NSMenuItem(title: "コピー", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
         editMenu.addItem(NSMenuItem(title: "ペースト", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
-        let deleteItem = NSMenuItem(
-            title: "削除",
-            action: #selector(NSText.delete(_:)),
+
+        let movePasteItem = NSMenuItem(
+            title: "移動ペースト",
+            action: #selector(FileListViewController.movePaste(_:)),
+            keyEquivalent: "v"
+        )
+        movePasteItem.keyEquivalentModifierMask = [.command, .option]
+        movePasteItem.target = nil
+        editMenu.addItem(movePasteItem)
+        editMenu.addItem(.separator())
+
+        let duplicateItem = NSMenuItem(
+            title: "複製",
+            action: #selector(FileListViewController.duplicate(_:)),
+            keyEquivalent: "d"
+        )
+        duplicateItem.target = nil
+        editMenu.addItem(duplicateItem)
+
+        let renameItem = NSMenuItem(
+            title: "名前を変更",
+            action: #selector(FileListViewController.rename(_:)),
+            keyEquivalent: "\r"
+        )
+        renameItem.keyEquivalentModifierMask = []
+        renameItem.target = nil
+        editMenu.addItem(renameItem)
+
+        let editTrashItem = NSMenuItem(
+            title: "ゴミ箱に入れる",
+            action: #selector(FileListViewController.moveToTrash(_:)),
             keyEquivalent: String(UnicodeScalar(NSBackspaceCharacter)!)
         )
-        editMenu.addItem(deleteItem)
+        editTrashItem.target = nil
+        editMenu.addItem(editTrashItem)
         editMenu.addItem(.separator())
         editMenu.addItem(NSMenuItem(title: "すべてを選択", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
 

@@ -7,6 +7,7 @@ final class SettingsWindowController: NSWindowController {
 
     private let autoplayCheckbox: NSButton
     private let loopCheckbox: NSButton
+    private let confirmFileOperationsCheckbox: NSButton
 
     private var hasShownOnce = false
 
@@ -23,11 +24,17 @@ final class SettingsWindowController: NSWindowController {
             target: nil,
             action: nil
         )
+        let confirmFileOperationsCheckbox = NSButton(
+            checkboxWithTitle: "コピー・移動・名前の変更・ゴミ箱に入れる前に確認する",
+            target: nil,
+            action: nil
+        )
         self.autoplayCheckbox = autoplayCheckbox
         self.loopCheckbox = loopCheckbox
+        self.confirmFileOperationsCheckbox = confirmFileOperationsCheckbox
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 150),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 200),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -42,6 +49,8 @@ final class SettingsWindowController: NSWindowController {
         autoplayCheckbox.action = #selector(toggleAutoplay(_:))
         loopCheckbox.target = self
         loopCheckbox.action = #selector(toggleLoop(_:))
+        confirmFileOperationsCheckbox.target = self
+        confirmFileOperationsCheckbox.action = #selector(toggleConfirmFileOperations(_:))
 
         syncFromStore()
     }
@@ -62,13 +71,22 @@ final class SettingsWindowController: NSWindowController {
 
     private func makeContentView() -> NSView {
         let contentView = NSView(
-            frame: NSRect(x: 0, y: 0, width: 400, height: 150)
+            frame: NSRect(x: 0, y: 0, width: 400, height: 200)
         )
 
         let videoHeader = NSTextField(labelWithString: "動画")
         videoHeader.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
 
-        let stack = NSStackView(views: [videoHeader, autoplayCheckbox, loopCheckbox])
+        let fileOperationsHeader = NSTextField(labelWithString: "ファイル操作")
+        fileOperationsHeader.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
+
+        let stack = NSStackView(views: [
+            videoHeader,
+            autoplayCheckbox,
+            loopCheckbox,
+            fileOperationsHeader,
+            confirmFileOperationsCheckbox,
+        ])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 8
@@ -89,6 +107,8 @@ final class SettingsWindowController: NSWindowController {
         let playback = store.playback
         autoplayCheckbox.state = playback.autoplay ? .on : .off
         loopCheckbox.state = playback.loop ? .on : .off
+        confirmFileOperationsCheckbox.state =
+            store.confirmation.confirmBeforeFileOperations ? .on : .off
     }
 
     @objc private func toggleAutoplay(_ sender: NSButton) {
@@ -101,5 +121,11 @@ final class SettingsWindowController: NSWindowController {
         var playback = store.playback
         playback.loop = sender.state == .on
         store.playback = playback
+    }
+
+    @objc private func toggleConfirmFileOperations(_ sender: NSButton) {
+        var confirmation = store.confirmation
+        confirmation.confirmBeforeFileOperations = sender.state == .on
+        store.confirmation = confirmation
     }
 }

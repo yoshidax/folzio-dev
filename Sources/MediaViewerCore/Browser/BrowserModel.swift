@@ -96,6 +96,45 @@ public final class BrowserModel {
         schedulePrefetch(around: focused)
     }
 
+    public func reloadCurrentFolder() async {
+        let folder = listing.folder
+        do {
+            let files = try await lister.mediaFiles(in: folder)
+            guard listing.folder == folder else { return }
+
+            let ordered = sorted(files, by: sortOrder)
+            listing.files = ordered
+            listing.state = ordered.isEmpty ? .empty : .loaded
+
+            let available = Set(ordered.map(\.url))
+            let selected = selection.selected.intersection(available)
+            let focused = selection.focused.flatMap { available.contains($0) ? $0 : nil }
+            selection = SelectionState(selected: selected, focused: focused)
+            if focused == nil {
+                previewTask?.cancel()
+                previewTask = nil
+                previewGeneration += 1
+                preview = .empty
+            }
+        } catch {
+            guard listing.folder == folder else { return }
+            listing.files = []
+            switch error {
+            case .accessDenied:
+                listing.state = .denied
+            case .notFound:
+                listing.state = .failed("フォルダが見つかりません")
+            case let .other(message):
+                listing.state = .failed(message)
+            }
+            previewTask?.cancel()
+            previewTask = nil
+            previewGeneration += 1
+            selection = SelectionState()
+            preview = .empty
+        }
+    }
+
     public func moveFocus(_ direction: FocusDirection) {
         let files = listing.files
         guard !files.isEmpty else { return }

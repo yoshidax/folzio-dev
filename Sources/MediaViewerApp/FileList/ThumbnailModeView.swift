@@ -4,10 +4,21 @@ import MediaViewerCore
 @MainActor
 private final class ThumbnailCollectionView: NSCollectionView {
     var onArrowKey: ((NSEvent.SpecialKey, NSEvent.ModifierFlags) -> Bool)?
+    var onReturnKey: (() -> Bool)?
 
     override var acceptsFirstResponder: Bool { true }
 
     override func keyDown(with event: NSEvent) {
+        if event.specialKey == .carriageReturn
+            || event.specialKey == .enter
+            || event.charactersIgnoringModifiers == "\r" {
+            let disallowed: NSEvent.ModifierFlags = [.command, .option, .control]
+            if event.modifierFlags.intersection(disallowed).isEmpty,
+               onReturnKey?() == true {
+                return
+            }
+        }
+
         if let key = event.specialKey {
             switch key {
             case .leftArrow, .rightArrow, .upArrow, .downArrow:
@@ -23,11 +34,31 @@ private final class ThumbnailCollectionView: NSCollectionView {
 }
 
 @MainActor
+private final class RenameTextField: NSTextField {
+    override func becomeFirstResponder() -> Bool {
+        let accepted = super.becomeFirstResponder()
+        guard accepted else { return false }
+        selectBaseName()
+        return true
+    }
+
+    func selectBaseName() {
+        guard let editor = currentEditor() as? NSTextView else { return }
+        let baseName = (stringValue as NSString).deletingPathExtension
+        editor.selectedRange = NSRange(location: 0, length: (baseName as NSString).length)
+    }
+}
+
+@MainActor
 private final class ThumbnailItemView: NSCollectionViewItem {
     private let thumbnailImageView = NSImageView()
-    private let nameLabel = NSTextField(wrappingLabelWithString: "")
+    private let nameLabel = RenameTextField(wrappingLabelWithString: "")
 
     private(set) var representedURL: URL?
+    var onCommitRename: ((URL, String) -> Void)?
+
+    private var originalName: String?
+    private var isRenaming = false
 
     override func loadView() {
         let cellView = NSView()
@@ -49,6 +80,7 @@ private final class ThumbnailItemView: NSCollectionViewItem {
         nameLabel.cell?.wraps = true
         nameLabel.cell?.isScrollable = false
         nameLabel.cell?.truncatesLastVisibleLine = true
+        nameLabel.delegate = self
 
         cellView.addSubview(thumbnailImageView)
         cellView.addSubview(nameLabel)
@@ -80,15 +112,38 @@ private final class ThumbnailItemView: NSCollectionViewItem {
     }
 
     func configure(with file: MediaFile) {
+        if isRenaming, representedURL != file.url {
+            endRenaming(commit: false, restoreFocus: false)
+        }
         let urlChanged = representedURL != file.url
         representedURL = file.url
-        nameLabel.stringValue = file.name
-        nameLabel.setAccessibilityLabel(file.name)
+        if !isRenaming {
+            nameLabel.stringValue = file.name
+            nameLabel.setAccessibilityLabel(file.name)
+        }
         view.setAccessibilityLabel(file.name)
         if urlChanged || thumbnailImageView.image == nil {
             thumbnailImageView.image = NSWorkspace.shared.icon(forFile: file.url.path)
         }
         updateSelectionAppearance()
+    }
+
+    @discardableResult
+    func beginRenaming() -> Bool {
+        guard !isRenaming,
+              representedURL != nil,
+              let window = view.window else {
+            return false
+        }
+        originalName = nameLabel.stringValue
+        isRenaming = true
+        setRenamingAppearance(true)
+        guard window.makeFirstResponder(nameLabel) else {
+            endRenaming(commit: false, restoreFocus: false)
+            return false
+        }
+        nameLabel.selectBaseName()
+        return true
     }
 
     func setThumbnailImage(_ image: CGImage?) {
@@ -101,11 +156,58 @@ private final class ThumbnailItemView: NSCollectionViewItem {
 
     override func prepareForReuse() {
         super.prepareForReuse()
+        if isRenaming {
+            endRenaming(commit: false, restoreFocus: false)
+        }
+        onCommitRename = nil
         representedURL = nil
         thumbnailImageView.image = nil
         nameLabel.stringValue = ""
         view.setAccessibilityLabel(nil)
         updateSelectionAppearance()
+    }
+
+    private func setRenamingAppearance(_ renaming: Bool) {
+        nameLabel.isEditable = renaming
+        nameLabel.isSelectable = renaming
+        nameLabel.isBezeled = false
+        nameLabel.isBordered = false
+        nameLabel.drawsBackground = renaming
+        nameLabel.backgroundColor = renaming ? .textBackgroundColor : .clear
+        nameLabel.focusRingType = renaming ? .default : .none
+        nameLabel.maximumNumberOfLines = renaming ? 1 : 2
+        nameLabel.lineBreakMode = renaming ? .byClipping : .byTruncatingTail
+        nameLabel.alignment = renaming ? .left : .center
+        nameLabel.cell?.wraps = !renaming
+        nameLabel.cell?.isScrollable = renaming
+        nameLabel.cell?.truncatesLastVisibleLine = !renaming
+    }
+
+    private func endRenaming(commit: Bool, restoreFocus: Bool) {
+        guard isRenaming else { return }
+        isRenaming = false
+        let oldName = originalName ?? nameLabel.stringValue
+        let newName = nameLabel.stringValue
+        originalName = nil
+
+        setRenamingAppearance(false)
+        nameLabel.stringValue = oldName
+        nameLabel.setAccessibilityLabel(oldName)
+        view.setAccessibilityLabel(oldName)
+
+        if commit {
+            let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty, newName != oldName, let url = representedURL {
+                nameLabel.stringValue = newName
+                nameLabel.setAccessibilityLabel(newName)
+                view.setAccessibilityLabel(newName)
+                onCommitRename?(url, newName)
+            }
+        }
+
+        if restoreFocus, let collectionView {
+            collectionView.window?.makeFirstResponder(collectionView)
+        }
     }
 
     private func updateSelectionAppearance() {
@@ -115,6 +217,30 @@ private final class ThumbnailItemView: NSCollectionViewItem {
             : NSColor.clear.cgColor
         view.layer?.borderWidth = isSelected ? 1 : 0
         view.layer?.borderColor = NSColor.controlAccentColor.cgColor
+    }
+}
+
+extension ThumbnailItemView: NSTextFieldDelegate {
+    func control(
+        _ control: NSControl,
+        textView: NSTextView,
+        doCommandBy commandSelector: Selector
+    ) -> Bool {
+        if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+            nameLabel.stringValue = textView.string
+            endRenaming(commit: true, restoreFocus: true)
+            return true
+        }
+        if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+            endRenaming(commit: false, restoreFocus: true)
+            return true
+        }
+        return false
+    }
+
+    func controlTextDidEndEditing(_ obj: Notification) {
+        guard isRenaming else { return }
+        endRenaming(commit: true, restoreFocus: false)
     }
 }
 
@@ -160,6 +286,13 @@ final class ThumbnailModeView: NSView {
     }
 
     var focusView: NSView { collectionView }
+
+    var onRename: ((URL, String) async -> Void)?
+
+    var contextMenu: NSMenu? {
+        get { collectionView.menu }
+        set { collectionView.menu = newValue }
+    }
 
     var thumbnailSize: Double {
         get { storedThumbnailSize }
@@ -212,8 +345,12 @@ final class ThumbnailModeView: NSView {
             ThumbnailItemView.self,
             forItemWithIdentifier: Self.itemIdentifier
         )
+        collectionView.registerForDraggedTypes([.fileURL])
         collectionView.onArrowKey = { [weak self] key, modifiers in
             self?.handleArrowKey(key, modifiers: modifiers) ?? false
+        }
+        collectionView.onReturnKey = { [weak self] in
+            self?.beginRenameFromKeyboard() ?? false
         }
         collectionView.frame = NSRect(x: 0, y: 0, width: 400, height: 400)
 
@@ -387,6 +524,35 @@ final class ThumbnailModeView: NSView {
         ).count)
     }
 
+    private func beginRenameFromKeyboard() -> Bool {
+        guard onRename != nil else { return false }
+        let selected = model.selection.selected
+        guard selected.count == 1,
+              let url = selected.first,
+              let index = model.listing.files.firstIndex(where: { $0.url == url }) else {
+            return false
+        }
+
+        let indexPath = IndexPath(item: index, section: 0)
+        collectionView.scrollToItems(
+            at: [indexPath],
+            scrollPosition: .nearestVerticalEdge
+        )
+        collectionView.layoutSubtreeIfNeeded()
+        guard let item = collectionView.item(at: indexPath) as? ThumbnailItemView,
+              item.representedURL == url else {
+            return false
+        }
+        return item.beginRenaming()
+    }
+
+    private func commitRename(url: URL, newName: String) {
+        guard let onRename else { return }
+        Task { @MainActor in
+            await onRename(url, newName)
+        }
+    }
+
     private func handleArrowKey(
         _ key: NSEvent.SpecialKey,
         modifiers: NSEvent.ModifierFlags
@@ -550,6 +716,9 @@ extension ThumbnailModeView: NSCollectionViewDataSource {
         if let oldURL = thumbnailItem.representedURL, oldURL != file.url {
             cancelRequest(for: oldURL)
         }
+        thumbnailItem.onCommitRename = { [weak self] url, newName in
+            self?.commitRename(url: url, newName: newName)
+        }
         thumbnailItem.configure(with: file)
         requestThumbnail(for: file)
         return thumbnailItem
@@ -575,6 +744,15 @@ extension ThumbnailModeView: NSCollectionViewDelegateFlowLayout {
             width: CGFloat(max(1, result.cellWidth)),
             height: CGFloat(storedThumbnailSize + 36)
         )
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        pasteboardWriterForItemAt indexPath: IndexPath
+    ) -> NSPasteboardWriting? {
+        let files = model.listing.files
+        guard files.indices.contains(indexPath.item) else { return nil }
+        return files[indexPath.item].url as NSURL
     }
 
     func collectionView(

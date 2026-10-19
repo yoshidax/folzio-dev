@@ -18,6 +18,7 @@ final class DirectoryTreeViewController: NSViewController {
     private let model: BrowserModel
     private let lister: any DirectoryListing
     private let volumes: any VolumeProviding
+    private let coordinator: FileOperationCoordinator
     private let outlineView = NSOutlineView()
     private let scrollView = NSScrollView()
 
@@ -26,10 +27,16 @@ final class DirectoryTreeViewController: NSViewController {
     private var revealTask: Task<Void, Never>?
     private var didReveal = false
 
-    init(model: BrowserModel, lister: any DirectoryListing, volumes: any VolumeProviding) {
+    init(
+        model: BrowserModel,
+        lister: any DirectoryListing,
+        volumes: any VolumeProviding,
+        coordinator: FileOperationCoordinator
+    ) {
         self.model = model
         self.lister = lister
         self.volumes = volumes
+        self.coordinator = coordinator
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -39,6 +46,65 @@ final class DirectoryTreeViewController: NSViewController {
     }
 
     var primaryFocusView: NSView { outlineView }
+
+    private var selectedNode: Node? {
+        let row = outlineView.selectedRow
+        guard row >= 0 else { return nil }
+        return outlineView.item(atRow: row) as? Node
+    }
+
+    private func makeContextMenu() -> NSMenu {
+        let menu = NSMenu(title: "")
+
+        let pasteItem = NSMenuItem(
+            title: "ここにペースト",
+            action: #selector(paste(_:)),
+            keyEquivalent: ""
+        )
+        pasteItem.target = self
+        menu.addItem(pasteItem)
+
+        let movePasteItem = NSMenuItem(
+            title: "ここに移動ペースト",
+            action: #selector(movePaste(_:)),
+            keyEquivalent: ""
+        )
+        movePasteItem.target = self
+        menu.addItem(movePasteItem)
+
+        menu.addItem(.separator())
+
+        let revealItem = NSMenuItem(
+            title: "Finder に表示",
+            action: #selector(revealInFinder(_:)),
+            keyEquivalent: ""
+        )
+        revealItem.target = self
+        menu.addItem(revealItem)
+
+        return menu
+    }
+
+    @objc func paste(_ sender: Any?) {
+        guard let node = selectedNode else { return }
+        let destination = node.url
+        Task { @MainActor in
+            await coordinator.paste(into: destination, move: false)
+        }
+    }
+
+    @objc func movePaste(_ sender: Any?) {
+        guard let node = selectedNode else { return }
+        let destination = node.url
+        Task { @MainActor in
+            await coordinator.paste(into: destination, move: true)
+        }
+    }
+
+    @objc private func revealInFinder(_ sender: Any?) {
+        guard let node = selectedNode else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([node.url])
+    }
 
     override func loadView() {
         let container = NSView()
@@ -54,6 +120,8 @@ final class DirectoryTreeViewController: NSViewController {
         outlineView.allowsEmptySelection = true
         outlineView.dataSource = self
         outlineView.delegate = self
+        outlineView.registerForDraggedTypes([.fileURL])
+        outlineView.menu = makeContextMenu()
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("folder"))
         column.title = "フォルダ"
@@ -195,6 +263,72 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
         guard let node = item as? Node else { return false }
         return node.folder.accessState != .denied
     }
+
+    func outlineView(
+        _ outlineView: NSOutlineView,
+        validateDrop info: any NSDraggingInfo,
+        proposedItem item: Any?,
+        proposedChildIndex index: Int
+    ) -> NSDragOperation {
+        guard let node = item as? Node,
+              node.folder.accessState != .denied,
+              fileURLs(from: info.draggingPasteboard) != nil else {
+            return []
+        }
+
+        outlineView.setDropItem(node, dropChildIndex: NSOutlineViewDropOnItemIndex)
+
+        let mask = info.draggingSourceOperationMask
+        let preferred: NSDragOperation = NSEvent.modifierFlags.contains(.option)
+            ? .copy
+            : .move
+        if mask.contains(preferred) {
+            return preferred
+        }
+        return mask.contains(.copy) ? .copy : []
+    }
+
+    func outlineView(
+        _ outlineView: NSOutlineView,
+        acceptDrop info: any NSDraggingInfo,
+        item: Any?,
+        childIndex index: Int
+    ) -> Bool {
+        guard let node = item as? Node,
+              node.folder.accessState != .denied,
+              let urls = fileURLs(from: info.draggingPasteboard),
+              !urls.isEmpty else {
+            return false
+        }
+
+        let destination = node.url
+        let shouldCopy = NSEvent.modifierFlags.contains(.option)
+        Task { @MainActor in
+            if shouldCopy {
+                await coordinator.copy(urls, to: destination)
+            } else {
+                await coordinator.move(urls, to: destination)
+            }
+        }
+        return true
+    }
+
+    private func fileURLs(from pasteboard: NSPasteboard) -> [URL]? {
+        let options: [NSPasteboard.ReadingOptionKey: Any] = [
+            .urlReadingFileURLsOnly: true,
+        ]
+        guard pasteboard.canReadObject(
+            forClasses: [NSURL.self],
+            options: options
+        ) else {
+            return nil
+        }
+        let objects = pasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: options
+        ) as? [NSURL]
+        return objects?.map { $0 as URL }
+    }
 }
 
 extension DirectoryTreeViewController: NSOutlineViewDelegate {
@@ -249,6 +383,20 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
         guard row >= 0, let node = outlineView.item(atRow: row) as? Node else { return }
         Task { [weak self] in
             await self?.model.selectFolder(node.url)
+        }
+    }
+}
+
+extension DirectoryTreeViewController: NSMenuItemValidation {
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        switch menuItem.action {
+        case #selector(paste(_:)), #selector(movePaste(_:)):
+            return selectedNode != nil
+                && FileContextMenu.pasteboardHasFileURLs()
+        case #selector(revealInFinder(_:)):
+            return selectedNode != nil
+        default:
+            return true
         }
     }
 }

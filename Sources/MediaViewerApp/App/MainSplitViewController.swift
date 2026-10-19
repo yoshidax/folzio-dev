@@ -10,6 +10,7 @@ final class MainSplitViewController: NSSplitViewController {
     private let treeViewController: DirectoryTreeViewController
     private let fileListViewController: FileListViewController
     private let previewViewController: PreviewViewController
+    private let fileOperationCoordinator: FileOperationCoordinator
     private var appliedInitialPositions = false
     private var installedFocusMenu = false
 
@@ -26,20 +27,33 @@ final class MainSplitViewController: NSSplitViewController {
         )
         let volumes = VolumeProvider(changes: MainSplitViewController.makeVolumeChanges())
         let thumbnailProvider = ThumbnailProvider()
+        let coordinator = FileOperationCoordinator(
+            model: model,
+            service: FileOperationService(),
+            settings: settings
+        )
+        self.fileOperationCoordinator = coordinator
 
         self.treeViewController = DirectoryTreeViewController(
             model: model,
             lister: lister,
-            volumes: volumes
+            volumes: volumes,
+            coordinator: coordinator
         )
         self.fileListViewController = FileListViewController(
             model: model,
             settings: settings,
-            thumbnailProvider: thumbnailProvider
+            thumbnailProvider: thumbnailProvider,
+            coordinator: coordinator
         )
         self.previewViewController = PreviewViewController(model: model, decoder: decoder)
 
         super.init(nibName: nil, bundle: nil)
+
+        fileListViewController.onRename = { [weak self] url, newName in
+            guard let self else { return }
+            await self.fileOperationCoordinator.rename(url, to: newName)
+        }
     }
 
     @available(*, unavailable)

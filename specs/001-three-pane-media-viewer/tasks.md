@@ -344,25 +344,25 @@ quickstart.md の手動シナリオで検証する。
 
 ### Core（US4）
 
-- [ ] T054 [P] [US4] `Sources/MediaViewerCore/Model/FileOperation.swift` を実装する:
+- [X] T054 [P] [US4] `Sources/MediaViewerCore/Model/FileOperation.swift` を実装する:
   - `FileOperation`: `kind` は `.copy`/`.move`/`.rename(newName)`/`.trash`、`sources: [URL]`、`destination: URL?`
   - `ConflictResolution`: `.replace`/`.keepBoth`/`.abort`
   - `FileOperationResult`: `succeeded: [URL]`、`failed: [(URL, reason: String)]`
-- [ ] T055 [P] [US4] `Sources/MediaViewerCore/Operations/NameValidation.swift` に2つの関数を実装する:
+- [X] T055 [P] [US4] `Sources/MediaViewerCore/Operations/NameValidation.swift` に2つの関数を実装する:
   - `validateNewName(_:for:existingNames:)`: 「空の名前、`/` または `:` を含む名前、先頭が `.` の名前、
     既存の名前（大文字小文字の違いのみも含む）は拒否する」。拡張子が変わる場合は `.needsExtensionChangeConfirmation` を返す
   - `uniqueName(for:existingNames:)`: `a.jpg` → `a 2.jpg` → `a 3.jpg`。`c 2.jpg` が既にあれば `c 3.jpg` にする
     （末尾の「 数字」を連番として扱う）
-- [ ] T056 [US4] `Sources/MediaViewerCore/Operations/FileOperationService.swift` に `FileOperating` の実装を作る（T054・T055 に依存）:
+- [X] T056 [US4] `Sources/MediaViewerCore/Operations/FileOperationService.swift` に `FileOperating` の実装を作る（T054・T055 に依存）:
   - `conflicts(for:)`: copy / move の操作先にある同名のファイルを返す
   - `execute(_:resolution:)` はバックグラウンドで実行する。処理は次のとおり:
     - コピーは `copyItem`、移動は `moveItem`、名前の変更は同じフォルダ内の `moveItem`、ゴミ箱は `trashItem(at:resultingItemURL:)` で行う
     - `.keepBoth` では `uniqueName` で採番する。`.replace` では既存のファイルを先にゴミ箱へ入れてから置く
     - 移動先が元のフォルダと同じなら何もしない。フォルダを自分自身やその配下へ移動しようとした場合は失敗として返す
     - 1件の失敗で残りを止めない。途中まで書かれたコピー先は削除する（各ファイルは「全部成功」か「変更なし」のどちらか）
-- [ ] T057 [P] [US4] `Tests/MediaViewerCoreTests/NameValidationTests.swift` に `NameValidation` のテストを書く:
+- [X] T057 [P] [US4] `Tests/MediaViewerCoreTests/NameValidationTests.swift` に `NameValidation` のテストを書く:
   拒否される名前（空・`a/b`・`a:b`・`.hidden`・`A.JPG` が `a.jpg` と衝突）、拡張子変更の確認、`uniqueName` の連番
-- [ ] T058 [US4] `Tests/MediaViewerCoreTests/FileOperationServiceTests.swift` に `FileOperationService` のテストを書く。
+- [X] T058 [US4] `Tests/MediaViewerCoreTests/FileOperationServiceTests.swift` に `FileOperationService` のテストを書く。
   `ops` フィクスチャを一時ディレクトリに作って次を確認する:
   - copy / move / rename / trash の結果（trash はゴミ箱内の URL が返り、元の場所から消えること）
   - 衝突時の `.replace` / `.keepBoth` / `.abort`
@@ -371,40 +371,40 @@ quickstart.md の手動シナリオで検証する。
 
 ### UI（US4）
 
-- [ ] T059 [US4] `Sources/MediaViewerApp/Operations/ConfirmationPresenter.swift` を作成する:
+- [X] T059 [US4] `Sources/MediaViewerApp/Operations/ConfirmationPresenter.swift` を作成する:
   - `confirmBeforeFileOperations` が true のときだけ `NSAlert` のシートを出す。内容は操作名、件数、先頭最大5件の名前、操作先
   - 既定ボタンは「実行」とし、Esc で「キャンセル」にする
   - `suppressionButton`（「今後この確認を表示しない」）がオンなら設定を false に保存する
   - キャンセルした場合は何も実行しない
-- [ ] T060 [US4] `Sources/MediaViewerApp/Operations/ConflictPrompt.swift` を作成する:
+- [X] T060 [US4] `Sources/MediaViewerApp/Operations/ConflictPrompt.swift` を作成する:
   - 設定に関わらず、衝突があれば `NSAlert` で「置き換える / 両方残す / 中止」を出す
   - 「残りすべてに適用」のチェックボックスを置く
-- [ ] T061 [US4] `Sources/MediaViewerApp/Operations/FileOperationCoordinator.swift` を作成する:
+- [X] T061 [US4] `Sources/MediaViewerApp/Operations/FileOperationCoordinator.swift` を作成する:
   - 流れは 確認（T059）→ 衝突判定 → 衝突の選択（T060）→ `execute` → 結果表示（失敗があれば、対象の名前と理由を一覧で示す
     `NSAlert`）とする
   - 完了後は、対象のフォルダが表示中なら `BrowserModel` に一覧を読み直させる（FR-027）
   - 名前の変更は `validateNewName` の結果に応じて、エラー表示か拡張子変更の確認を挟む
-- [ ] T062 [US4] `Sources/MediaViewerApp/FileList/FileContextMenu.swift` を作成する:
+- [X] T062 [US4] `Sources/MediaViewerApp/FileList/FileContextMenu.swift` を作成する:
   - contracts の「右クリックメニュー（ファイルリスト）」の11項目を、その順序と名前で作る
     （「開く」は `NSWorkspace.open`、「Finder に表示」は `activateFileViewerSelecting`）
   - リスト形式とサムネイル形式の両方に設定する
-- [ ] T063 [US4] `Sources/MediaViewerApp/FileList/FileListViewController.swift` にクリップボード操作を実装する:
+- [X] T063 [US4] `Sources/MediaViewerApp/FileList/FileListViewController.swift` にクリップボード操作を実装する:
   - ⌘C: 選択中のファイル URL を `NSPasteboard.general` に書く
   - ⌘V / ⌥⌘V: 表示中のフォルダへコピー / 移動する
   - ⌘D: 同じフォルダへの複製（`.copy` + `.keepBoth`）
   - ⌘Delete: ゴミ箱へ入れる
   - 処理は T061 経由で実行する。編集メニューとファイルメニューに項目を追加する
-- [ ] T064 [US4] 名前の変更をその場で編集できるようにする:
+- [X] T064 [US4] 名前の変更をその場で編集できるようにする:
   - `Sources/MediaViewerApp/FileList/ListModeView.swift` の名前セルと、`ThumbnailModeView.swift` のセルの名前ラベルを
     Return で編集可能にする
   - 初期選択は拡張子を除いた部分とする
   - Return で確定して T061 に渡し、Esc で取り消して元の名前に戻す
-- [ ] T065 [US4] ドラッグ&ドロップを実装する:
+- [X] T065 [US4] ドラッグ&ドロップを実装する:
   - `ListModeView.swift` と `ThumbnailModeView.swift` をドラッグ元にし、ファイル URL を pasteboard に載せる
   - `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` をドロップ先にし、フォルダノード上だけで受け付ける
   - ⌥ が押されていれば `.copy`、なければ `.move` として T061 に渡す。ドラッグ中のカーソル表示もこれに合わせる
   - ツリーの右クリックメニュー「ここにペースト / ここに移動ペースト / Finder に表示」と、⌘V / ⌥⌘V も追加する
-- [ ] T066 [US4] `Sources/MediaViewerApp/Settings/SettingsWindowController.swift` に「ファイル操作」区分を追加する。
+- [X] T066 [US4] `Sources/MediaViewerApp/Settings/SettingsWindowController.swift` に「ファイル操作」区分を追加する。
   チェックボックス「コピー・移動・名前の変更・ゴミ箱に入れる前に確認する」（`fileOps.confirmBeforeExecuting`）を置く。
   T046 がない場合はここで設定ウインドウを新規作成する
 
