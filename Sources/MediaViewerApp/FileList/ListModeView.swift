@@ -22,8 +22,17 @@ final class ListModeView: NSView {
 
     var onTogglePlayback: (() -> Void)?
 
+    private static let sortEntries: [(column: SortColumn, title: String)] = [
+        (.name, "名前"),
+        (.creationDate, "作成日"),
+        (.kind, "種類"),
+    ]
+
     private var lastURLs: [URL] = []
     private var isApplyingSelection = false
+    private var isSyncingSortDescriptors = false
+    private var sortMenuInstalled = false
+    private var sortMenuItems: [NSMenuItem] = []
 
     init(model: BrowserModel) {
         self.model = model
@@ -42,6 +51,12 @@ final class ListModeView: NSView {
     }
 
     var focusView: NSView { tableView }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard window != nil else { return }
+        installSortMenuIfNeeded()
+    }
 
     private func setup() {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -84,6 +99,7 @@ final class ListModeView: NSView {
         column.title = title
         column.width = width
         column.minWidth = 80
+        column.sortDescriptorPrototype = NSSortDescriptor(key: identifier, ascending: true)
         tableView.addTableColumn(column)
     }
 
@@ -92,6 +108,7 @@ final class ListModeView: NSView {
             _ = model.listing.files
             _ = model.selection.selected
             _ = model.selection.focused
+            _ = model.sortOrder
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.applyModel()
@@ -119,6 +136,82 @@ final class ListModeView: NSView {
         if let focused = model.selection.focused, let row = urls.firstIndex(of: focused) {
             tableView.scrollRowToVisible(row)
         }
+
+        syncSortDescriptors()
+        updateSortMenuItems()
+    }
+
+    private func syncSortDescriptors() {
+        let order = model.sortOrder
+        let current = tableView.sortDescriptors.first
+        guard current?.key != order.column.rawValue
+            || current?.ascending != order.ascending else {
+            return
+        }
+
+        isSyncingSortDescriptors = true
+        tableView.sortDescriptors = [
+            NSSortDescriptor(key: order.column.rawValue, ascending: order.ascending)
+        ]
+        isSyncingSortDescriptors = false
+    }
+
+    private func installSortMenuIfNeeded() {
+        guard !sortMenuInstalled else { return }
+        guard let viewMenu = NSApp.mainMenu?.items
+            .first(where: { $0.submenu?.title == "表示" })?
+            .submenu else {
+            return
+        }
+        sortMenuInstalled = true
+
+        let submenu: NSMenu
+        if let existing = viewMenu.items
+            .first(where: { $0.title == "並べ替え" })?
+            .submenu {
+            submenu = existing
+        } else {
+            submenu = NSMenu(title: "並べ替え")
+            let parentItem = NSMenuItem(title: "並べ替え", action: nil, keyEquivalent: "")
+            parentItem.submenu = submenu
+            viewMenu.addItem(parentItem)
+        }
+
+        sortMenuItems = Self.sortEntries.enumerated().map { index, entry in
+            let item = NSMenuItem(
+                title: entry.title,
+                action: #selector(chooseSortColumn(_:)),
+                keyEquivalent: ""
+            )
+            item.tag = index
+            item.target = self
+            submenu.addItem(item)
+            return item
+        }
+        updateSortMenuItems()
+    }
+
+    private func updateSortMenuItems() {
+        guard !sortMenuItems.isEmpty else { return }
+        let order = model.sortOrder
+        for (index, item) in sortMenuItems.enumerated() {
+            guard index < Self.sortEntries.count else { break }
+            let entry = Self.sortEntries[index]
+            let isActive = entry.column == order.column
+            item.state = isActive ? .on : .off
+            item.title = isActive
+                ? "\(entry.title)（\(order.ascending ? "昇順" : "降順")）"
+                : entry.title
+        }
+    }
+
+    @objc private func chooseSortColumn(_ sender: NSMenuItem) {
+        guard sender.tag >= 0, sender.tag < Self.sortEntries.count else { return }
+        let column = Self.sortEntries[sender.tag].column
+        let current = model.sortOrder
+        let ascending = current.column == column ? !current.ascending : true
+        model.sortOrder = SortOrder(column: column, ascending: ascending)
+        updateSortMenuItems()
     }
 }
 
@@ -129,6 +222,21 @@ extension ListModeView: NSTableViewDataSource {
 }
 
 extension ListModeView: NSTableViewDelegate {
+    func tableView(
+        _ tableView: NSTableView,
+        sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]
+    ) {
+        guard !isSyncingSortDescriptors else { return }
+        guard let descriptor = tableView.sortDescriptors.first,
+              let key = descriptor.key,
+              let column = SortColumn(rawValue: key) else {
+            return
+        }
+
+        model.sortOrder = SortOrder(column: column, ascending: descriptor.ascending)
+        updateSortMenuItems()
+    }
+
     func tableView(
         _ tableView: NSTableView,
         viewFor tableColumn: NSTableColumn?,

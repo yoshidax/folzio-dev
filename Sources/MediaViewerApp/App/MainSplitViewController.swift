@@ -25,13 +25,18 @@ final class MainSplitViewController: NSSplitViewController {
             settings: settings
         )
         let volumes = VolumeProvider(changes: MainSplitViewController.makeVolumeChanges())
+        let thumbnailProvider = ThumbnailProvider()
 
         self.treeViewController = DirectoryTreeViewController(
             model: model,
             lister: lister,
             volumes: volumes
         )
-        self.fileListViewController = FileListViewController(model: model)
+        self.fileListViewController = FileListViewController(
+            model: model,
+            settings: settings,
+            thumbnailProvider: thumbnailProvider
+        )
         self.previewViewController = PreviewViewController(model: model, decoder: decoder)
 
         super.init(nibName: nil, bundle: nil)

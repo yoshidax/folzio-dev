@@ -298,25 +298,25 @@ quickstart.md の手動シナリオで検証する。
 **Independent Test**: quickstart.md「US3」の手順（切替で選択を維持、作成日の昇順・降順、スライダーとペイン幅で
 折り返し、再起動で復元）
 
-- [ ] T047 [P] [US3] `Sources/MediaViewerCore/Imaging/ThumbnailProvider.swift` に `ThumbnailProviding` の実装を作る:
+- [X] T047 [P] [US3] `Sources/MediaViewerCore/Imaging/ThumbnailProvider.swift` に `ThumbnailProviding` の実装を作る:
   - 生成には `QLThumbnailGenerator` を使う。要求サイズは「128 / 256 / 512 の段階に丸める」（`pointSize × scale` 以上で
     最小の段階、512 で頭打ち）
   - 結果は `NSCache`（`totalCostLimit` は MemoryLimits のサムネイル用 128MB）にのみ保存し、ディスクには書かない
   - `cancel(for:)` で、生成中の要求を取り消せるようにする
-- [ ] T048 [P] [US3] `Sources/MediaViewerCore/Layout/ThumbnailGridLayout.swift` に `ThumbnailGridLayout.columns(availableWidth:thumbnailSize:spacing:)` を実装する:
+- [X] T048 [P] [US3] `Sources/MediaViewerCore/Layout/ThumbnailGridLayout.swift` に `ThumbnailGridLayout.columns(availableWidth:thumbnailSize:spacing:)` を実装する:
   - 列数は `max(1, floor((availableWidth + spacing) / (thumbnailSize + spacing)))` とする
   - セル幅は「利用可能な幅を超えない」（FR-015）。1列でも収まらない場合は、セル幅を `availableWidth` に縮める
-- [ ] T049 [P] [US3] `Tests/MediaViewerCoreTests/ThumbnailGridLayoutTests.swift` に `ThumbnailGridLayout` のテストを書く:
+- [X] T049 [P] [US3] `Tests/MediaViewerCoreTests/ThumbnailGridLayoutTests.swift` に `ThumbnailGridLayout` のテストを書く:
   - 幅 0〜2000 とサイズ 48〜512 の組み合わせを総当たりし、`count * cellWidth + (count-1) * spacing <= availableWidth` を検証する
-- [ ] T050 [P] [US3] `Tests/MediaViewerCoreTests/ThumbnailProviderTests.swift` に `ThumbnailProvider` のテストを書く:
+- [X] T050 [P] [US3] `Tests/MediaViewerCoreTests/ThumbnailProviderTests.swift` に `ThumbnailProvider` のテストを書く:
   - 段階への丸め（例: 100pt×2 → 256、300pt×2 → 512）
   - `mixed` の JPEG と mp4 でサムネイルが返ること
   - `broken` のファイルで `nil` が返り、クラッシュしないこと
-- [ ] T051 [US3] `Sources/MediaViewerApp/FileList/ListModeView.swift` の各列に `sortDescriptorPrototype` を設定する:
+- [X] T051 [US3] `Sources/MediaViewerApp/FileList/ListModeView.swift` の各列に `sortDescriptorPrototype` を設定する:
   - 見出しのクリックで `BrowserModel.sortOrder` を更新し、並べ替え直す（同じ列の2回目のクリックで降順）
   - 並び順を `SettingsStore` に保存する
   - 表示メニューの「並べ替え（名前・作成日・種類）」と連動させる
-- [ ] T052 [US3] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` を作成する:
+- [X] T052 [US3] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` を作成する:
   - `NSCollectionView` に縦スクロールの `NSCollectionViewFlowLayout` を設定し、セルの寸法は
     `ThumbnailGridLayout` で決める。`viewDidLayout` と、サイズ変更のたびに `invalidateLayout()` する
   - 横スクロールバーは `hasHorizontalScroller = false` で常に非表示にする
@@ -324,7 +324,7 @@ quickstart.md の手動シナリオで検証する。
   - セルが見えなくなったら `cancel(for:)` で生成を取り消す。prefetch delegate で先行生成する
   - 選択を `BrowserModel.select` に伝え、↑↓←→ で選択を移動する
   - セルの a11y ラベルはファイル名とする
-- [ ] T053 [US3] `Sources/MediaViewerApp/FileList/FileListViewController.swift` に表示形式の切替とサイズ調整を追加する:
+- [X] T053 [US3] `Sources/MediaViewerApp/FileList/FileListViewController.swift` に表示形式の切替とサイズ調整を追加する:
   - 下部のバーにサムネイルサイズのスライダー（48〜512、連続値）を置き、⌘+ / ⌘- で 16pt ずつ変える
   - ⌘1 でサムネイル形式、⌘2 でリスト形式に切り替える
   - 切り替えても `BrowserModel.selection` を維持し、選択項目が見える位置までスクロールする

@@ -1,0 +1,633 @@
+import AppKit
+import MediaViewerCore
+
+@MainActor
+private final class ThumbnailCollectionView: NSCollectionView {
+    var onArrowKey: ((NSEvent.SpecialKey, NSEvent.ModifierFlags) -> Bool)?
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        if let key = event.specialKey {
+            switch key {
+            case .leftArrow, .rightArrow, .upArrow, .downArrow:
+                if onArrowKey?(key, event.modifierFlags) == true {
+                    return
+                }
+            default:
+                break
+            }
+        }
+        super.keyDown(with: event)
+    }
+}
+
+@MainActor
+private final class ThumbnailItemView: NSCollectionViewItem {
+    private let thumbnailImageView = NSImageView()
+    private let nameLabel = NSTextField(wrappingLabelWithString: "")
+
+    private(set) var representedURL: URL?
+
+    override func loadView() {
+        let cellView = NSView()
+        cellView.wantsLayer = true
+        cellView.layer?.cornerRadius = 6
+        cellView.layer?.masksToBounds = true
+
+        thumbnailImageView.translatesAutoresizingMaskIntoConstraints = false
+        thumbnailImageView.imageScaling = .scaleProportionallyUpOrDown
+        thumbnailImageView.imageAlignment = .alignCenter
+        thumbnailImageView.setAccessibilityLabel("サムネイル")
+
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        nameLabel.alignment = .center
+        nameLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        nameLabel.textColor = .labelColor
+        nameLabel.maximumNumberOfLines = 2
+        nameLabel.lineBreakMode = .byTruncatingTail
+        nameLabel.cell?.wraps = true
+        nameLabel.cell?.isScrollable = false
+        nameLabel.cell?.truncatesLastVisibleLine = true
+
+        cellView.addSubview(thumbnailImageView)
+        cellView.addSubview(nameLabel)
+
+        NSLayoutConstraint.activate([
+            thumbnailImageView.topAnchor.constraint(equalTo: cellView.topAnchor, constant: 4),
+            thumbnailImageView.leadingAnchor.constraint(equalTo: cellView.leadingAnchor, constant: 4),
+            thumbnailImageView.trailingAnchor.constraint(equalTo: cellView.trailingAnchor, constant: -4),
+            thumbnailImageView.heightAnchor.constraint(equalTo: thumbnailImageView.widthAnchor),
+
+            nameLabel.topAnchor.constraint(equalTo: thumbnailImageView.bottomAnchor, constant: 2),
+            nameLabel.leadingAnchor.constraint(equalTo: cellView.leadingAnchor, constant: 2),
+            nameLabel.trailingAnchor.constraint(equalTo: cellView.trailingAnchor, constant: -2),
+            nameLabel.heightAnchor.constraint(equalToConstant: 30),
+            nameLabel.bottomAnchor.constraint(lessThanOrEqualTo: cellView.bottomAnchor, constant: -2),
+        ])
+
+        self.view = cellView
+        imageView = thumbnailImageView
+        textField = nameLabel
+    }
+
+    override var isSelected: Bool {
+        didSet { updateSelectionAppearance() }
+    }
+
+    override var highlightState: NSCollectionViewItem.HighlightState {
+        didSet { updateSelectionAppearance() }
+    }
+
+    func configure(with file: MediaFile) {
+        let urlChanged = representedURL != file.url
+        representedURL = file.url
+        nameLabel.stringValue = file.name
+        nameLabel.setAccessibilityLabel(file.name)
+        view.setAccessibilityLabel(file.name)
+        if urlChanged || thumbnailImageView.image == nil {
+            thumbnailImageView.image = NSWorkspace.shared.icon(forFile: file.url.path)
+        }
+        updateSelectionAppearance()
+    }
+
+    func setThumbnailImage(_ image: CGImage?) {
+        guard let image else { return }
+        thumbnailImageView.image = NSImage(
+            cgImage: image,
+            size: NSSize(width: CGFloat(image.width), height: CGFloat(image.height))
+        )
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        representedURL = nil
+        thumbnailImageView.image = nil
+        nameLabel.stringValue = ""
+        view.setAccessibilityLabel(nil)
+        updateSelectionAppearance()
+    }
+
+    private func updateSelectionAppearance() {
+        let isHighlighted = isSelected || highlightState == .forSelection
+        view.layer?.backgroundColor = isHighlighted
+            ? NSColor.controlAccentColor.withAlphaComponent(0.25).cgColor
+            : NSColor.clear.cgColor
+        view.layer?.borderWidth = isSelected ? 1 : 0
+        view.layer?.borderColor = NSColor.controlAccentColor.cgColor
+    }
+}
+
+@MainActor
+final class ThumbnailModeView: NSView {
+    private struct ThumbnailRequest {
+        let token: UUID
+        let pointSize: Double
+        let task: Task<Void, Never>
+    }
+
+    private static let itemIdentifier = NSUserInterfaceItemIdentifier("ThumbnailItem")
+    private static let spacing: CGFloat = 12
+    private static let sectionInset = NSEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+
+    private let model: BrowserModel
+    private let provider: any ThumbnailProviding
+    private let scrollView = NSScrollView()
+    private let collectionView = ThumbnailCollectionView()
+    private let flowLayout = NSCollectionViewFlowLayout()
+
+    private var storedThumbnailSize: Double
+    private var lastURLs: [URL] = []
+    private var isApplyingSelection = false
+    private var lastSelectedURL: URL?
+    private var selectionAnchor: Int?
+    private var keepSelectionAnchorOnModelChange = false
+    private var requests: [URL: ThumbnailRequest] = [:]
+
+    init(model: BrowserModel, provider: any ThumbnailProviding) {
+        self.model = model
+        self.provider = provider
+        self.storedThumbnailSize = ViewSettings.defaultThumbnailSize
+        super.init(frame: .zero)
+        setup()
+        applyModel()
+        observeModel()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    var focusView: NSView { collectionView }
+
+    var thumbnailSize: Double {
+        get { storedThumbnailSize }
+        set {
+            let clamped = ViewSettings.clampThumbnailSize(newValue)
+            guard clamped != storedThumbnailSize else { return }
+            storedThumbnailSize = clamped
+            flowLayout.invalidateLayout()
+            needsLayout = true
+            refreshVisibleThumbnails()
+        }
+    }
+
+    func scrollToFocused() {
+        guard let focused = model.selection.focused,
+              let index = model.listing.files.firstIndex(where: { $0.url == focused }) else {
+            return
+        }
+        layoutSubtreeIfNeeded()
+        collectionView.layoutSubtreeIfNeeded()
+        collectionView.scrollToItems(
+            at: [IndexPath(item: index, section: 0)],
+            scrollPosition: .nearestVerticalEdge
+        )
+    }
+
+    private func setup() {
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.horizontalScrollElasticity = .none
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+
+        flowLayout.scrollDirection = .vertical
+        flowLayout.minimumInteritemSpacing = Self.spacing
+        flowLayout.minimumLineSpacing = Self.spacing
+        flowLayout.sectionInset = Self.sectionInset
+
+        collectionView.collectionViewLayout = flowLayout
+        collectionView.dataSource = self
+        collectionView.delegate = self
+        collectionView.prefetchDataSource = self
+        collectionView.isSelectable = true
+        collectionView.allowsMultipleSelection = true
+        collectionView.allowsEmptySelection = true
+        collectionView.backgroundColors = [.clear]
+        collectionView.register(
+            ThumbnailItemView.self,
+            forItemWithIdentifier: Self.itemIdentifier
+        )
+        collectionView.onArrowKey = { [weak self] key, modifiers in
+            self?.handleArrowKey(key, modifiers: modifiers) ?? false
+        }
+        collectionView.frame = NSRect(x: 0, y: 0, width: 400, height: 400)
+
+        scrollView.documentView = collectionView
+        addSubview(scrollView)
+
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+    }
+
+    override func layout() {
+        super.layout()
+        updateCollectionViewFrame()
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        let widthChanged = abs(newSize.width - frame.size.width) > 0.5
+        super.setFrameSize(newSize)
+        if widthChanged {
+            needsLayout = true
+        }
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        needsLayout = true
+    }
+
+    private func updateCollectionViewFrame() {
+        let contentSize = scrollView.contentSize
+        let width = max(0, contentSize.width)
+        if abs(collectionView.frame.size.width - width) > 0.5 {
+            collectionView.frame.size.width = width
+            flowLayout.invalidateLayout()
+        }
+
+        collectionView.layoutSubtreeIfNeeded()
+        let contentHeight = flowLayout.collectionViewContentSize.height
+        let height = max(contentHeight, contentSize.height)
+        if abs(collectionView.frame.size.height - height) > 0.5 {
+            collectionView.frame.size.height = height
+        }
+    }
+
+    private func observeModel() {
+        withObservationTracking {
+            _ = model.listing.files
+            _ = model.selection.selected
+            _ = model.selection.focused
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.applyModel()
+                self?.observeModel()
+            }
+        }
+    }
+
+    private func applyModel() {
+        let files = model.listing.files
+        let urls = files.map(\.url)
+
+        if urls != lastURLs {
+            lastURLs = urls
+            pruneRequests(keeping: Set(urls))
+            collectionView.reloadData()
+            flowLayout.invalidateLayout()
+            needsLayout = true
+        }
+
+        let selectedPaths = Set(model.selection.selected.compactMap { url -> IndexPath? in
+            guard let index = urls.firstIndex(of: url) else { return nil }
+            return IndexPath(item: index, section: 0)
+        })
+
+        isApplyingSelection = true
+        if collectionView.selectionIndexPaths != selectedPaths {
+            collectionView.selectionIndexPaths = selectedPaths
+        }
+        isApplyingSelection = false
+
+        lastSelectedURL = model.selection.focused
+        if keepSelectionAnchorOnModelChange {
+            keepSelectionAnchorOnModelChange = false
+        } else if let focused = model.selection.focused,
+                  let index = urls.firstIndex(of: focused) {
+            selectionAnchor = index
+        } else {
+            selectionAnchor = nil
+        }
+    }
+
+    private func pruneRequests(keeping urls: Set<URL>) {
+        let staleURLs = requests.keys.filter { !urls.contains($0) }
+        for url in staleURLs {
+            cancelRequest(for: url)
+        }
+    }
+
+    private func requestThumbnail(for file: MediaFile) {
+        let pointSize = storedThumbnailSize
+        if let existing = requests[file.url], existing.pointSize == pointSize {
+            return
+        }
+        if let existing = requests[file.url] {
+            existing.task.cancel()
+            requests[file.url] = nil
+        }
+        provider.cancel(for: file.url)
+
+        let pointSizeValue = pointSize
+        let scale = Double(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2)
+        let token = UUID()
+        let provider = self.provider
+        let url = file.url
+        let task = Task { [weak self] in
+            let image = await provider.thumbnail(
+                for: url,
+                pointSize: pointSizeValue,
+                scale: scale
+            )
+            guard !Task.isCancelled, let self else { return }
+            guard self.requests[url]?.token == token else { return }
+            self.requests[url] = nil
+            self.apply(image, for: url)
+        }
+        requests[url] = ThumbnailRequest(token: token, pointSize: pointSize, task: task)
+    }
+
+    private func apply(_ image: CGImage?, for url: URL) {
+        guard let image else { return }
+        for case let item as ThumbnailItemView in collectionView.visibleItems()
+        where item.representedURL == url {
+            item.setThumbnailImage(image)
+        }
+    }
+
+    private func cancelRequest(for url: URL) {
+        requests[url]?.task.cancel()
+        requests[url] = nil
+        provider.cancel(for: url)
+    }
+
+    private func refreshVisibleThumbnails() {
+        let files = model.listing.files
+        for path in collectionView.indexPathsForVisibleItems()
+        where files.indices.contains(path.item) {
+            requestThumbnail(for: files[path.item])
+        }
+    }
+
+    private func isVisible(url: URL) -> Bool {
+        let files = model.listing.files
+        return collectionView.indexPathsForVisibleItems().contains { path in
+            files.indices.contains(path.item) && files[path.item].url == url
+        }
+    }
+
+    private func columnCount() -> Int {
+        let available = Double(max(
+            0,
+            collectionView.bounds.width - Self.sectionInset.left - Self.sectionInset.right
+        ))
+        return max(1, ThumbnailGridLayout.columns(
+            availableWidth: available,
+            thumbnailSize: storedThumbnailSize,
+            spacing: Double(Self.spacing)
+        ).count)
+    }
+
+    private func handleArrowKey(
+        _ key: NSEvent.SpecialKey,
+        modifiers: NSEvent.ModifierFlags
+    ) -> Bool {
+        let files = model.listing.files
+        guard !files.isEmpty else { return false }
+
+        let delta: Int
+        switch key {
+        case .leftArrow:
+            delta = -1
+        case .rightArrow:
+            delta = 1
+        case .upArrow:
+            delta = -columnCount()
+        case .downArrow:
+            delta = columnCount()
+        default:
+            return false
+        }
+
+        let currentIndex: Int?
+        if let focused = model.selection.focused {
+            currentIndex = files.firstIndex(where: { $0.url == focused })
+        } else {
+            currentIndex = model.selection.selected
+                .compactMap { url in files.firstIndex(where: { $0.url == url }) }
+                .min()
+        }
+
+        let target: Int
+        if let currentIndex {
+            target = min(files.count - 1, max(0, currentIndex + delta))
+        } else {
+            target = 0
+        }
+
+        if modifiers.contains(.shift), let currentIndex {
+            let anchor = selectionAnchor ?? currentIndex
+            selectionAnchor = anchor
+            let lower = min(anchor, target)
+            let upper = max(anchor, target)
+            let paths = Set((lower...upper).map { IndexPath(item: $0, section: 0) })
+            applySelection(paths, focusedURL: files[target].url)
+        } else {
+            selectionAnchor = target
+            applySelection(
+                [IndexPath(item: target, section: 0)],
+                focusedURL: files[target].url
+            )
+        }
+
+        collectionView.scrollToItems(
+            at: [IndexPath(item: target, section: 0)],
+            scrollPosition: .nearestVerticalEdge
+        )
+        return true
+    }
+
+    private func applySelection(_ paths: Set<IndexPath>, focusedURL: URL?) {
+        isApplyingSelection = true
+        collectionView.selectionIndexPaths = paths
+        isApplyingSelection = false
+
+        lastSelectedURL = focusedURL
+        let files = model.listing.files
+        let urls = Set(paths.compactMap { path -> URL? in
+            guard files.indices.contains(path.item) else { return nil }
+            return files[path.item].url
+        })
+        keepSelectionAnchorOnModelChange = true
+        model.select(urls, focused: focusedURL)
+    }
+
+    private func selectionDidChange(newlySelected: Set<IndexPath>?) {
+        guard !isApplyingSelection else { return }
+
+        let files = model.listing.files
+        let paths = collectionView.selectionIndexPaths
+        let urls = Set(paths.compactMap { path -> URL? in
+            guard files.indices.contains(path.item) else { return nil }
+            return files[path.item].url
+        })
+
+        if urls == model.selection.selected {
+            let currentFocused = model.selection.focused
+            if currentFocused.map(urls.contains) ?? true {
+                lastSelectedURL = currentFocused
+                return
+            }
+        }
+
+        let focused: URL?
+        if let newlySelected, !newlySelected.isEmpty {
+            let path: IndexPath?
+            if let anchor = selectionAnchor,
+               !newlySelected.contains(IndexPath(item: anchor, section: 0)) {
+                path = newlySelected.max {
+                    abs($0.item - anchor) < abs($1.item - anchor)
+                }
+            } else {
+                path = newlySelected.max { $0.item < $1.item }
+            }
+            focused = path.flatMap { path in
+                files.indices.contains(path.item) ? files[path.item].url : nil
+            }
+        } else if paths.count == 1,
+                  let path = paths.first,
+                  files.indices.contains(path.item) {
+            focused = files[path.item].url
+        } else if let lastSelectedURL, urls.contains(lastSelectedURL) {
+            focused = lastSelectedURL
+        } else if let path = paths.max(by: { $0.item < $1.item }),
+                  files.indices.contains(path.item) {
+            focused = files[path.item].url
+        } else {
+            focused = nil
+        }
+
+        lastSelectedURL = focused
+        if let newlySelected, newlySelected.count == 1,
+           let path = newlySelected.first,
+           files.indices.contains(path.item) {
+            selectionAnchor = path.item
+        } else if paths.isEmpty {
+            selectionAnchor = nil
+        }
+
+        if model.selection.selected != urls || model.selection.focused != focused {
+            keepSelectionAnchorOnModelChange = true
+            model.select(urls, focused: focused)
+        }
+    }
+}
+
+extension ThumbnailModeView: NSCollectionViewDataSource {
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        numberOfItemsInSection section: Int
+    ) -> Int {
+        model.listing.files.count
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        itemForRepresentedObjectAt indexPath: IndexPath
+    ) -> NSCollectionViewItem {
+        let item = collectionView.makeItem(
+            withIdentifier: Self.itemIdentifier,
+            for: indexPath
+        )
+        guard let thumbnailItem = item as? ThumbnailItemView else {
+            return item
+        }
+
+        let files = model.listing.files
+        guard files.indices.contains(indexPath.item) else {
+            return thumbnailItem
+        }
+        let file = files[indexPath.item]
+        if let oldURL = thumbnailItem.representedURL, oldURL != file.url {
+            cancelRequest(for: oldURL)
+        }
+        thumbnailItem.configure(with: file)
+        requestThumbnail(for: file)
+        return thumbnailItem
+    }
+}
+
+extension ThumbnailModeView: NSCollectionViewDelegateFlowLayout {
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        layout collectionViewLayout: NSCollectionViewLayout,
+        sizeForItemAt indexPath: IndexPath
+    ) -> NSSize {
+        let available = Double(max(
+            0,
+            collectionView.bounds.width - Self.sectionInset.left - Self.sectionInset.right
+        ))
+        let result = ThumbnailGridLayout.columns(
+            availableWidth: available,
+            thumbnailSize: storedThumbnailSize,
+            spacing: Double(Self.spacing)
+        )
+        return NSSize(
+            width: CGFloat(max(1, result.cellWidth)),
+            height: CGFloat(storedThumbnailSize + 36)
+        )
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        didSelectItemsAt indexPaths: Set<IndexPath>
+    ) {
+        selectionDidChange(newlySelected: indexPaths)
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        didDeselectItemsAt indexPaths: Set<IndexPath>
+    ) {
+        selectionDidChange(newlySelected: nil)
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        didEndDisplaying item: NSCollectionViewItem,
+        forRepresentedObjectAt indexPath: IndexPath
+    ) {
+        guard let thumbnailItem = item as? ThumbnailItemView,
+              let url = thumbnailItem.representedURL else {
+            return
+        }
+        if !isVisible(url: url) {
+            cancelRequest(for: url)
+        }
+    }
+}
+
+extension ThumbnailModeView: NSCollectionViewPrefetching {
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        prefetchItemsAt indexPaths: [IndexPath]
+    ) {
+        guard window?.inLiveResize != true else { return }
+        let files = model.listing.files
+        for path in indexPaths where files.indices.contains(path.item) {
+            requestThumbnail(for: files[path.item])
+        }
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        cancelPrefetchingForItemsAt indexPaths: [IndexPath]
+    ) {
+        let files = model.listing.files
+        for path in indexPaths where files.indices.contains(path.item) {
+            let url = files[path.item].url
+            if !isVisible(url: url) {
+                cancelRequest(for: url)
+            }
+        }
+    }
+}
