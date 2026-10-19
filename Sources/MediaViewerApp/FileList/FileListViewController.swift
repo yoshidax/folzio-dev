@@ -93,17 +93,6 @@ final class FileListViewController: NSViewController {
 
         setupBottomBar()
 
-        for modeView in [listModeView as NSView, thumbnailModeView as NSView] {
-            modeView.translatesAutoresizingMaskIntoConstraints = false
-            container.addSubview(modeView)
-            NSLayoutConstraint.activate([
-                modeView.topAnchor.constraint(equalTo: container.topAnchor),
-                modeView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-                modeView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                modeView.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),
-            ])
-        }
-
         bottomBar.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(bottomBar)
         let bottomBarHeight = bottomBar.heightAnchor.constraint(equalToConstant: 0)
@@ -114,6 +103,17 @@ final class FileListViewController: NSViewController {
             bottomBar.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             bottomBarHeight,
         ])
+
+        for modeView in [listModeView as NSView, thumbnailModeView as NSView] {
+            modeView.translatesAutoresizingMaskIntoConstraints = false
+            container.addSubview(modeView)
+            NSLayoutConstraint.activate([
+                modeView.topAnchor.constraint(equalTo: container.topAnchor),
+                modeView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                modeView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                modeView.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),
+            ])
+        }
 
         progressIndicator.translatesAutoresizingMaskIntoConstraints = false
         progressIndicator.style = .spinning

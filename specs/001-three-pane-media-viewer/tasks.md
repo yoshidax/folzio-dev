@@ -441,9 +441,11 @@ quickstart.md の手動シナリオで検証する。
 **Independent Test**: quickstart.md「US6」の手順と、US3 手順 4 のペイン幅の復元
 
 - [X] T070 [US6] `Sources/MediaViewerApp/App/MainSplitViewController.swift` で、ペイン幅の挙動を仕上げる:
-  - 最小幅「160 / 240 / 320 pt」を `splitView(_:constrainMinCoordinate:ofSubviewAt:)` と
-    `constrainMaxCoordinate` の両方で守り、どのペインも消えないようにする（折りたたみはフルスクリーン時のみ許可）
-  - 仕切りをダブルクリックしてもペインが折りたたまれないようにする
+  - 最小幅「160 / 240 / 320 pt」を `NSSplitViewItem.minimumThickness` で守り、どのペインも消えないようにする
+    （実装注記: `NSSplitViewController` は Auto Layout 使用時に `constrainMinCoordinate` / `constrainMaxCoordinate`
+    の override と非互換で起動時に例外になるため、AppKit 推奨の minimumThickness で実現した。折りたたみはフルスクリーン時のみ許可）
+  - 仕切りをダブルクリックしてもペインが折りたたまれないようにする（通常時は `canCollapse = false`、
+    フルスクリーン時だけ true に切り替える）
 - [X] T071 [US6] `Sources/MediaViewerApp/Preview/ImagePreviewView.swift` と `ThumbnailModeView.swift` で、ペインの幅や
   ウインドウの大きさを変えている間も、レイアウトの再計算だけで追従させる（再デコードしない）。
   `inLiveResize` 中もサムネイルを再要求しない
