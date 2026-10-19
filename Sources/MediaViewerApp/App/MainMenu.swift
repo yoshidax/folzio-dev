@@ -109,7 +109,17 @@ final class MainMenu {
 
         let viewMenuItem = NSMenuItem()
         mainMenu.addItem(viewMenuItem)
-        viewMenuItem.submenu = NSMenu(title: "表示")
+        let viewMenu = NSMenu(title: "表示")
+        viewMenuItem.submenu = viewMenu
+
+        let fullScreenItem = NSMenuItem(
+            title: "フルスクリーン",
+            action: #selector(MainSplitViewController.togglePreviewFullScreen),
+            keyEquivalent: "f"
+        )
+        fullScreenItem.keyEquivalentModifierMask = [.command, .control]
+        fullScreenItem.target = nil
+        viewMenu.addItem(fullScreenItem)
 
         NSApp.mainMenu = mainMenu
     }

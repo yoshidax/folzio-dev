@@ -29,6 +29,11 @@ final class PreviewViewController: NSViewController {
         return imageView
     }
 
+    var onDoubleClick: (() -> Void)? {
+        get { imageView.onDoubleClick }
+        set { imageView.onDoubleClick = newValue }
+    }
+
     func togglePlayback() {
         guard !videoView.isHidden else { return }
         videoView.togglePlayPause()

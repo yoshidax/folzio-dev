@@ -383,6 +383,11 @@ final class ThumbnailModeView: NSView {
         needsLayout = true
     }
 
+    override func viewDidEndLiveResize() {
+        super.viewDidEndLiveResize()
+        refreshVisibleThumbnails()
+    }
+
     private func updateCollectionViewFrame() {
         let contentSize = scrollView.contentSize
         let width = max(0, contentSize.width)
@@ -454,6 +459,7 @@ final class ThumbnailModeView: NSView {
     }
 
     private func requestThumbnail(for file: MediaFile) {
+        guard window?.inLiveResize != true else { return }
         let pointSize = storedThumbnailSize
         if let existing = requests[file.url], existing.pointSize == pointSize {
             return

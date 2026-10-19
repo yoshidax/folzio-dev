@@ -2,16 +2,19 @@ import AppKit
 
 @MainActor
 final class MainWindowController: NSWindowController {
-    convenience init() {
+    private let splitViewController: MainSplitViewController
+
+    init() {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1200, height: 760),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
-        self.init(window: window)
-
         let splitViewController = MainSplitViewController()
+        self.splitViewController = splitViewController
+        super.init(window: window)
+
         window.contentViewController = splitViewController
         window.title = "MediaViewer"
 
@@ -24,5 +27,15 @@ final class MainWindowController: NSWindowController {
         if !hasSavedFrame {
             window.center()
         }
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    override func cancelOperation(_ sender: Any?) {
+        splitViewController.exitPreviewFullScreenIfNeeded()
+        super.cancelOperation(sender)
     }
 }

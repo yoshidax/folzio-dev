@@ -419,15 +419,15 @@ quickstart.md の手動シナリオで検証する。
 
 **Independent Test**: quickstart.md「US5」の手順
 
-- [ ] T067 [US5] `Sources/MediaViewerApp/App/MainSplitViewController.swift` に `togglePreviewFullScreen()` を実装する:
+- [X] T067 [US5] `Sources/MediaViewerApp/App/MainSplitViewController.swift` に `togglePreviewFullScreen()` を実装する:
   - 入るとき: ツリーとリストの `NSSplitViewItem.isCollapsed = true` にしてから、`window.toggleFullScreen(nil)` を呼ぶ
   - 解除: `windowDidExitFullScreen` で折りたたみを戻す
   - 緑ボタンで入った場合（`windowWillEnterFullScreen` で、自分からの要求でない場合）も同じ状態として扱う
   - 解除後はペイン幅と選択がフルスクリーン前と同じであること
   - プレビューのビューは付け替えない（動画の再生を保つ: FR-037）
-- [ ] T068 [US5] `Sources/MediaViewerApp/App/MainMenu.swift` の表示メニューに「フルスクリーン」（⌃⌘F）を追加して
+- [X] T068 [US5] `Sources/MediaViewerApp/App/MainMenu.swift` の表示メニューに「フルスクリーン」（⌃⌘F）を追加して
   T067 に接続する。`MainWindowController` で `cancelOperation(_:)`（Esc）を受け、フルスクリーン中なら解除する
-- [ ] T069 [US5] `Sources/MediaViewerApp/Preview/ImagePreviewView.swift` に `NSClickGestureRecognizer`
+- [X] T069 [US5] `Sources/MediaViewerApp/Preview/ImagePreviewView.swift` に `NSClickGestureRecognizer`
   （`numberOfClicksRequired = 2`）を付け、T067 を呼ぶ。`VideoPreviewView` には付けない（FR-035）
 
 **Checkpoint**: US1〜US5。quickstart.md の US5 が通る
@@ -440,11 +440,11 @@ quickstart.md の手動シナリオで検証する。
 
 **Independent Test**: quickstart.md「US6」の手順と、US3 手順 4 のペイン幅の復元
 
-- [ ] T070 [US6] `Sources/MediaViewerApp/App/MainSplitViewController.swift` で、ペイン幅の挙動を仕上げる:
+- [X] T070 [US6] `Sources/MediaViewerApp/App/MainSplitViewController.swift` で、ペイン幅の挙動を仕上げる:
   - 最小幅「160 / 240 / 320 pt」を `splitView(_:constrainMinCoordinate:ofSubviewAt:)` と
     `constrainMaxCoordinate` の両方で守り、どのペインも消えないようにする（折りたたみはフルスクリーン時のみ許可）
   - 仕切りをダブルクリックしてもペインが折りたたまれないようにする
-- [ ] T071 [US6] `Sources/MediaViewerApp/Preview/ImagePreviewView.swift` と `ThumbnailModeView.swift` で、ペインの幅や
+- [X] T071 [US6] `Sources/MediaViewerApp/Preview/ImagePreviewView.swift` と `ThumbnailModeView.swift` で、ペインの幅や
   ウインドウの大きさを変えている間も、レイアウトの再計算だけで追従させる（再デコードしない）。
   `inLiveResize` 中もサムネイルを再要求しない
 

@@ -13,6 +13,10 @@ final class MainSplitViewController: NSSplitViewController {
     private let fileOperationCoordinator: FileOperationCoordinator
     private var appliedInitialPositions = false
     private var installedFocusMenu = false
+    private var treeSplitItem: NSSplitViewItem?
+    private var fileListSplitItem: NSSplitViewItem?
+    private var panesCollapsedForFullScreen = false
+    private var isAppInitiatedFullScreenTransition = false
 
     init() {
         let settings = SettingsStore(defaults: .standard)
@@ -67,16 +71,24 @@ final class MainSplitViewController: NSSplitViewController {
         splitView.isVertical = true
         splitView.dividerStyle = .thin
 
-        addSplitViewItem(makeItem(
+        let treeItem = makeItem(
             for: treeViewController,
             minimumThickness: 160,
-            holdingPriority: 251
-        ))
-        addSplitViewItem(makeItem(
+            holdingPriority: 251,
+            canCollapse: true
+        )
+        treeSplitItem = treeItem
+        addSplitViewItem(treeItem)
+
+        let fileListItem = makeItem(
             for: fileListViewController,
             minimumThickness: 240,
-            holdingPriority: 250
-        ))
+            holdingPriority: 250,
+            canCollapse: true
+        )
+        fileListSplitItem = fileListItem
+        addSplitViewItem(fileListItem)
+
         addSplitViewItem(makeItem(
             for: previewViewController,
             minimumThickness: 320,
@@ -87,23 +99,101 @@ final class MainSplitViewController: NSSplitViewController {
         fileListViewController.onTogglePlayback = { [weak self] in
             self?.previewViewController.togglePlayback()
         }
+        previewViewController.onDoubleClick = { [weak self] in
+            self?.togglePreviewFullScreen()
+        }
         installFocusMenuItems()
     }
 
     override func viewDidAppear() {
         super.viewDidAppear()
+        if let window = view.window, window.delegate == nil {
+            window.delegate = self
+        }
         configureKeyViewLoop()
         applyInitialPositionsIfNeeded()
+    }
+
+    @objc func togglePreviewFullScreen() {
+        guard let window = view.window else { return }
+
+        if window.styleMask.contains(.fullScreen) {
+            window.toggleFullScreen(nil)
+            return
+        }
+
+        collapsePanesForFullScreen()
+        isAppInitiatedFullScreenTransition = true
+        window.toggleFullScreen(nil)
+    }
+
+    func exitPreviewFullScreenIfNeeded() {
+        guard let window = view.window else { return }
+
+        if window.styleMask.contains(.fullScreen) {
+            window.toggleFullScreen(nil)
+        } else {
+            restorePanesAfterFullScreen()
+        }
+    }
+
+    private func collapsePanesForFullScreen() {
+        guard !panesCollapsedForFullScreen else { return }
+        panesCollapsedForFullScreen = true
+        treeSplitItem?.isCollapsed = true
+        fileListSplitItem?.isCollapsed = true
+    }
+
+    private func restorePanesAfterFullScreen() {
+        guard panesCollapsedForFullScreen else { return }
+        panesCollapsedForFullScreen = false
+        treeSplitItem?.isCollapsed = false
+        fileListSplitItem?.isCollapsed = false
+    }
+
+    private enum PaneWidth {
+        static let tree: CGFloat = 160
+        static let fileList: CGFloat = 240
+        static let preview: CGFloat = 320
+    }
+
+    private func dividerBounds(forDividerAt dividerIndex: Int) -> (min: CGFloat, max: CGFloat)? {
+        let totalWidth = splitView.bounds.width
+        let thickness = splitView.dividerThickness
+
+        let minimum: CGFloat
+        let maximum: CGFloat
+        switch dividerIndex {
+        case 0:
+            minimum = PaneWidth.tree
+            maximum = totalWidth - 2 * thickness - PaneWidth.fileList - PaneWidth.preview
+        case 1:
+            minimum = PaneWidth.tree + thickness + PaneWidth.fileList
+            maximum = totalWidth - thickness - PaneWidth.preview
+        default:
+            return nil
+        }
+
+        let clampedMaximum = max(maximum, minimum)
+        let clampedMinimum = min(minimum, clampedMaximum)
+        return (clampedMinimum, clampedMaximum)
+    }
+
+    private func constrainedCoordinate(_ proposedCoordinate: CGFloat, forDividerAt dividerIndex: Int) -> CGFloat {
+        guard !panesCollapsedForFullScreen else { return proposedCoordinate }
+        guard let bounds = dividerBounds(forDividerAt: dividerIndex) else { return proposedCoordinate }
+        return min(max(proposedCoordinate, bounds.min), bounds.max)
     }
 
     private func makeItem(
         for viewController: NSViewController,
         minimumThickness: CGFloat,
-        holdingPriority: Float
+        holdingPriority: Float,
+        canCollapse: Bool = false
     ) -> NSSplitViewItem {
         let item = NSSplitViewItem(viewController: viewController)
         item.minimumThickness = minimumThickness
-        item.canCollapse = false
+        item.canCollapse = canCollapse
         item.holdingPriority = NSLayoutConstraint.Priority(holdingPriority)
         return item
     }
@@ -208,5 +298,50 @@ final class MainSplitViewController: NSSplitViewController {
                 }
             }
         }
+    }
+}
+
+extension MainSplitViewController {
+    override func splitView(
+        _ splitView: NSSplitView,
+        constrainMinCoordinate proposedMinimumPosition: CGFloat,
+        ofSubviewAt dividerIndex: Int
+    ) -> CGFloat {
+        constrainedCoordinate(proposedMinimumPosition, forDividerAt: dividerIndex)
+    }
+
+    override func splitView(
+        _ splitView: NSSplitView,
+        constrainMaxCoordinate proposedMaximumPosition: CGFloat,
+        ofSubviewAt dividerIndex: Int
+    ) -> CGFloat {
+        constrainedCoordinate(proposedMaximumPosition, forDividerAt: dividerIndex)
+    }
+
+    override func splitView(
+        _ splitView: NSSplitView,
+        shouldCollapseSubview subview: NSView,
+        forDoubleClickOnDividerAt dividerIndex: Int
+    ) -> Bool {
+        false
+    }
+}
+
+extension MainSplitViewController: NSWindowDelegate {
+    func windowWillEnterFullScreen(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === view.window else { return }
+
+        if isAppInitiatedFullScreenTransition {
+            isAppInitiatedFullScreenTransition = false
+        } else {
+            collapsePanesForFullScreen()
+        }
+    }
+
+    func windowDidExitFullScreen(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === view.window else { return }
+
+        isAppInitiatedFullScreenTransition = false
+        restorePanesAfterFullScreen()
     }
 }

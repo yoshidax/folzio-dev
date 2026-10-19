@@ -33,6 +33,9 @@ final class ImagePreviewView: NSView {
     private let nameLabel = NSTextField(labelWithString: "")
     private let detailLabel = NSTextField(wrappingLabelWithString: "")
     private let spinner = NSProgressIndicator()
+    private let doubleClickRecognizer = NSClickGestureRecognizer()
+
+    var onDoubleClick: (() -> Void)?
 
     private var displayedImage: CGImage?
     private var fallbackImage: CGImage?
@@ -90,6 +93,12 @@ final class ImagePreviewView: NSView {
             messageStack.widthAnchor.constraint(lessThanOrEqualToConstant: 440),
         ])
 
+        doubleClickRecognizer.numberOfClicksRequired = 2
+        doubleClickRecognizer.delaysPrimaryMouseButtonEvents = false
+        doubleClickRecognizer.target = self
+        doubleClickRecognizer.action = #selector(handleDoubleClick(_:))
+        addGestureRecognizer(doubleClickRecognizer)
+
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
             selector: #selector(accessibilityDisplayOptionsDidChange(_:)),
@@ -100,6 +109,10 @@ final class ImagePreviewView: NSView {
 
     override func layout() {
         super.layout()
+        guard displayedImage != nil, !bounds.isEmpty else {
+            contentLayer.frame = .zero
+            return
+        }
         contentLayer.frame = fittedFrame()
         contentLayer.contentsScale = backingScale
     }
@@ -248,6 +261,11 @@ final class ImagePreviewView: NSView {
             width: fitted.width / scale,
             height: fitted.height / scale
         )
+    }
+
+    @objc private func handleDoubleClick(_ recognizer: NSClickGestureRecognizer) {
+        guard recognizer.state == .ended else { return }
+        onDoubleClick?()
     }
 
     @objc private func accessibilityDisplayOptionsDidChange(_ notification: Notification) {
