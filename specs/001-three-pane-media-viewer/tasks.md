@@ -160,32 +160,32 @@ quickstart.md の手動シナリオで検証する。
 
 ### Core（US1）
 
-- [ ] T024 [P] [US1] `Sources/MediaViewerCore/FileSystem/DirectoryLister.swift` に `DirectoryListing` プロトコルと、
+- [X] T024 [P] [US1] `Sources/MediaViewerCore/FileSystem/DirectoryLister.swift` に `DirectoryListing` プロトコルと、
   その実装 `DirectoryLister` を作る:
   - `mediaFiles(in:)`: `contentsOfDirectory(at:includingPropertiesForKeys:[.creationDateKey, .isDirectoryKey,
     .contentTypeKey, .fileSizeKey, .localizedTypeDescriptionKey], options: .skipsHiddenFiles)` で列挙し、
     `MediaKind` が `nil` のものとフォルダを除く
   - `subfolders(of:)`: フォルダのみを返す（隠しフォルダとパッケージ `.isPackageKey` は除く）。名前の自然順に並べる
   - 権限なしは `ListingError.accessDenied`、存在しない場合は `.notFound` を投げる（typed throws）
-- [ ] T025 [P] [US1] `Sources/MediaViewerCore/FileSystem/VolumeProvider.swift` に `VolumeProviding` の実装を作る:
+- [X] T025 [P] [US1] `Sources/MediaViewerCore/FileSystem/VolumeProvider.swift` に `VolumeProviding` の実装を作る:
   - `rootNodes()` はホームフォルダ（`kind: .home`）と、`mountedVolumeURLs(includingResourceValuesForKeys:
     [.volumeLocalizedNameKey], options: .skipHiddenVolumes)` のボリューム（`kind: .volume`）を返す
   - `changes` は `NSWorkspace.didMountNotification` / `didUnmountNotification` を `AsyncStream` で流す。
     `NSWorkspace` は AppKit なので、通知の購読部分は `MediaViewerApp` 側から注入する
-- [ ] T026 [P] [US1] `Sources/MediaViewerCore/Imaging/ImageDecoder.swift` に `ImageDecoding` の実装を作る:
+- [X] T026 [P] [US1] `Sources/MediaViewerCore/Imaging/ImageDecoder.swift` に `ImageDecoding` の実装を作る:
   - `decode(_:maxPixelSize:)` は `CGImageSourceCreateThumbnailAtIndex` に
     `kCGImageSourceCreateThumbnailFromImageAlways`, `kCGImageSourceThumbnailMaxPixelSize`,
     `kCGImageSourceCreateThumbnailWithTransform` を渡してデコードする
   - 結果は `DecodedImage`（`cgImage`, `pixelSize`, `originalPixelSize`, `byteCost`）で返す
   - `isAnimated(_:)` はフレーム数が2以上なら true を返す
   - 読めない場合は `DecodeError.unreadable`、壊れている場合は `.corrupted`、形式未対応の場合は `.unsupported` を投げる
-- [ ] T027 [P] [US1] `Sources/MediaViewerCore/Imaging/DecodedImageCache.swift` に `actor DecodedImageCache` を実装する:
+- [X] T027 [P] [US1] `Sources/MediaViewerCore/Imaging/DecodedImageCache.swift` に `actor DecodedImageCache` を実装する:
   - `costLimitBytes`（既定 256MB = `256 * 1024 * 1024`）を上限とする LRU で、超えたら古い順に捨てる
   - API は `get(_ url:)` / `put(_ image:for:)` / `removeAll()` / `totalCost`
   - 上限値は `Sources/MediaViewerCore/Imaging/MemoryLimits.swift` に定数として一元化する（サムネイル 128MB も同じ場所）
-- [ ] T028 [P] [US1] `Sources/MediaViewerCore/Layout/FitCalculator.swift` に `FitCalculator.fit(imageSize:in:)` を実装する。
+- [X] T028 [P] [US1] `Sources/MediaViewerCore/Layout/FitCalculator.swift` に `FitCalculator.fit(imageSize:in:)` を実装する。
   縦横比を保ってコンテナ内で最大になる、中央寄せの矩形を返す。ただし「原寸より大きくはしない」（FR-028）
-- [ ] T029 [US1] `Sources/MediaViewerCore/Browser/BrowserModel.swift` に、`@MainActor @Observable final class BrowserModel` を
+- [X] T029 [US1] `Sources/MediaViewerCore/Browser/BrowserModel.swift` に、`@MainActor @Observable final class BrowserModel` を
   実装する（T024・T026・T027 に依存）:
   - 依存（`DirectoryListing`, `ImageDecoding`, `DecodedImageCache`, `SettingsStore`）はイニシャライザで注入する
   - `selectFolder(_:)`: 実行中の読み込み `Task` を取り消し、`listing.state = .loading` にしてから
@@ -197,20 +197,20 @@ quickstart.md の手動シナリオで検証する。
   - `moveFocus(_:)`: リスト順で前後の項目にフォーカスを移す
   - 先読み: フォーカスが変わるたびに、前後1件をバックグラウンドでデコードしてキャッシュに入れる
   - `screenMaxPixel` は UI から設定する（スクリーンの長辺ピクセル数）
-- [ ] T030 [P] [US1] `Tests/MediaViewerCoreTests/DirectoryListerTests.swift` に `DirectoryLister` のテストを書く:
+- [X] T030 [P] [US1] `Tests/MediaViewerCoreTests/DirectoryListerTests.swift` に `DirectoryLister` のテストを書く:
   - FixtureKit の `mixed` を一時ディレクトリに生成し、対応形式7件だけが返ることを確認する（`.txt`/`.pdf`/`sub/`/`.hidden.jpg` は除外）
   - `subfolders` が `sub/` だけを返すこと
   - `chmod 000` にしたフォルダで `.accessDenied` になること（テスト後に権限を戻す）
   - 存在しないパスで `.notFound` になること
-- [ ] T031 [P] [US1] `Tests/MediaViewerCoreTests/ImageDecoderTests.swift` に `ImageDecoder` のテストを書く:
+- [X] T031 [P] [US1] `Tests/MediaViewerCoreTests/ImageDecoderTests.swift` に `ImageDecoder` のテストを書く:
   - 4000×3000 の JPEG を `maxPixelSize: 1000` でデコードし、長辺が 1000 以下になること
   - アニメーション GIF で `isAnimated` が true、静止 PNG で false になること
   - `broken` の3件（先頭だけの JPEG・中身が PNG の .jpg・0 バイト）でクラッシュせず、エラーを投げるか正しくデコードできること
-- [ ] T032 [P] [US1] `Tests/MediaViewerCoreTests/DecodedImageCacheTests.swift` に `DecodedImageCache` のテストを書く:
+- [X] T032 [P] [US1] `Tests/MediaViewerCoreTests/DecodedImageCacheTests.swift` に `DecodedImageCache` のテストを書く:
   上限を超えたときに最も古いものが捨てられること、`get` で順位が更新されること、`totalCost` が上限を超えないこと
-- [ ] T033 [P] [US1] `Tests/MediaViewerCoreTests/FitCalculatorTests.swift` に `FitCalculator` のテストを書く:
+- [X] T033 [P] [US1] `Tests/MediaViewerCoreTests/FitCalculatorTests.swift` に `FitCalculator` のテストを書く:
   横長・縦長の画像の縮小、コンテナより小さい画像が原寸のまま中央に置かれること、幅または高さが 0 のときの扱い
-- [ ] T034 [US1] `Tests/MediaViewerCoreTests/BrowserModelTests.swift` に `BrowserModel` のテストを書く。
+- [X] T034 [US1] `Tests/MediaViewerCoreTests/BrowserModelTests.swift` に `BrowserModel` のテストを書く。
   依存はフェイクに差し替える:
   - フォルダを素早く2回選んだとき、最後のフォルダの一覧だけが残ること
   - `.empty` / `.denied` への遷移
@@ -220,7 +220,7 @@ quickstart.md の手動シナリオで検証する。
 
 ### UI（US1）
 
-- [ ] T035 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` を作成する:
+- [X] T035 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` を作成する:
   - `NSOutlineView`（列1つ、ソースリスト風）で `VolumeProvider.rootNodes()` を表示する
   - 子は展開時に `subfolders(of:)` で遅延読み込みする（読み込み中はバックグラウンドで行う）
   - `.denied` のノードは灰色にし、ツールチップを「アクセスできません」とする
@@ -228,16 +228,16 @@ quickstart.md の手動シナリオで検証する。
   - 起動時は `lastFolder`（存在しなければホーム）まで展開して選択する
   - キー操作は contracts の「ディレクトリツリー」の表のとおり（←→ と ⌥←→ は NSOutlineView 標準の動作を使う）
   - ボリュームのマウントと取り外しをルートに反映する
-- [ ] T036 [US1] `Sources/MediaViewerApp/FileList/FileListViewController.swift` を作成する:
+- [X] T036 [US1] `Sources/MediaViewerApp/FileList/FileListViewController.swift` を作成する:
   - 中身の表示形式（この時点ではリストのみ）を切り替える器にする
   - `listing.state` が `.empty` なら「対応するメディアファイルがありません」、`.denied` なら「アクセスできません」、
     `.loading` なら進捗表示を中央に出す
-- [ ] T037 [US1] `Sources/MediaViewerApp/FileList/ListModeView.swift` を作成する:
+- [X] T037 [US1] `Sources/MediaViewerApp/FileList/ListModeView.swift` を作成する:
   - `NSTableView` に列「名前」「作成日」「種類」を置く。作成日は `DateFormatter` の medium/short 形式で、`nil` なら「--」
   - 行の選択を `BrowserModel.select` に伝え、↑↓ の選択移動でプレビューを追従させる
   - 複数選択（クリック・⌘クリック・⇧クリック・⇧矢印・⌘A）を許可する
   - 10,000 行でも滑らかにスクロールできるよう、セルは再利用する
-- [ ] T038 [US1] `Sources/MediaViewerApp/Preview/ImagePreviewView.swift` を作成する:
+- [X] T038 [US1] `Sources/MediaViewerApp/Preview/ImagePreviewView.swift` を作成する:
   - 静止画は `CALayer.contents` に `cgImage` を設定し、`FitCalculator` で求めた矩形に配置する。
     `layout()` のたびに再計算する
   - `.animatedImage(URL)` は `CGAnimateImageAtURLWithBlock` で再生する。エラーが返るか、1フレームしか届かなければ、
@@ -245,11 +245,11 @@ quickstart.md の手動シナリオで検証する。
   - `NSWorkspace.shared.accessibilityDisplayShouldReduceMotion` が true の間は、アニメーションを再生せず先頭フレームを出す
   - `.unavailable` はファイル名と「表示できません」と理由を中央に表示する
   - ビューの a11y ラベルはファイル名とする
-- [ ] T039 [US1] `Sources/MediaViewerApp/Preview/PreviewViewController.swift` を作成する:
+- [X] T039 [US1] `Sources/MediaViewerApp/Preview/PreviewViewController.swift` を作成する:
   - `BrowserModel.preview` の変化を監視し、`.empty` / `.loading` / `.image` / `.animatedImage` / `.unavailable` に
     応じて `ImagePreviewView` を更新する。`.video` は US2 で対応する
   - 表示先スクリーンの長辺ピクセル数を `BrowserModel.screenMaxPixel` に設定する
-- [ ] T040 [US1] `Sources/MediaViewerApp/App/MainSplitViewController.swift` で、3ペインのプレースホルダを
+- [X] T040 [US1] `Sources/MediaViewerApp/App/MainSplitViewController.swift` で、3ペインのプレースホルダを
   T035・T036・T039 に差し替える:
   - `BrowserModel` を1つ生成して3者に注入する
   - Tab / ⇧Tab のフォーカス移動を `nextKeyView` の連鎖で「ツリー → リスト → プレビュー」の順に設定する
