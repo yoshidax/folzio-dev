@@ -36,22 +36,22 @@ quickstart.md の手動シナリオで検証する。
 
 **Purpose**: Swift Package の骨組みと、ビルド・フィクスチャ生成のスクリプト
 
-- [ ] T001 `Package.swift` を作成する。内容は次のとおり:
+- [X] T001 `Package.swift` を作成する。内容は次のとおり:
   - `swift-tools-version: 6.0`、`platforms: [.macOS(.v15)]`、`swiftLanguageModes: [.v6]`
   - ターゲット: library `MediaViewerCore`、executable `MediaViewerApp`（依存: MediaViewerCore）、
     library `FixtureKit`（resources: `.process("Resources")`）、executable `make-fixtures`（依存: FixtureKit）
   - テストターゲット: `MediaViewerCoreTests`（依存: MediaViewerCore, FixtureKit）、
     `MediaViewerPerformanceTests`（依存: MediaViewerCore, FixtureKit）
   - 外部パッケージ依存は追加しない
-- [ ] T002 各ターゲットの最小のソースを置き、`swift build` と `swift test` が通る状態にする:
+- [X] T002 各ターゲットの最小のソースを置き、`swift build` と `swift test` が通る状態にする:
   `Sources/MediaViewerCore/MediaViewerCore.swift`（空の名前空間）、`Sources/FixtureKit/FixtureKit.swift`、
   `Sources/make-fixtures/main.swift`、`Tests/MediaViewerCoreTests/SmokeTests.swift`、
   `Tests/MediaViewerPerformanceTests/SmokeTests.swift`（Swift Testing の `@Test` を1件ずつ）
-- [ ] T003 `Sources/MediaViewerApp/App/main.swift` と `Sources/MediaViewerApp/App/AppDelegate.swift` を作成する。
+- [X] T003 `Sources/MediaViewerApp/App/main.swift` と `Sources/MediaViewerApp/App/AppDelegate.swift` を作成する。
   `NSApplication.shared` に `setActivationPolicy(.regular)` を設定し、AppDelegate を設定して `activate()` してから
   `run()` する。`swift run MediaViewerApp` で空のウインドウが前面に開くこと
-- [ ] T004 [P] リポジトリ直下に `.gitignore` を作成する（`.build/`, `.swiftpm/`, `*.xcodeproj/`, `DerivedData/`, `.DS_Store`）
-- [ ] T005 [P] `scripts/make-app.sh` を作成する。処理は次のとおり:
+- [X] T004 [P] リポジトリ直下に `.gitignore` を作成する（`.build/`, `.swiftpm/`, `*.xcodeproj/`, `DerivedData/`, `.DS_Store`）
+- [X] T005 [P] `scripts/make-app.sh` を作成する。処理は次のとおり:
   - `swift build -c release --product MediaViewerApp` を実行する
   - `.build/MediaViewer.app/Contents/MacOS/MediaViewer` にバイナリを置く
   - `Contents/Info.plist` を生成する（CFBundleIdentifier=`local.my-img-viewer.MediaViewer`、
@@ -59,20 +59,20 @@ quickstart.md の手動シナリオで検証する。
     NSPrincipalClass=`NSApplication`）
   - `codesign --force --sign - .build/MediaViewer.app` で ad-hoc 署名する
   - 実行権限を付け、`set -euo pipefail` とする
-- [ ] T006 [P] `Sources/FixtureKit/ImageFixtures.swift` に、ImageIO（`CGImageDestination`）で画像のフィクスチャを
+- [X] T006 [P] `Sources/FixtureKit/ImageFixtures.swift` に、ImageIO（`CGImageDestination`）で画像のフィクスチャを
   書き出す関数を実装する:
   - `jpeg(at:width:height:)` と `png(at:width:height:)`
   - `animatedGIF(at:frames:)`
   - `grayscalePNG(at:width:height:)`（1億画素級の巨大画像用。8bit グレースケールでメモリを抑える）
-- [ ] T007 [P] WebP のフィクスチャを用意する:
+- [X] T007 [P] WebP のフィクスチャを用意する:
   - `Sources/FixtureKit/WebPFixtures.swift` で、`CGImageDestinationCopyTypeIdentifiers()` に
     `org.webmproject.webp` が含まれていれば ImageIO で書き出す
   - 含まれなければ、バンドル済みの `Sources/FixtureKit/Resources/static.webp` / `animated.webp` をコピーする
   - 2ファイルは、`scripts/make-webp-fixtures.sh`（Homebrew の `webp` パッケージの `cwebp` / `img2webp` を使う、
     開発時に1回だけ実行する）で生成してコミットする。各 10KB 以下とする
-- [ ] T008 [P] `Sources/FixtureKit/VideoFixtures.swift` に、`AVAssetWriter`（H.264）で単色フレームの短い動画を
+- [X] T008 [P] `Sources/FixtureKit/VideoFixtures.swift` に、`AVAssetWriter`（H.264）で単色フレームの短い動画を
   書き出す関数を実装する: `mp4(at:width:height:seconds:)`、`mov(at:width:height:seconds:)`
-- [ ] T009 `Sources/FixtureKit/FixtureSets.swift` に、quickstart.md「検証用フォルダの準備」の5セットを生成する
+- [X] T009 `Sources/FixtureKit/FixtureSets.swift` に、quickstart.md「検証用フォルダの準備」の5セットを生成する
   関数を実装する（T006〜T008 に依存）:
   - `mixed`: JPEG・PNG・アニメーション GIF・静止 WebP・アニメーション WebP・mp4・mov・`.txt`・`.pdf`・
     サブフォルダ `sub/`・隠しファイル `.hidden.jpg`
@@ -80,7 +80,7 @@ quickstart.md の手動シナリオで検証する。
   - `huge(count:)`: 8×8 の JPEG を `img_00001.jpg` から連番で生成する。既定は 10,000 件
   - `bigImage`: 10000×10000 のグレースケール PNG
   - `ops`: 名前が `a.jpg`・`b.png`・`c 2.jpg` の画像と、空のサブフォルダ `dest/`
-- [ ] T010 `Sources/make-fixtures/main.swift` で第1引数のディレクトリに5セットすべてを生成し、
+- [X] T010 `Sources/make-fixtures/main.swift` で第1引数のディレクトリに5セットすべてを生成し、
   `scripts/make-fixtures.sh` から `swift run make-fixtures "$1"` で呼び出す
 
 **Checkpoint**: `swift build` / `swift test` が通り、`scripts/make-fixtures.sh ~/MediaViewerFixtures` でフィクスチャができる
