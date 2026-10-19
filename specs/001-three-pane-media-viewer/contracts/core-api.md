@@ -1,0 +1,127 @@
+# Contract: MediaViewerCore の公開インターフェース
+
+UI（`MediaViewerApp`）が依存する、Core ライブラリの境界。テストはこの境界に対して書く（原則 IV）。
+シグネチャは設計上の意図を示すもので、引数名などの細部は実装時に調整してよい。ただし責務の分担は変えない。
+エンティティの定義は [data-model.md](../data-model.md) を参照。
+
+## 形式判定
+
+```swift
+public enum MediaKind: Sendable {
+    public init?(fileExtension: String)   // 大文字小文字を区別しない。非対応形式なら nil
+    public var isVideo: Bool { get }
+}
+```
+
+## ディレクトリ・ボリューム
+
+```swift
+public protocol DirectoryListing: Sendable {
+    /// 直下の対応メディアファイルのみを返す（隠しファイル・サブフォルダ・非対応形式は除く）
+    func mediaFiles(in folder: URL) async throws(ListingError) -> [MediaFile]
+    /// 直下のフォルダのみを返す（隠しフォルダ・パッケージは除く）。名前の自然順
+    func subfolders(of folder: URL) async throws(ListingError) -> [URL]
+}
+
+public enum ListingError: Error { case accessDenied, notFound, other(String) }
+
+public protocol VolumeProviding: Sendable {
+    func rootNodes() -> [FolderNode]                    // ホームフォルダ + マウント中のボリューム
+    var changes: AsyncStream<[FolderNode]> { get }      // マウント・取り外しのたびに最新のルートを流す
+}
+
+public protocol FileSystemWatching: Sendable {
+    /// 監視対象を差し替える。直下の追加・削除・名前変更が起きたフォルダの URL を流す
+    func watch(_ folders: Set<URL>)
+    var events: AsyncStream<Set<URL>> { get }
+}
+```
+
+## 並べ替え
+
+```swift
+public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile]
+```
+
+## ブラウザ状態（UI から呼ぶ中心のモデル）
+
+```swift
+@MainActor public final class BrowserModel {
+    public private(set) var listing: FolderListing
+    public private(set) var selection: SelectionState
+    public private(set) var preview: PreviewContent
+    public var sortOrder: SortOrder
+
+    public func selectFolder(_ url: URL) async        // 前の読み込みを取り消してから一覧を読み込む
+    public func select(_ urls: Set<URL>, focused: URL?)
+    public func moveFocus(_ direction: FocusDirection) // 前後の項目。プレビューと先読みを更新する
+    public func handleFileSystemEvent(_ folders: Set<URL>) async
+}
+```
+
+- UI は `BrowserModel` の変化を監視して描画するだけにし、選択・プレビュー・先読みの判断を UI に持たせない
+
+## プレビュー用デコード
+
+```swift
+public protocol ImageDecoding: Sendable {
+    /// 長辺 maxPixelSize 以下にダウンサンプリングしてデコードする。アニメーションなら先頭フレーム
+    func decode(_ url: URL, maxPixelSize: Int) async throws(DecodeError) -> DecodedImage
+    func isAnimated(_ url: URL) -> Bool
+}
+
+public enum DecodeError: Error { case unreadable, unsupported, corrupted }
+
+public actor DecodedImageCache {
+    public init(costLimitBytes: Int)                   // 既定は 256MB（research.md R8）
+}
+
+public struct FitCalculator {
+    /// 縦横比を保ってコンテナに収まる最大の矩形を返す。原寸より大きくはしない（FR-028）
+    public static func fit(imageSize: CGSize, in container: CGSize) -> CGRect
+}
+```
+
+## サムネイル
+
+```swift
+public protocol ThumbnailProviding: Sendable {
+    /// 要求サイズは 128 / 256 / 512 の段階に丸める。結果はメモリにのみキャッシュする
+    func thumbnail(for url: URL, pointSize: Double, scale: Double) async -> CGImage?
+    func cancel(for url: URL)
+}
+
+public struct ThumbnailGridLayout {
+    /// 利用可能な幅とサムネイルサイズから、列数と実際のセル幅を返す。
+    /// セル幅は利用可能な幅を超えない（横スクロールを出さない: FR-015）
+    public static func columns(availableWidth: Double, thumbnailSize: Double, spacing: Double) -> (count: Int, cellWidth: Double)
+}
+```
+
+## ファイル操作
+
+```swift
+public protocol FileOperating: Sendable {
+    func conflicts(for operation: FileOperation) -> [URL]       // 操作先に同名がある元ファイル
+    func execute(_ operation: FileOperation, resolution: ConflictResolution) async -> FileOperationResult
+}
+
+public enum ConflictResolution: Sendable { case replace, keepBoth, abort }
+
+public enum NameValidation { case ok, needsExtensionChangeConfirmation, invalid(reason: String) }
+public func validateNewName(_ name: String, for file: URL, existingNames: Set<String>) -> NameValidation
+
+/// 「両方残す」用の名前を返す: "a.jpg" → "a 2.jpg" → "a 3.jpg" …
+public func uniqueName(for name: String, existingNames: Set<String>) -> String
+```
+
+## 設定
+
+```swift
+public struct SettingsStore {
+    public init(defaults: UserDefaults)               // テストでは専用のスイート名を渡す
+    public var viewSettings: ViewSettings { get nonmutating set }
+    public var playback: PlaybackOptions { get nonmutating set }
+    public var confirmation: ConfirmationOptions { get nonmutating set }
+}
+```
