@@ -1,0 +1,227 @@
+# MediaViewer
+
+macOS ネイティブの 3 ペイン型メディアビューア。左のディレクトリツリー、中央のファイル一覧（リスト／サムネイル）、
+右のプレビューで、画像・アニメーション GIF/WebP・動画を閲覧し、Finder に近い操作でファイルを整理できます。
+
+- **技術構成**: Swift 6 + AppKit のみ。外部パッケージ依存なし。Swift Package で構成（Xcode プロジェクトなし）
+- **対応 OS**: macOS 15 以降
+- **ネットワーク**: 不使用（`URLSession` / `Network` / `NWConnection` を参照しない）
+- **仕様**: GitHub Spec Kit の文書を `specs/001-three-pane-media-viewer/` に格納
+
+## 主な機能
+
+- ディレクトリツリーからのフォルダ移動（ホームとマウント中のボリューム）
+- JPEG / PNG / GIF / WebP / MP4 / MOV の表示（隠しファイルと非対応形式は一覧に出さない）
+- 画像の縦横比を保ったフィット表示（小さい画像は原寸を超えて拡大しない）
+- アニメーション GIF の再生、アニメーション WebP の再生（OS 標準 API。非対応時は先頭フレーム）
+- 動画の再生・ループ・自動再生設定、Space キーでの再生／一時停止
+- リスト形式とサムネイル形式の切り替え、サムネイルサイズ変更、列ヘッダーでの並べ替え
+- コピー／移動／複製／名前変更／ゴミ箱／ドラッグ＆ドロップ／クリップボード操作
+- 衝突時の「置き換える／両方残す／中止」、操作前の確認ダイアログ（設定で省略可能）
+- プレビューのフルスクリーン（ダブルクリックまたは ⌃⌘F、Esc で復帰）
+- 外部からのファイル追加・削除・名前変更を FSEvents で一覧へ反映
+
+## 動作環境
+
+- macOS 15 以降
+- Xcode（Swift 6 ツールチェーン）。`swift --version` が 6.0 以上であること
+- `xcode-select -p` が `/Applications/Xcode.app/Contents/Developer` を指していること
+- 検証用フィクスチャの生成に `cwebp` / `img2webp`（Homebrew の `webp`）を使用
+  （アプリ本体の実行には不要）
+
+```bash
+xcode-select -p
+swift --version
+```
+
+## ビルドと自動テスト
+
+```bash
+swift build
+swift test
+```
+
+- `swift test` は `MediaViewerCoreTests`（Core のロジック・異常系・FSEvents）と
+  `MediaViewerPerformanceTests`（性能基準）を実行します（執筆時点で 69 + 6 件）
+- 個別に実行する場合:
+
+```bash
+swift test --filter MediaViewerCoreTests
+swift test --filter MediaViewerPerformanceTests
+```
+
+- ネットワーク非依存の確認:
+
+```bash
+scripts/check-no-network.sh
+```
+
+## 起動
+
+### 開発中の起動（ターミナル）
+
+```bash
+swift run MediaViewerApp
+```
+
+ターミナルを占有します。終了は ⌘Q または Ctrl-C。TCC（デスクトップ・書類・ダウンロードへのアクセス許可）は
+ターミナルに紐づきます。
+
+### .app として起動
+
+```bash
+scripts/make-app.sh
+open .build/MediaViewer.app
+```
+
+`scripts/make-app.sh` は release ビルドを行い、`.build/MediaViewer.app` を組み立てて ad-hoc 署名します。
+TCC の許可は MediaViewer アプリに紐づきます。初回に許可ダイアログが出たら「許可」してください。
+
+## 検証用フォルダの準備
+
+```bash
+scripts/make-fixtures.sh ~/MediaViewerFixtures
+```
+
+次のフォルダが生成されます（スクリプトは毎回作り直します）。
+
+| フォルダ | 内容 |
+|----------|------|
+| `mixed/` | JPEG・PNG・アニメーション GIF・静止/アニメーション WebP・mp4・mov・.txt・.pdf・サブフォルダ・隠しファイル |
+| `broken/` | 破損 JPEG、中身が PNG の `.jpg`、0 バイトの `.mp4` |
+| `huge/` | 10,000 個の小さな JPEG |
+| `bigimage/` | 1 億画素級の PNG |
+| `ops/` | コピー・移動・名前変更などの検証用（`a.jpg`、`b.png`、`c 2.jpg`、`dest/`） |
+
+WebP フィクスチャは `cwebp` / `img2webp` で生成し、`Sources/FixtureKit/Resources/` に同梱しています。
+生成し直す場合:
+
+```bash
+scripts/make-webp-fixtures.sh
+```
+
+## 使い方（主なショートカット）
+
+| 操作 | ショートカット |
+|------|----------------|
+| 設定 | ⌘, |
+| 終了 | ⌘Q |
+| ツリー／リスト／プレビューへフォーカス | ⌥⌘1 / ⌥⌘2 / ⌥⌘3 |
+| サムネイル形式／リスト形式 | ⌘1 / ⌘2 |
+| サムネイルを拡大／縮小 | ⌘+ / ⌘− |
+| 動画の再生／一時停止（リスト上） | Space |
+| プレビューのフルスクリーン／復帰 | ⌃⌘F、画像のダブルクリック、Esc |
+| コピー／ペースト／移動ペースト | ⌘C / ⌘V / ⌥⌘V |
+| 複製 | ⌘D |
+| 名前を変更（その場で編集） | Return |
+| ゴミ箱に入れる | ⌘Delete |
+| 選択項目を開く | ⌘O |
+| Finder に表示 | 右クリックメニュー / ファイルメニュー |
+| 並べ替え | 列ヘッダーのクリック、表示メニュー → 並べ替え |
+
+ドラッグ＆ドロップでは、ファイルをツリーのフォルダへドロップすると移動、⌥ を押しながらだとコピーになります。
+同じ名前のファイルがある場合は、設定に関係なく衝突ダイアログが表示されます。
+
+## 手動での動作確認
+
+詳細な手順と期待結果は
+[quickstart.md](specs/001-three-pane-media-viewer/quickstart.md) を参照してください。要点だけ示します。
+
+1. **US1**: `mixed/` を開き、7 件のメディアだけが並ぶこと。↓ でプレビューが追従し、GIF が動くこと。
+   アニメーション WebP は再生されるか先頭フレームで表示されること。
+2. **US2**: mp4 が自動再生・ループすること。設定で自動再生をオフにすると先頭フレームで止まること。
+   画像へ移ると音声込みで停止すること。
+3. **US3**: ⌘1 / ⌘2 で形式を切り替えても選択が維持されること。サムネイルの折り返しが追従し、
+   横スクロールバーが出ないこと。再起動で表示形式・サイズ・最後のフォルダが復元されること。
+4. **US4**: `ops/` でコピー・移動・複製・名前変更・ゴミ箱・D&D を確認すること。
+   同名衝突で「置き換える／両方残す／中止」が出ること。
+5. **US5**: 画像のダブルクリック／⌃⌘F で全画面になり、Esc で 3 ペインに戻ること。
+6. **US6**: 仕切りを端までドラッグしても各ペインが最小幅（160 / 240 / 320pt）で止まること。
+   仕切りのダブルクリックで折りたたまれないこと。
+7. **キーボードのみ**: Tab でツリー → リスト → プレビュー、矢印で選択、⌃⌘F → Esc を完了できること。
+8. **異常系**: `broken/` でクラッシュしないこと。権限のないフォルダで「アクセスできません」が出ること。
+   外部からファイルを追加・削除して一覧が更新されること。
+9. **アクセシビリティ**: Accessibility Inspector で各ビューのラベルを確認すること。
+
+性能の基準値と `os_signpost` の計測手順は quickstart の「性能の検証」に記載しています。
+
+## プロジェクト構成
+
+```text
+Package.swift
+Sources/
+  MediaViewerCore/        # AppKit を import しないロジック層
+    Model/                # MediaFile / FolderNode / FileOperation など
+    Browser/              # BrowserModel（状態と非同期処理の調停）
+    FileSystem/           # ディレクトリ列挙、ボリューム、FSEvents 監視
+    Imaging/              # デコード、サムネイル、LRU キャッシュ
+    Layout/               # フィット計算、サムネイル列計算
+    Operations/           # 名前検証、ファイル操作サービス
+    Settings/             # UserDefaults による設定
+  MediaViewerApp/         # AppKit UI（描画と入力）
+    App/                  # 起動、メインウインドウ、メニュー、3 ペイン
+    Tree/                 # ディレクトリツリー
+    FileList/             # リスト／サムネイル／コンテキストメニュー
+    Preview/              # 画像・動画プレビュー
+    Operations/           # 確認・衝突ダイアログ、実行コーディネータ
+    Settings/             # 設定ウインドウ
+  FixtureKit/             # テスト用メディア生成（画像・GIF・WebP・動画）
+  make-fixtures/          # フィクスチャ生成 CLI
+Tests/
+  MediaViewerCoreTests/         # Swift Testing
+  MediaViewerPerformanceTests/  # 性能基準
+scripts/
+  make-app.sh              # .app の組み立てと署名
+  make-fixtures.sh         # フィクスチャ生成
+  make-webp-fixtures.sh    # 同梱 WebP の再生成
+  check-no-network.sh      # ネットワーク API 非依存の確認
+specs/001-three-pane-media-viewer/  # spec / plan / research / data-model / contracts / quickstart / tasks
+```
+
+設計上のルール:
+
+- `MediaViewerCore` は AppKit を import しません。判断ロジックは Core、描画と入力は App に置きます
+- デコード・ディレクトリ列挙・ファイル操作は UI スレッドで行いません
+- Core のロジックと異常系には Swift Testing のテストを付けます
+
+## 設定の保存先
+
+設定は `UserDefaults` に保存されます。`.app` と `swift run` では保存先が異なります。
+
+```bash
+# .app の設定をリセット
+defaults delete local.my-img-viewer.MediaViewer
+
+# swift run の設定をリセット
+defaults delete MediaViewerApp
+```
+
+## トラブルシューティング
+
+- **ウインドウが出ない／メニューだけ表示される**: 古いプロセスが残っていないか確認し、終了してから再起動します。
+
+  ```bash
+  pgrep -fl MediaViewer
+  scripts/make-app.sh
+  open .build/MediaViewer.app
+  ```
+
+  ターミナルから直接実行すると、起動時のエラーがそのまま表示されます。
+
+  ```bash
+  .build/MediaViewer.app/Contents/MacOS/MediaViewer
+  ```
+
+- **ファイルが見えない**: システム設定 → プライバシーとセキュリティ → ファイルとフォルダ で、
+  起動方法に応じてターミナルまたは MediaViewer にアクセスを許可してください。
+- **フィクスチャ生成に失敗する**: `cwebp` / `img2webp` が見つからない場合は `brew install webp` を実行してください。
+- **性能テストが失敗する**: quickstart の基準値を確認してください。他の負荷が高い状態では一時的に超えることがあります。
+
+## 仕様・進捗
+
+- 仕様の正本: `specs/001-three-pane-media-viewer/spec.md`
+- 実装計画: `specs/001-three-pane-media-viewer/plan.md`
+- タスク: `specs/001-three-pane-media-viewer/tasks.md`
+- 憲章: `.specify/memory/constitution.md`（v1.1.0）
+- 進捗: 実装タスク T001〜T078 は完了。T079（Accessibility Inspector）と T080（手動シナリオの記録）は
+  手動確認待ちです。
