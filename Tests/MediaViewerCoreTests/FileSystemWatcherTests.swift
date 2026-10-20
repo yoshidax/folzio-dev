@@ -226,6 +226,8 @@ struct FileSystemWatcherTests {
             return ".image(\(Int(image.pixelSize.width))x\(Int(image.pixelSize.height)))"
         case let .animatedImage(url):
             return ".animatedImage(\(url.lastPathComponent))"
+        case let .animatedImageData(url, data):
+            return ".animatedImageData(\(url.lastPathComponent), \(data.count) bytes)"
         case let .video(url):
             return ".video(\(url.lastPathComponent))"
         case let .unavailable(name, reason):
