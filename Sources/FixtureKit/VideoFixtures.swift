@@ -3,23 +3,49 @@ import CoreVideo
 import Foundation
 
 public enum VideoFixtures {
-    public static func mp4(at url: URL, width: Int = 640, height: Int = 360, seconds: Double = 1.5) throws {
-        try write(at: url, fileType: .mp4, width: width, height: height, seconds: seconds)
+    /// - Parameters:
+    ///   - fastStart: true なら再生用の情報（moov）をファイルの先頭に置く。
+    ///   - averageBitRate: 指定すると平均ビットレート（bps）を設定する。
+    ///   - noisyFrames: true なら毎フレーム変わるノイズ模様にする（大きなファイルを作るため）。
+    public static func mp4(
+        at url: URL, width: Int = 640, height: Int = 360, seconds: Double = 1.5,
+        fastStart: Bool = false, averageBitRate: Int? = nil, noisyFrames: Bool = false
+    ) throws {
+        try write(
+            at: url, fileType: .mp4, width: width, height: height, seconds: seconds,
+            fastStart: fastStart, averageBitRate: averageBitRate, noisyFrames: noisyFrames
+        )
     }
 
-    public static func mov(at url: URL, width: Int = 640, height: Int = 360, seconds: Double = 1.5) throws {
-        try write(at: url, fileType: .mov, width: width, height: height, seconds: seconds)
+    public static func mov(
+        at url: URL, width: Int = 640, height: Int = 360, seconds: Double = 1.5,
+        fastStart: Bool = false, averageBitRate: Int? = nil, noisyFrames: Bool = false
+    ) throws {
+        try write(
+            at: url, fileType: .mov, width: width, height: height, seconds: seconds,
+            fastStart: fastStart, averageBitRate: averageBitRate, noisyFrames: noisyFrames
+        )
     }
 
-    private static func write(at url: URL, fileType: AVFileType, width: Int, height: Int, seconds: Double) throws {
+    private static func write(
+        at url: URL, fileType: AVFileType, width: Int, height: Int, seconds: Double,
+        fastStart: Bool, averageBitRate: Int?, noisyFrames: Bool
+    ) throws {
         try? FileManager.default.removeItem(at: url)
 
         let writer = try AVAssetWriter(outputURL: url, fileType: fileType)
-        let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
+        writer.shouldOptimizeForNetworkUse = fastStart
+        var outputSettings: [String: Any] = [
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: width,
             AVVideoHeightKey: height,
-        ])
+        ]
+        if let averageBitRate {
+            outputSettings[AVVideoCompressionPropertiesKey] = [
+                AVVideoAverageBitRateKey: averageBitRate,
+            ]
+        }
+        let input = AVAssetWriterInput(mediaType: .video, outputSettings: outputSettings)
         input.expectsMediaDataInRealTime = false
 
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(
@@ -41,6 +67,7 @@ public enum VideoFixtures {
         }
         writer.startSession(atSourceTime: .zero)
 
+        let noiseTable = noisyFrames ? makeNoiseTable(width: width, height: height) : []
         let framesPerSecond: Int32 = 30
         let frameCount = max(1, Int(seconds * Double(framesPerSecond)))
 
@@ -57,7 +84,11 @@ public enum VideoFixtures {
                 throw FixtureError.cannotCreatePixelBuffer
             }
 
-            fill(buffer, frame: index, frameCount: frameCount)
+            if noisyFrames {
+                fillNoise(buffer, frame: index, table: noiseTable)
+            } else {
+                fill(buffer, frame: index, frameCount: frameCount)
+            }
 
             let time = CMTime(value: CMTimeValue(index), timescale: framesPerSecond)
             guard adaptor.append(buffer, withPresentationTime: time) else {
@@ -99,6 +130,41 @@ public enum VideoFixtures {
                 row[offset + 1] = inBar ? 120 : 40
                 row[offset + 2] = inBar ? 40 : 30
                 row[offset + 3] = 255
+            }
+        }
+    }
+
+    /// 1 フレーム分の 2 倍の長さの擬似乱数列（xorshift64）。フレームごとに読み出す位置をずらして使う。
+    private static func makeNoiseTable(width: Int, height: Int) -> [UInt8] {
+        let count = width * height * 4 * 2
+        var table = [UInt8](repeating: 0, count: count)
+        var state: UInt64 = 0x9E37_79B9_7F4A_7C15
+        table.withUnsafeMutableBytes { raw in
+            let words = raw.bindMemory(to: UInt64.self)
+            for index in 0..<words.count {
+                state ^= state << 13
+                state ^= state >> 7
+                state ^= state << 17
+                words[index] = state
+            }
+        }
+        return table
+    }
+
+    /// 毎フレーム異なる位置のノイズ表をコピーして埋める（debug ビルドでも速い。圧縮しにくく、高ビットレートに届く）。
+    private static func fillNoise(_ buffer: CVPixelBuffer, frame: Int, table: [UInt8]) {
+        CVPixelBufferLockBaseAddress(buffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
+
+        guard let base = CVPixelBufferGetBaseAddress(buffer) else { return }
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
+        let height = CVPixelBufferGetHeight(buffer)
+        let rowBytes = CVPixelBufferGetWidth(buffer) * 4
+        let slack = table.count - rowBytes * height
+        let start = (frame &* 104_729) % max(1, slack)
+        table.withUnsafeBytes { source in
+            for y in 0..<height {
+                memcpy(base + y * bytesPerRow, source.baseAddress! + start + y * rowBytes, rowBytes)
             }
         }
     }
