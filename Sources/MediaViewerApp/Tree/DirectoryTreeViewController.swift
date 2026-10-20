@@ -50,6 +50,7 @@ final class DirectoryTreeViewController: NSViewController {
     private var revealTask: Task<Void, Never>?
     private var eventTask: Task<Void, Never>?
     private var didReveal = false
+    private var isRestoringSelection = false
 
     private enum ProbeKey: Hashable {
         case roots
@@ -130,40 +131,77 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
+    private var selectedItem: Any? {
+        let row = outlineView.selectedRow
+        guard row >= 0 else { return nil }
+        return outlineView.item(atRow: row)
+    }
+
+    /// ⌘⌫ の対象。お気に入りの項目を選択中のときだけ返す（FR-064）
+    private var selectedFavoriteEntry: FavoriteEntry? {
+        let item = selectedItem
+        guard FavoriteCommands.removalTarget(role(for: item)) != nil else { return nil }
+        return item as? FavoriteEntry
+    }
+
+    /// 右クリックメニューの項目なら右クリックした行を、キー操作なら選択中の行を対象にする
+    private func targetItem(for sender: Any?) -> Any? {
+        if let menuItem = sender as? NSMenuItem, let represented = menuItem.representedObject {
+            return represented
+        }
+        return selectedItem
+    }
+
+    /// ペースト・Finder に表示の対象。見出し・お気に入りの項目では nil
+    private func fileTargetNode(for sender: Any?) -> Node? {
+        let item = targetItem(for: sender)
+        guard let role = role(for: item), FavoriteCommands.acceptsFiles(role) else { return nil }
+        return item as? Node
+    }
+
+    /// 項目は menuNeedsUpdate で、対象の行の役割に合わせて作り直す
     private func makeContextMenu() -> NSMenu {
         let menu = NSMenu(title: "")
-
-        let pasteItem = NSMenuItem(
-            title: "ここにペースト",
-            action: #selector(paste(_:)),
-            keyEquivalent: ""
-        )
-        pasteItem.target = self
-        menu.addItem(pasteItem)
-
-        let movePasteItem = NSMenuItem(
-            title: "ここに移動ペースト",
-            action: #selector(movePaste(_:)),
-            keyEquivalent: ""
-        )
-        movePasteItem.target = self
-        menu.addItem(movePasteItem)
-
-        menu.addItem(.separator())
-
-        let revealItem = NSMenuItem(
-            title: "Finder に表示",
-            action: #selector(revealInFinder(_:)),
-            keyEquivalent: ""
-        )
-        revealItem.target = self
-        menu.addItem(revealItem)
-
+        menu.delegate = self
         return menu
     }
 
+    private func makeContextMenuItem(
+        _ kind: TreeContextMenuItem,
+        representing item: Any
+    ) -> NSMenuItem {
+        let menuItem: NSMenuItem
+        switch kind {
+        case .pasteHere:
+            menuItem = NSMenuItem(title: "ここにペースト", action: #selector(paste(_:)), keyEquivalent: "")
+        case .movePasteHere:
+            menuItem = NSMenuItem(title: "ここに移動ペースト", action: #selector(movePaste(_:)), keyEquivalent: "")
+        case .addToFavorites:
+            menuItem = NSMenuItem(
+                title: "お気に入りに追加",
+                action: #selector(addToFavorites(_:)),
+                keyEquivalent: "t"
+            )
+            menuItem.keyEquivalentModifierMask = [.command, .control]
+        case .revealInFinder:
+            menuItem = NSMenuItem(title: "Finder に表示", action: #selector(revealInFinder(_:)), keyEquivalent: "")
+        case .removeFromFavorites:
+            menuItem = NSMenuItem(
+                title: "お気に入りから削除",
+                action: #selector(removeFavoriteFromMenu(_:)),
+                keyEquivalent: String(UnicodeScalar(NSBackspaceCharacter)!)
+            )
+            menuItem.keyEquivalentModifierMask = [.command]
+        case .separator:
+            return .separator()
+        }
+        menuItem.target = self
+        menuItem.representedObject = item
+        return menuItem
+    }
+
     @objc func paste(_ sender: Any?) {
-        guard let node = selectedNode else { return }
+        guard let node = fileTargetNode(for: sender) else { return }
         let destination = node.url
         Task { @MainActor in
             await coordinator.paste(into: destination, move: false)
@@ -171,10 +209,103 @@ final class DirectoryTreeViewController: NSViewController {
     }
 
     @objc func movePaste(_ sender: Any?) {
-        guard let node = selectedNode else { return }
+        guard let node = fileTargetNode(for: sender) else { return }
         let destination = node.url
         Task { @MainActor in
             await coordinator.paste(into: destination, move: true)
+        }
+    }
+
+    /// ⌘⌫。お気に入りの項目を選択中のときだけ、確認のうえお気に入りから削除する（FR-064）
+    @objc func moveToTrash(_ sender: Any?) {
+        guard let entry = selectedFavoriteEntry else { return }
+        Task { [weak self] in
+            await self?.removeFavorite(entry)
+        }
+    }
+
+    @objc private func addToFavorites(_ sender: Any?) {
+        addFavorite(for: targetItem(for: sender))
+    }
+
+    @objc private func removeFavoriteFromMenu(_ sender: Any?) {
+        guard let item = (sender as? NSMenuItem)?.representedObject,
+              FavoriteCommands.removalTarget(role(for: item)) != nil,
+              let entry = item as? FavoriteEntry else {
+            return
+        }
+        Task { [weak self] in
+            await self?.removeFavorite(entry)
+        }
+    }
+
+    /// ⌃⌘T。どのペインにフォーカスがあっても MainSplitViewController から呼ばれる（FR-062）
+    func addSelectedFolderToFavorites() {
+        addFavorite(for: selectedItem)
+    }
+
+    var canAddSelectedFolderToFavorites: Bool {
+        FavoriteCommands.canAdd(role(for: selectedItem), favorites: favorites)
+    }
+
+    /// ⇧⌘F。見出しを選択するだけで、ファイルリスト・プレビューは変えない（FR-065）
+    func focusFavoritesHeader() {
+        let row = outlineView.row(forItem: favoritesHeader)
+        guard row >= 0 else { return }
+        outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        outlineView.scrollRowToVisible(row)
+        if !outlineView.isItemExpanded(favoritesHeader) {
+            outlineView.expandItem(favoritesHeader)
+        }
+        view.window?.makeFirstResponder(outlineView)
+    }
+
+    private func addFavorite(for item: Any?) {
+        let role = role(for: item)
+        guard FavoriteCommands.canAdd(role, favorites: favorites),
+              case .folder(let url) = role else {
+            return
+        }
+        // 見出しの開閉状態は変えない
+        favorites.add(url)
+        settings.favorites = favorites
+        rebuildFavoriteEntries()
+        reloadFavorites()
+        updateWatchSet()
+    }
+
+    /// 登録だけを取り除き、実際のフォルダには触れない（FR-064）
+    private func removeFavorite(_ entry: FavoriteEntry) async {
+        guard await confirmation.confirmRemovingFavorite(named: entry.name) else { return }
+        guard favorites.contains(entry.url) else { return }
+
+        // 消えた行の位置で別の項目が選ばれて一覧が切り替わらないよう、先に見出しを選ぶ
+        if selectedItem as? FavoriteEntry === entry {
+            let headerRow = outlineView.row(forItem: favoritesHeader)
+            if headerRow >= 0 {
+                outlineView.selectRowIndexes(IndexSet(integer: headerRow), byExtendingSelection: false)
+            }
+        }
+
+        favorites.remove(entry.url)
+        settings.favorites = favorites
+        rebuildFavoriteEntries()
+        reloadFavorites()
+        updateWatchSet()
+    }
+
+    /// 見出しの子を読み直し、行の増減でずれた選択を同じ item に戻す
+    private func reloadFavorites() {
+        let previous = selectedItem
+        isRestoringSelection = true
+        defer { isRestoringSelection = false }
+
+        outlineView.reloadItem(favoritesHeader, reloadChildren: true)
+        if let previous {
+            let row = outlineView.row(forItem: previous)
+            if row >= 0 {
+                outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+            }
         }
     }
 
@@ -208,7 +339,7 @@ final class DirectoryTreeViewController: NSViewController {
     }
 
     @objc private func revealInFinder(_ sender: Any?) {
-        guard let node = selectedNode else { return }
+        guard let node = fileTargetNode(for: sender) else { return }
         NSWorkspace.shared.activateFileViewerSelecting([node.url])
     }
 
@@ -578,6 +709,8 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
         proposedItem item: Any?,
         proposedChildIndex index: Int
     ) -> NSDragOperation {
+        // 見出し・お気に入りの項目はドロップ先にならない
+        guard let role = role(for: item), FavoriteCommands.acceptsFiles(role) else { return [] }
         guard let node = item as? Node,
               node.folder.accessState != .denied,
               fileURLs(from: info.draggingPasteboard) != nil else {
@@ -602,6 +735,7 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
         item: Any?,
         childIndex index: Int
     ) -> Bool {
+        guard let role = role(for: item), FavoriteCommands.acceptsFiles(role) else { return false }
         guard let node = item as? Node,
               node.folder.accessState != .denied,
               let urls = fileURLs(from: info.draggingPasteboard),
@@ -726,6 +860,7 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
+        guard !isRestoringSelection else { return }
         updateWatchSet()
         let row = outlineView.selectedRow
         guard row >= 0, let role = role(for: outlineView.item(atRow: row)) else { return }
@@ -749,12 +884,41 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
         case #selector(paste(_:)), #selector(movePaste(_:)):
-            return selectedNode != nil
+            return fileTargetNode(for: menuItem) != nil
                 && FileContextMenu.pasteboardHasFileURLs()
         case #selector(revealInFinder(_:)):
-            return selectedNode != nil
+            return fileTargetNode(for: menuItem) != nil
+        case #selector(moveToTrash(_:)):
+            // ⌘⌫ はお気に入りの項目でだけ有効。ほかの行では何もしない（FR-064）
+            if selectedFavoriteEntry != nil {
+                menuItem.title = "お気に入りから削除"
+                return true
+            }
+            menuItem.title = "ゴミ箱に入れる"
+            return false
+        case #selector(addToFavorites(_:)):
+            return FavoriteCommands.canAdd(role(for: targetItem(for: menuItem)), favorites: favorites)
+        case #selector(removeFavoriteFromMenu(_:)):
+            return FavoriteCommands.removalTarget(role(for: menuItem.representedObject)) != nil
         default:
             return true
+        }
+    }
+}
+
+extension DirectoryTreeViewController: NSMenuDelegate {
+    /// 右クリックした行の役割で項目を作り直す。キーボードで開いたときなどは選択中の行を使う
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let row = outlineView.clickedRow >= 0 ? outlineView.clickedRow : outlineView.selectedRow
+        guard row >= 0,
+              let item = outlineView.item(atRow: row),
+              let role = role(for: item) else {
+            return
+        }
+        // 見出しは項目なし（メニューを出さない）
+        for kind in FavoriteCommands.contextMenu(for: role) {
+            menu.addItem(makeContextMenuItem(kind, representing: item))
         }
     }
 }
