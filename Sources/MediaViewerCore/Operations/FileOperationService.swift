@@ -29,15 +29,10 @@ public struct FileOperationService: FileOperating {
         }
     }
 
+    /// `resolution` は同名の項目と衝突したときだけ使う。`.abort` は衝突した項目を失敗として返し、
+    /// 衝突しない項目（ゴミ箱への移動や同名のない名前の変更など）はそのまま実行する。
     public func execute(_ operation: FileOperation, resolution: ConflictResolution) async -> FileOperationResult {
-        switch resolution {
-        case .abort:
-            return FileOperationResult()
-        case .replace, .keepBoth:
-            break
-        }
-
-        return await Task.detached(priority: .userInitiated) {
+        await Task.detached(priority: .userInitiated) {
             Self.perform(operation, resolution: resolution)
         }.value
     }
