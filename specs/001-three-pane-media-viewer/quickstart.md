@@ -4,7 +4,8 @@
 
 機能が端から端まで動くことを確かめるための、実行と検証の手順。操作の割り当ては
 [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md)、設定キーは
-[contracts/settings.md](./contracts/settings.md) を参照。
+[contracts/settings.md](./contracts/settings.md)、バンドルとアイコンは
+[contracts/app-bundle.md](./contracts/app-bundle.md) を参照。
 
 ## 前提条件
 
@@ -29,6 +30,26 @@ swift run MediaViewerApp            # 開発中の起動（TCC の許可はタ�
 scripts/make-app.sh                 # .build/MediaViewer.app を組み立てて ad-hoc 署名する
 open .build/MediaViewer.app
 ```
+
+## アプリアイコンの検証（FR-043〜045、SC-011）
+
+`swift run` はバンドルを持たないため標準アイコンになる。アイコンの確認は必ず `.app` で行う。
+
+```bash
+scripts/make-app.sh
+test -f .build/MediaViewer.app/Contents/Resources/AppIcon.icns
+plutil -extract CFBundleIconFile raw .build/MediaViewer.app/Contents/Info.plist
+iconutil -c iconset .build/MediaViewer.app/Contents/Resources/AppIcon.icns -o /tmp/MediaViewer.iconset
+sips -g pixelWidth -g pixelHeight /tmp/MediaViewer.iconset/icon_16x16.png
+open .build/MediaViewer.app
+```
+
+**期待結果**:
+
+- `plutil` が `AppIcon` を返し、`iconutil` が全スロットを展開できる（[contracts/app-bundle.md](./contracts/app-bundle.md)）
+- `icon_16x16.png` が 16×16、`icon_512x512@2x.png` が 1024×1024 である
+- Finder・Dock・⌘Tab・About に、汎用アイコンではなく3ペインをモチーフにした同じアイコンが出る
+- アイコン生成に失敗した場合、`scripts/make-app.sh` は `.app` を残さず非ゼロで終了する
 
 ## 検証用フォルダの準備
 

@@ -491,6 +491,55 @@ quickstart.md の手動シナリオで検証する。
 
 ---
 
+## Phase 10: アプリアイコン（FR-043〜045、SC-011）
+
+**Purpose**: 3ペインをモチーフにしたアイコンをコードから生成し、`.app` に同梱する。
+外部素材・追加依存は使わない（[research.md](./research.md) R14、[contracts/app-bundle.md](./contracts/app-bundle.md)）。
+実行時コードには含めないビルド時専用の作業。
+
+- [ ] T081 [P] `Package.swift` に、アイコン生成用の実行ターゲットとプロダクトを追加する:
+  - `.executable(name: "make-icon", targets: ["make-icon"])`
+  - `.executableTarget(name: "make-icon")`（依存なし。`MediaViewerCore` と `MediaViewerApp` には依存させない）
+  - 外部パッケージ依存は追加しない
+- [ ] T082 [P] `Sources/make-icon/main.swift` にアイコン描画を実装する（T081 に依存）:
+  - 第1引数に出力先のステージングディレクトリ（`.build/AppIcon.raw`）を受け取り、存在しなければ作成する。
+    引数がなければ終了コード 1
+  - CoreGraphics のビットマップコンテキストと ImageIO（`CGImageDestination`、UTI は `public.png`）だけを使い、
+    AppKit・外部画像・フォント・ネットワークを使わない
+  - 1024×1024 の設計座標で描く: 中央に 824×824・角丸半径 185 のスクエア、上下左右 100px の余白。
+    背景は濃紺の縦グラデーション。内側に左から「フォルダ」「サムネイルのグリッド」「大きな画像と再生マーク」を
+    表す3つの縦ペインを、細い区切り線で分けて描く。文字は描かない
+  - 16 / 32 / 64 / 128 / 256 / 512 / 1024 px を、それぞれ独立したコンテキストに設計座標を拡大して描画する
+    （1024px からの縮小はしない）。線幅は各サイズで最低 1 デバイスピクセルを確保する
+  - `icon_16x16.png`・`icon_32x32.png`・`icon_64x64.png`・`icon_128x128.png`・`icon_256x256.png`・
+    `icon_512x512.png`・`icon_1024x1024.png` を出力する
+  - 書き出しに失敗したら、作成途中のファイルを残さず終了コード 1 で終わる
+- [ ] T083 `scripts/make-icon.sh` を作成する（T081・T082 に依存）:
+  - `set -euo pipefail` とし、リポジトリ直下から実行する
+  - `swift build -c release --product make-icon` の後、`--show-bin-path` の `make-icon` を実行して
+    `.build/AppIcon.raw` に7サイズを生成する
+  - 空の `.build/AppIcon.iconset` を作り、ステージングから標準名の10ファイルをコピーする:
+    `icon_16x16.png`(16)、`icon_16x16@2x.png`(32)、`icon_32x32.png`(32)、`icon_32x32@2x.png`(64)、
+    `icon_128x128.png`(128)、`icon_128x128@2x.png`(256)、`icon_256x256.png`(256)、`icon_256x256@2x.png`(512)、
+    `icon_512x512.png`(512)、`icon_512x512@2x.png`(1024)
+  - iconset には標準名の10ファイルだけを置く（`icon_64x64.png` や `icon_1024x1024.png` を残さない）
+  - 各ファイルを `sips -g pixelWidth -g pixelHeight` で検証し、契約の寸法と違えば終了コード 1
+  - `iconutil -c icns .build/AppIcon.iconset -o .build/AppIcon.icns` で `.build/AppIcon.icns` を作る
+- [ ] T084 `scripts/make-app.sh` にアイコンの同梱を追加する（T083 に依存）:
+  - `swift build` の後に `scripts/make-icon.sh` を呼ぶ
+  - `Contents/Resources/` を作り、`.build/AppIcon.icns` を `Contents/Resources/AppIcon.icns` にコピーする
+  - 生成した `Info.plist` に `CFBundleIconFile` = `AppIcon` を追加する
+  - アイコン生成が失敗した場合は `.app` を残さず非ゼロで終了する（冒頭の `rm -rf` 後に途中成果物を残さない）
+  - 既存の ad-hoc 署名と実行権限の処理は維持する
+- [ ] T085 `scripts/make-app.sh` を実行し、quickstart.md「アプリアイコンの検証」を実施して
+  `specs/001-three-pane-media-viewer/checklists/validation.md` に結果を記録する（T084 に依存）:
+  - `Contents/Resources/AppIcon.icns` の存在と `plutil -extract CFBundleIconFile raw ...` が `AppIcon`
+  - `iconutil -c iconset` で10スロットが展開でき、`icon_16x16.png` が 16×16、`icon_512x512@2x.png` が 1024×1024
+  - `open` 後、Finder・Dock・⌘Tab・About に同じ3ペインのアイコンが出る。16px でも判別できる
+  - `swift run` はバンドルを持たないため標準アイコンになることを確認し、合格扱いとする
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -503,6 +552,8 @@ quickstart.md の手動シナリオで検証する。
 - **US5 (Phase 7)**: US1 の後に始められる。動画の再生状態の維持を確認するには US2 が必要
 - **US6 (Phase 8)**: Foundational の T021 があれば始められる。T071 は US1・US3 のビューに依存する
 - **Polish (Phase 9)**: 対象のストーリーが揃ってから行う。T072〜T075 は US1 の後ならいつでもよい
+- **アプリアイコン (Phase 10)**: Setup の T005（`scripts/make-app.sh`）があれば始められる。ストーリーの実装とは
+  独立しているが、T084 は T005 のスクリプトを編集するため、T005 完了後に着手する。T085 は T084 に依存する
 
 ### User Story Dependencies
 
@@ -525,6 +576,8 @@ quickstart.md の手動シナリオで検証する。
 - US1: T024〜T028（Core の各サービス）と T030〜T033（そのテスト）は並行できる
 - US3: T047〜T050 は並行できる
 - US4: T054・T055・T057 は並行できる
+- アイコン: T081（`Package.swift`）と T082（`Sources/make-icon/main.swift`）は並行できる。
+  T083 は両方に、T084 は T083 に、T085 は T084 に依存する
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -566,6 +619,7 @@ Task: "T033 FitCalculatorTests"
 5. US4 → ファイル整理
 6. US5・US6 → フルスクリーンとペイン幅の仕上げ
 7. Polish → 外部変更の反映、性能計測、a11y、全シナリオの検証
+8. アプリアイコン → `.app` に固有アイコンを同梱（FR-043〜045、SC-011）
 
 ---
 
@@ -575,4 +629,6 @@ Task: "T033 FitCalculatorTests"
 - [Story] label maps task to specific user story for traceability
 - 性能に影響する変更の PR には、T076・T077 の計測結果を記載する（憲章 原則 II）
 - 新しい操作を追加したら、contracts/keyboard-and-menus.md の表も更新する（憲章 原則 III）
+- アイコンはビルド時のみ生成し、外部素材・追加依存・ネットワークを使わない。
+  `.build/AppIcon.icns` はコミットしない（research.md R14、原則 I・V）
 - Commit after each task or logical group

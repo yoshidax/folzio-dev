@@ -146,3 +146,19 @@ requested ─(確認 ON)→ awaitingConfirmation ─(キャンセル)→ cancell
 
 - 1件の失敗で残りの処理を止めない。ただし各ファイルは「全部成功」か「変更なし」のどちらかにする
   （部分的にコピーされたファイルは削除する: エッジケース）
+
+## AppIcon（ビルド時のみ・Core の型ではない）
+
+アプリバンドルのアイコン。実行時のモデルや永続化設定には含めない（FR-043〜045、research.md R14）。
+
+| 項目 | 内容 |
+|------|------|
+| 原画の設計座標 | 1024×1024。角丸スクエア + 3ペインの図案。文字なし |
+| 生成解像度 | 16 / 32 / 64 / 128 / 256 / 512 / 1024 px（iconset の @1x / @2x スロットを埋める） |
+| 中間生成物 | `.build/AppIcon.raw/icon_<size>x<size>.png`（7サイズ） |
+| iconset | `.build/AppIcon.iconset/`（標準名の10スロット） |
+| バンドル成果物 | `Contents/Resources/AppIcon.icns` |
+| バンドル参照 | `Info.plist` の `CFBundleIconFile = AppIcon` |
+| 失敗時の扱い | 描画・解像度検証・`iconutil` のいずれかが失敗したら `.app` を作らず非ゼロ終了する |
+
+- 原画は `Sources/make-icon/` のコードを正とし、生成済みの `.icns` はコミットしない
