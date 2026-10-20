@@ -104,7 +104,25 @@ public struct ThumbnailGridLayout {
     /// セル幅は利用可能な幅を超えない（横スクロールを出さない: FR-015）
     public static func columns(availableWidth: Double, thumbnailSize: Double, spacing: Double) -> (count: Int, cellWidth: Double)
 }
+
+public struct ThumbnailScroll {
+    /// フォーカス項目全体が見える最小の縦スクロール原点を返す（FR-017）。
+    /// 既に見えていれば現在の可視原点を返す。0...(contentHeight - visibleHeight) にクランプし、
+    /// ビューポートより高い項目は上端を合わせる。横方向は扱わない
+    public static func offsetY(
+        itemMinY: Double,
+        itemMaxY: Double,
+        visibleMinY: Double,
+        visibleHeight: Double,
+        contentHeight: Double
+    ) -> Double
+}
 ```
+
+- `ThumbnailModeView` はレイアウト済みの `layoutAttributesForItem(at:)` のフレームと
+  `scrollView.contentView.bounds` をこの関数へ渡し、結果をクリップビューの原点に適用する。
+  UI は選択や移動量を自前で判断しない
+- 不正な寸法（非有限値、負の高さ、可視高 0 など）では現在の原点を返し、クラッシュしない
 
 ## ファイル操作
 

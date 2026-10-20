@@ -584,6 +584,70 @@ quickstart.md の手動シナリオで検証する。
 - [X] T089 [P] [US1] `README.md` の「画像の縦横比を保ったフィット表示（小さい画像は原寸を超えて拡大しない）」を、
   ペインとフルスクリーンに収まる最大サイズまで拡大する記述に直す
 
+## Phase 12: サムネイル形式のキーボード追従スクロール（FR-017 改定、US1）
+
+**Purpose**: サムネイル形式で矢印キーによりフォーカスをビューポート外へ移したとき、フォーカス項目全体が
+見える位置まで必要最小限のスクロールで追従させる（[plan.md](./plan.md) の「変更点」、
+[research.md](./research.md) R15）。リスト形式は OS 標準の追従で既に動作するため変更しない。
+
+**Independent Test**: `huge/` をサムネイル形式で開き、↓ キーを押し続けてフォーカスがビューポートの下端を
+越えても、フォーカス項目全体が見えるようスクロールが追従すること。⇧+↓ では移動先のフォーカス項目に追従し、
+↑ では上端でも同様に動くこと。サムネイルサイズ変更だけでは追従せず、リスト形式の挙動が変わらないことを
+確認する（[quickstart.md](./quickstart.md)「サムネイル形式のキーボード追従スクロール（FR-017）」）。
+
+- [ ] T090 [P] [US1] `Sources/MediaViewerCore/Layout/ThumbnailScroll.swift` を新規作成し、
+  `ThumbnailScroll.offsetY(itemMinY:itemMaxY:visibleMinY:visibleHeight:contentHeight:)` を実装する
+  （契約は [contracts/core-api.md](./contracts/core-api.md) の `ThumbnailScroll`）:
+  - 項目全体が見えている場合（`itemMinY >= visibleMinY` かつ
+    `itemMaxY <= visibleMinY + visibleHeight`）は `visibleMinY` を返し、スクロールしない
+  - 項目が上側にはみ出している場合は `itemMinY`、下側にはみ出している場合は
+    `itemMaxY - visibleHeight` を目標値にする
+  - 目標値は `0...max(0, contentHeight - visibleHeight)` にクランプする
+  - 項目がビューポートより高い場合は項目の上端（`itemMinY`）を可視領域の上端に合わせる
+  - 非有限値、負の高さ、`visibleHeight <= 0` など不正な寸法では `visibleMinY` を返す（クラッシュしない）
+  - 横方向の値は扱わない。`import AppKit` をしない（Core の制約）
+- [ ] T091 [P] [US1] `Tests/MediaViewerCoreTests/ThumbnailScrollTests.swift` を新規作成し、
+  「画面外の項目へ移動したときの計算」を検証する（T090 に依存。キー入力からスクロール実行までの
+  UI 配線は自動テストの対象外とし、T093 の手動再現で担保する）:
+  - 不具合の再現: 可視 0〜100、項目 120〜220 のとき 120 を返す（`visibleMinY` のままにしない）
+  - 上方向: 可視 40〜140、項目 30〜80 のとき 30 を返す
+  - 部分的に見えている下側: 可視 0〜100、項目 80〜130 のとき 30 を返す
+  - 部分的に見えている上側: 可視 40〜140、項目 20〜60 のとき 20 を返す
+  - 既に見えている: 可視 0〜100、項目 30〜80 のとき 0 を返す
+  - 末尾クランプ: コンテンツ高 200、可視高 100、項目 190〜220 のとき 100 を返す
+  - ビューポートより高い項目: コンテンツ高 400、可視 0〜100、項目 10〜310 のとき 10 を返す
+  - 非有限値・ゼロ高・負の高さでは `visibleMinY` を返し、クラッシュしない
+- [ ] T092 [US1] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` に、フォーカス項目を表示する
+  共通処理を実装する（T090 に依存）:
+  - `layoutSubtreeIfNeeded()` の後で `collectionView.layoutAttributesForItem(at:)` のフレームを取得し、
+    `scrollView.contentView.bounds` と `flowLayout.collectionViewContentSize.height` を
+    `ThumbnailScroll.offsetY(...)` に渡す
+  - 返った縦原点が現在と異なる場合、クリップビューをアニメーションなしでスクロールし、
+    `reflectScrolledClipView` でスクロールバーを更新する。横原点は 0 のままにする（FR-015）
+  - `scrollToFocused()`、`handleArrowKey(_:modifiers:)` の移動後（Shift+矢印を含む）、
+    `beginRenameFromKeyboard()` の項目取得前から共通処理を呼ぶ
+  - 既存の `collectionView.scrollToItems(at:scrollPosition:)` を主経路から外し、`scrollToFocused()`、
+    `handleArrowKey`、`beginRenameFromKeyboard` の3か所を共通処理に置き換える（`scrollToItems` は
+    レイアウト属性も推定も不能な場合の最終フォールバックにのみ残す）
+  - レイアウト属性が取得できない場合は、`ThumbnailGridLayout.columns(...)` と
+    `flowLayout.collectionViewContentSize` から対象行の Y 範囲を推定し、同じ計算を適用する。
+    それもできない場合のみ `collectionView.scrollToItems(at:scrollPosition: .nearestVerticalEdge)` を
+    最終フォールバックにし、無言で何もしない経路を残さない。サムネイルサイズ・ペイン幅・
+    ウィンドウサイズの変更時には呼ばない
+  - `Sources/MediaViewerApp/FileList/ListModeView.swift` は変更しない
+- [ ] T093 [US1] 自動テストと手動確認を行う（T091・T092 に依存）:
+  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す
+  - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と quickstart の確認を依頼する。
+    依頼時は実行コマンドと確認ポイントを具体的に示す
+  - `specs/001-three-pane-media-viewer/quickstart.md` の「サムネイル形式のキーボード追従スクロール（FR-017）」を
+    実施し、↓・↑・⇧+↓ でフォーカス項目全体が見えること、横スクロールが出ないこと、
+    サイズ変更だけでは追従しないこと、リスト形式が従来どおりであることを確認する
+  - 修正前の状態ではフォーカスがビューポート外に残ることを再現し、修正後は追従することを確認する。
+    再現手順と結果（実行日、OS、確認した項目、合否）を
+    `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+  - サムネイルの再読み込み直後など、セルのレイアウト属性がまだ生成されていない状態でも
+    追従すること（フォールバック経路の確認）
+
 ---
 
 ## Dependencies & Execution Order
@@ -603,6 +667,8 @@ quickstart.md の手動シナリオで検証する。
   Phase 10 は配布準備として Phase 9 の後に置く（タスク ID の順序を保つため、Phase 9 内へは移動しない）
 - **プレビューの拡大フィット (Phase 11)**: US1 の T028・T033 を置き換える追加作業。T086 → T087 → T088 の順に進め、
   T089 は独立して進められる。T088 は T086・T087 と `scripts/make-app.sh` に依存する
+- **サムネイルのキーボード追従スクロール (Phase 12)**: FR-017 の追加作業。T090 の後に T091・T092 を並行でき、
+  T093 は両方に依存する。T092 は US3 の `ThumbnailModeView` を変更するため、US3 の完了後に着手する
 
 ### User Story Dependencies
 
@@ -629,6 +695,8 @@ quickstart.md の手動シナリオで検証する。
   T082 は T081 のターゲット追加後にビルド確認する
 - プレビューの拡大フィット: T086・T089 はファイルが重ならないため並行できる。T087 は T086 の実装に依存し、
   T088 は T087 に依存する
+- サムネイルのキーボード追従スクロール: T091（テスト）と T092（UI）はファイルが重ならないため、
+  T090 の完了後に並行できる。T093 は T091・T092 に依存する
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -672,6 +740,7 @@ Task: "T033 FitCalculatorTests"
 7. Polish → 外部変更の反映、性能計測、a11y、全シナリオの検証
 8. アプリアイコン → `.app` に固有アイコンを同梱（FR-043〜045、SC-011）
 9. プレビューの拡大フィット → 小さい画像もペインとフルスクリーンに合わせて拡大（FR-028 改定）
+10. サムネイルのキーボード追従スクロール → 矢印キーで一覧を辿るときもフォーカス項目が見え続ける（FR-017 改定）
 
 ---
 
@@ -686,4 +755,7 @@ Task: "T033 FitCalculatorTests"
 - FR-028 の改定（2026-10-20）により、完了済みの T028・T033 の「原寸を超えて拡大しない」は
   Phase 11 の T086・T087 が置き換える。履歴として元の記述は残す
 - 小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（計画書「変更点」）
+- FR-017 の改定（2026-10-20）により、サムネイル形式の矢印移動ではフォーカス項目全体が見える最小限の
+  スクロールを行う。対象はサムネイル形式のみで、リスト形式は OS 標準の追従を維持する。
+  サムネイルサイズ・ペイン幅・ウィンドウサイズの変更では追従しない（spec Clarifications、R15）
 - Commit after each task or logical group
