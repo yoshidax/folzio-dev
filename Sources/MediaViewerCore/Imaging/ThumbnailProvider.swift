@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 import QuickLookThumbnailing
 
 public protocol ThumbnailProviding: Sendable {
@@ -27,19 +28,35 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
         }
     }
 
+    /// Sendable でない QuickLook の要求を取り消しの closure に持たせるための入れ物
+    private struct SendableBox<Value>: @unchecked Sendable {
+        let value: Value
+
+        init(_ value: Value) {
+            self.value = value
+        }
+    }
+
     private struct InFlightRequest {
         let url: URL
         let pixelSize: Int
-        let request: QLThumbnailGenerator.Request
+        /// QuickLook の要求の取り消し、または zip の中の取得タスクの取り消し
+        let cancel: @Sendable () -> Void
     }
 
+    /// zip の中の取得を同時に走らせる件数（research.md R24）
+    static let maxConcurrentArchiveReads = 4
+
     private let generator: QLThumbnailGenerator
+    private let archiveReader: (any ArchiveReading)?
+    private let archiveLimiter = ConcurrencyLimiter(limit: ThumbnailProvider.maxConcurrentArchiveReads)
     private let cache = NSCache<NSString, CachedEntry>()
     private let lock = NSLock()
     private var inFlight: [UUID: InFlightRequest] = [:]
 
-    public init() {
+    public init(archiveReader: (any ArchiveReading)? = nil) {
         generator = QLThumbnailGenerator.shared
+        self.archiveReader = archiveReader
         cache.totalCostLimit = MemoryLimits.thumbnailCacheBytes
     }
 
@@ -49,6 +66,10 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
 
         if let cached = cache.object(forKey: key) {
             return cached.image
+        }
+
+        if let location = ArchiveURL.parse(url) {
+            return await archiveThumbnail(for: url, path: location.path, pixelSize: pixelSize, key: key)
         }
 
         let request = QLThumbnailGenerator.Request(
@@ -62,7 +83,7 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
             inFlight[identifier] = InFlightRequest(
                 url: url,
                 pixelSize: pixelSize,
-                request: request
+                cancel: { [box = SendableBox((generator, request))] in box.value.0.cancel(box.value.1) }
             )
         }
         defer {
@@ -84,22 +105,127 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
 
     public func cancel(for url: URL, pointSize: Double, scale: Double) {
         let pixelSize = Self.pixelSize(forPointSize: pointSize, scale: scale)
-        let requests: [QLThumbnailGenerator.Request] = lock.withLock {
+        let cancellations: [@Sendable () -> Void] = lock.withLock {
             let matches = inFlight.filter {
                 $0.value.url == url && $0.value.pixelSize == pixelSize
             }
             for identifier in matches.keys {
                 inFlight[identifier] = nil
             }
-            return matches.values.map(\.request)
+            return matches.values.map(\.cancel)
         }
 
-        for request in requests {
-            generator.cancel(request)
+        for cancel in cancellations {
+            cancel()
         }
+    }
+
+    /// zip の中の画像。QuickLook は使わず、`Data` から ImageIO で縮小画像を作る。動画・暗号化・非対応方式・失敗では nil
+    private func archiveThumbnail(for url: URL, path: String, pixelSize: Int, key: NSString) async -> CGImage? {
+        guard let archiveReader,
+              let kind = MediaKind(fileExtension: (path as NSString).pathExtension),
+              !kind.isVideo
+        else { return nil }
+
+        let limiter = archiveLimiter
+        let task = Task.detached(priority: .utility) { () -> CGImage? in
+            guard await limiter.acquire() else { return nil }
+            let image = await Self.makeArchiveThumbnail(url: url, pixelSize: pixelSize, reader: archiveReader)
+            await limiter.release()
+            return image
+        }
+
+        let identifier = UUID()
+        lock.withLock {
+            inFlight[identifier] = InFlightRequest(
+                url: url,
+                pixelSize: pixelSize,
+                cancel: { task.cancel() }
+            )
+        }
+        defer {
+            lock.withLock {
+                inFlight[identifier] = nil
+            }
+        }
+
+        let image = await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
+        guard let image, !task.isCancelled else { return nil }
+        cache.setObject(CachedEntry(image: image), forKey: key, cost: image.width * image.height * 4)
+        return image
+    }
+
+    private static func makeArchiveThumbnail(
+        url: URL,
+        pixelSize: Int,
+        reader: any ArchiveReading
+    ) async -> CGImage? {
+        guard !Task.isCancelled,
+              let data = try? await reader.data(for: url, limit: MemoryLimits.archiveImageBytes),
+              !Task.isCancelled,
+              let source = CGImageSourceCreateWithData(data as CFData, nil)
+        else { return nil }
+
+        let options: [CFString: Any] = [
+            kCGImageSourceThumbnailMaxPixelSize: pixelSize,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceShouldCacheImmediately: true,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 
     private static func cacheKey(for url: URL, pixelSize: Int) -> NSString {
         "\(url.absoluteString)#\(pixelSize)" as NSString
+    }
+}
+
+/// 同時に進める件数を制限する簡単なセマフォ。待っている間に取り消されたら `acquire()` は false を返す
+private actor ConcurrencyLimiter {
+    private let limit: Int
+    private var running = 0
+    private var waiters: [(id: UUID, continuation: CheckedContinuation<Bool, Never>)] = []
+
+    init(limit: Int) {
+        self.limit = limit
+    }
+
+    /// true なら枠を得た。呼び出し側は終わったら `release()` を呼ぶ。false なら枠を得ていない
+    func acquire() async -> Bool {
+        if Task.isCancelled { return false }
+        if running < limit {
+            running += 1
+            return true
+        }
+        let id = UUID()
+        let granted = await withTaskCancellationHandler {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+                waiters.append((id, continuation))
+            }
+        } onCancel: {
+            Task { await self.cancelWaiter(id) }
+        }
+        if granted && Task.isCancelled {
+            release()
+            return false
+        }
+        return granted
+    }
+
+    func release() {
+        if waiters.isEmpty {
+            running -= 1
+        } else {
+            waiters.removeFirst().continuation.resume(returning: true)
+        }
+    }
+
+    private func cancelWaiter(_ id: UUID) {
+        guard let index = waiters.firstIndex(where: { $0.id == id }) else { return }
+        waiters.remove(at: index).continuation.resume(returning: false)
     }
 }

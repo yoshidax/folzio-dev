@@ -21,22 +21,35 @@ enum IconCatalog {
     }
 
     static func fallbackIcon(for kind: MediaKind) -> NSImage? {
+        listItemIcon(for: .media(kind), pointSize: 16)
+    }
+
+    static func listItemIcon(for kind: ListItemKind, pointSize: CGFloat) -> NSImage? {
         let name: String
         switch kind {
-        case .jpeg:
-            name = "photo"
-        case .png:
-            name = "photo.on.rectangle"
-        case .gif:
-            name = "photo.stack"
-        case .webp:
-            name = "photo.circle"
-        case .mp4:
-            name = "film"
-        case .mov:
-            name = "video"
+        case .media(let mediaKind):
+            switch mediaKind {
+            case .jpeg:
+                name = "photo"
+            case .png:
+                name = "photo.on.rectangle"
+            case .gif:
+                name = "photo.stack"
+            case .webp:
+                name = "photo.circle"
+            case .mp4:
+                name = "film"
+            case .mov:
+                name = "video"
+            }
+        case .archive:
+            name = "doc.zipper"
+        case .directory:
+            name = "folder"
+        case .parent:
+            name = "arrowshape.turn.up.left"
         }
-        return symbol(named: name, pointSize: 16)
+        return symbol(named: name, pointSize: pointSize)
     }
 
     private static func symbol(named name: String, pointSize: CGFloat) -> NSImage? {
