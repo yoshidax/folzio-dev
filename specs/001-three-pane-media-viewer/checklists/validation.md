@@ -141,6 +141,38 @@ open .build/MediaViewer.app
 | `huge` での切り替え時の表示停止（基準 100ms 未満） | PASS | GUI でユーザー確認（quickstart 11、目視で停止なし）。画面収録・Instruments による計測値は未取得 |
 | 回帰（⇧⌘T、⌘1 / ⌘2、⌘+ / ⌘-、⌃⌘F / Esc） | PASS | GUI でユーザー確認 |
 
+## お気に入り（FR-061〜067）
+
+2026-10-20 に macOS 26.6.2 で `scripts/make-app.sh` により `.build/MediaViewer.app` を生成し、GUI で確認した。
+
+| 確認項目 | 結果 | 根拠 |
+|----------|------|------|
+| 自動テスト（`swift test`） | PASS | Core 168 テスト、性能 8 テスト成功。`FavoriteFoldersTests`・`FavoriteCommandsTests`・`FavoriteProbeTests`・`SettingsStoreTests` の favorites のケースを含む。並列ビルド中の1回だけ「huge(10,000) の列挙と並べ替えが 1 秒以内」が 5.1 秒で失敗したが、負荷が下がった後の再実行ではすべて成功した |
+| 外部通信の不在（`scripts/check-no-network.sh`） | PASS | `no network API references in Sources` |
+| 起動時に最上部へ「お気に入り」（スター・開閉の三角・折りたたみ）が出る | PASS | GUI でユーザー確認（quickstart 1、FR-061） |
+| 右クリックと ⌃⌘T による登録、項目に三角がない | PASS | GUI でユーザー確認（quickstart 2・3、FR-062・063）。⌃⌘T はアプリに届いた |
+| 項目の選択で一覧が切り替わり、実際の階層は動かない | PASS | GUI でユーザー確認（quickstart 4、FR-063） |
+| ⇧⌘F で見出しを選び、一覧・プレビュー・再生中の動画は変わらない | PASS | GUI でユーザー確認（quickstart 5・6、FR-065）。⇧⌘F はアプリに届いた |
+| 右クリックメニュー（項目は削除だけ、見出しは出ない）と、確認モーダル付きの削除（右クリック・⌘⌫） | PASS | GUI でユーザー確認（quickstart 7〜11、FR-064）。実際のフォルダはゴミ箱に入らない |
+| メニューの項目名の切り替え（「お気に入りから削除」⇄「ゴミ箱に入れる」） | PASS | GUI でユーザー確認（quickstart 9・18） |
+| 再起動後の復元（登録順） | PASS | GUI でユーザー確認（quickstart 12、FR-066） |
+| 見つからない項目の淡色表示と「フォルダが見つかりません」、戻すと通常表示 | PASS | GUI でユーザー確認（quickstart 13〜16、FR-067） |
+| 設定ウインドウの文言が切れない | PASS | GUI でユーザー確認 |
+| 存在の確認中のツリーの停止（基準 100ms 未満） | PASS | ユーザーの判断で目視確認とした。画面収録・Instruments による計測値は未取得 |
+| 回帰（右クリックした行への「ここにペースト」「Finder に表示」、ドロップ、⌃⌘F / Esc、ファイルリストの ⌘Delete） | PASS | GUI でユーザー確認。ファイルリストの ⌘Delete は下記の不具合を修正した後に確認した |
+
+### 検証中に見つけた不具合（Phase 6 から存在）
+
+- 症状: ファイルリストの「ゴミ箱に入れる」（⌘Delete・右クリック）で、確認モーダルの「実行」を押してもゴミ箱に入らず、エラーも出ない。
+  名前の変更も同じ原因で反映されなかった
+- 原因: `FileOperationCoordinator` は `trash(_:)`・`rename(_:to:)` で `resolution: .abort`（同名があれば上書きしない）を渡すが、
+  `FileOperationService.execute(_:resolution:)` が先頭で `.abort` のとき空の結果（成功 0・失敗 0）を返していた。既存テストはゴミ箱・
+  名前の変更を `.replace` で呼んでいたため検出できなかった
+- 修正: `execute` の早期 return を削除し、`.abort` は内側の処理（衝突した項目だけ中止）に任せた。再現テスト 4 件
+  （ゴミ箱・名前の変更の同名なし／あり・コピーの衝突、すべて `.abort`）を追加し、修正前に失敗・修正後に成功することを確認した。
+  不具合の挙動を固定していた `abortsWithoutChanges` は置き換えた
+- 確認: 修正後の `.app` で、ゴミ箱（⌘Delete・右クリック）・名前の変更・キャンセルをユーザーが確認した
+
 ## 未実施の検証
 
 - T079: Accessibility Inspector によるラベル確認

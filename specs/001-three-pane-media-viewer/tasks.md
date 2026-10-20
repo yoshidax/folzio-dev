@@ -1558,7 +1558,7 @@ quickstart.md の手動シナリオで検証する。
 
 ### Verification for User Story 1
 
-- [ ] T161 [US1] 自動テストと手動確認を行う（T145〜T160 に依存）:
+- [X] T161 [US1] 自動テストと手動確認を行う（T145〜T160 に依存）:
   - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す。`swift test` に含まれる `MediaViewerPerformanceTests` が
     quickstart.md「性能の検証」の基準内であることを確かめ、主な計測値を記録する（憲章 原則 II）
   - 存在の確認がツリーの操作を止めないことを確かめる: お気に入りを 20 件以上登録した状態で、アプリを前面に戻した直後
