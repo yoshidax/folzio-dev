@@ -49,6 +49,8 @@ final class DirectoryTreeViewController: NSViewController {
     private var volumeTask: Task<Void, Never>?
     private var revealTask: Task<Void, Never>?
     private var eventTask: Task<Void, Never>?
+    private var favoriteProbeTask: Task<Void, Never>?
+    private var activationObserver: NSObjectProtocol?
     private var didReveal = false
     private var isRestoringSelection = false
 
@@ -272,6 +274,7 @@ final class DirectoryTreeViewController: NSViewController {
         rebuildFavoriteEntries()
         reloadFavorites()
         updateWatchSet()
+        refreshFavoriteAvailability()
     }
 
     /// 登録だけを取り除き、実際のフォルダには触れない（FR-064）
@@ -388,6 +391,7 @@ final class DirectoryTreeViewController: NSViewController {
         rebuildFavoriteEntries()
         outlineView.reloadData()
         startProbes(for: roots, key: .roots)
+        refreshFavoriteAvailability()
 
         volumeTask = Task { [weak self] in
             guard let self else { return }
@@ -403,6 +407,18 @@ final class DirectoryTreeViewController: NSViewController {
                 await self.reloadExpandedNodes(in: changed)
                 self.recheckCollapsedNodes(in: changed)
                 self.updateWatchSet()
+                self.refreshFavoriteAvailabilityIfNeeded(in: changed)
+            }
+        }
+
+        // ツリーはアプリの終了まで生きるため、volumeTask・eventTask と同じく解除しない
+        activationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.refreshFavoriteAvailability()
             }
         }
 
@@ -435,9 +451,73 @@ final class DirectoryTreeViewController: NSViewController {
             }
             return node
         }
+        rebuildFavoriteEntries()
+
+        // ボリュームの増減でも見出しの展開状態と、お気に入りの行の選択を保つ（FR-061）
+        let headerWasExpanded = outlineView.isItemExpanded(favoritesHeader)
+        let selected = selectedItem
+        let keepsFavoriteSelection = selected is FavoritesHeader || selected is FavoriteEntry
+        isRestoringSelection = keepsFavoriteSelection
         outlineView.reloadData()
+        if headerWasExpanded {
+            outlineView.expandItem(favoritesHeader)
+        }
+        if keepsFavoriteSelection, let selected {
+            let row = outlineView.row(forItem: selected)
+            if row >= 0 {
+                outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+            }
+        }
+        isRestoringSelection = false
+
         startProbes(for: roots, key: .roots)
         updateWatchSet()
+        refreshFavoriteAvailability()
+    }
+
+    /// 登録した場所にフォルダがあるかを確かめ、変わった行だけ描き直す（FR-067）。stat は FavoriteProbe のタスク内で行う
+    private func refreshFavoriteAvailability() {
+        favoriteProbeTask?.cancel()
+        favoriteProbeTask = nil
+        let urls = favoriteEntries.map(\.url)
+        guard !urls.isEmpty else { return }
+
+        favoriteProbeTask = Task { [weak self] in
+            for await result in FavoriteProbe.results(for: urls) {
+                guard let self, !Task.isCancelled else { return }
+                self.applyFavoriteProbe(result)
+            }
+        }
+    }
+
+    private func applyFavoriteProbe(_ result: FavoriteProbeResult) {
+        let key = result.url.standardizedFileURL.path
+        let availability: FavoriteAvailability = result.exists ? .available : .missing
+        for entry in favoriteEntries
+        where entry.url.standardizedFileURL.path == key && entry.availability != availability {
+            entry.availability = availability
+            if outlineView.row(forItem: entry) >= 0 {
+                outlineView.reloadItem(entry)
+            }
+        }
+    }
+
+    /// 変更のあったフォルダに、登録したフォルダの親が含まれるときだけ確かめ直す
+    private func refreshFavoriteAvailabilityIfNeeded(in changed: Set<URL>) {
+        let changedPaths = Set(changed.map(\.standardizedFileURL.path))
+        let affected = favoriteParentFolders().contains { changedPaths.contains($0.path) }
+        if affected {
+            refreshFavoriteAvailability()
+        }
+    }
+
+    /// 登録した各フォルダの親。`/` の登録は親がないため除く
+    private func favoriteParentFolders() -> [URL] {
+        favorites.urls.compactMap { url in
+            let standardized = url.standardizedFileURL
+            guard standardized.path != "/" else { return nil }
+            return standardized.deletingLastPathComponent().standardizedFileURL
+        }
     }
 
     private func reveal(_ target: URL) async {
@@ -588,6 +668,8 @@ final class DirectoryTreeViewController: NSViewController {
         for node in displayedNodes() {
             folders.insert(node.url.standardizedFileURL)
         }
+        // お気に入りのフォルダの移動・削除を親フォルダの変更として受け取る（FR-067）
+        folders.formUnion(favoriteParentFolders())
         watcher.watch(folders)
     }
 
@@ -864,6 +946,9 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
         updateWatchSet()
         let row = outlineView.selectedRow
         guard row >= 0, let role = role(for: outlineView.item(atRow: row)) else { return }
+        if case .favorite = role {
+            refreshFavoriteAvailability()
+        }
         // 見出しでは一覧を切り替えない（FR-065）。お気に入りの項目でも実際の階層は動かさない（FR-063）
         guard let url = FavoriteCommands.folderToShow(for: role) else { return }
         Task { [weak self] in
