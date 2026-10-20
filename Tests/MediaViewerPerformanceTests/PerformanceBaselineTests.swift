@@ -129,6 +129,31 @@ struct PerformanceBaselineTests {
         )
     }
 
+    @Test("10,000 件への種類フィルタの適用が 0.05 秒以内")
+    func mediaTypeFilterOnHugeFolderWithinBudget() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        try FixtureSets.huge(in: directory, count: 10_000)
+        let folder = directory.appendingPathComponent("huge", isDirectory: true)
+
+        let lister = DirectoryLister()
+        let files = try await lister.mediaFiles(in: folder)
+        let ordered = sorted(files, by: SortOrder())
+
+        let start = ContinuousClock.now
+        let images = MediaTypeFilter(imagesOnly: true).apply(to: ordered)
+        let videos = MediaTypeFilter(videosOnly: true).apply(to: ordered)
+        let elapsed = ContinuousClock.now - start
+
+        #expect(images.count == 10_000, "画像のみで 10,000 件 (実際: \(images.count))")
+        #expect(videos.isEmpty, "動画のみで 0 件 (実際: \(videos.count))")
+        #expect(
+            elapsed < .milliseconds(50),
+            "種類フィルタの適用は 0.05 秒以内 (実測: \(elapsed))"
+        )
+    }
+
     @Test("サブフォルダのない 10,000 ファイルのフォルダの hasSubfolders が 0.2 秒以内")
     func hasSubfoldersInLargeFolderWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
