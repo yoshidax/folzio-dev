@@ -265,6 +265,10 @@ final class FileListViewController: NSViewController {
         messageBandLabel.textColor = .secondaryLabelColor
         messageBandLabel.alignment = .center
         messageBandLabel.lineBreakMode = .byTruncatingTail
+        // ラベルの既定（hugging 251・圧縮抵抗 750）は NSSplitViewItem の holdingPriority（250）を上回り、
+        // ペイン幅をラベルの幅へ引き戻してしまう。帯の幅はペインに従わせ、長い文言は省略する
+        messageBandLabel.setContentHuggingPriority(.init(1), for: .horizontal)
+        messageBandLabel.setContentCompressionResistancePriority(.init(1), for: .horizontal)
         messageBand.addSubview(messageBandLabel)
         NSLayoutConstraint.activate([
             messageBandLabel.leadingAnchor.constraint(equalTo: messageBand.leadingAnchor, constant: 12),
