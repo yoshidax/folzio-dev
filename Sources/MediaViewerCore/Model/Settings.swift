@@ -8,6 +8,7 @@ public struct ViewSettings: Sendable, Equatable {
     public var displayMode: DisplayMode
     public var sortOrder: SortOrder
     public var lastFolder: URL?
+    public var showsToolbar: Bool
     private var storedThumbnailSize: Double
 
     public var thumbnailSize: Double {
@@ -19,12 +20,14 @@ public struct ViewSettings: Sendable, Equatable {
         displayMode: DisplayMode = .list,
         thumbnailSize: Double = defaultThumbnailSize,
         sortOrder: SortOrder = SortOrder(),
-        lastFolder: URL? = nil
+        lastFolder: URL? = nil,
+        showsToolbar: Bool = false
     ) {
         self.displayMode = displayMode
         self.storedThumbnailSize = Self.clampThumbnailSize(thumbnailSize)
         self.sortOrder = sortOrder
         self.lastFolder = lastFolder
+        self.showsToolbar = showsToolbar
     }
 
     public static func clampThumbnailSize(_ value: Double) -> Double {

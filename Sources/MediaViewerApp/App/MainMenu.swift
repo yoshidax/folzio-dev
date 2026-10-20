@@ -112,6 +112,15 @@ final class MainMenu {
         let viewMenu = NSMenu(title: "表示")
         viewMenuItem.submenu = viewMenu
 
+        let toolbarItem = NSMenuItem(
+            title: "ツールバーを表示",
+            action: #selector(MainWindowController.toggleMainToolbar(_:)),
+            keyEquivalent: "T"
+        )
+        toolbarItem.target = nil
+        viewMenu.addItem(toolbarItem)
+        viewMenu.addItem(.separator())
+
         let fullScreenItem = NSMenuItem(
             title: "フルスクリーン",
             action: #selector(MainSplitViewController.togglePreviewFullScreen),

@@ -23,6 +23,23 @@ final class FileListViewController: NSViewController {
     private weak var thumbnailMenuItem: NSMenuItem?
     private weak var listMenuItem: NSMenuItem?
 
+    var onViewStateChange: ((DisplayMode, Double) -> Void)?
+
+    var isToolbarShown = false {
+        didSet {
+            guard isToolbarShown != oldValue, isViewLoaded else { return }
+            updateModeVisibility()
+        }
+    }
+
+    var currentDisplayMode: DisplayMode {
+        displayMode
+    }
+
+    var currentThumbnailSize: Double {
+        thumbnailModeView.thumbnailSize
+    }
+
     init(
         model: BrowserModel,
         settings: SettingsStore,
@@ -279,10 +296,14 @@ final class FileListViewController: NSViewController {
             thumbnailModeView.needsLayout = true
         }
 
-        let showsThumbnailBar = displayMode == .thumbnails
+        let showsThumbnailBar = FileListChrome(
+            displayMode: displayMode,
+            toolbarShown: isToolbarShown
+        ).showsBottomSizeBar
         bottomBar.isHidden = !showsThumbnailBar
         bottomBarHeightConstraint?.constant = showsThumbnailBar ? 32 : 0
         updateViewMenuState()
+        onViewStateChange?(displayMode, thumbnailModeView.thumbnailSize)
     }
 
     private func installViewMenuItems() {
@@ -336,6 +357,14 @@ final class FileListViewController: NSViewController {
         listMenuItem?.state = displayMode == .list ? .on : .off
     }
 
+    func selectDisplayMode(_ mode: DisplayMode) {
+        setDisplayMode(mode)
+    }
+
+    func applyThumbnailSize(_ value: Double) {
+        setThumbnailSize(value, persist: true)
+    }
+
     private func setDisplayMode(_ mode: DisplayMode) {
         guard mode != displayMode else {
             if mode == .thumbnails {
@@ -376,6 +405,7 @@ final class FileListViewController: NSViewController {
         if abs(sizeSlider.doubleValue - clamped) > 0.01 {
             sizeSlider.doubleValue = clamped
         }
+        onViewStateChange?(displayMode, clamped)
         guard persist, previous != clamped else { return }
 
         var viewSettings = settings.viewSettings

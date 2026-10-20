@@ -13,6 +13,7 @@ struct SettingsStoreTests {
             #expect(view.thumbnailSize == 128)
             #expect(view.sortOrder == SortOrder(column: .name, ascending: true))
             #expect(view.lastFolder == nil)
+            #expect(!view.showsToolbar)
             #expect(store.playback.autoplay)
             #expect(store.playback.loop)
             #expect(store.confirmation.confirmBeforeFileOperations)
@@ -29,7 +30,8 @@ struct SettingsStoreTests {
                 displayMode: .thumbnails,
                 thumbnailSize: 256,
                 sortOrder: SortOrder(column: .creationDate, ascending: false),
-                lastFolder: folder
+                lastFolder: folder,
+                showsToolbar: true
             )
             store.playback = PlaybackOptions(autoplay: false, loop: false)
             store.confirmation = ConfirmationOptions(confirmBeforeFileOperations: false)
@@ -39,9 +41,40 @@ struct SettingsStoreTests {
             #expect(view.thumbnailSize == 256)
             #expect(view.sortOrder == SortOrder(column: .creationDate, ascending: false))
             #expect(view.lastFolder?.path == folder.path)
+            #expect(view.showsToolbar)
             #expect(!store.playback.autoplay)
             #expect(!store.playback.loop)
             #expect(!store.confirmation.confirmBeforeFileOperations)
+
+            var hidden = store.viewSettings
+            hidden.showsToolbar = false
+            store.viewSettings = hidden
+            #expect(!store.viewSettings.showsToolbar)
+        }
+    }
+
+    @Test("ツールバーの表示状態だけを変えても他の表示設定は変わらない")
+    func togglingToolbarKeepsOtherViewSettings() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+            let folder = URL(fileURLWithPath: "/tmp/example", isDirectory: true)
+            store.viewSettings = ViewSettings(
+                displayMode: .thumbnails,
+                thumbnailSize: 200,
+                sortOrder: SortOrder(column: .kind, ascending: false),
+                lastFolder: folder
+            )
+
+            var updated = store.viewSettings
+            updated.showsToolbar = true
+            store.viewSettings = updated
+
+            let view = store.viewSettings
+            #expect(view.showsToolbar)
+            #expect(view.displayMode == .thumbnails)
+            #expect(view.thumbnailSize == 200)
+            #expect(view.sortOrder == SortOrder(column: .kind, ascending: false))
+            #expect(view.lastFolder?.path == folder.path)
         }
     }
 
@@ -68,12 +101,14 @@ struct SettingsStoreTests {
             defaults.set("size", forKey: "view.sort.column")
             defaults.set("yes", forKey: "view.sort.ascending")
             defaults.set("no", forKey: "playback.autoplay")
+            defaults.set("yes", forKey: "view.showsToolbar")
 
             let view = store.viewSettings
             #expect(view.thumbnailSize == 128)
             #expect(view.displayMode == .list)
             #expect(view.sortOrder.column == .name)
             #expect(view.sortOrder.ascending)
+            #expect(!view.showsToolbar)
             #expect(store.playback.autoplay)
         }
     }

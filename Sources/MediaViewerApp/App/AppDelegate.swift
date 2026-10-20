@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         launchToListState = performanceSignposter.beginInterval("LaunchToList")
 
+        NSWindow.allowsAutomaticWindowTabbing = false
         MainMenu.install()
 
         let controller = MainWindowController()

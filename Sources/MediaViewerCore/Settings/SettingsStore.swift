@@ -7,6 +7,7 @@ public struct SettingsStore {
         static let sortColumn = "view.sort.column"
         static let sortAscending = "view.sort.ascending"
         static let lastFolderPath = "view.lastFolderPath"
+        static let showsToolbar = "view.showsToolbar"
         static let autoplay = "playback.autoplay"
         static let loop = "playback.loop"
         static let confirmBeforeExecuting = "fileOps.confirmBeforeExecuting"
@@ -29,12 +30,14 @@ public struct SettingsStore {
             let ascending = storedBool(forKey: Keys.sortAscending) ?? true
             let lastFolder = (defaults.object(forKey: Keys.lastFolderPath) as? String)
                 .flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
+            let showsToolbar = storedBool(forKey: Keys.showsToolbar) ?? false
 
             return ViewSettings(
                 displayMode: displayMode,
                 thumbnailSize: thumbnailSize,
                 sortOrder: SortOrder(column: column, ascending: ascending),
-                lastFolder: lastFolder
+                lastFolder: lastFolder,
+                showsToolbar: showsToolbar
             )
         }
         nonmutating set {
@@ -47,6 +50,7 @@ public struct SettingsStore {
             } else {
                 defaults.removeObject(forKey: Keys.lastFolderPath)
             }
+            defaults.set(newValue.showsToolbar, forKey: Keys.showsToolbar)
         }
     }
 

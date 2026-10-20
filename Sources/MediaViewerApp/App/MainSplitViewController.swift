@@ -51,7 +51,7 @@ private struct FullScreenKeyPress: Sendable {
 final class MainSplitViewController: NSSplitViewController {
     private let model: BrowserModel
     private let treeViewController: DirectoryTreeViewController
-    private let fileListViewController: FileListViewController
+    let fileListViewController: FileListViewController
     private let previewViewController: PreviewViewController
     private let fileOperationCoordinator: FileOperationCoordinator
     private var didObserveInitialListingChange = false
@@ -411,6 +411,13 @@ final class MainSplitViewController: NSSplitViewController {
 }
 
 extension MainSplitViewController: NSWindowDelegate {
+    func window(
+        _ window: NSWindow,
+        willUseFullScreenPresentationOptions proposedOptions: NSApplication.PresentationOptions = []
+    ) -> NSApplication.PresentationOptions {
+        proposedOptions.union([.autoHideToolbar, .autoHideMenuBar])
+    }
+
     func windowWillEnterFullScreen(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window === view.window else { return }
 
