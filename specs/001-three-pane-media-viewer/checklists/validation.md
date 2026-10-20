@@ -122,6 +122,25 @@ open .build/MediaViewer.app
 | 展開直後もツリーの上下移動が止まらず、`huge` に三角が付かない | PASS | GUI でユーザー確認（quickstart 6） |
 | 回帰（← / →、⌥→ / ⌥←、ドロップ、右クリックメニュー、前回フォルダの表示、行頭アイコン） | PASS | GUI でユーザー確認（quickstart 7） |
 
+## 画像・動画の種類フィルタ（FR-056〜060）
+
+2026-10-20 に macOS 26.6.2 で `scripts/make-app.sh` により `.build/MediaViewer.app` を生成し、GUI で確認した。
+
+| 確認項目 | 結果 | 根拠 |
+|----------|------|------|
+| 自動テスト（`swift test`） | PASS | Core 140 テスト、性能 8 テスト成功。`MediaTypeFilterTests`・`BrowserModelTests`・`BrowserModelVideoTests` の種類フィルタのケースを含む。負荷平均 70〜90 の間は既存の性能テストとサムネイル生成のテストが時間超過で失敗したが、負荷が下がった後の再実行ではすべて成功した |
+| 外部通信の不在（`scripts/check-no-network.sh`） | PASS | `no network API references in Sources` |
+| 10,000 件への種類フィルタの適用（基準 0.05 秒以内） | PASS | `PerformanceBaselineTests` が成功（テストは実測値を出力しないため、値は基準内とだけ記録する） |
+| ツールバーの並び（種類 → 表示形式 → サイズ）と、既定で両方オフ | PASS | GUI でユーザー確認（quickstart 1、FR-057） |
+| 画像のみ・動画のみ・両方オンの絞り込みと、ボタン・メニューのチェックの一致 | PASS | GUI でユーザー確認（quickstart 2・3、FR-056・058）。`selectAny` の押された状態は判別でき、R20 の代替案は不要だった |
+| ツールバー非表示での ⇧⌘I / ⇧⌘M | PASS | GUI でユーザー確認（quickstart 4）。キーはアプリに届いた |
+| 隠れた動画の停止と選択の整理、戻しても選択が戻らない | PASS | GUI でユーザー確認（quickstart 5・6、FR-059） |
+| 絞り込みで0件のときのメッセージと、元々空のフォルダのメッセージの区別 | PASS | GUI でユーザー確認（quickstart 7、FR-060） |
+| フォルダ移動後の保持と、フルスクリーン中の移動が表示中の一覧に限られる | PASS | GUI でユーザー確認（quickstart 8・9） |
+| 再起動で両方オフに戻る | PASS | GUI でユーザー確認（quickstart 10、FR-056） |
+| `huge` での切り替え時の表示停止（基準 100ms 未満） | PASS | GUI でユーザー確認（quickstart 11、目視で停止なし）。画面収録・Instruments による計測値は未取得 |
+| 回帰（⇧⌘T、⌘1 / ⌘2、⌘+ / ⌘-、⌃⌘F / Esc） | PASS | GUI でユーザー確認 |
+
 ## 未実施の検証
 
 - T079: Accessibility Inspector によるラベル確認
