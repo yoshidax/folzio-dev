@@ -183,7 +183,7 @@ final class MainSplitViewController: NSSplitViewController {
         switch model.listing.state {
         case .loading:
             return
-        case .loaded, .empty, .denied, .failed:
+        case .loaded, .empty, .noMatches, .denied, .failed:
             break
         }
 
