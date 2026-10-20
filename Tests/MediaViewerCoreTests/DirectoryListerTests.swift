@@ -124,6 +124,45 @@ struct DirectoryListerTests {
         }
     }
 
+    @Test("zip ファイルを kind == .archive で返し、zip という名前のディレクトリと隠し zip は返さない")
+    func listsZipFilesAsArchives() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let fileManager = FileManager.default
+        fileManager.createFile(atPath: root.appendingPathComponent("a.zip").path, contents: Data([0x50, 0x4B]))
+        fileManager.createFile(atPath: root.appendingPathComponent("B.ZIP").path, contents: Data([0x50, 0x4B]))
+        fileManager.createFile(atPath: root.appendingPathComponent(".hidden.zip").path, contents: Data([0x50, 0x4B]))
+        fileManager.createFile(atPath: root.appendingPathComponent("c.jpg").path, contents: Data())
+        try fileManager.createDirectory(
+            at: root.appendingPathComponent("x.zip", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+
+        let files = try await DirectoryLister().mediaFiles(in: root)
+
+        #expect(Set(files.map(\.name)) == ["a.zip", "B.ZIP", "c.jpg"])
+        for name in ["a.zip", "B.ZIP"] {
+            let file = try #require(files.first { $0.name == name })
+            #expect(file.kind == .archive)
+            #expect(!file.typeDescription.isEmpty)
+        }
+        #expect(files.first { $0.name == "c.jpg" }?.kind == .media(.jpeg))
+    }
+
+    @Test("subfolders と hasSubfolders は zip ファイルを数えない")
+    func subfolderQueriesIgnoreZipFiles() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        FileManager.default.createFile(atPath: root.appendingPathComponent("a.zip").path, contents: Data([0x50, 0x4B]))
+        FileManager.default.createFile(atPath: root.appendingPathComponent("B.ZIP").path, contents: Data([0x50, 0x4B]))
+
+        let lister = DirectoryLister()
+        #expect(try await lister.subfolders(of: root).isEmpty)
+        #expect(try await lister.hasSubfolders(in: root) == false)
+    }
+
     private func expectListingError<T>(
         _ expected: ListingError,
         _ body: () async throws -> T

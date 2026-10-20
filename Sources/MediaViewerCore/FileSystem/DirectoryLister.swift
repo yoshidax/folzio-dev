@@ -7,6 +7,7 @@ public enum ListingError: Error, Sendable, Equatable {
 }
 
 public protocol DirectoryListing: Sendable {
+    /// 直下の対応メディアファイルと zip ファイル（.zip、kind = .archive）を返す（隠しファイル・サブフォルダ・非対応形式は除く。FR-008・068）
     func mediaFiles(in folder: URL) async throws(ListingError) -> [MediaFile]
     func subfolders(of folder: URL) async throws(ListingError) -> [URL]
     func hasSubfolders(in folder: URL) async throws(ListingError) -> Bool
@@ -26,6 +27,8 @@ public struct DirectoryLister: DirectoryListing {
         .fileSizeKey,
         .localizedTypeDescriptionKey,
     ]
+
+    private static let archiveExtension = "zip"
 
     private static let folderKeys: Set<URLResourceKey> = [
         .isDirectoryKey,
@@ -60,6 +63,17 @@ public struct DirectoryLister: DirectoryListing {
             return urls.compactMap { url -> MediaFile? in
                 let values = try? url.resourceValues(forKeys: Self.fileKeys)
                 guard values?.isDirectory != true else { return nil }
+
+                if url.pathExtension.lowercased() == Self.archiveExtension {
+                    return MediaFile(
+                        url: url,
+                        name: url.lastPathComponent,
+                        kind: .archive,
+                        typeDescription: values?.localizedTypeDescription ?? "ZIP アーカイブ",
+                        creationDate: values?.creationDate,
+                        fileSize: Int64(values?.fileSize ?? 0)
+                    )
+                }
                 guard let kind = MediaKind(fileExtension: url.pathExtension) else { return nil }
 
                 return MediaFile(
