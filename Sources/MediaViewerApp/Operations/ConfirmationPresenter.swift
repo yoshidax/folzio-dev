@@ -13,14 +13,37 @@ final class ConfirmationPresenter {
         guard settings.confirmation.confirmBeforeFileOperations else {
             return true
         }
+        return await present(
+            messageText: messageText(for: operation.kind),
+            informativeText: informativeText(for: operation),
+            confirmTitle: "実行"
+        )
+    }
+
+    func confirmRemovingFavorite(named name: String) async -> Bool {
+        guard settings.confirmation.confirmBeforeFileOperations else {
+            return true
+        }
+        return await present(
+            messageText: "お気に入りから削除しますか？",
+            informativeText: "対象: \(name)\n実際のフォルダは変更されません",
+            confirmTitle: "削除"
+        )
+    }
+
+    private func present(
+        messageText: String,
+        informativeText: String,
+        confirmTitle: String
+    ) async -> Bool {
         guard let window = NSApp.keyWindow ?? NSApp.mainWindow else {
             return true
         }
 
         let alert = NSAlert()
-        alert.messageText = messageText(for: operation.kind)
-        alert.informativeText = informativeText(for: operation)
-        alert.addButton(withTitle: "実行")
+        alert.messageText = messageText
+        alert.informativeText = informativeText
+        alert.addButton(withTitle: confirmTitle)
         alert.addButton(withTitle: "キャンセル")
         alert.buttons[1].keyEquivalent = "\u{1b}"
         alert.showsSuppressionButton = true
