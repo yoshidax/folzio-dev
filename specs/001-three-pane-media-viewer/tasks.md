@@ -744,6 +744,131 @@ quickstart.md の手動シナリオで検証する。
 
 ---
 
+## Phase 14: ツリーのフォルダアイコン（FR-047 追加、US1）
+
+**Purpose**: ツリーの各フォルダ名の先頭にアイコンを付け、ホーム・マウント中のボリューム・通常フォルダを
+区別する（[spec.md](./spec.md) FR-047、[plan.md](./plan.md) の「変更点」、
+[research.md](./research.md) R17、[quickstart.md](./quickstart.md) US1 の 2）。
+
+**Independent Test**: ホームとマウント中のボリュームを含むツリーを表示し、3種類のアイコンが互いに
+判別できること。展開・折りたたみ・選択・ドラッグ&ドロップの操作が従来どおり動くこと（SC-013）。
+
+### Implementation for User Story 1
+
+- [X] T101 [P] [US1] `Sources/MediaViewerApp/Shared/IconCatalog.swift` を新規作成する:
+  - `import AppKit` と `import MediaViewerCore` のみを使い、外部素材・ネットワークを使わない
+  - `static func treeIcon(for kind: FolderNode.Kind) -> NSImage?` を実装する。割り当ては
+    `.home` → `house`、`.volume` → `externaldrive`、`.folder` → `folder`
+  - リスト形式のフォールバック用に `static func fallbackIcon(for kind: MediaKind) -> NSImage?` も用意する。
+    割り当ては `.jpeg` → `photo`、`.png` → `photo.on.rectangle`、`.gif` → `photo.stack`、
+    `.webp` → `photo.circle`、`.mp4` → `film`、`.mov` → `video`
+  - `NSImage.SymbolConfiguration` でツリーは 13pt、リストは 16pt に構成し、`isTemplate = true` にする。
+    アイコン自体は装飾なので a11y 要素にしない（`setAccessibilityElement(false)`）
+  - SF Symbol が取得できない場合は `nil` を返し、呼び出し側はアイコンなしでテキストだけを表示できる
+- [X] T102 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` の
+  `outlineView(_:viewFor:item:)` を、`imageView` + `textField` を持つ `NSTableCellView` に変更する
+  （T101 に依存）:
+  - 再利用セルにも毎回 `treeIcon(for:)` の結果を設定し、フォルダ種別が変わった行で古いアイコンを残さない
+  - アイコンの左余白は 2pt、アイコンは 13〜16pt、テキストはアイコンの右 6pt に置き、
+    `lineBreakMode = .byTruncatingMiddle` と中央揃えの既存挙動を維持する
+  - 展開・折りたたみの三角、選択、アクセス不可の `disabledControlTextColor` とツールチップ、
+    ドラッグ&ドロップ、コンテキストメニューは変更しない。展開状態でアイコンを変えない
+  - アイコンは装飾として a11y 要素から外し、フォルダ名の読み上げだけを残す
+
+### Verification for User Story 1
+
+- [X] T103 [US1] ツリーアイコンの手動確認を行う（T102 に依存）:
+  - `swift build` と `scripts/make-app.sh` を通し、ユーザーに `.build/MediaViewer.app` の起動と
+    GUI 確認を依頼する。依頼時は実行コマンドと確認ポイントを具体的に示す
+  - `quickstart.md`「US1」の 2 で、ホーム・マウント中のボリューム・通常フォルダの3種類の
+    ツリーアイコンが判別できること、展開・折りたたみ・選択が従来どおり動くことを確認する
+    （FR-047、SC-013）
+  - 結果（実行日、OS、確認項目、合否）を
+    `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+
+**Checkpoint**: US1 のツリーアイコンが独立して確認でき、既存のツリー操作がすべて従来どおり動く
+
+---
+
+## Phase 15: リスト形式の行頭アイコン（FR-048 追加、US3）
+
+**Purpose**: リスト形式の各行のファイル名の先頭に内容の縮小画像を表示し、生成中・失敗時は形式別の
+汎用アイコンにフォールバックする（[spec.md](./spec.md) FR-048、[plan.md](./plan.md) の「変更点」、
+[research.md](./research.md) R17、[data-model.md](./data-model.md) の `IconPresentation`）。
+
+**Independent Test**: `mixed/` と `broken/` をリスト形式で表示し、画像・動画の行頭に縮小画像が出ること、
+生成中・失敗時は形式別アイコンになること、10,000 ファイルの `huge/` でもスクロールと選択が
+アイコン生成を待たないこと（SC-012、quickstart.md US3 の 5〜7）。
+
+### Tests for User Story 3
+
+- [X] T104 [P] [US3] `Tests/MediaViewerCoreTests/ThumbnailProviderTests.swift` を更新し、
+  64px 段階の期待値を先に書く（T105 の前に失敗することを確認する）:
+  - 既存の `50pt × 1x` は 128 ではなく 64 になる
+  - `16pt × 1x` と `16pt × 2x` は 64、`64pt × 1x` は 64、`64.1pt × 1x` は 128
+  - `100pt × 2x` は 256、`300pt × 2x` と `1000pt × 1x` は 512 のまま
+  - 非有限値は 64 を返し、クラッシュしない
+  - URL + ピクセルサイズ単位のキャンセルが、同じ URL の別サイズを巻き込まないことを
+    検証できる範囲で追加する（難しければ T109 の手動確認で補う）
+
+### Implementation for User Story 3
+
+- [X] T105 [US3] `Sources/MediaViewerCore/Imaging/ThumbnailProvider.swift` を更新する（T104 に依存）:
+  - `sizeSteps` に 64 を追加し、`[64, 128, 256, 512]` にする。`pixelSize(forPointSize:scale:)` の
+    丸め規則とキャッシュキー（URL + px）は変えない
+  - `ThumbnailProviding.cancel(for:pointSize:scale:)` に合わせ、進行中要求を URL だけでなく
+    丸め後のピクセルサイズでも照合して取り消す。同じ URL の別サイズの要求を残す。
+    T047 で追加した URL だけの `cancel(for:)` を置き換える
+  - `ThumbnailModeView` と `ListModeView` の呼び出し側は T106・T107 で更新する
+- [X] T106 [US3] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` を
+  URL + サイズ単位のキャンセルへ移行する（T105 に依存）:
+  - `ThumbnailRequest` に要求時の `scale` を保持する
+  - `requestThumbnail(for:)` で表示サイズを変えたときと `cancelRequest(for:)` で、
+    `cancel(for:pointSize:scale:)` に保存済みの `pointSize` と `scale` を渡す。
+    T052・T047 の URL だけのキャンセル呼び出しを置き換える
+  - 64px のリストアイコン要求が同じ URL の 128px 以上のサムネイル要求を取り消さないようにする。
+    既存の表示・選択・スクロール・ズームの挙動は変えない
+- [X] T107 [US3] `Sources/MediaViewerApp/FileList/ListModeView.swift` に、名前列の行頭アイコンを実装する
+  （T101・T105 に依存）:
+  - イニシャライザに `provider: any ThumbnailProviding` を追加する。呼び出し側は T108 で更新する
+  - `name` 列のセルだけ `imageView` を持たせ、`imageScaling = .scaleProportionallyDown`、
+    16×16pt、左余白 2pt にする。テキストはアイコンの右 6pt に置き、中央揃え・
+    `.byTruncatingMiddle`・インライン編集の挙動を維持する
+  - 行の表示時にまず `IconCatalog.fallbackIcon(for: file.kind)` を設定する。その後
+    `provider.thumbnail(for: file.url, pointSize: 16, scale: window?.backingScaleFactor ?? 2)` を
+    非同期に要求し、取得できたら `NSImage(cgImage:size:)` で 16×16pt にして差し替える。
+    取得できなかった場合はフォールバックを残す
+  - セルは表示中の URL を保持し、取得完了時に同じ URL を表示している場合だけ画像を差し替える。
+    セルが別の行に再利用されたら、そのセルが要求した `pointSize` と `scale` を
+    `provider.cancel(for:pointSize:scale:)` に渡し、同じ URL の他サイズ要求を巻き込まない
+  - 他の列（作成日・種類）は従来のテキストのみとし、アイコンを付けない。行の高さは 20pt にする
+  - アイコンは装飾として a11y 要素から外し、ファイル名の読み上げ・選択・複数選択・
+    キーボード操作・並べ替え・名前変更の対象を変えない
+- [X] T108 [US3] `Sources/MediaViewerApp/FileList/FileListViewController.swift` で、
+  既存の `thumbnailProvider` を `ListModeView(model:provider:)` へ渡す（T107 に依存）。
+  表示形式の切替、フルスクリーン、ファイル操作、設定の永続化は変更しない
+
+### Verification for User Story 3
+
+- [X] T109 [US3] 自動テストと手動確認を行う（T103・T108 に依存）:
+  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す
+  - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。
+    依頼時は実行コマンドと確認ポイントを具体的に示す
+  - `quickstart.md`「US3」の 5〜7 で、画像と動画の行頭に縮小画像が出ること、`broken/` では
+    形式別アイコンになること、名前変更中もテキストがアイコンの右にあること、
+    `huge/` のスクロールと選択がアイコン生成を待たないことを確認する（FR-048、SC-012）
+  - `huge/` のスクロールを画面収録または Instruments で計測し、100ms 以上の停止が 0 回であること、
+    計測方法、最大停止時間を確認する。結果を `checklists/validation.md` に記録する（SC-012）
+  - リスト形式とサムネイル形式を切り替えても、リスト側の 64px アイコン取得のキャンセルが
+    サムネイル形式の 128px 以上の表示を欠けさせないことを確認する（FR-013 の回帰確認）
+  - 結果（実行日、OS、確認項目、合否）を
+    `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+
+**Checkpoint**: リスト形式の行頭アイコンが表示され、既存の閲覧・選択・スクロール性能と
+サムネイル形式の表示を維持する
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -766,6 +891,12 @@ quickstart.md の手動シナリオで検証する。
 - **フルスクリーン中の矢印移動 (Phase 13)**: FR-046 の追加作業。US5 と US3 の完了後に着手する。
   T094 → T095・T096 の順に進め、T097 は T094・T096 に、T098 は T097 に依存する。
   T099 はファイルが重ならないため T094 と並行できる。T100 は T095〜T099 に依存する
+- **ツリーのフォルダアイコン (Phase 14)**: FR-047 の追加作業。US1 の `DirectoryTreeViewController` に依存する。
+  T101 → T102 → T103 の順に進める。T103 で US1 単独の手動確認を行い、Phase 15 を待たない
+- **リスト形式の行頭アイコン (Phase 15)**: FR-048 の追加作業。US3 の `ThumbnailProvider`・
+  `ThumbnailModeView`・`ListModeView`・`FileListViewController` と、Phase 14 の T101（`IconCatalog`）に依存する。
+  T104（テスト）→ T105（64px 段階とサイズ単位キャンセル）→ T106（`ThumbnailModeView`）→
+  T107（`ListModeView`）→ T108（`FileListViewController`）の順に進め、T109 は T103・T108 に依存する
 
 ### User Story Dependencies
 
@@ -798,6 +929,10 @@ quickstart.md の手動シナリオで検証する。
   ファイルが重ならないため並行できる。T097（FileListViewController）は T096 に、T098（MainSplitViewController）は
   T097 に依存する。T099（動画シーク）は T094 とファイルが重ならないため最初から並行できる。
   T100 は T095〜T099 の完了後に行う
+- 行頭アイコン: T101（`IconCatalog`）の完了後、T102（ツリー）と T104（64px 段階のテスト）は
+  ファイルが重ならないため並行できる。T103（ツリー手動確認）は T102 の後に行う。T105 は T104 に、
+  T106 は T105 に、T107 は T101・T105 に、T108 は T107 に依存し、同じ
+  `ListModeView` / `ThumbnailModeView` の初期化・要求を共有するため並行しない。T109 は最後に行う
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -843,6 +978,7 @@ Task: "T033 FitCalculatorTests"
 9. プレビューの拡大フィット → 小さい画像もペインとフルスクリーンに合わせて拡大（FR-028 改定）
 10. サムネイルのキーボード追従スクロール → 矢印キーで一覧を辿るときもフォーカス項目が見え続ける（FR-017 改定）
 11. フルスクリーン中の矢印移動 → 全画面のまま前後のファイルへ移動でき、動画のシークは `<` / `>` で行える（FR-046）
+12. 行頭アイコン → ツリーでフォルダ種別が分かり、リスト形式で内容の縮小画像が見える（FR-047・048）
 
 ---
 
@@ -864,4 +1000,10 @@ Task: "T033 FitCalculatorTests"
   移動規則は `FocusNavigator` に集約し、表示形式ごとに二重実装しない。端では循環せず停止する。
   動画のフルスクリーンでは矢印をファイル移動に使い、シークは `<` / `>`（5 秒）で行う。
   Shift+矢印の範囲選択はフルスクリーンでは対象外（spec の Outstanding）とし、イベントを横取りしない
+- FR-047・048（2026-10-20）により、ツリーはホーム・ボリューム・通常フォルダを SF Symbols で区別し、
+  リスト形式は内容の縮小画像を 64px 段階で遅延取得する。取得中・失敗時は形式別の SF Symbol を残し、
+  a11y 要素にはしない。新しい設定・永続化・外部素材・外部依存を追加しない（research.md R17）
+- サムネイルのキャンセルは FR-048 の追加に伴い、T047・T052 の URL だけの `cancel(for:)` から
+  URL + 要求サイズ（`cancel(for:pointSize:scale:)`）へ置き換える。リストの 64px 要求が
+  サムネイル形式の 128px 以上の要求を巻き込まないようにする（T105・T106）
 - Commit after each task or logical group

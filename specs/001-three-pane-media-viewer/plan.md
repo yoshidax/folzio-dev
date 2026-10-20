@@ -1,6 +1,6 @@
 # Implementation Plan: 3ペイン型メディアビューア
 
-**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-20 (fullscreen arrow navigation, small-image upscale, icon addition, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-20 (fullscreen arrow navigation, small-image upscale, tree/list icons, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-three-pane-media-viewer/spec.md`
 
@@ -23,6 +23,10 @@ AVPlayerView を配置して Core の状態を描画するだけにする。デ�
 フルスクリーン中も矢印キーでファイルリストの選択を移動し、プレビューを追従させる（FR-046、R16）。
 移動規則は通常表示と共通の純粋計算に置き、リスト形式は上下、サムネイル形式は上下左右とする。
 動画のフルスクリーンでは矢印キーをファイル移動に使い、シークは `<` / `>` キーに割り当てる。
+ツリーのフォルダ名とリスト形式のファイル名の先頭にはアイコンを表示する（FR-047・048）。
+ツリーはホーム・マウント中のボリューム・通常フォルダを SF Symbols で区別し、リスト形式は
+`ThumbnailProviding` を小さなサイズで再利用して内容の縮小画像を出し、生成中・失敗時は
+形式別の SF Symbol にフォールバックする。
 
 ## Technical Context
 
@@ -60,6 +64,10 @@ QuickLookThumbnailing, UniformTypeIdentifiers, CoreServices[FSEvents], CoreGraph
 横スクロールは発生させない（FR-015・017）。サムネイルサイズやペイン幅の変更時は追従しない。
 フルスクリーン中の矢印移動では、折りたたみ前のサムネイル列数をスナップショットして使い、解除後に
 必要なら同じスクロール追従でフォーカス項目を表示する（FR-046）。新しい永続化状態は増やさない。
+ツリーとリストの行頭アイコンは表示時にだけ生成し、永続化しない。リストの縮小画像は可視行だけを
+対象に非同期で取得し、セル再利用時は同じ URL・同じ要求サイズの取得だけを取り消す
+（サムネイル形式の 128px 以上の要求を巻き込まない）。アイコン取得の完了を待たずにファイル名・
+選択・スクロールを操作できる（FR-048、SC-012）。
 
 **Scale/Scope**: 1ウィンドウ（3ペイン）+ 設定ウィンドウ + 確認・衝突ダイアログ。フォルダあたり最大で
 数万ファイルを想定。単一ユーザー
@@ -73,10 +81,10 @@ QuickLookThumbnailing, UniformTypeIdentifiers, CoreServices[FSEvents], CoreGraph
 | 原則 | 判定 | 根拠 |
 |------|------|------|
 | I. ローカル完結・プライバシー | ✅ 適合 | ネットワークを使う API も依存もない。サムネイルはメモリにのみ置き、ユーザーのフォルダにもディスクキャッシュにも書かない（R7）。アプリアイコンも外部素材を取得せず、コードから生成する（R14）。ファイル操作はすべてユーザーの明示的な操作が起点になる。確認を省略できるのは、削除が常にゴミ箱経由で取り消せるため（v1.1.0 の「確認または取り消し可能性」、FR-021・024）。取り消せない上書きは常に衝突ダイアログで確認する（FR-025） |
-| II. 体感パフォーマンス | ✅ 適合 | デコード・列挙・サムネイル生成・ファイル操作はすべてバックグラウンドで行う（R5・R7・R9・R10）。キャッシュの上限を明示した（R8）。基準値は `MediaViewerPerformanceTests` で計測する（quickstart）。小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（R5）。注: 憲章の基準「起動からファイル指定で開いた最初の画像の表示 1 秒以内」は、ファイルを指定して起動する経路を前提にしている。この経路は本機能の範囲外なので、代わりに SC-002（前回フォルダの一覧表示まで 2 秒）を計測する。ファイル指定起動を追加する機能で 1 秒基準を適用する。アイコン生成はビルド時のみで、起動時間に影響しない |
-| III. キーボードファースト & a11y | ✅ 適合 | 提供する全操作のキー割り当てを [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md) で網羅した。手動の拡大/縮小（ズーム）とパンは提供せず、フィットは画像選択時に自動で行うため、これらへのキー割り当ては存在しない（spec Assumptions）。AppKit 標準部品の a11y を使い、プレビューとサムネイルのセルにはファイル名のラベルを付ける。ダークモードは AppKit 標準の配色で追従し、「視差効果を減らす」設定が有効な間は、アニメーション画像を自動で再生しない。サムネイル形式でもキーボードだけで一覧を辿れるよう、フォーカス項目のスクロール追従を必須にする（FR-017）。フルスクリーン中も矢印キーで選択を移動でき（FR-046）、動画のシークは `<` / `>` に残すため、フルスクリーンでも主要操作をキーボードだけで完結できる |
-| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。フルスクリーンの移動規則は `FocusNavigator` として Core に置き、リスト形式・サムネイル形式・フルスクリーンの全経路で同じ関数を使う。境界（先頭・末尾・行頭・行末）と空リストのケースを `FocusNavigatorTests` で検証する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する |
-| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない。フルスクリーン移動（FR-046）は既存の選択モデルとレイアウト計算を再利用し、新しい設定・永続化状態・依存を追加しない |
+| II. 体感パフォーマンス | ✅ 適合 | デコード・列挙・サムネイル生成・ファイル操作はすべてバックグラウンドで行う（R5・R7・R9・R10）。キャッシュの上限を明示した（R8）。基準値は `MediaViewerPerformanceTests` で計測する（quickstart）。小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（R5）。リスト形式の行頭アイコンもサムネイル生成を可視行だけ遅延実行し、セル再利用時は同じ URL・サイズの要求だけを取り消すため、10,000 ファイルでも一覧表示を待たせない（R17）。注: 憲章の基準「起動からファイル指定で開いた最初の画像の表示 1 秒以内」は、ファイルを指定して起動する経路を前提にしている。この経路は本機能の範囲外なので、代わりに SC-002（前回フォルダの一覧表示まで 2 秒）を計測する。ファイル指定起動を追加する機能で 1 秒基準を適用する。アイコン生成はビルド時のみで、起動時間に影響しない |
+| III. キーボードファースト & a11y | ✅ 適合 | 提供する全操作のキー割り当てを [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md) で網羅した。手動の拡大/縮小（ズーム）とパンは提供せず、フィットは画像選択時に自動で行うため、これらへのキー割り当ては存在しない（spec Assumptions）。AppKit 標準部品の a11y を使い、プレビューとサムネイルのセルにはファイル名のラベルを付ける。行頭アイコンは装飾として a11y 要素から外し、フォルダ名・ファイル名と選択状態は従来どおり読み上げられる（FR-047・048）。ダークモードは AppKit 標準の配色で追従し、「視差効果を減らす」設定が有効な間は、アニメーション画像を自動で再生しない。サムネイル形式でもキーボードだけで一覧を辿れるよう、フォーカス項目のスクロール追従を必須にする（FR-017）。フルスクリーン中も矢印キーで選択を移動でき（FR-046）、動画のシークは `<` / `>` に残すため、フルスクリーンでも主要操作をキーボードだけで完結できる |
+| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。フルスクリーンの移動規則は `FocusNavigator` として Core に置き、リスト形式・サムネイル形式・フルスクリーンの全経路で同じ関数を使う。境界（先頭・末尾・行頭・行末）と空リストのケースを `FocusNavigatorTests` で検証する。行頭アイコンは小さな要求サイズの丸め（64px 段階）を `ThumbnailProviderTests` で検証し、表示とフォールバックは quickstart の手動確認で担保する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する |
+| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない。ツリーとリストの行頭アイコンは SF Symbols と既存のサムネイル経路を使い、新しい設定・永続化・外部素材を追加しない（R17）。フルスクリーン移動（FR-046）は既存の選択モデルとレイアウト計算を再利用し、新しい設定・永続化状態・依存を追加しない |
 
 **Phase 1 設計後の再評価**: data-model・contracts・quickstart を確認したが、新たな違反はない。
 FSEvents による監視（R9）は外部依存ではなく、OS 標準 API の利用にあたる。アイコン生成（R14）は
@@ -92,6 +100,12 @@ FR-046 のフルスクリーン移動（2026-10-20）は、折りたたみ前に
 および現在の選択インデックスだけから移動先を求める。新しい状態を永続化せず、依存も増やさない（原則 V）。
 移動規則は Core の純粋計算に集約し、UI はキーイベントの振り分けと `BrowserModel.select` の呼び出しだけを
 担う（原則 IV）。動画のシークは `<` / `>` に残すため、フルスクリーンでもキーボードだけで操作できる（原則 III）。
+FR-047・048 の行頭アイコン（2026-10-20）は、ツリーの `FolderNode.Kind` と `MediaKind` から
+SF Symbols を選ぶだけの UI 表現で、Core の判断ロジックを増やさない（原則 V）。リストの縮小画像は
+既存の `ThumbnailProviding` を 64px 段階で再利用し、可視行だけを非同期に取得する（原則 II）。
+キャンセルは URL と要求サイズの組で行い、リストの 64px 要求がサムネイル形式の 128px 以上の要求を
+取り消さない（FR-013 の回帰防止）。新しい永続化・設定・外部素材は増やさず、アイコンは装飾として
+a11y ツリーから外すため、ファイル名の読み上げを妨げない（原則 III）。
 
 ## Project Structure
 
@@ -130,6 +144,7 @@ Sources/
 ├── MediaViewerApp/                  # AppKit UI。Core の状態を描画するだけ
 │   ├── App/                         # main.swift, AppDelegate, MainMenu, MainWindowController,
 │   │                                #   MainSplitViewController（フルスクリーン切替を含む）
+│   ├── Shared/                      # IconCatalog（ツリー・リストの行頭アイコンの SF Symbol と寸法）
 │   ├── Tree/                        # DirectoryTreeViewController (NSOutlineView、ドロップ先)
 │   ├── FileList/                    # FileListViewController, ListModeView (NSTableView),
 │   │                                #   ThumbnailModeView (NSCollectionView), FileContextMenu
@@ -219,6 +234,39 @@ Xcode プロジェクトは持たず、CLI（`swift build` / `swift test` / `scr
   Shift+矢印による範囲選択はフルスクリーンでは対象外（spec の Outstanding）とし、イベントを横取りしない
 - `specs/001-three-pane-media-viewer/contracts/keyboard-and-menus.md`、
   `contracts/core-api.md`、`data-model.md`、`quickstart.md`、`research.md` を更新する
+
+## 変更点（2026-10-20: ツリーとリスト形式の行頭アイコン）
+
+- `Sources/MediaViewerApp/Shared/IconCatalog.swift`（新規）: SF Symbols の選択と構成を一箇所に置く。
+  - ツリー: `.home` → `house`、`.volume` → `externaldrive`、`.folder` → `folder`。展開状態では変えない
+  - リストのフォールバック: `.jpeg` → `photo`、`.png` → `photo.on.rectangle`、`.gif` → `photo.stack`、
+    `.webp` → `photo.circle`、`.mp4` → `film`、`.mov` → `video`。生成中・取得失敗時に使う
+  - アイコンは template 画像として `NSImage.SymbolConfiguration` で 13〜16pt に構成し、
+    選択・ダークモードの配色に追従させる。装飾なので a11y 要素にはしない
+- `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift`: フォルダ列のセルを
+  `imageView` + `textField` の `NSTableCellView` にし、`FolderNode.Kind` に応じたアイコンを設定する。
+  テキストはアイコンの右に置き、既存のアクセス不可表示・選択・展開操作は変えない
+- `Sources/MediaViewerApp/FileList/ListModeView.swift`: コンストラクタに `ThumbnailProviding` を追加。
+  名前列のセルだけ `imageView` を持たせ、`representedObject` に URL を保持する。行の表示時に
+  まず形式別フォールバックを設定し、`thumbnail(for:pointSize: 16, scale:)` を非同期に要求して
+  取得後に同じ URL のセルへだけ差し替える。セル再利用時は
+  `cancel(for:pointSize:scale:)` で同じ 64px 要求だけを取り消し、128px 以上のサムネイル形式の
+  要求を巻き込まない。名前のインライン編集時もアイコンは残し、テキストの制約だけをアイコンの右側へ移す。
+  行の高さはアイコンが収まる 20pt にする
+- `Sources/MediaViewerCore/Imaging/ThumbnailProvider.swift`: 要求サイズの段階に 64px を追加し、
+  `cancel(for:pointSize:scale:)` を URL + ピクセルサイズ単位のキャンセルに変更する
+  （16pt × 2x = 32px を 64px に丸める）。既存の 128 / 256 / 512 の選択は変えない
+- `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift`: 進行中要求に `scale` を保持し、
+  `cancel(for:pointSize:scale:)` へ移行する。要求サイズを変えたとき・セルを破棄したときに、
+  同じ URL でも古いサイズの要求だけを取り消す
+- `Tests/MediaViewerCoreTests/ThumbnailProviderTests.swift`: 50pt × 1x が 128 ではなく 64 になる
+  期待値へ更新し、16pt × 1x / 2x、境界値、上限 512 のケースを追加する。URL + サイズ単位の
+  キャンセルが他のサイズを巻き込まないことを、可能な範囲で再現する
+- `Sources/MediaViewerApp/FileList/FileListViewController.swift`: 既存の `thumbnailProvider` を
+  `ListModeView` へ渡す。表示形式の切替・フルスクリーン・ファイル操作の経路は変えない
+- サムネイル形式（`ThumbnailModeView`）の表示、設定・永続化、Core の選択モデルは変更しない
+- `specs/001-three-pane-media-viewer/contracts/core-api.md`、`data-model.md`、`research.md`、
+  `quickstart.md` を更新する
 
 ## Complexity Tracking
 

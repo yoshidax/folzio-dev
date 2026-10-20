@@ -94,9 +94,10 @@ public struct FitCalculator {
 
 ```swift
 public protocol ThumbnailProviding: Sendable {
-    /// 要求サイズは 128 / 256 / 512 の段階に丸める。結果はメモリにのみキャッシュする
+    /// 要求サイズは 64 / 128 / 256 / 512 の段階に丸める。結果はメモリにのみキャッシュする
     func thumbnail(for url: URL, pointSize: Double, scale: Double) async -> CGImage?
-    func cancel(for url: URL)
+    /// 指定した URL と要求サイズの進行中要求だけを取り消す。他のサイズの要求は取り消さない
+    func cancel(for url: URL, pointSize: Double, scale: Double)
 }
 
 public struct ThumbnailGridLayout {
@@ -123,6 +124,12 @@ public struct ThumbnailScroll {
   `scrollView.contentView.bounds` をこの関数へ渡し、結果をクリップビューの原点に適用する。
   UI は選択や移動量を自前で判断しない
 - 不正な寸法（非有限値、負の高さ、可視高 0 など）では現在の原点を返し、クラッシュしない
+- リスト形式の行頭アイコン（FR-048）は `pointSize: 16` とバッキング倍率で要求し、32px は
+  64px 段階に丸められる。UI は取得中・失敗時に形式別の SF Symbol を表示し、取得後に同じ URL の
+  セルへだけ差し替える（`IconPresentation`、[data-model.md](../data-model.md)）。
+  セル再利用時は `cancel(for:pointSize:scale:)` で同じ 64px 要求だけを取り消す。
+  サムネイル形式が同じ URL を 128px 以上で要求していても、それを巻き込んで取り消してはならない。
+  ツリーのフォルダ種別アイコンは `FolderNode.Kind` から SF Symbol を選ぶ UI 表現で、Core の API は増やさない
 
 ## 矢印キーによる選択移動
 

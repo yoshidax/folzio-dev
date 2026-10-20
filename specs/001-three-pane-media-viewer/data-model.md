@@ -34,6 +34,7 @@
 - 子に含めるのはフォルダだけで、隠しフォルダとパッケージ（`.app` 等）は除く（FR-006）
 - 並び順は名前の自然順（数字を数値として比較）
 - ルートはホームフォルダ + マウント中のボリューム（FR-004）。ボリュームは取り外し通知で削除する
+- `kind` はルートの種類の判定に使い、ツリーの行頭アイコンの選択にも使う（`IconPresentation`、FR-047）
 
 ## MediaFile（ファイルリストの項目）
 
@@ -45,6 +46,9 @@
 | `typeDescription` | String | 「種類」列に出す OS のローカライズ名（例: 「JPEG イメージ」） |
 | `creationDate` | Date? | 「作成日」列。取得できない場合は `nil` で、表示は「--」 |
 | `fileSize` | Int64 | バイト数（並べ替えと a11y 用。列は表示しない） |
+
+- リスト形式の行頭アイコンは `kind` からフォールバックを選び、`url` をキーに非同期取得した
+  縮小画像で置き換える（`IconPresentation`）。`MediaFile` 自体には画像を保持しない
 
 ## FolderListing（ファイルリストの内容）
 
@@ -203,6 +207,31 @@ requested ─(確認 ON)→ awaitingConfirmation ─(キャンセル)→ cancell
 
 - 1件の失敗で残りの処理を止めない。ただし各ファイルは「全部成功」か「変更なし」のどちらかにする
   （部分的にコピーされたファイルは削除する: エッジケース）
+
+## IconPresentation（行頭アイコン・永続化しない）
+
+ツリーとリスト形式の名前の先頭に出すアイコンの表現。モデルの状態としては保存せず、表示のたびに
+`FolderNode.Kind` と `MediaKind` から決める（FR-047・048、research.md R17）。
+
+| 対象 | 入力 | 表示 |
+|------|------|------|
+| ツリー | `FolderNode.Kind.home` | `house` の SF Symbol |
+| ツリー | `FolderNode.Kind.volume` | `externaldrive` の SF Symbol |
+| ツリー | `FolderNode.Kind.folder` | `folder` の SF Symbol |
+| リスト（生成中・失敗時） | `MediaKind.jpeg` | `photo` の SF Symbol |
+| リスト（生成中・失敗時） | `MediaKind.png` | `photo.on.rectangle` の SF Symbol |
+| リスト（生成中・失敗時） | `MediaKind.gif` | `photo.stack` の SF Symbol |
+| リスト（生成中・失敗時） | `MediaKind.webp` | `photo.circle` の SF Symbol |
+| リスト（生成中・失敗時） | `MediaKind.mp4` | `film` の SF Symbol |
+| リスト（生成中・失敗時） | `MediaKind.mov` | `video` の SF Symbol |
+| リスト（取得後） | `ThumbnailProviding` の 64px 画像 | 内容の縮小画像（動画は代表フレーム） |
+
+- アイコンは装飾で、選択・フォーカス・並べ替えのキーにはならない。a11y 要素にはせず、
+  フォルダ名・ファイル名の読み上げを維持する
+- リストの縮小画像は可視行だけを非同期に取得し、取得後に同じ URL のセルへだけ差し替える。
+  セル再利用時は同じ URL・要求サイズの取得だけを取り消し、他のサイズ（サムネイル形式の
+  128 / 256 / 512px）の要求は残す。取得結果はメモリ上のサムネイルキャッシュにのみ置く
+- ツリーのアイコンは展開状態で変化しない。アイコン自体は永続化しない
 
 ## AppIcon（ビルド時のみ・Core の型ではない）
 
