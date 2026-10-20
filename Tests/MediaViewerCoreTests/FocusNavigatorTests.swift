@@ -198,7 +198,8 @@ struct FocusNavigatorTests {
         ]
         #expect(target(kinds, from: 0, .down, .grid(columns: 2)) == 4)
         #expect(target(kinds, from: 4, .up, .grid(columns: 2)) == 0)
-        #expect(target(kinds, from: 5, .up, .grid(columns: 2)) == nil)
+        // 1 から ↑ は既存の関数と同じく先頭へクランプされ、0 がメディアなので止まる
+        #expect(target(kinds, from: 5, .up, .grid(columns: 2)) == 0)
     }
 
     @Test("移動先の方向にメディアがなければ nil")
