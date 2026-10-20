@@ -107,7 +107,8 @@ final class PreviewViewController: NSViewController {
             stopVideo()
             showImageView()
             imageView.showEmpty()
-        case let .loading(url):
+        case let .loading(url), let .animatedImageData(url, _):
+            // .animatedImageData は仮の表示（T196 で置き換える）
             animatedTask?.cancel()
             animatedTask = nil
             stopVideo()

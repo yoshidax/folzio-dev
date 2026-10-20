@@ -13,11 +13,19 @@ public struct FolderListing: Sendable {
     public var folder: URL
     public var files: [MediaFile]
     public var state: State
+    /// zip の中を表示中なら、その zip と階層。通常のフォルダでは nil（`folder` は zip を含むフォルダのまま）
+    public var archive: ArchiveLocation?
 
-    public init(folder: URL, files: [MediaFile] = [], state: State = .empty) {
+    public init(
+        folder: URL,
+        files: [MediaFile] = [],
+        state: State = .empty,
+        archive: ArchiveLocation? = nil
+    ) {
         self.folder = folder
         self.files = files
         self.state = state
+        self.archive = archive
     }
 }
 
@@ -56,6 +64,8 @@ public enum PreviewContent {
     case loading(URL)
     case image(DecodedImage)
     case animatedImage(URL)
+    /// zip の中のアニメーション画像。`Data` は zip から読んだ項目の内容（プレビューを離れたら捨てる）
+    case animatedImageData(URL, Data)
     case video(URL)
     case unavailable(name: String, reason: String)
 }
