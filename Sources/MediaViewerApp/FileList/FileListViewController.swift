@@ -152,7 +152,7 @@ final class FileListViewController: NSViewController {
         return urls
     }
 
-    private var isEditingText: Bool {
+    var isEditingText: Bool {
         view.window?.firstResponder is NSTextView
     }
 

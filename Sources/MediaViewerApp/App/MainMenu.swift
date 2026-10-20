@@ -1,7 +1,21 @@
 import AppKit
 
+/// ツリーが検証で「お気に入りから削除」に変えた項目名を、メニューを開くたびに「ゴミ箱に入れる」へ戻す。
+/// プレビューにフォーカスがあるときは誰も検証しないため、戻さないと前の項目名が残る
+@MainActor
+private final class TrashMenuTitleReset: NSObject, NSMenuDelegate {
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        for item in menu.items where item.action == #selector(FileListViewController.moveToTrash(_:)) {
+            item.title = "ゴミ箱に入れる"
+        }
+    }
+}
+
 @MainActor
 final class MainMenu {
+    /// NSMenu.delegate は weak のため保持する
+    private static let trashTitleReset = TrashMenuTitleReset()
+
     static func install() {
         let mainMenu = NSMenu()
 
@@ -47,6 +61,15 @@ final class MainMenu {
         )
         revealItem.target = nil
         fileMenu.addItem(revealItem)
+
+        let addFavoriteItem = NSMenuItem(
+            title: "お気に入りに追加",
+            action: #selector(MainSplitViewController.addSelectedFolderToFavorites(_:)),
+            keyEquivalent: "t"
+        )
+        addFavoriteItem.keyEquivalentModifierMask = [.command, .control]
+        addFavoriteItem.target = nil
+        fileMenu.addItem(addFavoriteItem)
         fileMenu.addItem(.separator())
 
         let fileTrashItem = NSMenuItem(
@@ -56,6 +79,7 @@ final class MainMenu {
         )
         fileTrashItem.target = nil
         fileMenu.addItem(fileTrashItem)
+        fileMenu.delegate = trashTitleReset
 
         let editMenuItem = NSMenuItem()
         mainMenu.addItem(editMenuItem)
@@ -106,6 +130,7 @@ final class MainMenu {
         editMenu.addItem(editTrashItem)
         editMenu.addItem(.separator())
         editMenu.addItem(NSMenuItem(title: "すべてを選択", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+        editMenu.delegate = trashTitleReset
 
         let viewMenuItem = NSMenuItem()
         mainMenu.addItem(viewMenuItem)
