@@ -49,6 +49,7 @@ open .build/MediaViewer.app
 - `plutil` が `AppIcon` を返し、`iconutil` が全スロットを展開できる（[contracts/app-bundle.md](./contracts/app-bundle.md)）
 - `icon_16x16.png` が 16×16、`icon_512x512@2x.png` が 1024×1024 である
 - Finder・Dock・⌘Tab・About に、汎用アイコンではなく3ペインをモチーフにした同じアイコンが出る
+- 16px と 32px でも3ペインの図案が判別でき、ライト・ダークの両方の外観で同じアイコンが表示される
 - アイコン生成に失敗した場合、`scripts/make-app.sh` は `.app` を残さず非ゼロで終了する
 
 ## 検証用フォルダの準備
@@ -128,7 +129,10 @@ scripts/make-fixtures.sh ~/MediaViewerFixtures
 | 起動からリスト表示まで | 2 秒以内 | SC-002 |
 | 10,000 ファイルのフォルダの最初の表示 | 1 秒以内。読み込み中もスクロールできる | SC-003 |
 | 1080p 動画の選択から再生開始まで | 1 秒以内 | SC-010 |
+| ペイン幅・サムネイルサイズのドラッグ中の表示停止 | 100ms 以上の停止が 0 回 | SC-004 |
 | デコード済みプレビューのキャッシュ | 256MB を超えない | 憲章 原則 II、research.md R8 |
+
+SC-004 は実際のドラッグ操作を伴うため自動テストには含めず、T080 の手動確認（画面収録または Instruments）で測る。
 
 ### os_signpost による起動・動画再生の計測（SC-002・SC-010）
 

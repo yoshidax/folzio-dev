@@ -488,6 +488,9 @@ quickstart.md の手動シナリオで検証する。
   不足があれば各ビューで `setAccessibilityLabel` を補う（原則 III）
 - [ ] T080 `scripts/make-app.sh` で `.app` を作り、quickstart.md の手動シナリオ（US1〜US6、キーボードだけの操作、異常系）を
   すべて実施して、結果を `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+  （ファイルがなければ作成する）
+  - SC-004: ペイン幅とサムネイルサイズをそれぞれ 3 秒以上ドラッグし、画面収録または Instruments で
+    100ms 以上の表示停止が 0 回であることを確認する
 
 ---
 
@@ -501,7 +504,7 @@ quickstart.md の手動シナリオで検証する。
   - `.executable(name: "make-icon", targets: ["make-icon"])`
   - `.executableTarget(name: "make-icon")`（依存なし。`MediaViewerCore` と `MediaViewerApp` には依存させない）
   - 外部パッケージ依存は追加しない
-- [ ] T082 [P] `Sources/make-icon/main.swift` にアイコン描画を実装する（T081 に依存）:
+- [ ] T082 `Sources/make-icon/main.swift` にアイコン描画を実装する（T081 に依存）:
   - 第1引数に出力先のステージングディレクトリ（`.build/AppIcon.raw`）を受け取り、存在しなければ作成する。
     引数がなければ終了コード 1
   - CoreGraphics のビットマップコンテキストと ImageIO（`CGImageDestination`、UTI は `public.png`）だけを使い、
@@ -532,10 +535,12 @@ quickstart.md の手動シナリオで検証する。
   - アイコン生成が失敗した場合は `.app` を残さず非ゼロで終了する（冒頭の `rm -rf` 後に途中成果物を残さない）
   - 既存の ad-hoc 署名と実行権限の処理は維持する
 - [ ] T085 `scripts/make-app.sh` を実行し、quickstart.md「アプリアイコンの検証」を実施して
-  `specs/001-three-pane-media-viewer/checklists/validation.md` に結果を記録する（T084 に依存）:
+  `specs/001-three-pane-media-viewer/checklists/validation.md` に結果を追記する
+  （ファイルがなければ作成する。T084 に依存）:
   - `Contents/Resources/AppIcon.icns` の存在と `plutil -extract CFBundleIconFile raw ...` が `AppIcon`
   - `iconutil -c iconset` で10スロットが展開でき、`icon_16x16.png` が 16×16、`icon_512x512@2x.png` が 1024×1024
-  - `open` 後、Finder・Dock・⌘Tab・About に同じ3ペインのアイコンが出る。16px でも判別できる
+  - `open` 後、Finder・Dock・⌘Tab・About に同じ3ペインのアイコンが出る。16px と 32px でも判別できる
+  - システム外観をライトとダークに切り替え、どちらでも同じアイコンが表示される
   - `swift run` はバンドルを持たないため標準アイコンになることを確認し、合格扱いとする
 
 ---
@@ -553,7 +558,8 @@ quickstart.md の手動シナリオで検証する。
 - **US6 (Phase 8)**: Foundational の T021 があれば始められる。T071 は US1・US3 のビューに依存する
 - **Polish (Phase 9)**: 対象のストーリーが揃ってから行う。T072〜T075 は US1 の後ならいつでもよい
 - **アプリアイコン (Phase 10)**: Setup の T005（`scripts/make-app.sh`）があれば始められる。ストーリーの実装とは
-  独立しているが、T084 は T005 のスクリプトを編集するため、T005 完了後に着手する。T085 は T084 に依存する
+  独立しているが、T084 は T005 のスクリプトを編集するため、T005 完了後に着手する。T085 は T084 に依存する。
+  Phase 10 は配布準備として Phase 9 の後に置く（タスク ID の順序を保つため、Phase 9 内へは移動しない）
 
 ### User Story Dependencies
 
@@ -576,8 +582,8 @@ quickstart.md の手動シナリオで検証する。
 - US1: T024〜T028（Core の各サービス）と T030〜T033（そのテスト）は並行できる
 - US3: T047〜T050 は並行できる
 - US4: T054・T055・T057 は並行できる
-- アイコン: T081（`Package.swift`）と T082（`Sources/make-icon/main.swift`）は並行できる。
-  T083 は両方に、T084 は T083 に、T085 は T084 に依存する
+- アイコン: T081 → T082 → T083 → T084 → T085 の順に進める。
+  T082 は T081 のターゲット追加後にビルド確認する
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 

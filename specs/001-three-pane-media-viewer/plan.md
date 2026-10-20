@@ -112,7 +112,7 @@ Sources/
 │   ├── Operations/                  # ConfirmationPresenter, ConflictPrompt
 │   └── Settings/                    # SettingsWindowController
 ├── FixtureKit/                      # テスト・手動検証用のフィクスチャ生成（画像・動画・破損ファイル）
-│   └── make-fixtures/               # 実行ターゲット（scripts/make-fixtures.sh から呼ぶ）
+├── make-fixtures/                   # 実行ターゲット（scripts/make-fixtures.sh から呼ぶ）
 └── make-icon/                       # ビルド時のみ。CoreGraphics でアプリアイコンの各解像度を描画する
 
 Tests/
