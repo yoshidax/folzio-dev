@@ -349,10 +349,12 @@ Technical Context の未確定事項と主要な技術選択について、決�
     `isExpandable` は「読み取り可能（`accessState != .denied`）かつ `subfolderState` が `.present` または `.failed`」。
     `.unknown`（確認中）と `.absent` では三角を出さず、→ キーや三角のクリックでも展開できない（FR-054・055）
   - サブフォルダの有無は `DirectoryListing.hasSubfolders(in:)` で確認する。`DirectoryLister` は
-    `FileManager.enumerator(at:includingPropertiesForKeys:options:)` に `.skipsHiddenFiles`・
-    `.skipsSubdirectoryDescendants`・`.skipsPackageDescendants` を指定し、`subfolders(of:)` と同じ条件
-    （`isDirectory == true` かつ `isPackage != true`）を満たす最初の1件で打ち切る。列挙のエラーは
-    `errorHandler` で受けて、`subfolders(of:)` と同じ `ListingError` に変換する。プロトコル拡張に
+    `opendir` / `readdir` で列挙し、`d_type` が `DT_DIR` / `DT_UNKNOWN` 以外のエントリと `.` で始まる名前を
+    読み飛ばす。残ったディレクトリにだけ `subfolders(of:)` と同じ条件（`isDirectory == true` かつ
+    `isPackage != true`、非表示属性なし）を問い合わせ、最初の1件で打ち切る。`errno` は `EACCES` / `EPERM` →
+    `.accessDenied`、`ENOENT` / `ENOTDIR` → `.notFound`、それ以外 → `.other` に変換する。
+    実装時（T125・T127）に当初の `FileManager.enumerator`（`.skipsHiddenFiles` ほか）で計測したところ、
+    10,000 ファイルで 0.05〜0.21 秒とばらつき 0.2 秒の基準を超えることがあったため変更した（`readdir` 版は 5〜9ms）。プロトコル拡張に
     `!subfolders(of:).isEmpty` の既定実装を置き、既存のテスト用フェイクを壊さない
   - 確認は表示されているフォルダの直下1階層だけに行う（FR-055）
     - 起動時と `applyRoots`（ボリュームのマウント・取り外し）: 各ルート
@@ -400,6 +402,8 @@ Technical Context の未確定事項と主要な技術選択について、決�
     あるため、ユーザー判断（確認が終わるまで出さない）に従い却下
   - `contentsOfDirectory` で全件を読んでから判定する案: 実装は短いが、ファイルの多いフォルダで
     不要な属性の読み込みが増えるため却下
+  - `FileManager.enumerator` で最初の1件で打ち切る案（当初の決定）: 全エントリの非表示属性とパッケージ判定を
+    問い合わせるため、10,000 ファイルで最大 0.21 秒かかり基準（0.2 秒）を安定して満たせなかったため却下
   - 確認を孫以下まで先読みする案: ユーザー判断（表示されている階層だけ）に反し、I/O が増えるため却下
   - 展開時の読み込み失敗を理由を問わず `.denied` にする案（当初の決定）: 一時的な失敗でも三角が消えてドロップ先にも
     ならず、外部の変更通知かボリュームの再マウントまで回復しないため、/speckit-analyze の指摘（F1）を受けて却下した。

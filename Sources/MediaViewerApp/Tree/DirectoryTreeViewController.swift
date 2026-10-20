@@ -29,6 +29,20 @@ final class DirectoryTreeViewController: NSViewController {
     private var eventTask: Task<Void, Never>?
     private var didReveal = false
 
+    private enum ProbeKey: Hashable {
+        case roots
+        case children(ObjectIdentifier)
+        case recheck(ObjectIdentifier)
+    }
+
+    private struct ProbeEntry {
+        let id: Int
+        let task: Task<Void, Never>
+    }
+
+    private var probeTasks: [ProbeKey: ProbeEntry] = [:]
+    private var nextProbeID = 0
+
     init(
         model: BrowserModel,
         lister: any DirectoryListing,
@@ -105,6 +119,24 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
+    @objc private func toggleClickedFolder(_ sender: Any?) {
+        let row = outlineView.clickedRow
+        guard row >= 0, let node = outlineView.item(atRow: row) as? Node else { return }
+
+        // 選択は1回目のクリックで outlineViewSelectionDidChange が行う
+        switch FolderDisclosure.doubleClickToggle(
+            isExpandable: node.folder.isExpandable,
+            isExpanded: outlineView.isItemExpanded(node)
+        ) {
+        case .expand:
+            outlineView.expandItem(node)
+        case .collapse:
+            outlineView.collapseItem(node)
+        case .none:
+            break
+        }
+    }
+
     @objc private func revealInFinder(_ sender: Any?) {
         guard let node = selectedNode else { return }
         NSWorkspace.shared.activateFileViewerSelecting([node.url])
@@ -126,6 +158,8 @@ final class DirectoryTreeViewController: NSViewController {
         outlineView.delegate = self
         outlineView.registerForDraggedTypes([.fileURL])
         outlineView.menu = makeContextMenu()
+        outlineView.target = self
+        outlineView.doubleAction = #selector(toggleClickedFolder(_:))
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("folder"))
         column.title = "フォルダ"
@@ -150,6 +184,7 @@ final class DirectoryTreeViewController: NSViewController {
 
         roots = volumes.rootNodes().map { Node(folder: $0) }
         outlineView.reloadData()
+        startProbes(for: roots, key: .roots)
 
         volumeTask = Task { [weak self] in
             guard let self else { return }
@@ -163,6 +198,7 @@ final class DirectoryTreeViewController: NSViewController {
             for await changed in self.watcher.events {
                 await self.model.handleFileSystemEvent(changed)
                 await self.reloadExpandedNodes(in: changed)
+                self.recheckCollapsedNodes(in: changed)
                 self.updateWatchSet()
             }
         }
@@ -189,10 +225,15 @@ final class DirectoryTreeViewController: NSViewController {
         )
         roots = newRoots.map { folder in
             let node = Node(folder: folder)
-            node.children = existing[folder.url.standardizedFileURL]?.children
+            if let previous = existing[folder.url.standardizedFileURL] {
+                node.children = previous.children
+                node.folder.subfolderState = previous.folder.subfolderState
+                node.folder.accessState = previous.folder.accessState
+            }
             return node
         }
         outlineView.reloadData()
+        startProbes(for: roots, key: .roots)
         updateWatchSet()
     }
 
@@ -208,8 +249,7 @@ final class DirectoryTreeViewController: NSViewController {
         }
         guard var current = root else { return }
 
-        outlineView.expandItem(current)
-        await loadChildrenIfNeeded(current)
+        await loadAndExpand(current)
 
         let rootComponents = current.url.standardizedFileURL.pathComponents
         if targetComponents.count > rootComponents.count {
@@ -219,8 +259,7 @@ final class DirectoryTreeViewController: NSViewController {
                 }) else {
                     break
                 }
-                outlineView.expandItem(next)
-                await loadChildrenIfNeeded(next)
+                await loadAndExpand(next)
                 current = next
             }
         }
@@ -232,6 +271,14 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
+    /// 確認前のノードへの expandItem は isItemExpandable が false のため無視されるので、先に子を読み込む
+    private func loadAndExpand(_ node: Node) async {
+        await loadChildrenIfNeeded(node)
+        if node.folder.isExpandable, !outlineView.isItemExpanded(node) {
+            outlineView.expandItem(node)
+        }
+    }
+
     private func loadChildrenIfNeeded(_ node: Node) async {
         guard node.children == nil, !node.isLoading else { return }
         node.isLoading = true
@@ -239,26 +286,83 @@ final class DirectoryTreeViewController: NSViewController {
 
         do {
             let urls = try await lister.subfolders(of: node.url)
+            applyListing(.success(urls), to: node)
+        } catch {
+            applyListing(.failure(error), to: node)
+        }
+        updateWatchSet()
+    }
+
+    private func applyListing(_ result: Result<[URL], ListingError>, to node: Node) {
+        switch result {
+        case .success(let urls):
+            let previous = Dictionary(
+                (node.children ?? []).map { ($0.url.standardizedFileURL, $0) },
+                uniquingKeysWith: { first, _ in first }
+            )
             let children = urls.map { url in
-                Node(folder: FolderNode(
+                let child = Node(folder: FolderNode(
                     url: url,
                     name: url.lastPathComponent,
                     kind: .folder,
                     accessState: .accessible
                 ))
+                if let old = previous[url.standardizedFileURL] {
+                    child.folder.subfolderState = old.folder.subfolderState
+                    child.folder.accessState = old.folder.accessState
+                }
+                return child
             }
             node.children = children
             node.folder.children = children.map(\.folder)
-            node.folder.accessState = .accessible
+            node.folder.applySubfolderListing(.success(children.count))
             outlineView.reloadItem(node, reloadChildren: true)
-            outlineView.expandItem(node)
-        } catch {
-            node.children = []
-            node.folder.children = []
-            node.folder.accessState = error == .accessDenied ? .denied : .accessible
+            if node.folder.isExpandable {
+                outlineView.expandItem(node)
+            } else {
+                outlineView.collapseItem(node)
+            }
+            startProbes(for: children, key: .children(ObjectIdentifier(node)))
+        case .failure(let error):
+            node.folder.applySubfolderListing(.failure(error))
+            // 権限なしは空のまま確定し、それ以外は次の展開で読み直す
+            node.children = node.folder.accessState == .denied ? [] : nil
             outlineView.reloadItem(node, reloadChildren: true)
+            outlineView.collapseItem(node)
         }
-        updateWatchSet()
+    }
+
+    private func startProbes(for nodes: [Node], key: ProbeKey, force: Bool = false) {
+        let targets = force ? nodes : nodes.filter {
+            $0.folder.subfolderState == .unknown && $0.folder.accessState != .denied
+        }
+        probeTasks[key]?.task.cancel()
+        probeTasks[key] = nil
+        guard !targets.isEmpty else { return }
+
+        let lookup = Dictionary(
+            targets.map { ($0.url.standardizedFileURL, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let urls = targets.map(\.url)
+        let lister = self.lister
+        nextProbeID += 1
+        let id = nextProbeID
+
+        let task = Task { [weak self] in
+            for await result in SubfolderProbe.results(for: urls, lister: lister) {
+                guard let self, !Task.isCancelled else { return }
+                guard let node = lookup[result.url.standardizedFileURL] else { continue }
+                node.folder.applySubfolderProbe(result.result)
+                if self.outlineView.row(forItem: node) >= 0 {
+                    self.outlineView.reloadItem(node, reloadChildren: false)
+                }
+            }
+            if let self, self.probeTasks[key]?.id == id {
+                self.probeTasks[key] = nil
+            }
+        }
+        probeTasks[key] = ProbeEntry(id: id, task: task)
     }
 
     private func observeDisplayedFolder() {
@@ -277,7 +381,41 @@ final class DirectoryTreeViewController: NSViewController {
         for node in flattenedNodes(from: roots) where outlineView.isItemExpanded(node) {
             folders.insert(node.url.standardizedFileURL)
         }
+        // 折りたたまれた表示中のフォルダも監視し、サブフォルダの増減で三角の有無を更新する
+        for node in displayedNodes() {
+            folders.insert(node.url.standardizedFileURL)
+        }
         watcher.watch(folders)
+    }
+
+    private func displayedNodes() -> [Node] {
+        var result: [Node] = []
+        func visit(_ nodes: [Node]) {
+            for node in nodes {
+                result.append(node)
+                if outlineView.isItemExpanded(node), let children = node.children {
+                    visit(children)
+                }
+            }
+        }
+        visit(roots)
+        return result
+    }
+
+    private func recheckCollapsedNodes(in changed: Set<URL>) {
+        let changedURLs = Set(changed.map(\.standardizedFileURL))
+        let targets = displayedNodes().filter { node in
+            !outlineView.isItemExpanded(node) && changedURLs.contains(node.url.standardizedFileURL)
+        }
+        for node in targets {
+            if node.children != nil {
+                // 折りたたみ中の変更を次の展開で反映するため、読み込み済みの子を捨てる
+                node.children = nil
+                node.folder.children = nil
+                outlineView.reloadItem(node, reloadChildren: true)
+            }
+            startProbes(for: [node], key: .recheck(ObjectIdentifier(node)), force: true)
+        }
     }
 
     private func reloadExpandedNodes(in changed: Set<URL>) async {
@@ -297,24 +435,9 @@ final class DirectoryTreeViewController: NSViewController {
 
         do {
             let urls = try await lister.subfolders(of: node.url)
-            let children = urls.map { url in
-                Node(folder: FolderNode(
-                    url: url,
-                    name: url.lastPathComponent,
-                    kind: .folder,
-                    accessState: .accessible
-                ))
-            }
-            node.children = children
-            node.folder.children = children.map(\.folder)
-            node.folder.accessState = .accessible
-            outlineView.reloadItem(node, reloadChildren: true)
-            outlineView.expandItem(node)
+            applyListing(.success(urls), to: node)
         } catch {
-            node.children = []
-            node.folder.children = []
-            node.folder.accessState = error == .accessDenied ? .denied : .accessible
-            outlineView.reloadItem(node, reloadChildren: true)
+            applyListing(.failure(error), to: node)
         }
 
         if let selectedURL, let row = rowForURL(selectedURL) {
@@ -362,7 +485,7 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
 
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
         guard let node = item as? Node else { return false }
-        return node.folder.accessState != .denied
+        return node.folder.isExpandable
     }
 
     func outlineView(
@@ -475,7 +598,7 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
 
         cell.imageView?.image = IconCatalog.treeIcon(for: node.folder.kind)
         cell.textField?.stringValue = node.folder.name
-        if node.folder.accessState == .denied {
+        if node.folder.accessState == .denied || node.folder.accessState == .unavailable {
             cell.textField?.textColor = .disabledControlTextColor
             cell.toolTip = "アクセスできません"
         } else {

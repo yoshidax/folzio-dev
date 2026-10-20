@@ -90,6 +90,23 @@ open .build/MediaViewer.app
 
 確認ポイントは [quickstart.md](../quickstart.md) の「US1」2 と「US3」5〜7。
 
+## ツリーのダブルクリック開閉と開閉の三角（FR-053〜055）
+
+2026-10-20 に macOS 26.6.2 で `scripts/make-app.sh` により `.build/MediaViewer.app` を生成し、GUI で確認した。
+
+| 確認項目 | 結果 | 根拠 |
+|----------|------|------|
+| 自動テスト（`swift test`） | PASS | Core 117 テスト、性能 7 テスト成功。`FolderDisclosureTests`・`SubfolderProbeTests`・`DirectoryListerTests` の `hasSubfolders(in:)` を含む |
+| 外部通信の不在（`scripts/check-no-network.sh`） | PASS | `no network API references in Sources` |
+| サブフォルダのない 10,000 ファイルのフォルダの `hasSubfolders(in:)`（基準 0.2 秒以内） | PASS | 実測 5〜9ms（6 回）。`FileManager.enumerator` 版は 0.05〜0.21 秒で基準を超えることがあったため `readdir` 版に変更（research.md R19） |
+| 三角は `has-sub` にだけ付き、`hidden-only`・`package-only`・`empty`・`denied` には付かない。行の位置が揃う | PASS | GUI でユーザー確認（quickstart 1、FR-054・055） |
+| 行（名前・アイコン）のダブルクリックで選択とトグルが行われる | PASS | GUI でユーザー確認（quickstart 2、FR-053） |
+| 三角のないフォルダはダブルクリック・→ キーで展開しない | PASS | GUI でユーザー確認（quickstart 3） |
+| 三角の素早い 2 回クリックで余計な開閉が起きない | PASS | GUI でユーザー確認（quickstart 4）。T130 の予備策は不要だった |
+| 外部でのサブフォルダの追加・削除に三角が追従する | PASS | GUI でユーザー確認（quickstart 5、FR-042） |
+| 展開直後もツリーの上下移動が止まらず、`huge` に三角が付かない | PASS | GUI でユーザー確認（quickstart 6） |
+| 回帰（← / →、⌥→ / ⌥←、ドロップ、右クリックメニュー、前回フォルダの表示、行頭アイコン） | PASS | GUI でユーザー確認（quickstart 7） |
+
 ## 未実施の検証
 
 - T079: Accessibility Inspector によるラベル確認

@@ -129,6 +129,28 @@ struct PerformanceBaselineTests {
         )
     }
 
+    @Test("サブフォルダのない 10,000 ファイルのフォルダの hasSubfolders が 0.2 秒以内")
+    func hasSubfoldersInLargeFolderWithinBudget() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        for index in 0..<10_000 {
+            let path = directory.appendingPathComponent(String(format: "%05d.jpg", index)).path
+            FileManager.default.createFile(atPath: path, contents: nil)
+        }
+
+        let lister = DirectoryLister()
+        let start = ContinuousClock.now
+        let hasSubfolders = try await lister.hasSubfolders(in: directory)
+        let elapsed = ContinuousClock.now - start
+
+        #expect(!hasSubfolders, "サブフォルダがないこと")
+        #expect(
+            elapsed < .milliseconds(200),
+            "10,000 ファイルのフォルダのサブフォルダの有無の確認は 0.2 秒以内 (実測: \(elapsed))"
+        )
+    }
+
     @Test("100MP グレースケール PNG をデコードしバイトコストを抑える")
     func decodesHundredMegapixelPNGWithinMemoryBudget() async throws {
         let directory = try makeTemporaryDirectory()
