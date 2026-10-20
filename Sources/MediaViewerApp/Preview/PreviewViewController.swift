@@ -107,8 +107,7 @@ final class PreviewViewController: NSViewController {
             stopVideo()
             showImageView()
             imageView.showEmpty()
-        case let .loading(url), let .animatedImageData(url, _):
-            // .animatedImageData は仮の表示（T196 で置き換える）
+        case let .loading(url):
             animatedTask?.cancel()
             animatedTask = nil
             stopVideo()
@@ -127,6 +126,10 @@ final class PreviewViewController: NSViewController {
             stopVideo()
             showImageView()
             loadAnimatedImage(url)
+        case let .animatedImageData(url, data):
+            stopVideo()
+            showImageView()
+            loadAnimatedImageData(url, data)
         case let .video(url):
             animatedTask?.cancel()
             animatedTask = nil
@@ -188,6 +191,33 @@ final class PreviewViewController: NSViewController {
             }
             self.imageView.showAnimated(
                 url: url,
+                fileName: url.lastPathComponent,
+                fallback: fallback
+            )
+        }
+    }
+
+    private func loadAnimatedImageData(_ url: URL, _ data: Data) {
+        animatedTask?.cancel()
+        imageView.showLoading(fileName: url.lastPathComponent)
+
+        let maxPixelSize = max(1, model.screenMaxPixel)
+        animatedTask = Task { [weak self] in
+            guard let self else { return }
+
+            let fallback: DecodedImage?
+            do {
+                fallback = try await self.decoder.decode(data: data, maxPixelSize: maxPixelSize)
+            } catch {
+                fallback = nil
+            }
+
+            guard !Task.isCancelled else { return }
+            guard case let .animatedImageData(current, _) = self.model.preview, current == url else {
+                return
+            }
+            self.imageView.showAnimated(
+                source: .data(data),
                 fileName: url.lastPathComponent,
                 fallback: fallback
             )

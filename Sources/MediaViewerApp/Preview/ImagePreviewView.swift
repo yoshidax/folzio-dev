@@ -2,6 +2,11 @@ import AppKit
 import ImageIO
 import MediaViewerCore
 
+enum AnimatedSource: Sendable {
+    case url(URL)
+    case data(Data)
+}
+
 @MainActor
 final class ImagePreviewView: NSView {
     @MainActor
@@ -39,7 +44,7 @@ final class ImagePreviewView: NSView {
 
     private var displayedImage: CGImage?
     private var fallbackImage: CGImage?
-    private var animatedURL: URL?
+    private var animatedSource: AnimatedSource?
     private var animationState: AnimationState?
     private var fileName = ""
 
@@ -123,7 +128,7 @@ final class ImagePreviewView: NSView {
     }
 
     func showImage(_ image: DecodedImage, fileName: String) {
-        stopAnimation(clearAnimatedURL: true)
+        stopAnimation(clearAnimatedSource: true)
         self.fileName = fileName
         setAccessibilityLabel(fileName)
         messageStack.isHidden = true
@@ -132,9 +137,13 @@ final class ImagePreviewView: NSView {
     }
 
     func showAnimated(url: URL, fileName: String, fallback: DecodedImage?) {
-        stopAnimation(clearAnimatedURL: false)
+        showAnimated(source: .url(url), fileName: fileName, fallback: fallback)
+    }
+
+    func showAnimated(source: AnimatedSource, fileName: String, fallback: DecodedImage?) {
+        stopAnimation(clearAnimatedSource: false)
         self.fileName = fileName
-        animatedURL = url
+        animatedSource = source
         fallbackImage = fallback?.cgImage
         setAccessibilityLabel(fileName)
         messageStack.isHidden = true
@@ -158,7 +167,7 @@ final class ImagePreviewView: NSView {
     }
 
     func showLoading(fileName: String) {
-        stopAnimation(clearAnimatedURL: true)
+        stopAnimation(clearAnimatedSource: true)
         self.fileName = fileName
         setAccessibilityLabel(fileName)
         displayedImage = nil
@@ -172,7 +181,7 @@ final class ImagePreviewView: NSView {
     }
 
     func showEmpty() {
-        stopAnimation(clearAnimatedURL: true)
+        stopAnimation(clearAnimatedSource: true)
         fileName = ""
         setAccessibilityLabel("")
         displayedImage = nil
@@ -182,7 +191,7 @@ final class ImagePreviewView: NSView {
     }
 
     func showUnavailable(name: String, reason: String) {
-        stopAnimation(clearAnimatedURL: true)
+        stopAnimation(clearAnimatedSource: true)
         fileName = name
         setAccessibilityLabel(name)
         displayedImage = nil
@@ -204,15 +213,22 @@ final class ImagePreviewView: NSView {
     }
 
     private func startAnimation() {
-        guard let url = animatedURL else { return }
+        guard let source = animatedSource else { return }
 
         let state = AnimationState(view: self)
         animationState = state
 
-        let status = CGAnimateImageAtURLWithBlock(url as CFURL, nil) { _, image, stop in
+        let handler: CGImageSourceAnimationBlock = { _, image, stop in
             MainActor.assumeIsolated {
                 state.receive(image, stop: stop)
             }
+        }
+        let status: OSStatus
+        switch source {
+        case let .url(url):
+            status = CGAnimateImageAtURLWithBlock(url as CFURL, nil, handler)
+        case let .data(data):
+            status = CGAnimateImageDataWithBlock(data as CFData, nil, handler)
         }
 
         guard status == noErr else {
@@ -224,12 +240,12 @@ final class ImagePreviewView: NSView {
         }
     }
 
-    private func stopAnimation(clearAnimatedURL: Bool) {
+    private func stopAnimation(clearAnimatedSource: Bool) {
         animationState?.shouldStop = true
         animationState = nil
         spinner.stopAnimation(nil)
-        if clearAnimatedURL {
-            animatedURL = nil
+        if clearAnimatedSource {
+            animatedSource = nil
             fallbackImage = nil
         }
     }
@@ -269,10 +285,10 @@ final class ImagePreviewView: NSView {
     }
 
     @objc private func accessibilityDisplayOptionsDidChange(_ notification: Notification) {
-        guard animatedURL != nil else { return }
+        guard animatedSource != nil else { return }
 
         if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-            stopAnimation(clearAnimatedURL: false)
+            stopAnimation(clearAnimatedSource: false)
             if let fallbackImage {
                 setDisplayed(fallbackImage)
             }
