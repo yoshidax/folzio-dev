@@ -21,7 +21,8 @@ public struct MediaTypeFilter: Sendable, Equatable {
 
     public func apply(to files: [MediaFile]) -> [MediaFile] {
         guard isFiltering else { return files }
-        return files.filter { file in file.kind.mediaKind.map(includes) ?? false }
+        // .media 以外の行（zip ファイル・ディレクトリ・...）は常に残す（FR-056）
+        return files.filter { file in file.kind.mediaKind.map(includes) ?? true }
     }
 
     public var noMatchesMessage: String? {

@@ -1,9 +1,12 @@
 import Foundation
 
 public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile] {
-    let indexed = Array(files.enumerated())
+    // `...`（.parent）は並べ替えに加えず、常に先頭に置く
+    let parents = files.filter { $0.kind == .parent }
+    let rest = files.filter { $0.kind != .parent }
+    let indexed = Array(rest.enumerated())
 
-    return indexed.sorted { lhs, rhs in
+    return parents + indexed.sorted { lhs, rhs in
         let a = lhs.element
         let b = rhs.element
 
