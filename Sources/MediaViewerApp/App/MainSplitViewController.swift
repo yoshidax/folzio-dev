@@ -361,6 +361,16 @@ final class MainSplitViewController: NSSplitViewController {
             keyEquivalent: "3",
             action: #selector(focusPreviewPane(_:))
         )
+
+        // 大文字の F で ⇧⌘F になる
+        let favoritesItem = NSMenuItem(
+            title: "お気に入りへ移動",
+            action: #selector(focusFavorites(_:)),
+            keyEquivalent: "F"
+        )
+        favoritesItem.keyEquivalentModifierMask = [.command]
+        favoritesItem.target = self
+        viewMenu.addItem(favoritesItem)
     }
 
     private func addFocusItem(
@@ -387,6 +397,15 @@ final class MainSplitViewController: NSSplitViewController {
         focusPane(previewViewController.primaryFocusView)
     }
 
+    @objc private func focusFavorites(_ sender: Any?) {
+        treeViewController.focusFavoritesHeader()
+    }
+
+    /// ⌃⌘T。どのペインにフォーカスがあっても、ツリーで選択中のフォルダを登録する（FR-062）
+    @objc func addSelectedFolderToFavorites(_ sender: Any?) {
+        treeViewController.addSelectedFolderToFavorites()
+    }
+
     private func focusPane(_ view: NSView) {
         view.window?.makeFirstResponder(view)
     }
@@ -408,6 +427,20 @@ final class MainSplitViewController: NSSplitViewController {
                     center.removeObserver(token)
                 }
             }
+        }
+    }
+}
+
+extension MainSplitViewController: NSMenuItemValidation {
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        switch menuItem.action {
+        case #selector(focusFavorites(_:)):
+            return !panesCollapsedForFullScreen && !fileListViewController.isEditingText
+        case #selector(addSelectedFolderToFavorites(_:)):
+            return !fileListViewController.isEditingText
+                && treeViewController.canAddSelectedFolderToFavorites
+        default:
+            return true
         }
     }
 }
