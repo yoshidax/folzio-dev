@@ -25,8 +25,64 @@ private final class FileListTableView: NSTableView {
 }
 
 @MainActor
+private final class FileListIconCell: NSTableCellView {
+    let iconView = NSImageView()
+    let nameField = NSTextField(labelWithString: "")
+    var iconTask: Task<Void, Never>?
+    var representedURL: URL?
+    var iconPointSize: Double = 0
+    var iconScale: Double = 0
+
+    init(identifier: NSUserInterfaceItemIdentifier) {
+        super.init(frame: .zero)
+        self.identifier = identifier
+
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.imageScaling = .scaleProportionallyDown
+        iconView.setAccessibilityElement(false)
+        addSubview(iconView)
+        imageView = iconView
+
+        nameField.translatesAutoresizingMaskIntoConstraints = false
+        nameField.lineBreakMode = .byTruncatingMiddle
+        addSubview(nameField)
+        textField = nameField
+
+        NSLayoutConstraint.activate([
+            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
+            iconView.widthAnchor.constraint(equalToConstant: 16),
+            iconView.heightAnchor.constraint(equalToConstant: 16),
+            iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
+
+            nameField.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 6),
+            nameField.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -2),
+            nameField.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    func cancelIconRequest(using provider: any ThumbnailProviding) {
+        iconTask?.cancel()
+        iconTask = nil
+        if let url = representedURL, iconPointSize > 0, iconScale > 0 {
+            provider.cancel(
+                for: url,
+                pointSize: iconPointSize,
+                scale: iconScale
+            )
+        }
+        representedURL = nil
+    }
+}
+
+@MainActor
 final class ListModeView: NSView {
     private let model: BrowserModel
+    private let provider: any ThumbnailProviding
     private let scrollView = NSScrollView()
     private let tableView = FileListTableView()
     private let dateFormatter: DateFormatter
@@ -54,8 +110,9 @@ final class ListModeView: NSView {
     private var renamingOriginalName: String?
     private var isFinishingRename = false
 
-    init(model: BrowserModel) {
+    init(model: BrowserModel, provider: any ThumbnailProviding) {
         self.model = model
+        self.provider = provider
         self.dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
         dateFormatter.timeStyle = .short
@@ -87,6 +144,7 @@ final class ListModeView: NSView {
         tableView.usesAlternatingRowBackgroundColors = true
         tableView.allowsMultipleSelection = true
         tableView.allowsEmptySelection = true
+        tableView.rowHeight = 20
         tableView.dataSource = self
         tableView.delegate = self
         tableView.registerForDraggedTypes([.fileURL])
@@ -363,6 +421,10 @@ extension ListModeView: NSTableViewDelegate {
         guard let tableColumn, row < model.listing.files.count else { return nil }
         let file = model.listing.files[row]
 
+        if tableColumn.identifier.rawValue == "name" {
+            return nameCell(for: file, identifier: tableColumn.identifier, in: tableView)
+        }
+
         let cell: NSTableCellView
         if let reused = tableView.makeView(withIdentifier: tableColumn.identifier, owner: self)
             as? NSTableCellView {
@@ -391,8 +453,6 @@ extension ListModeView: NSTableViewDelegate {
         }
 
         switch tableColumn.identifier.rawValue {
-        case "name":
-            cell.textField?.stringValue = file.name
         case "creationDate":
             cell.textField?.stringValue = file.creationDate.map(dateFormatter.string(from:)) ?? "--"
         case "kind":
@@ -401,6 +461,62 @@ extension ListModeView: NSTableViewDelegate {
             cell.textField?.stringValue = ""
         }
 
+        return cell
+    }
+
+    private func nameCell(
+        for file: MediaFile,
+        identifier: NSUserInterfaceItemIdentifier,
+        in tableView: NSTableView
+    ) -> FileListIconCell {
+        let cell: FileListIconCell
+        if let reused = tableView.makeView(withIdentifier: identifier, owner: self)
+            as? FileListIconCell {
+            cell = reused
+        } else {
+            cell = FileListIconCell(identifier: identifier)
+            cell.nameField.delegate = self
+        }
+
+        if cell.representedURL != file.url {
+            cell.cancelIconRequest(using: provider)
+            cell.representedURL = file.url
+            cell.iconView.image = IconCatalog.fallbackIcon(for: file.kind)
+
+            let scale = Double(
+                window?.backingScaleFactor
+                    ?? NSScreen.main?.backingScaleFactor
+                    ?? 2
+            )
+            let pointSize = 16.0
+            cell.iconPointSize = pointSize
+            cell.iconScale = scale
+
+            let provider = self.provider
+            let url = file.url
+            cell.iconTask = Task { [weak cell] in
+                let image = await provider.thumbnail(
+                    for: url,
+                    pointSize: pointSize,
+                    scale: scale
+                )
+                guard !Task.isCancelled,
+                      let cell,
+                      cell.representedURL == url,
+                      let image else {
+                    return
+                }
+                cell.iconView.image = NSImage(
+                    cgImage: image,
+                    size: NSSize(width: 16, height: 16)
+                )
+            }
+        }
+
+        if renamingURL != file.url {
+            setEditingAppearance(cell.nameField, editing: false)
+        }
+        cell.nameField.stringValue = file.name
         return cell
     }
 

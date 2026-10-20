@@ -249,6 +249,7 @@ final class ThumbnailModeView: NSView {
     private struct ThumbnailRequest {
         let token: UUID
         let pointSize: Double
+        let scale: Double
         let task: Task<Void, Never>
     }
 
@@ -525,17 +526,23 @@ final class ThumbnailModeView: NSView {
     private func requestThumbnail(for file: MediaFile) {
         guard window?.inLiveResize != true else { return }
         let pointSize = storedThumbnailSize
-        if let existing = requests[file.url], existing.pointSize == pointSize {
+        let scale = Double(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2)
+        if let existing = requests[file.url],
+           existing.pointSize == pointSize,
+           existing.scale == scale {
             return
         }
         if let existing = requests[file.url] {
             existing.task.cancel()
             requests[file.url] = nil
+            provider.cancel(
+                for: file.url,
+                pointSize: existing.pointSize,
+                scale: existing.scale
+            )
         }
-        provider.cancel(for: file.url)
 
         let pointSizeValue = pointSize
-        let scale = Double(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2)
         let token = UUID()
         let provider = self.provider
         let url = file.url
@@ -550,7 +557,12 @@ final class ThumbnailModeView: NSView {
             self.requests[url] = nil
             self.apply(image, for: url)
         }
-        requests[url] = ThumbnailRequest(token: token, pointSize: pointSize, task: task)
+        requests[url] = ThumbnailRequest(
+            token: token,
+            pointSize: pointSize,
+            scale: scale,
+            task: task
+        )
     }
 
     private func apply(_ image: CGImage?, for url: URL) {
@@ -562,9 +574,14 @@ final class ThumbnailModeView: NSView {
     }
 
     private func cancelRequest(for url: URL) {
-        requests[url]?.task.cancel()
+        guard let request = requests[url] else { return }
+        request.task.cancel()
         requests[url] = nil
-        provider.cancel(for: url)
+        provider.cancel(
+            for: url,
+            pointSize: request.pointSize,
+            scale: request.scale
+        )
     }
 
     private func refreshVisibleThumbnails() {

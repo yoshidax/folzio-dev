@@ -4,11 +4,11 @@ import QuickLookThumbnailing
 
 public protocol ThumbnailProviding: Sendable {
     func thumbnail(for url: URL, pointSize: Double, scale: Double) async -> CGImage?
-    func cancel(for url: URL)
+    func cancel(for url: URL, pointSize: Double, scale: Double)
 }
 
 public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
-    private static let sizeSteps = [128, 256, 512]
+    private static let sizeSteps = [64, 128, 256, 512]
 
     public static func pixelSize(forPointSize pointSize: Double, scale: Double) -> Int {
         let target = pointSize * scale
@@ -29,6 +29,7 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
 
     private struct InFlightRequest {
         let url: URL
+        let pixelSize: Int
         let request: QLThumbnailGenerator.Request
     }
 
@@ -58,7 +59,11 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
         )
         let identifier = UUID()
         lock.withLock {
-            inFlight[identifier] = InFlightRequest(url: url, request: request)
+            inFlight[identifier] = InFlightRequest(
+                url: url,
+                pixelSize: pixelSize,
+                request: request
+            )
         }
         defer {
             lock.withLock {
@@ -77,9 +82,12 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
         }
     }
 
-    public func cancel(for url: URL) {
+    public func cancel(for url: URL, pointSize: Double, scale: Double) {
+        let pixelSize = Self.pixelSize(forPointSize: pointSize, scale: scale)
         let requests: [QLThumbnailGenerator.Request] = lock.withLock {
-            let matches = inFlight.filter { $0.value.url == url }
+            let matches = inFlight.filter {
+                $0.value.url == url && $0.value.pixelSize == pixelSize
+            }
             for identifier in matches.keys {
                 inFlight[identifier] = nil
             }

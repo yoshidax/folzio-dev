@@ -34,7 +34,10 @@ final class FileListViewController: NSViewController {
         self.settings = settings
         self.thumbnailProvider = thumbnailProvider
         self.coordinator = coordinator
-        self.listModeView = ListModeView(model: model)
+        self.listModeView = ListModeView(
+            model: model,
+            provider: thumbnailProvider
+        )
         self.thumbnailModeView = ThumbnailModeView(
             model: model,
             provider: thumbnailProvider

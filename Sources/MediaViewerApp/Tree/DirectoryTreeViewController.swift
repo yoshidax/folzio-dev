@@ -448,6 +448,13 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
             cell = NSTableCellView()
             cell.identifier = identifier
 
+            let icon = NSImageView()
+            icon.translatesAutoresizingMaskIntoConstraints = false
+            icon.imageScaling = .scaleProportionallyDown
+            icon.setAccessibilityElement(false)
+            cell.addSubview(icon)
+            cell.imageView = icon
+
             let text = NSTextField(labelWithString: "")
             text.translatesAutoresizingMaskIntoConstraints = false
             text.lineBreakMode = .byTruncatingMiddle
@@ -455,12 +462,18 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
             cell.textField = text
 
             NSLayoutConstraint.activate([
-                text.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
+                icon.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
+                icon.widthAnchor.constraint(equalToConstant: 16),
+                icon.heightAnchor.constraint(equalToConstant: 16),
+                icon.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+
+                text.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 6),
                 text.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
                 text.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
             ])
         }
 
+        cell.imageView?.image = IconCatalog.treeIcon(for: node.folder.kind)
         cell.textField?.stringValue = node.folder.name
         if node.folder.accessState == .denied {
             cell.textField?.textColor = .disabledControlTextColor

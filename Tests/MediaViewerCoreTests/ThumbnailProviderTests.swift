@@ -5,12 +5,18 @@ import Testing
 
 @Suite("ThumbnailProvider")
 struct ThumbnailProviderTests {
-    @Test("要求サイズを 128 / 256 / 512 の段階に切り上げる")
+    @Test("要求サイズを 64 / 128 / 256 / 512 の段階に切り上げる")
     func roundsPointSizeToPixelSteps() {
+        #expect(ThumbnailProvider.pixelSize(forPointSize: 16, scale: 1) == 64)
+        #expect(ThumbnailProvider.pixelSize(forPointSize: 16, scale: 2) == 64)
+        #expect(ThumbnailProvider.pixelSize(forPointSize: 50, scale: 1) == 64)
+        #expect(ThumbnailProvider.pixelSize(forPointSize: 64, scale: 1) == 64)
+        #expect(ThumbnailProvider.pixelSize(forPointSize: 64.1, scale: 1) == 128)
         #expect(ThumbnailProvider.pixelSize(forPointSize: 100, scale: 2) == 256)
         #expect(ThumbnailProvider.pixelSize(forPointSize: 300, scale: 2) == 512)
-        #expect(ThumbnailProvider.pixelSize(forPointSize: 50, scale: 1) == 128)
         #expect(ThumbnailProvider.pixelSize(forPointSize: 1000, scale: 1) == 512)
+        #expect(ThumbnailProvider.pixelSize(forPointSize: .nan, scale: 1) == 64)
+        #expect(ThumbnailProvider.pixelSize(forPointSize: .infinity, scale: 1) == 64)
     }
 
     @Test("mixed の JPEG と mp4 でサムネイルが返る", .timeLimit(.minutes(1)))
