@@ -119,6 +119,269 @@ struct BrowserModelTests {
         #expect(isUnavailable)
     }
 
+    // MARK: - 種類フィルタ
+
+    @MainActor
+    private func filterFolder() -> (URL, [MediaFile]) {
+        let folder = URL(fileURLWithPath: "/tmp/filter-\(UUID().uuidString)", isDirectory: true)
+        let files = ["a.jpg", "b.mov", "c.png", "d.mp4"].map { file($0, in: folder) }
+        return (folder, files)
+    }
+
+    @MainActor
+    private func isImagePreview(_ model: BrowserModel) -> Bool {
+        if case .image = model.preview { return true }
+        return false
+    }
+
+    @MainActor
+    private func isLoadingPreview(_ model: BrowserModel) -> Bool {
+        if case .loading = model.preview { return true }
+        return false
+    }
+
+    @MainActor
+    private func isEmptyPreview(_ model: BrowserModel) -> Bool {
+        if case .empty = model.preview { return true }
+        return false
+    }
+
+    @Test("種類フィルタの既定は両方オフで全件が表示される")
+    @MainActor
+    func filterDefaultShowsAll() async {
+        let (folder, files) = filterFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        #expect(model.mediaTypeFilter == MediaTypeFilter())
+        await model.selectFolder(folder)
+        #expect(model.listing.files.count == 4)
+        #expect(model.listing.state == .loaded)
+    }
+
+    @Test("種類フィルタで画像のみ・動画のみ・両方オンを切り替える")
+    @MainActor
+    func filterSwitchesKinds() async {
+        let (folder, files) = filterFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        await model.selectFolder(folder)
+
+        model.setMediaTypeFilter(MediaTypeFilter(imagesOnly: true))
+        #expect(model.listing.files.map(\.name) == ["a.jpg", "c.png"])
+
+        model.setMediaTypeFilter(MediaTypeFilter(videosOnly: true))
+        #expect(model.listing.files.map(\.name) == ["b.mov", "d.mp4"])
+
+        model.setMediaTypeFilter(MediaTypeFilter(imagesOnly: true, videosOnly: true))
+        #expect(model.listing.files.map(\.name) == ["a.jpg", "b.mov", "c.png", "d.mp4"])
+
+        // US3-13: 両方オンから「画像のみ表示」だけをオフにする
+        model.setMediaTypeFilter(MediaTypeFilter(videosOnly: true))
+        #expect(model.listing.files.map(\.name) == ["b.mov", "d.mp4"])
+    }
+
+    @Test("該当なしと空のフォルダを区別する")
+    @MainActor
+    func filterDistinguishesNoMatchesAndEmpty() async {
+        let imageFolder = URL(fileURLWithPath: "/tmp/filter-img-\(UUID().uuidString)", isDirectory: true)
+        let emptyFolder = URL(fileURLWithPath: "/tmp/filter-empty-\(UUID().uuidString)", isDirectory: true)
+        let lister = FakeLister(responses: [
+            imageFolder: .init(files: [file("a.jpg", in: imageFolder), file("c.png", in: imageFolder)], delay: .zero),
+            emptyFolder: .init(files: [], delay: .zero),
+        ])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        await model.selectFolder(imageFolder)
+        model.setMediaTypeFilter(MediaTypeFilter(videosOnly: true))
+        #expect(model.listing.state == .noMatches)
+        #expect(model.listing.files.isEmpty)
+
+        model.setMediaTypeFilter(MediaTypeFilter())
+        #expect(model.listing.state == .loaded)
+        #expect(model.listing.files.count == 2)
+
+        model.setMediaTypeFilter(MediaTypeFilter(videosOnly: true))
+        await model.selectFolder(emptyFolder)
+        #expect(model.listing.state == .empty)
+        #expect(model.listing.files.isEmpty)
+    }
+
+    @Test("フォルダを移動しても種類フィルタが保たれる")
+    @MainActor
+    func filterPersistsAcrossFolders() async {
+        let (folder, files) = filterFolder()
+        let other = URL(fileURLWithPath: "/tmp/filter-other-\(UUID().uuidString)", isDirectory: true)
+        let otherFiles = ["x.jpg", "y.mov", "z.mp4"].map { file($0, in: other) }
+        let lister = FakeLister(responses: [
+            folder: .init(files: files, delay: .zero),
+            other: .init(files: otherFiles, delay: .zero),
+        ])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        await model.selectFolder(folder)
+        model.setMediaTypeFilter(MediaTypeFilter(videosOnly: true))
+        await model.selectFolder(other)
+
+        #expect(model.mediaTypeFilter.videosOnly)
+        #expect(model.listing.files.map(\.name) == ["y.mov", "z.mp4"])
+    }
+
+    @Test("絞り込み中の並べ替えは絞り込みを保ち該当なしも維持する")
+    @MainActor
+    func filterWithSortOrder() async {
+        let (folder, files) = filterFolder()
+        let imageFolder = URL(fileURLWithPath: "/tmp/filter-img-\(UUID().uuidString)", isDirectory: true)
+        let lister = FakeLister(responses: [
+            folder: .init(files: files, delay: .zero),
+            imageFolder: .init(files: [file("a.jpg", in: imageFolder)], delay: .zero),
+        ])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        await model.selectFolder(folder)
+        model.setMediaTypeFilter(MediaTypeFilter(videosOnly: true))
+        model.sortOrder = SortOrder(column: .name, ascending: false)
+        #expect(model.listing.files.map(\.name) == ["d.mp4", "b.mov"])
+
+        await model.selectFolder(imageFolder)
+        #expect(model.listing.state == .noMatches)
+        model.sortOrder = SortOrder(column: .name, ascending: true)
+        #expect(model.listing.state == .noMatches)
+        #expect(model.listing.files.isEmpty)
+    }
+
+    @Test("絞り込み中の読み直しで新しいファイルも絞り込まれる")
+    @MainActor
+    func filterAppliesOnReload() async {
+        let (folder, files) = filterFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        await model.selectFolder(folder)
+        model.setMediaTypeFilter(MediaTypeFilter(videosOnly: true))
+
+        await lister.setResponse(
+            .init(files: files + [file("e.mov", in: folder)], delay: .zero),
+            for: folder
+        )
+        await model.reloadCurrentFolder()
+        #expect(model.listing.files.map(\.name) == ["b.mov", "d.mp4", "e.mov"])
+    }
+
+    @Test("フォーカスが隠れると選択が整理されプレビューが切り替わる")
+    @MainActor
+    func filterRestrictsSelectionWhenFocusHidden() async {
+        let (folder, files) = filterFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        await model.selectFolder(folder)
+
+        let a = files[0].url
+        let b = files[1].url
+        model.select([a, b], focused: b)
+        model.setMediaTypeFilter(MediaTypeFilter(imagesOnly: true))
+
+        #expect(model.selection.selected == [a])
+        #expect(model.selection.focused == a)
+        let isImage = await waitUntil { isImagePreview(model) }
+        #expect(isImage)
+    }
+
+    @Test("フォーカスが表示中のままなら選択だけ差し替えてプレビューを読み直さない")
+    @MainActor
+    func filterKeepsPreviewWhenFocusVisible() async {
+        let (folder, files) = filterFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        await model.selectFolder(folder)
+
+        let a = files[0].url
+        let b = files[1].url
+        model.select([a, b], focused: a)
+        let loaded = await waitUntil { isImagePreview(model) }
+        #expect(loaded)
+
+        model.setMediaTypeFilter(MediaTypeFilter(imagesOnly: true))
+
+        #expect(model.selection.selected == [a])
+        #expect(model.selection.focused == a)
+        #expect(!isLoadingPreview(model))
+        #expect(isImagePreview(model))
+    }
+
+    @Test("選択が残らないときは空になり、絞り込みを戻しても選択は戻らない")
+    @MainActor
+    func filterClearsSelectionWhenNothingRemains() async {
+        let (folder, files) = filterFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        await model.selectFolder(folder)
+
+        let b = files[1].url
+        model.select([b], focused: b)
+        model.setMediaTypeFilter(MediaTypeFilter(imagesOnly: true))
+
+        #expect(model.selection.selected.isEmpty)
+        #expect(model.selection.focused == nil)
+        #expect(isEmptyPreview(model))
+
+        model.setMediaTypeFilter(MediaTypeFilter())
+        #expect(model.selection.selected.isEmpty)
+        #expect(model.selection.focused == nil)
+    }
+
+    @Test("同じ種類フィルタを再設定しても一覧と選択は変わらない")
+    @MainActor
+    func filterSameValueIsNoOp() async {
+        let (folder, files) = filterFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        await model.selectFolder(folder)
+
+        let a = files[0].url
+        model.setMediaTypeFilter(MediaTypeFilter(imagesOnly: true))
+        model.select([a], focused: a)
+        let listingBefore = model.listing
+        let selectionBefore = model.selection
+        let signalBefore = model.stopPlaybackSignal
+
+        model.setMediaTypeFilter(MediaTypeFilter(imagesOnly: true))
+
+        #expect(model.listing.files.map(\.url) == listingBefore.files.map(\.url))
+        #expect(model.listing.state == listingBefore.state)
+        #expect(model.listing.folder == listingBefore.folder)
+        #expect(model.selection.selected == selectionBefore.selected)
+        #expect(model.selection.focused == selectionBefore.focused)
+        #expect(model.stopPlaybackSignal == signalBefore)
+    }
+
+    @Test("種類フィルタは設定に保存されない")
+    @MainActor
+    func filterIsNotPersisted() async {
+        let (folder, files) = filterFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        await model.selectFolder(folder)
+
+        let keysBefore = Set(defaults.persistentDomain(forName: suite)?.keys.map { $0 } ?? [])
+        model.setMediaTypeFilter(MediaTypeFilter(imagesOnly: true))
+        model.setMediaTypeFilter(MediaTypeFilter(videosOnly: true))
+        let keysAfter = Set(defaults.persistentDomain(forName: suite)?.keys.map { $0 } ?? [])
+
+        #expect(keysBefore == keysAfter)
+    }
+
     @MainActor
     private func makeModel(
         lister: FakeLister,
@@ -175,10 +438,14 @@ private actor FakeLister: DirectoryListing {
         var error: ListingError?
     }
 
-    private let responses: [URL: Response]
+    private var responses: [URL: Response]
 
     init(responses: [URL: Response]) {
         self.responses = responses
+    }
+
+    func setResponse(_ response: Response, for folder: URL) {
+        responses[folder] = response
     }
 
     func mediaFiles(in folder: URL) async throws(ListingError) -> [MediaFile] {
