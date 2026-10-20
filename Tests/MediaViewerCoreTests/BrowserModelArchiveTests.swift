@@ -30,10 +30,19 @@ struct BrowserModelArchiveTests {
         }
     }
 
-    private func makeEnv(entries: [ZipFixtureEntry]? = nil) throws -> Env {
-        let root = FileManager.default.temporaryDirectory
+    /// `DirectoryLister` は `/private/var/...` の URL を返すため、同じ表記の一時フォルダを作る
+    private func makeRootDirectory() throws -> URL {
+        var root = FileManager.default.temporaryDirectory
             .appendingPathComponent("BrowserModelArchiveTests-\(UUID().uuidString)", isDirectory: true)
+        if root.path.hasPrefix("/var/") {
+            root = URL(fileURLWithPath: "/private" + root.path, isDirectory: true)
+        }
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        return root
+    }
+
+    private func makeEnv(entries: [ZipFixtureEntry]? = nil) throws -> Env {
+        let root = try makeRootDirectory()
 
         try ImageFixtures.jpeg(at: root.appendingPathComponent("cover.jpg"), width: 32, height: 24)
 
@@ -474,9 +483,7 @@ struct BrowserModelArchiveTests {
 
     @Test("zip だけのフォルダは .loaded")
     func folderWithOnlyArchiveIsLoaded() async throws {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("BrowserModelArchiveTests-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let root = try makeRootDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
         try ZipFixtureWriter.write([ZipFixtureEntry(name: "a.txt")], to: root.appendingPathComponent("only.zip"))
         let suite = "BrowserModelArchiveTests.\(UUID().uuidString)"
