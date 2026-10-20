@@ -11,7 +11,11 @@ public enum DecodeError: Error, Sendable, Equatable {
 
 public protocol ImageDecoding: Sendable {
     func decode(_ url: URL, maxPixelSize: Int) async throws(DecodeError) -> DecodedImage
+    /// ファイル URL 専用（同期）。mvzip の URL では呼ばない
     func isAnimated(_ url: URL) -> Bool
+    /// zip の中の画像用。ArchiveReading.data(for:) で読んだ内容を渡す（research.md R24）
+    func decode(data: Data, maxPixelSize: Int) async throws(DecodeError) -> DecodedImage
+    func isAnimated(data: Data) -> Bool
 }
 
 public struct ImageDecoder: ImageDecoding {
@@ -29,17 +33,52 @@ public struct ImageDecoder: ImageDecoding {
         }
     }
 
+    public func decode(data: Data, maxPixelSize: Int) async throws(DecodeError) -> DecodedImage {
+        do {
+            return try await Task.detached(priority: .userInitiated) {
+                try Self.decodeSynchronously(data: data, maxPixelSize: maxPixelSize)
+            }.value
+        } catch let error as DecodeError {
+            throw error
+        } catch {
+            throw DecodeError.corrupted
+        }
+    }
+
     public func isAnimated(_ url: URL) -> Bool {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
             return false
         }
-        return CGImageSourceGetCount(source) > 1
+        return Self.isAnimated(source)
+    }
+
+    public func isAnimated(data: Data) -> Bool {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+            return false
+        }
+        return Self.isAnimated(source)
+    }
+
+    private static func isAnimated(_ source: CGImageSource) -> Bool {
+        CGImageSourceGetCount(source) > 1
     }
 
     private static func decodeSynchronously(_ url: URL, maxPixelSize: Int) throws(DecodeError) -> DecodedImage {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
             throw DecodeError.unreadable
         }
+        return try decode(source, maxPixelSize: maxPixelSize)
+    }
+
+    private static func decodeSynchronously(data: Data, maxPixelSize: Int) throws(DecodeError) -> DecodedImage {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+            throw DecodeError.unreadable
+        }
+        return try decode(source, maxPixelSize: maxPixelSize)
+    }
+
+    /// ファイル URL と Data の両方が使う判定（対応する型・フレーム数・サムネイルのオプション・byteCost）
+    private static func decode(_ source: CGImageSource, maxPixelSize: Int) throws(DecodeError) -> DecodedImage {
         guard let typeIdentifier = CGImageSourceGetType(source) as String? else {
             throw DecodeError.unreadable
         }

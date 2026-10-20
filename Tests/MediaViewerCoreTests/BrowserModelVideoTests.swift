@@ -164,4 +164,10 @@ private struct VideoFakeDecoder: ImageDecoding {
     }
 
     func isAnimated(_ url: URL) -> Bool { false }
+
+    func decode(data: Data, maxPixelSize: Int) async throws(DecodeError) -> DecodedImage {
+        try await decode(URL(fileURLWithPath: "/"), maxPixelSize: maxPixelSize)
+    }
+
+    func isAnimated(data: Data) -> Bool { false }
 }

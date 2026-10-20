@@ -481,6 +481,12 @@ private struct FakeDecoder: ImageDecoding {
         animatedURLs.contains(url)
     }
 
+    func decode(data: Data, maxPixelSize: Int) async throws(DecodeError) -> DecodedImage {
+        Self.makeImage()
+    }
+
+    func isAnimated(data: Data) -> Bool { false }
+
     private static func makeImage() -> DecodedImage {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let context = CGContext(
