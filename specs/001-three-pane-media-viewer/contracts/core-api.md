@@ -90,8 +90,10 @@ public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile]
     public private(set) var selection: SelectionState
     public private(set) var preview: PreviewContent
     public var sortOrder: SortOrder
+    public private(set) var mediaTypeFilter: MediaTypeFilter  // 既定は両方オフ。保存しない（FR-056）
 
-    public func selectFolder(_ url: URL) async        // 前の読み込みを取り消してから一覧を読み込む
+    public func selectFolder(_ url: URL) async        // 前の読み込みを取り消してから一覧を読み込む。種類フィルタは保つ
+    public func setMediaTypeFilter(_ filter: MediaTypeFilter) // 一覧を絞り直し、選択を整理する（FR-059）。ディスクは読まない
     public func select(_ urls: Set<URL>, focused: URL?)
     public func moveFocus(_ direction: FocusDirection) // 前後の項目。プレビューと先読みを更新する
     public func handleFileSystemEvent(_ folders: Set<URL>) async
@@ -99,6 +101,28 @@ public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile]
 ```
 
 - UI は `BrowserModel` の変化を監視して描画するだけにし、選択・プレビュー・先読みの判断を UI に持たせない
+- `listing.files` は種類フィルタ適用後の配列。絞り込みで0件のときは `listing.state == .noMatches` になる（FR-060）
+- `setMediaTypeFilter` は、フォーカスが変わらないときは `selection` だけを差し替え、プレビューを読み直さない。
+  フォーカスが変わるとき（nil を含む）は `select(_:focused:)` と同じ経路で動画の停止・プレビュー・先読みを更新する
+
+## 種類フィルタ
+
+```swift
+public struct MediaTypeFilter: Sendable, Equatable {
+    public var imagesOnly: Bool                     // 既定 false
+    public var videosOnly: Bool                     // 既定 false
+    public init(imagesOnly: Bool = false, videosOnly: Bool = false)
+    public var isFiltering: Bool                    // 片方だけがオン
+    public func includes(_ kind: MediaKind) -> Bool
+    public func apply(to files: [MediaFile]) -> [MediaFile]   // 並び順を保つ
+    public var noMatchesMessage: String?            // isFiltering のときだけ文言を返す（FR-060）
+}
+
+extension SelectionState {
+    // 表示中の URL（一覧の並び順）に合わせて選択を整理する（FR-059）
+    public func restricted(toVisible orderedURLs: [URL]) -> SelectionState
+}
+```
 
 ## プレビュー用デコード
 

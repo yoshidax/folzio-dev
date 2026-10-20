@@ -1,6 +1,6 @@
 # Implementation Plan: 3ペイン型メディアビューア
 
-**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-20 (tree double-click toggle and disclosure, toolbar, fullscreen arrow navigation, small-image upscale, tree/list icons, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-20 (image/video type filter, tree double-click toggle and disclosure, toolbar, fullscreen arrow navigation, small-image upscale, tree/list icons, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-three-pane-media-viewer/spec.md`
 
@@ -36,6 +36,12 @@ Core の純粋計算 `FileListChrome` で決める。
 確認できたフォルダにだけ出す（FR-054・055、R19）。確認は表示されているフォルダの直下1階層だけを、
 最初の1件で打ち切る列挙で行い、並列数を 4 に制限してバックグラウンドで実行する。
 開閉の判断と状態遷移は Core の `FolderDisclosure` と `FolderNode` に置いてテストする。
+ファイルリストには画像・動画の種類フィルタを加える（FR-056〜060、R20）。「画像のみ表示」（⇧⌘I）と
+「動画のみ表示」（⇧⌘M）の独立した2つのオン・オフで、片方だけがオンのときに絞り込む。ツールバーでは
+表示形式ボタンの左に `selectAny` の2択ボタンとして置き、「表示」メニューにも同じ項目を置く。
+状態は `BrowserModel.mediaTypeFilter` に1つだけ持ち、保存しない。`BrowserModel` が全件を保持して
+`listing.files` に絞り込み後の配列を入れるため、一覧・選択・先読み・フルスクリーン移動・ファイル操作は
+既存のまま表示中の一覧だけを対象にする。非表示になった選択の整理と0件のメッセージは Core で決める。
 
 ## Technical Context
 
@@ -82,6 +88,8 @@ QuickLookThumbnailing, UniformTypeIdentifiers, CoreServices[FSEvents], CoreGraph
 フルスクリーン中はツールバーをメニューバーと一緒に自動で隠し、保存した表示状態は変えない（FR-049、R18）。
 ツリーのサブフォルダの有無の確認は、表示中のフォルダの直下1階層だけを対象にし、孫以下を先読みしない。
 確認は UI スレッドで行わず、同時に 4 件までに制限する。確認結果は永続化しない（FR-055、R19）。
+種類フィルタは保存せず（`SettingsStore` に書かない）、起動のたびに両方オフで始める。切り替えでは
+ディスクを読み直さず、保持済みの全件を `MediaKind` で絞るだけにする（10,000 件で 0.05 秒以内）（FR-056、R20）。
 
 **Scale/Scope**: 1ウィンドウ（3ペイン）+ 設定ウィンドウ + 確認・衝突ダイアログ。フォルダあたり最大で
 数万ファイルを想定。単一ユーザー
@@ -94,11 +102,11 @@ QuickLookThumbnailing, UniformTypeIdentifiers, CoreServices[FSEvents], CoreGraph
 
 | 原則 | 判定 | 根拠 |
 |------|------|------|
-| I. ローカル完結・プライバシー | ✅ 適合 | ネットワークを使う API も依存もない。サムネイルはメモリにのみ置き、ユーザーのフォルダにもディスクキャッシュにも書かない（R7）。アプリアイコンも外部素材を取得せず、コードから生成する（R14）。ファイル操作はすべてユーザーの明示的な操作が起点になる。確認を省略できるのは、削除が常にゴミ箱経由で取り消せるため（v1.1.0 の「確認または取り消し可能性」、FR-021・024）。取り消せない上書きは常に衝突ダイアログで確認する（FR-025） |
-| II. 体感パフォーマンス | ✅ 適合 | デコード・列挙・サムネイル生成・ファイル操作はすべてバックグラウンドで行う（R5・R7・R9・R10）。キャッシュの上限を明示した（R8）。基準値は `MediaViewerPerformanceTests` で計測する（quickstart）。小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（R5）。リスト形式の行頭アイコンもサムネイル生成を可視行だけ遅延実行し、セル再利用時は同じ URL・サイズの要求だけを取り消すため、10,000 ファイルでも一覧表示を待たせない（R17）。注: 憲章の基準「起動からファイル指定で開いた最初の画像の表示 1 秒以内」は、ファイルを指定して起動する経路を前提にしている。この経路は本機能の範囲外なので、代わりに SC-002（前回フォルダの一覧表示まで 2 秒）を計測する。ファイル指定起動を追加する機能で 1 秒基準を適用する。アイコン生成はビルド時のみで、起動時間に影響しない。ツールバーは表示状態の読み込みとビュー生成だけで、デコードや列挙を追加しない（R18） |
-| III. キーボードファースト & a11y | ✅ 適合 | 提供する全操作のキー割り当てを [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md) で網羅した。手動の拡大/縮小（ズーム）とパンは提供せず、フィットは画像選択時に自動で行うため、これらへのキー割り当ては存在しない（spec Assumptions）。AppKit 標準部品の a11y を使い、プレビューとサムネイルのセルにはファイル名のラベルを付ける。行頭アイコンは装飾として a11y 要素から外し、フォルダ名・ファイル名と選択状態は従来どおり読み上げられる（FR-047・048）。ダークモードは AppKit 標準の配色で追従し、「視差効果を減らす」設定が有効な間は、アニメーション画像を自動で再生しない。サムネイル形式でもキーボードだけで一覧を辿れるよう、フォーカス項目のスクロール追従を必須にする（FR-017）。フルスクリーン中も矢印キーで選択を移動でき（FR-046）、動画のシークは `<` / `>` に残すため、フルスクリーンでも主要操作をキーボードだけで完結できる。ツールバーの表示切替には ⇧⌘T を割り当て、ツールバー上の操作（表示形式・サイズ）は既存の ⌘1 / ⌘2 / ⌘+ / ⌘- でも行えるため、ツールバーを使わなくてもキーボードだけで完結する。ボタンとスライダーにはアクセシビリティラベルを付ける（FR-050・051）。ツリーのダブルクリック開閉は既存の → / ← キーによる開閉のマウス版で、キーボード手段は既にある。開閉できないフォルダは三角を持たず、支援技術にも開閉できる項目として伝わらない（FR-053・054） |
-| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。フルスクリーンの移動規則は `FocusNavigator` として Core に置き、リスト形式・サムネイル形式・フルスクリーンの全経路で同じ関数を使う。境界（先頭・末尾・行頭・行末）と空リストのケースを `FocusNavigatorTests` で検証する。行頭アイコンは小さな要求サイズの丸め（64px 段階）を `ThumbnailProviderTests` で検証し、表示とフォールバックは quickstart の手動確認で担保する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する。ツールバーの保存状態は `SettingsStoreTests`、下部バーの表示とスライダーの有効・無効の判断は `FileListChromeTests` で検証し、ツールバーの見た目と配線は quickstart の手動確認で担保する。ツリーの開閉は、サブフォルダの有無の状態遷移とダブルクリックの判断を `FolderDisclosureTests`、`hasSubfolders(in:)` の判定（隠しフォルダ・パッケージ・権限なし・存在しない）と `subfolders(of:)` との一致を `DirectoryListerTests`、並列数の上限と取り消しを `SubfolderProbeTests` で検証する。ダブルクリックと三角の配線は quickstart の手動確認で担保する |
-| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない。ツリーとリストの行頭アイコンは SF Symbols と既存のサムネイル経路を使い、新しい設定・永続化・外部素材を追加しない（R17）。フルスクリーン移動（FR-046）は既存の選択モデルとレイアウト計算を再利用し、新しい設定・永続化状態・依存を追加しない。ツールバーは AppKit 標準の `NSToolbar` と SF Symbols だけで作り、ユーザーによるカスタマイズは提供しない。永続化はツールバーの表示状態を表す Bool 1 つだけを追加する（R18）。ツリーの開閉は `NSOutlineView` 標準の `doubleAction` と `isItemExpandable` だけで作り、設定・永続化・依存を増やさない。並列数の制限は、遅いボリュームで列挙が積み上がるのを防ぐための最小限の仕組みとする（R19） |
+| I. ローカル完結・プライバシー | ✅ 適合 | ネットワークを使う API も依存もない。サムネイルはメモリにのみ置き、ユーザーのフォルダにもディスクキャッシュにも書かない（R7）。アプリアイコンも外部素材を取得せず、コードから生成する（R14）。ファイル操作はすべてユーザーの明示的な操作が起点になる。確認を省略できるのは、削除が常にゴミ箱経由で取り消せるため（v1.1.0 の「確認または取り消し可能性」、FR-021・024）。取り消せない上書きは常に衝突ダイアログで確認する（FR-025）種類フィルタは表示の絞り込みだけで、ファイルを変更せず通信もしない（R20）。 |
+| II. 体感パフォーマンス | ✅ 適合 | デコード・列挙・サムネイル生成・ファイル操作はすべてバックグラウンドで行う（R5・R7・R9・R10）。キャッシュの上限を明示した（R8）。基準値は `MediaViewerPerformanceTests` で計測する（quickstart）。小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（R5）。リスト形式の行頭アイコンもサムネイル生成を可視行だけ遅延実行し、セル再利用時は同じ URL・サイズの要求だけを取り消すため、10,000 ファイルでも一覧表示を待たせない（R17）。注: 憲章の基準「起動からファイル指定で開いた最初の画像の表示 1 秒以内」は、ファイルを指定して起動する経路を前提にしている。この経路は本機能の範囲外なので、代わりに SC-002（前回フォルダの一覧表示まで 2 秒）を計測する。ファイル指定起動を追加する機能で 1 秒基準を適用する。アイコン生成はビルド時のみで、起動時間に影響しない。ツールバーは表示状態の読み込みとビュー生成だけで、デコードや列挙を追加しない（R18）種類フィルタは保持済みの一覧を `MediaKind` で絞るだけで、列挙・デコードを追加しない。10,000 件での適用時間を性能テストで計測する（R20）。 |
+| III. キーボードファースト & a11y | ✅ 適合 | 提供する全操作のキー割り当てを [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md) で網羅した。手動の拡大/縮小（ズーム）とパンは提供せず、フィットは画像選択時に自動で行うため、これらへのキー割り当ては存在しない（spec Assumptions）。AppKit 標準部品の a11y を使い、プレビューとサムネイルのセルにはファイル名のラベルを付ける。行頭アイコンは装飾として a11y 要素から外し、フォルダ名・ファイル名と選択状態は従来どおり読み上げられる（FR-047・048）。ダークモードは AppKit 標準の配色で追従し、「視差効果を減らす」設定が有効な間は、アニメーション画像を自動で再生しない。サムネイル形式でもキーボードだけで一覧を辿れるよう、フォーカス項目のスクロール追従を必須にする（FR-017）。フルスクリーン中も矢印キーで選択を移動でき（FR-046）、動画のシークは `<` / `>` に残すため、フルスクリーンでも主要操作をキーボードだけで完結できる。ツールバーの表示切替には ⇧⌘T を割り当て、ツールバー上の操作（表示形式・サイズ）は既存の ⌘1 / ⌘2 / ⌘+ / ⌘- でも行えるため、ツールバーを使わなくてもキーボードだけで完結する。ボタンとスライダーにはアクセシビリティラベルを付ける（FR-050・051）。ツリーのダブルクリック開閉は既存の → / ← キーによる開閉のマウス版で、キーボード手段は既にある。開閉できないフォルダは三角を持たず、支援技術にも開閉できる項目として伝わらない（FR-053・054）種類フィルタは ⇧⌘I / ⇧⌘M と「表示」メニューで操作でき、ツールバーが非表示でもキーボードだけで切り替えられる。ツールバーのボタンにはアクセシビリティラベル（「画像のみ表示」「動画のみ表示」）を付け、メニューのチェックマークで状態を伝える（FR-057・058）。 |
+| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。フルスクリーンの移動規則は `FocusNavigator` として Core に置き、リスト形式・サムネイル形式・フルスクリーンの全経路で同じ関数を使う。境界（先頭・末尾・行頭・行末）と空リストのケースを `FocusNavigatorTests` で検証する。行頭アイコンは小さな要求サイズの丸め（64px 段階）を `ThumbnailProviderTests` で検証し、表示とフォールバックは quickstart の手動確認で担保する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する。ツールバーの保存状態は `SettingsStoreTests`、下部バーの表示とスライダーの有効・無効の判断は `FileListChromeTests` で検証し、ツールバーの見た目と配線は quickstart の手動確認で担保する。ツリーの開閉は、サブフォルダの有無の状態遷移とダブルクリックの判断を `FolderDisclosureTests`、`hasSubfolders(in:)` の判定（隠しフォルダ・パッケージ・権限なし・存在しない）と `subfolders(of:)` との一致を `DirectoryListerTests`、並列数の上限と取り消しを `SubfolderProbeTests` で検証する。ダブルクリックと三角の配線は quickstart の手動確認で担保する種類フィルタの4通りの組み合わせ・並び順の保持・0件のメッセージを `MediaTypeFilterTests`、選択の整理（FR-059）を同ファイルの `SelectionState.restricted(toVisible:)` のテスト、フォルダ移動後の保持・`.noMatches`・並べ替えと読み直し・動画の停止通知を `BrowserModelTests` / `BrowserModelVideoTests` で検証する。ボタン・メニューの配線は quickstart の手動確認で担保する。 |
+| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない。ツリーとリストの行頭アイコンは SF Symbols と既存のサムネイル経路を使い、新しい設定・永続化・外部素材を追加しない（R17）。フルスクリーン移動（FR-046）は既存の選択モデルとレイアウト計算を再利用し、新しい設定・永続化状態・依存を追加しない。ツールバーは AppKit 標準の `NSToolbar` と SF Symbols だけで作り、ユーザーによるカスタマイズは提供しない。永続化はツールバーの表示状態を表す Bool 1 つだけを追加する（R18）。ツリーの開閉は `NSOutlineView` 標準の `doubleAction` と `isItemExpandable` だけで作り、設定・永続化・依存を増やさない。並列数の制限は、遅いボリュームで列挙が積み上がるのを防ぐための最小限の仕組みとする（R19）種類フィルタは Bool 2 つの値型と既存の `NSToolbarItemGroup`・メニュー項目だけで作り、保存キー・設定項目・依存を増やさない。絞り込みを `listing.files` に集約し、UI の各部品に同じ判断を重複させない（R20）。 |
 
 **Phase 1 設計後の再評価**: data-model・contracts・quickstart を確認したが、新たな違反はない。
 FSEvents による監視（R9）は外部依存ではなく、OS 標準 API の利用にあたる。アイコン生成（R14）は
@@ -130,6 +138,10 @@ Core の判断を渡すだけで成立し、新しい依存・設定・永続化
 表示中のフォルダの直下1階層に限り、最初の1件で打ち切り、同時 4 件までをバックグラウンドで行う。
 10,000 ファイルのフォルダでの確認時間を性能テストで計測する（原則 II）。状態遷移と判断は Core で
 テストする（原則 IV）。外部通信は追加しない（原則 I）。
+FR-056〜060 の種類フィルタ（2026-10-20）は、Bool 2 つの値型 `MediaTypeFilter` と選択の整理の純粋計算を Core に置き、
+`BrowserModel` の一覧の作り直しを1つの経路にまとめるだけで成立する。保存キー・設定・依存を増やさない（原則 V）。
+切り替えはディスクを読まず、10,000 件での適用時間を計測する（原則 II）。キー割り当ては既存と衝突しない ⇧⌘I / ⇧⌘M とし、
+ツールバーなしでも操作できる（原則 III）。外部通信は追加しない（原則 I）。
 
 ## Project Structure
 
@@ -160,7 +172,8 @@ Sources/
 │   ├── Model/                       # MediaKind, MediaFile, FolderNode（サブフォルダの有無を含む）,
 │   │                                #   FolderDisclosure（ダブルクリックの開閉）, SortOrder, SelectionState,
 │   │                                #   PreviewContent, ViewSettings, PlaybackOptions, FileOperation,
-│   │                                #   FileListChrome（下部バーとツールバーのスライダーの状態）
+│   │                                #   FileListChrome（下部バーとツールバーのスライダーの状態）,
+│   │                                #   MediaTypeFilter（画像・動画の種類フィルタ）
 │   ├── Browser/                     # BrowserModel（選択・プレビュー・先読みの調停）
 │   ├── FileSystem/                  # DirectoryLister, VolumeProvider, FileSystemWatcher (FSEvents),
 │   │                                #   SubfolderProbe（サブフォルダの有無の並列数制限付き確認）
@@ -382,6 +395,51 @@ Xcode プロジェクトは持たず、CLI（`swift build` / `swift test` / `scr
   行頭アイコン（FR-047）も変えない
 - `specs/001-three-pane-media-viewer/contracts/core-api.md`、`contracts/keyboard-and-menus.md`、`data-model.md`、
   `research.md`、`quickstart.md` を更新する
+
+## 変更点（2026-10-20: 画像・動画の種類フィルタ）
+
+- `Sources/MediaViewerCore/Model/MediaTypeFilter.swift`（新規）: `MediaTypeFilter`（`imagesOnly`・`videosOnly`、
+  `isFiltering`・`includes(_:)`・`apply(to:)`・`noMatchesMessage`）
+- `Sources/MediaViewerCore/Model/BrowserState.swift`: `FolderListing.State` に `.noMatches` を追加する。
+  `SelectionState.restricted(toVisible:)` を追加する（data-model の表のとおり）
+- `Sources/MediaViewerCore/Browser/BrowserModel.swift`:
+  - 並べ替え済みの全件 `allFiles`（非公開）と `public private(set) var mediaTypeFilter`（既定は両方オフ）を持つ
+  - `listing.files` と `listing.state` を作る処理を1つの非公開メソッドにまとめ、`loadFolder`・`reloadCurrentFolder`・
+    `sortOrder` の `didSet` から呼ぶ。全件が空なら `.empty`、絞り込み後だけが空なら `.noMatches`、それ以外は `.loaded`。
+    `sortOrder` の `didSet` の対象状態に `.noMatches` を加える
+  - `setMediaTypeFilter(_:)` を追加する。同じ値なら何もしない。一覧を作り直し、`restricted(toVisible:)` で選択を整理する。
+    フォーカスが変わらなければ `selection` だけを差し替えて先読みを組み直し、変わる場合は `select(_:focused:)` を呼ぶ
+  - `selectFolder(_:)` は `mediaTypeFilter` を変えない。`reloadCurrentFolder()` の選択の扱いは変えず、絞り込み後の一覧に対して行う
+- `Tests/MediaViewerCoreTests/MediaTypeFilterTests.swift`（新規）: 4 通りの `includes` と `isFiltering`、`apply(to:)` が
+  並び順を保つこと、空入力、`noMatchesMessage` の文言と nil を検証する。`restricted(toVisible:)` は data-model の表の
+  3 行に加え、フォーカスなし・複数選択の並び順（`Set` の順に依存しない）・空の表示一覧を検証する
+- `Tests/MediaViewerCoreTests/BrowserModelTests.swift`: 既定が両方オフで全件が出ること、片方オンで絞られること、
+  `.noMatches` と `.empty` の区別、フォルダを移っても絞り込みが残ること、並べ替え・FSEvents の読み直し後も絞り込みが
+  効くこと、フォーカスが表示中なら選択とプレビューを変えないこと、新しい `BrowserModel` は保存値に関わらず両方オフで
+  始まることを追加する
+- `Tests/MediaViewerCoreTests/BrowserModelVideoTests.swift`: 再生中の動画が絞り込みで非表示になったとき、停止通知が
+  増えてプレビューが空になることを追加する
+- `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift`: 10,000 件への `MediaTypeFilter.apply(to:)` が
+  0.05 秒以内であることを計測する
+- `Sources/MediaViewerApp/FileList/FileListViewController.swift`:
+  - `refresh()` に `.noMatches` を加え、`model.mediaTypeFilter.noMatchesMessage` を表示する。`updateModeVisibility()` では
+    `.noMatches` を一覧を隠す状態として扱う
+  - 「表示」メニューの「サムネイルを縮小」の後ろに区切り線と「画像のみ表示」（`keyEquivalent: "I"`）・
+    「動画のみ表示」（`"M"`）を追加し、`model.mediaTypeFilter` の監視でチェックマークを更新する。
+    `validateMenuItem` ではテキスト編集中に無効にする
+  - `applyMediaTypeFilter(_:)`（メニュー・ツールバーの共通経路）と `onMediaTypeFilterChange` を公開する
+- `Sources/MediaViewerApp/App/MainToolbarController.swift`: 識別子 `mediaTypeFilter` の `NSToolbarItemGroup`
+  （`selectAny`、`photo` と `film`、ラベル「画像のみ表示」「動画のみ表示」、ツールチップとアクセシビリティラベルも同じ）を
+  追加し、既定と許可の並びを「種類フィルタ」「表示形式」「サイズ」「可変スペース」にする。クリック時は
+  `isSelected(at:)` から `MediaTypeFilter` を作って `applyMediaTypeFilter(_:)` へ渡し、`onMediaTypeFilterChange` で
+  `setSelected(_:at:)` を合わせる。テキスト編集中のクリックは無視して表示を元に戻す
+- `Sources/MediaViewerApp/App/MainSplitViewController.swift`: `deliverInitialListingIfReady()` の網羅的な `switch` に
+  `.noMatches` を加える（表示済みとして扱う）。フルスクリーンのキー処理は変更しない
+- `ListModeView`・`ThumbnailModeView`・`PreviewViewController`・ファイル操作・ツリー・設定と永続化は変更しない
+  （`listing.files` と `selection` の既存の監視で絞り込みが反映される）
+- `README.md`: ファイルリストの操作説明に、種類フィルタのボタン・メニュー・⇧⌘I / ⇧⌘M を追記する
+- `specs/001-three-pane-media-viewer/contracts/core-api.md`、`contracts/keyboard-and-menus.md`、`contracts/settings.md`、
+  `data-model.md`、`research.md`、`quickstart.md` を更新する
 
 ## Complexity Tracking
 
