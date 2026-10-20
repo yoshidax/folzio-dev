@@ -22,8 +22,11 @@ final class FileListViewController: NSViewController {
     private var installedViewMenuItems = false
     private weak var thumbnailMenuItem: NSMenuItem?
     private weak var listMenuItem: NSMenuItem?
+    private weak var imagesOnlyMenuItem: NSMenuItem?
+    private weak var videosOnlyMenuItem: NSMenuItem?
 
     var onViewStateChange: ((DisplayMode, Double) -> Void)?
+    var onMediaTypeFilterChange: ((MediaTypeFilter) -> Void)?
 
     var isToolbarShown = false {
         didSet {
@@ -38,6 +41,10 @@ final class FileListViewController: NSViewController {
 
     var currentThumbnailSize: Double {
         thumbnailModeView.thumbnailSize
+    }
+
+    var currentMediaTypeFilter: MediaTypeFilter {
+        model.mediaTypeFilter
     }
 
     init(
@@ -208,6 +215,7 @@ final class FileListViewController: NSViewController {
         installViewMenuItems()
         refresh()
         observeModel()
+        observeMediaTypeFilter()
     }
 
     override func viewDidAppear() {
@@ -251,6 +259,20 @@ final class FileListViewController: NSViewController {
             Task { @MainActor in
                 self?.refresh()
                 self?.observeModel()
+            }
+        }
+    }
+
+    private func observeMediaTypeFilter() {
+        withObservationTracking {
+            _ = model.mediaTypeFilter
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.updateViewMenuState()
+                self.onMediaTypeFilterChange?(self.model.mediaTypeFilter)
+                self.refresh()
+                self.observeMediaTypeFilter()
             }
         }
     }
@@ -352,12 +374,42 @@ final class FileListViewController: NSViewController {
         zoomOutItem.target = self
         viewMenu.addItem(zoomOutItem)
 
+        viewMenu.addItem(.separator())
+
+        let imagesOnlyItem = NSMenuItem(
+            title: "画像のみ表示",
+            action: #selector(toggleImagesOnly(_:)),
+            keyEquivalent: "I"
+        )
+        imagesOnlyItem.target = self
+        viewMenu.addItem(imagesOnlyItem)
+        imagesOnlyMenuItem = imagesOnlyItem
+
+        let videosOnlyItem = NSMenuItem(
+            title: "動画のみ表示",
+            action: #selector(toggleVideosOnly(_:)),
+            keyEquivalent: "M"
+        )
+        videosOnlyItem.target = self
+        viewMenu.addItem(videosOnlyItem)
+        videosOnlyMenuItem = videosOnlyItem
+
         updateViewMenuState()
     }
 
     private func updateViewMenuState() {
         thumbnailMenuItem?.state = displayMode == .thumbnails ? .on : .off
         listMenuItem?.state = displayMode == .list ? .on : .off
+        imagesOnlyMenuItem?.state = model.mediaTypeFilter.imagesOnly ? .on : .off
+        videosOnlyMenuItem?.state = model.mediaTypeFilter.videosOnly ? .on : .off
+    }
+
+    func applyMediaTypeFilter(_ filter: MediaTypeFilter) {
+        guard !isEditingText else {
+            onMediaTypeFilterChange?(model.mediaTypeFilter)
+            return
+        }
+        model.setMediaTypeFilter(filter)
     }
 
     func selectDisplayMode(_ mode: DisplayMode) {
@@ -531,6 +583,18 @@ final class FileListViewController: NSViewController {
         setThumbnailSize(thumbnailModeView.thumbnailSize - 16, persist: true)
     }
 
+    @objc private func toggleImagesOnly(_ sender: Any?) {
+        var filter = model.mediaTypeFilter
+        filter.imagesOnly.toggle()
+        applyMediaTypeFilter(filter)
+    }
+
+    @objc private func toggleVideosOnly(_ sender: Any?) {
+        var filter = model.mediaTypeFilter
+        filter.videosOnly.toggle()
+        applyMediaTypeFilter(filter)
+    }
+
     @objc private func thumbnailSizeSliderChanged(_ sender: NSSlider) {
         setThumbnailSize(sender.doubleValue, persist: true)
     }
@@ -538,6 +602,11 @@ final class FileListViewController: NSViewController {
 
 extension FileListViewController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(toggleImagesOnly(_:))
+            || menuItem.action == #selector(toggleVideosOnly(_:)) {
+            return !isEditingText
+        }
+
         if isEditingText {
             switch menuItem.action {
             case #selector(open(_:)),

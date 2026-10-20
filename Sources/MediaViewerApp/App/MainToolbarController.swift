@@ -3,6 +3,7 @@ import MediaViewerCore
 
 @MainActor
 final class MainToolbarController: NSObject {
+    private static let mediaTypeFilterIdentifier = NSToolbarItem.Identifier("mediaTypeFilter")
     private static let viewModeIdentifier = NSToolbarItem.Identifier("viewMode")
     private static let thumbnailSizeIdentifier = NSToolbarItem.Identifier("thumbnailSize")
 
@@ -11,6 +12,7 @@ final class MainToolbarController: NSObject {
     private let fileList: FileListViewController
     private let settings: SettingsStore
     private let sizeSlider = NSSlider()
+    private var mediaTypeFilterGroup: NSToolbarItemGroup?
     private var viewModeGroup: NSToolbarItemGroup?
     private var sizeItem: NSToolbarItem?
     private var visibilityObservation: NSKeyValueObservation?
@@ -41,6 +43,10 @@ final class MainToolbarController: NSObject {
             self?.apply(displayMode: mode, thumbnailSize: size)
         }
 
+        fileList.onMediaTypeFilterChange = { [weak self] filter in
+            self?.apply(mediaTypeFilter: filter)
+        }
+
         visibilityObservation = toolbar.observe(\.isVisible, options: [.new]) { [weak self] toolbar, _ in
             let isVisible = toolbar.isVisible
             MainActor.assumeIsolated {
@@ -63,6 +69,11 @@ final class MainToolbarController: NSObject {
         sizeItem?.isEnabled = sliderEnabled
     }
 
+    func apply(mediaTypeFilter: MediaTypeFilter) {
+        mediaTypeFilterGroup?.setSelected(mediaTypeFilter.imagesOnly, at: 0)
+        mediaTypeFilterGroup?.setSelected(mediaTypeFilter.videosOnly, at: 1)
+    }
+
     private func applyCurrentState() {
         apply(
             displayMode: fileList.currentDisplayMode,
@@ -79,6 +90,15 @@ final class MainToolbarController: NSObject {
         settings.viewSettings = viewSettings
     }
 
+    @objc private func mediaTypeFilterSelected(_ sender: NSToolbarItemGroup) {
+        fileList.applyMediaTypeFilter(
+            MediaTypeFilter(
+                imagesOnly: sender.isSelected(at: 0),
+                videosOnly: sender.isSelected(at: 1)
+            )
+        )
+    }
+
     @objc private func viewModeSelected(_ sender: NSToolbarItemGroup) {
         fileList.selectDisplayMode(sender.selectedIndex == 0 ? .thumbnails : .list)
     }
@@ -90,11 +110,11 @@ final class MainToolbarController: NSObject {
 
 extension MainToolbarController: NSToolbarDelegate {
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
+        [Self.mediaTypeFilterIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
+        [Self.mediaTypeFilterIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
     }
 
     func toolbar(
@@ -103,6 +123,27 @@ extension MainToolbarController: NSToolbarDelegate {
         willBeInsertedIntoToolbar flag: Bool
     ) -> NSToolbarItem? {
         switch itemIdentifier {
+        case Self.mediaTypeFilterIdentifier:
+            let images = [
+                NSImage(systemSymbolName: "photo", accessibilityDescription: "画像のみ表示"),
+                NSImage(systemSymbolName: "film", accessibilityDescription: "動画のみ表示"),
+            ].compactMap { $0 }
+            let group = NSToolbarItemGroup(
+                itemIdentifier: itemIdentifier,
+                images: images,
+                selectionMode: .selectAny,
+                labels: ["画像のみ表示", "動画のみ表示"],
+                target: self,
+                action: #selector(mediaTypeFilterSelected(_:))
+            )
+            group.label = "種類"
+            group.toolTip = "種類"
+            for (subitem, title) in zip(group.subitems, ["画像のみ表示", "動画のみ表示"]) {
+                subitem.toolTip = title
+            }
+            mediaTypeFilterGroup = group
+            apply(mediaTypeFilter: fileList.currentMediaTypeFilter)
+            return group
         case Self.viewModeIdentifier:
             let images = [
                 NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "サムネイル"),
