@@ -1,6 +1,6 @@
 # Implementation Plan: 3ペイン型メディアビューア
 
-**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-20 (toolbar, fullscreen arrow navigation, small-image upscale, tree/list icons, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-20 (tree double-click toggle and disclosure, toolbar, fullscreen arrow navigation, small-image upscale, tree/list icons, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-three-pane-media-viewer/spec.md`
 
@@ -32,6 +32,10 @@ AVPlayerView を配置して Core の状態を描画するだけにする。デ�
 ツールバーには表示形式の2択ボタン（SF Symbols）とサムネイルサイズのスライダーを置き、
 既存の表示形式・サイズの状態をメニューや下部バーと共有する。下部バーの表示とスライダーの有効・無効は
 Core の純粋計算 `FileListChrome` で決める。
+ツリーではフォルダの行のダブルクリックで開閉をトグルし（FR-053）、開閉の三角はサブフォルダがあると
+確認できたフォルダにだけ出す（FR-054・055、R19）。確認は表示されているフォルダの直下1階層だけを、
+最初の1件で打ち切る列挙で行い、並列数を 4 に制限してバックグラウンドで実行する。
+開閉の判断と状態遷移は Core の `FolderDisclosure` と `FolderNode` に置いてテストする。
 
 ## Technical Context
 
@@ -76,6 +80,8 @@ QuickLookThumbnailing, UniformTypeIdentifiers, CoreServices[FSEvents], CoreGraph
 ツールバーの表示状態は `view.showsToolbar` として `SettingsStore` だけに保存し、`NSToolbar` の
 自動保存（`autosavesConfiguration`）は使わない。ツールバーが非表示のときのウィンドウは追加前と同じに保つ。
 フルスクリーン中はツールバーをメニューバーと一緒に自動で隠し、保存した表示状態は変えない（FR-049、R18）。
+ツリーのサブフォルダの有無の確認は、表示中のフォルダの直下1階層だけを対象にし、孫以下を先読みしない。
+確認は UI スレッドで行わず、同時に 4 件までに制限する。確認結果は永続化しない（FR-055、R19）。
 
 **Scale/Scope**: 1ウィンドウ（3ペイン）+ 設定ウィンドウ + 確認・衝突ダイアログ。フォルダあたり最大で
 数万ファイルを想定。単一ユーザー
@@ -90,9 +96,9 @@ QuickLookThumbnailing, UniformTypeIdentifiers, CoreServices[FSEvents], CoreGraph
 |------|------|------|
 | I. ローカル完結・プライバシー | ✅ 適合 | ネットワークを使う API も依存もない。サムネイルはメモリにのみ置き、ユーザーのフォルダにもディスクキャッシュにも書かない（R7）。アプリアイコンも外部素材を取得せず、コードから生成する（R14）。ファイル操作はすべてユーザーの明示的な操作が起点になる。確認を省略できるのは、削除が常にゴミ箱経由で取り消せるため（v1.1.0 の「確認または取り消し可能性」、FR-021・024）。取り消せない上書きは常に衝突ダイアログで確認する（FR-025） |
 | II. 体感パフォーマンス | ✅ 適合 | デコード・列挙・サムネイル生成・ファイル操作はすべてバックグラウンドで行う（R5・R7・R9・R10）。キャッシュの上限を明示した（R8）。基準値は `MediaViewerPerformanceTests` で計測する（quickstart）。小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（R5）。リスト形式の行頭アイコンもサムネイル生成を可視行だけ遅延実行し、セル再利用時は同じ URL・サイズの要求だけを取り消すため、10,000 ファイルでも一覧表示を待たせない（R17）。注: 憲章の基準「起動からファイル指定で開いた最初の画像の表示 1 秒以内」は、ファイルを指定して起動する経路を前提にしている。この経路は本機能の範囲外なので、代わりに SC-002（前回フォルダの一覧表示まで 2 秒）を計測する。ファイル指定起動を追加する機能で 1 秒基準を適用する。アイコン生成はビルド時のみで、起動時間に影響しない。ツールバーは表示状態の読み込みとビュー生成だけで、デコードや列挙を追加しない（R18） |
-| III. キーボードファースト & a11y | ✅ 適合 | 提供する全操作のキー割り当てを [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md) で網羅した。手動の拡大/縮小（ズーム）とパンは提供せず、フィットは画像選択時に自動で行うため、これらへのキー割り当ては存在しない（spec Assumptions）。AppKit 標準部品の a11y を使い、プレビューとサムネイルのセルにはファイル名のラベルを付ける。行頭アイコンは装飾として a11y 要素から外し、フォルダ名・ファイル名と選択状態は従来どおり読み上げられる（FR-047・048）。ダークモードは AppKit 標準の配色で追従し、「視差効果を減らす」設定が有効な間は、アニメーション画像を自動で再生しない。サムネイル形式でもキーボードだけで一覧を辿れるよう、フォーカス項目のスクロール追従を必須にする（FR-017）。フルスクリーン中も矢印キーで選択を移動でき（FR-046）、動画のシークは `<` / `>` に残すため、フルスクリーンでも主要操作をキーボードだけで完結できる。ツールバーの表示切替には ⇧⌘T を割り当て、ツールバー上の操作（表示形式・サイズ）は既存の ⌘1 / ⌘2 / ⌘+ / ⌘- でも行えるため、ツールバーを使わなくてもキーボードだけで完結する。ボタンとスライダーにはアクセシビリティラベルを付ける（FR-050・051） |
-| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。フルスクリーンの移動規則は `FocusNavigator` として Core に置き、リスト形式・サムネイル形式・フルスクリーンの全経路で同じ関数を使う。境界（先頭・末尾・行頭・行末）と空リストのケースを `FocusNavigatorTests` で検証する。行頭アイコンは小さな要求サイズの丸め（64px 段階）を `ThumbnailProviderTests` で検証し、表示とフォールバックは quickstart の手動確認で担保する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する。ツールバーの保存状態は `SettingsStoreTests`、下部バーの表示とスライダーの有効・無効の判断は `FileListChromeTests` で検証し、ツールバーの見た目と配線は quickstart の手動確認で担保する |
-| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない。ツリーとリストの行頭アイコンは SF Symbols と既存のサムネイル経路を使い、新しい設定・永続化・外部素材を追加しない（R17）。フルスクリーン移動（FR-046）は既存の選択モデルとレイアウト計算を再利用し、新しい設定・永続化状態・依存を追加しない。ツールバーは AppKit 標準の `NSToolbar` と SF Symbols だけで作り、ユーザーによるカスタマイズは提供しない。永続化はツールバーの表示状態を表す Bool 1 つだけを追加する（R18） |
+| III. キーボードファースト & a11y | ✅ 適合 | 提供する全操作のキー割り当てを [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md) で網羅した。手動の拡大/縮小（ズーム）とパンは提供せず、フィットは画像選択時に自動で行うため、これらへのキー割り当ては存在しない（spec Assumptions）。AppKit 標準部品の a11y を使い、プレビューとサムネイルのセルにはファイル名のラベルを付ける。行頭アイコンは装飾として a11y 要素から外し、フォルダ名・ファイル名と選択状態は従来どおり読み上げられる（FR-047・048）。ダークモードは AppKit 標準の配色で追従し、「視差効果を減らす」設定が有効な間は、アニメーション画像を自動で再生しない。サムネイル形式でもキーボードだけで一覧を辿れるよう、フォーカス項目のスクロール追従を必須にする（FR-017）。フルスクリーン中も矢印キーで選択を移動でき（FR-046）、動画のシークは `<` / `>` に残すため、フルスクリーンでも主要操作をキーボードだけで完結できる。ツールバーの表示切替には ⇧⌘T を割り当て、ツールバー上の操作（表示形式・サイズ）は既存の ⌘1 / ⌘2 / ⌘+ / ⌘- でも行えるため、ツールバーを使わなくてもキーボードだけで完結する。ボタンとスライダーにはアクセシビリティラベルを付ける（FR-050・051）。ツリーのダブルクリック開閉は既存の → / ← キーによる開閉のマウス版で、キーボード手段は既にある。開閉できないフォルダは三角を持たず、支援技術にも開閉できる項目として伝わらない（FR-053・054） |
+| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。フルスクリーンの移動規則は `FocusNavigator` として Core に置き、リスト形式・サムネイル形式・フルスクリーンの全経路で同じ関数を使う。境界（先頭・末尾・行頭・行末）と空リストのケースを `FocusNavigatorTests` で検証する。行頭アイコンは小さな要求サイズの丸め（64px 段階）を `ThumbnailProviderTests` で検証し、表示とフォールバックは quickstart の手動確認で担保する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する。ツールバーの保存状態は `SettingsStoreTests`、下部バーの表示とスライダーの有効・無効の判断は `FileListChromeTests` で検証し、ツールバーの見た目と配線は quickstart の手動確認で担保する。ツリーの開閉は、サブフォルダの有無の状態遷移とダブルクリックの判断を `FolderDisclosureTests`、`hasSubfolders(in:)` の判定（隠しフォルダ・パッケージ・権限なし・存在しない）と `subfolders(of:)` との一致を `DirectoryListerTests`、並列数の上限と取り消しを `SubfolderProbeTests` で検証する。ダブルクリックと三角の配線は quickstart の手動確認で担保する |
+| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない。ツリーとリストの行頭アイコンは SF Symbols と既存のサムネイル経路を使い、新しい設定・永続化・外部素材を追加しない（R17）。フルスクリーン移動（FR-046）は既存の選択モデルとレイアウト計算を再利用し、新しい設定・永続化状態・依存を追加しない。ツールバーは AppKit 標準の `NSToolbar` と SF Symbols だけで作り、ユーザーによるカスタマイズは提供しない。永続化はツールバーの表示状態を表す Bool 1 つだけを追加する（R18）。ツリーの開閉は `NSOutlineView` 標準の `doubleAction` と `isItemExpandable` だけで作り、設定・永続化・依存を増やさない。並列数の制限は、遅いボリュームで列挙が積み上がるのを防ぐための最小限の仕組みとする（R19） |
 
 **Phase 1 設計後の再評価**: data-model・contracts・quickstart を確認したが、新たな違反はない。
 FSEvents による監視（R9）は外部依存ではなく、OS 標準 API の利用にあたる。アイコン生成（R14）は
@@ -119,6 +125,11 @@ FR-049〜052 のツールバー（2026-10-20）は、AppKit 標準の `NSToolbar
 ラベル表示の切り替えは作らない（原則 V）。下部バーとスライダーの状態判断は Core の純粋計算に置いて
 テストする（原則 IV）。ツールバー上の操作はすべて既存のキー割り当てでも行え、表示切替にも ⇧⌘T を
 割り当てる（原則 III）。外部通信やデコードは追加しない（原則 I・II）。
+FR-053〜055 のツリーの開閉（2026-10-20）は、`NSOutlineView` 標準の `doubleAction` と `isItemExpandable` に
+Core の判断を渡すだけで成立し、新しい依存・設定・永続化を増やさない（原則 V）。サブフォルダの有無の確認は
+表示中のフォルダの直下1階層に限り、最初の1件で打ち切り、同時 4 件までをバックグラウンドで行う。
+10,000 ファイルのフォルダでの確認時間を性能テストで計測する（原則 II）。状態遷移と判断は Core で
+テストする（原則 IV）。外部通信は追加しない（原則 I）。
 
 ## Project Structure
 
@@ -146,11 +157,13 @@ specs/001-three-pane-media-viewer/
 Package.swift
 Sources/
 ├── MediaViewerCore/                 # AppKit 非依存。すべての判断ロジック
-│   ├── Model/                       # MediaKind, MediaFile, FolderNode, SortOrder, SelectionState,
+│   ├── Model/                       # MediaKind, MediaFile, FolderNode（サブフォルダの有無を含む）,
+│   │                                #   FolderDisclosure（ダブルクリックの開閉）, SortOrder, SelectionState,
 │   │                                #   PreviewContent, ViewSettings, PlaybackOptions, FileOperation,
 │   │                                #   FileListChrome（下部バーとツールバーのスライダーの状態）
 │   ├── Browser/                     # BrowserModel（選択・プレビュー・先読みの調停）
-│   ├── FileSystem/                  # DirectoryLister, VolumeProvider, FileSystemWatcher (FSEvents)
+│   ├── FileSystem/                  # DirectoryLister, VolumeProvider, FileSystemWatcher (FSEvents),
+│   │                                #   SubfolderProbe（サブフォルダの有無の並列数制限付き確認）
 │   ├── Imaging/                     # ImageDecoder, DecodedImageCache, ThumbnailProvider
 │   ├── Layout/                      # FitCalculator, ThumbnailGridLayout, ThumbnailScroll, FocusNavigator
 │   ├── Operations/                  # FileOperationService, NameValidation, uniqueName
@@ -323,6 +336,52 @@ Xcode プロジェクトは持たず、CLI（`swift build` / `swift test` / `scr
 - 表示形式の切替・サムネイルサイズの規則、ファイル操作、プレビュー、フルスクリーン中の矢印移動は変更しない
 - `specs/001-three-pane-media-viewer/contracts/keyboard-and-menus.md`、`contracts/settings.md`、
   `contracts/core-api.md`、`data-model.md`、`research.md`、`quickstart.md` を更新する
+
+## 変更点（2026-10-20: ツリーのダブルクリック開閉と開閉の三角の表示条件）
+
+- `Sources/MediaViewerCore/Model/FolderNode.swift`: `AccessState` に `.unavailable` を追加する。`SubfolderState`（`.unknown` / `.present` / `.absent` /
+  `.failed`）と `subfolderState`（既定 `.unknown`）、計算プロパティ `isExpandable`、
+  `applySubfolderProbe(_:)` と `applySubfolderListing(_:)` を追加する。イニシャライザの既定引数に加え、
+  既存の呼び出しを壊さない。等価性と `hash` は `url` のままにする
+- `Sources/MediaViewerCore/Model/FolderDisclosure.swift`（新規）: `doubleClickToggle(isExpandable:isExpanded:)`
+- `Sources/MediaViewerCore/FileSystem/DirectoryLister.swift`: プロトコルに `hasSubfolders(in:)` を追加し、
+  既定実装をプロトコル拡張に置く。`DirectoryLister` は `FileManager.enumerator` で最初の1件で打ち切る実装にする。
+  判定条件・事前チェック（存在・ディレクトリか）・エラー変換は `subfolders(of:)` と共有する
+- `Sources/MediaViewerCore/FileSystem/SubfolderProbe.swift`（新規）: `SubfolderProbeResult` と
+  `SubfolderProbe.results(for:lister:maxConcurrent:)`。`withTaskGroup` で同時実行数を `maxConcurrent` 以下に保ち、
+  `AsyncStream` の終了で残りを取り消す
+- `Tests/MediaViewerCoreTests/FolderDisclosureTests.swift`（新規）: data-model の状態遷移表の全行、
+  `isExpandable` の組み合わせ、`doubleClickToggle` の 4 通りを検証する
+- `Tests/MediaViewerCoreTests/DirectoryListerTests.swift`: `hasSubfolders(in:)` を、空・ファイルだけ・隠しフォルダだけ・
+  パッケージだけ・サブフォルダあり・権限なし（`0o000`）・存在しないパスで検証し、各ケースで
+  `!subfolders(of:).isEmpty` と一致することを確かめる
+- `Tests/MediaViewerCoreTests/SubfolderProbeTests.swift`（新規）: 遅延するフェイクの lister で、全 URL が1回ずつ
+  流れること、同時実行数が上限を超えないこと、URL ごとのエラーが他に波及しないこと、空入力ですぐ終わること、
+  取り消し後に新しい確認を始めないことを検証する
+- `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift`: サブフォルダのない 10,000 ファイルの
+  フォルダで `hasSubfolders(in:)` が 0.2 秒以内に `false` を返すことを計測する
+- `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift`:
+  - `isItemExpandable` は `node.folder.isExpandable` を返す
+  - `outlineView.target = self`、`doubleAction = #selector(toggleClickedFolder(_:))` を設定する。
+    `clickedRow` のノードについて `FolderDisclosure.doubleClickToggle` の結果で `expandItem` / `collapseItem` を呼ぶ
+  - ルート（`viewDidLoad`・`applyRoots`）と、子を読み込んだ・読み直したときの新しい子に対して
+    `SubfolderProbe` を開始する。親ごとに進行中の確認を `Task` で1つ持ち、作り直すときに取り消す。
+    結果はノードに反映し、表示中の行だけ `reloadItem(_:reloadChildren: false)` する
+  - `loadChildrenIfNeeded` / `reloadChildren(of:)` は、読み込み結果を `applySubfolderListing` に渡す。
+    `.absent` になったら折りたたみ、開閉できるときだけ `expandItem` する。読み直しでは同じ URL の
+    既存ノードの状態を引き継ぐ。権限以外の失敗（`.unavailable`）では三角を残して折りたたみ、次の展開で読み直す
+  - セルの「アクセスできません」表示（グレーの文字とツールチップ）の条件を `.denied` または `.unavailable` にする。
+    ドロップ先の判定は変えない
+  - `applyRoots` でも既存ルートの `subfolderState` と `accessState` を引き継ぐ
+  - `updateWatchSet()` は、表示中のフォルダ（ルートと展開中のフォルダの子）も監視対象に入れる。
+    イベントが来た折りたたみ中のノードは再確認し、読み込み済みの子を捨てて次の展開で読み直す
+    （折りたたみ中に起きた変更が、展開したときに古い子のまま表示される既存の問題も解消する）
+  - `reveal(_:)` は各段で子を読み込んでから `expandItem` を呼ぶ
+- `README.md`: ツリーの操作説明に、行のダブルクリックでの開閉と、三角はサブフォルダがあるときだけ出ることを追記する
+- ファイルリスト・プレビュー・ファイル操作・設定・永続化は変更しない。ツリーのキー操作（FR-005）とドロップ（FR-020）、
+  行頭アイコン（FR-047）も変えない
+- `specs/001-three-pane-media-viewer/contracts/core-api.md`、`contracts/keyboard-and-menus.md`、`data-model.md`、
+  `research.md`、`quickstart.md` を更新する
 
 ## Complexity Tracking
 

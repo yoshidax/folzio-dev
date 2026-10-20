@@ -994,6 +994,191 @@ quickstart.md の手動シナリオで検証する。
 
 ---
 
+## Phase 17: ツリーのダブルクリック開閉と開閉の三角（FR-053〜055 追加、US1）
+
+**Purpose**: ツリーのフォルダの行のダブルクリックで開閉をトグルし、開閉の三角はサブフォルダがあると確認できた
+フォルダ（と確認に失敗したフォルダ）にだけ出す。サブフォルダの有無は、表示されているフォルダの直下1階層だけを
+最初の1件で打ち切って確認する（[spec.md](./spec.md) FR-053〜055・US1 の受け入れシナリオ 8・9、
+[plan.md](./plan.md) の「変更点（ツリーのダブルクリック開閉と開閉の三角の表示条件）」、[research.md](./research.md) R19、
+[data-model.md](./data-model.md) の `FolderNode`・「サブフォルダの有無の状態遷移」・`FolderDisclosure`、
+[contracts/core-api.md](./contracts/core-api.md)「ディレクトリ・ボリューム」、
+[contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md)「ディレクトリツリー」）。
+
+**Independent Test**: `swift test` で状態遷移・ダブルクリックの判断・`hasSubfolders(in:)`・並列数の上限が通ること。
+`.app` で quickstart.md「ツリーのダブルクリック開閉と開閉の三角」の 1〜7 を確認し、サブフォルダのないフォルダに
+三角が出ず、行のダブルクリックで選択とトグルが行われること。
+
+### Tests for User Story 1
+
+- [ ] T120 [P] [US1] `Tests/MediaViewerCoreTests/FolderDisclosureTests.swift`（新規、`@Suite("FolderDisclosure")`）を先に書く
+  （T123・T124 の前にビルドエラーになることを確認する）。`FolderNode(url:name:kind:)` で作ったノードに対して検証する:
+  - 既定値: `subfolderState == .unknown`、`isExpandable == false`
+  - `isExpandable` の 16 通り（`accessState` が `.unknown` / `.accessible` / `.denied` / `.unavailable` × `subfolderState` が
+    `.unknown` / `.present` / `.absent` / `.failed`）。`true` になるのは「`accessState != .denied` かつ
+    `subfolderState` が `.present` または `.failed`」の 6 通りだけ
+  - `applySubfolderProbe(_:)`: data-model.md の状態遷移表どおり
+    - `.success(true)` → `.present`、`accessState == .accessible`
+    - `.success(false)` → `.absent`、`accessState == .accessible`
+    - `.failure(.accessDenied)` → `accessState == .denied`、`isExpandable == false`
+    - `.failure(.notFound)` と `.failure(.other("x"))` → `.failed`、`isExpandable == true`
+    - 再確認: `.present` の後に `.success(false)` → `.absent`。`.denied` の後に `.success(true)` → `.present` かつ
+      `accessState == .accessible`（外部の変更での回復）
+  - `applySubfolderListing(_:)`:
+    - `.success(3)` → `.present`、`accessState == .accessible`
+    - `.success(0)` → `.absent`、`isExpandable == false`
+    - `.failure(.accessDenied)` → `accessState == .denied`、`children == []`、`isExpandable == false`
+    - `.failure(.notFound)` と `.failure(.other("x"))` → `accessState == .unavailable`、`subfolderState == .failed`、
+      `children == nil`、`isExpandable == true`（三角を残して再展開で読み直す）
+    - 回復: `.failure(.other("x"))` の後に `.success(2)` → `.present`、`accessState == .accessible`
+  - `FolderDisclosure.doubleClickToggle(isExpandable:isExpanded:)` の 4 通り:
+    `(true, false)` → `.expand`、`(true, true)` → `.collapse`、`(false, true)` → `.collapse`、`(false, false)` → `.none`
+- [ ] T121 [P] [US1] `Tests/MediaViewerCoreTests/DirectoryListerTests.swift` に `hasSubfolders(in:)` のテストを先に追加する
+  （T125 の前にビルドエラーになることを確認する）。既存の `makeTemporaryDirectory()` と、権限を `defer` で
+  `0o755` に戻す既存の `reportsAccessDenied` の形に合わせる。各ケースで、結果が `!subfolders(of:).isEmpty` と一致すること
+  （エラーのケースでは同じ `ListingError` を投げること）も確かめる:
+  - 空のフォルダ → `false`
+  - ファイルだけ（`a.jpg`・`b.txt`）→ `false`
+  - 隠しフォルダだけ（`.secret/`）→ `false`
+  - Finder の非表示属性を付けたフォルダだけ（`URLResourceValues.isHidden = true` を `setResourceValues` で設定）→ `false`
+  - パッケージだけ（`Sample.app/` ディレクトリ）→ `false`
+  - サブフォルダが 1 つ（`sub/`）→ `true`
+  - ファイル 50 個とサブフォルダ 1 つが混在 → `true`
+  - 権限なし（フォルダを `0o000` にする）→ `ListingError.accessDenied` を投げる
+  - 存在しないパス、およびファイルのパス → `ListingError.notFound` を投げる
+- [ ] T122 [P] [US1] `Tests/MediaViewerCoreTests/SubfolderProbeTests.swift`（新規、`@Suite("SubfolderProbe")`）を先に書く
+  （T126 の前にビルドエラーになることを確認する）。テスト内に `private actor ProbeFakeLister: DirectoryListing` を置き、
+  `hasSubfolders(in:)` で `inFlight` と `maxInFlight` と `started` を数え、`Task.sleep(for: .milliseconds(20))` の後に
+  URL ごとに決めた結果を返す（`mediaFiles` と `subfolders` は空配列を返す）:
+  - URL 10 件・`maxConcurrent: 3` → 結果は 10 件で、各 URL が 1 回ずつ。`maxInFlight <= 3`
+  - 特定の 1 件だけ `.other("boom")` を投げる → その URL だけ `.failure(.other("boom"))`、他は `.success`
+  - 空配列 → 結果 0 件ですぐ終わる
+  - `maxConcurrent: 0` → 1 として扱い、10 件すべて返る（`maxInFlight == 1`）
+  - 取り消し: URL 20 件・`maxConcurrent: 2` で、最初の 1 件を受け取ったら `for await` を抜ける。
+    100ms 待った後、`started < 20` であること（ストリームの終了で未実行の確認を始めない）
+
+### Implementation for User Story 1
+
+- [ ] T123 [US1] `Sources/MediaViewerCore/Model/FolderNode.swift` を更新する（T120 に依存）:
+  - `AccessState` に `case unavailable` を追加する（data-model.md「権限以外の理由（応答なし・取り外し等）で展開時に
+    読めなかった状態で、再展開で読み直す」）。既存の `== .denied` / `!= .denied` の比較はそのまま使える
+  - `public enum SubfolderState: Sendable { case unknown, present, absent, failed }` を `FolderNode` の中に追加する
+  - `public var subfolderState: SubfolderState` を追加し、イニシャライザの最後に既定引数 `subfolderState: SubfolderState = .unknown`
+    を加える。既存の呼び出し（`DirectoryTreeViewController`・`VolumeProvider`・テスト）は変更不要にする。
+    `==` と `hash(into:)` は `url` だけのまま変えない
+  - `public var isExpandable: Bool`: `accessState != .denied && (subfolderState == .present || subfolderState == .failed)`
+  - `public mutating func applySubfolderProbe(_ result: Result<Bool, ListingError>)`: `true` → `.present` + `.accessible`、
+    `false` → `.absent` + `.accessible`、`.accessDenied` → `accessState = .denied`、`.notFound` / `.other` → `.failed`
+  - `public mutating func applySubfolderListing(_ result: Result<Int, ListingError>)`: 1 以上 → `.present` + `.accessible`、
+    0 → `.absent` + `.accessible`、`.accessDenied` → `accessState = .denied` + `children = []`、
+    `.notFound` / `.other` → `accessState = .unavailable` + `subfolderState = .failed` + `children = nil`
+  - AppKit を import しない
+- [ ] T124 [P] [US1] `Sources/MediaViewerCore/Model/FolderDisclosure.swift`（新規）に、contracts/core-api.md の
+  `public enum FolderDisclosure` を実装する（T120 に依存）:
+  - `public enum Toggle: Sendable, Equatable { case expand, collapse, none }`
+  - `public static func doubleClickToggle(isExpandable: Bool, isExpanded: Bool) -> Toggle`: `isExpanded` なら `.collapse`、
+    そうでなく `isExpandable` なら `.expand`、それ以外は `.none`
+  - T123 と合わせて `swift test --filter FolderDisclosureTests` が通ることを確認する
+- [ ] T125 [US1] `Sources/MediaViewerCore/FileSystem/DirectoryLister.swift` に `hasSubfolders(in:)` を追加する（T121 に依存）:
+  - `DirectoryListing` プロトコルに `func hasSubfolders(in folder: URL) async throws(ListingError) -> Bool` を追加し、
+    `extension DirectoryListing` に既定実装 `try await !subfolders(of: folder).isEmpty` を置く。
+    既存のテスト用フェイク（`BrowserModelTests` の `FakeLister`、`BrowserModelVideoTests` の `VideoFakeLister`）は変更不要にする
+  - `subfolders(of:)` の事前チェック（`fileExists` と `isDirectory`、失敗で `.notFound`）を `private static func ensureDirectory(_:) throws`
+    に、子の判定（`folderKeys` の `isDirectory == true` かつ `isPackage != true`）を `private static func isVisibleSubfolder(_:) -> Bool`
+    に切り出し、`subfolders(of:)` と `hasSubfolders(in:)` の両方から使う。`subfolders(of:)` の結果と並び順は変えない
+  - `DirectoryLister.hasSubfolders(in:)` は既存の `run { }` の中で、`FileManager.default.enumerator(at:includingPropertiesForKeys:
+    options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants, .skipsPackageDescendants], errorHandler:)` を使い、
+    `isVisibleSubfolder` を満たす最初の 1 件で `true` を返す。`errorHandler` では最初のエラーを保持して `false`（列挙中止）を返し、
+    列挙後にエラーがあれば `listingError(from:)` で変換して投げる。`enumerator` が `nil` なら `.other("enumerator unavailable")` を投げる
+  - T121 の権限なしのケースで `errorHandler` が呼ばれず `false` が返る場合は、事前チェックの後に
+    `FileManager.default.isReadableFile(atPath:)` と `isExecutableFile(atPath:)` を確認し、どちらかが `false` なら `.accessDenied` を投げる
+  - `swift test --filter DirectoryListerTests` が通ることを確認する
+- [ ] T126 [US1] `Sources/MediaViewerCore/FileSystem/SubfolderProbe.swift`（新規）に、contracts/core-api.md の
+  `SubfolderProbeResult` と `SubfolderProbe.results(for:lister:maxConcurrent:)` を実装する（T122・T125 に依存）:
+  - `public struct SubfolderProbeResult: Sendable { public let url: URL; public let result: Result<Bool, ListingError> }`
+    （public の `init(url:result:)` を付ける）
+  - `results` は `AsyncStream { continuation in ... }` の中で `Task` を 1 つ作り、`withTaskGroup(of: SubfolderProbeResult.self)` で
+    `max(1, maxConcurrent)` 件ずつ `lister.hasSubfolders(in:)` を実行する。1 件終わるたびに `continuation.yield` し、
+    `urls` の順に次の 1 件を追加する。`Task.isCancelled` なら新しい確認を追加せず `group.cancelAll()` する。
+    最後に `continuation.finish()`
+  - 失敗は `do { ... } catch { ... }`（typed throws の `ListingError`）で `.failure(error)` にして流し、他の URL に波及させない
+  - `continuation.onTermination = { _ in task.cancel() }` でストリームの終了時に取り消す
+  - `swift test --filter SubfolderProbeTests` が通ることを確認する
+- [ ] T127 [P] [US1] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に
+  `@Test("サブフォルダのない 10,000 ファイルのフォルダの hasSubfolders が 0.2 秒以内")` を追加する（T125 に依存）:
+  - 一時ディレクトリに空ファイル `00000.jpg`〜`09999.jpg` を `FileManager.createFile(atPath:contents:)` で作る
+    （作成時間は計測に含めない）。`defer` で削除する
+  - `DirectoryLister().hasSubfolders(in:)` の所要時間を `ContinuousClock` で測り、結果が `false` で 0.2 秒以内であることを確かめる
+    （quickstart.md「性能の検証」の基準値）。既存の他テストと同じく `.serialized` スイートの中に置く
+- [ ] T128 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` で、開閉の三角をサブフォルダの有無に従わせ、
+  確認を始める（T123・T126 に依存）:
+  - `outlineView(_:isItemExpandable:)` は `node.folder.isExpandable` を返す
+  - `private enum ProbeKey: Hashable { case roots; case children(ObjectIdentifier); case recheck(ObjectIdentifier) }` と
+    `private var probeTasks: [ProbeKey: Task<Void, Never>] = [:]` を追加する。同じキーで新しい確認を始めるときは古い `Task` を
+    `cancel()` してから置き換える
+  - `private func startProbes(for nodes: [Node], key: ProbeKey, force: Bool = false)` を追加する。`force == false` のときは
+    `subfolderState == .unknown` かつ `accessState != .denied` のノードだけを、表示順のまま対象にする。対象の URL
+    （`standardizedFileURL`）からノードへの辞書を作り、`SubfolderProbe.results(for:lister:)`（`maxConcurrent` は既定の 4）を
+    `for await` で受ける。結果ごとに `node.folder.applySubfolderProbe(result.result)` を呼び、
+    `outlineView.row(forItem: node) >= 0` のときだけ `outlineView.reloadItem(node, reloadChildren: false)` する。
+    対象が空なら何もしない
+  - `viewDidLoad` で `roots` を作った後に `startProbes(for: roots, key: .roots)` を呼ぶ
+  - `applyRoots(_:)` で、同じ URL の既存ルートから `children` に加えて `folder.subfolderState` と `folder.accessState` を引き継ぎ、
+    `reloadData()` の後に `startProbes(for: roots, key: .roots)` を呼ぶ（新しく現れたボリュームだけが確認される）
+  - `loadChildrenIfNeeded(_:)`: 成功時は子のノードを作った後に `node.folder.applySubfolderListing(.success(children.count))` を呼ぶ。
+    `reloadItem(node, reloadChildren: true)` の後、`node.folder.isExpandable` なら `expandItem(node)`、そうでなければ
+    `collapseItem(node)` する。続けて `startProbes(for: children, key: .children(ObjectIdentifier(node)))` を呼ぶ。
+    失敗時は既存の `accessState` の分岐を `node.folder.applySubfolderListing(.failure(error))` に置き換える。`node.children` は
+    `node.folder.accessState` が `.denied` なら `[]`、`.unavailable` なら `nil`（次の展開で `loadChildrenIfNeeded` が読み直す）にし、
+    `reloadItem(node, reloadChildren: true)`、`collapseItem(node)` を行う
+  - `outlineView(_:viewFor:item:)` の「アクセスできません」表示（`disabledControlTextColor` とツールチップ）の条件を
+    `accessState == .denied || accessState == .unavailable` にする。ドロップ先の判定（`!= .denied`）は変えない
+  - `reloadChildren(of:)`: 既存の `node.children` から URL（`standardizedFileURL`）→ 旧ノードの辞書を作り、新しい子のノードへ
+    `folder.subfolderState` と `folder.accessState` を引き継ぐ。成功・失敗の扱いは `loadChildrenIfNeeded` と同じにし、
+    `.absent` になったら `collapseItem(node)` する。最後に `startProbes(for: children, key: .children(ObjectIdentifier(node)))`
+    （新しく現れた子だけが確認される）。選択の復元は既存のまま
+  - ノードの作成時に `FolderNode` の初期化引数は変えない（`subfolderState` は既定の `.unknown`）
+- [ ] T129 [US1] 同じ `DirectoryTreeViewController.swift` で、外部の変更と起動時の表示を三角に追従させる（T128 に依存）:
+  - `private func displayedNodes() -> [Node]` を追加する。`roots` と、`outlineView.isItemExpanded(_:)` が `true` のノードの
+    `children` を再帰的に集める（折りたたまれたノードの子は含めない）
+  - `updateWatchSet()` は、既存の対象（表示中のフォルダと展開中のノード）に `displayedNodes()` の URL を加えて `watcher.watch` に渡す
+  - `eventTask` のループで、`reloadExpandedNodes(in:)` の後に `recheckCollapsedNodes(in: changed)` を呼ぶ。
+    `recheckCollapsedNodes` は `displayedNodes()` のうち、展開されておらず URL が `changed` に含まれるノードについて、
+    `children` と `folder.children` を `nil` に戻し（次の展開で読み直す）、
+    `startProbes(for: [node], key: .recheck(ObjectIdentifier(node)), force: true)` を呼ぶ。三角は確認が終わるまで今の表示のままにする
+  - `reveal(_:)` は各段で `await loadChildrenIfNeeded(current)` を先に呼び、その後 `current.folder.isExpandable` かつ
+    未展開なら `expandItem(current)` する（`.unknown` のノードへの `expandItem` は無視されるため、R19）。子の段も同じ順にする
+- [ ] T130 [US1] 同じ `DirectoryTreeViewController.swift` に、行のダブルクリックでの開閉を追加する（T124・T129 に依存）:
+  - `loadView()` で `outlineView.target = self`、`outlineView.doubleAction = #selector(toggleClickedFolder(_:))` を設定する
+  - `@objc private func toggleClickedFolder(_ sender: Any?)`: `outlineView.clickedRow` が `-1` なら何もしない。行のノードについて
+    `FolderDisclosure.doubleClickToggle(isExpandable: node.folder.isExpandable, isExpanded: outlineView.isItemExpanded(node))`
+    の結果が `.expand` なら `outlineView.expandItem(node)`、`.collapse` なら `outlineView.collapseItem(node)`、`.none` なら何もしない
+  - 選択は 1 回目のクリックで既存の `outlineViewSelectionDidChange` が行うため、ここでは選択を変えない（FR-053）
+  - T132 で三角の素早い 2 回クリックによって `doubleAction` も動くと分かった場合は、`outlineView.frameOfOutlineCell(atRow:)` が
+    クリック位置（`outlineView.convert(NSApp.currentEvent!.locationInWindow, from: nil)`）を含むときに何もしないようにする
+  - 右クリックメニュー、ドラッグ&ドロップ、キー操作（FR-005）、行頭アイコン（FR-047）は変えない
+- [ ] T131 [P] [US1] `README.md` の「主な機能」とツリーの操作説明に、フォルダの行のダブルクリックで開閉できることと、
+  開閉の三角はサブフォルダ（隠しフォルダ・パッケージを除く）があるフォルダにだけ表示されることを追記する
+
+### Verification for User Story 1
+
+- [ ] T132 [US1] 自動テストと手動確認を行う（T120〜T131 に依存）:
+  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す。T127 の計測値を記録する（憲章 原則 II）
+  - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。依頼時は quickstart.md
+    「ツリーのダブルクリック開閉と開閉の三角」の準備コマンドと確認ポイント 1〜7 を具体的に示す。
+    起動しない場合は AGENTS.md の lldb 手順で例外を止める
+  - quickstart.md の 6 では、上下キーで移動を続けたときの表示の停止を画面収録または Instruments で測り、
+    100ms 以上の停止がないことを確認する（FR-055、SC-004 と同じ基準）
+  - 回帰確認: ツリーの ↑ / ↓ / ← / →、⌥→ / ⌥←（読み込み済みの配下をエラーなく開閉し、未確認の孫以下を先読みしない）、
+    開閉の三角のクリック、ツリーへのドロップ（`.unavailable` のフォルダへもドロップできる）、右クリックメニュー、
+    起動時の前回フォルダの展開と選択（`reveal`）、行頭アイコン（quickstart.md US1 の 2）が従来どおり動く
+  - 確認後に `chmod 755 ~/MediaViewerFixtures/tree/denied` で権限を戻すよう案内する
+  - 結果（実行日、OS、確認項目、合否、T127 の計測値）を `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+
+**Checkpoint**: ツリーの行のダブルクリックで開閉でき、開閉の三角はサブフォルダがあるフォルダにだけ表示される。
+確認は表示中のフォルダの直下1階層だけで、ツリーの操作を止めない
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -1026,6 +1211,11 @@ quickstart.md の手動シナリオで検証する。
   US5 の `MainSplitViewController`（フルスクリーン）に依存する。T110・T111（テスト）→ T112・T113（Core）→
   T114（`FileListViewController`）→ T115（`MainToolbarController`）・T116（`MainSplitViewController`）→
   T117（ウィンドウとメニューの結線）の順に進め、T119 は最後に行う。T118（README）はいつでも並行できる
+- **ツリーのダブルクリック開閉と開閉の三角 (Phase 17)**: FR-053〜055 の追加作業。US1 の `DirectoryTreeViewController`・
+  `DirectoryLister`・`FolderNode` と、Phase 14 のセル構成に依存する。Phase 16 とはファイルが重ならないが、Phase 単位で
+  コミットするため、Phase 16 の T119 とコミットを済ませてから着手する。T120〜T122（テスト）→ T123・T124（モデル）・
+  T125（`DirectoryLister`）→ T126（`SubfolderProbe`）→ T128 → T129 → T130（同じ `DirectoryTreeViewController.swift`）の順に進め、
+  T132 は最後に行う。T127（性能テスト）は T125 の後、T131（README）はいつでも並行できる
 
 ### User Story Dependencies
 
@@ -1066,6 +1256,10 @@ quickstart.md の手動シナリオで検証する。
   T113（`FileListChrome.swift`）もそれぞれのテストの後に並行できる。T115（新規ファイル）と T116
   （`MainSplitViewController.swift`）は T114 の後に並行できる。T117 は `MainWindowController.swift` と
   `MainMenu.swift` を編集するため T115・T116 の後に行う。T118（`README.md`）は他と重ならない
+- ツリーの開閉: T120・T121・T122 はファイルが重ならないため並行できる。T123（`FolderNode.swift`）と T124
+  （`FolderDisclosure.swift`）は並行できるが、T120 は両方が揃うまでビルドできない。T125 は T121 の後、T126 は T122・T125 の後に行う。
+  T127（`PerformanceBaselineTests.swift`）は T125 の後に T126 と並行できる。T128〜T130 は同じ
+  `DirectoryTreeViewController.swift` を編集するため並行せず、この順に進める。T131（`README.md`）は他と重ならないため、いつでも並行できる
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -1113,6 +1307,7 @@ Task: "T033 FitCalculatorTests"
 11. フルスクリーン中の矢印移動 → 全画面のまま前後のファイルへ移動でき、動画のシークは `<` / `>` で行える（FR-046）
 12. 行頭アイコン → ツリーでフォルダ種別が分かり、リスト形式で内容の縮小画像が見える（FR-047・048）
 13. ツールバー → ⇧⌘T で表示し、表示形式とサムネイルサイズをツールバーから操作できる（FR-049〜052）
+14. ツリーの開閉 → 行のダブルクリックで開閉でき、三角はサブフォルダがあるフォルダにだけ出る（FR-053〜055）
 
 ---
 
@@ -1144,4 +1339,9 @@ Task: "T033 FitCalculatorTests"
   `view.showsToolbar` だけに保存し、`NSToolbar` の自動保存は使わない。表示形式・サイズの状態は
   `FileListViewController` を唯一の正とし、メニュー・下部バー・ツールバーで同じ経路を通す。
   フルスクリーン中はツールバーを自動で隠し、保存値は変えない（research.md R18）
+- FR-053〜055（2026-10-20）により、ツリーの行のダブルクリックで開閉をトグルし、開閉の三角はサブフォルダの有無が
+  `.present` または `.failed` のフォルダにだけ出す。確認は表示中のフォルダの直下1階層だけを、最初の1件で打ち切り、
+  同時 4 件までで行う。展開時の読み込み失敗は「アクセスできません」の表示にそろえ、権限なし（`.denied`）は三角を消し、
+  それ以外（`.unavailable`）は三角を残して再展開で読み直す。確認結果は
+  永続化しない（research.md R19）
 - Commit after each task or logical group

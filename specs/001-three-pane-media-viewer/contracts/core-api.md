@@ -21,9 +21,47 @@ public protocol DirectoryListing: Sendable {
     func mediaFiles(in folder: URL) async throws(ListingError) -> [MediaFile]
     /// 直下のフォルダのみを返す（隠しフォルダ・パッケージは除く）。名前の自然順
     func subfolders(of folder: URL) async throws(ListingError) -> [URL]
+    /// subfolders(of:) が返すフォルダが直下に1つでもあるか。最初の1件で打ち切る（FR-054・055）
+    func hasSubfolders(in folder: URL) async throws(ListingError) -> Bool
+}
+
+extension DirectoryListing {
+    /// 既定実装: !subfolders(of:).isEmpty。DirectoryLister は列挙を打ち切る実装で置き換える
+    public func hasSubfolders(in folder: URL) async throws(ListingError) -> Bool
 }
 
 public enum ListingError: Error { case accessDenied, notFound, other(String) }
+
+public struct SubfolderProbeResult: Sendable {
+    public let url: URL
+    public let result: Result<Bool, ListingError>
+}
+
+public enum SubfolderProbe {
+    /// urls を表示順に確認し、URL ごとに1回ずつ結果を流す。同時に実行する確認は maxConcurrent 件まで。
+    /// ストリームの終了（取り消し）で未実行の確認は行わない
+    public static func results(
+        for urls: [URL],
+        lister: any DirectoryListing,
+        maxConcurrent: Int = 4
+    ) -> AsyncStream<SubfolderProbeResult>
+}
+
+extension FolderNode {
+    // AccessState に .unavailable（権限以外の理由で展開時に読めない。再展開で読み直す）を追加する
+    public enum AccessState: Sendable { case unknown, accessible, denied, unavailable }
+    public enum SubfolderState: Sendable { case unknown, present, absent, failed }
+    public var subfolderState: SubfolderState            // 既定 .unknown
+    public var isExpandable: Bool { get }                 // accessState != .denied && (.present || .failed)
+    public mutating func applySubfolderProbe(_ result: Result<Bool, ListingError>)
+    public mutating func applySubfolderListing(_ result: Result<Int, ListingError>)  // 子の件数
+}
+
+public enum FolderDisclosure {
+    public enum Toggle: Sendable, Equatable { case expand, collapse, none }
+    /// ツリーの行のダブルクリックで行う開閉（FR-053）
+    public static func doubleClickToggle(isExpandable: Bool, isExpanded: Bool) -> Toggle
+}
 
 public protocol VolumeProviding: Sendable {
     func rootNodes() -> [FolderNode]                    // ホームフォルダ + マウント中のボリューム
@@ -31,7 +69,8 @@ public protocol VolumeProviding: Sendable {
 }
 
 public protocol FileSystemWatching: Sendable {
-    /// 監視対象を差し替える。直下の追加・削除・名前変更が起きたフォルダの URL を流す
+    /// 監視対象を差し替える。直下の追加・削除・名前変更が起きたフォルダの URL を流す。
+    /// ツリーは表示中のフォルダ（ルートと展開中のフォルダの子）も渡し、三角の有無を追従させる（FR-054）
     func watch(_ folders: Set<URL>)
     var events: AsyncStream<Set<URL>> { get }
 }

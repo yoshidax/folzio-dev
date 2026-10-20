@@ -83,6 +83,35 @@ scripts/make-fixtures.sh ~/MediaViewerFixtures
    アニメーション GIF は動く。アニメーション WebP は動くか、先頭フレームの
    静止画で表示される（どちらでも合格。エラー表示や空白になれば不合格）
 
+### ツリーのダブルクリック開閉と開閉の三角（FR-053〜055）
+
+準備（`MediaViewerFixtures` の中に、ツリー確認用のフォルダを作る）:
+
+```bash
+mkdir -p ~/MediaViewerFixtures/tree/has-sub/child ~/MediaViewerFixtures/tree/hidden-only/.secret \
+  ~/MediaViewerFixtures/tree/package-only/Sample.app ~/MediaViewerFixtures/tree/empty \
+  ~/MediaViewerFixtures/tree/denied/inner
+chmod 000 ~/MediaViewerFixtures/tree/denied
+# 確認後に戻す: chmod 755 ~/MediaViewerFixtures/tree/denied
+```
+
+1. ツリーでホーム → `MediaViewerFixtures` → `tree` を展開する。**期待結果**: `has-sub` にだけ開閉の三角があり、
+   `hidden-only`・`package-only`・`empty`・`denied` には三角がない。`denied` は「アクセスできません」の表示に
+   なる。三角のある行とない行でアイコンとフォルダ名の位置が揃っている（FR-054・055）
+2. `has-sub` のフォルダ名をダブルクリックする。**期待結果**: `has-sub` が選択されてファイルリストが
+   切り替わり、展開されて `child` が表示される。`child` には三角がない。もう一度ダブルクリックすると
+   折りたたまれる。アイコンの上でダブルクリックしても同じ（FR-053）
+3. `empty` と `hidden-only` をダブルクリックする。**期待結果**: 選択とファイルリストの切り替えだけが起き、
+   展開されない。→ キーでも展開しない
+4. `has-sub` の三角を素早く2回クリックする。**期待結果**: 三角を2回クリックしたときと同じく
+   展開してから折りたたまれ、ダブルクリックによる開閉が追加で起きない
+5. Finder またはターミナルで `mkdir ~/MediaViewerFixtures/tree/empty/new` を実行する。**期待結果**: 数秒以内に
+   `empty` に三角が現れる。`rmdir` で消すと三角も消える（FR-042・054）
+6. `huge/`（10,000 ファイル・サブフォルダなし）を含む `MediaViewerFixtures` を展開する。**期待結果**: 展開直後から
+   ツリーを上下キーでスクロール・選択でき、移動を続けても表示が 100ms 以上止まらない。`huge` には三角が出ない（FR-055）
+7. 外付けドライブまたはディスクイメージをマウントする。**期待結果**: ツリーにボリュームが現れ、
+   サブフォルダがあれば三角が付く。ボリュームの中までは確認しない（展開するまで孫の三角は確認されない）
+
 ### プレビューのフィット（FR-028）
 1. `mixed/02-image.png`（400×300）を選ぶ。**期待結果**: 縦横比を保ったまま、ペインの幅・高さの
    うち先に到達する辺に合わせて、はみ出さない範囲で最大まで拡大され、中央に表示される
@@ -193,6 +222,7 @@ scripts/make-fixtures.sh ~/MediaViewerFixtures
 | 10,000 ファイルのフォルダの最初の表示 | 1 秒以内。読み込み中もスクロールできる | SC-003 |
 | 10,000 ファイルをリスト形式で表示したときの行頭アイコン | ファイル名・選択・スクロールはアイコン生成を待たない。表示停止が 100ms 以上にならない | SC-012 |
 | ツリーの3種類のフォルダアイコン | 表示サイズで相互に判別できる | SC-013 |
+| サブフォルダのない 10,000 ファイルのフォルダでのサブフォルダの有無の確認（`hasSubfolders(in:)`） | 0.2 秒以内。確認中もツリーを操作できる | FR-055、憲章 原則 II、research.md R19 |
 | 1080p 動画の選択から再生開始まで | 1 秒以内 | SC-010 |
 | ペイン幅・サムネイルサイズのドラッグ中の表示停止 | 100ms 以上の停止が 0 回 | SC-004 |
 | デコード済みプレビューのキャッシュ | 256MB を超えない | 憲章 原則 II、research.md R8 |

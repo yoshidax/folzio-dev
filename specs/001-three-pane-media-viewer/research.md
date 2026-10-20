@@ -332,3 +332,77 @@ Technical Context の未確定事項と主要な技術選択について、決�
   - 自動ウィンドウタブを残したまま ⇧⌘T を割り当てる案: AppKit が「タブバーを表示」（⇧⌘T）を追加し
     キーが衝突する。このアプリはウィンドウ 1 枚でタブを使わないため、自動タブを無効にする
   - フルスクリーン中もツールバーを出し続ける案: 画像の上端が隠れ、FR-035 の「画面全体」と食い違うため却下
+
+## R19. ツリーのダブルクリック開閉と開閉の三角の表示条件
+
+- **Decision**:
+  - ダブルクリックは `NSOutlineView.doubleAction`（`target` は `DirectoryTreeViewController`）で受ける。
+    対象行は `clickedRow` で取り、`-1`（行のない余白）は無視する。反応範囲は行全体（アイコンとフォルダ名）で、
+    クリック位置のヒットテストはしない（FR-053）
+  - ダブルクリックの1回目のクリックは `NSOutlineView` の標準動作で選択になり、既存の
+    `outlineViewSelectionDidChange` からファイルリストが切り替わる。ダブルクリック用に選択処理は追加しない
+  - 開閉の判断は Core の純粋計算 `FolderDisclosure.doubleClickToggle(isExpandable:isExpanded:)` で行う。
+    展開中なら `.collapse`、折りたたみ中で開閉できれば `.expand`、それ以外は `.none`。
+    UI は結果に応じて `expandItem(_:)` / `collapseItem(_:)` を呼ぶだけで、展開時の読み込みは三角と同じ
+    `outlineViewItemWillExpand` の経路を通る。⌥ 付きのダブルクリックに特別な意味は持たせない
+  - 開閉の三角は `outlineView(_:isItemExpandable:)` が `FolderNode.isExpandable` を返すことで制御する。
+    `isExpandable` は「読み取り可能（`accessState != .denied`）かつ `subfolderState` が `.present` または `.failed`」。
+    `.unknown`（確認中）と `.absent` では三角を出さず、→ キーや三角のクリックでも展開できない（FR-054・055）
+  - サブフォルダの有無は `DirectoryListing.hasSubfolders(in:)` で確認する。`DirectoryLister` は
+    `FileManager.enumerator(at:includingPropertiesForKeys:options:)` に `.skipsHiddenFiles`・
+    `.skipsSubdirectoryDescendants`・`.skipsPackageDescendants` を指定し、`subfolders(of:)` と同じ条件
+    （`isDirectory == true` かつ `isPackage != true`）を満たす最初の1件で打ち切る。列挙のエラーは
+    `errorHandler` で受けて、`subfolders(of:)` と同じ `ListingError` に変換する。プロトコル拡張に
+    `!subfolders(of:).isEmpty` の既定実装を置き、既存のテスト用フェイクを壊さない
+  - 確認は表示されているフォルダの直下1階層だけに行う（FR-055）
+    - 起動時と `applyRoots`（ボリュームのマウント・取り外し）: 各ルート
+    - 子の読み込み（三角・→ キー・ダブルクリックでの展開、起動時の前回フォルダの表示）: 新たに表示された各子
+    - 外部の変更で子を読み直したとき: 同じ URL の既存ノードの結果を引き継ぎ、新しく現れた子だけ
+    - 表示されていないフォルダ（折りたたまれた親の孫など）は確認しない
+  - 確認の並列数は Core の `SubfolderProbe.results(for:lister:maxConcurrent:)` で 4 に制限する。結果は
+    URL ごとに1回ずつ `AsyncStream` で流し、表示順に要求する。親ノードごとに進行中の確認を1つだけ持ち、
+    同じ親で新しい確認を始めるとき・ルートを差し替えるときに古い確認を取り消す
+  - 結果は MainActor でノードへ反映し、`row(forItem:) >= 0`（まだツリーに表示されている）のときだけ
+    `reloadItem(_:reloadChildren: false)` で三角の有無を更新する
+  - 状態の変換は `FolderNode` のメソッドに集約する（data-model.md の状態遷移を参照）
+    - 確認: `true` → `.present`、`false` → `.absent`、`.accessDenied` → `accessState = .denied`、
+      それ以外の失敗（`.notFound` / `.other`）→ `.failed`（三角を出す）
+    - 展開時の読み込み: 1件以上 → `.present`、0件 → `.absent`（折りたたんで三角を消す）、
+      `.accessDenied` → `accessState = .denied`（三角を消す）、`.notFound` / `.other` → `accessState = .unavailable`・
+      `.failed`・`children = nil`（折りたたみ、三角は残して次の展開で読み直す）。`.denied` と `.unavailable` は
+      どちらも既存の「アクセスできません」表示にする。ドロップ先の判定は `.denied` だけを拒否する既存のまま
+  - 外部の変更（FR-042）に三角を追従させるため、監視対象に「表示されているフォルダ」（ルートと、展開中の
+    フォルダの子）を加える。折りたたまれたフォルダへのイベントでは再確認し、展開中のフォルダでは既存の
+    子の読み直しのあとに状態を更新する。`BrowserModel.handleFileSystemEvent` は表示中のフォルダ以外の
+    URL を無視するため、影響しない
+  - 起動時の前回フォルダの表示（`reveal`）は、各段で子を読み込んで状態を確定させてから `expandItem` を
+    呼ぶ。確認前（`.unknown`）のノードへの `expandItem` は `isItemExpandable` が `false` のため無視される
+- **Rationale**:
+  - `doubleAction` は `NSTableView` 標準の仕組みで、シングルクリックの選択を遅らせず、ドラッグ&ドロップや
+    右クリックメニューとも干渉しない。開閉の三角は独立したボタンとしてクリックを処理するため、三角の
+    連続クリックで `doubleAction` が重ねて動くことはない（quickstart で確認する）
+  - 開閉の判断と状態遷移を Core に置くと、確認中・失敗・権限なしの組み合わせを自動テストできる（原則 IV）
+  - 列挙を最初の1件で打ち切ると、10,000 ファイルのフォルダでも全件の属性を読まずに済む。判定条件を
+    `subfolders(of:)` と揃えることで、「三角は出たのに展開すると空」「三角がないのに子がある」を防ぐ
+  - 並列数の上限は、ネットワークボリュームや多数の子を持つフォルダで、同時に大量の列挙を発行して
+    応答を悪くするのを防ぐ（原則 II）。4 はローカル SSD では待ちにならず、遅いボリュームでも要求が
+    積み上がらない値として選んだ
+  - FSEvents は登録したパスの配下を再帰的に通知するため、表示中のフォルダを監視対象に加えても OS 側の
+    負担はほとんど増えず、コールバックでの絞り込み対象が増えるだけになる（R9）
+  - `NSOutlineView` は、同じ階層の行のセルを、三角の有無に関わらず同じ位置に置く。そのため三角が後から
+    現れても行の位置はずれない（FR-055。quickstart で確認する）
+  - 展開できない行はアクセシビリティ上も「開閉できる項目」として読み上げられなくなる（原則 III）
+- **Alternatives considered**:
+  - `NSOutlineView` のサブクラスで `mouseDown` をフックし、アイコンの上だけを判定する案: 反応範囲は行全体と
+    決まった（2026-10-20 のユーザー判断）ため不要
+  - `NSClickGestureRecognizer`（2クリック）: シングルクリックの選択とドラッグの開始が遅れるため却下
+  - 確認が終わるまで三角を出しておき、なしと分かったら消す案: クリックした三角が消えて何も起きないことが
+    あるため、ユーザー判断（確認が終わるまで出さない）に従い却下
+  - `contentsOfDirectory` で全件を読んでから判定する案: 実装は短いが、ファイルの多いフォルダで
+    不要な属性の読み込みが増えるため却下
+  - 確認を孫以下まで先読みする案: ユーザー判断（表示されている階層だけ）に反し、I/O が増えるため却下
+  - 展開時の読み込み失敗を理由を問わず `.denied` にする案（当初の決定）: 一時的な失敗でも三角が消えてドロップ先にも
+    ならず、外部の変更通知かボリュームの再マウントまで回復しないため、/speckit-analyze の指摘（F1）を受けて却下した。
+    権限以外の失敗は `.unavailable` として「アクセスできません」の表示を出しつつ三角を残し、再展開で読み直す
+    （FR-055 の「展開時に読めなければ、既存のアクセスできない旨の表示を出す」を満たす）
+  - 確認結果をディスクに保存する案: 永続化を増やし、外部の変更と食い違うため却下（原則 V）

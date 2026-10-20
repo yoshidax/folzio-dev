@@ -29,12 +29,52 @@
 | `name` | String | 表示名（ボリュームの場合はボリューム名） |
 | `kind` | `.home` / `.volume` / `.folder` | ルートの種類 |
 | `children` | `[FolderNode]?` | `nil` は未読み込み。展開時に読み込む |
-| `accessState` | `.unknown` / `.accessible` / `.denied` | 読み取り可否（エッジケース） |
+| `accessState` | `.unknown` / `.accessible` / `.denied` / `.unavailable` | 読み取り可否（エッジケース）。`.denied` は権限なし、`.unavailable` は権限以外の理由（応答なし・取り外し等）で展開時に読めなかった状態で、再展開で読み直す |
+| `subfolderState` | `.unknown` / `.present` / `.absent` / `.failed` | サブフォルダの有無。既定は `.unknown`（未確認）。永続化しない（FR-054・055） |
+| `isExpandable`（計算） | Bool | `accessState != .denied` かつ `subfolderState` が `.present` または `.failed`。開閉の三角の表示と、展開できるかの判断に使う |
 
 - 子に含めるのはフォルダだけで、隠しフォルダとパッケージ（`.app` 等）は除く（FR-006）
 - 並び順は名前の自然順（数字を数値として比較）
 - ルートはホームフォルダ + マウント中のボリューム（FR-004）。ボリュームは取り外し通知で削除する
 - `kind` はルートの種類の判定に使い、ツリーの行頭アイコンの選択にも使う（`IconPresentation`、FR-047）
+- サブフォルダの有無の判定条件は `children` と同じ（隠しフォルダ・パッケージは数えない）。確認するのは
+  ツリーに表示されているノードだけで、その直下1階層だけを調べる（FR-055、research.md R19）
+
+### サブフォルダの有無の状態遷移
+
+| 現在 | 契機 | 結果 | 三角 |
+|------|------|------|------|
+| `.unknown` | 確認の結果が `true` | `.present`、`accessState = .accessible` | 出す |
+| `.unknown` | 確認の結果が `false` | `.absent`、`accessState = .accessible` | 出さない |
+| `.unknown` | 確認が `.accessDenied` で失敗 | `accessState = .denied` | 出さない |
+| `.unknown` | 確認が `.notFound` / `.other` で失敗 | `.failed` | 出す |
+| `.present` / `.failed` | 展開して子が1件以上 | `.present`、`accessState = .accessible` | 出す |
+| `.present` / `.failed` | 展開して子が0件 | `.absent`（折りたたむ） | 出さない |
+| `.present` / `.failed` | 展開時の読み込みが `.accessDenied` で失敗 | `accessState = .denied`、`children = []` | 出さない |
+| `.present` / `.failed` | 展開時の読み込みが `.notFound` / `.other` で失敗 | `accessState = .unavailable`、`.failed`、`children = nil`（折りたたみ、次の展開で読み直す） | 出す |
+| 任意 | 外部の変更（FR-042）の通知 | 折りたたみ中は再確認、展開中は子を読み直して上の規則を適用 | 結果に従う |
+
+- `FolderNode.applySubfolderProbe(_ result: Result<Bool, ListingError>)` が確認結果の行を、
+  `FolderNode.applySubfolderListing(_ result: Result<Int, ListingError>)` が展開時の読み込みの行を担う
+- `.denied` と `.unavailable` の行は、どちらも既存の「アクセスできません」の表示（グレーの文字とツールチップ）にする。
+  ドロップ先の判定（`accessState != .denied`）は変えないため、`.unavailable` のフォルダにはドロップでき、失敗は FR-026 で伝える
+- 子を読み直すとき、同じ URL の既存ノードの `subfolderState` と `accessState` は引き継ぎ、新しく現れた子だけを
+  `.unknown` から確認する
+
+## FolderDisclosure（ツリーのダブルクリック開閉・永続化しない）
+
+| 入力 | 型 | 説明 |
+|------|----|------|
+| `isExpandable` | Bool | `FolderNode.isExpandable` |
+| `isExpanded` | Bool | ダブルクリック時点で展開中か |
+
+| 条件 | 結果 |
+|------|------|
+| `isExpanded == true` | `.collapse` |
+| `isExpanded == false` かつ `isExpandable == true` | `.expand` |
+| それ以外（確認中・サブフォルダなし・権限なし） | `.none`（選択だけが行われる） |
+
+- ダブルクリックの対象は行全体（アイコンとフォルダ名）。1回目のクリックでの選択は既存の経路で行う（FR-053）
 
 ## MediaFile（ファイルリストの項目）
 
