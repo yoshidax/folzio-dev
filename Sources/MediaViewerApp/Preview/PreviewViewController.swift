@@ -39,6 +39,13 @@ final class PreviewViewController: NSViewController {
         videoView.togglePlayPause()
     }
 
+    @discardableResult
+    func seekVideo(by seconds: Double) -> Bool {
+        guard case .video = model.preview else { return false }
+        videoView.seek(by: seconds)
+        return true
+    }
+
     override func loadView() {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         videoView.translatesAutoresizingMaskIntoConstraints = false

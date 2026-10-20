@@ -32,6 +32,35 @@ open .build/MediaViewer.app
 4. システム設定で外観をライト／ダークに切り替え、どちらでも同じアイコンが出る
 5. 16px 相当（Finder のリスト表示や小さい Dock）でも3ペインの図案が判別できる
 
+## フルスクリーン中の矢印キーによるファイル移動（FR-046）
+
+2026-10-20 に `scripts/make-app.sh` で `.build/MediaViewer.app` を生成し、GUI で確認した。
+
+| 確認項目 | 結果 | 根拠 |
+|----------|------|------|
+| 自動テスト（`swift test --filter MediaViewerCoreTests`） | PASS | 91 テスト成功。`FocusNavigatorTests` を含む |
+| 性能テスト（`swift test --filter MediaViewerPerformanceTests`） | PASS | 6 テスト成功 |
+| 外部通信の不在（`scripts/check-no-network.sh`） | PASS | `no network API references in Sources` |
+| サムネイル形式で ↑↓←→ によりプレビューが切り替わる | PASS | GUI でユーザー確認 |
+| 先頭・末尾で選択が循環しない | PASS | GUI でユーザー確認 |
+| 解除後も移動先が選択され、必要ならスクロールする | PASS | GUI でユーザー確認 |
+| リスト形式では ↑↓ のみ有効で、←→ は何もしない | PASS | GUI でユーザー確認 |
+| 動画のフルスクリーンで矢印移動すると再生が停止する | PASS | GUI でユーザー確認 |
+| 動画のフルスクリーンで `<` / `>` が 5 秒シークする | PASS | GUI でユーザー確認 |
+
+### 再確認コマンド
+
+```bash
+swift build
+swift test --filter MediaViewerCoreTests
+swift test --filter MediaViewerPerformanceTests
+scripts/check-no-network.sh
+scripts/make-app.sh
+open .build/MediaViewer.app
+```
+
+確認ポイントは [quickstart.md](../quickstart.md) の「US5: フルスクリーン」3〜5。
+
 ## 未実施の検証
 
 - T079: Accessibility Inspector によるラベル確認

@@ -109,6 +109,24 @@ final class VideoPreviewView: NSView {
         }
     }
 
+    func seek(by seconds: Double) {
+        guard let player,
+              let duration = player.currentItem?.duration.seconds,
+              duration.isFinite,
+              duration > 0 else {
+            return
+        }
+
+        let current = player.currentTime().seconds
+        guard current.isFinite else { return }
+        let target = min(max(0, current + seconds), duration)
+        player.seek(
+            to: CMTime(seconds: target, preferredTimescale: 600),
+            toleranceBefore: .zero,
+            toleranceAfter: .zero
+        )
+    }
+
     private func beginPlaybackIntervalIfNeeded() {
         guard !playbackIntervalStarted else { return }
         playbackIntervalStarted = true

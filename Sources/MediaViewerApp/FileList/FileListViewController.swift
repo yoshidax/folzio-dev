@@ -18,6 +18,7 @@ final class FileListViewController: NSViewController {
     private var bottomBarHeightConstraint: NSLayoutConstraint?
     private var displayMode: DisplayMode
     private let initialThumbnailSize: Double
+    private var fullScreenNavigationLayout: FocusLayout?
     private var installedViewMenuItems = false
     private weak var thumbnailMenuItem: NSMenuItem?
     private weak var listMenuItem: NSMenuItem?
@@ -71,6 +72,46 @@ final class FileListViewController: NSViewController {
         set {
             listModeView.onRename = newValue
             thumbnailModeView.onRename = newValue
+        }
+    }
+
+    func beginFullScreenNavigation() {
+        guard fullScreenNavigationLayout == nil else { return }
+        fullScreenNavigationLayout = displayMode == .thumbnails
+            ? .grid(columns: thumbnailModeView.currentColumnCount)
+            : .list
+    }
+
+    @discardableResult
+    func moveFocusInFullScreen(_ move: FocusMove) -> Bool {
+        guard let layout = fullScreenNavigationLayout else { return false }
+        let files = model.listing.files
+        guard !files.isEmpty else { return true }
+
+        let currentIndex = model.selection.focused.flatMap { focused in
+            files.firstIndex { $0.url == focused }
+        }
+        guard let target = FocusNavigator.targetIndex(
+            currentIndex: currentIndex,
+            fileCount: files.count,
+            move: move,
+            layout: layout
+        ) else {
+            return true
+        }
+
+        let url = files[target].url
+        model.select([url], focused: url)
+        return true
+    }
+
+    func endFullScreenNavigation() {
+        guard let layout = fullScreenNavigationLayout else { return }
+        fullScreenNavigationLayout = nil
+
+        guard case .grid = layout else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.thumbnailModeView.scrollToFocused()
         }
     }
 

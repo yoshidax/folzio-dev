@@ -664,7 +664,7 @@ quickstart.md の手動シナリオで検証する。
 
 ### Implementation for User Story 5
 
-- [ ] T094 [P] [US5] `Sources/MediaViewerCore/Layout/FocusNavigator.swift` を新規作成し、
+- [X] T094 [P] [US5] `Sources/MediaViewerCore/Layout/FocusNavigator.swift` を新規作成し、
   `FocusMove`・`FocusLayout`・`FocusNavigator.targetIndex(currentIndex:fileCount:move:layout:)` を実装する
   （契約は [contracts/core-api.md](./contracts/core-api.md) の「矢印キーによる選択移動」）。
   規則は次のとおり:
@@ -674,7 +674,7 @@ quickstart.md の手動シナリオで検証する。
   - 端で同じ位置になる移動は `nil`。`currentIndex` が `nil` の場合は 0 を返す（リスト形式の ←→ を除く）
   - `columns` が 0 以下の場合は 1 として扱う（ゼロ除算・同一行内の無限移動を避ける）
   - `import AppKit` をしない（Core の制約）
-- [ ] T095 [US5] `Tests/MediaViewerCoreTests/FocusNavigatorTests.swift` を新規作成し、
+- [X] T095 [US5] `Tests/MediaViewerCoreTests/FocusNavigatorTests.swift` を新規作成し、
   `FocusNavigator` を検証する（T094 に依存）:
   - リスト形式: ↑↓ が ±1、先頭の ↑ と末尾の ↓ が `nil`、←→ が常に `nil`
   - サムネイル形式: ←→ が ±1、↑↓ が ∓列数、行頭の ← と行末の → が隣の行へ移動しないこと
@@ -682,7 +682,7 @@ quickstart.md の手動シナリオで検証する。
   - 最終行が短い場合に、↓ が範囲外へ出ずクランプされること
   - `currentIndex == nil` で 0 を返すこと（リスト形式の ←→ を除く）、空リストで `nil`
   - `columns` が 0 / 負の場合に 1 として動くこと
-- [ ] T096 [P] [US5] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` の `handleArrowKey(_:modifiers:)` を
+- [X] T096 [P] [US5] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` の `handleArrowKey(_:modifiers:)` を
   `FocusNavigator` に置き換える（T094 に依存）:
   - 現在の `delta` 計算とクランプを削除し、`FocusLayout.grid(columns: columnCount())` と
     `FocusMove` を渡して移動先を得る
@@ -691,7 +691,7 @@ quickstart.md の手動シナリオで検証する。
   - フルスクリーン開始時のスナップショット用に、現在の列数を返す読み取り専用のプロパティ
     （例: `var currentColumnCount: Int`）を公開する。既存の `columnCount()` の計算を再利用し、
     0 以下なら 1 を返す
-- [ ] T097 [US5] `Sources/MediaViewerApp/FileList/FileListViewController.swift` に、フルスクリーン用の
+- [X] T097 [US5] `Sources/MediaViewerApp/FileList/FileListViewController.swift` に、フルスクリーン用の
   移動 API を追加する（T094・T096 に依存）:
   - `beginFullScreenNavigation()`: 現在の `displayMode` と、サムネイル形式なら
     `thumbnailModeView.currentColumnCount` を `FocusLayout` としてスナップショットする。
@@ -705,7 +705,7 @@ quickstart.md の手動シナリオで検証する。
     必要最小限のスクロールで表示する。リスト形式は `ListModeView` の既存の
     `scrollRowToVisible` に任せ、新しい処理を足さない
   - 表示形式・サムネイルサイズ・選択の永続化は変更しない
-- [ ] T098 [US5] `Sources/MediaViewerApp/App/MainSplitViewController.swift` に、フルスクリーン中の
+- [X] T098 [US5] `Sources/MediaViewerApp/App/MainSplitViewController.swift` に、フルスクリーン中の
   キー振り分けを実装する（T097 に依存）:
   - `collapsePanesForFullScreen()` の先頭で `fileListViewController.beginFullScreenNavigation()` を呼び、
     ペインを折りたたむ前に表示形式と列数を取得する（アプリ起点と緑ボタンの両経路を同じ処理で覆う）
@@ -720,7 +720,7 @@ quickstart.md の手動シナリオで検証する。
   - 解除時はモニタを外した後、`restorePanesAfterFullScreen()` の完了後に
     `fileListViewController.endFullScreenNavigation()` を呼ぶ。レイアウトが確定する前に
     スクロールしないよう、必要なら次のメインループで実行する
-- [ ] T099 [P] [US5] `Sources/MediaViewerApp/Preview/VideoPreviewView.swift` と
+- [X] T099 [P] [US5] `Sources/MediaViewerApp/Preview/VideoPreviewView.swift` と
   `Sources/MediaViewerApp/Preview/PreviewViewController.swift` に `<` / `>` 用のシークを追加する:
   - `VideoPreviewView.seek(by seconds: Double)`: `AVPlayer` の現在位置に `seconds` を加え、
     `0...duration.seconds` にクランプして `seek(to:toleranceBefore:.zero,toleranceAfter:.zero)` する。
@@ -728,7 +728,7 @@ quickstart.md の手動シナリオで検証する。
   - `PreviewViewController.seekVideo(by seconds: Double)`: `model.preview` が `.video` のときだけ
     `videoView.seek(by:)` を呼ぶ。画像・空・エラー時は何もしない
   - シーク量は 5 秒とする（`<` で -5、`>` で +5）
-- [ ] T100 [US5] 自動テストと手動確認を行う（T095〜T099 に依存）:
+- [X] T100 [US5] 自動テストと手動確認を行う（T095〜T099 に依存）:
   - `swift build`、`swift test --filter MediaViewerCoreTests`、`scripts/check-no-network.sh` を通す
   - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。
     依頼時は実行コマンドと確認ポイントを具体的に示す

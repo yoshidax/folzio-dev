@@ -6,6 +6,47 @@ private final class NotificationTokens: @unchecked Sendable {
     var tokens: [NSObjectProtocol] = []
 }
 
+private struct FullScreenKeyPress: Sendable {
+    enum Key: Sendable {
+        case left
+        case right
+        case up
+        case down
+        case less
+        case greater
+    }
+
+    let key: Key?
+    let modifierFlags: UInt
+    let windowNumber: Int
+
+    init(event: NSEvent) {
+        let key: Key?
+        switch event.specialKey {
+        case .leftArrow:
+            key = .left
+        case .rightArrow:
+            key = .right
+        case .upArrow:
+            key = .up
+        case .downArrow:
+            key = .down
+        default:
+            switch event.charactersIgnoringModifiers {
+            case "<":
+                key = .less
+            case ">":
+                key = .greater
+            default:
+                key = nil
+            }
+        }
+        self.key = key
+        self.modifierFlags = event.modifierFlags.rawValue
+        self.windowNumber = event.windowNumber
+    }
+}
+
 @MainActor
 final class MainSplitViewController: NSSplitViewController {
     private let model: BrowserModel
@@ -21,6 +62,7 @@ final class MainSplitViewController: NSSplitViewController {
     private var fileListSplitItem: NSSplitViewItem?
     private var panesCollapsedForFullScreen = false
     private var isAppInitiatedFullScreenTransition = false
+    private var fullScreenKeyMonitor: Any?
 
     var onInitialListingDisplayed: (() -> Void)? {
         didSet {
@@ -184,6 +226,7 @@ final class MainSplitViewController: NSSplitViewController {
 
     private func collapsePanesForFullScreen() {
         guard !panesCollapsedForFullScreen else { return }
+        fileListViewController.beginFullScreenNavigation()
         panesCollapsedForFullScreen = true
         treeSplitItem?.canCollapse = true
         fileListSplitItem?.canCollapse = true
@@ -198,6 +241,57 @@ final class MainSplitViewController: NSSplitViewController {
         fileListSplitItem?.isCollapsed = false
         treeSplitItem?.canCollapse = false
         fileListSplitItem?.canCollapse = false
+    }
+
+    private func installFullScreenKeyMonitor() {
+        guard fullScreenKeyMonitor == nil else { return }
+        fullScreenKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            let press = FullScreenKeyPress(event: event)
+            let handled = MainActor.assumeIsolated {
+                self?.handleFullScreenKey(press) ?? false
+            }
+            return handled ? nil : event
+        }
+    }
+
+    private func removeFullScreenKeyMonitor() {
+        guard let fullScreenKeyMonitor else { return }
+        NSEvent.removeMonitor(fullScreenKeyMonitor)
+        self.fullScreenKeyMonitor = nil
+    }
+
+    private func handleFullScreenKey(_ press: FullScreenKeyPress) -> Bool {
+        guard let window = view.window,
+              press.windowNumber == window.windowNumber,
+              window.styleMask.contains(.fullScreen) else {
+            return false
+        }
+        guard !(window.firstResponder is NSTextView) else { return false }
+
+        let flags = NSEvent.ModifierFlags(rawValue: press.modifierFlags)
+        switch press.key {
+        case .left, .right, .up, .down:
+            let disallowed: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+            guard flags.intersection(disallowed).isEmpty else { return false }
+            let move: FocusMove
+            switch press.key {
+            case .left:
+                move = .left
+            case .right:
+                move = .right
+            case .up:
+                move = .up
+            default:
+                move = .down
+            }
+            return fileListViewController.moveFocusInFullScreen(move)
+        case .less, .greater:
+            let disallowed: NSEvent.ModifierFlags = [.command, .option, .control]
+            guard flags.intersection(disallowed).isEmpty else { return false }
+            return previewViewController.seekVideo(by: press.key == .less ? -5 : 5)
+        case nil:
+            return false
+        }
     }
 
     private func makeItem(
@@ -327,10 +421,17 @@ extension MainSplitViewController: NSWindowDelegate {
         }
     }
 
+    func windowDidEnterFullScreen(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === view.window else { return }
+        installFullScreenKeyMonitor()
+    }
+
     func windowDidExitFullScreen(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window === view.window else { return }
 
+        removeFullScreenKeyMonitor()
         isAppInitiatedFullScreenTransition = false
         restorePanesAfterFullScreen()
+        fileListViewController.endFullScreenNavigation()
     }
 }

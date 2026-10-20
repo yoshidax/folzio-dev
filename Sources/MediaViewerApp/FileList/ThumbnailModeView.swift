@@ -306,6 +306,10 @@ final class ThumbnailModeView: NSView {
         }
     }
 
+    var currentColumnCount: Int {
+        columnCount()
+    }
+
     func scrollToFocused() {
         guard let focused = model.selection.focused,
               let index = model.listing.files.firstIndex(where: { $0.url == focused }) else {
@@ -622,20 +626,7 @@ final class ThumbnailModeView: NSView {
     ) -> Bool {
         let files = model.listing.files
         guard !files.isEmpty else { return false }
-
-        let delta: Int
-        switch key {
-        case .leftArrow:
-            delta = -1
-        case .rightArrow:
-            delta = 1
-        case .upArrow:
-            delta = -columnCount()
-        case .downArrow:
-            delta = columnCount()
-        default:
-            return false
-        }
+        guard let move = focusMove(for: key) else { return false }
 
         let currentIndex: Int?
         if let focused = model.selection.focused {
@@ -646,11 +637,13 @@ final class ThumbnailModeView: NSView {
                 .min()
         }
 
-        let target: Int
-        if let currentIndex {
-            target = min(files.count - 1, max(0, currentIndex + delta))
-        } else {
-            target = 0
+        guard let target = FocusNavigator.targetIndex(
+            currentIndex: currentIndex,
+            fileCount: files.count,
+            move: move,
+            layout: .grid(columns: currentColumnCount)
+        ) else {
+            return true
         }
 
         if modifiers.contains(.shift), let currentIndex {
@@ -670,6 +663,21 @@ final class ThumbnailModeView: NSView {
 
         scrollItemIntoView(at: target)
         return true
+    }
+
+    private func focusMove(for key: NSEvent.SpecialKey) -> FocusMove? {
+        switch key {
+        case .leftArrow:
+            return .left
+        case .rightArrow:
+            return .right
+        case .upArrow:
+            return .up
+        case .downArrow:
+            return .down
+        default:
+            return nil
+        }
     }
 
     private func applySelection(_ paths: Set<IndexPath>, focusedURL: URL?) {
