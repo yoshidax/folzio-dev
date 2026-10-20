@@ -5,6 +5,7 @@ public struct FolderListing: Sendable {
         case loading
         case loaded
         case empty
+        case noMatches
         case denied
         case failed(String)
     }
@@ -27,6 +28,26 @@ public struct SelectionState: Sendable {
     public init(selected: Set<URL> = [], focused: URL? = nil) {
         self.selected = selected
         self.focused = focused
+    }
+}
+
+extension SelectionState {
+    /// 表示中の URL（一覧の並び順）に合わせて選択を整理する
+    public func restricted(toVisible orderedURLs: [URL]) -> SelectionState {
+        let visible = Set(orderedURLs)
+        let kept = selected.intersection(visible)
+
+        let newFocused: URL?
+        if let focused {
+            if visible.contains(focused) {
+                newFocused = focused
+            } else {
+                newFocused = orderedURLs.last { kept.contains($0) }
+            }
+        } else {
+            newFocused = nil
+        }
+        return SelectionState(selected: kept, focused: newFocused)
     }
 }
 
