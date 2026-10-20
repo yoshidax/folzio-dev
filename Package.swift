@@ -8,6 +8,7 @@ let package = Package(
         .library(name: "MediaViewerCore", targets: ["MediaViewerCore"]),
         .executable(name: "MediaViewerApp", targets: ["MediaViewerApp"]),
         .executable(name: "make-fixtures", targets: ["make-fixtures"]),
+        .executable(name: "make-icon", targets: ["make-icon"]),
     ],
     targets: [
         .target(name: "MediaViewerCore"),
@@ -23,6 +24,7 @@ let package = Package(
             name: "make-fixtures",
             dependencies: ["FixtureKit"]
         ),
+        .executableTarget(name: "make-icon"),
         .testTarget(
             name: "MediaViewerCoreTests",
             dependencies: ["MediaViewerCore", "FixtureKit"]
