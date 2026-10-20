@@ -1,6 +1,6 @@
 # Implementation Plan: 3ペイン型メディアビューア
 
-**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-20 (fullscreen arrow navigation, small-image upscale, tree/list icons, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-20 (toolbar, fullscreen arrow navigation, small-image upscale, tree/list icons, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-three-pane-media-viewer/spec.md`
 
@@ -27,6 +27,11 @@ AVPlayerView を配置して Core の状態を描画するだけにする。デ�
 ツリーはホーム・マウント中のボリューム・通常フォルダを SF Symbols で区別し、リスト形式は
 `ThumbnailProviding` を小さなサイズで再利用して内容の縮小画像を出し、生成中・失敗時は
 形式別の SF Symbol にフォールバックする。
+メインウィンドウには表示・非表示を切り替えられる `NSToolbar` を持たせる（FR-049〜052、R18）。
+既定は非表示で、「表示」メニューと ⇧⌘T で切り替え、表示状態は `SettingsStore` に保存する。
+ツールバーには表示形式の2択ボタン（SF Symbols）とサムネイルサイズのスライダーを置き、
+既存の表示形式・サイズの状態をメニューや下部バーと共有する。下部バーの表示とスライダーの有効・無効は
+Core の純粋計算 `FileListChrome` で決める。
 
 ## Technical Context
 
@@ -68,6 +73,9 @@ QuickLookThumbnailing, UniformTypeIdentifiers, CoreServices[FSEvents], CoreGraph
 対象に非同期で取得し、セル再利用時は同じ URL・同じ要求サイズの取得だけを取り消す
 （サムネイル形式の 128px 以上の要求を巻き込まない）。アイコン取得の完了を待たずにファイル名・
 選択・スクロールを操作できる（FR-048、SC-012）。
+ツールバーの表示状態は `view.showsToolbar` として `SettingsStore` だけに保存し、`NSToolbar` の
+自動保存（`autosavesConfiguration`）は使わない。ツールバーが非表示のときのウィンドウは追加前と同じに保つ。
+フルスクリーン中はツールバーをメニューバーと一緒に自動で隠し、保存した表示状態は変えない（FR-049、R18）。
 
 **Scale/Scope**: 1ウィンドウ（3ペイン）+ 設定ウィンドウ + 確認・衝突ダイアログ。フォルダあたり最大で
 数万ファイルを想定。単一ユーザー
@@ -81,10 +89,10 @@ QuickLookThumbnailing, UniformTypeIdentifiers, CoreServices[FSEvents], CoreGraph
 | 原則 | 判定 | 根拠 |
 |------|------|------|
 | I. ローカル完結・プライバシー | ✅ 適合 | ネットワークを使う API も依存もない。サムネイルはメモリにのみ置き、ユーザーのフォルダにもディスクキャッシュにも書かない（R7）。アプリアイコンも外部素材を取得せず、コードから生成する（R14）。ファイル操作はすべてユーザーの明示的な操作が起点になる。確認を省略できるのは、削除が常にゴミ箱経由で取り消せるため（v1.1.0 の「確認または取り消し可能性」、FR-021・024）。取り消せない上書きは常に衝突ダイアログで確認する（FR-025） |
-| II. 体感パフォーマンス | ✅ 適合 | デコード・列挙・サムネイル生成・ファイル操作はすべてバックグラウンドで行う（R5・R7・R9・R10）。キャッシュの上限を明示した（R8）。基準値は `MediaViewerPerformanceTests` で計測する（quickstart）。小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（R5）。リスト形式の行頭アイコンもサムネイル生成を可視行だけ遅延実行し、セル再利用時は同じ URL・サイズの要求だけを取り消すため、10,000 ファイルでも一覧表示を待たせない（R17）。注: 憲章の基準「起動からファイル指定で開いた最初の画像の表示 1 秒以内」は、ファイルを指定して起動する経路を前提にしている。この経路は本機能の範囲外なので、代わりに SC-002（前回フォルダの一覧表示まで 2 秒）を計測する。ファイル指定起動を追加する機能で 1 秒基準を適用する。アイコン生成はビルド時のみで、起動時間に影響しない |
-| III. キーボードファースト & a11y | ✅ 適合 | 提供する全操作のキー割り当てを [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md) で網羅した。手動の拡大/縮小（ズーム）とパンは提供せず、フィットは画像選択時に自動で行うため、これらへのキー割り当ては存在しない（spec Assumptions）。AppKit 標準部品の a11y を使い、プレビューとサムネイルのセルにはファイル名のラベルを付ける。行頭アイコンは装飾として a11y 要素から外し、フォルダ名・ファイル名と選択状態は従来どおり読み上げられる（FR-047・048）。ダークモードは AppKit 標準の配色で追従し、「視差効果を減らす」設定が有効な間は、アニメーション画像を自動で再生しない。サムネイル形式でもキーボードだけで一覧を辿れるよう、フォーカス項目のスクロール追従を必須にする（FR-017）。フルスクリーン中も矢印キーで選択を移動でき（FR-046）、動画のシークは `<` / `>` に残すため、フルスクリーンでも主要操作をキーボードだけで完結できる |
-| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。フルスクリーンの移動規則は `FocusNavigator` として Core に置き、リスト形式・サムネイル形式・フルスクリーンの全経路で同じ関数を使う。境界（先頭・末尾・行頭・行末）と空リストのケースを `FocusNavigatorTests` で検証する。行頭アイコンは小さな要求サイズの丸め（64px 段階）を `ThumbnailProviderTests` で検証し、表示とフォールバックは quickstart の手動確認で担保する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する |
-| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない。ツリーとリストの行頭アイコンは SF Symbols と既存のサムネイル経路を使い、新しい設定・永続化・外部素材を追加しない（R17）。フルスクリーン移動（FR-046）は既存の選択モデルとレイアウト計算を再利用し、新しい設定・永続化状態・依存を追加しない |
+| II. 体感パフォーマンス | ✅ 適合 | デコード・列挙・サムネイル生成・ファイル操作はすべてバックグラウンドで行う（R5・R7・R9・R10）。キャッシュの上限を明示した（R8）。基準値は `MediaViewerPerformanceTests` で計測する（quickstart）。小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（R5）。リスト形式の行頭アイコンもサムネイル生成を可視行だけ遅延実行し、セル再利用時は同じ URL・サイズの要求だけを取り消すため、10,000 ファイルでも一覧表示を待たせない（R17）。注: 憲章の基準「起動からファイル指定で開いた最初の画像の表示 1 秒以内」は、ファイルを指定して起動する経路を前提にしている。この経路は本機能の範囲外なので、代わりに SC-002（前回フォルダの一覧表示まで 2 秒）を計測する。ファイル指定起動を追加する機能で 1 秒基準を適用する。アイコン生成はビルド時のみで、起動時間に影響しない。ツールバーは表示状態の読み込みとビュー生成だけで、デコードや列挙を追加しない（R18） |
+| III. キーボードファースト & a11y | ✅ 適合 | 提供する全操作のキー割り当てを [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md) で網羅した。手動の拡大/縮小（ズーム）とパンは提供せず、フィットは画像選択時に自動で行うため、これらへのキー割り当ては存在しない（spec Assumptions）。AppKit 標準部品の a11y を使い、プレビューとサムネイルのセルにはファイル名のラベルを付ける。行頭アイコンは装飾として a11y 要素から外し、フォルダ名・ファイル名と選択状態は従来どおり読み上げられる（FR-047・048）。ダークモードは AppKit 標準の配色で追従し、「視差効果を減らす」設定が有効な間は、アニメーション画像を自動で再生しない。サムネイル形式でもキーボードだけで一覧を辿れるよう、フォーカス項目のスクロール追従を必須にする（FR-017）。フルスクリーン中も矢印キーで選択を移動でき（FR-046）、動画のシークは `<` / `>` に残すため、フルスクリーンでも主要操作をキーボードだけで完結できる。ツールバーの表示切替には ⇧⌘T を割り当て、ツールバー上の操作（表示形式・サイズ）は既存の ⌘1 / ⌘2 / ⌘+ / ⌘- でも行えるため、ツールバーを使わなくてもキーボードだけで完結する。ボタンとスライダーにはアクセシビリティラベルを付ける（FR-050・051） |
+| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。フルスクリーンの移動規則は `FocusNavigator` として Core に置き、リスト形式・サムネイル形式・フルスクリーンの全経路で同じ関数を使う。境界（先頭・末尾・行頭・行末）と空リストのケースを `FocusNavigatorTests` で検証する。行頭アイコンは小さな要求サイズの丸め（64px 段階）を `ThumbnailProviderTests` で検証し、表示とフォールバックは quickstart の手動確認で担保する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する。ツールバーの保存状態は `SettingsStoreTests`、下部バーの表示とスライダーの有効・無効の判断は `FileListChromeTests` で検証し、ツールバーの見た目と配線は quickstart の手動確認で担保する |
+| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない。ツリーとリストの行頭アイコンは SF Symbols と既存のサムネイル経路を使い、新しい設定・永続化・外部素材を追加しない（R17）。フルスクリーン移動（FR-046）は既存の選択モデルとレイアウト計算を再利用し、新しい設定・永続化状態・依存を追加しない。ツールバーは AppKit 標準の `NSToolbar` と SF Symbols だけで作り、ユーザーによるカスタマイズは提供しない。永続化はツールバーの表示状態を表す Bool 1 つだけを追加する（R18） |
 
 **Phase 1 設計後の再評価**: data-model・contracts・quickstart を確認したが、新たな違反はない。
 FSEvents による監視（R9）は外部依存ではなく、OS 標準 API の利用にあたる。アイコン生成（R14）は
@@ -106,6 +114,11 @@ SF Symbols を選ぶだけの UI 表現で、Core の判断ロジックを増や
 キャンセルは URL と要求サイズの組で行い、リストの 64px 要求がサムネイル形式の 128px 以上の要求を
 取り消さない（FR-013 の回帰防止）。新しい永続化・設定・外部素材は増やさず、アイコンは装飾として
 a11y ツリーから外すため、ファイル名の読み上げを妨げない（原則 III）。
+FR-049〜052 のツールバー（2026-10-20）は、AppKit 標準の `NSToolbar` と既存の表示形式・サイズの経路を
+再利用し、新しい依存を増やさない。永続化はツールバーの表示状態を表す Bool 1 つだけで、カスタマイズや
+ラベル表示の切り替えは作らない（原則 V）。下部バーとスライダーの状態判断は Core の純粋計算に置いて
+テストする（原則 IV）。ツールバー上の操作はすべて既存のキー割り当てでも行え、表示切替にも ⇧⌘T を
+割り当てる（原則 III）。外部通信やデコードは追加しない（原則 I・II）。
 
 ## Project Structure
 
@@ -134,7 +147,8 @@ Package.swift
 Sources/
 ├── MediaViewerCore/                 # AppKit 非依存。すべての判断ロジック
 │   ├── Model/                       # MediaKind, MediaFile, FolderNode, SortOrder, SelectionState,
-│   │                                #   PreviewContent, ViewSettings, PlaybackOptions, FileOperation
+│   │                                #   PreviewContent, ViewSettings, PlaybackOptions, FileOperation,
+│   │                                #   FileListChrome（下部バーとツールバーのスライダーの状態）
 │   ├── Browser/                     # BrowserModel（選択・プレビュー・先読みの調停）
 │   ├── FileSystem/                  # DirectoryLister, VolumeProvider, FileSystemWatcher (FSEvents)
 │   ├── Imaging/                     # ImageDecoder, DecodedImageCache, ThumbnailProvider
@@ -143,7 +157,8 @@ Sources/
 │   └── Settings/                    # SettingsStore
 ├── MediaViewerApp/                  # AppKit UI。Core の状態を描画するだけ
 │   ├── App/                         # main.swift, AppDelegate, MainMenu, MainWindowController,
-│   │                                #   MainSplitViewController（フルスクリーン切替を含む）
+│   │                                #   MainSplitViewController（フルスクリーン切替を含む）,
+│   │                                #   MainToolbarController（NSToolbar の項目と表示状態）
 │   ├── Shared/                      # IconCatalog（ツリー・リストの行頭アイコンの SF Symbol と寸法）
 │   ├── Tree/                        # DirectoryTreeViewController (NSOutlineView、ドロップ先)
 │   ├── FileList/                    # FileListViewController, ListModeView (NSTableView),
@@ -267,6 +282,47 @@ Xcode プロジェクトは持たず、CLI（`swift build` / `swift test` / `scr
 - サムネイル形式（`ThumbnailModeView`）の表示、設定・永続化、Core の選択モデルは変更しない
 - `specs/001-three-pane-media-viewer/contracts/core-api.md`、`data-model.md`、`research.md`、
   `quickstart.md` を更新する
+
+## 変更点（2026-10-20: 表示を切り替えられるツールバー）
+
+- `Sources/MediaViewerCore/Model/Settings.swift`: `ViewSettings` に `showsToolbar: Bool`（既定 `false`）を追加する。
+  イニシャライザの既定引数にも加え、既存の呼び出しを壊さない
+- `Sources/MediaViewerCore/Settings/SettingsStore.swift`: キー `view.showsToolbar` を追加し、
+  `viewSettings` の読み書きに含める。値がない・Bool でない場合は `false`
+- `Sources/MediaViewerCore/Model/FileListChrome.swift`（新規）: 表示形式とツールバーの表示状態から、
+  下部のサイズバーを出すか（サムネイル形式かつツールバー非表示）と、ツールバーのスライダーを有効にするか
+  （サムネイル形式）を返す純粋計算
+- `Tests/MediaViewerCoreTests/SettingsStoreTests.swift`: 未保存時に `false`、保存と読み戻し、不正な型で
+  `false`、他のキーを壊さないことを追加する
+- `Tests/MediaViewerCoreTests/FileListChromeTests.swift`（新規）: 表示形式 2 種 × ツールバー表示 2 種の
+  4 通りを検証する
+- `Sources/MediaViewerApp/App/MainToolbarController.swift`（新規）: `NSToolbarDelegate`。識別子
+  `MainToolbar`。項目は「表示形式」（`NSToolbarItemGroup`、`selectOne`、`square.grid.2x2` と
+  `list.bullet`、ラベル「サムネイル」「リスト」）・「サイズ」（`NSSlider` を持つ `NSToolbarItem`）・
+  可変スペースの順。`allowsUserCustomization = false`・`allowsDisplayModeCustomization = false`・
+  `autosavesConfiguration = false`・`displayMode = .iconOnly`。操作は `FileListViewController` の
+  公開メソッドへ渡し、状態の変化は `FileListViewController` からの通知で反映する。
+  `isVisible` を KVO で監視し、どの経路で変わっても `SettingsStore` と `FileListViewController` へ伝える
+- `Sources/MediaViewerApp/App/MainWindowController.swift`: ウィンドウ生成時に `MainToolbarController` を作り、
+  保存された表示状態を `isVisible` に設定してから `window.toolbar` に入れる（表示前に決めてちらつかせない）。
+  `toolbarStyle = .unified`。メニューのアクション `toggleMainToolbar(_:)` と `validateMenuItem` を実装し、
+  項目名を「ツールバーを表示」「ツールバーを隠す」に切り替える。`NSWindow.toggleToolbarShown(_:)` は
+  使わない（項目名が英語になるため、R18）
+- `Sources/MediaViewerApp/App/AppDelegate.swift`: 起動時に `NSWindow.allowsAutomaticWindowTabbing = false` にし、
+  AppKit が「表示」メニューへ自動で追加する「タブバーを表示」（⇧⌘T）と衝突させない（R18）
+- `Sources/MediaViewerApp/App/MainMenu.swift`: 「表示」メニューの先頭に「ツールバーを表示」（⇧⌘T）と
+  区切り線を追加する
+- `Sources/MediaViewerApp/FileList/FileListViewController.swift`: `isToolbarShown` を追加し、
+  `updateModeVisibility()` で `FileListChrome` を使って下部バーの表示を決める。ツールバーから呼ぶ
+  `selectDisplayMode(_:)` と `applyThumbnailSize(_:)`（既存の `setDisplayMode` / `setThumbnailSize(_:persist: true)`
+  を通す）と、表示形式・サイズが変わるたびに呼ぶ `onViewStateChange` を公開する。メニュー・下部バー・
+  ツールバーのどこから変えても同じ経路を通る
+- `Sources/MediaViewerApp/App/MainSplitViewController.swift`: `fileListViewController` をツールバーから
+  参照できるようにする。`window(_:willUseFullScreenPresentationOptions:)` で `.autoHideToolbar` を
+  加え、フルスクリーン中はツールバーをメニューバーと一緒に自動で隠す（保存した表示状態は変えない）
+- 表示形式の切替・サムネイルサイズの規則、ファイル操作、プレビュー、フルスクリーン中の矢印移動は変更しない
+- `specs/001-three-pane-media-viewer/contracts/keyboard-and-menus.md`、`contracts/settings.md`、
+  `contracts/core-api.md`、`data-model.md`、`research.md`、`quickstart.md` を更新する
 
 ## Complexity Tracking
 

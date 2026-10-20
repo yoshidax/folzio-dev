@@ -189,4 +189,15 @@ public struct SettingsStore {
     public var playback: PlaybackOptions { get nonmutating set }
     public var confirmation: ConfirmationOptions { get nonmutating set }
 }
+// ViewSettings.showsToolbar: Bool（既定 false）。キーは view.showsToolbar
+```
+
+## ファイルリストの周辺表示
+
+```swift
+public struct FileListChrome: Sendable, Equatable {
+    public init(displayMode: DisplayMode, toolbarShown: Bool)
+    public var showsBottomSizeBar: Bool    // サムネイル形式かつツールバー非表示（FR-052）
+    public var toolbarSliderEnabled: Bool  // サムネイル形式（FR-051）
+}
 ```

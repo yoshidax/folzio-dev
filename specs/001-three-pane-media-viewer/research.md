@@ -274,3 +274,61 @@ Technical Context の未確定事項と主要な技術選択について、決�
     スクロール時のキャッシュ圧迫と生成時間が増えるため、64px 段階を追加する
   - URL だけでキャンセルする案: 同じ URL の別サイズ要求を巻き込み、リストとサムネイル形式の
     切替時に既存のサムネイル表示を壊すため却下。URL + ピクセルサイズをキーにする
+
+## R18. 表示を切り替えられるツールバー
+
+- **Decision**:
+  - `MainWindowController` のウィンドウに `NSToolbar`（識別子 `MainToolbar`、`toolbarStyle = .unified`、
+    `displayMode = .iconOnly`）を常に設定し、表示・非表示は `isVisible` で切り替える。既定は非表示
+  - 表示状態は `SettingsStore` のキー `view.showsToolbar`（Bool、既定 `false`）だけに保存する。
+    `autosavesConfiguration = false` にして、AppKit 独自の保存（`NSToolbar Configuration MainToolbar`）と
+    二重管理しない。起動時は保存値を `isVisible` に設定してからウィンドウを表示する
+  - `isVisible` を KVO で監視し、メニュー・ショートカット・ツールバーの右クリックメニューなど、どの経路で
+    変わっても保存と下部バーの表示更新を行う
+  - メニューは「表示」メニューの先頭に独自アクション `toggleMainToolbar(_:)` で置き、⇧⌘T を割り当てる。
+    ⇧⌘T は AppKit の自動ウィンドウタブ（「タブバーを表示」）と同じキーのため、起動時に
+    `NSWindow.allowsAutomaticWindowTabbing = false` にして自動タブの項目を出さない
+    `validateMenuItem` で項目名を「ツールバーを表示」「ツールバーを隠す」に切り替える
+  - 表示形式は `NSToolbarItemGroup(itemIdentifier:images:selectionMode: .selectOne, labels:target:action:)` で
+    2 つのセグメントにする。左が「サムネイル」（`square.grid.2x2`）、右が「リスト」（`list.bullet`）で、
+    ⌘1 / ⌘2 の番号順と Finder の並びに合わせる。選択中のセグメントが強調表示される
+  - サイズは `NSSlider`（`controlSize = .small`、幅 120pt、連続更新）を持つ `NSToolbarItem` にする。
+    範囲は `ViewSettings` の最小・最大値と同じ。リスト形式のときは項目を残したまま無効にする
+  - 項目の並びは「表示形式」「サイズ」「可変スペース」で固定する。`allowsUserCustomization = false`、
+    `allowsDisplayModeCustomization = false` にしてカスタマイズとラベル表示の切り替えは提供しない
+  - 表示形式・サイズの状態は `FileListViewController` が持つ既存の値を唯一の正とする。ツールバーは
+    `FileListViewController` の公開メソッドを呼び、`onViewStateChange` の通知で表示を合わせる
+  - 下部バーの表示とツールバーのスライダーの有効・無効は Core の純粋計算 `FileListChrome` で決める
+  - フルスクリーン中は `window(_:willUseFullScreenPresentationOptions:)` で `.autoHideToolbar` を加え、
+    ポインタを画面上端へ移したときだけメニューバーと一緒に表示する。保存した表示状態は変えない
+  - ボタンとスライダーにはツールチップとアクセシビリティラベル（「サムネイル」「リスト」
+    「サムネイルのサイズ」）を付ける
+- **Rationale**:
+  - `NSToolbar` は macOS 標準のツールバーで、表示切替・アニメーション・ダークモード・アクセシビリティを
+    AppKit がそのまま提供する（原則 III・V）。「表示」メニューは Finder・Safari と同じ配置
+    （2026-10-20 のユーザー判断、FR-050）。キーは当初 macOS 標準の ⌥⌘T としたが、常駐アプリの
+    全体ショートカットに先取りされて届かなかったため、ユーザー判断で ⇧⌘T に変更した
+  - 保存先を `SettingsStore` に一本化すると、既定の非表示（FR-049）と復元（FR-003）を Core のテストで
+    検証でき、AppKit の自動保存と値が食い違うことがない
+  - `NSWindow.toggleToolbarShown(_:)` の項目名は AppKit が設定する。アプリが日本語のローカライズを
+    持たないと英語の「Show Toolbar」になり、他の日本語メニューと揃わないため、独自アクションにする
+  - 状態の正を `FileListViewController` に残すことで、メニュー・下部バー・ツールバーの 3 経路が同じ
+    `setDisplayMode` / `setThumbnailSize` を通り、表示がずれない（FR-051）
+  - 下部バーとスライダーの判断は小さいが、FR-051・052 の受け入れ条件そのものなので、Core に置いて
+    4 通りの組み合わせを自動テストする（原則 IV）
+  - フルスクリーンは「画面全体」に表示する機能（FR-035）なので、ツールバーが画像に重ならないよう
+    自動で隠す。保存値を変えないため、解除後は元の表示状態に戻る
+- **Alternatives considered**:
+  - 非表示のときに `window.toolbar = nil` にする案: 追加前と同じ見た目は確実だが、表示切替のアニメーションと
+    AppKit の表示状態の管理を自前で持つことになるため、`isVisible` を採用する。起動スモークで非表示時の
+    タイトルバーが追加前と異なると分かった場合のみ、この案に切り替える
+  - `autosavesConfiguration = true` で AppKit に保存させる案: 初回の既定値の扱いと Core での検証が難しく、
+    `SettingsStore` と二重管理になるため却下
+  - 表示形式を 1 つのトグルボタンにする案: 現在の形式が分かりにくく、2026-10-20 のユーザー判断（Finder 型の
+    2 択）と異なるため却下
+  - リスト形式でスライダーを隠す案: 項目の位置が変わるため、ユーザー判断（無効化して残す）に従い却下
+  - ⌥⌘T（macOS 標準）: 当初の決定。利用者の環境で常駐アプリの全体ショートカットと衝突し、アプリに
+    キーが届かなかったため ⇧⌘T に変更した
+  - 自動ウィンドウタブを残したまま ⇧⌘T を割り当てる案: AppKit が「タブバーを表示」（⇧⌘T）を追加し
+    キーが衝突する。このアプリはウィンドウ 1 枚でタブを使わないため、自動タブを無効にする
+  - フルスクリーン中もツールバーを出し続ける案: 画像の上端が隠れ、FR-035 の「画面全体」と食い違うため却下

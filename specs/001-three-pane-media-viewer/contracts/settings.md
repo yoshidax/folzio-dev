@@ -10,6 +10,7 @@
 | `view.sort.column` | String（`name` / `creationDate` / `kind`） | `name` | FR-012 |
 | `view.sort.ascending` | Bool | true | FR-012 |
 | `view.lastFolderPath` | String（絶対パス） | （未設定 = ホーム） | FR-003 |
+| `view.showsToolbar` | Bool | false | FR-003・049 |
 | `playback.autoplay` | Bool | true | FR-031・032 |
 | `playback.loop` | Bool | true | FR-031・032 |
 | `fileOps.confirmBeforeExecuting` | Bool | true | FR-022・023 |
@@ -17,6 +18,8 @@
 - ペイン幅は `NSSplitView` の自動保存名 `MainSplit` で別途保存する（FR-002・003）
 - 読み込み時に型や値の範囲が不正なものは既定値に戻す（例: `thumbnailSize` を 48〜512 に丸める）
 - フルスクリーン状態は保存しない。次回の起動は常に3ペイン表示から始める
+- ツールバーの構成は保存しない（`NSToolbar.autosavesConfiguration = false`）。表示状態だけを
+  `view.showsToolbar` に保存し、フルスクリーン中の自動非表示はこの値を変えない
 
 ## 設定ウインドウ（⌘,）
 

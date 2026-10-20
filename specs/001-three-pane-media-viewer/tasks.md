@@ -869,6 +869,131 @@ quickstart.md の手動シナリオで検証する。
 
 ---
 
+## Phase 16: 表示を切り替えられるツールバー（FR-049〜052 追加、US3）
+
+**Purpose**: メインウィンドウに表示・非表示を切り替えられるツールバーを追加し、表示形式の2択ボタンと
+サムネイルサイズのスライダーを置く。既定は非表示で、非表示のときは追加前と同じ画面にする
+（[spec.md](./spec.md) FR-003・049〜052、[plan.md](./plan.md) の「変更点（表示を切り替えられるツールバー）」、
+[research.md](./research.md) R18、[data-model.md](./data-model.md) の `ViewSettings`・`FileListChrome`、
+[contracts/settings.md](./contracts/settings.md)、[contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md)「ツールバー」）。
+
+**Independent Test**: `view.showsToolbar` を消して起動するとツールバーが出ず、画面が追加前と同じであること。
+⇧⌘T と「表示」メニューで切り替えられ、表示中はサムネイル形式の下部サイズバーが消えること。ツールバーの
+ボタン・スライダーとメニュー（⌘1 / ⌘2 / ⌘+ / ⌘-）の状態が一致し、リスト形式ではスライダーが無効になること。
+再起動後に表示状態が復元されること（quickstart.md「ツールバー」の 1〜8）。
+
+### Tests for User Story 3
+
+- [X] T110 [P] [US3] `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` にツールバーの表示状態の
+  テストを先に追加する（T112 の前に失敗またはビルドエラーになることを確認する）。既存の
+  `UserDefaults(suiteName:)` の専用スイートを使う既存テストの形に合わせる:
+  - 「未設定なら既定値になる」に `viewSettings.showsToolbar == false` を加える
+  - 「保存した値が往復する」に `showsToolbar = true` を加え、読み戻すと `true` になることを確かめる。
+    `false` に戻して保存すると `false` になることも確かめる
+  - 「型が不正な値は既定値に戻る」に、`view.showsToolbar` へ文字列 `"yes"` を入れた場合に `false` になる
+    ケースを加える
+  - `showsToolbar` を書き換えても `displayMode`・`thumbnailSize`・並び順・`lastFolder` が変わらないことを確かめる
+- [X] T111 [P] [US3] `Tests/MediaViewerCoreTests/FileListChromeTests.swift`（新規、`@Suite("FileListChrome")`）に、
+  data-model.md の規則どおり 4 通りを検証するテストを先に書く（T113 の前に失敗またはビルドエラーになることを確認する）:
+  - サムネイル形式 × ツールバー非表示 → `showsBottomSizeBar == true`、`toolbarSliderEnabled == true`
+  - サムネイル形式 × ツールバー表示 → `showsBottomSizeBar == false`、`toolbarSliderEnabled == true`
+  - リスト形式 × ツールバー非表示 → `showsBottomSizeBar == false`、`toolbarSliderEnabled == false`
+  - リスト形式 × ツールバー表示 → `showsBottomSizeBar == false`、`toolbarSliderEnabled == false`
+
+### Implementation for User Story 3
+
+- [X] T112 [P] [US3] ツールバーの表示状態を `ViewSettings` と `SettingsStore` に追加する（T110 に依存）:
+  - `Sources/MediaViewerCore/Model/Settings.swift`: `ViewSettings` に `public var showsToolbar: Bool` を追加し、
+    イニシャライザに既定引数 `showsToolbar: Bool = false` を `lastFolder` の後に加える。既存の呼び出しは変更不要にする
+  - `Sources/MediaViewerCore/Settings/SettingsStore.swift`: `Keys.showsToolbar = "view.showsToolbar"` を追加し、
+    `viewSettings` の getter で `storedBool(forKey:) ?? false`、setter で `defaults.set(_:forKey:)` を行う。
+    data-model.md の制約「値がない・不正な型の場合は false（FR-003・049）」をそのまま守る
+  - `swift test --filter SettingsStoreTests` が通ることを確認する
+- [X] T113 [P] [US3] `Sources/MediaViewerCore/Model/FileListChrome.swift`（新規）に、
+  contracts/core-api.md の `public struct FileListChrome: Sendable, Equatable` を実装する（T111 に依存）:
+  - `init(displayMode: DisplayMode, toolbarShown: Bool)`
+  - `showsBottomSizeBar` は「`displayMode == .thumbnails && !toolbarShown`」（FR-052）
+  - `toolbarSliderEnabled` は「`displayMode == .thumbnails`」（FR-051）
+  - AppKit を import しない。`swift test --filter FileListChromeTests` が通ることを確認する
+- [X] T114 [US3] `Sources/MediaViewerApp/FileList/FileListViewController.swift` に、ツールバーと状態を共有する
+  入口を追加する（T113 に依存）:
+  - `var isToolbarShown = false { didSet { updateModeVisibility() } }` を追加する
+  - `updateModeVisibility()` の下部バーの判定を `FileListChrome(displayMode:toolbarShown:).showsBottomSizeBar`
+    に置き換える（高さ 32 / 0 の切り替えと `isHidden` は既存のまま）
+  - 読み取り用に `var currentDisplayMode: DisplayMode` と `var currentThumbnailSize: Double` を公開する
+  - ツールバーから呼ぶ `func selectDisplayMode(_ mode: DisplayMode)`（既存の `setDisplayMode(_:)` を呼ぶ）と
+    `func applyThumbnailSize(_ value: Double)`（既存の `setThumbnailSize(_:persist: true)` を呼ぶ）を公開する
+  - `var onViewStateChange: ((DisplayMode, Double) -> Void)?` を追加し、`updateModeVisibility()` の末尾と
+    `setThumbnailSize(_:persist:)` で表示形式とクランプ後のサイズを通知する。メニュー・下部バー・ツールバーの
+    どこから変えても同じ経路で通知されるようにする
+  - 既存のメニュー項目（⌘1 / ⌘2 / ⌘+ / ⌘-）、下部スライダー、フルスクリーン中の移動、ファイル操作は変えない
+- [X] T115 [US3] `Sources/MediaViewerApp/App/MainToolbarController.swift`（新規、`@MainActor final class`、
+  `NSObject` + `NSToolbarDelegate`）を作る（T113・T114 に依存）:
+  - `init(fileList: FileListViewController, settings: SettingsStore)`。`let toolbar = NSToolbar(identifier: "MainToolbar")`
+    を持ち、`delegate = self`、`displayMode = .iconOnly`、`allowsUserCustomization = false`、
+    `allowsDisplayModeCustomization = false`、`autosavesConfiguration = false` にする
+  - 項目は `toolbarDefaultItemIdentifiers` と `toolbarAllowedItemIdentifiers` の両方で
+    `[viewMode, thumbnailSize, .flexibleSpace]` の順に固定する
+  - `viewMode`: `NSToolbarItemGroup(itemIdentifier:images:selectionMode: .selectOne, labels: ["サムネイル", "リスト"],
+    target: self, action:)`。画像は `NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "サムネイル")`
+    と `"list.bullet"`（「リスト」）。グループのラベルは「表示形式」。選択時は `selectedIndex` 0 → `.thumbnails`、
+    1 → `.list` を `fileList.selectDisplayMode(_:)` に渡す
+  - `thumbnailSize`: `NSSlider`（`minValue = ViewSettings.minimumThumbnailSize`、`maxValue = ViewSettings.maximumThumbnailSize`、
+    `isContinuous = true`、`controlSize = .small`、幅 120pt の制約）を `view` に持つ `NSToolbarItem`。
+    ラベル「サイズ」、`toolTip` と `setAccessibilityLabel` は「サムネイルのサイズ」。`autovalidates = false`。
+    値の変更は `fileList.applyThumbnailSize(_:)` に渡す
+  - `func apply(displayMode: DisplayMode, thumbnailSize: Double)` で、グループの `selectedIndex`、スライダーの値
+    （差が 0.01 以下なら書き換えない）、`FileListChrome(...).toolbarSliderEnabled` に基づくスライダーと項目の
+    `isEnabled` を更新する。リスト形式でも項目を外さず、並びと位置を変えない（FR-051）
+  - 生成時に `fileList.currentDisplayMode` / `currentThumbnailSize` で初期表示し、`fileList.onViewStateChange` を
+    登録して `apply` を呼ぶ
+  - `toolbar.observe(\.isVisible, options: [.new])` の KVO で、変化のたびに `settings.viewSettings` を読み出して
+    `showsToolbar` だけを書き換えて保存し、`fileList.isToolbarShown` を更新する。KVO のコールバックは
+    `MainActor.assumeIsolated` などで MainActor 上で処理する
+- [X] T116 [US3] `Sources/MediaViewerApp/App/MainSplitViewController.swift` を更新する（T114 に依存）:
+  - `fileListViewController` を `MainWindowController` から読めるよう、`private` を外して
+    `private(set)` 相当の読み取り専用プロパティにする
+  - `window(_:willUseFullScreenPresentationOptions:)` を実装し、提案値に `.autoHideToolbar` と `.autoHideMenuBar` を
+    加えて返す。フルスクリーン中はツールバーがメニューバーと一緒に自動で隠れ、`isVisible` と保存値は変えない
+  - 既存のペイン折りたたみ、フルスクリーン中のキー監視、`NSSplitViewDelegate` の禁止メソッドには触れない
+    （AGENTS.md「AppKit UI の不変条件」）
+- [X] T117 [US3] ツールバーをウィンドウとメニューに結線する（T112・T115・T116 に依存）:
+  - `Sources/MediaViewerApp/App/MainWindowController.swift`: `init` で `SettingsStore()` と
+    `splitViewController.fileListViewController` から `MainToolbarController` を作って保持する。保存値
+    `viewSettings.showsToolbar` を `toolbar.isVisible` に設定し、`fileList.isToolbarShown` も合わせてから
+    `window.toolbarStyle = .unified`・`window.toolbar = toolbar` を設定する（ウィンドウ表示前に行い、ちらつかせない）
+  - 同ファイルに `@objc func toggleMainToolbar(_ sender: Any?)`（`window?.toolbar?.isVisible.toggle()`）と、
+    `NSMenuItemValidation` の `validateMenuItem(_:)` を追加する。この項目は常に有効で、`title` を表示中は
+    「ツールバーを隠す」、非表示中は「ツールバーを表示」にする。`NSWindow.toggleToolbarShown(_:)` は使わない（R18）
+  - `Sources/MediaViewerApp/App/MainMenu.swift`: 「表示」メニューの先頭（フルスクリーン項目の前）に、
+    タイトル「ツールバーを表示」、`action: #selector(MainWindowController.toggleMainToolbar(_:))`、
+    `keyEquivalent: "t"`、`keyEquivalentModifierMask = [.command, .option]`、`target = nil` の項目と区切り線を追加する
+  - ⇧⌘T が既存のキー割り当て（contracts/keyboard-and-menus.md）と重ならないことを確認する
+  - 2026-10-20 変更: キーは当初の ⌥⌘T が常駐アプリと衝突したため ⇧⌘T にした。AppKit の自動ウィンドウタブ
+    （「タブバーを表示」⇧⌘T）と衝突しないよう、`Sources/MediaViewerApp/App/AppDelegate.swift` の起動時に
+    `NSWindow.allowsAutomaticWindowTabbing = false` を設定する
+- [X] T118 [P] [US3] `README.md` の「主な機能」と「使い方（主なショートカット）」の表に、ツールバーの表示切替
+  （⇧⌘T、表示メニュー。既定は非表示で、状態は次回起動時に復元される）を追記する。「設定の保存先」に
+  `view.showsToolbar` を挙げている箇所があれば合わせて追記する
+
+### Verification for User Story 3
+
+- [ ] T119 [US3] 自動テストと手動確認を行う（T110〜T118 に依存）:
+  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す
+  - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。
+    依頼時は実行コマンドと確認ポイントを具体的に示す。起動しない場合は AGENTS.md の lldb 手順で例外を止める
+  - `quickstart.md`「ツールバー」の 1〜8 を確認する（FR-049〜052、FR-003）。特に 1 では、ツールバー非表示の
+    タイトルバーと3ペインがツールバー追加前と同じであることを確認する。差がある場合は R18 の代替案
+    （非表示時に `window.toolbar = nil`）へ切り替え、T117 を修正して再確認する
+  - 回帰確認: ⌘1 / ⌘2 / ⌘+ / ⌘-、下部スライダー、フルスクリーン中の矢印移動、⌃⌘F / Esc が従来どおり動く
+  - 結果（実行日、OS、確認項目、合否）を
+    `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+
+**Checkpoint**: ツールバーを表示・非表示で切り替えられ、非表示のときは従来と同じ画面のまま、表示中は
+表示形式とサムネイルサイズをツールバーから操作できる
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -897,6 +1022,10 @@ quickstart.md の手動シナリオで検証する。
   `ThumbnailModeView`・`ListModeView`・`FileListViewController` と、Phase 14 の T101（`IconCatalog`）に依存する。
   T104（テスト）→ T105（64px 段階とサイズ単位キャンセル）→ T106（`ThumbnailModeView`）→
   T107（`ListModeView`）→ T108（`FileListViewController`）の順に進め、T109 は T103・T108 に依存する
+- **ツールバー (Phase 16)**: FR-049〜052 の追加作業。US3 の `FileListViewController`（表示形式・サイズ・下部バー）と
+  US5 の `MainSplitViewController`（フルスクリーン）に依存する。T110・T111（テスト）→ T112・T113（Core）→
+  T114（`FileListViewController`）→ T115（`MainToolbarController`）・T116（`MainSplitViewController`）→
+  T117（ウィンドウとメニューの結線）の順に進め、T119 は最後に行う。T118（README）はいつでも並行できる
 
 ### User Story Dependencies
 
@@ -933,6 +1062,10 @@ quickstart.md の手動シナリオで検証する。
   ファイルが重ならないため並行できる。T103（ツリー手動確認）は T102 の後に行う。T105 は T104 に、
   T106 は T105 に、T107 は T101・T105 に、T108 は T107 に依存し、同じ
   `ListModeView` / `ThumbnailModeView` の初期化・要求を共有するため並行しない。T109 は最後に行う
+- ツールバー: T110 と T111 はファイルが重ならないため並行できる。T112（`Settings.swift`・`SettingsStore.swift`）と
+  T113（`FileListChrome.swift`）もそれぞれのテストの後に並行できる。T115（新規ファイル）と T116
+  （`MainSplitViewController.swift`）は T114 の後に並行できる。T117 は `MainWindowController.swift` と
+  `MainMenu.swift` を編集するため T115・T116 の後に行う。T118（`README.md`）は他と重ならない
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -979,6 +1112,7 @@ Task: "T033 FitCalculatorTests"
 10. サムネイルのキーボード追従スクロール → 矢印キーで一覧を辿るときもフォーカス項目が見え続ける（FR-017 改定）
 11. フルスクリーン中の矢印移動 → 全画面のまま前後のファイルへ移動でき、動画のシークは `<` / `>` で行える（FR-046）
 12. 行頭アイコン → ツリーでフォルダ種別が分かり、リスト形式で内容の縮小画像が見える（FR-047・048）
+13. ツールバー → ⇧⌘T で表示し、表示形式とサムネイルサイズをツールバーから操作できる（FR-049〜052）
 
 ---
 
@@ -1006,4 +1140,8 @@ Task: "T033 FitCalculatorTests"
 - サムネイルのキャンセルは FR-048 の追加に伴い、T047・T052 の URL だけの `cancel(for:)` から
   URL + 要求サイズ（`cancel(for:pointSize:scale:)`）へ置き換える。リストの 64px 要求が
   サムネイル形式の 128px 以上の要求を巻き込まないようにする（T105・T106）
+- FR-049〜052（2026-10-20）により、メインウィンドウに `NSToolbar` を追加する。既定は非表示で、表示状態は
+  `view.showsToolbar` だけに保存し、`NSToolbar` の自動保存は使わない。表示形式・サイズの状態は
+  `FileListViewController` を唯一の正とし、メニュー・下部バー・ツールバーで同じ経路を通す。
+  フルスクリーン中はツールバーを自動で隠し、保存値は変えない（research.md R18）
 - Commit after each task or logical group

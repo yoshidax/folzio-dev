@@ -164,7 +164,24 @@ empty ──(focused 設定)──→ loading ──→ image(DecodedImage) / an
 | `thumbnailSize` | Double（pt） | 128 | 48〜512 の範囲に丸める（FR-014） |
 | `sortOrder` | SortOrder | 名前の昇順 | FR-012 |
 | `lastFolder` | URL? | ホーム | 存在しない場合はホームに戻す（FR-003） |
+| `showsToolbar` | Bool | false | 値がない・不正な型の場合は false（FR-003・049） |
 | ペイン幅 | （分割ビューの自動保存） | 220 / 360 / 残り | 最小幅 160 / 240 / 320 pt（FR-002） |
+
+## FileListChrome（下部バーとツールバーのスライダー・永続化しない）
+
+表示形式とツールバーの表示状態から、ファイルリスト周辺の表示を決める純粋計算。
+
+| 入力 | 型 |
+|------|----|
+| `displayMode` | `.list` / `.thumbnails` |
+| `toolbarShown` | Bool |
+
+| 出力 | 規則 | 要件 |
+|------|------|------|
+| `showsBottomSizeBar` | `displayMode == .thumbnails && !toolbarShown` | FR-052 |
+| `toolbarSliderEnabled` | `displayMode == .thumbnails`（ツールバーが非表示でも値は同じ。表示時にそのまま使う） | FR-051 |
+
+ツールバーの表示形式ボタンの選択位置は `displayMode` から直接決める（サムネイル = 0、リスト = 1）。
 
 ## PlaybackOptions と ConfirmationOptions（動作オプション・永続化）
 
