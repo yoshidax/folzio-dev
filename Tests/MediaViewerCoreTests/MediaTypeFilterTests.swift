@@ -56,6 +56,37 @@ struct MediaTypeFilterTests {
         )
     }
 
+    @Test("apply は media 以外の行（zip・ディレクトリ・...）を常に残し、並び順も保つ")
+    func applyKeepsNonMediaRows() {
+        let folder = URL(fileURLWithPath: "/tmp/filter", isDirectory: true)
+        let files = [
+            item("...", .parent, in: folder),
+            item("sub", .directory, in: folder),
+            item("a.jpg", .media(.jpeg), in: folder),
+            item("pack.zip", .archive, in: folder),
+            item("b.mov", .media(.mov), in: folder),
+            item("c.png", .media(.png), in: folder),
+        ]
+
+        #expect(
+            MediaTypeFilter(imagesOnly: true).apply(to: files).map(\.name)
+                == ["...", "sub", "a.jpg", "pack.zip", "c.png"]
+        )
+        #expect(
+            MediaTypeFilter(videosOnly: true).apply(to: files).map(\.name)
+                == ["...", "sub", "pack.zip", "b.mov"]
+        )
+        #expect(MediaTypeFilter().apply(to: files).map(\.name) == files.map(\.name))
+    }
+
+    @Test("media が 1 つもなくても、media 以外の行は絞り込み中でも残る")
+    func applyKeepsOnlyNonMediaRows() {
+        let folder = URL(fileURLWithPath: "/tmp/filter", isDirectory: true)
+        let files = [item("...", .parent, in: folder), item("sub", .directory, in: folder)]
+        #expect(MediaTypeFilter(imagesOnly: true).apply(to: files).map(\.name) == ["...", "sub"])
+        #expect(MediaTypeFilter(videosOnly: true).apply(to: files).map(\.name) == ["...", "sub"])
+    }
+
     @Test("apply は空配列に対して空配列を返す")
     func applyToEmpty() {
         for combo in Self.combinations {
@@ -131,6 +162,17 @@ struct MediaTypeFilterTests {
 
     private func url(_ name: String) -> URL {
         URL(fileURLWithPath: "/tmp/filter", isDirectory: true).appendingPathComponent(name)
+    }
+
+    private func item(_ name: String, _ kind: ListItemKind, in folder: URL) -> MediaFile {
+        MediaFile(
+            url: folder.appendingPathComponent(name),
+            name: name,
+            kind: kind,
+            typeDescription: "",
+            creationDate: nil,
+            fileSize: 0
+        )
     }
 
     private func file(_ name: String, in folder: URL) -> MediaFile {
