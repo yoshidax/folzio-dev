@@ -54,6 +54,8 @@ final class MainSplitViewController: NSSplitViewController {
     let fileListViewController: FileListViewController
     private let previewViewController: PreviewViewController
     private let fileOperationCoordinator: FileOperationCoordinator
+    /// zip の読み込み元。BrowserModel と ThumbnailProvider で同じインスタンスを共有する
+    private let archiveReader: ZipArchiveReader
     private var didObserveInitialListingChange = false
     private var didNotifyInitialListingDisplayed = false
     private var appliedInitialPositions = false
@@ -75,21 +77,24 @@ final class MainSplitViewController: NSSplitViewController {
         let lister = DirectoryLister()
         let decoder = ImageDecoder()
         let cache = DecodedImageCache()
+        let archiveReader = ZipArchiveReader()
         let model = BrowserModel(
             lister: lister,
             decoder: decoder,
             cache: cache,
-            settings: settings
+            settings: settings,
+            archiveReader: archiveReader
         )
         let volumes = VolumeProvider(changes: MainSplitViewController.makeVolumeChanges())
         let fileSystemWatcher = FileSystemWatcher()
-        let thumbnailProvider = ThumbnailProvider()
+        let thumbnailProvider = ThumbnailProvider(archiveReader: archiveReader)
         let coordinator = FileOperationCoordinator(
             model: model,
             service: FileOperationService(),
             settings: settings
         )
         self.fileOperationCoordinator = coordinator
+        self.archiveReader = archiveReader
         self.model = model
 
         self.treeViewController = DirectoryTreeViewController(

@@ -8,6 +8,8 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
     private let copyItem = NSMenuItem()
     private let pasteItem = NSMenuItem()
     private let movePasteItem = NSMenuItem()
+    private let openContainerItem = NSMenuItem()
+    private let goUpItem = NSMenuItem()
 
     init(host: FileListViewController) {
         self.host = host
@@ -42,13 +44,34 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
             copyItem.title = "コピー"
         }
 
-        let canPaste = Self.pasteboardHasFileURLs()
+        // 「上の階層へ」は zip の中だけ出す。有効・無効は validateMenuItem に任せる
+        goUpItem.isHidden = !(host?.isBrowsingArchive ?? false)
+
+        // zip の中ではペースト・移動ペーストを使えない（FR-073）
+        let allowsPaste = host?.focusedItemCommands.allowsPaste ?? true
+        let canPaste = allowsPaste && Self.pasteboardHasFileURLs()
         pasteItem.isEnabled = canPaste
         movePasteItem.isEnabled = canPaste
     }
 
     private func buildMenu() {
         menu.autoenablesItems = true
+
+        openContainerItem.title = "中を表示"
+        openContainerItem.action = #selector(FileListViewController.openFocusedItem(_:))
+        openContainerItem.keyEquivalent = String(UnicodeScalar(NSDownArrowFunctionKey)!)
+        openContainerItem.keyEquivalentModifierMask = [.command]
+        openContainerItem.target = host
+        menu.addItem(openContainerItem)
+
+        goUpItem.title = "上の階層へ"
+        goUpItem.action = #selector(FileListViewController.goToEnclosingLevel(_:))
+        goUpItem.keyEquivalent = String(UnicodeScalar(NSUpArrowFunctionKey)!)
+        goUpItem.keyEquivalentModifierMask = [.command]
+        goUpItem.target = host
+        goUpItem.isHidden = true
+        menu.addItem(goUpItem)
+        menu.addItem(.separator())
 
         addItem(
             title: "開く",

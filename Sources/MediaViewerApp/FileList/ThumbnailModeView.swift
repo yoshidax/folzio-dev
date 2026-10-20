@@ -5,8 +5,17 @@ import MediaViewerCore
 private final class ThumbnailCollectionView: NSCollectionView {
     var onArrowKey: ((NSEvent.SpecialKey, NSEvent.ModifierFlags) -> Bool)?
     var onReturnKey: (() -> Bool)?
+    var onDoubleClickItem: ((Int) -> Void)?
 
     override var acceptsFirstResponder: Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        super.mouseDown(with: event)
+        guard event.clickCount == 2 else { return }
+        let point = convert(event.locationInWindow, from: nil)
+        guard let indexPath = indexPathForItem(at: point) else { return }
+        onDoubleClickItem?(indexPath.item)
+    }
 
     override func keyDown(with event: NSEvent) {
         if event.specialKey == .carriageReturn
@@ -17,6 +26,11 @@ private final class ThumbnailCollectionView: NSCollectionView {
                onReturnKey?() == true {
                 return
             }
+        }
+
+        // メニュー項目が無効なときに、既定の動作へ渡さない（R26）
+        if event.isCommandOnlyVerticalArrow {
+            return
         }
 
         if let key = event.specialKey {
@@ -111,7 +125,7 @@ private final class ThumbnailItemView: NSCollectionViewItem {
         didSet { updateSelectionAppearance() }
     }
 
-    func configure(with file: MediaFile) {
+    func configure(with file: MediaFile, iconPointSize: Double) {
         if isRenaming, representedURL != file.url {
             endRenaming(commit: false, restoreFocus: false)
         }
@@ -121,11 +135,26 @@ private final class ThumbnailItemView: NSCollectionViewItem {
             nameLabel.stringValue = file.name
             nameLabel.setAccessibilityLabel(file.name)
         }
-        view.setAccessibilityLabel(file.name)
-        if urlChanged || thumbnailImageView.image == nil {
+        let accessibilityName = file.kind == .parent ? "上の階層へ" : file.name
+        view.setAccessibilityLabel(accessibilityName)
+        if !file.kind.isMedia {
+            if !isRenaming {
+                nameLabel.setAccessibilityLabel(accessibilityName)
+            }
+            showListItemIcon(for: file.kind, pointSize: iconPointSize)
+        } else if urlChanged || thumbnailImageView.image == nil {
+            thumbnailImageView.imageScaling = .scaleProportionallyUpOrDown
+            thumbnailImageView.contentTintColor = nil
             thumbnailImageView.image = NSWorkspace.shared.icon(forFile: file.url.path)
         }
         updateSelectionAppearance()
+    }
+
+    /// zip ファイル・ディレクトリ・`...` の行の、種類のアイコン。縮小画像は要求しない
+    func showListItemIcon(for kind: ListItemKind, pointSize: Double) {
+        thumbnailImageView.imageScaling = .scaleNone
+        thumbnailImageView.contentTintColor = .secondaryLabelColor
+        thumbnailImageView.image = IconCatalog.listItemIcon(for: kind, pointSize: CGFloat(pointSize))
     }
 
     @discardableResult
@@ -162,6 +191,8 @@ private final class ThumbnailItemView: NSCollectionViewItem {
         onCommitRename = nil
         representedURL = nil
         thumbnailImageView.image = nil
+        thumbnailImageView.imageScaling = .scaleProportionallyUpOrDown
+        thumbnailImageView.contentTintColor = nil
         nameLabel.stringValue = ""
         view.setAccessibilityLabel(nil)
         updateSelectionAppearance()
@@ -289,6 +320,7 @@ final class ThumbnailModeView: NSView {
     var focusView: NSView { collectionView }
 
     var onRename: ((URL, String) async -> Void)?
+    var onOpenItem: ((URL) -> Void)?
 
     var contextMenu: NSMenu? {
         get { collectionView.menu }
@@ -417,6 +449,9 @@ final class ThumbnailModeView: NSView {
         collectionView.onReturnKey = { [weak self] in
             self?.beginRenameFromKeyboard() ?? false
         }
+        collectionView.onDoubleClickItem = { [weak self] index in
+            self?.openItem(at: index)
+        }
         collectionView.frame = NSRect(x: 0, y: 0, width: 400, height: 400)
 
         scrollView.documentView = collectionView
@@ -525,6 +560,15 @@ final class ThumbnailModeView: NSView {
 
     private func requestThumbnail(for file: MediaFile) {
         guard window?.inLiveResize != true else { return }
+        guard file.kind.isMedia else {
+            // メディア以外の行は縮小画像を要求せず、種類のアイコンを出す
+            cancelRequest(for: file.url)
+            for case let item as ThumbnailItemView in collectionView.visibleItems()
+            where item.representedURL == file.url {
+                item.showListItemIcon(for: file.kind, pointSize: listItemIconPointSize)
+            }
+            return
+        }
         let pointSize = storedThumbnailSize
         let scale = Double(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2)
         if let existing = requests[file.url],
@@ -611,7 +655,26 @@ final class ThumbnailModeView: NSView {
         ).count)
     }
 
+    /// メディア以外の行のアイコンの大きさ（サムネイルの大きさの半分程度）
+    private var listItemIconPointSize: Double {
+        max(16, storedThumbnailSize / 2)
+    }
+
+    /// ダブルクリックされた項目を単一選択にしてから、中を表示する（FR-069・070）
+    private func openItem(at index: Int) {
+        let files = model.listing.files
+        guard files.indices.contains(index) else { return }
+        let url = files[index].url
+        if model.selection.selected != [url] || model.selection.focused != url {
+            applySelection([IndexPath(item: index, section: 0)], focusedURL: url)
+            selectionAnchor = index
+        }
+        onOpenItem?(url)
+    }
+
     private func beginRenameFromKeyboard() -> Bool {
+        // zip の中では名前の変更を始めない（FR-073）。キーは消費する
+        guard model.focusedItemCommands.allowsFileOperations else { return true }
         guard onRename != nil else { return false }
         let selected = model.selection.selected
         guard selected.count == 1,
@@ -804,7 +867,7 @@ extension ThumbnailModeView: NSCollectionViewDataSource {
         thumbnailItem.onCommitRename = { [weak self] url, newName in
             self?.commitRename(url: url, newName: newName)
         }
-        thumbnailItem.configure(with: file)
+        thumbnailItem.configure(with: file, iconPointSize: listItemIconPointSize)
         requestThumbnail(for: file)
         return thumbnailItem
     }
@@ -837,6 +900,8 @@ extension ThumbnailModeView: NSCollectionViewDelegateFlowLayout {
     ) -> NSPasteboardWriting? {
         let files = model.listing.files
         guard files.indices.contains(indexPath.item) else { return nil }
+        // zip の中の行・`...` はドラッグを始めない（FR-073）
+        guard model.itemCommands(forRowAt: indexPath.item).allowsFileOperations else { return nil }
         return files[indexPath.item].url as NSURL
     }
 
