@@ -1182,6 +1182,181 @@ quickstart.md の手動シナリオで検証する。
 
 ---
 
+## Phase 18: 画像・動画の種類フィルタ（FR-056〜060 追加、US3）
+
+**Purpose**: ファイルリストを「画像のみ表示」「動画のみ表示」の2つの独立したオン・オフで絞り込めるようにする。
+ツールバーでは表示形式ボタンの左に2つのボタンを置き、「表示」メニューと ⇧⌘I / ⇧⌘M でも切り替える。
+状態は保存せず、起動中はフォルダを移っても保つ（[spec.md](./spec.md) FR-056〜060・US3 の受け入れシナリオ 11〜18、
+[plan.md](./plan.md) の「変更点（画像・動画の種類フィルタ）」、[research.md](./research.md) R20、
+[data-model.md](./data-model.md) の `FolderListing`・`MediaTypeFilter`・`SelectionState`、
+[contracts/core-api.md](./contracts/core-api.md)「ブラウザ状態」「種類フィルタ」、
+[contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md)「ファイルリスト」「ツールバー」「メニューバー」、
+[contracts/settings.md](./contracts/settings.md)）。
+
+**Independent Test**: `swift test` で `MediaTypeFilter` の4通り・選択の整理・`.noMatches`・フォルダ移動後の保持が通ること。
+`.app` で quickstart.md「種類フィルタ」の 1〜11 を確認し、ツールバーのボタン・メニューのチェック・⇧⌘I / ⇧⌘M が
+同じ状態を示し、再起動で両方オフに戻ること。
+
+### Tests for User Story 3
+
+- [ ] T133 [P] [US3] `Tests/MediaViewerCoreTests/MediaTypeFilterTests.swift`（新規、`@Suite("MediaTypeFilter")`）を先に書く
+  （T137・T138 の前にビルドエラーになることを確認する）。`MediaFile` は既存の `BrowserModelTests` の `file(_:in:)` と同じ形の
+  ヘルパーをこのファイル内に `private` で置いて作る:
+  - data-model.md の表の 4 通り（`imagesOnly` × `videosOnly`）それぞれで、`includes(_:)` を `MediaKind.allCases` の全 6 種に対して
+    検証する。片方だけオンのときは「画像（`!kind.isVideo`）だけ」または「動画（`kind.isVideo`）だけ」、両方オン・両方オフは全種 `true`
+  - `isFiltering` は「片方だけがオン」の 2 通りだけ `true`
+  - 既定値: `MediaTypeFilter()` は `imagesOnly == false`、`videosOnly == false`
+  - `apply(to:)`: `["b.mov", "a.jpg", "c.mp4", "d.png"]` の順の入力に対し、画像のみで `["a.jpg", "d.png"]`、動画のみで
+    `["b.mov", "c.mp4"]`、両方オフ・両方オンで入力と同じ並び（並び順を保つ）。空配列は空配列
+  - `noMatchesMessage`: 画像のみで「画像のみ表示中: 該当するファイルはありません」、動画のみで
+    「動画のみ表示中: 該当するファイルはありません」、両方オフ・両方オンで `nil`
+  - `SelectionState.restricted(toVisible:)`（data-model.md の表の 3 行と追加の境界）:
+    - フォーカスが表示中のまま: `selected = {a, v}`、`focused = a`、表示 `[a, b]` → `selected == {a}`、`focused == a`
+    - フォーカスが非表示になり選択が残る: `selected = {a, c, v}`、`focused = v`、表示 `[c, b, a]` → `selected == {a, c}`、
+      `focused == a`（表示の並び順で最後のもの。`Set` の列挙順に依存しないことを、表示順を入れ替えた
+      `[a, b, c]` で `focused == c` になることでも確かめる）
+    - 選択が残らない: `selected = {v}`、`focused = v`、表示 `[a, b]` → `selected` は空、`focused == nil`
+    - フォーカスなし: `selected = {a}`、`focused = nil`、表示 `[a]` → `selected == {a}`、`focused == nil`
+    - 表示が空: 任意の選択 → `selected` は空、`focused == nil`
+- [ ] T134 [P] [US3] `Tests/MediaViewerCoreTests/BrowserModelTests.swift` に種類フィルタのテストを先に追加する
+  （T139 の前にビルドエラーになることを確認する）。既存の `makeModel(lister:decoder:)`・`file(_:in:)`・`waitUntil` を使う。
+  読み直しのケースのため、`FakeLister` の `responses` を `var` にして `func setResponse(_ response: Response, for folder: URL)` を
+  追加する（既存のテストの呼び出しは変えない）。フォルダの中身は `a.jpg`・`b.mov`・`c.png`・`d.mp4` を基本にする:
+  - 既定: 新しい `BrowserModel` の `mediaTypeFilter == MediaTypeFilter()`。`selectFolder` 後の `listing.files` は 4 件すべて、
+    `listing.state == .loaded`
+  - 画像のみ: `setMediaTypeFilter(MediaTypeFilter(imagesOnly: true))` で `listing.files.map(\.name) == ["a.jpg", "c.png"]`。
+    動画のみで `["b.mov", "d.mp4"]`。両方オンで 4 件すべてに戻る。両方オンから「画像のみ表示」だけをオフにする
+    （`MediaTypeFilter(videosOnly: true)`）と `["b.mov", "d.mp4"]` になる（US3-13）
+  - `.noMatches` と `.empty`: 画像だけのフォルダで動画のみ → `listing.state == .noMatches`、`files` は空。空のフォルダで動画のみ →
+    `.empty`（`.noMatches` にならない）。絞り込みを両方オフに戻すと `.loaded`
+  - フォルダ移動で保持: 動画のみにしてから別のフォルダへ `selectFolder` → `mediaTypeFilter.videosOnly == true` のままで、
+    移動先も動画だけになる
+  - 並べ替え: 動画のみの状態で `sortOrder` を名前の降順にする → `["d.mp4", "b.mov"]`。`.noMatches` の状態で並べ替えても
+    `.noMatches` のまま
+  - 読み直し: 動画のみの状態で `setResponse` により `e.mov` を追加し `reloadCurrentFolder()` → `["b.mov", "d.mp4", "e.mov"]`
+  - 選択の整理: `a.jpg` と `b.mov` を選び `focused = b.mov` で画像のみ → `selection.selected == [a.jpg]`、`focused == a.jpg`、
+    `waitUntil` でプレビューが `.image` になる。`focused = a.jpg` で画像のみ → 選択とフォーカスは変わらず、
+    `preview` が `.loading` に戻らない（読み直さない）
+  - 選択が残らない: `b.mov` だけを選んで画像のみ → `selection.selected` は空、`focused == nil`、`preview` は `.empty`。
+    両方オフに戻しても `selection.selected` は空のまま（選択を戻さない）
+  - 同じ値の再設定: 同じ `MediaTypeFilter` を `setMediaTypeFilter` しても `listing` と `selection` が変わらない
+  - 保存しない: `setMediaTypeFilter` の前後で `defaults.persistentDomain(forName: suite)` のキーの集合が変わらない
+- [ ] T135 [P] [US3] `Tests/MediaViewerCoreTests/BrowserModelVideoTests.swift` に
+  `@Test("再生中の動画が種類フィルタで隠れると停止の合図が増えプレビューが空になる")` を先に追加する（T139 の前に
+  ビルドエラーになることを確認する）。既存の `emitsStopSignal` と同じ準備（`clip.mov` と `photo.jpg`）で `clip.mov` を選び、
+  `stopPlaybackSignal` を記録してから `setMediaTypeFilter(MediaTypeFilter(imagesOnly: true))` を呼ぶ:
+  - `stopPlaybackSignal == baseline + 1`
+  - `preview` が `.empty`、`selection.focused == nil`、`listing.files.map(\.name) == ["photo.jpg"]`
+  - `photo.jpg` が自動で選ばれていない（`selection.selected` が空）
+
+- [ ] T136 [P] [US3] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に
+  `@Test("10,000 件への種類フィルタの適用が 0.05 秒以内")` を先に追加する（T137 の前にビルドエラーになることを確認し、
+  T137 の後に通ることを確認する）。既存の
+  `hugeFolderListingAndSortingWithinBudget` と同じく `FixtureSets.huge(in:count: 10_000)` を列挙・並べ替えした配列を作り
+  （準備は計測に含めない）、`MediaTypeFilter(imagesOnly: true).apply(to:)` と `MediaTypeFilter(videosOnly: true).apply(to:)` の
+  合計時間を `ContinuousClock` で測る。画像のみで 10,000 件、動画のみで 0 件であることと、0.05 秒以内であることを確かめる
+  （quickstart.md「性能の検証」の基準値）
+
+### Implementation for User Story 3
+
+- [ ] T137 [P] [US3] `Sources/MediaViewerCore/Model/MediaTypeFilter.swift`（新規）に、contracts/core-api.md の
+  `public struct MediaTypeFilter: Sendable, Equatable` を実装する（T133 に依存）:
+  - `public var imagesOnly: Bool`・`public var videosOnly: Bool`、`public init(imagesOnly: Bool = false, videosOnly: Bool = false)`
+  - `isFiltering`: `imagesOnly != videosOnly`
+  - `includes(_ kind: MediaKind) -> Bool`: `isFiltering` でなければ `true`。`imagesOnly` なら `!kind.isVideo`、`videosOnly` なら `kind.isVideo`
+  - `apply(to files: [MediaFile]) -> [MediaFile]`: `isFiltering` でなければ入力をそのまま返し、そうでなければ
+    `files.filter { includes($0.kind) }`（並び順を保つ）
+  - `noMatchesMessage: String?`: 画像のみで「画像のみ表示中: 該当するファイルはありません」、動画のみで
+    「動画のみ表示中: 該当するファイルはありません」、それ以外は `nil`（FR-060）
+  - AppKit を import しない
+- [ ] T138 [US3] `Sources/MediaViewerCore/Model/BrowserState.swift` を更新する（T133 に依存）:
+  - `FolderListing.State` に `case noMatches` を `empty` の後に追加する（data-model.md「対象ファイルはあるが種類フィルタで
+    1件も残らない状態（FR-060）」）
+  - `extension SelectionState` に `public func restricted(toVisible orderedURLs: [URL]) -> SelectionState` を追加する。
+    `selected` は `orderedURLs` に含まれるものだけにする。`focused` は data-model.md の表のとおりに決める:
+    `nil` なら `nil` のまま（選択が残っていてもフォーカスを作らない）、`orderedURLs` に含まれればそのまま、
+    含まれなければ（非表示になった場合だけ）`orderedURLs` を後ろから探して最初に `selected` に含まれるもの、なければ `nil`
+  - T137 と合わせて `swift test --filter MediaTypeFilterTests` が通ることを確認する。`.noMatches` の追加で App の網羅的な
+    `switch` がビルドエラーになるため、`swift build` は T140 の後に確認する
+- [ ] T139 [US3] `Sources/MediaViewerCore/Browser/BrowserModel.swift` に種類フィルタを組み込む（T134・T135・T137・T138 に依存）:
+  - `public private(set) var mediaTypeFilter = MediaTypeFilter()` と、並べ替え済みの全件 `private var allFiles: [MediaFile] = []` を追加する。
+    `SettingsStore` からは読まず、書かない（FR-056）
+  - `private func rebuildListing()` を追加し、`listing.files = mediaTypeFilter.apply(to: allFiles)`、
+    `listing.state` を「`allFiles` が空なら `.empty`、`listing.files` が空なら `.noMatches`、それ以外は `.loaded`」にする
+  - `loadFolder(_:)` と `reloadCurrentFolder()` の成功時は `allFiles = sorted(files, by: sortOrder)` の後に `rebuildListing()` を呼ぶ。
+    失敗時と `selectFolder(_:)` の開始時は `allFiles = []` にする。`reloadCurrentFolder()` の選択の扱い（`available` との
+    積を取り、フォーカスが消えたらプレビューを空にする）は、絞り込み後の `listing.files` に対してそのまま行う
+  - `sortOrder` の `didSet` は、対象の状態に `.noMatches` を加え、`allFiles` を並べ替えてから `rebuildListing()` を呼ぶ
+  - `public func setMediaTypeFilter(_ filter: MediaTypeFilter)`: 同じ値なら何もしない。`mediaTypeFilter = filter` と
+    `rebuildListing()` の後、`selection.restricted(toVisible: listing.files.map(\.url))` を求める。`focused` が変わらなければ
+    `selection` だけを差し替えて `schedulePrefetch(around:)` を呼ぶ。変わる場合は `select(_:focused:)` を呼ぶ
+    （停止の合図・プレビュー・先読みは既存の経路に任せる）
+  - `selectFolder(_:)` は `mediaTypeFilter` を変えない
+  - `swift test --filter BrowserModelTests` と `--filter BrowserModelVideoTests` が通ることを確認する
+- [ ] T140 [US3] App の網羅的な `switch` に `.noMatches` を加える（T139 に依存）:
+  - `Sources/MediaViewerApp/FileList/FileListViewController.swift` の `refresh()`: `.noMatches` で
+    `messageLabel.stringValue = model.mediaTypeFilter.noMatchesMessage ?? ""` とし、`messageLabel.isHidden = false` にする。
+    `.empty` の文言「対応するメディアファイルがありません」は変えない。`updateModeVisibility()` は既存のまま
+    （`.loaded` 以外は一覧を隠す）
+  - `Sources/MediaViewerApp/App/MainSplitViewController.swift` の `deliverInitialListingIfReady()`: `.noMatches` を
+    `.loaded, .empty, .denied, .failed` と同じ表示済みの扱いに加える
+  - `swift build` と `swift test` が通ることを確認する
+- [ ] T141 [US3] `Sources/MediaViewerApp/FileList/FileListViewController.swift` にメニューと共通の入口を追加する（T140 に依存）:
+  - `installViewMenuItems()` で「サムネイルを縮小」の後ろに `.separator()` と、`NSMenuItem(title: "画像のみ表示",
+    action: #selector(toggleImagesOnly(_:)), keyEquivalent: "I")`・`NSMenuItem(title: "動画のみ表示",
+    action: #selector(toggleVideosOnly(_:)), keyEquivalent: "M")` を追加する（大文字で ⇧⌘ になる。既存の ⇧⌘T と同じ書き方）。
+    `target = self`、`weak var` で保持する
+  - `func applyMediaTypeFilter(_ filter: MediaTypeFilter)`: `isEditingText` のときは変更せず、
+    `onMediaTypeFilterChange?(model.mediaTypeFilter)` で呼び出し元の表示を元に戻す。それ以外は `model.setMediaTypeFilter(filter)`
+  - `toggleImagesOnly(_:)` / `toggleVideosOnly(_:)` は現在の `model.mediaTypeFilter` の該当フィールドを反転して
+    `applyMediaTypeFilter(_:)` に渡す
+  - `var onMediaTypeFilterChange: ((MediaTypeFilter) -> Void)?` を追加する。`private func observeMediaTypeFilter()` を
+    既存の `observeModel()` と同じ `withObservationTracking` の形で作り、`model.mediaTypeFilter` が変わるたびに
+    メニューの `state`（オンなら `.on`）を更新して `onMediaTypeFilterChange` を呼ぶ。`viewDidLoad` から開始する。
+    `.noMatches` の文言も変わるため `refresh()` も呼ぶ
+  - `validateMenuItem(_:)`: 2 つの項目は `isEditingText` のとき `false`、それ以外は `true`
+  - `var currentMediaTypeFilter: MediaTypeFilter { model.mediaTypeFilter }` を公開する（ツールバーの初期表示用）
+  - 既存の表示形式・サイズのメニュー、下部バー、ファイル操作、フルスクリーン中の移動は変えない
+- [ ] T142 [US3] `Sources/MediaViewerApp/App/MainToolbarController.swift` に種類フィルタのボタンを追加する（T141 に依存）:
+  - `private static let mediaTypeFilterIdentifier = NSToolbarItem.Identifier("mediaTypeFilter")` を追加し、
+    `toolbarDefaultItemIdentifiers` と `toolbarAllowedItemIdentifiers` を
+    `[mediaTypeFilter, viewMode, thumbnailSize, .flexibleSpace]` の順にする（FR-057）
+  - `NSToolbarItemGroup(itemIdentifier:images:selectionMode: .selectAny, labels: ["画像のみ表示", "動画のみ表示"],
+    target: self, action: #selector(mediaTypeFilterSelected(_:)))`。画像は
+    `NSImage(systemSymbolName: "photo", accessibilityDescription: "画像のみ表示")` と `"film"`（「動画のみ表示」）。
+    グループのラベルとツールチップは「種類」。各サブ項目の `toolTip` もラベルと同じにする
+  - `mediaTypeFilterSelected(_:)`: `MediaTypeFilter(imagesOnly: sender.isSelected(at: 0), videosOnly: sender.isSelected(at: 1))`
+    を `fileList.applyMediaTypeFilter(_:)` に渡す
+  - `func apply(mediaTypeFilter: MediaTypeFilter)` で `setSelected(_:at:)` を 0 と 1 に合わせる。生成時に
+    `fileList.currentMediaTypeFilter` で初期表示し、`init` で `fileList.onMediaTypeFilterChange` を登録して呼ぶ
+  - 既存の表示形式・サイズの項目、`isVisible` の KVO と保存は変えない
+- [ ] T143 [P] [US3] `README.md` の「主な機能」と「使い方（主なショートカット）」の表に、種類フィルタ（ツールバーの
+  「画像のみ表示」「動画のみ表示」ボタン、表示メニュー、⇧⌘I / ⇧⌘M。両方オン・両方オフはすべて表示。状態は保存されず、
+  起動のたびに両方オフで始まる）を追記する
+
+### Verification for User Story 3
+
+- [ ] T144 [US3] 自動テストと手動確認を行う（T133〜T143 に依存）:
+  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す。T136 の計測値を記録する（憲章 原則 II）
+  - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。依頼時は
+    `scripts/make-fixtures.sh ~/MediaViewerFixtures` の準備コマンドと、quickstart.md「種類フィルタ」の確認ポイント 1〜11 を
+    具体的に示す。起動しない場合は AGENTS.md の lldb 手順で例外を止める
+  - quickstart.md の 2・3 で `selectAny` のボタンの押された状態が判別しにくい場合は、research.md R20 の代替案
+    （`.pushOnPushOff` の `NSButton` を 2 つの `NSToolbarItem` にする）へ切り替え、T142 を修正して再確認する
+  - ⇧⌘I / ⇧⌘M がアプリに届かない（常駐アプリなどに先取りされる）場合は、作業を止めてユーザーにキーの変更を相談する
+  - quickstart.md の 11 では、`huge/` のリスト形式とサムネイル形式のそれぞれで切り替えを繰り返し、画面収録または
+    Instruments で表示の停止を測る。100ms 以上の停止が 0 回であることを確認し、計測方法と最大停止時間を記録する
+    （憲章 原則 II）。基準を超えた場合は作業を止めて状況を報告する
+  - 回帰確認: ⇧⌘T・⌘1 / ⌘2・⌘+ / ⌘-・ツールバーの表示形式とスライダー、⌘A・⌘C・⌘Delete（表示中のファイルだけが対象）、
+    名前の変更、フルスクリーン中の矢印移動と ⌃⌘F / Esc、FSEvents による一覧の更新が従来どおり動く
+  - 結果（実行日、OS、確認項目、合否、T136 の計測値、quickstart.md 11 の最大停止時間）を
+    `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+
+**Checkpoint**: ツールバー・メニュー・⇧⌘I / ⇧⌘M でファイルリストを画像だけ・動画だけに絞り込める。両方オン・両方オフは
+すべてを表示し、絞り込みはフォルダを移っても保たれ、再起動で両方オフに戻る
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -1219,6 +1394,11 @@ quickstart.md の手動シナリオで検証する。
   コミットするため、Phase 16 の T119 とコミットを済ませてから着手する。T120〜T122（テスト）→ T123・T124（モデル）・
   T125（`DirectoryLister`）→ T126（`SubfolderProbe`）→ T128 → T129 → T130（同じ `DirectoryTreeViewController.swift`）の順に進め、
   T132 は最後に行う。T127（性能テスト）は T125 の後、T131（README）はいつでも並行できる
+- **種類フィルタ (Phase 18)**: FR-056〜060 の追加作業。US3 の `BrowserModel`・`FileListViewController` と、Phase 16 の
+  `MainToolbarController` に依存する。Phase 単位でコミットするため、Phase 17 の T132 とコミットを済ませてから着手する。
+  T133〜T136（テスト）→ T137（`MediaTypeFilter`）・T138（`BrowserState`）→ T139（`BrowserModel`）→ T140（App の `switch`）→
+  T141（`FileListViewController`）→ T142（`MainToolbarController`）の順に進め、T144 は最後に行う。T138 で `.noMatches` を
+  加えると App がビルドできなくなるため、T138〜T140 は続けて行う。T136（性能テスト）は T133〜T135 と同じく先に書き、T137 の後に通す。T143（README）はいつでも並行できる
 
 ### User Story Dependencies
 
@@ -1263,6 +1443,10 @@ quickstart.md の手動シナリオで検証する。
   （`FolderDisclosure.swift`）は並行できるが、T120 は両方が揃うまでビルドできない。T125 は T121 の後、T126 は T122・T125 の後に行う。
   T127（`PerformanceBaselineTests.swift`）は T125 の後に T126 と並行できる。T128〜T130 は同じ
   `DirectoryTreeViewController.swift` を編集するため並行せず、この順に進める。T131（`README.md`）は他と重ならないため、いつでも並行できる
+- 種類フィルタ: T133・T134・T135・T136 はファイルが重ならないため並行できる。T137（`MediaTypeFilter.swift`）と T138
+  （`BrowserState.swift`）は並行できるが、T133 は両方が揃うまでビルドできない。T139 は T134〜T138 の後に行う。
+  T140 と T141 は同じ `FileListViewController.swift` を編集するため並行せず、この順に進める。T142 は T141 の後に行う。
+  T136（`PerformanceBaselineTests.swift`）も T133〜T135 と並行して先に書ける。T143（`README.md`）は他と重ならない
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -1311,6 +1495,7 @@ Task: "T033 FitCalculatorTests"
 12. 行頭アイコン → ツリーでフォルダ種別が分かり、リスト形式で内容の縮小画像が見える（FR-047・048）
 13. ツールバー → ⇧⌘T で表示し、表示形式とサムネイルサイズをツールバーから操作できる（FR-049〜052）
 14. ツリーの開閉 → 行のダブルクリックで開閉でき、三角はサブフォルダがあるフォルダにだけ出る（FR-053〜055）
+15. 種類フィルタ → ツールバー・メニュー・⇧⌘I / ⇧⌘M で画像だけ・動画だけに絞り込める（FR-056〜060）
 
 ---
 
@@ -1347,4 +1532,8 @@ Task: "T033 FitCalculatorTests"
   同時 4 件までで行う。展開時の読み込み失敗は「アクセスできません」の表示にそろえ、権限なし（`.denied`）は三角を消し、
   それ以外（`.unavailable`）は三角を残して再展開で読み直す。確認結果は
   永続化しない（research.md R19）
+- FR-056〜060（2026-10-20）により、ファイルリストを「画像のみ表示」「動画のみ表示」の独立した2つのオン・オフで絞り込む。
+  状態は `BrowserModel.mediaTypeFilter` の1か所だけに持ち、保存しない。`listing.files` を絞り込み後の配列にするため、
+  一覧・選択・先読み・フルスクリーン移動・ファイル操作は表示中の一覧だけを対象にする。対象はあるが0件のときは `.noMatches` とし、
+  `.empty` と文言を分ける。隠れた選択は外し、戻しても復元しない（research.md R20）
 - Commit after each task or logical group
