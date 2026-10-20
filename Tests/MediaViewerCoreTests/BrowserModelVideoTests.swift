@@ -108,7 +108,7 @@ struct BrowserModelVideoTests {
         MediaFile(
             url: folder.appendingPathComponent(name),
             name: name,
-            kind: MediaKind(fileExtension: (name as NSString).pathExtension) ?? .jpeg,
+            kind: .media(MediaKind(fileExtension: (name as NSString).pathExtension) ?? .jpeg),
             typeDescription: name,
             creationDate: nil,
             fileSize: 0

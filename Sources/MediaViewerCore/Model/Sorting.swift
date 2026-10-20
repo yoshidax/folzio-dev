@@ -52,6 +52,6 @@ private func comparePrimary(_ a: MediaFile, _ b: MediaFile, column: SortColumn) 
         if lhs != .orderedSame {
             return lhs
         }
-        return a.kind.rawValue.localizedStandardCompare(b.kind.rawValue)
+        return a.kind.sortKey.localizedStandardCompare(b.kind.sortKey)
     }
 }
