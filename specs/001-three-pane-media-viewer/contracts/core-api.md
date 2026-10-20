@@ -124,6 +124,38 @@ public struct ThumbnailScroll {
   UI は選択や移動量を自前で判断しない
 - 不正な寸法（非有限値、負の高さ、可視高 0 など）では現在の原点を返し、クラッシュしない
 
+## 矢印キーによる選択移動
+
+```swift
+public enum FocusMove: Sendable {
+    case left, right, up, down
+}
+
+public enum FocusLayout: Sendable {
+    case list
+    case grid(columns: Int)
+}
+
+public struct FocusNavigator {
+    /// 現在位置・件数・移動方向・レイアウトから移動先インデックスを返す（FR-017・046）。
+    /// リスト形式は ↑↓ を ±1、←→ は移動なし。グリッドは ←→ を ±1、↑↓ を ∓列数。
+    /// 0...(fileCount - 1) にクランプし、空リスト・移動不能（端）では nil を返す。
+    /// リスト形式の ←→ は常に nil。currentIndex が nil の場合は 0 を返す。
+    public static func targetIndex(
+        currentIndex: Int?,
+        fileCount: Int,
+        move: FocusMove,
+        layout: FocusLayout
+    ) -> Int?
+}
+```
+
+- 通常表示のサムネイル形式（`ThumbnailModeView`）とフルスクリーン（`FileListViewController`）は
+  同じ関数を使い、移動規則を二重実装しない
+- 呼び出し側は返されたインデックスを `BrowserModel.select([url], focused: url)` に渡すだけで、
+  インデックス計算を UI に持たない
+- `columns` が 0 以下の場合は 1 として扱う
+
 ## ファイル操作
 
 ```swift

@@ -107,6 +107,38 @@
   移動先の項目を基準にする
 - サムネイルサイズ・ペイン幅・ウィンドウサイズの変更では追従スクロールを行わない（spec Clarifications）
 
+## FocusNavigator（矢印キーによる選択移動・永続化しない）
+
+ファイルリストとフルスクリーンの両方で使う、移動先インデックスの純粋計算（FR-017・046、research.md R16）。
+
+| 入力 | 型 | 説明 |
+|------|----|------|
+| `currentIndex` | Int? | 現在のフォーカス位置。`nil` は未選択 |
+| `fileCount` | Int | リストの件数 |
+| `move` | `.left` / `.right` / `.up` / `.down` | 押された矢印キー |
+| `layout` | `.list` / `.grid(columns:)` | 表示形式。グリッドの列数は 1 以上 |
+
+| 出力 | 型 | 説明 |
+|------|----|------|
+| `targetIndex` | Int? | 移動先。空リスト、リスト形式の ←→、端での移動は `nil`（選択を変えない） |
+
+- `.list` は ↑ で -1、↓ で +1、←→ は移動なし
+- `.grid(columns:)` は ← で -1、→ で +1、↑ で -列数、↓ で +列数
+- 結果は `0...(fileCount - 1)` にクランプする。リスト形式の ←→ は `currentIndex` に関わらず `nil`。
+  それ以外で `currentIndex` が `nil` の場合は 0 を返す
+- 列数が 0 以下の場合は 1 として扱う（ゼロ除算・同一行内の無限移動を避ける）
+
+## FullScreenNavigationContext（フルスクリーン中のみ・永続化しない）
+
+| フィールド | 型 | 説明 |
+|------------|----|------|
+| `layout` | `.list` / `.grid(columns:)` | 折りたたみ前の表示形式と列数のスナップショット |
+| `isActive` | Bool | フルスクリーン中の keyDown モニタが有効か |
+
+- 折りたたみ後はサムネイルビューの幅が 0 になり列数を再計算できないため、開始時の値を使う（R16）
+- 解除時はコンテキストを破棄し、選択は移動後の `SelectionState` のまま維持する（spec Clarifications）
+- 永続化しない。`ViewSettings` や `UserDefaults` には追加しない
+
 ## PreviewContent（プレビュー状態）
 
 ```text

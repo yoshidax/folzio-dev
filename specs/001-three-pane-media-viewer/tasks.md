@@ -650,6 +650,100 @@ quickstart.md の手動シナリオで検証する。
 
 ---
 
+## Phase 13: フルスクリーン中の矢印キーによるファイル移動（FR-046 追加、US5）
+
+**Purpose**: フルスクリーン表示中も、ファイルリストと同じ移動規則で矢印キーにより選択を移し、
+プレビューを追従させる。動画のフルスクリーンでも同じ移動を行い、シークは `<` / `>` に移す
+（[plan.md](./plan.md) の「変更点」、[research.md](./research.md) R16、[spec.md](./spec.md) FR-046）。
+
+**Independent Test**: サムネイル形式とリスト形式それぞれでフルスクリーンにし、矢印キーで選択を移動して
+プレビューが切り替わること。先頭・末尾で循環しないこと。解除後に移動後のファイルが選択され、
+サムネイル形式では見える位置までスクロールしていること。動画のフルスクリーンで矢印移動すると
+再生が止まり、`<` / `>` で 5 秒戻る / 送ることができること
+（[quickstart.md](./quickstart.md)「US5: フルスクリーン」3〜5）。
+
+### Implementation for User Story 5
+
+- [ ] T094 [P] [US5] `Sources/MediaViewerCore/Layout/FocusNavigator.swift` を新規作成し、
+  `FocusMove`・`FocusLayout`・`FocusNavigator.targetIndex(currentIndex:fileCount:move:layout:)` を実装する
+  （契約は [contracts/core-api.md](./contracts/core-api.md) の「矢印キーによる選択移動」）。
+  規則は次のとおり:
+  - `.list`: ↑ は -1、↓ は +1。←→ は `currentIndex` に関わらず `nil`（移動なし）
+  - `.grid(columns:)`: ← は -1、→ は +1、↑ は -columns、↓ は +columns
+  - 結果は `0...(fileCount - 1)` にクランプする。空リスト（`fileCount <= 0`）は `nil`
+  - 端で同じ位置になる移動は `nil`。`currentIndex` が `nil` の場合は 0 を返す（リスト形式の ←→ を除く）
+  - `columns` が 0 以下の場合は 1 として扱う（ゼロ除算・同一行内の無限移動を避ける）
+  - `import AppKit` をしない（Core の制約）
+- [ ] T095 [US5] `Tests/MediaViewerCoreTests/FocusNavigatorTests.swift` を新規作成し、
+  `FocusNavigator` を検証する（T094 に依存）:
+  - リスト形式: ↑↓ が ±1、先頭の ↑ と末尾の ↓ が `nil`、←→ が常に `nil`
+  - サムネイル形式: ←→ が ±1、↑↓ が ∓列数、行頭の ← と行末の → が隣の行へ移動しないこと
+    （仕様どおり前後インデックスへ移動し、端で `nil`）
+  - 最終行が短い場合に、↓ が範囲外へ出ずクランプされること
+  - `currentIndex == nil` で 0 を返すこと（リスト形式の ←→ を除く）、空リストで `nil`
+  - `columns` が 0 / 負の場合に 1 として動くこと
+- [ ] T096 [P] [US5] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` の `handleArrowKey(_:modifiers:)` を
+  `FocusNavigator` に置き換える（T094 に依存）:
+  - 現在の `delta` 計算とクランプを削除し、`FocusLayout.grid(columns: columnCount())` と
+    `FocusMove` を渡して移動先を得る
+  - 返り値が `nil` のときは選択を変えず、キーを消費して `true` を返す（OS の既定動作へ渡さない）
+  - Shift+矢印の範囲選択、`selectionAnchor`、`scrollItemIntoView(at:)` の既存挙動は維持する
+  - フルスクリーン開始時のスナップショット用に、現在の列数を返す読み取り専用のプロパティ
+    （例: `var currentColumnCount: Int`）を公開する。既存の `columnCount()` の計算を再利用し、
+    0 以下なら 1 を返す
+- [ ] T097 [US5] `Sources/MediaViewerApp/FileList/FileListViewController.swift` に、フルスクリーン用の
+  移動 API を追加する（T094・T096 に依存）:
+  - `beginFullScreenNavigation()`: 現在の `displayMode` と、サムネイル形式なら
+    `thumbnailModeView.currentColumnCount` を `FocusLayout` としてスナップショットする。
+    二重呼び出しでは既存のスナップショットを上書きしない
+  - `moveFocusInFullScreen(_ move: FocusMove) -> Bool`: スナップショットがなければ `false`。
+    `model.selection.focused` から現在インデックスを求め、`FocusNavigator.targetIndex(...)` が
+    `nil` なら `true`（キーは消費、選択は変更しない）。移動先があれば
+    `model.select([url], focused: url)` を呼び、`true` を返す
+  - `endFullScreenNavigation()`: スナップショットを破棄する。サムネイル形式だった場合は
+    ペイン復元後のレイアウトで `thumbnailModeView.scrollToFocused()` を呼び、移動後の項目を
+    必要最小限のスクロールで表示する。リスト形式は `ListModeView` の既存の
+    `scrollRowToVisible` に任せ、新しい処理を足さない
+  - 表示形式・サムネイルサイズ・選択の永続化は変更しない
+- [ ] T098 [US5] `Sources/MediaViewerApp/App/MainSplitViewController.swift` に、フルスクリーン中の
+  キー振り分けを実装する（T097 に依存）:
+  - `collapsePanesForFullScreen()` の先頭で `fileListViewController.beginFullScreenNavigation()` を呼び、
+    ペインを折りたたむ前に表示形式と列数を取得する（アプリ起点と緑ボタンの両経路を同じ処理で覆う）
+  - `windowDidEnterFullScreen` 相当のタイミングで `NSEvent.addLocalMonitorForEvents(matching: .keyDown)`
+    を登録し、トークンを保持する。`windowDidExitFullScreen` で必ず `removeMonitor` する
+  - モニタ内では、イベントのウインドウが自ウインドウであること、修飾キーがないこと
+    （`.command` / `.option` / `.control` / `.shift` を含まない）を確認する
+  - ↑↓←→ は `fileListViewController.moveFocusInFullScreen(_:)` へ渡す。リスト形式では
+    FocusNavigator が ←→ を `nil` にするため、その場合は選択を変えずキーだけ消費する
+  - `<` / `>` は `previewViewController.seekVideo(by: -5 / +5)` へ渡す。処理したイベントは `nil` を返し、
+    未処理のイベント（Esc、Space、Cmd 付きなど）はそのまま返す
+  - 解除時はモニタを外した後、`restorePanesAfterFullScreen()` の完了後に
+    `fileListViewController.endFullScreenNavigation()` を呼ぶ。レイアウトが確定する前に
+    スクロールしないよう、必要なら次のメインループで実行する
+- [ ] T099 [P] [US5] `Sources/MediaViewerApp/Preview/VideoPreviewView.swift` と
+  `Sources/MediaViewerApp/Preview/PreviewViewController.swift` に `<` / `>` 用のシークを追加する:
+  - `VideoPreviewView.seek(by seconds: Double)`: `AVPlayer` の現在位置に `seconds` を加え、
+    `0...duration.seconds` にクランプして `seek(to:toleranceBefore:.zero,toleranceAfter:.zero)` する。
+    `duration` が非有限・不正な場合は何もしない。再生状態（rate）は変更しない
+  - `PreviewViewController.seekVideo(by seconds: Double)`: `model.preview` が `.video` のときだけ
+    `videoView.seek(by:)` を呼ぶ。画像・空・エラー時は何もしない
+  - シーク量は 5 秒とする（`<` で -5、`>` で +5）
+- [ ] T100 [US5] 自動テストと手動確認を行う（T095〜T099 に依存）:
+  - `swift build`、`swift test --filter MediaViewerCoreTests`、`scripts/check-no-network.sh` を通す
+  - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。
+    依頼時は実行コマンドと確認ポイントを具体的に示す
+  - `quickstart.md`「US5: フルスクリーン」の 3〜5 を実施する:
+    サムネイル形式で ↑↓←→ による移動とプレビュー追従、端で停止、解除後の選択とスクロール、
+    リスト形式で ↑↓ のみ有効、動画のフルスクリーンで矢印移動時に再生停止、`<` / `>` で 5 秒シーク
+  - 動画から矢印で画像へ移ったときに音声も止まること、画像から動画へ移ったときに設定に従って
+    再生が始まることを確認する（FR-031・034）
+  - 結果（実行日、OS、確認項目、合否）を
+    `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+
+**Checkpoint**: フルスクリーン中の矢印移動が通常表示と同じ規則で動作し、動画のキーボードシークも維持される
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -669,6 +763,9 @@ quickstart.md の手動シナリオで検証する。
   T089 は独立して進められる。T088 は T086・T087 と `scripts/make-app.sh` に依存する
 - **サムネイルのキーボード追従スクロール (Phase 12)**: FR-017 の追加作業。T090 の後に T091・T092 を並行でき、
   T093 は両方に依存する。T092 は US3 の `ThumbnailModeView` を変更するため、US3 の完了後に着手する
+- **フルスクリーン中の矢印移動 (Phase 13)**: FR-046 の追加作業。US5 と US3 の完了後に着手する。
+  T094 → T095・T096 の順に進め、T097 は T094・T096 に、T098 は T097 に依存する。
+  T099 はファイルが重ならないため T094 と並行できる。T100 は T095〜T099 に依存する
 
 ### User Story Dependencies
 
@@ -697,6 +794,10 @@ quickstart.md の手動シナリオで検証する。
   T088 は T087 に依存する
 - サムネイルのキーボード追従スクロール: T091（テスト）と T092（UI）はファイルが重ならないため、
   T090 の完了後に並行できる。T093 は T091・T092 に依存する
+- フルスクリーン中の矢印移動: T094（Core）の完了後、T095（テスト）と T096（サムネイル UI）は
+  ファイルが重ならないため並行できる。T097（FileListViewController）は T096 に、T098（MainSplitViewController）は
+  T097 に依存する。T099（動画シーク）は T094 とファイルが重ならないため最初から並行できる。
+  T100 は T095〜T099 の完了後に行う
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -741,6 +842,7 @@ Task: "T033 FitCalculatorTests"
 8. アプリアイコン → `.app` に固有アイコンを同梱（FR-043〜045、SC-011）
 9. プレビューの拡大フィット → 小さい画像もペインとフルスクリーンに合わせて拡大（FR-028 改定）
 10. サムネイルのキーボード追従スクロール → 矢印キーで一覧を辿るときもフォーカス項目が見え続ける（FR-017 改定）
+11. フルスクリーン中の矢印移動 → 全画面のまま前後のファイルへ移動でき、動画のシークは `<` / `>` で行える（FR-046）
 
 ---
 
@@ -758,4 +860,8 @@ Task: "T033 FitCalculatorTests"
 - FR-017 の改定（2026-10-20）により、サムネイル形式の矢印移動ではフォーカス項目全体が見える最小限の
   スクロールを行う。対象はサムネイル形式のみで、リスト形式は OS 標準の追従を維持する。
   サムネイルサイズ・ペイン幅・ウィンドウサイズの変更では追従しない（spec Clarifications、R15）
+- FR-046（2026-10-20）により、フルスクリーン中もファイルリストと同じ規則で矢印移動できる。
+  移動規則は `FocusNavigator` に集約し、表示形式ごとに二重実装しない。端では循環せず停止する。
+  動画のフルスクリーンでは矢印をファイル移動に使い、シークは `<` / `>`（5 秒）で行う。
+  Shift+矢印の範囲選択はフルスクリーンでは対象外（spec の Outstanding）とし、イベントを横取りしない
 - Commit after each task or logical group

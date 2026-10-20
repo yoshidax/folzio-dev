@@ -1,6 +1,6 @@
 # Implementation Plan: 3ペイン型メディアビューア
 
-**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-20 (small-image upscale, icon addition, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-20 (fullscreen arrow navigation, small-image upscale, icon addition, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-three-pane-media-viewer/spec.md`
 
@@ -20,6 +20,9 @@ AVPlayerView を配置して Core の状態を描画するだけにする。デ�
 この規則の対象外とする。アプリバンドルには、3ペインをモチーフにした自前生成のアイコンを同梱する
 （FR-043〜045、R14）。サムネイル形式では、矢印キーでフォーカスをビューポート外へ移したときに、
 フォーカス項目全体が見える位置まで必要最小限のスクロールで追従する（FR-017、R15）。
+フルスクリーン中も矢印キーでファイルリストの選択を移動し、プレビューを追従させる（FR-046、R16）。
+移動規則は通常表示と共通の純粋計算に置き、リスト形式は上下、サムネイル形式は上下左右とする。
+動画のフルスクリーンでは矢印キーをファイル移動に使い、シークは `<` / `>` キーに割り当てる。
 
 ## Technical Context
 
@@ -55,6 +58,8 @@ QuickLookThumbnailing, UniformTypeIdentifiers, CoreServices[FSEvents], CoreGraph
 再デコードは不要。小さい画像はデコード済みの原寸を保ち、表示時にレイヤーで拡大する（R5）。
 サムネイル形式のキーボード移動では、フォーカス項目全体が見える最小限の縦スクロールだけを行い、
 横スクロールは発生させない（FR-015・017）。サムネイルサイズやペイン幅の変更時は追従しない。
+フルスクリーン中の矢印移動では、折りたたみ前のサムネイル列数をスナップショットして使い、解除後に
+必要なら同じスクロール追従でフォーカス項目を表示する（FR-046）。新しい永続化状態は増やさない。
 
 **Scale/Scope**: 1ウィンドウ（3ペイン）+ 設定ウィンドウ + 確認・衝突ダイアログ。フォルダあたり最大で
 数万ファイルを想定。単一ユーザー
@@ -69,9 +74,9 @@ QuickLookThumbnailing, UniformTypeIdentifiers, CoreServices[FSEvents], CoreGraph
 |------|------|------|
 | I. ローカル完結・プライバシー | ✅ 適合 | ネットワークを使う API も依存もない。サムネイルはメモリにのみ置き、ユーザーのフォルダにもディスクキャッシュにも書かない（R7）。アプリアイコンも外部素材を取得せず、コードから生成する（R14）。ファイル操作はすべてユーザーの明示的な操作が起点になる。確認を省略できるのは、削除が常にゴミ箱経由で取り消せるため（v1.1.0 の「確認または取り消し可能性」、FR-021・024）。取り消せない上書きは常に衝突ダイアログで確認する（FR-025） |
 | II. 体感パフォーマンス | ✅ 適合 | デコード・列挙・サムネイル生成・ファイル操作はすべてバックグラウンドで行う（R5・R7・R9・R10）。キャッシュの上限を明示した（R8）。基準値は `MediaViewerPerformanceTests` で計測する（quickstart）。小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（R5）。注: 憲章の基準「起動からファイル指定で開いた最初の画像の表示 1 秒以内」は、ファイルを指定して起動する経路を前提にしている。この経路は本機能の範囲外なので、代わりに SC-002（前回フォルダの一覧表示まで 2 秒）を計測する。ファイル指定起動を追加する機能で 1 秒基準を適用する。アイコン生成はビルド時のみで、起動時間に影響しない |
-| III. キーボードファースト & a11y | ✅ 適合 | 提供する全操作のキー割り当てを [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md) で網羅した。手動の拡大/縮小（ズーム）とパンは提供せず、フィットは画像選択時に自動で行うため、これらへのキー割り当ては存在しない（spec Assumptions）。AppKit 標準部品の a11y を使い、プレビューとサムネイルのセルにはファイル名のラベルを付ける。ダークモードは AppKit 標準の配色で追従し、「視差効果を減らす」設定が有効な間は、アニメーション画像を自動で再生しない。サムネイル形式でもキーボードだけで一覧を辿れるよう、フォーカス項目のスクロール追従を必須にする（FR-017） |
-| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する |
-| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない |
+| III. キーボードファースト & a11y | ✅ 適合 | 提供する全操作のキー割り当てを [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md) で網羅した。手動の拡大/縮小（ズーム）とパンは提供せず、フィットは画像選択時に自動で行うため、これらへのキー割り当ては存在しない（spec Assumptions）。AppKit 標準部品の a11y を使い、プレビューとサムネイルのセルにはファイル名のラベルを付ける。ダークモードは AppKit 標準の配色で追従し、「視差効果を減らす」設定が有効な間は、アニメーション画像を自動で再生しない。サムネイル形式でもキーボードだけで一覧を辿れるよう、フォーカス項目のスクロール追従を必須にする（FR-017）。フルスクリーン中も矢印キーで選択を移動でき（FR-046）、動画のシークは `<` / `>` に残すため、フルスクリーンでも主要操作をキーボードだけで完結できる |
+| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。フルスクリーンの移動規則は `FocusNavigator` として Core に置き、リスト形式・サムネイル形式・フルスクリーンの全経路で同じ関数を使う。境界（先頭・末尾・行頭・行末）と空リストのケースを `FocusNavigatorTests` で検証する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する |
+| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない。フルスクリーン移動（FR-046）は既存の選択モデルとレイアウト計算を再利用し、新しい設定・永続化状態・依存を追加しない |
 
 **Phase 1 設計後の再評価**: data-model・contracts・quickstart を確認したが、新たな違反はない。
 FSEvents による監視（R9）は外部依存ではなく、OS 標準 API の利用にあたる。アイコン生成（R14）は
@@ -83,6 +88,10 @@ FR-017 のスクロール追従（2026-10-20）は、既存の選択・レイア
 クリップビューの原点更新だけで成立する。計算は Core のテストで不具合条件を再現し、UI 配線は
 quickstart の手動再現で確認する（原則 IV）。新しい依存・設定項目・永続化状態を増やさず（原則 V）、
 キーボードだけで一覧を辿れる操作性を回復する（原則 III）。
+FR-046 のフルスクリーン移動（2026-10-20）は、折りたたみ前に取得した表示形式とサムネイル列数、
+および現在の選択インデックスだけから移動先を求める。新しい状態を永続化せず、依存も増やさない（原則 V）。
+移動規則は Core の純粋計算に集約し、UI はキーイベントの振り分けと `BrowserModel.select` の呼び出しだけを
+担う（原則 IV）。動画のシークは `<` / `>` に残すため、フルスクリーンでもキーボードだけで操作できる（原則 III）。
 
 ## Project Structure
 
@@ -115,7 +124,7 @@ Sources/
 │   ├── Browser/                     # BrowserModel（選択・プレビュー・先読みの調停）
 │   ├── FileSystem/                  # DirectoryLister, VolumeProvider, FileSystemWatcher (FSEvents)
 │   ├── Imaging/                     # ImageDecoder, DecodedImageCache, ThumbnailProvider
-│   ├── Layout/                      # FitCalculator, ThumbnailGridLayout, ThumbnailScroll
+│   ├── Layout/                      # FitCalculator, ThumbnailGridLayout, ThumbnailScroll, FocusNavigator
 │   ├── Operations/                  # FileOperationService, NameValidation, uniqueName
 │   └── Settings/                    # SettingsStore
 ├── MediaViewerApp/                  # AppKit UI。Core の状態を描画するだけ
@@ -181,6 +190,35 @@ Xcode プロジェクトは持たず、CLI（`swift build` / `swift test` / `scr
 - `specs/001-three-pane-media-viewer/quickstart.md`: 多数ファイルのサムネイル形式で、上下左右・
   Shift+矢印の移動にスクロールが追従する手動確認を追加する
 - `Sources/MediaViewerApp/FileList/ListModeView.swift` と表示設定・永続化は変更しない
+
+## 変更点（2026-10-20: フルスクリーン中の矢印キーによるファイル移動）
+
+- `Sources/MediaViewerCore/Layout/FocusNavigator.swift`（新規）: 現在インデックス・件数・移動方向・
+  レイアウト（リスト / サムネイルの列数）から移動先インデックスを返す純粋計算。リストは上/下を ∓1、
+  左/右は移動なし。サムネイルは左/右を ±1、上/下を ∓列数。`0...(count-1)` にクランプし、端では
+  `nil` を返す。空リスト、現在位置なし（先頭を選ぶ）、列数 0（1 として扱う）も定義する
+- `Tests/MediaViewerCoreTests/FocusNavigatorTests.swift`（新規）: リスト・グリッドの4方向、先頭/末尾、
+  行頭/行末、最終行の短い行、空リスト、列数不正を検証する
+- `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift`: `handleArrowKey` のインデックス計算を
+  `FocusNavigator` に置き換える（既存の Shift+矢印の範囲選択とスクロール追従は維持）。移動先が `nil`
+  のときは選択を変えずにキーを消費し、OS の既定動作へ渡さない。折りたたみ前の列数を取得できるよう、
+  現在の列数を公開する
+- `Sources/MediaViewerApp/FileList/FileListViewController.swift`: フルスクリーン開始時に表示形式と
+  列数をスナップショットする `beginFullScreenNavigation()`、矢印移動をモデルへ反映する
+  `moveFocusInFullScreen(_:)`、解除後に `scrollToFocused()` を呼ぶ `endFullScreenNavigation()` を追加する。
+  フルスクリーン中の移動は単一選択にし、`BrowserModel.select([url], focused: url)` を使う
+- `Sources/MediaViewerApp/App/MainSplitViewController.swift`: ペイン折りたたみ前にスナップショットを取得する。
+  フルスクリーン中だけローカルの keyDown モニタを登録し、修飾キーなしの矢印を
+  `moveFocusInFullScreen` へ、`<` / `>` を動画シークへ振り分ける。Cmd/Option/Control 付きのキー、
+  Esc、Space は横取りしない。解除時（`windowDidExitFullScreen`）にモニタを外し、ペイン復元後に
+  フォーカス項目が見える位置へそろえる
+- `Sources/MediaViewerApp/Preview/PreviewViewController.swift` と `VideoPreviewView.swift`: `<` / `>`
+  用に、現在位置から一定秒（5 秒）戻す / 送るシークを追加する。再生状態は変えない。
+  動画以外では何もしない
+- 通常表示のリスト形式・サムネイル形式のキー操作、選択状態、スクロール追従は変更しない。
+  Shift+矢印による範囲選択はフルスクリーンでは対象外（spec の Outstanding）とし、イベントを横取りしない
+- `specs/001-three-pane-media-viewer/contracts/keyboard-and-menus.md`、
+  `contracts/core-api.md`、`data-model.md`、`quickstart.md`、`research.md` を更新する
 
 ## Complexity Tracking
 
