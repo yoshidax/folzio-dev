@@ -16,6 +16,10 @@ enum IconCatalog {
         return symbol(named: name, pointSize: 13)
     }
 
+    static func favoritesIcon() -> NSImage? {
+        symbol(named: "star.fill", pointSize: 13)
+    }
+
     static func fallbackIcon(for kind: MediaKind) -> NSImage? {
         let name: String
         switch kind {
