@@ -15,15 +15,37 @@ final class DirectoryTreeViewController: NSViewController {
         var url: URL { folder.url }
     }
 
+    /// ツリー最上部の「お気に入り」の見出し。ファイルシステム上にない仮想の行（FR-061）
+    final class FavoritesHeader {}
+
+    /// 見出しの下の各項目。開閉の三角を持たない（FR-063）
+    final class FavoriteEntry {
+        let url: URL
+        var name: String
+        var kind: FolderNode.Kind
+        var availability: FavoriteAvailability = .unknown
+
+        init(url: URL, name: String, kind: FolderNode.Kind) {
+            self.url = url
+            self.name = name
+            self.kind = kind
+        }
+    }
+
     private let model: BrowserModel
     private let lister: any DirectoryListing
     private let volumes: any VolumeProviding
     private let coordinator: FileOperationCoordinator
     private let watcher: any FileSystemWatching
+    private let settings: SettingsStore
+    private let confirmation: ConfirmationPresenter
     private let outlineView = NSOutlineView()
     private let scrollView = NSScrollView()
 
     private var roots: [Node] = []
+    private let favoritesHeader = FavoritesHeader()
+    private var favorites = FavoriteFolders()
+    private var favoriteEntries: [FavoriteEntry] = []
     private var volumeTask: Task<Void, Never>?
     private var revealTask: Task<Void, Never>?
     private var eventTask: Task<Void, Never>?
@@ -48,13 +70,17 @@ final class DirectoryTreeViewController: NSViewController {
         lister: any DirectoryListing,
         volumes: any VolumeProviding,
         coordinator: FileOperationCoordinator,
-        watcher: any FileSystemWatching
+        watcher: any FileSystemWatching,
+        settings: SettingsStore,
+        confirmation: ConfirmationPresenter
     ) {
         self.model = model
         self.lister = lister
         self.volumes = volumes
         self.coordinator = coordinator
         self.watcher = watcher
+        self.settings = settings
+        self.confirmation = confirmation
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -69,6 +95,39 @@ final class DirectoryTreeViewController: NSViewController {
         let row = outlineView.selectedRow
         guard row >= 0 else { return nil }
         return outlineView.item(atRow: row) as? Node
+    }
+
+    private func role(for item: Any?) -> TreeItemRole? {
+        switch item {
+        case is FavoritesHeader:
+            return .favoritesHeader
+        case let entry as FavoriteEntry:
+            return .favorite(entry.url)
+        case let node as Node:
+            return .folder(node.url)
+        default:
+            return nil
+        }
+    }
+
+    /// 登録順に項目を並べ直す。同じ場所の既存の項目は使い回し、確認済みの availability と選択を保つ
+    private func rebuildFavoriteEntries() {
+        let existing = Dictionary(
+            favoriteEntries.map { ($0.url.standardizedFileURL.path, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        favoriteEntries = favorites.urls.map { url in
+            let key = url.standardizedFileURL.path
+            let root = roots.first { $0.url.standardizedFileURL.path == key }
+            let name = root?.folder.name ?? url.lastPathComponent
+            let kind = root?.folder.kind ?? .folder
+            if let entry = existing[key] {
+                entry.name = name
+                entry.kind = kind
+                return entry
+            }
+            return FavoriteEntry(url: url, name: name, kind: kind)
+        }
     }
 
     private func makeContextMenu() -> NSMenu {
@@ -121,17 +180,28 @@ final class DirectoryTreeViewController: NSViewController {
 
     @objc private func toggleClickedFolder(_ sender: Any?) {
         let row = outlineView.clickedRow
-        guard row >= 0, let node = outlineView.item(atRow: row) as? Node else { return }
+        guard row >= 0 else { return }
+        let item = outlineView.item(atRow: row)
 
-        // 選択は1回目のクリックで outlineViewSelectionDidChange が行う
+        // 選択は1回目のクリックで outlineViewSelectionDidChange が行う。お気に入りの項目は開閉しない
+        let isExpandable: Bool
+        switch item {
+        case is FavoritesHeader:
+            isExpandable = true
+        case let node as Node:
+            isExpandable = node.folder.isExpandable
+        default:
+            return
+        }
+
         switch FolderDisclosure.doubleClickToggle(
-            isExpandable: node.folder.isExpandable,
-            isExpanded: outlineView.isItemExpanded(node)
+            isExpandable: isExpandable,
+            isExpanded: outlineView.isItemExpanded(item)
         ) {
         case .expand:
-            outlineView.expandItem(node)
+            outlineView.expandItem(item)
         case .collapse:
-            outlineView.collapseItem(node)
+            outlineView.collapseItem(item)
         case .none:
             break
         }
@@ -183,6 +253,8 @@ final class DirectoryTreeViewController: NSViewController {
         super.viewDidLoad()
 
         roots = volumes.rootNodes().map { Node(folder: $0) }
+        favorites = settings.favorites
+        rebuildFavoriteEntries()
         outlineView.reloadData()
         startProbes(for: roots, key: .roots)
 
@@ -470,20 +542,32 @@ final class DirectoryTreeViewController: NSViewController {
 
 extension DirectoryTreeViewController: NSOutlineViewDataSource {
     func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
-        if let node = item as? Node {
+        switch item {
+        case let node as Node:
             return node.children?.count ?? 0
+        case is FavoritesHeader:
+            return favoriteEntries.count
+        case nil:
+            // トップレベルは [見出し] + roots
+            return roots.count + 1
+        default:
+            return 0
         }
-        return roots.count
     }
 
     func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
         if let node = item as? Node {
             return node.children![index]
         }
-        return roots[index]
+        if item is FavoritesHeader {
+            return favoriteEntries[index]
+        }
+        return index == 0 ? favoritesHeader : roots[index - 1]
     }
 
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
+        // 見出しは登録が0件でも開閉できる。お気に入りの項目は三角を持たない
+        if item is FavoritesHeader { return true }
         guard let node = item as? Node else { return false }
         return node.folder.isExpandable
     }
@@ -561,8 +645,44 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
         viewFor tableColumn: NSTableColumn?,
         item: Any
     ) -> NSView? {
-        guard let node = item as? Node else { return nil }
+        switch item {
+        case let node as Node:
+            let cell = makeFolderCell(in: outlineView)
+            cell.imageView?.image = IconCatalog.treeIcon(for: node.folder.kind)
+            cell.textField?.stringValue = node.folder.name
+            if node.folder.accessState == .denied || node.folder.accessState == .unavailable {
+                cell.textField?.textColor = .disabledControlTextColor
+                cell.toolTip = "アクセスできません"
+            } else {
+                cell.textField?.textColor = .labelColor
+                cell.toolTip = nil
+            }
+            return cell
+        case is FavoritesHeader:
+            let cell = makeFolderCell(in: outlineView)
+            cell.imageView?.image = IconCatalog.favoritesIcon()
+            cell.textField?.stringValue = "お気に入り"
+            cell.textField?.textColor = .labelColor
+            cell.toolTip = nil
+            return cell
+        case let entry as FavoriteEntry:
+            let cell = makeFolderCell(in: outlineView)
+            cell.imageView?.image = IconCatalog.treeIcon(for: entry.kind)
+            cell.textField?.stringValue = entry.name
+            if entry.availability == .missing {
+                cell.textField?.textColor = .disabledControlTextColor
+                cell.toolTip = "見つかりません"
+            } else {
+                cell.textField?.textColor = .labelColor
+                cell.toolTip = nil
+            }
+            return cell
+        default:
+            return nil
+        }
+    }
 
+    private func makeFolderCell(in outlineView: NSOutlineView) -> NSTableCellView {
         let identifier = NSUserInterfaceItemIdentifier("FolderCell")
         let cell: NSTableCellView
         if let reused = outlineView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView {
@@ -595,16 +715,6 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
                 text.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
             ])
         }
-
-        cell.imageView?.image = IconCatalog.treeIcon(for: node.folder.kind)
-        cell.textField?.stringValue = node.folder.name
-        if node.folder.accessState == .denied || node.folder.accessState == .unavailable {
-            cell.textField?.textColor = .disabledControlTextColor
-            cell.toolTip = "アクセスできません"
-        } else {
-            cell.textField?.textColor = .labelColor
-            cell.toolTip = nil
-        }
         return cell
     }
 
@@ -618,9 +728,11 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
     func outlineViewSelectionDidChange(_ notification: Notification) {
         updateWatchSet()
         let row = outlineView.selectedRow
-        guard row >= 0, let node = outlineView.item(atRow: row) as? Node else { return }
+        guard row >= 0, let role = role(for: outlineView.item(atRow: row)) else { return }
+        // 見出しでは一覧を切り替えない（FR-065）。お気に入りの項目でも実際の階層は動かさない（FR-063）
+        guard let url = FavoriteCommands.folderToShow(for: role) else { return }
         Task { [weak self] in
-            await self?.model.selectFolder(node.url)
+            await self?.model.selectFolder(url)
         }
     }
 

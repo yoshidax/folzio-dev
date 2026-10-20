@@ -97,7 +97,9 @@ final class MainSplitViewController: NSSplitViewController {
             lister: lister,
             volumes: volumes,
             coordinator: coordinator,
-            watcher: fileSystemWatcher
+            watcher: fileSystemWatcher,
+            settings: settings,
+            confirmation: ConfirmationPresenter(settings: settings)
         )
         self.fileListViewController = FileListViewController(
             model: model,
