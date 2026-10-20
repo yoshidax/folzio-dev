@@ -8,6 +8,7 @@ public final class BrowserModel {
     public private(set) var selection: SelectionState
     public private(set) var preview: PreviewContent
     public private(set) var stopPlaybackSignal = 0
+    public private(set) var mediaTypeFilter = MediaTypeFilter()
     public var screenMaxPixel: Int
     public var playbackRequest: PlaybackOptions { settings.playback }
     public var sortOrder: SortOrder {
@@ -17,9 +18,9 @@ public final class BrowserModel {
             settingsValue.sortOrder = sortOrder
             settings.viewSettings = settingsValue
 
-            if listing.state == .loaded || listing.state == .empty {
-                listing.files = sorted(listing.files, by: sortOrder)
-                listing.state = listing.files.isEmpty ? .empty : .loaded
+            if listing.state == .loaded || listing.state == .empty || listing.state == .noMatches {
+                allFiles = sorted(allFiles, by: sortOrder)
+                rebuildListing()
             }
         }
     }
@@ -29,6 +30,7 @@ public final class BrowserModel {
     private let cache: DecodedImageCache
     private let settings: SettingsStore
 
+    private var allFiles: [MediaFile] = []
     private var listingTask: Task<Void, Never>?
     private var previewTask: Task<Void, Never>?
     private var previewGeneration = 0
@@ -70,6 +72,7 @@ public final class BrowserModel {
 
         selection = SelectionState()
         preview = .empty
+        allFiles = []
         listing = FolderListing(folder: url, files: [], state: .loading)
 
         var viewSettings = settings.viewSettings
@@ -96,17 +99,30 @@ public final class BrowserModel {
         schedulePrefetch(around: focused)
     }
 
+    public func setMediaTypeFilter(_ filter: MediaTypeFilter) {
+        guard filter != mediaTypeFilter else { return }
+        mediaTypeFilter = filter
+        rebuildListing()
+
+        let restricted = selection.restricted(toVisible: listing.files.map(\.url))
+        if restricted.focused == selection.focused {
+            selection = restricted
+            schedulePrefetch(around: restricted.focused)
+        } else {
+            select(restricted.selected, focused: restricted.focused)
+        }
+    }
+
     public func reloadCurrentFolder() async {
         let folder = listing.folder
         do {
             let files = try await lister.mediaFiles(in: folder)
             guard listing.folder == folder else { return }
 
-            let ordered = sorted(files, by: sortOrder)
-            listing.files = ordered
-            listing.state = ordered.isEmpty ? .empty : .loaded
+            allFiles = sorted(files, by: sortOrder)
+            rebuildListing()
 
-            let available = Set(ordered.map(\.url))
+            let available = Set(listing.files.map(\.url))
             let selected = selection.selected.intersection(available)
             let focused = selection.focused.flatMap { available.contains($0) ? $0 : nil }
             selection = SelectionState(selected: selected, focused: focused)
@@ -118,6 +134,7 @@ public final class BrowserModel {
             }
         } catch {
             guard listing.folder == folder else { return }
+            allFiles = []
             listing.files = []
             switch error {
             case .accessDenied:
@@ -177,17 +194,28 @@ public final class BrowserModel {
         select([url], focused: url)
     }
 
+    private func rebuildListing() {
+        listing.files = mediaTypeFilter.apply(to: allFiles)
+        if allFiles.isEmpty {
+            listing.state = .empty
+        } else if listing.files.isEmpty {
+            listing.state = .noMatches
+        } else {
+            listing.state = .loaded
+        }
+    }
+
     private func loadFolder(_ url: URL) async {
         do {
             let files = try await lister.mediaFiles(in: url)
             guard !Task.isCancelled, listing.folder == url else { return }
 
-            let ordered = sorted(files, by: sortOrder)
-            listing.files = ordered
-            listing.state = ordered.isEmpty ? .empty : .loaded
+            allFiles = sorted(files, by: sortOrder)
+            rebuildListing()
         } catch {
             guard !Task.isCancelled, listing.folder == url else { return }
 
+            allFiles = []
             listing.files = []
             switch error {
             case .accessDenied:
