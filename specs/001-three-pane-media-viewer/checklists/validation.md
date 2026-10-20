@@ -90,6 +90,21 @@ open .build/MediaViewer.app
 
 確認ポイントは [quickstart.md](../quickstart.md) の「US1」2 と「US3」5〜7。
 
+## 表示を切り替えられるツールバー（FR-049〜052）
+
+2026-10-20 に macOS 26.6.2 で `scripts/make-app.sh` により `.build/MediaViewer.app` を生成し、GUI で確認した。
+
+| 確認項目 | 結果 | 根拠 |
+|----------|------|------|
+| 自動テスト（`swift test`） | PASS | Core 96 テスト、性能 6 テスト成功（Phase 16 コミット時）。`SettingsStoreTests`・`FileListChromeTests` を含む |
+| 外部通信の不在（`scripts/check-no-network.sh`） | PASS | `no network API references in Sources` |
+| 保存値がない初回起動ではツールバーが出ず、画面が追加前と同じ | PASS | GUI でユーザー確認（quickstart 1、FR-049）。R18 の代替案（`window.toolbar = nil`）は不要だった |
+| 「表示」メニューの「ツールバーを表示／隠す」と ⇧⌘T で切り替わり、下部サイズバーが連動する | PASS | GUI でユーザー確認（quickstart 2・3、FR-050・052） |
+| 表示形式の2択ボタンとメニュー・⌘1 / ⌘2 の状態が一致し、リスト形式でスライダーが無効になる | PASS | GUI でユーザー確認（quickstart 4・5、FR-051） |
+| スライダーと ⌘+ / ⌘- が連動し、横スクロールが出ない | PASS | GUI でユーザー確認（quickstart 6） |
+| フルスクリーン中はツールバーが自動で隠れ、解除後に元の表示に戻る | PASS | GUI でユーザー確認（quickstart 7） |
+| 表示状態が再起動後に復元される | PASS | GUI でユーザー確認（quickstart 8、FR-003） |
+
 ## ツリーのダブルクリック開閉と開閉の三角（FR-053〜055）
 
 2026-10-20 に macOS 26.6.2 で `scripts/make-app.sh` により `.build/MediaViewer.app` を生成し、GUI で確認した。

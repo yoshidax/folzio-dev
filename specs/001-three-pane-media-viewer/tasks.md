@@ -978,7 +978,7 @@ quickstart.md の手動シナリオで検証する。
 
 ### Verification for User Story 3
 
-- [ ] T119 [US3] 自動テストと手動確認を行う（T110〜T118 に依存）:
+- [X] T119 [US3] 自動テストと手動確認を行う（T110〜T118 に依存）:
   - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す
   - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。
     依頼時は実行コマンドと確認ポイントを具体的に示す。起動しない場合は AGENTS.md の lldb 手順で例外を止める
