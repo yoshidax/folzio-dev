@@ -184,7 +184,8 @@ quickstart.md の手動シナリオで検証する。
   - API は `get(_ url:)` / `put(_ image:for:)` / `removeAll()` / `totalCost`
   - 上限値は `Sources/MediaViewerCore/Imaging/MemoryLimits.swift` に定数として一元化する（サムネイル 128MB も同じ場所）
 - [X] T028 [P] [US1] `Sources/MediaViewerCore/Layout/FitCalculator.swift` に `FitCalculator.fit(imageSize:in:)` を実装する。
-  縦横比を保ってコンテナ内で最大になる、中央寄せの矩形を返す。ただし「原寸より大きくはしない」（FR-028）
+  縦横比を保ってコンテナ内で最大になる、中央寄せの矩形を返す。ただし「原寸より大きくはしない」（FR-028）。
+  この上限は 2026-10-20 の FR-028 改定により T086 が撤廃する
 - [X] T029 [US1] `Sources/MediaViewerCore/Browser/BrowserModel.swift` に、`@MainActor @Observable final class BrowserModel` を
   実装する（T024・T026・T027 に依存）:
   - 依存（`DirectoryListing`, `ImageDecoding`, `DecodedImageCache`, `SettingsStore`）はイニシャライザで注入する
@@ -210,6 +211,7 @@ quickstart.md の手動シナリオで検証する。
   上限を超えたときに最も古いものが捨てられること、`get` で順位が更新されること、`totalCost` が上限を超えないこと
 - [X] T033 [P] [US1] `Tests/MediaViewerCoreTests/FitCalculatorTests.swift` に `FitCalculator` のテストを書く:
   横長・縦長の画像の縮小、コンテナより小さい画像が原寸のまま中央に置かれること、幅または高さが 0 のときの扱い
+  （拡大のケースは 2026-10-20 の FR-028 改定により T087 が追加・置換する）
 - [X] T034 [US1] `Tests/MediaViewerCoreTests/BrowserModelTests.swift` に `BrowserModel` のテストを書く。
   依存はフェイクに差し替える:
   - フォルダを素早く2回選んだとき、最後のフォルダの一覧だけが残ること
@@ -500,11 +502,11 @@ quickstart.md の手動シナリオで検証する。
 外部素材・追加依存は使わない（[research.md](./research.md) R14、[contracts/app-bundle.md](./contracts/app-bundle.md)）。
 実行時コードには含めないビルド時専用の作業。
 
-- [ ] T081 [P] `Package.swift` に、アイコン生成用の実行ターゲットとプロダクトを追加する:
+- [X] T081 [P] `Package.swift` に、アイコン生成用の実行ターゲットとプロダクトを追加する:
   - `.executable(name: "make-icon", targets: ["make-icon"])`
   - `.executableTarget(name: "make-icon")`（依存なし。`MediaViewerCore` と `MediaViewerApp` には依存させない）
   - 外部パッケージ依存は追加しない
-- [ ] T082 `Sources/make-icon/main.swift` にアイコン描画を実装する（T081 に依存）:
+- [X] T082 `Sources/make-icon/main.swift` にアイコン描画を実装する（T081 に依存）:
   - 第1引数に出力先のステージングディレクトリ（`.build/AppIcon.raw`）を受け取り、存在しなければ作成する。
     引数がなければ終了コード 1
   - CoreGraphics のビットマップコンテキストと ImageIO（`CGImageDestination`、UTI は `public.png`）だけを使い、
@@ -517,7 +519,7 @@ quickstart.md の手動シナリオで検証する。
   - `icon_16x16.png`・`icon_32x32.png`・`icon_64x64.png`・`icon_128x128.png`・`icon_256x256.png`・
     `icon_512x512.png`・`icon_1024x1024.png` を出力する
   - 書き出しに失敗したら、作成途中のファイルを残さず終了コード 1 で終わる
-- [ ] T083 `scripts/make-icon.sh` を作成する（T081・T082 に依存）:
+- [X] T083 `scripts/make-icon.sh` を作成する（T081・T082 に依存）:
   - `set -euo pipefail` とし、リポジトリ直下から実行する
   - `swift build -c release --product make-icon` の後、`--show-bin-path` の `make-icon` を実行して
     `.build/AppIcon.raw` に7サイズを生成する
@@ -528,7 +530,7 @@ quickstart.md の手動シナリオで検証する。
   - iconset には標準名の10ファイルだけを置く（`icon_64x64.png` や `icon_1024x1024.png` を残さない）
   - 各ファイルを `sips -g pixelWidth -g pixelHeight` で検証し、契約の寸法と違えば終了コード 1
   - `iconutil -c icns .build/AppIcon.iconset -o .build/AppIcon.icns` で `.build/AppIcon.icns` を作る
-- [ ] T084 `scripts/make-app.sh` にアイコンの同梱を追加する（T083 に依存）:
+- [X] T084 `scripts/make-app.sh` にアイコンの同梱を追加する（T083 に依存）:
   - `swift build` の後に `scripts/make-icon.sh` を呼ぶ
   - `Contents/Resources/` を作り、`.build/AppIcon.icns` を `Contents/Resources/AppIcon.icns` にコピーする
   - 生成した `Info.plist` に `CFBundleIconFile` = `AppIcon` を追加する
@@ -542,6 +544,45 @@ quickstart.md の手動シナリオで検証する。
   - `open` 後、Finder・Dock・⌘Tab・About に同じ3ペインのアイコンが出る。16px と 32px でも判別できる
   - システム外観をライトとダークに切り替え、どちらでも同じアイコンが表示される
   - `swift run` はバンドルを持たないため標準アイコンになることを確認し、合格扱いとする
+
+---
+
+## Phase 11: プレビューの拡大フィット（FR-028 改定、US1）
+
+**Purpose**: ビューポートより小さい画像を、縦横比を保ったままペイン（フルスクリーンでは画面）に
+収まる最大サイズまで拡大する。拡大率の上限は設けない（[plan.md](./plan.md) の「変更点」、
+[research.md](./research.md) R5）。動画は対象外とし、従来の表示サイズを維持する。
+
+**Independent Test**: 400×300 の PNG を選び、ペインを広げても縦横比を保ってはみ出さずに拡大されること、
+8×8 の画像でもクラッシュしないこと、mp4 の表示サイズが変わらないことを確認する
+（[quickstart.md](./quickstart.md)「プレビューのフィット（FR-028）」）。
+
+- [X] T086 [P] [US1] `Sources/MediaViewerCore/Layout/FitCalculator.swift` の `fit(imageSize:in:)` から
+  スケールの上限 `1` を外し、コンテナより小さい画像も拡大する（T028 の「原寸より大きくはしない」を置き換える）:
+  - スケールは `min(container.width / imageSize.width, container.height / imageSize.height)`。上限を付けない
+  - 返す矩形は `imageSize × スケール` をコンテナ中央に置いたもの。縦横比を保ち、トリミングしない
+  - 幅・高さのいずれかが 0 以下の入力では `.zero` を返す（ゼロ除算を避ける）。既存の挙動を変えない
+  - 契約は [contracts/core-api.md](./contracts/core-api.md) の `FitCalculator` に合わせる
+- [X] T087 [US1] `Tests/MediaViewerCoreTests/FitCalculatorTests.swift` を新しい FR-028 に合わせて更新する
+  （T033 の「原寸のまま」を置き換える。T086 の後に通る）:
+  - 200×80 を 500×500 に入れると `CGRect(x: 0, y: 150, width: 500, height: 200)` に拡大される
+  - 80×200 を 500×500 に入れると `CGRect(x: 150, y: 0, width: 200, height: 500)` に拡大される
+  - 1×1 を 500×500 に入れると `CGRect(x: 0, y: 0, width: 500, height: 500)` になる（極小画像で破綻しない）
+  - ちょうど収まる画像（500×250 を 500×500）は同じ大きさで中央に置かれる
+  - 既存の縮小2ケースと、0 以下のサイズで `.zero` を返すケースは維持する
+- [ ] T088 [US1] `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、`specs/001-three-pane-media-viewer/quickstart.md`
+  の「プレビューのフィット（FR-028）」を実施して `specs/001-three-pane-media-viewer/checklists/validation.md` に
+  結果を追記する（ファイルがなければ作成する。T086・T087 に依存）:
+  - 実施前に `swift build` / `swift test` / `scripts/check-no-network.sh` を通す
+  - `mixed/02-image.png`（400×300）がペインに収まる最大サイズまで拡大され、はみ出さない
+  - ウィンドウの最大化と復帰、ペイン幅のドラッグに追従し、縦横比が崩れない（SC-004 の停止 0 回も確認する）
+  - 画像のダブルクリックでフルスクリーンにすると画面に収まる最大サイズまで拡大され、解除で元に戻る
+  - `huge/` の 8×8 画像でもクラッシュしない
+  - mp4 / mov の表示サイズが従来のままである
+  - `Sources/MediaViewerApp/Preview/ImagePreviewView.swift` は変更不要の見込み。差異があれば
+    レイヤーのフレーム計算だけを最小限修正する
+- [X] T089 [P] [US1] `README.md` の「画像の縦横比を保ったフィット表示（小さい画像は原寸を超えて拡大しない）」を、
+  ペインとフルスクリーンに収まる最大サイズまで拡大する記述に直す
 
 ---
 
@@ -560,6 +601,8 @@ quickstart.md の手動シナリオで検証する。
 - **アプリアイコン (Phase 10)**: Setup の T005（`scripts/make-app.sh`）があれば始められる。ストーリーの実装とは
   独立しているが、T084 は T005 のスクリプトを編集するため、T005 完了後に着手する。T085 は T084 に依存する。
   Phase 10 は配布準備として Phase 9 の後に置く（タスク ID の順序を保つため、Phase 9 内へは移動しない）
+- **プレビューの拡大フィット (Phase 11)**: US1 の T028・T033 を置き換える追加作業。T086 → T087 → T088 の順に進め、
+  T089 は独立して進められる。T088 は T086・T087 と `scripts/make-app.sh` に依存する
 
 ### User Story Dependencies
 
@@ -584,6 +627,8 @@ quickstart.md の手動シナリオで検証する。
 - US4: T054・T055・T057 は並行できる
 - アイコン: T081 → T082 → T083 → T084 → T085 の順に進める。
   T082 は T081 のターゲット追加後にビルド確認する
+- プレビューの拡大フィット: T086・T089 はファイルが重ならないため並行できる。T087 は T086 の実装に依存し、
+  T088 は T087 に依存する
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -626,6 +671,7 @@ Task: "T033 FitCalculatorTests"
 6. US5・US6 → フルスクリーンとペイン幅の仕上げ
 7. Polish → 外部変更の反映、性能計測、a11y、全シナリオの検証
 8. アプリアイコン → `.app` に固有アイコンを同梱（FR-043〜045、SC-011）
+9. プレビューの拡大フィット → 小さい画像もペインとフルスクリーンに合わせて拡大（FR-028 改定）
 
 ---
 
@@ -637,4 +683,7 @@ Task: "T033 FitCalculatorTests"
 - 新しい操作を追加したら、contracts/keyboard-and-menus.md の表も更新する（憲章 原則 III）
 - アイコンはビルド時のみ生成し、外部素材・追加依存・ネットワークを使わない。
   `.build/AppIcon.icns` はコミットしない（research.md R14、原則 I・V）
+- FR-028 の改定（2026-10-20）により、完了済みの T028・T033 の「原寸を超えて拡大しない」は
+  Phase 11 の T086・T087 が置き換える。履歴として元の記述は残す
+- 小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（計画書「変更点」）
 - Commit after each task or logical group
