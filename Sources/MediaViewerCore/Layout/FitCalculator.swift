@@ -7,7 +7,7 @@ public struct FitCalculator {
             return .zero
         }
 
-        let scale = min(container.width / imageSize.width, container.height / imageSize.height, 1)
+        let scale = min(container.width / imageSize.width, container.height / imageSize.height)
         let size = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
 
         return CGRect(

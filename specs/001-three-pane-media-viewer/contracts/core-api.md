@@ -77,10 +77,18 @@ public actor DecodedImageCache {
 }
 
 public struct FitCalculator {
-    /// 縦横比を保ってコンテナに収まる最大の矩形を返す。原寸より大きくはしない（FR-028）
+    /// 縦横比を保ってコンテナに収まる最大の矩形を、コンテナ中央に返す。拡大率に上限はなく、
+    /// コンテナより小さい画像は拡大される（FR-028）。画像はトリミングしない
     public static func fit(imageSize: CGSize, in container: CGSize) -> CGRect
 }
 ```
+
+- スケールは `min(container.width / imageSize.width, container.height / imageSize.height)`。
+  1 を上限にしないため、小さい画像では 1 を超える
+- 返す矩形は `imageSize × スケール` をコンテナ内で中央に置いたもの。はみ出しも切り取りも生じない
+- 幅・高さのいずれかが 0 以下の入力では `.zero` を返す（ゼロ除算を避ける）
+- 呼び出し側は画像とコンテナを同じ単位（ピクセルまたはポイント）で渡す。`ImagePreviewView` は
+  バッキング倍率を掛けたピクセルで計算し、結果をポイントに戻して配置する
 
 ## サムネイル
 

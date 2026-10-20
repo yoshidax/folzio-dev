@@ -22,13 +22,40 @@ struct FitCalculatorTests {
         #expect(rect == CGRect(x: 125, y: 0, width: 250, height: 500))
     }
 
-    @Test("コンテナより小さい画像は原寸のまま中央に置く")
-    func doesNotEnlargeSmallImage() {
+    @Test("コンテナより小さい横長画像を拡大して中央に置く")
+    func enlargesSmallLandscapeImage() {
         let rect = FitCalculator.fit(
-            imageSize: CGSize(width: 100, height: 80),
+            imageSize: CGSize(width: 200, height: 80),
             in: CGSize(width: 500, height: 500)
         )
-        #expect(rect == CGRect(x: 200, y: 210, width: 100, height: 80))
+        #expect(rect == CGRect(x: 0, y: 150, width: 500, height: 200))
+    }
+
+    @Test("コンテナより小さい縦長画像を拡大して中央に置く")
+    func enlargesSmallPortraitImage() {
+        let rect = FitCalculator.fit(
+            imageSize: CGSize(width: 80, height: 200),
+            in: CGSize(width: 500, height: 500)
+        )
+        #expect(rect == CGRect(x: 150, y: 0, width: 200, height: 500))
+    }
+
+    @Test("1×1 の画像でもコンテナいっぱいまで拡大する")
+    func enlargesSinglePixelImage() {
+        let rect = FitCalculator.fit(
+            imageSize: CGSize(width: 1, height: 1),
+            in: CGSize(width: 500, height: 500)
+        )
+        #expect(rect == CGRect(x: 0, y: 0, width: 500, height: 500))
+    }
+
+    @Test("ちょうど収まる画像は同じ大きさで中央に置く")
+    func keepsExactFitImageUnchanged() {
+        let rect = FitCalculator.fit(
+            imageSize: CGSize(width: 500, height: 250),
+            in: CGSize(width: 500, height: 500)
+        )
+        #expect(rect == CGRect(x: 0, y: 125, width: 500, height: 250))
     }
 
     @Test("0 以下のサイズでは空の矩形を返す", arguments: [
