@@ -17,6 +17,11 @@ private final class FileListTableView: NSTableView {
             }
         }
 
+        // メニュー項目が無効なときに、既定の動作（末尾へ移動など）へ渡さない（R26）
+        if event.isCommandOnlyVerticalArrow {
+            return
+        }
+
         if event.charactersIgnoringModifiers == " ", onSpace?() == true {
             return
         }
@@ -89,6 +94,7 @@ final class ListModeView: NSView {
 
     var onTogglePlayback: (() -> Void)?
     var onRename: ((URL, String) async -> Void)?
+    var onOpenItem: ((URL) -> Void)?
 
     var contextMenu: NSMenu? {
         get { tableView.menu }
@@ -153,16 +159,21 @@ final class ListModeView: NSView {
         tableView.onSpace = { [weak self] in
             guard let self,
                   let focused = self.model.selection.focused,
-                  let kind = MediaKind(fileExtension: focused.pathExtension),
-                  kind.isVideo else {
+                  let file = self.model.listing.files.first(where: { $0.url == focused }),
+                  file.kind.isVideo else {
                 return false
             }
             self.onTogglePlayback?()
             return true
         }
         tableView.onReturn = { [weak self] in
-            self?.beginRenaming() ?? false
+            guard let self else { return false }
+            // zip の中では名前の変更を始めない（FR-073）。キーは消費する
+            guard self.model.focusedItemCommands.allowsFileOperations else { return true }
+            return self.beginRenaming()
         }
+        tableView.target = self
+        tableView.doubleAction = #selector(handleDoubleClick(_:))
 
         addColumn(identifier: "name", title: "名前", width: 220)
         addColumn(identifier: "creationDate", title: "作成日", width: 150)
@@ -176,6 +187,27 @@ final class ListModeView: NSView {
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
+    }
+
+    @objc private func handleDoubleClick(_ sender: Any?) {
+        let row = tableView.clickedRow
+        let files = model.listing.files
+        guard row >= 0, row < files.count else { return }
+
+        let url = files[row].url
+        if tableView.selectedRowIndexes != IndexSet(integer: row) {
+            tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        }
+        onOpenItem?(url)
+    }
+
+    /// フォーカス行を見える位置へスクロールする（戻った後の追従: FR-070）
+    func scrollToFocused() {
+        guard let focused = model.selection.focused,
+              let row = model.listing.files.firstIndex(where: { $0.url == focused }) else {
+            return
+        }
+        tableView.scrollRowToVisible(row)
     }
 
     private func addColumn(identifier: String, title: String, width: CGFloat) {
@@ -478,6 +510,29 @@ extension ListModeView: NSTableViewDelegate {
             cell.nameField.delegate = self
         }
 
+        if !file.kind.isMedia {
+            // zip ファイル・ディレクトリ・`...` は縮小画像を要求せず、種類のアイコンを出す
+            cell.cancelIconRequest(using: provider)
+            cell.iconPointSize = 0
+            cell.iconScale = 0
+            cell.representedURL = file.url
+            cell.iconView.image = IconCatalog.listItemIcon(for: file.kind, pointSize: 16)
+            cell.iconView.contentTintColor = .secondaryLabelColor
+            if renamingURL != file.url {
+                setEditingAppearance(cell.nameField, editing: false)
+            }
+            if file.kind == .parent {
+                cell.nameField.stringValue = "..."
+                cell.nameField.setAccessibilityLabel("上の階層へ")
+            } else {
+                cell.nameField.stringValue = file.name
+                cell.nameField.setAccessibilityLabel(nil)
+            }
+            return cell
+        }
+        cell.iconView.contentTintColor = nil
+        cell.nameField.setAccessibilityLabel(nil)
+
         if cell.representedURL != file.url {
             cell.cancelIconRequest(using: provider)
             cell.representedURL = file.url
@@ -572,6 +627,8 @@ extension ListModeView {
         pasteboardWriterForRow row: Int
     ) -> NSPasteboardWriting? {
         guard row >= 0, row < model.listing.files.count else { return nil }
+        // zip の中の行・`...` はドラッグを始めない（FR-073）
+        guard model.itemCommands(forRowAt: row).allowsFileOperations else { return nil }
         return model.listing.files[row].url as NSURL
     }
 }
