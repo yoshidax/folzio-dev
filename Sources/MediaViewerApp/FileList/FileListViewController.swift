@@ -13,9 +13,13 @@ final class FileListViewController: NSViewController {
     private let messageLabel = NSTextField(wrappingLabelWithString: "")
     private let progressIndicator = NSProgressIndicator()
     private let bottomBar = NSView()
+    /// 一覧を表示したまま出す、1行のメッセージの帯（R26）。一覧の下端、下部のサイズバーの上
+    private let messageBand = NSView()
+    private let messageBandLabel = NSTextField(labelWithString: "")
     private let sizeSlider = NSSlider()
 
     private var bottomBarHeightConstraint: NSLayoutConstraint?
+    private var messageBandHeightConstraint: NSLayoutConstraint?
     private var displayMode: DisplayMode
     private let initialThumbnailSize: Double
     private var fullScreenNavigationLayout: FocusLayout?
@@ -76,6 +80,12 @@ final class FileListViewController: NSViewController {
             listModeView: listModeView,
             thumbnailModeView: thumbnailModeView
         )
+        listModeView.onOpenItem = { [weak self] url in
+            self?.openItem(url)
+        }
+        thumbnailModeView.onOpenItem = { [weak self] url in
+            self?.openItem(url)
+        }
     }
 
     @available(*, unavailable)
@@ -122,7 +132,8 @@ final class FileListViewController: NSViewController {
             currentIndex: currentIndex,
             fileCount: files.count,
             move: move,
-            layout: layout
+            layout: layout,
+            isNavigable: { files[$0].kind.isMedia }
         ) else {
             return true
         }
@@ -152,6 +163,16 @@ final class FileListViewController: NSViewController {
         return urls
     }
 
+    /// zip の中を表示中か（右クリックメニューの項目の出し分けに使う）
+    var isBrowsingArchive: Bool {
+        model.isBrowsingArchive
+    }
+
+    /// フォーカス行と表示中の場所から決まる、操作ごとの可否
+    var focusedItemCommands: ListItemCommands {
+        model.focusedItemCommands
+    }
+
     var isEditingText: Bool {
         view.window?.firstResponder is NSTextView
     }
@@ -172,6 +193,18 @@ final class FileListViewController: NSViewController {
             bottomBarHeight,
         ])
 
+        setupMessageBand()
+        messageBand.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(messageBand)
+        let messageBandHeight = messageBand.heightAnchor.constraint(equalToConstant: 0)
+        messageBandHeightConstraint = messageBandHeight
+        NSLayoutConstraint.activate([
+            messageBand.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            messageBand.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            messageBand.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),
+            messageBandHeight,
+        ])
+
         for modeView in [listModeView as NSView, thumbnailModeView as NSView] {
             modeView.translatesAutoresizingMaskIntoConstraints = false
             container.addSubview(modeView)
@@ -179,7 +212,7 @@ final class FileListViewController: NSViewController {
                 modeView.topAnchor.constraint(equalTo: container.topAnchor),
                 modeView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
                 modeView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                modeView.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),
+                modeView.bottomAnchor.constraint(equalTo: messageBand.topAnchor),
             ])
         }
 
@@ -221,6 +254,23 @@ final class FileListViewController: NSViewController {
     override func viewDidAppear() {
         super.viewDidAppear()
         installViewMenuItems()
+    }
+
+    private func setupMessageBand() {
+        messageBand.isHidden = true
+        messageBand.clipsToBounds = true
+
+        messageBandLabel.translatesAutoresizingMaskIntoConstraints = false
+        messageBandLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        messageBandLabel.textColor = .secondaryLabelColor
+        messageBandLabel.alignment = .center
+        messageBandLabel.lineBreakMode = .byTruncatingTail
+        messageBand.addSubview(messageBandLabel)
+        NSLayoutConstraint.activate([
+            messageBandLabel.leadingAnchor.constraint(equalTo: messageBand.leadingAnchor, constant: 12),
+            messageBandLabel.trailingAnchor.constraint(equalTo: messageBand.trailingAnchor, constant: -12),
+            messageBandLabel.centerYAnchor.constraint(equalTo: messageBand.centerYAnchor),
+        ])
     }
 
     private func setupBottomBar() {
@@ -277,42 +327,57 @@ final class FileListViewController: NSViewController {
         }
     }
 
+    /// 一覧の行が残っているとき（`...` やディレクトリ）は、メッセージの状態でも一覧を表示し続ける
+    private var showsFileList: Bool {
+        switch model.listing.state {
+        case .loaded:
+            return true
+        case .empty, .noMatches, .failed:
+            return !model.listing.files.isEmpty
+        case .loading, .denied:
+            return false
+        }
+    }
+
     private func refresh() {
         messageLabel.isHidden = true
         messageLabel.stringValue = ""
+        messageBandLabel.stringValue = ""
         progressIndicator.stopAnimation(nil)
         progressIndicator.isHidden = true
 
+        var message: String?
         switch model.listing.state {
         case .loaded:
             break
         case .loading:
             progressIndicator.isHidden = false
             progressIndicator.startAnimation(nil)
-            messageLabel.stringValue = "読み込み中…"
-            messageLabel.isHidden = false
+            message = "読み込み中…"
         case .empty:
-            messageLabel.stringValue = "対応するメディアファイルがありません"
-            messageLabel.isHidden = false
+            message = "対応するメディアファイルがありません"
         case .noMatches:
-            messageLabel.stringValue = model.mediaTypeFilter.noMatchesMessage ?? ""
-            messageLabel.isHidden = false
+            message = model.mediaTypeFilter.noMatchesMessage ?? ""
         case .denied:
-            messageLabel.stringValue = "アクセスできません"
-            messageLabel.isHidden = false
+            message = "アクセスできません"
         case let .failed(reason):
-            messageLabel.stringValue = reason
-            messageLabel.isHidden = false
+            message = reason
+        }
+
+        if let message {
+            if showsFileList {
+                messageBandLabel.stringValue = message
+            } else {
+                messageLabel.stringValue = message
+                messageLabel.isHidden = false
+            }
         }
 
         updateModeVisibility()
     }
 
     private func updateModeVisibility() {
-        var showsFiles = false
-        if case .loaded = model.listing.state {
-            showsFiles = true
-        }
+        let showsFiles = showsFileList
 
         listModeView.isHidden = !(showsFiles && displayMode == .list)
         let thumbnailWasHidden = thumbnailModeView.isHidden
@@ -320,6 +385,10 @@ final class FileListViewController: NSViewController {
         if thumbnailWasHidden, !thumbnailModeView.isHidden {
             thumbnailModeView.needsLayout = true
         }
+
+        let showsBand = showsFiles && !messageBandLabel.stringValue.isEmpty
+        messageBand.isHidden = !showsBand
+        messageBandHeightConstraint?.constant = showsBand ? 24 : 0
 
         let showsThumbnailBar = FileListChrome(
             displayMode: displayMode,
@@ -480,6 +549,7 @@ final class FileListViewController: NSViewController {
     }
 
     @objc func copy(_ sender: Any?) {
+        guard focusedItemCommands.allowsFileOperations else { return }
         let urls = selectedFileURLs
         guard !urls.isEmpty else { return }
         let pasteboard = NSPasteboard.general
@@ -488,6 +558,7 @@ final class FileListViewController: NSViewController {
     }
 
     @objc func paste(_ sender: Any?) {
+        guard focusedItemCommands.allowsPaste else { return }
         guard !isEditingText else { return }
         let folder = model.listing.folder
         Task { @MainActor in
@@ -496,6 +567,7 @@ final class FileListViewController: NSViewController {
     }
 
     @objc func movePaste(_ sender: Any?) {
+        guard focusedItemCommands.allowsPaste else { return }
         guard !isEditingText else { return }
         let folder = model.listing.folder
         Task { @MainActor in
@@ -504,6 +576,7 @@ final class FileListViewController: NSViewController {
     }
 
     @objc func duplicate(_ sender: Any?) {
+        guard focusedItemCommands.allowsFileOperations else { return }
         guard !isEditingText else { return }
         let urls = selectedFileURLs
         guard !urls.isEmpty else { return }
@@ -513,6 +586,7 @@ final class FileListViewController: NSViewController {
     }
 
     @objc func rename(_ sender: Any?) {
+        guard focusedItemCommands.allowsFileOperations else { return }
         guard !isEditingText else { return }
         let selected = model.selection.selected
         guard selected.count == 1,
@@ -546,6 +620,7 @@ final class FileListViewController: NSViewController {
     }
 
     @objc func moveToTrash(_ sender: Any?) {
+        guard focusedItemCommands.allowsFileOperations else { return }
         guard !isEditingText else { return }
         let urls = selectedFileURLs
         guard !urls.isEmpty else { return }
@@ -555,6 +630,7 @@ final class FileListViewController: NSViewController {
     }
 
     @objc func open(_ sender: Any?) {
+        guard focusedItemCommands.allowsFileOperations else { return }
         guard !isEditingText else { return }
         for url in selectedFileURLs {
             _ = NSWorkspace.shared.open(url)
@@ -562,9 +638,50 @@ final class FileListViewController: NSViewController {
     }
 
     @objc func revealInFinder(_ sender: Any?) {
+        guard focusedItemCommands.allowsFileOperations else { return }
         let urls = selectedFileURLs
         guard !urls.isEmpty else { return }
         NSWorkspace.shared.activateFileViewerSelecting(urls)
+    }
+
+    /// フォーカス行の zip ファイル・ディレクトリの中を表示する。`...` なら1つ上へ戻る（⌘↓、FR-069）
+    @objc func openFocusedItem(_ sender: Any?) {
+        guard !isEditingText,
+              focusedItemCommands.canOpenContainer,
+              let focused = model.selection.focused else {
+            return
+        }
+        openItem(focused)
+    }
+
+    /// ダブルクリックと ⌘↓ から呼ぶ。メディアの行では何もしない（Core が判断する）
+    func openItem(_ url: URL) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.model.openItem(url)
+            await self.scrollFocusedItemIntoViewAfterModelUpdate()
+        }
+    }
+
+    /// zip の中なら1つ上の階層へ戻る。最上位なら zip を含むフォルダの一覧へ戻る（⌘↑、FR-070）
+    @objc func goToEnclosingLevel(_ sender: Any?) {
+        guard !isEditingText, focusedItemCommands.canGoUp else { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.model.goToEnclosingLevel()
+            await self.scrollFocusedItemIntoViewAfterModelUpdate()
+        }
+    }
+
+    /// 一覧への反映（Observation の通知で動く Task）が済んでから、フォーカス行を見える位置へスクロールする
+    private func scrollFocusedItemIntoViewAfterModelUpdate() async {
+        await Task.yield()
+        switch displayMode {
+        case .list:
+            listModeView.scrollToFocused()
+        case .thumbnails:
+            thumbnailModeView.scrollToFocused()
+        }
     }
 
     @objc private func showThumbnails(_ sender: Any?) {
@@ -605,6 +722,29 @@ extension FileListViewController: NSMenuItemValidation {
         if menuItem.action == #selector(toggleImagesOnly(_:))
             || menuItem.action == #selector(toggleVideosOnly(_:)) {
             return !isEditingText
+        }
+
+        if menuItem.action == #selector(openFocusedItem(_:)) {
+            return !isEditingText && focusedItemCommands.canOpenContainer
+        }
+        if menuItem.action == #selector(goToEnclosingLevel(_:)) {
+            return !isEditingText && focusedItemCommands.canGoUp
+        }
+
+        // zip の中は読み取り専用（FR-073）。判断は ListItemCommands に任せる
+        let commands = focusedItemCommands
+        switch menuItem.action {
+        case #selector(copy(_:)),
+             #selector(open(_:)),
+             #selector(revealInFinder(_:)),
+             #selector(moveToTrash(_:)),
+             #selector(duplicate(_:)),
+             #selector(rename(_:)):
+            if !commands.allowsFileOperations { return false }
+        case #selector(paste(_:)), #selector(movePaste(_:)):
+            if !commands.allowsPaste { return false }
+        default:
+            break
         }
 
         if isEditingText {

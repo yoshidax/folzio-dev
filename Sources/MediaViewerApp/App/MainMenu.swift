@@ -54,6 +54,24 @@ final class MainMenu {
         openItem.target = nil
         fileMenu.addItem(openItem)
 
+        let openContainerItem = NSMenuItem(
+            title: "中を表示",
+            action: #selector(FileListViewController.openFocusedItem(_:)),
+            keyEquivalent: String(UnicodeScalar(NSDownArrowFunctionKey)!)
+        )
+        openContainerItem.keyEquivalentModifierMask = [.command]
+        openContainerItem.target = nil
+        fileMenu.addItem(openContainerItem)
+
+        let goUpItem = NSMenuItem(
+            title: "上の階層へ",
+            action: #selector(FileListViewController.goToEnclosingLevel(_:)),
+            keyEquivalent: String(UnicodeScalar(NSUpArrowFunctionKey)!)
+        )
+        goUpItem.keyEquivalentModifierMask = [.command]
+        goUpItem.target = nil
+        fileMenu.addItem(goUpItem)
+
         let revealItem = NSMenuItem(
             title: "Finder に表示",
             action: #selector(FileListViewController.revealInFinder(_:)),
