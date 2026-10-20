@@ -272,6 +272,9 @@ final class FileListViewController: NSViewController {
         case .empty:
             messageLabel.stringValue = "対応するメディアファイルがありません"
             messageLabel.isHidden = false
+        case .noMatches:
+            messageLabel.stringValue = model.mediaTypeFilter.noMatchesMessage ?? ""
+            messageLabel.isHidden = false
         case .denied:
             messageLabel.stringValue = "アクセスできません"
             messageLabel.isHidden = false
