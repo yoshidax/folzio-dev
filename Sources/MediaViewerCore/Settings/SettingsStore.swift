@@ -11,6 +11,7 @@ public struct SettingsStore {
         static let autoplay = "playback.autoplay"
         static let loop = "playback.loop"
         static let confirmBeforeExecuting = "fileOps.confirmBeforeExecuting"
+        static let favoritePaths = "favorites.paths"
     }
 
     private let defaults: UserDefaults
@@ -78,6 +79,23 @@ public struct SettingsStore {
                 newValue.confirmBeforeFileOperations,
                 forKey: Keys.confirmBeforeExecuting
             )
+        }
+    }
+
+    /// 絶対パスの配列で保存する。配列でなければ空、文字列でない要素・空文字・相対パスは捨てる（FR-066）
+    public var favorites: FavoriteFolders {
+        get {
+            guard let stored = defaults.object(forKey: Keys.favoritePaths) as? [Any] else {
+                return FavoriteFolders()
+            }
+            let urls = stored
+                .compactMap { $0 as? String }
+                .filter { !$0.isEmpty && $0.hasPrefix("/") }
+                .map { URL(fileURLWithPath: $0, isDirectory: true) }
+            return FavoriteFolders(urls: urls)
+        }
+        nonmutating set {
+            defaults.set(newValue.urls.map(\.path), forKey: Keys.favoritePaths)
         }
     }
 

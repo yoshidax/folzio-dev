@@ -17,6 +17,7 @@ struct SettingsStoreTests {
             #expect(store.playback.autoplay)
             #expect(store.playback.loop)
             #expect(store.confirmation.confirmBeforeFileOperations)
+            #expect(store.favorites.urls.isEmpty)
         }
     }
 
@@ -110,6 +111,73 @@ struct SettingsStoreTests {
             #expect(view.sortOrder.ascending)
             #expect(!view.showsToolbar)
             #expect(store.playback.autoplay)
+        }
+    }
+
+    // MARK: - favorites
+
+    @Test("お気に入りは未保存なら空")
+    func favoritesDefaultToEmpty() {
+        withDefaults { defaults in
+            #expect(SettingsStore(defaults: defaults).favorites == FavoriteFolders())
+        }
+    }
+
+    @Test("お気に入りは登録順のまま絶対パスの配列で往復する")
+    func favoritesRoundTrip() {
+        withDefaults { defaults in
+            let b = URL(fileURLWithPath: "/tmp/fav/b", isDirectory: true)
+            let a = URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)
+            SettingsStore(defaults: defaults).favorites = FavoriteFolders(urls: [b, a])
+
+            #expect(SettingsStore(defaults: defaults).favorites.urls == [b, a])
+            #expect(
+                defaults.array(forKey: "favorites.paths") as? [String] == ["/tmp/fav/b", "/tmp/fav/a"]
+            )
+        }
+    }
+
+    @Test("お気に入りの不正値は捨てる")
+    func favoritesDropInvalidValues() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+
+            defaults.set("/tmp/fav/a", forKey: "favorites.paths")
+            #expect(store.favorites.urls.isEmpty)
+
+            defaults.set(
+                ["/tmp/fav/a", 3, "", "relative/path", "/tmp/fav/a"] as [Any],
+                forKey: "favorites.paths"
+            )
+            #expect(store.favorites.urls == [URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)])
+        }
+    }
+
+    @Test("お気に入りを保存してもほかの設定は変わらない")
+    func savingFavoritesKeepsOtherSettings() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+            let folder = URL(fileURLWithPath: "/tmp/example", isDirectory: true)
+            store.viewSettings = ViewSettings(
+                displayMode: .thumbnails,
+                thumbnailSize: 200,
+                sortOrder: SortOrder(column: .kind, ascending: false),
+                lastFolder: folder,
+                showsToolbar: true
+            )
+            store.playback = PlaybackOptions(autoplay: false, loop: false)
+            store.confirmation = ConfirmationOptions(confirmBeforeFileOperations: false)
+
+            store.favorites = FavoriteFolders(urls: [URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)])
+
+            let view = store.viewSettings
+            #expect(view.displayMode == .thumbnails)
+            #expect(view.thumbnailSize == 200)
+            #expect(view.sortOrder == SortOrder(column: .kind, ascending: false))
+            #expect(view.lastFolder?.path == folder.path)
+            #expect(view.showsToolbar)
+            #expect(store.playback == PlaybackOptions(autoplay: false, loop: false))
+            #expect(!store.confirmation.confirmBeforeFileOperations)
         }
     }
 
