@@ -1375,7 +1375,7 @@ quickstart.md の手動シナリオで検証する。
 
 ### Tests for User Story 1
 
-- [ ] T145 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteFoldersTests.swift`（新規、`@Suite("FavoriteFolders")`）を先に書く
+- [X] T145 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteFoldersTests.swift`（新規、`@Suite("FavoriteFolders")`）を先に書く
   （T149 の前にビルドエラーになることを確認する）。URL は `URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)` のように作る:
   - 既定: `FavoriteFolders()` の `urls` は空
   - `add`: `a`・`b`・`c` の順に追加すると `urls == [a, b, c]`（登録順、新しいものを末尾）。戻り値はすべて `true`
@@ -1386,7 +1386,7 @@ quickstart.md の手動シナリオで検証する。
   - `remove`: 登録済みの `b` で `true`、`urls == [a, c]`（順序を保つ）。未登録の `d` で `false`、`urls` は変わらない。
     `..` を含む表記の `b` でも取り除ける
   - `init(urls:)`: `[a, b, a, c, b]` から `urls == [a, b, c]`（重複は先勝ちで除き、順序を保つ）
-- [ ] T146 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteCommandsTests.swift`（新規、`@Suite("FavoriteCommands")`）を先に書く
+- [X] T146 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteCommandsTests.swift`（新規、`@Suite("FavoriteCommands")`）を先に書く
   （T150 の前にビルドエラーになることを確認する）。data-model.md「TreeItemRole と FavoriteCommands」の表の全行を検証する。
   `folder = URL(fileURLWithPath: "/tmp/fav/folder")`、`favorites = FavoriteFolders(urls: [registered])` とする:
   - `canAdd`: `.folder(未登録)` で `true`。`.folder(registered)`・`.favorite(registered)`・`.favoritesHeader`・`nil`（選択なし）で `false`
@@ -1395,7 +1395,7 @@ quickstart.md の手動シナリオで検証する。
     `.favorite` で `[.removeFromFavorites]`、`.favoritesHeader` で `[]`（「`.favoritesHeader` は項目なし（メニューを出さない）」）
   - `folderToShow(for:)`: `.folder(url)` と `.favorite(url)` で `url`、`.favoritesHeader` で `nil`（FR-065）
   - `acceptsFiles`: `.folder` だけ `true`、`.favorite` と `.favoritesHeader` は `false`
-- [ ] T147 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteProbeTests.swift`（新規、`@Suite("FavoriteProbe")`）を先に書く
+- [X] T147 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteProbeTests.swift`（新規、`@Suite("FavoriteProbe")`）を先に書く
   （T151 の前にビルドエラーになることを確認する）。一時ディレクトリは `DirectoryListerTests` の `makeTemporaryDirectory()` と
   同じ形の `private` ヘルパーで作り、`defer` で削除する。並列数の検証は `SubfolderProbeTests` と同じ組み立てにする:
   - `folderExists(_:)`: 存在するフォルダで `true`、存在しないパスで `false`、通常のファイルで `false`。
@@ -1405,7 +1405,7 @@ quickstart.md の手動シナリオで検証する。
     `FavoriteProbeResult.exists` になること
   - 空の入力ですぐに終わる。上限が 0 以下なら 1 として扱う
   - ストリームを最初の1件で抜けたら、未実行の確認を始めない（フェイクの呼び出し回数で確かめる）
-- [ ] T148 [P] [US1] `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` に `favorites` のテストを先に追加する
+- [X] T148 [P] [US1] `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` に `favorites` のテストを先に追加する
   （T152 の前にビルドエラーになることを確認する）。既存の `withDefaults` を使う:
   - 未保存のとき `store.favorites == FavoriteFolders()`。既存の `usesDefaults` にも `#expect(store.favorites.urls.isEmpty)` を加える
   - 保存と読み戻し: `[/tmp/fav/b, /tmp/fav/a]` を保存すると、新しい `SettingsStore` で同じ順に読める。
@@ -1416,7 +1416,7 @@ quickstart.md の手動シナリオで検証する。
 
 ### Implementation for User Story 1
 
-- [ ] T149 [P] [US1] `Sources/MediaViewerCore/Model/FavoriteFolders.swift`（新規）に、contracts/core-api.md の
+- [X] T149 [P] [US1] `Sources/MediaViewerCore/Model/FavoriteFolders.swift`（新規）に、contracts/core-api.md の
   `public struct FavoriteFolders: Sendable, Equatable` と `public enum FavoriteAvailability: Sendable, Equatable { case unknown, available, missing }` を
   実装する（T145 に依存）:
   - `public private(set) var urls: [URL]`、`public init(urls: [URL] = [])`（重複は先勝ちで除き、順序を保つ）
@@ -1426,13 +1426,13 @@ quickstart.md の手動シナリオで検証する。
     `@discardableResult mutating func remove(_:) -> Bool`（登録済みなら取り除いて `true`、未登録なら `false`）
   - 並べ替え・名前の変更は持たない。AppKit を import しない
   - `swift test --filter FavoriteFoldersTests` が通ることを確認する
-- [ ] T150 [US1] `Sources/MediaViewerCore/Model/FavoriteCommands.swift`（新規）に、contracts/core-api.md の `TreeItemRole`・
+- [X] T150 [US1] `Sources/MediaViewerCore/Model/FavoriteCommands.swift`（新規）に、contracts/core-api.md の `TreeItemRole`・
   `TreeContextMenuItem`・`FavoriteCommands` を実装する（T146・T149 に依存）:
   - `canAdd(_:favorites:)`: `.folder(url)` かつ `!favorites.contains(url)` のときだけ `true`
   - `removalTarget(_:)`: `.favorite(url)` のときだけ `url`
   - `contextMenu(for:)`・`folderToShow(for:)`・`acceptsFiles(_:)`: T146 の期待値（data-model.md の表）のとおり
   - AppKit を import しない。`swift test --filter FavoriteCommandsTests` が通ることを確認する
-- [ ] T151 [P] [US1] `Sources/MediaViewerCore/FileSystem/FavoriteProbe.swift`（新規）に、contracts/core-api.md の
+- [X] T151 [P] [US1] `Sources/MediaViewerCore/FileSystem/FavoriteProbe.swift`（新規）に、contracts/core-api.md の
   `FavoriteProbeResult`（`url`・`exists`、`public init(url:exists:)`）と `FavoriteProbe` を実装する（T147 に依存）:
   - `folderExists(_:)`: `FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)` が `true` かつ
     `isDirectory.boolValue` のとき `true`
@@ -1440,14 +1440,14 @@ quickstart.md の手動シナリオで検証する。
     （`AsyncStream` の中で `withTaskGroup`、同時実行数は `max(1, maxConcurrent)`、`continuation.onTermination` で取り消し、
     取り消し後は次の URL を追加しない）。`exists` の既定値は `{ folderExists($0) }`
   - `swift test --filter FavoriteProbeTests` が通ることを確認する
-- [ ] T152 [US1] `Sources/MediaViewerCore/Settings/SettingsStore.swift` に `favorites` を追加する（T148・T149 に依存）:
+- [X] T152 [US1] `Sources/MediaViewerCore/Settings/SettingsStore.swift` に `favorites` を追加する（T148・T149 に依存）:
   - `Keys.favoritePaths = "favorites.paths"`
   - `public var favorites: FavoriteFolders { get nonmutating set }`。読み込みは `defaults.object(forKey:) as? [Any]` で、
     配列でなければ `FavoriteFolders()`。要素は `String` かつ空でなく `hasPrefix("/")` のものだけを
     `URL(fileURLWithPath: path, isDirectory: true)` にし、`FavoriteFolders(urls:)` に渡す（重複はそこで除く）。
     書き込みは `newValue.urls.map(\.path)` を `defaults.set(_:forKey:)` する
   - 既存のキーの読み書きは変えない。`swift test --filter SettingsStoreTests` が通ることを確認する
-- [ ] T153 [P] [US1] `Sources/MediaViewerApp/Operations/ConfirmationPresenter.swift` に、お気に入りの削除の確認を追加する（App のみ）:
+- [X] T153 [P] [US1] `Sources/MediaViewerApp/Operations/ConfirmationPresenter.swift` に、お気に入りの削除の確認を追加する（App のみ）:
   - `func confirmRemovingFavorite(named name: String) async -> Bool`。`settings.confirmation.confirmBeforeFileOperations` が
     `false` なら確認せず `true`（FR-024・064）
   - 既存の `confirm(_:)` のシート表示（`NSAlert`、`beginSheetModal`、「今後この確認を表示しない」の `suppressionButton` と、
@@ -1456,9 +1456,9 @@ quickstart.md の手動シナリオで検証する。
     `confirm(_:)` のボタン名「実行」と文言は変えない
   - お気に入りの文言: `messageText` は「お気に入りから削除しますか？」、`informativeText` は「対象: <name>」と
     「実際のフォルダは変更されません」の2行、ボタンは「削除」と「キャンセル」（Esc でキャンセル、既存と同じ `keyEquivalent = "\u{1b}"`）
-- [ ] T154 [P] [US1] `Sources/MediaViewerApp/Shared/IconCatalog.swift` に `static func favoritesIcon() -> NSImage?` を追加する
+- [X] T154 [P] [US1] `Sources/MediaViewerApp/Shared/IconCatalog.swift` に `static func favoritesIcon() -> NSImage?` を追加する
   （`symbol(named: "star.fill", pointSize: 13)`。template 画像、a11y 要素にはしない）。既存のアイコンは変えない
-- [ ] T155 [P] [US1] `Sources/MediaViewerApp/Settings/SettingsWindowController.swift` の確認のチェックボックスの文言を
+- [X] T155 [P] [US1] `Sources/MediaViewerApp/Settings/SettingsWindowController.swift` の確認のチェックボックスの文言を
   「コピー・移動・名前の変更・ゴミ箱に入れる・お気に入りから削除する前に確認する」に変える（contracts/settings.md）。
   保存先のキーと動作は変えない
 - [ ] T156 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` に「お気に入り」の見出しと項目を表示する
@@ -1552,7 +1552,7 @@ quickstart.md の手動シナリオで検証する。
       それ以外のアクションは `true`（既存の項目の有効・無効を変えない）
   - `Sources/MediaViewerApp/FileList/FileListViewController.swift`: `isEditingText` の `private` を外して内部公開にする。ほかは変えない
   - `swift build` と `swift test` が通ることを確認する
-- [ ] T160 [P] [US1] `README.md` の「主な機能」と「使い方（主なショートカット）」の表に、お気に入り（ツリー最上部の「お気に入り」、
+- [X] T160 [P] [US1] `README.md` の「主な機能」と「使い方（主なショートカット）」の表に、お気に入り（ツリー最上部の「お気に入り」、
   右クリックの「お気に入りに追加」と ⌃⌘T、お気に入りの項目の右クリックの「お気に入りから削除」と ⌘Delete（確認あり、実際のフォルダは
   変えない）、⇧⌘F で見出しへ移動、登録は保存され、見つからないフォルダは淡色で残る）を追記する
 
