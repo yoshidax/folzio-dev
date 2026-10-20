@@ -1461,7 +1461,7 @@ quickstart.md の手動シナリオで検証する。
 - [X] T155 [P] [US1] `Sources/MediaViewerApp/Settings/SettingsWindowController.swift` の確認のチェックボックスの文言を
   「コピー・移動・名前の変更・ゴミ箱に入れる・お気に入りから削除する前に確認する」に変える（contracts/settings.md）。
   保存先のキーと動作は変えない
-- [ ] T156 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` に「お気に入り」の見出しと項目を表示する
+- [X] T156 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` に「お気に入り」の見出しと項目を表示する
   （T149・T150・T152・T153・T154 に依存）:
   - コンストラクタに `settings: SettingsStore` と `confirmation: ConfirmationPresenter` を追加する。
     `Sources/MediaViewerApp/App/MainSplitViewController.swift` の `init()` で、既存の `settings` から
@@ -1490,7 +1490,7 @@ quickstart.md の手動シナリオで検証する。
   - `reveal(_:)`・`rowForURL(_:)`・`reloadChildren(of:)`・`displayedNodes()`・`flattenedNodes(from:)` は `roots` だけを見るまま変えない
     （お気に入りの項目を選択中でも、実際の階層の選択へ戻さない）
   - `swift build` が通ることを確認する
-- [ ] T157 [US1] 同じ `DirectoryTreeViewController.swift` に、登録・削除・右クリックメニュー・⌘⌫ を実装する（T156 に依存）:
+- [X] T157 [US1] 同じ `DirectoryTreeViewController.swift` に、登録・削除・右クリックメニュー・⌘⌫ を実装する（T156 に依存）:
   - `outlineView.menu` に `NSMenuDelegate` として `self` を設定し、`menuNeedsUpdate(_:)` でメニューを作り直す。対象の行は
     `outlineView.clickedRow >= 0` ならその行、なければ選択中の行。`FavoriteCommands.contextMenu(for:)` の各要素を
     「ここにペースト」「ここに移動ペースト」「お気に入りに追加」（⌃⌘T を表示: `keyEquivalent = "t"`、`[.command, .control]`）・
@@ -1520,7 +1520,7 @@ quickstart.md の手動シナリオで検証する。
   - `func focusFavoritesHeader()`（⇧⌘F 用）: 見出しの行を選択し、`scrollRowToVisible`、折りたたまれていれば `expandItem`、
     `view.window?.makeFirstResponder(outlineView)` の順に行う（FR-065）
   - `swift build` が通ることを確認する
-- [ ] T158 [US1] 同じ `DirectoryTreeViewController.swift` に、見つからない項目の確認（FR-067）を実装する（T151・T157 に依存）:
+- [X] T158 [US1] 同じ `DirectoryTreeViewController.swift` に、見つからない項目の確認（FR-067）を実装する（T151・T157 に依存）:
   - `private var favoriteProbeTask: Task<Void, Never>?` と `private func refreshFavoriteAvailability()`。進行中の確認を取り消してから、
     全項目の URL で `FavoriteProbe.results(for:)` を始める。結果は同じ URL の項目の `availability` に `exists ? .available : .missing` で
     反映し、値が変わった行だけ `outlineView.reloadItem(entry)` する（行がなければ値だけ更新する）
@@ -1534,7 +1534,7 @@ quickstart.md の手動シナリオで検証する。
   - `applyRoots(_:)`: `reloadData()` の前に見出しが展開中かを記録し、後で展開し直す。`rebuildFavoriteEntries()` で
     表示名と `kind` を更新し、`refreshFavoriteAvailability()` を呼ぶ
   - 確認は UI スレッドで `stat` しない（`FavoriteProbe` のタスク内で行う）。`swift build` が通ることを確認する
-- [ ] T159 [US1] メニューとショートカットを結線する（T157 に依存）:
+- [X] T159 [US1] メニューとショートカットを結線する（T157 に依存）:
   - `Sources/MediaViewerApp/App/MainMenu.swift`: 「ファイル」メニューの「Finder に表示」の後ろに
     `NSMenuItem(title: "お気に入りに追加", action: #selector(MainSplitViewController.addSelectedFolderToFavorites(_:)), keyEquivalent: "t")`
     （`keyEquivalentModifierMask = [.command, .control]`、`target = nil`）を追加する。「ファイル」「編集」メニューの `delegate` に、
