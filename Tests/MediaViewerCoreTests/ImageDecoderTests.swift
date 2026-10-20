@@ -58,6 +58,56 @@ struct ImageDecoderTests {
         }
     }
 
+    @Test("decode(data:) はファイル URL の decode と同じ pixelSize を返す", arguments: ["jpg", "png"])
+    func decodesDataLikeFile(fileExtension: String) async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let url = root.appendingPathComponent("image.\(fileExtension)")
+        if fileExtension == "jpg" {
+            try ImageFixtures.jpeg(at: url, width: 400, height: 300)
+        } else {
+            try ImageFixtures.png(at: url, width: 400, height: 300)
+        }
+
+        let decoder = ImageDecoder()
+        let fromFile = try await decoder.decode(url, maxPixelSize: 200)
+        let fromData = try await decoder.decode(data: Data(contentsOf: url), maxPixelSize: 200)
+
+        #expect(fromData.pixelSize == fromFile.pixelSize)
+        #expect(fromData.originalPixelSize == fromFile.originalPixelSize)
+        #expect(fromData.byteCost == fromFile.byteCost)
+    }
+
+    @Test("壊れた Data は corrupted か unreadable で失敗する")
+    func rejectsBrokenData() async {
+        let decoder = ImageDecoder()
+        for data in [Data(), Data([0x00, 0x01, 0x02, 0x03]), Data("not an image".utf8)] {
+            do {
+                _ = try await decoder.decode(data: data, maxPixelSize: 512)
+                Issue.record("decode(data:) did not throw")
+            } catch {
+                #expect(error == .corrupted || error == .unreadable)
+            }
+        }
+    }
+
+    @Test("isAnimated(data:) はアニメーション GIF だけ true")
+    func detectsAnimationFromData() throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let gif = root.appendingPathComponent("animation.gif")
+        let png = root.appendingPathComponent("still.png")
+        try ImageFixtures.animatedGIF(at: gif, frames: 4)
+        try ImageFixtures.png(at: png, width: 32, height: 32)
+
+        let decoder = ImageDecoder()
+        #expect(decoder.isAnimated(data: try Data(contentsOf: gif)))
+        #expect(!decoder.isAnimated(data: try Data(contentsOf: png)))
+        #expect(!decoder.isAnimated(data: Data()))
+    }
+
     private func makeTemporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("MediaViewerTests-\(UUID().uuidString)", isDirectory: true)
