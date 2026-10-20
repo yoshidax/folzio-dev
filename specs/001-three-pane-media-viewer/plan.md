@@ -1,6 +1,6 @@
 # Implementation Plan: 3ペイン型メディアビューア
 
-**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-20 (image/video type filter, tree double-click toggle and disclosure, toolbar, fullscreen arrow navigation, small-image upscale, tree/list icons, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-20 (favorites, image/video type filter, tree double-click toggle and disclosure, toolbar, fullscreen arrow navigation, small-image upscale, tree/list icons, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-three-pane-media-viewer/spec.md`
 
@@ -42,6 +42,12 @@ Core の純粋計算 `FileListChrome` で決める。
 状態は `BrowserModel.mediaTypeFilter` に1つだけ持ち、保存しない。`BrowserModel` が全件を保持して
 `listing.files` に絞り込み後の配列を入れるため、一覧・選択・先読み・フルスクリーン移動・ファイル操作は
 既存のまま表示中の一覧だけを対象にする。非表示になった選択の整理と0件のメッセージは Core で決める。
+ツリーの最上部には、仮想的な「お気に入り」の見出し（スターのアイコン、開閉の三角付き、起動時は折りたたみ）を置き、
+その下に登録したフォルダを三角なしの項目として登録順に並べる（FR-061〜067、R21）。登録は右クリックメニューと ⌃⌘T、
+削除はお気に入りの項目の右クリックメニューと ⌘⌫ で、どちらも確認モーダル（ファイル操作と同じ省略設定）を通す。
+見出しへの移動は ⇧⌘F。項目を選ぶとそのフォルダの内容を出し、見出しを選んでも一覧は変えない。登録はパスの配列として
+`SettingsStore` に保存し、見つからなくなった項目は淡色で残して、フォルダが戻れば自動で通常の表示に戻す。
+登録内容・行の役割ごとの操作の可否・存在の確認は Core の `FavoriteFolders`・`FavoriteCommands`・`FavoriteProbe` に置く。
 
 ## Technical Context
 
@@ -51,7 +57,7 @@ Core の純粋計算 `FileListChrome` で決める。
 QuickLookThumbnailing, UniformTypeIdentifiers, CoreServices[FSEvents], CoreGraphics[アイコン生成]）。
 サードパーティ依存なし
 
-**Storage**: `UserDefaults`（表示設定・動作オプション）と、`NSSplitView` の自動保存（ペイン幅）。
+**Storage**: `UserDefaults`（表示設定・動作オプション・お気に入りのパスの配列）と、`NSSplitView` の自動保存（ペイン幅）。
 サムネイルとデコード済み画像はメモリ上のみに置く
 
 **Packaging**: `scripts/make-app.sh` が `scripts/make-icon.sh` を呼び、実行ターゲット `make-icon` が
@@ -90,6 +96,9 @@ QuickLookThumbnailing, UniformTypeIdentifiers, CoreServices[FSEvents], CoreGraph
 確認は UI スレッドで行わず、同時に 4 件までに制限する。確認結果は永続化しない（FR-055、R19）。
 種類フィルタは保存せず（`SettingsStore` に書かない）、起動のたびに両方オフで始める。切り替えでは
 ディスクを読み直さず、保持済みの全件を `MediaKind` で絞るだけにする（10,000 件で 0.05 秒以内）（FR-056、R20）。
+お気に入りは絶対パスの配列 `favorites.paths` だけを保存し、ブックマークデータ・見つかるかどうか・見出しの開閉状態は
+保存しない。存在の確認は UI スレッドで行わず、同時 4 件までに制限する。⌘⌫ には新しいメニュー項目を作らず、
+既存の「ゴミ箱に入れる」をレスポンダーチェーンでツリーに振り分ける（FR-064・066・067、R21）。
 
 **Scale/Scope**: 1ウィンドウ（3ペイン）+ 設定ウィンドウ + 確認・衝突ダイアログ。フォルダあたり最大で
 数万ファイルを想定。単一ユーザー
@@ -102,11 +111,11 @@ QuickLookThumbnailing, UniformTypeIdentifiers, CoreServices[FSEvents], CoreGraph
 
 | 原則 | 判定 | 根拠 |
 |------|------|------|
-| I. ローカル完結・プライバシー | ✅ 適合 | ネットワークを使う API も依存もない。サムネイルはメモリにのみ置き、ユーザーのフォルダにもディスクキャッシュにも書かない（R7）。アプリアイコンも外部素材を取得せず、コードから生成する（R14）。ファイル操作はすべてユーザーの明示的な操作が起点になる。確認を省略できるのは、削除が常にゴミ箱経由で取り消せるため（v1.1.0 の「確認または取り消し可能性」、FR-021・024）。取り消せない上書きは常に衝突ダイアログで確認する（FR-025）種類フィルタは表示の絞り込みだけで、ファイルを変更せず通信もしない（R20）。 |
-| II. 体感パフォーマンス | ✅ 適合 | デコード・列挙・サムネイル生成・ファイル操作はすべてバックグラウンドで行う（R5・R7・R9・R10）。キャッシュの上限を明示した（R8）。基準値は `MediaViewerPerformanceTests` で計測する（quickstart）。小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（R5）。リスト形式の行頭アイコンもサムネイル生成を可視行だけ遅延実行し、セル再利用時は同じ URL・サイズの要求だけを取り消すため、10,000 ファイルでも一覧表示を待たせない（R17）。注: 憲章の基準「起動からファイル指定で開いた最初の画像の表示 1 秒以内」は、ファイルを指定して起動する経路を前提にしている。この経路は本機能の範囲外なので、代わりに SC-002（前回フォルダの一覧表示まで 2 秒）を計測する。ファイル指定起動を追加する機能で 1 秒基準を適用する。アイコン生成はビルド時のみで、起動時間に影響しない。ツールバーは表示状態の読み込みとビュー生成だけで、デコードや列挙を追加しない（R18）種類フィルタは保持済みの一覧を `MediaKind` で絞るだけで、列挙・デコードを追加しない。10,000 件での適用時間を性能テストで計測する（R20）。 |
-| III. キーボードファースト & a11y | ✅ 適合 | 提供する全操作のキー割り当てを [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md) で網羅した。手動の拡大/縮小（ズーム）とパンは提供せず、フィットは画像選択時に自動で行うため、これらへのキー割り当ては存在しない（spec Assumptions）。AppKit 標準部品の a11y を使い、プレビューとサムネイルのセルにはファイル名のラベルを付ける。行頭アイコンは装飾として a11y 要素から外し、フォルダ名・ファイル名と選択状態は従来どおり読み上げられる（FR-047・048）。ダークモードは AppKit 標準の配色で追従し、「視差効果を減らす」設定が有効な間は、アニメーション画像を自動で再生しない。サムネイル形式でもキーボードだけで一覧を辿れるよう、フォーカス項目のスクロール追従を必須にする（FR-017）。フルスクリーン中も矢印キーで選択を移動でき（FR-046）、動画のシークは `<` / `>` に残すため、フルスクリーンでも主要操作をキーボードだけで完結できる。ツールバーの表示切替には ⇧⌘T を割り当て、ツールバー上の操作（表示形式・サイズ）は既存の ⌘1 / ⌘2 / ⌘+ / ⌘- でも行えるため、ツールバーを使わなくてもキーボードだけで完結する。ボタンとスライダーにはアクセシビリティラベルを付ける（FR-050・051）。ツリーのダブルクリック開閉は既存の → / ← キーによる開閉のマウス版で、キーボード手段は既にある。開閉できないフォルダは三角を持たず、支援技術にも開閉できる項目として伝わらない（FR-053・054）種類フィルタは ⇧⌘I / ⇧⌘M と「表示」メニューで操作でき、ツールバーが非表示でもキーボードだけで切り替えられる。ツールバーのボタンにはアクセシビリティラベル（「画像のみ表示」「動画のみ表示」）を付け、メニューのチェックマークで状態を伝える（FR-057・058）。 |
-| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。フルスクリーンの移動規則は `FocusNavigator` として Core に置き、リスト形式・サムネイル形式・フルスクリーンの全経路で同じ関数を使う。境界（先頭・末尾・行頭・行末）と空リストのケースを `FocusNavigatorTests` で検証する。行頭アイコンは小さな要求サイズの丸め（64px 段階）を `ThumbnailProviderTests` で検証し、表示とフォールバックは quickstart の手動確認で担保する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する。ツールバーの保存状態は `SettingsStoreTests`、下部バーの表示とスライダーの有効・無効の判断は `FileListChromeTests` で検証し、ツールバーの見た目と配線は quickstart の手動確認で担保する。ツリーの開閉は、サブフォルダの有無の状態遷移とダブルクリックの判断を `FolderDisclosureTests`、`hasSubfolders(in:)` の判定（隠しフォルダ・パッケージ・権限なし・存在しない）と `subfolders(of:)` との一致を `DirectoryListerTests`、並列数の上限と取り消しを `SubfolderProbeTests` で検証する。ダブルクリックと三角の配線は quickstart の手動確認で担保する種類フィルタの4通りの組み合わせ・並び順の保持・0件のメッセージを `MediaTypeFilterTests`、選択の整理（FR-059）を同ファイルの `SelectionState.restricted(toVisible:)` のテスト、フォルダ移動後の保持・`.noMatches`・並べ替えと読み直し・動画の停止通知を `BrowserModelTests` / `BrowserModelVideoTests` で検証する。ボタン・メニューの配線は quickstart の手動確認で担保する。 |
-| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない。ツリーとリストの行頭アイコンは SF Symbols と既存のサムネイル経路を使い、新しい設定・永続化・外部素材を追加しない（R17）。フルスクリーン移動（FR-046）は既存の選択モデルとレイアウト計算を再利用し、新しい設定・永続化状態・依存を追加しない。ツールバーは AppKit 標準の `NSToolbar` と SF Symbols だけで作り、ユーザーによるカスタマイズは提供しない。永続化はツールバーの表示状態を表す Bool 1 つだけを追加する（R18）。ツリーの開閉は `NSOutlineView` 標準の `doubleAction` と `isItemExpandable` だけで作り、設定・永続化・依存を増やさない。並列数の制限は、遅いボリュームで列挙が積み上がるのを防ぐための最小限の仕組みとする（R19）種類フィルタは Bool 2 つの値型と既存の `NSToolbarItemGroup`・メニュー項目だけで作り、保存キー・設定項目・依存を増やさない。絞り込みを `listing.files` に集約し、UI の各部品に同じ判断を重複させない（R20）。 |
+| I. ローカル完結・プライバシー | ✅ 適合 | ネットワークを使う API も依存もない。サムネイルはメモリにのみ置き、ユーザーのフォルダにもディスクキャッシュにも書かない（R7）。アプリアイコンも外部素材を取得せず、コードから生成する（R14）。ファイル操作はすべてユーザーの明示的な操作が起点になる。確認を省略できるのは、削除が常にゴミ箱経由で取り消せるため（v1.1.0 の「確認または取り消し可能性」、FR-021・024）。取り消せない上書きは常に衝突ダイアログで確認する（FR-025）種類フィルタは表示の絞り込みだけで、ファイルを変更せず通信もしない（R20）。お気に入りの登録・削除は登録内容を変えるだけで、実際のフォルダを変更せずゴミ箱にも入れない。保存先はローカルの `UserDefaults` だけ（R21）。 |
+| II. 体感パフォーマンス | ✅ 適合 | デコード・列挙・サムネイル生成・ファイル操作はすべてバックグラウンドで行う（R5・R7・R9・R10）。キャッシュの上限を明示した（R8）。基準値は `MediaViewerPerformanceTests` で計測する（quickstart）。小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（R5）。リスト形式の行頭アイコンもサムネイル生成を可視行だけ遅延実行し、セル再利用時は同じ URL・サイズの要求だけを取り消すため、10,000 ファイルでも一覧表示を待たせない（R17）。注: 憲章の基準「起動からファイル指定で開いた最初の画像の表示 1 秒以内」は、ファイルを指定して起動する経路を前提にしている。この経路は本機能の範囲外なので、代わりに SC-002（前回フォルダの一覧表示まで 2 秒）を計測する。ファイル指定起動を追加する機能で 1 秒基準を適用する。アイコン生成はビルド時のみで、起動時間に影響しない。ツールバーは表示状態の読み込みとビュー生成だけで、デコードや列挙を追加しない（R18）種類フィルタは保持済みの一覧を `MediaKind` で絞るだけで、列挙・デコードを追加しない。10,000 件での適用時間を性能テストで計測する（R20）。お気に入りの存在の確認は列挙を伴わない `stat` だけで、バックグラウンドで同時 4 件までに制限し、応答のないボリュームがツリーの操作を止めない（R21）。 |
+| III. キーボードファースト & a11y | ✅ 適合 | 提供する全操作のキー割り当てを [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md) で網羅した。手動の拡大/縮小（ズーム）とパンは提供せず、フィットは画像選択時に自動で行うため、これらへのキー割り当ては存在しない（spec Assumptions）。AppKit 標準部品の a11y を使い、プレビューとサムネイルのセルにはファイル名のラベルを付ける。行頭アイコンは装飾として a11y 要素から外し、フォルダ名・ファイル名と選択状態は従来どおり読み上げられる（FR-047・048）。ダークモードは AppKit 標準の配色で追従し、「視差効果を減らす」設定が有効な間は、アニメーション画像を自動で再生しない。サムネイル形式でもキーボードだけで一覧を辿れるよう、フォーカス項目のスクロール追従を必須にする（FR-017）。フルスクリーン中も矢印キーで選択を移動でき（FR-046）、動画のシークは `<` / `>` に残すため、フルスクリーンでも主要操作をキーボードだけで完結できる。ツールバーの表示切替には ⇧⌘T を割り当て、ツールバー上の操作（表示形式・サイズ）は既存の ⌘1 / ⌘2 / ⌘+ / ⌘- でも行えるため、ツールバーを使わなくてもキーボードだけで完結する。ボタンとスライダーにはアクセシビリティラベルを付ける（FR-050・051）。ツリーのダブルクリック開閉は既存の → / ← キーによる開閉のマウス版で、キーボード手段は既にある。開閉できないフォルダは三角を持たず、支援技術にも開閉できる項目として伝わらない（FR-053・054）種類フィルタは ⇧⌘I / ⇧⌘M と「表示」メニューで操作でき、ツールバーが非表示でもキーボードだけで切り替えられる。ツールバーのボタンにはアクセシビリティラベル（「画像のみ表示」「動画のみ表示」）を付け、メニューのチェックマークで状態を伝える（FR-057・058）。お気に入りは、登録 ⌃⌘T・削除 ⌘⌫・見出しへの移動 ⇧⌘F のキーボード手段を持ち、見出しは → / ← と ↑↓ で開閉・移動できる通常の行なので、マウスなしで登録・選択・削除を完結できる（FR-062・064・065）。見出しはラベル「お気に入り」で読み上げられ、見つからない項目はツールチップ「見つかりません」を持つ。 |
+| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。フルスクリーンの移動規則は `FocusNavigator` として Core に置き、リスト形式・サムネイル形式・フルスクリーンの全経路で同じ関数を使う。境界（先頭・末尾・行頭・行末）と空リストのケースを `FocusNavigatorTests` で検証する。行頭アイコンは小さな要求サイズの丸め（64px 段階）を `ThumbnailProviderTests` で検証し、表示とフォールバックは quickstart の手動確認で担保する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する。ツールバーの保存状態は `SettingsStoreTests`、下部バーの表示とスライダーの有効・無効の判断は `FileListChromeTests` で検証し、ツールバーの見た目と配線は quickstart の手動確認で担保する。ツリーの開閉は、サブフォルダの有無の状態遷移とダブルクリックの判断を `FolderDisclosureTests`、`hasSubfolders(in:)` の判定（隠しフォルダ・パッケージ・権限なし・存在しない）と `subfolders(of:)` との一致を `DirectoryListerTests`、並列数の上限と取り消しを `SubfolderProbeTests` で検証する。ダブルクリックと三角の配線は quickstart の手動確認で担保する種類フィルタの4通りの組み合わせ・並び順の保持・0件のメッセージを `MediaTypeFilterTests`、選択の整理（FR-059）を同ファイルの `SelectionState.restricted(toVisible:)` のテスト、フォルダ移動後の保持・`.noMatches`・並べ替えと読み直し・動画の停止通知を `BrowserModelTests` / `BrowserModelVideoTests` で検証する。ボタン・メニューの配線は quickstart の手動確認で担保する。お気に入りは、登録順・重複の判定・削除を `FavoriteFoldersTests`、保存と不正値の扱いを `SettingsStoreTests`、行の役割ごとの操作の可否と右クリックメニューを `FavoriteCommandsTests`、存在の判定・並列数の上限・取り消しを `FavoriteProbeTests` で検証する。ツリーへの表示・メニュー・確認モーダルの配線は quickstart の手動確認で担保する。 |
+| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない。ツリーとリストの行頭アイコンは SF Symbols と既存のサムネイル経路を使い、新しい設定・永続化・外部素材を追加しない（R17）。フルスクリーン移動（FR-046）は既存の選択モデルとレイアウト計算を再利用し、新しい設定・永続化状態・依存を追加しない。ツールバーは AppKit 標準の `NSToolbar` と SF Symbols だけで作り、ユーザーによるカスタマイズは提供しない。永続化はツールバーの表示状態を表す Bool 1 つだけを追加する（R18）。ツリーの開閉は `NSOutlineView` 標準の `doubleAction` と `isItemExpandable` だけで作り、設定・永続化・依存を増やさない。並列数の制限は、遅いボリュームで列挙が積み上がるのを防ぐための最小限の仕組みとする（R19）種類フィルタは Bool 2 つの値型と既存の `NSToolbarItemGroup`・メニュー項目だけで作り、保存キー・設定項目・依存を増やさない。絞り込みを `listing.files` に集約し、UI の各部品に同じ判断を重複させない（R20）。お気に入りは保存キー1つ（パスの配列）と既存の `NSOutlineView`・メニュー・確認モーダルだけで作り、並べ替え・名前の変更・ドロップ先・ブックマークによる追従は作らない。⌘⌫ は既存のメニュー項目をレスポンダーチェーンで振り分け、同じキーの項目を増やさない（R21）。 |
 
 **Phase 1 設計後の再評価**: data-model・contracts・quickstart を確認したが、新たな違反はない。
 FSEvents による監視（R9）は外部依存ではなく、OS 標準 API の利用にあたる。アイコン生成（R14）は
@@ -142,6 +151,10 @@ FR-056〜060 の種類フィルタ（2026-10-20）は、Bool 2 つの値型 `Med
 `BrowserModel` の一覧の作り直しを1つの経路にまとめるだけで成立する。保存キー・設定・依存を増やさない（原則 V）。
 切り替えはディスクを読まず、10,000 件での適用時間を計測する（原則 II）。キー割り当ては既存と衝突しない ⇧⌘I / ⇧⌘M とし、
 ツールバーなしでも操作できる（原則 III）。外部通信は追加しない（原則 I）。
+FR-061〜067 のお気に入り（2026-10-20）は、登録内容の値型・行の役割ごとの操作の可否・存在の確認を Core に置いてテストし（原則 IV）、
+UI はツリーの行の追加とメニュー・確認モーダルの配線だけを担う。永続化はパスの配列1つで、実際のフォルダには触れない（原則 I・V）。
+存在の確認はバックグラウンドで並列数を制限して行う（原則 II）。キーは既存と衝突しない ⌃⌘T / ⇧⌘F と、既存の ⌘⌫ の振り分けで、
+マウスなしで全操作を行える（原則 III）。憲章の改定は不要。
 
 ## Project Structure
 
@@ -173,10 +186,12 @@ Sources/
 │   │                                #   FolderDisclosure（ダブルクリックの開閉）, SortOrder, SelectionState,
 │   │                                #   PreviewContent, ViewSettings, PlaybackOptions, FileOperation,
 │   │                                #   FileListChrome（下部バーとツールバーのスライダーの状態）,
-│   │                                #   MediaTypeFilter（画像・動画の種類フィルタ）
+│   │                                #   MediaTypeFilter（画像・動画の種類フィルタ）,
+│   │                                #   FavoriteFolders・FavoriteCommands（お気に入りの登録内容と操作の可否）
 │   ├── Browser/                     # BrowserModel（選択・プレビュー・先読みの調停）
 │   ├── FileSystem/                  # DirectoryLister, VolumeProvider, FileSystemWatcher (FSEvents),
-│   │                                #   SubfolderProbe（サブフォルダの有無の並列数制限付き確認）
+│   │                                #   SubfolderProbe（サブフォルダの有無の並列数制限付き確認）,
+│   │                                #   FavoriteProbe（お気に入りの存在の並列数制限付き確認）
 │   ├── Imaging/                     # ImageDecoder, DecodedImageCache, ThumbnailProvider
 │   ├── Layout/                      # FitCalculator, ThumbnailGridLayout, ThumbnailScroll, FocusNavigator
 │   ├── Operations/                  # FileOperationService, NameValidation, uniqueName
@@ -186,7 +201,7 @@ Sources/
 │   │                                #   MainSplitViewController（フルスクリーン切替を含む）,
 │   │                                #   MainToolbarController（NSToolbar の項目と表示状態）
 │   ├── Shared/                      # IconCatalog（ツリー・リストの行頭アイコンの SF Symbol と寸法）
-│   ├── Tree/                        # DirectoryTreeViewController (NSOutlineView、ドロップ先)
+│   ├── Tree/                        # DirectoryTreeViewController (NSOutlineView、ドロップ先、お気に入りの見出しと項目)
 │   ├── FileList/                    # FileListViewController, ListModeView (NSTableView),
 │   │                                #   ThumbnailModeView (NSCollectionView), FileContextMenu
 │   ├── Preview/                     # PreviewViewController, ImagePreviewView, VideoPreviewView
@@ -438,6 +453,73 @@ Xcode プロジェクトは持たず、CLI（`swift build` / `swift test` / `scr
 - `ListModeView`・`ThumbnailModeView`・`PreviewViewController`・ファイル操作・ツリー・設定と永続化は変更しない
   （`listing.files` と `selection` の既存の監視で絞り込みが反映される）
 - `README.md`: ファイルリストの操作説明に、種類フィルタのボタン・メニュー・⇧⌘I / ⇧⌘M を追記する
+- `specs/001-three-pane-media-viewer/contracts/core-api.md`、`contracts/keyboard-and-menus.md`、`contracts/settings.md`、
+  `data-model.md`、`research.md`、`quickstart.md` を更新する
+
+## 変更点（2026-10-20: お気に入り）
+
+- `Sources/MediaViewerCore/Model/FavoriteFolders.swift`（新規）: `FavoriteFolders`（`urls`・`contains`・`add`・`remove`、
+  `standardizedFileURL.path` による同一性）と `FavoriteAvailability`
+- `Sources/MediaViewerCore/Model/FavoriteCommands.swift`（新規）: `TreeItemRole`・`TreeContextMenuItem`・`FavoriteCommands`
+  （`canAdd`・`removalTarget`・`contextMenu(for:)`・`folderToShow(for:)`・`acceptsFiles`）。data-model の表のとおり
+- `Sources/MediaViewerCore/FileSystem/FavoriteProbe.swift`（新規）: `FavoriteProbeResult` と `FavoriteProbe`
+  （`folderExists(_:)`・`results(for:maxConcurrent:exists:)`）。`SubfolderProbe` と同じく `withTaskGroup` で同時実行数を制限し、
+  `AsyncStream` の終了で残りを取り消す
+- `Sources/MediaViewerCore/Settings/SettingsStore.swift`: キー `favorites.paths` と `favorites` プロパティを追加する。
+  読み込みの不正値の扱いは contracts/settings.md のとおり。ほかのキーの読み書きは変えない
+- `Tests/MediaViewerCoreTests/FavoriteFoldersTests.swift`（新規）: 登録順、末尾の `/`・`..` を含む重複の判定、
+  `add` / `remove` の戻り値、`init(urls:)` の重複除去と順序を検証する
+- `Tests/MediaViewerCoreTests/FavoriteCommandsTests.swift`（新規）: data-model の「TreeItemRole と FavoriteCommands」の表の全行
+  （役割 3 種 × 登録済みかどうか、選択なし）を検証する
+- `Tests/MediaViewerCoreTests/FavoriteProbeTests.swift`（新規）: 一時ディレクトリで、存在するフォルダ・存在しないパス・ファイル・
+  権限のないフォルダ（`0o000`、存在するので `true`）を検証する。遅延するフェイクの `exists` で、全 URL が1回ずつ流れること、
+  同時実行数が上限を超えないこと、空入力ですぐ終わること、取り消し後に新しい確認を始めないことを検証する
+- `Tests/MediaViewerCoreTests/SettingsStoreTests.swift`: 未保存で空、保存と読み戻しで順序が保たれること、配列でない値・
+  文字列でない要素・空文字・相対パスを捨てること、重複の除去、ほかのキーを壊さないことを追加する
+- `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift`:
+  - コンストラクタに `SettingsStore` と `ConfirmationPresenter` を追加する。`viewDidLoad` で `settings.favorites` を読み込む
+  - 行の型に `FavoritesHeader`（1つだけ）と `FavoriteEntry`（`url`・`name`・`kind`・`availability`）を加える。
+    データソースのトップレベルは `[header] + roots`、見出しの子は登録順の項目。見出しは常に開閉でき、項目は開閉できない。
+    行から `TreeItemRole` を作る `role(for:)` を置き、操作の可否はすべて `FavoriteCommands` に問い合わせる
+  - セル: 見出しは `IconCatalog.favoritesIcon` と「お気に入り」、項目はルートと同じ規則で決めた `kind` のアイコンと名前。
+    `.missing` の項目は `disabledControlTextColor` とツールチップ「見つかりません」
+  - `outlineViewSelectionDidChange`: `FavoriteCommands.folderToShow(for:)` が nil（見出し）なら `selectFolder` を呼ばない。
+    項目なら `selectFolder(entry.url)` を呼び、その項目の存在を確認する
+  - 右クリックメニューを `NSMenuDelegate.menuNeedsUpdate(_:)` で `clickedRow`（なければ選択中の行）の役割から作り直す。
+    既存の「ここにペースト」「ここに移動ペースト」「Finder に表示」の対象も右クリックした行にそろえる
+  - `addToFavorites(_:)`（右クリックメニュー）と、`MainSplitViewController` から呼ぶ `addSelectedFolderToFavorites()`・
+    `canAddSelectedFolderToFavorites`・`focusFavoritesHeader()` を追加する。登録したら保存し、見出しの子を読み直し、
+    存在を確認する。見出しの開閉状態は変えない
+  - `@objc func moveToTrash(_:)`: お気に入りの項目を選択中のときだけ、`confirmRemovingFavorite(named:)` → 削除 → 保存 →
+    見出しを選択する。`validateMenuItem` で、項目の選択中だけ有効にして項目名を「お気に入りから削除」にし、
+    それ以外は無効にして「ゴミ箱に入れる」に戻す。右クリックメニューの「お気に入りから削除」も同じ削除処理を通す
+  - `paste(_:)`・`movePaste(_:)`・`validateDrop`・`acceptDrop` は `FavoriteCommands.acceptsFiles` が false の行
+    （見出し・項目）では無効にする
+  - 存在の確認（`FavoriteProbe`）を、起動時・`volumes.changes`・`NSApplication.didBecomeActiveNotification`・FSEvents のバッチ・
+    登録直後・項目の選択時に始める。進行中の確認は1つだけ持ち、作り直すときに取り消す。結果は項目に反映し、変わった行だけ
+    `reloadItem` する
+  - `updateWatchSet()` に、登録したフォルダの親フォルダを加える
+  - `applyRoots` の `reloadData()` の後に、見出しが展開中だったら展開し直す。`reveal(_:)`・`rowForURL`・`reloadChildren(of:)` は
+    実際の階層（`roots`）だけを見るため、お気に入りの項目を選択中でも実際の階層の選択に戻さない
+- `Sources/MediaViewerApp/App/MainMenu.swift`: 「ファイル」メニューの「Finder に表示」の後ろに「お気に入りに追加」
+  （`keyEquivalent: "t"`、`[.command, .control]`、アクション `MainSplitViewController.addSelectedFolderToFavorites(_:)`、宛先なし）を追加する。
+  「ファイル」「編集」メニューに `NSMenuDelegate` を設定し、`menuNeedsUpdate(_:)` で `moveToTrash(_:)` の項目名を「ゴミ箱に入れる」に戻す
+- `Sources/MediaViewerApp/App/MainSplitViewController.swift`: ツリーに `SettingsStore` と `ConfirmationPresenter` を渡す。
+  `addSelectedFolderToFavorites(_:)` をツリーへ渡す。`installFocusMenuItems()` で ⌥⌘3 の後ろに「お気に入りへ移動」
+  （`keyEquivalent: "F"`、⇧⌘）を追加し、`focusFavoritesHeader()` を呼ぶ。`NSMenuItemValidation` を実装し、
+  「お気に入りへ移動」はフルスクリーン中（`panesCollapsedForFullScreen`）とファイル名の変更中は無効、
+  「お気に入りに追加」はファイル名の変更中と `canAddSelectedFolderToFavorites == false` のとき無効にする
+- `Sources/MediaViewerApp/FileList/FileListViewController.swift`: `isEditingText` を内部公開にする（`MainSplitViewController` の
+  メニュー検証で使う）。ゴミ箱の処理と検証は変えない
+- `Sources/MediaViewerApp/Operations/ConfirmationPresenter.swift`: `confirmRemovingFavorite(named:)` を追加する。
+  既存の `confirm(_:)` とシートの表示・「今後この確認を表示しない」の処理を共有する
+- `Sources/MediaViewerApp/Shared/IconCatalog.swift`: `favoritesIcon`（`star.fill`、13pt、template）を追加する
+- `Sources/MediaViewerApp/Settings/SettingsWindowController.swift`: 確認のチェックボックスの文言を
+  「コピー・移動・名前の変更・ゴミ箱に入れる・お気に入りから削除する前に確認する」にする
+- `README.md`: ツリーの操作説明に、お気に入りの登録（右クリック・⌃⌘T）・削除（右クリック・⌘⌫）・移動（⇧⌘F）と、
+  見つからない項目の表示を追記する
+- ファイルリスト・プレビュー・ファイル操作・`BrowserModel` の選択の規則は変更しない。ツリーの既存のキー操作（FR-005）・
+  ダブルクリックの開閉（FR-053）・三角の表示条件（FR-054・055）・ドロップ（FR-020）は、実際の階層では変えない
 - `specs/001-three-pane-media-viewer/contracts/core-api.md`、`contracts/keyboard-and-menus.md`、`contracts/settings.md`、
   `data-model.md`、`research.md`、`quickstart.md` を更新する
 

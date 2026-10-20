@@ -1357,6 +1357,228 @@ quickstart.md の手動シナリオで検証する。
 
 ---
 
+## Phase 19: お気に入り（FR-061〜067 追加、US1）
+
+**Purpose**: ツリーの最上部に仮想的な「お気に入り」の見出し（スターのアイコン、開閉の三角付き、起動時は折りたたみ）を置き、
+登録したフォルダを三角なしの項目として登録順に並べる。登録は右クリックメニューと ⌃⌘T、削除はお気に入りの項目の
+右クリックメニューと ⌘⌫ で、どちらも確認モーダル（ファイル操作と同じ省略設定）を通す。⇧⌘F で見出しへ移動する。
+登録はパスの配列として保存し、見つからなくなった項目は淡色で残す（[spec.md](./spec.md) FR-061〜067・US1 の受け入れシナリオ 10〜14、
+[plan.md](./plan.md) の「変更点（お気に入り）」、[research.md](./research.md) R21、
+[data-model.md](./data-model.md) の `FavoriteFolders`・`FavoriteAvailability`・`TreeItemRole と FavoriteCommands`、
+[contracts/core-api.md](./contracts/core-api.md)「お気に入り」「設定」、
+[contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md)「ペイン間のフォーカス移動」「ディレクトリツリー」
+「右クリックメニュー（ツリー）」「メニューバー」「確認モーダルと衝突ダイアログ」、[contracts/settings.md](./contracts/settings.md)）。
+
+**Independent Test**: `swift test` で `FavoriteFolders`・`FavoriteCommands`・`FavoriteProbe`・`SettingsStore.favorites` のテストが通ること。
+`.app` で quickstart.md「お気に入り（FR-061〜067）」の 1〜19 を確認し、登録・選択・⇧⌘F・削除（右クリック・⌘⌫、確認モーダル）・
+再起動後の復元・見つからない項目の表示が期待どおりであること。
+
+### Tests for User Story 1
+
+- [ ] T145 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteFoldersTests.swift`（新規、`@Suite("FavoriteFolders")`）を先に書く
+  （T149 の前にビルドエラーになることを確認する）。URL は `URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)` のように作る:
+  - 既定: `FavoriteFolders()` の `urls` は空
+  - `add`: `a`・`b`・`c` の順に追加すると `urls == [a, b, c]`（登録順、新しいものを末尾）。戻り値はすべて `true`
+  - 重複: `a` を登録済みのとき、`a` そのもの・末尾に `/` を付けたパス（`URL(fileURLWithPath: "/tmp/fav/a/")`）・
+    `..` を含むパス（`/tmp/fav/x/../a`）の `add` はどれも `false` を返し、`urls` は変わらない（「同一性は
+    `standardizedFileURL.path` で判定し、重複を持たない」）
+  - `contains`: 上の3通りの表記すべてで `true`、未登録の `d` で `false`
+  - `remove`: 登録済みの `b` で `true`、`urls == [a, c]`（順序を保つ）。未登録の `d` で `false`、`urls` は変わらない。
+    `..` を含む表記の `b` でも取り除ける
+  - `init(urls:)`: `[a, b, a, c, b]` から `urls == [a, b, c]`（重複は先勝ちで除き、順序を保つ）
+- [ ] T146 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteCommandsTests.swift`（新規、`@Suite("FavoriteCommands")`）を先に書く
+  （T150 の前にビルドエラーになることを確認する）。data-model.md「TreeItemRole と FavoriteCommands」の表の全行を検証する。
+  `folder = URL(fileURLWithPath: "/tmp/fav/folder")`、`favorites = FavoriteFolders(urls: [registered])` とする:
+  - `canAdd`: `.folder(未登録)` で `true`。`.folder(registered)`・`.favorite(registered)`・`.favoritesHeader`・`nil`（選択なし）で `false`
+  - `removalTarget`: `.favorite(url)` で `url`。`.folder`・`.favoritesHeader`・`nil` で `nil`
+  - `contextMenu(for:)`: `.folder` で `[.pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder]`、
+    `.favorite` で `[.removeFromFavorites]`、`.favoritesHeader` で `[]`（「`.favoritesHeader` は項目なし（メニューを出さない）」）
+  - `folderToShow(for:)`: `.folder(url)` と `.favorite(url)` で `url`、`.favoritesHeader` で `nil`（FR-065）
+  - `acceptsFiles`: `.folder` だけ `true`、`.favorite` と `.favoritesHeader` は `false`
+- [ ] T147 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteProbeTests.swift`（新規、`@Suite("FavoriteProbe")`）を先に書く
+  （T151 の前にビルドエラーになることを確認する）。一時ディレクトリは `DirectoryListerTests` の `makeTemporaryDirectory()` と
+  同じ形の `private` ヘルパーで作り、`defer` で削除する。並列数の検証は `SubfolderProbeTests` と同じ組み立てにする:
+  - `folderExists(_:)`: 存在するフォルダで `true`、存在しないパスで `false`、通常のファイルで `false`。
+    権限のないフォルダ（`chmod 0o000`。テスト後に `0o755` へ戻してから削除する）は存在するので `true`
+  - `results(for:maxConcurrent:exists:)`: 遅延するフェイクの `exists`（`actor` で同時実行数の最大値を記録する）で、
+    6 件・上限 2 のとき全 URL が1回ずつ流れ、同時実行数が 2 を超えないこと。`exists` の結果がそのまま
+    `FavoriteProbeResult.exists` になること
+  - 空の入力ですぐに終わる。上限が 0 以下なら 1 として扱う
+  - ストリームを最初の1件で抜けたら、未実行の確認を始めない（フェイクの呼び出し回数で確かめる）
+- [ ] T148 [P] [US1] `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` に `favorites` のテストを先に追加する
+  （T152 の前にビルドエラーになることを確認する）。既存の `withDefaults` を使う:
+  - 未保存のとき `store.favorites == FavoriteFolders()`。既存の `usesDefaults` にも `#expect(store.favorites.urls.isEmpty)` を加える
+  - 保存と読み戻し: `[/tmp/fav/b, /tmp/fav/a]` を保存すると、新しい `SettingsStore` で同じ順に読める。
+    `defaults.array(forKey: "favorites.paths") as? [String] == ["/tmp/fav/b", "/tmp/fav/a"]`（絶対パスの文字列配列）
+  - 不正値: `"favorites.paths"` に文字列 1 つ（配列でない）を入れると空。`["/tmp/fav/a", 3, "", "relative/path", "/tmp/fav/a"]` を
+    入れると `urls == [/tmp/fav/a]`（文字列でない要素・空文字・相対パスは捨て、重複は先勝ちで除く）
+  - ほかのキーを壊さない: `favorites` を保存しても `viewSettings`・`playback`・`confirmation` の値が変わらない
+
+### Implementation for User Story 1
+
+- [ ] T149 [P] [US1] `Sources/MediaViewerCore/Model/FavoriteFolders.swift`（新規）に、contracts/core-api.md の
+  `public struct FavoriteFolders: Sendable, Equatable` と `public enum FavoriteAvailability: Sendable, Equatable { case unknown, available, missing }` を
+  実装する（T145 に依存）:
+  - `public private(set) var urls: [URL]`、`public init(urls: [URL] = [])`（重複は先勝ちで除き、順序を保つ）
+  - 同一性のキーは `url.standardizedFileURL.path` とし、`private static func key(_ url: URL) -> String` にまとめる。
+    比較で `URL` 同士の `==` を使わない（末尾の `/` の有無で不一致になるため）
+  - `contains(_:)`、`@discardableResult mutating func add(_:) -> Bool`（未登録なら末尾に追加して `true`、登録済みなら `false`）、
+    `@discardableResult mutating func remove(_:) -> Bool`（登録済みなら取り除いて `true`、未登録なら `false`）
+  - 並べ替え・名前の変更は持たない。AppKit を import しない
+  - `swift test --filter FavoriteFoldersTests` が通ることを確認する
+- [ ] T150 [US1] `Sources/MediaViewerCore/Model/FavoriteCommands.swift`（新規）に、contracts/core-api.md の `TreeItemRole`・
+  `TreeContextMenuItem`・`FavoriteCommands` を実装する（T146・T149 に依存）:
+  - `canAdd(_:favorites:)`: `.folder(url)` かつ `!favorites.contains(url)` のときだけ `true`
+  - `removalTarget(_:)`: `.favorite(url)` のときだけ `url`
+  - `contextMenu(for:)`・`folderToShow(for:)`・`acceptsFiles(_:)`: T146 の期待値（data-model.md の表）のとおり
+  - AppKit を import しない。`swift test --filter FavoriteCommandsTests` が通ることを確認する
+- [ ] T151 [P] [US1] `Sources/MediaViewerCore/FileSystem/FavoriteProbe.swift`（新規）に、contracts/core-api.md の
+  `FavoriteProbeResult`（`url`・`exists`、`public init(url:exists:)`）と `FavoriteProbe` を実装する（T147 に依存）:
+  - `folderExists(_:)`: `FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)` が `true` かつ
+    `isDirectory.boolValue` のとき `true`
+  - `results(for:maxConcurrent:exists:)`: `SubfolderProbe.results(for:lister:maxConcurrent:)` と同じ構造
+    （`AsyncStream` の中で `withTaskGroup`、同時実行数は `max(1, maxConcurrent)`、`continuation.onTermination` で取り消し、
+    取り消し後は次の URL を追加しない）。`exists` の既定値は `{ folderExists($0) }`
+  - `swift test --filter FavoriteProbeTests` が通ることを確認する
+- [ ] T152 [US1] `Sources/MediaViewerCore/Settings/SettingsStore.swift` に `favorites` を追加する（T148・T149 に依存）:
+  - `Keys.favoritePaths = "favorites.paths"`
+  - `public var favorites: FavoriteFolders { get nonmutating set }`。読み込みは `defaults.object(forKey:) as? [Any]` で、
+    配列でなければ `FavoriteFolders()`。要素は `String` かつ空でなく `hasPrefix("/")` のものだけを
+    `URL(fileURLWithPath: path, isDirectory: true)` にし、`FavoriteFolders(urls:)` に渡す（重複はそこで除く）。
+    書き込みは `newValue.urls.map(\.path)` を `defaults.set(_:forKey:)` する
+  - 既存のキーの読み書きは変えない。`swift test --filter SettingsStoreTests` が通ることを確認する
+- [ ] T153 [P] [US1] `Sources/MediaViewerApp/Operations/ConfirmationPresenter.swift` に、お気に入りの削除の確認を追加する（App のみ）:
+  - `func confirmRemovingFavorite(named name: String) async -> Bool`。`settings.confirmation.confirmBeforeFileOperations` が
+    `false` なら確認せず `true`（FR-024・064）
+  - 既存の `confirm(_:)` のシート表示（`NSAlert`、`beginSheetModal`、「今後この確認を表示しない」の `suppressionButton` と、
+    オンのとき `ConfirmationOptions(confirmBeforeFileOperations: false)` を保存する処理）を
+    `private func present(messageText:informativeText:confirmTitle:) async -> Bool` に切り出し、両方から使う。
+    `confirm(_:)` のボタン名「実行」と文言は変えない
+  - お気に入りの文言: `messageText` は「お気に入りから削除しますか？」、`informativeText` は「対象: <name>」と
+    「実際のフォルダは変更されません」の2行、ボタンは「削除」と「キャンセル」（Esc でキャンセル、既存と同じ `keyEquivalent = "\u{1b}"`）
+- [ ] T154 [P] [US1] `Sources/MediaViewerApp/Shared/IconCatalog.swift` に `static func favoritesIcon() -> NSImage?` を追加する
+  （`symbol(named: "star.fill", pointSize: 13)`。template 画像、a11y 要素にはしない）。既存のアイコンは変えない
+- [ ] T155 [P] [US1] `Sources/MediaViewerApp/Settings/SettingsWindowController.swift` の確認のチェックボックスの文言を
+  「コピー・移動・名前の変更・ゴミ箱に入れる・お気に入りから削除する前に確認する」に変える（contracts/settings.md）。
+  保存先のキーと動作は変えない
+- [ ] T156 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` に「お気に入り」の見出しと項目を表示する
+  （T149・T150・T152・T153・T154 に依存）:
+  - コンストラクタに `settings: SettingsStore` と `confirmation: ConfirmationPresenter` を追加する。
+    `Sources/MediaViewerApp/App/MainSplitViewController.swift` の `init()` で、既存の `settings` から
+    `ConfirmationPresenter(settings: settings)` を作って両方を渡す（ビルドを通すため同じタスクで直す）
+  - 行の型を追加する: `final class FavoritesHeader`（インスタンスは `private let favoritesHeader` の1つだけ）と、
+    `final class FavoriteEntry`（`let url: URL`、`var name: String`、`var kind: FolderNode.Kind`、
+    `var availability: FavoriteAvailability = .unknown`）
+  - `private var favorites = FavoriteFolders()` と `private var favoriteEntries: [FavoriteEntry] = []`。`viewDidLoad` の
+    `roots` 作成後に `favorites = settings.favorites` を読み、`rebuildFavoriteEntries()` を呼ぶ。`rebuildFavoriteEntries()` は
+    `favorites.urls` の順に項目を作り直し、同じ URL の既存の項目の `availability` を引き継ぐ。表示名と `kind` は、
+    `roots` に `standardizedFileURL.path` が同じルートがあればそのルートの `name`・`kind`、なければ `lastPathComponent` と `.folder`
+  - `private func role(for item: Any?) -> TreeItemRole?`: `FavoritesHeader` → `.favoritesHeader`、`FavoriteEntry` →
+    `.favorite(url)`、`Node` → `.folder(url)`、それ以外 → `nil`
+  - データソース: トップレベルは `[favoritesHeader] + roots`（`numberOfChildrenOfItem(nil)` は `roots.count + 1`、
+    `child(0, nil)` は見出し、`child(i, nil)` は `roots[i - 1]`）。見出しの子は `favoriteEntries`。
+    `isItemExpandable` は見出しで常に `true`（登録が0件でも開閉できる）、項目で `false`、`Node` は従来どおり
+  - 見出しは `isGroupItem` にしない（`outlineView(_:isGroupItem:)` を実装しない）。起動時は展開しない（折りたたみで始める）
+  - セル（`viewFor`）: 見出しは `IconCatalog.favoritesIcon()` と「お気に入り」、文字色 `.labelColor`、ツールチップなし。
+    項目は `IconCatalog.treeIcon(for: entry.kind)` と `entry.name`。`.missing` のときは `disabledControlTextColor` と
+    ツールチップ「見つかりません」、それ以外（`.unknown` を含む）は `.labelColor` とツールチップなし。既存の `Node` のセルは変えない
+  - `outlineViewSelectionDidChange`: `updateWatchSet()` の後、選択行の `role(for:)` を `FavoriteCommands.folderToShow(for:)` に渡し、
+    `nil`（見出し）なら何もしない（`selectFolder` を呼ばないため、ファイルリスト・プレビュー・`lastFolder` は変わらない。FR-065）。
+    URL があれば従来どおり `model.selectFolder(url)` を呼ぶ。項目のときも実際の階層は展開・選択しない（FR-063）
+  - `toggleClickedFolder(_:)`（ダブルクリック）: 見出しは `FolderDisclosure.doubleClickToggle(isExpandable: true, isExpanded:)` で開閉する。
+    項目は開閉しない（選択だけ）。`Node` は従来どおり
+  - `reveal(_:)`・`rowForURL(_:)`・`reloadChildren(of:)`・`displayedNodes()`・`flattenedNodes(from:)` は `roots` だけを見るまま変えない
+    （お気に入りの項目を選択中でも、実際の階層の選択へ戻さない）
+  - `swift build` が通ることを確認する
+- [ ] T157 [US1] 同じ `DirectoryTreeViewController.swift` に、登録・削除・右クリックメニュー・⌘⌫ を実装する（T156 に依存）:
+  - `outlineView.menu` に `NSMenuDelegate` として `self` を設定し、`menuNeedsUpdate(_:)` でメニューを作り直す。対象の行は
+    `outlineView.clickedRow >= 0` ならその行、なければ選択中の行。`FavoriteCommands.contextMenu(for:)` の各要素を
+    「ここにペースト」「ここに移動ペースト」「お気に入りに追加」（⌃⌘T を表示: `keyEquivalent = "t"`、`[.command, .control]`）・
+    「Finder に表示」「お気に入りから削除」（⌘Delete を表示: `keyEquivalent` は `NSBackspaceCharacter`、`[.command]`）・区切り線へ変換する。
+    空なら項目なし（メニューを出さない）。各項目の `representedObject` に対象の行の item を入れる
+  - 既存の `paste(_:)`・`movePaste(_:)`・`revealInFinder(_:)` は、`sender` が `representedObject` を持つ右クリックメニューの項目なら
+    その行を、そうでなければ（⌘V などのキー操作）従来どおり選択中の行を対象にする。`FavoriteCommands.acceptsFiles` が `false` の行
+    （見出し・項目）では何もせず、`validateMenuItem` でも無効にする
+  - `validateDrop`・`acceptDrop`: `role(for: item)` が `acceptsFiles == false` のときは `[]` / `false` を返す（見出し・項目は
+    ドロップ先にならない）。`Node` の判定は従来どおり
+  - 登録: `@objc private func addToFavorites(_:)`（右クリックメニュー）と、`MainSplitViewController` から呼ぶ
+    `func addSelectedFolderToFavorites()`・`var canAddSelectedFolderToFavorites: Bool`。可否は
+    `FavoriteCommands.canAdd(role, favorites:)`。登録したら `settings.favorites = favorites`、`rebuildFavoriteEntries()`、
+    下記の `reloadFavorites()`、存在の確認（T158）を行う。見出しの開閉状態は変えない
+  - 削除: `private func removeFavorite(_ entry: FavoriteEntry) async`。`await confirmation.confirmRemovingFavorite(named: entry.name)` が
+    `false` なら何もしない。`true` なら、選択中の行がその項目のときは先に見出しの行を選択してから（`selectFolder` は呼ばれない）、
+    `favorites.remove(entry.url)`・`settings.favorites = favorites`・`rebuildFavoriteEntries()`・`reloadFavorites()` を行う
+    （消えた行の位置で別の項目が自動で選ばれ、ファイルリストが切り替わるのを防ぐ）。実際のフォルダには触れない（FR-064）
+  - `reloadFavorites()`: 選択中の item を記録し、`isRestoringSelection = true` の間に `outlineView.reloadItem(favoritesHeader, reloadChildren: true)` と
+    同じ item の行の選択し直しを行う。`outlineViewSelectionDidChange` は `isRestoringSelection` の間は何もしない
+  - 右クリックメニューの「お気に入りから削除」（`@objc private func removeFavoriteFromMenu(_:)`）は `representedObject` の項目を、
+    ⌘⌫ の `@objc func moveToTrash(_:)` は選択中の項目を `removeFavorite(_:)` に渡す。どちらも対象は
+    `FavoriteCommands.removalTarget(role)` が URL を返す行だけ
+  - `validateMenuItem`: `moveToTrash(_:)` は選択中の行が項目のときだけ `true` にして `menuItem.title = "お気に入りから削除"`、
+    それ以外は `false` にして `menuItem.title = "ゴミ箱に入れる"`（FR-064 の「何もしない」）。`addToFavorites(_:)` は
+    `canAdd(右クリックした行の role)`
+  - `func focusFavoritesHeader()`（⇧⌘F 用）: 見出しの行を選択し、`scrollRowToVisible`、折りたたまれていれば `expandItem`、
+    `view.window?.makeFirstResponder(outlineView)` の順に行う（FR-065）
+  - `swift build` が通ることを確認する
+- [ ] T158 [US1] 同じ `DirectoryTreeViewController.swift` に、見つからない項目の確認（FR-067）を実装する（T151・T157 に依存）:
+  - `private var favoriteProbeTask: Task<Void, Never>?` と `private func refreshFavoriteAvailability()`。進行中の確認を取り消してから、
+    全項目の URL で `FavoriteProbe.results(for:)` を始める。結果は同じ URL の項目の `availability` に `exists ? .available : .missing` で
+    反映し、値が変わった行だけ `outlineView.reloadItem(entry)` する（行がなければ値だけ更新する）
+  - 確認の契機: `viewDidLoad`（項目を作った後）、`volumeTask` のループ（`applyRoots` の後）、`NSApplication.didBecomeActiveNotification`
+    （`MainSplitViewController.makeVolumeChanges()` と同じく `addObserver(forName:object:queue: .main)` で `viewDidLoad` で登録し、
+    返るトークンを `private var activationObserver: NSObjectProtocol?` に保持する。ツリーはアプリの終了まで生きるため、
+    `volumeTask`・`eventTask` と同じく解除はしない）、`eventTask` のループで変更された URL に
+    登録したフォルダの親フォルダが含まれるとき、登録の直後、項目を選択したとき（`outlineViewSelectionDidChange`）
+  - `updateWatchSet()`: 登録した各フォルダの親フォルダ（`deletingLastPathComponent().standardizedFileURL`。パスが `/` の登録は除く）を
+    監視対象に加える
+  - `applyRoots(_:)`: `reloadData()` の前に見出しが展開中かを記録し、後で展開し直す。`rebuildFavoriteEntries()` で
+    表示名と `kind` を更新し、`refreshFavoriteAvailability()` を呼ぶ
+  - 確認は UI スレッドで `stat` しない（`FavoriteProbe` のタスク内で行う）。`swift build` が通ることを確認する
+- [ ] T159 [US1] メニューとショートカットを結線する（T157 に依存）:
+  - `Sources/MediaViewerApp/App/MainMenu.swift`: 「ファイル」メニューの「Finder に表示」の後ろに
+    `NSMenuItem(title: "お気に入りに追加", action: #selector(MainSplitViewController.addSelectedFolderToFavorites(_:)), keyEquivalent: "t")`
+    （`keyEquivalentModifierMask = [.command, .control]`、`target = nil`）を追加する。「ファイル」「編集」メニューの `delegate` に、
+    `MainMenu` が static で保持する `NSObject` + `NSMenuDelegate` の小さなオブジェクトを設定し、`menuNeedsUpdate(_:)` で
+    `action == #selector(FileListViewController.moveToTrash(_:))` の項目の `title` を「ゴミ箱に入れる」に戻す
+    （プレビューにフォーカスがあるときに「お気に入りから削除」の項目名が残らないようにする）
+  - `Sources/MediaViewerApp/App/MainSplitViewController.swift`:
+    - `@objc func addSelectedFolderToFavorites(_:)` を追加し、`treeViewController.addSelectedFolderToFavorites()` を呼ぶ
+    - `installFocusMenuItems()` で「プレビューへフォーカス」の後ろに
+      `NSMenuItem(title: "お気に入りへ移動", action: #selector(focusFavorites(_:)), keyEquivalent: "F")`
+      （`keyEquivalentModifierMask = [.command]`。大文字で ⇧⌘ になる、`target = self`）を追加する。`focusFavorites(_:)` は
+      `treeViewController.focusFavoritesHeader()` を呼ぶ
+    - `NSMenuItemValidation` を実装する: `focusFavorites(_:)` は `!panesCollapsedForFullScreen && !fileListViewController.isEditingText`。
+      `addSelectedFolderToFavorites(_:)` は `!fileListViewController.isEditingText && treeViewController.canAddSelectedFolderToFavorites`。
+      それ以外のアクションは `true`（既存の項目の有効・無効を変えない）
+  - `Sources/MediaViewerApp/FileList/FileListViewController.swift`: `isEditingText` の `private` を外して内部公開にする。ほかは変えない
+  - `swift build` と `swift test` が通ることを確認する
+- [ ] T160 [P] [US1] `README.md` の「主な機能」と「使い方（主なショートカット）」の表に、お気に入り（ツリー最上部の「お気に入り」、
+  右クリックの「お気に入りに追加」と ⌃⌘T、お気に入りの項目の右クリックの「お気に入りから削除」と ⌘Delete（確認あり、実際のフォルダは
+  変えない）、⇧⌘F で見出しへ移動、登録は保存され、見つからないフォルダは淡色で残る）を追記する
+
+### Verification for User Story 1
+
+- [ ] T161 [US1] 自動テストと手動確認を行う（T145〜T160 に依存）:
+  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す。`swift test` に含まれる `MediaViewerPerformanceTests` が
+    quickstart.md「性能の検証」の基準内であることを確かめ、主な計測値を記録する（憲章 原則 II）
+  - 存在の確認がツリーの操作を止めないことを確かめる: お気に入りを 20 件以上登録した状態で、アプリを前面に戻した直後
+    （`NSApplication.didBecomeActiveNotification` による確認中）にツリーを ↑↓ で移動し続け、画面収録または Instruments で
+    100ms 以上の停止が 0 回であることを確認する。計測方法と最大停止時間を記録し、基準を超えた場合は作業を止めて状況を報告する
+  - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。依頼時は
+    `scripts/make-fixtures.sh ~/MediaViewerFixtures` の準備コマンドと、quickstart.md「お気に入り（FR-061〜067）」の確認ポイント 1〜19 を
+    具体的に示す。起動しない場合は AGENTS.md の lldb 手順で例外を止める
+  - ⌃⌘T または ⇧⌘F がアプリに届かない（常駐アプリなどに先取りされる）場合は、作業を止めてユーザーにキーの変更を相談する
+  - 回帰確認: ツリーの ↑↓←→・ダブルクリックの開閉・開閉の三角（FR-053〜055）、通常のフォルダの右クリックの「ここにペースト」
+    「ここに移動ペースト」「Finder に表示」が右クリックした行に効くこと、ファイルのツリーへのドロップ（⌥ でコピー）、
+    ファイルリストの ⌘Delete（ゴミ箱）と確認モーダル、⌥⌘1〜3、フルスクリーンの ⌃⌘F / Esc、外付けボリュームの抜き差しが従来どおり動く
+  - 結果（実行日、OS、確認項目、合否、性能テストの主な計測値、存在の確認中の最大停止時間）を
+    `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+
+**Checkpoint**: ツリーの最上部の「お気に入り」から、登録したフォルダをすぐに開ける。右クリックと ⌃⌘T で登録、右クリックと ⌘⌫ で
+確認のうえ削除でき、⇧⌘F で見出しへ移動できる。登録は再起動後も残り、見つからなくなったフォルダは淡色で残る
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -1399,6 +1621,11 @@ quickstart.md の手動シナリオで検証する。
   T133〜T136（テスト）→ T137（`MediaTypeFilter`）・T138（`BrowserState`）→ T139（`BrowserModel`）→ T140（App の `switch`）→
   T141（`FileListViewController`）→ T142（`MainToolbarController`）の順に進め、T144 は最後に行う。T138 で `.noMatches` を
   加えると App がビルドできなくなるため、T138〜T140 は続けて行う。T136（性能テスト）は T133〜T135 と同じく先に書き、T137 の後に通す。T143（README）はいつでも並行できる
+- **お気に入り (Phase 19)**: FR-061〜067 の追加作業。US1 の `DirectoryTreeViewController`（Phase 14 のセル・Phase 17 の開閉と確認）、
+  US4 の `ConfirmationPresenter`、Phase 16 の `SettingsStore` に依存する。Phase 単位でコミットするため、Phase 18 の T144 とコミットを
+  済ませてから着手する。T145〜T148（テスト）→ T149（`FavoriteFolders`）→ T150（`FavoriteCommands`）・T151（`FavoriteProbe`）・
+  T152（`SettingsStore`）→ T156 → T157 → T158（同じ `DirectoryTreeViewController.swift`）→ T159（メニューの結線）の順に進め、
+  T161 は最後に行う。T153〜T155 は T156 の前ならいつでもよい。T160（README）はいつでも並行できる
 
 ### User Story Dependencies
 
@@ -1447,6 +1674,11 @@ quickstart.md の手動シナリオで検証する。
   （`BrowserState.swift`）は並行できるが、T133 は両方が揃うまでビルドできない。T139 は T134〜T138 の後に行う。
   T140 と T141 は同じ `FileListViewController.swift` を編集するため並行せず、この順に進める。T142 は T141 の後に行う。
   T136（`PerformanceBaselineTests.swift`）も T133〜T135 と並行して先に書ける。T143（`README.md`）は他と重ならない
+- お気に入り: T145・T146・T147・T148 はファイルが重ならないため並行できる。T149（`FavoriteFolders.swift`）と T151（`FavoriteProbe.swift`）は
+  並行できる。T150 と T152 は T149 の後に並行できる。T153（`ConfirmationPresenter.swift`）・T154（`IconCatalog.swift`）・
+  T155（`SettingsWindowController.swift`）は互いに、また Core のタスクとも並行できる。T156〜T158 は同じ
+  `DirectoryTreeViewController.swift` を編集するため並行せず、この順に進める。T156 は `MainSplitViewController.swift` の `init()` も、
+  T159 は同じファイルのメニュー検証も編集するため、T156 と T159 は並行しない。T160（`README.md`）は他と重ならない
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -1496,6 +1728,7 @@ Task: "T033 FitCalculatorTests"
 13. ツールバー → ⇧⌘T で表示し、表示形式とサムネイルサイズをツールバーから操作できる（FR-049〜052）
 14. ツリーの開閉 → 行のダブルクリックで開閉でき、三角はサブフォルダがあるフォルダにだけ出る（FR-053〜055）
 15. 種類フィルタ → ツールバー・メニュー・⇧⌘I / ⇧⌘M で画像だけ・動画だけに絞り込める（FR-056〜060）
+16. お気に入り → ツリー最上部の「お気に入り」から登録したフォルダをすぐに開け、⌃⌘T / ⌘⌫ / ⇧⌘F で操作できる（FR-061〜067）
 
 ---
 
@@ -1536,4 +1769,9 @@ Task: "T033 FitCalculatorTests"
   状態は `BrowserModel.mediaTypeFilter` の1か所だけに持ち、保存しない。`listing.files` を絞り込み後の配列にするため、
   一覧・選択・先読み・フルスクリーン移動・ファイル操作は表示中の一覧だけを対象にする。対象はあるが0件のときは `.noMatches` とし、
   `.empty` と文言を分ける。隠れた選択は外し、戻しても復元しない（research.md R20）
+- FR-061〜067（2026-10-20）により、ツリーの最上部に仮想的な「お気に入り」の見出しを置く。登録はパスの配列 `favorites.paths` だけに保存し、
+  ブックマークによる追従・見つかるかどうか・見出しの開閉状態は保存しない。操作の可否は `FavoriteCommands` に集め、メニュー・
+  ショートカット・右クリックで同じ判断を使う。⌘⌫ は新しいメニュー項目を作らず、既存の「ゴミ箱に入れる」をレスポンダーチェーンで
+  ツリーに振り分け、項目名を「お気に入りから削除」に変える。削除は確認モーダル（ファイル操作と同じ省略設定）を通し、実際のフォルダは
+  変えない（research.md R21）
 - Commit after each task or logical group

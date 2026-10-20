@@ -76,6 +76,65 @@ public protocol FileSystemWatching: Sendable {
 }
 ```
 
+## お気に入り
+
+```swift
+public struct FavoriteFolders: Sendable, Equatable {
+    public private(set) var urls: [URL]                 // 登録順。standardizedFileURL.path で一意
+    public init(urls: [URL] = [])                       // 重複は先勝ちで除く
+    public func contains(_ url: URL) -> Bool
+    @discardableResult public mutating func add(_ url: URL) -> Bool     // 末尾に追加。登録済みなら false（FR-062）
+    @discardableResult public mutating func remove(_ url: URL) -> Bool  // 登録だけを取り除く（FR-064）
+}
+
+public enum FavoriteAvailability: Sendable, Equatable { case unknown, available, missing }  // FR-067
+
+public enum TreeItemRole: Sendable, Equatable {
+    case favoritesHeader
+    case favorite(URL)
+    case folder(URL)                                    // ホーム・ボリュームのルートを含む
+}
+
+public enum TreeContextMenuItem: Sendable, Equatable {
+    case pasteHere, movePasteHere, addToFavorites, revealInFinder, removeFromFavorites
+    case separator
+}
+
+public enum FavoriteCommands {
+    /// ⌃⌘T と「お気に入りに追加」。.folder かつ未登録のときだけ true
+    public static func canAdd(_ role: TreeItemRole?, favorites: FavoriteFolders) -> Bool
+    /// ⌘⌫ と「お気に入りから削除」の対象。.favorite のときだけ URL を返す
+    public static func removalTarget(_ role: TreeItemRole?) -> URL?
+    /// 右クリックメニューの項目と並び。.favoritesHeader は空
+    public static func contextMenu(for role: TreeItemRole) -> [TreeContextMenuItem]
+    /// 選択したときに一覧を切り替えるフォルダ。.favoritesHeader は nil（FR-065）
+    public static func folderToShow(for role: TreeItemRole) -> URL?
+    /// ドロップ・ペーストを受け付けるか。.folder だけ true（アクセス可否は従来どおり UI 側で見る）
+    public static func acceptsFiles(_ role: TreeItemRole) -> Bool
+}
+
+public struct FavoriteProbeResult: Sendable, Equatable {
+    public let url: URL
+    public let exists: Bool                             // ディレクトリとして存在するか
+}
+
+public enum FavoriteProbe {
+    /// 既定の判定: fileExists(atPath:isDirectory:) がディレクトリを返すか。UI スレッドから呼ばない
+    public static func folderExists(_ url: URL) -> Bool
+    /// urls を順に確認し、URL ごとに1回ずつ結果を流す。同時に実行する確認は maxConcurrent 件まで。
+    /// ストリームの終了（取り消し）で未実行の確認は行わない
+    public static func results(
+        for urls: [URL],
+        maxConcurrent: Int = 4,
+        exists: @escaping @Sendable (URL) async -> Bool = { folderExists($0) }
+    ) -> AsyncStream<FavoriteProbeResult>
+}
+```
+
+- 判断（追加・削除の可否、右クリックメニュー、選択時の一覧の切り替え、ドロップの可否）は `FavoriteCommands` だけで行い、
+  UI は行から `TreeItemRole` を作って渡す。表 [data-model.md](../data-model.md) の「TreeItemRole と FavoriteCommands」と一致させる
+- `FavoriteProbe` は `SubfolderProbe` と同じく、取り消しに追従し、URL ごとの失敗をほかに波及させない
+
 ## 並べ替え
 
 ```swift
@@ -251,8 +310,10 @@ public struct SettingsStore {
     public var viewSettings: ViewSettings { get nonmutating set }
     public var playback: PlaybackOptions { get nonmutating set }
     public var confirmation: ConfirmationOptions { get nonmutating set }
+    public var favorites: FavoriteFolders { get nonmutating set }   // キー favorites.paths（FR-066）
 }
 // ViewSettings.showsToolbar: Bool（既定 false）。キーは view.showsToolbar
+// favorites: 値がない・配列でない場合は空。文字列でない要素・空文字・相対パスは捨て、重複は先勝ちで除く
 ```
 
 ## ファイルリストの周辺表示
