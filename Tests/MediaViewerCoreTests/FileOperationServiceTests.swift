@@ -151,8 +151,8 @@ struct FileOperationServiceTests {
         #expect(try Data(contentsOf: destination.appendingPathComponent("c 2.jpg")) == Data("existing-c".utf8))
     }
 
-    @Test("中止すると何も変更しない")
-    func abortsWithoutChanges() async throws {
+    @Test("中止を指定したコピーは操作先に同名があれば失敗として返し既存の項目を変更しない")
+    func abortsCopyOnConflict() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
         let folder = try makeOps(in: root)
@@ -167,8 +167,79 @@ struct FileOperationServiceTests {
         )
 
         #expect(result.succeeded.isEmpty)
-        #expect(result.failed.isEmpty)
+        #expect(result.failed.count == 1)
+        #expect(result.failed.first?.url == source)
+        #expect(result.failed.first?.reason.isEmpty == false)
         #expect(FileManager.default.fileExists(atPath: source.path))
+        #expect(try Data(contentsOf: existing) == Data("existing".utf8))
+    }
+
+    @Test("中止を指定してもゴミ箱へ移動しゴミ箱内の URL を返す")
+    func trashesFileWithAbortResolution() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let source = folder.appendingPathComponent("a.jpg")
+        var trashed: URL?
+        defer {
+            if let trashed {
+                try? FileManager.default.removeItem(at: trashed)
+            }
+        }
+
+        let result = await service.execute(
+            FileOperation(kind: .trash, sources: [source]),
+            resolution: .abort
+        )
+
+        #expect(result.failed.isEmpty)
+        let trashedURL = try #require(result.succeeded.first)
+        trashed = trashedURL
+        #expect(trashedURL != source)
+        #expect(FileManager.default.fileExists(atPath: trashedURL.path))
+        #expect(!FileManager.default.fileExists(atPath: source.path))
+    }
+
+    @Test("中止を指定した名前の変更は同名がなければ名前を変える")
+    func renamesFileWithAbortResolution() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let source = folder.appendingPathComponent("b.png")
+        let renamed = folder.appendingPathComponent("renamed.png")
+
+        let result = await service.execute(
+            FileOperation(kind: .rename(newName: "renamed.png"), sources: [source]),
+            resolution: .abort
+        )
+
+        #expect(result.failed.isEmpty)
+        #expect(result.succeeded == [renamed])
+        #expect(!FileManager.default.fileExists(atPath: source.path))
+        #expect(FileManager.default.fileExists(atPath: renamed.path))
+    }
+
+    @Test("中止を指定した名前の変更は同名があれば失敗として返し両方のファイルを変更しない")
+    func abortsRenameOnConflict() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let source = folder.appendingPathComponent("a.jpg")
+        let existing = folder.appendingPathComponent("taken.jpg")
+        let originalContents = try Data(contentsOf: source)
+        try Data("existing".utf8).write(to: existing)
+
+        let result = await service.execute(
+            FileOperation(kind: .rename(newName: "taken.jpg"), sources: [source]),
+            resolution: .abort
+        )
+
+        #expect(result.succeeded.isEmpty)
+        #expect(result.failed.count == 1)
+        #expect(result.failed.first?.url == source)
+        #expect(result.failed.first?.reason.isEmpty == false)
+        #expect(FileManager.default.fileExists(atPath: source.path))
+        #expect(try Data(contentsOf: source) == originalContents)
         #expect(try Data(contentsOf: existing) == Data("existing".utf8))
     }
 
