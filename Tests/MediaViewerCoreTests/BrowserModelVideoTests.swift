@@ -69,6 +69,40 @@ struct BrowserModelVideoTests {
         #expect(isImage)
     }
 
+    @Test("再生中の動画が種類フィルタで隠れると停止の合図が増えプレビューが空になる")
+    @MainActor
+    func filterHidingPlayingVideoStopsPlayback() async {
+        let folder = URL(fileURLWithPath: "/tmp/video-\(UUID().uuidString)", isDirectory: true)
+        let video = file("clip.mov", in: folder)
+        let image = file("photo.jpg", in: folder)
+        let lister = VideoFakeLister(responses: [folder: [video, image]])
+
+        let suite = "BrowserModelVideoTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let model = BrowserModel(
+            lister: lister,
+            decoder: VideoFakeDecoder(),
+            cache: DecodedImageCache(costLimitBytes: 1_000_000),
+            settings: SettingsStore(defaults: defaults)
+        )
+
+        await model.selectFolder(folder)
+        model.select([video.url], focused: video.url)
+        let baseline = model.stopPlaybackSignal
+        model.setMediaTypeFilter(MediaTypeFilter(imagesOnly: true))
+
+        #expect(model.stopPlaybackSignal == baseline + 1)
+        if case .empty = model.preview {
+        } else {
+            Issue.record("preview is not empty")
+        }
+        #expect(model.selection.focused == nil)
+        #expect(model.listing.files.map(\.name) == ["photo.jpg"])
+        #expect(model.selection.selected.isEmpty)
+    }
+
     @MainActor
     private func file(_ name: String, in folder: URL) -> MediaFile {
         MediaFile(
