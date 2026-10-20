@@ -481,7 +481,7 @@ extension ListModeView: NSTableViewDelegate {
         if cell.representedURL != file.url {
             cell.cancelIconRequest(using: provider)
             cell.representedURL = file.url
-            cell.iconView.image = IconCatalog.fallbackIcon(for: file.kind)
+            cell.iconView.image = file.kind.mediaKind.flatMap { IconCatalog.fallbackIcon(for: $0) }
 
             let scale = Double(
                 window?.backingScaleFactor

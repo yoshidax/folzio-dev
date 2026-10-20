@@ -21,7 +21,7 @@ public struct MediaTypeFilter: Sendable, Equatable {
 
     public func apply(to files: [MediaFile]) -> [MediaFile] {
         guard isFiltering else { return files }
-        return files.filter { includes($0.kind) }
+        return files.filter { file in file.kind.mediaKind.map(includes) ?? false }
     }
 
     public var noMatchesMessage: String? {

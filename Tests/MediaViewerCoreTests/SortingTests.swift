@@ -54,7 +54,7 @@ struct SortingTests {
         MediaFile(
             url: URL(fileURLWithPath: "/tmp/\(name)"),
             name: name,
-            kind: MediaKind(fileExtension: (name as NSString).pathExtension) ?? .jpeg,
+            kind: .media(MediaKind(fileExtension: (name as NSString).pathExtension) ?? .jpeg),
             typeDescription: typeDescription,
             creationDate: created,
             fileSize: 0

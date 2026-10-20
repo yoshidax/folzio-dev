@@ -3,7 +3,7 @@ import Foundation
 public struct MediaFile: Identifiable, Hashable, Sendable {
     public var url: URL
     public var name: String
-    public var kind: MediaKind
+    public var kind: ListItemKind
     public var typeDescription: String
     public var creationDate: Date?
     public var fileSize: Int64
@@ -11,7 +11,7 @@ public struct MediaFile: Identifiable, Hashable, Sendable {
     public init(
         url: URL,
         name: String,
-        kind: MediaKind,
+        kind: ListItemKind,
         typeDescription: String,
         creationDate: Date?,
         fileSize: Int64

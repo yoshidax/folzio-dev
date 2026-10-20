@@ -65,7 +65,7 @@ public struct DirectoryLister: DirectoryListing {
                 return MediaFile(
                     url: url,
                     name: url.lastPathComponent,
-                    kind: kind,
+                    kind: .media(kind),
                     typeDescription: values?.localizedTypeDescription ?? kind.rawValue.uppercased(),
                     creationDate: values?.creationDate,
                     fileSize: Int64(values?.fileSize ?? 0)
