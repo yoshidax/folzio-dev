@@ -272,6 +272,36 @@ struct PerformanceBaselineTests {
             "最後のファイルにフォーカスがあること"
         )
     }
+
+    @Test("10,000 項目の zip の open と items(in:) の合計が 0.5 秒以内")
+    func opensLargeArchiveWithinBudget() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        // 小さな JPEG（各 1KB 前後、無圧縮）。zip の生成時間は計測に含めない
+        let zip = directory.appendingPathComponent("large.zip")
+        let body = Data(repeating: 0xAB, count: 1024)
+        let entries = (0..<10_000).map { index in
+            ZipFixtureEntry(
+                name: String(format: "img_%05d.jpg", index),
+                content: .bytes(body),
+                method: .stored
+            )
+        }
+        try ZipFixtureWriter.write(entries, to: zip)
+
+        let reader = ZipArchiveReader()
+        let start = ContinuousClock.now
+        let index = try await reader.open(zip)
+        let items = index.items(in: "")
+        let elapsed = ContinuousClock.now - start
+
+        #expect(items.count == 10_000, "10,000 件が列挙されること (実際: \(items.count))")
+        #expect(
+            elapsed < .milliseconds(500),
+            "10,000 項目の zip の open + items は 0.5 秒以内 (実測: \(elapsed))"
+        )
+    }
 }
 
 private func makeTemporaryDirectory() throws -> URL {
