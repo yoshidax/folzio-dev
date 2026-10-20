@@ -26,9 +26,8 @@ struct FavoriteFoldersTests {
     @Test("add は登録順に末尾へ追加する")
     func addAppendsInOrder() {
         var favorites = FavoriteFolders()
-        #expect(favorites.add(a))
-        #expect(favorites.add(b))
-        #expect(favorites.add(c))
+        let added = [a, b, c].map { favorites.add($0) }
+        #expect(added == [true, true, true])
         #expect(favorites.urls == [a, b, c])
     }
 
@@ -36,7 +35,8 @@ struct FavoriteFoldersTests {
     func addRejectsDuplicates() {
         var favorites = FavoriteFolders(urls: [a])
         for alias in aliasesOfA {
-            #expect(!favorites.add(alias), "\(alias.path)")
+            let added = favorites.add(alias)
+            #expect(!added, "\(alias.path)")
             #expect(favorites.urls == [a])
         }
     }
@@ -53,17 +53,20 @@ struct FavoriteFoldersTests {
     @Test("remove は登録済みだけを取り除き、順序を保つ")
     func removeKeepsOrder() {
         var favorites = FavoriteFolders(urls: [a, b, c])
-        #expect(favorites.remove(b))
+        let removedB = favorites.remove(b)
+        #expect(removedB)
         #expect(favorites.urls == [a, c])
 
-        #expect(!favorites.remove(d))
+        let removedD = favorites.remove(d)
+        #expect(!removedD)
         #expect(favorites.urls == [a, c])
     }
 
     @Test("remove は .. を含む表記でも取り除ける")
     func removeMatchesAliases() {
         var favorites = FavoriteFolders(urls: [a, b, c])
-        #expect(favorites.remove(URL(fileURLWithPath: "/tmp/fav/x/../b")))
+        let removed = favorites.remove(URL(fileURLWithPath: "/tmp/fav/x/../b"))
+        #expect(removed)
         #expect(favorites.urls == [a, c])
     }
 
