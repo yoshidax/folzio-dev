@@ -311,12 +311,72 @@ final class ThumbnailModeView: NSView {
               let index = model.listing.files.firstIndex(where: { $0.url == focused }) else {
             return
         }
+        scrollItemIntoView(at: index)
+    }
+
+    private func scrollItemIntoView(at index: Int) {
+        let files = model.listing.files
+        guard files.indices.contains(index) else { return }
+
         layoutSubtreeIfNeeded()
         collectionView.layoutSubtreeIfNeeded()
-        collectionView.scrollToItems(
-            at: [IndexPath(item: index, section: 0)],
-            scrollPosition: .nearestVerticalEdge
+
+        let indexPath = IndexPath(item: index, section: 0)
+        let estimatedFrame = estimatedItemFrame(at: index)
+        let itemFrame = collectionView.layoutAttributesForItem(at: indexPath)?.frame
+            ?? estimatedFrame
+        guard let itemFrame else {
+            collectionView.scrollToItems(
+                at: [indexPath],
+                scrollPosition: .nearestVerticalEdge
+            )
+            return
+        }
+
+        let visibleRect = scrollView.contentView.bounds
+        let contentHeight = max(
+            max(flowLayout.collectionViewContentSize.height, collectionView.bounds.height),
+            itemFrame.maxY
         )
+        let target = ThumbnailScroll.offsetY(
+            itemMinY: Double(itemFrame.minY),
+            itemMaxY: Double(itemFrame.maxY),
+            visibleMinY: Double(visibleRect.minY),
+            visibleHeight: Double(visibleRect.height),
+            contentHeight: Double(contentHeight)
+        )
+        guard target.isFinite else { return }
+
+        let maximum = max(0, Double(contentHeight - visibleRect.height))
+        let clampedTarget = min(max(0, target), maximum)
+        guard abs(clampedTarget - Double(visibleRect.minY)) > 0.5 else { return }
+
+        scrollView.contentView.scroll(
+            to: NSPoint(x: visibleRect.minX, y: CGFloat(clampedTarget))
+        )
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+    }
+
+    private func estimatedItemFrame(at index: Int) -> NSRect? {
+        let available = Double(max(
+            0,
+            collectionView.bounds.width - Self.sectionInset.left - Self.sectionInset.right
+        ))
+        let layout = ThumbnailGridLayout.columns(
+            availableWidth: available,
+            thumbnailSize: storedThumbnailSize,
+            spacing: Double(Self.spacing)
+        )
+        guard layout.count > 0, layout.cellWidth > 0 else { return nil }
+
+        let cellHeight = storedThumbnailSize + 36
+        let column = index % layout.count
+        let row = index / layout.count
+        let x = Double(Self.sectionInset.left)
+            + Double(column) * (layout.cellWidth + Double(Self.spacing))
+        let y = Double(Self.sectionInset.top)
+            + Double(row) * (cellHeight + Double(Self.spacing))
+        return NSRect(x: x, y: y, width: layout.cellWidth, height: cellHeight)
     }
 
     private func setup() {
@@ -540,10 +600,7 @@ final class ThumbnailModeView: NSView {
         }
 
         let indexPath = IndexPath(item: index, section: 0)
-        collectionView.scrollToItems(
-            at: [indexPath],
-            scrollPosition: .nearestVerticalEdge
-        )
+        scrollItemIntoView(at: index)
         collectionView.layoutSubtreeIfNeeded()
         guard let item = collectionView.item(at: indexPath) as? ThumbnailItemView,
               item.representedURL == url else {
@@ -611,10 +668,7 @@ final class ThumbnailModeView: NSView {
             )
         }
 
-        collectionView.scrollToItems(
-            at: [IndexPath(item: target, section: 0)],
-            scrollPosition: .nearestVerticalEdge
-        )
+        scrollItemIntoView(at: target)
         return true
     }
 

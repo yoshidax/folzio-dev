@@ -595,7 +595,7 @@ quickstart.md の手動シナリオで検証する。
 ↑ では上端でも同様に動くこと。サムネイルサイズ変更だけでは追従せず、リスト形式の挙動が変わらないことを
 確認する（[quickstart.md](./quickstart.md)「サムネイル形式のキーボード追従スクロール（FR-017）」）。
 
-- [ ] T090 [P] [US1] `Sources/MediaViewerCore/Layout/ThumbnailScroll.swift` を新規作成し、
+- [X] T090 [P] [US1] `Sources/MediaViewerCore/Layout/ThumbnailScroll.swift` を新規作成し、
   `ThumbnailScroll.offsetY(itemMinY:itemMaxY:visibleMinY:visibleHeight:contentHeight:)` を実装する
   （契約は [contracts/core-api.md](./contracts/core-api.md) の `ThumbnailScroll`）:
   - 項目全体が見えている場合（`itemMinY >= visibleMinY` かつ
@@ -606,7 +606,7 @@ quickstart.md の手動シナリオで検証する。
   - 項目がビューポートより高い場合は項目の上端（`itemMinY`）を可視領域の上端に合わせる
   - 非有限値、負の高さ、`visibleHeight <= 0` など不正な寸法では `visibleMinY` を返す（クラッシュしない）
   - 横方向の値は扱わない。`import AppKit` をしない（Core の制約）
-- [ ] T091 [P] [US1] `Tests/MediaViewerCoreTests/ThumbnailScrollTests.swift` を新規作成し、
+- [X] T091 [P] [US1] `Tests/MediaViewerCoreTests/ThumbnailScrollTests.swift` を新規作成し、
   「画面外の項目へ移動したときの計算」を検証する（T090 に依存。キー入力からスクロール実行までの
   UI 配線は自動テストの対象外とし、T093 の手動再現で担保する）:
   - 不具合の再現: 可視 0〜100、項目 120〜220 のとき 120 を返す（`visibleMinY` のままにしない）
@@ -617,7 +617,7 @@ quickstart.md の手動シナリオで検証する。
   - 末尾クランプ: コンテンツ高 200、可視高 100、項目 190〜220 のとき 100 を返す
   - ビューポートより高い項目: コンテンツ高 400、可視 0〜100、項目 10〜310 のとき 10 を返す
   - 非有限値・ゼロ高・負の高さでは `visibleMinY` を返し、クラッシュしない
-- [ ] T092 [US1] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` に、フォーカス項目を表示する
+- [X] T092 [US1] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` に、フォーカス項目を表示する
   共通処理を実装する（T090 に依存）:
   - `layoutSubtreeIfNeeded()` の後で `collectionView.layoutAttributesForItem(at:)` のフレームを取得し、
     `scrollView.contentView.bounds` と `flowLayout.collectionViewContentSize.height` を
