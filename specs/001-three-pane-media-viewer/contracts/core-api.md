@@ -11,13 +11,25 @@ public enum MediaKind: Sendable {
     public init?(fileExtension: String)   // 大文字小文字を区別しない。非対応形式なら nil
     public var isVideo: Bool { get }
 }
+
+/// ファイルリストの行の種類（FR-068〜070、data-model.md）。MediaFile.kind の型
+public enum ListItemKind: Sendable, Hashable {
+    case media(MediaKind)
+    case archive        // 通常のフォルダの zip ファイル
+    case directory      // zip の中のディレクトリ
+    case parent         // zip の中の先頭行 `...`
+    public var isMedia: Bool { get }
+    public var mediaKind: MediaKind? { get }
+    public var isVideo: Bool { get }          // .media の動画だけ true
+    public var opensAsContainer: Bool { get } // .archive / .directory / .parent
+}
 ```
 
 ## ディレクトリ・ボリューム
 
 ```swift
 public protocol DirectoryListing: Sendable {
-    /// 直下の対応メディアファイルのみを返す（隠しファイル・サブフォルダ・非対応形式は除く）
+    /// 直下の対応メディアファイルと zip ファイル（.zip、kind = .archive）を返す（隠しファイル・サブフォルダ・非対応形式は除く。FR-008・068）
     func mediaFiles(in folder: URL) async throws(ListingError) -> [MediaFile]
     /// 直下のフォルダのみを返す（隠しフォルダ・パッケージは除く）。名前の自然順
     func subfolders(of folder: URL) async throws(ListingError) -> [URL]
@@ -156,8 +168,20 @@ public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile]
     public func select(_ urls: Set<URL>, focused: URL?)
     public func moveFocus(_ direction: FocusDirection) // 前後の項目。プレビューと先読みを更新する
     public func handleFileSystemEvent(_ folders: Set<URL>) async
+
+    // zip（FR-069・070、research.md R23・R26）
+    public func openItem(_ url: URL) async              // zip の行・ディレクトリなら中へ、`...` なら上へ。メディアの行では何もしない
+    public func goToEnclosingLevel() async              // zip の中なら1つ上へ（最上位ならフォルダの一覧へ）。zip の外では何もしない
+    public var isBrowsingArchive: Bool { get }          // listing.archive != nil
 }
 ```
+
+- `selectFolder(_:)` は zip の状態（`listing.archive` と索引）を捨ててから、そのフォルダを読み込む（FR-069）
+- `openItem` で中へ入ったときは選択とプレビューを空にする。戻ったときは、出てきた zip ファイルまたはディレクトリの行だけを
+  `select([url], focused: url)` と同じ経路で選択する（FR-070）。プレビューは FR-075 により空になる
+- `select(_:focused:)` は、フォーカス行がメディアでなければプレビューを `.empty` にする（FR-075）。動画の停止通知は既存どおり
+- `handleFileSystemEvent` は、zip の中を表示中なら `ArchiveIdentity` を比べ、zip が変わった・消えたときだけ zip を閉じてフォルダを読み直す
+- `lastFolder`（FR-003）は zip の中へ入っても変えない
 
 - UI は `BrowserModel` の変化を監視して描画するだけにし、選択・プレビュー・先読みの判断を UI に持たせない
 - `listing.files` は種類フィルタ適用後の配列。絞り込みで0件のときは `listing.state == .noMatches` になる（FR-060）
@@ -173,7 +197,7 @@ public struct MediaTypeFilter: Sendable, Equatable {
     public init(imagesOnly: Bool = false, videosOnly: Bool = false)
     public var isFiltering: Bool                    // 片方だけがオン
     public func includes(_ kind: MediaKind) -> Bool
-    public func apply(to files: [MediaFile]) -> [MediaFile]   // 並び順を保つ
+    public func apply(to files: [MediaFile]) -> [MediaFile]   // 並び順を保つ。kind が .media 以外の行は常に残す（FR-056）
     public var noMatchesMessage: String?            // isFiltering のときだけ文言を返す（FR-060）
 }
 
@@ -189,7 +213,10 @@ extension SelectionState {
 public protocol ImageDecoding: Sendable {
     /// 長辺 maxPixelSize 以下にダウンサンプリングしてデコードする。アニメーションなら先頭フレーム
     func decode(_ url: URL, maxPixelSize: Int) async throws(DecodeError) -> DecodedImage
-    func isAnimated(_ url: URL) -> Bool
+    func isAnimated(_ url: URL) -> Bool             // ファイル URL 専用（同期）。mvzip の URL では呼ばない
+    /// zip の中の画像用。ArchiveReading.data(for:) で読んだ内容を渡す（research.md R24）
+    func decode(data: Data, maxPixelSize: Int) async throws(DecodeError) -> DecodedImage
+    func isAnimated(data: Data) -> Bool
 }
 
 public enum DecodeError: Error { case unreadable, unsupported, corrupted }
@@ -246,6 +273,9 @@ public struct ThumbnailScroll {
   `scrollView.contentView.bounds` をこの関数へ渡し、結果をクリップビューの原点に適用する。
   UI は選択や移動量を自前で判断しない
 - 不正な寸法（非有限値、負の高さ、可視高 0 など）では現在の原点を返し、クラッシュしない
+- `mvzip` の URL では QuickLook を使わず、画像は `ArchiveReading.data(for:)` の内容から、動画は `ArchiveAssetFactory` の asset から
+  `AVAssetImageGenerator` で作る。zip の中の取得は同時 4 件（動画 2 件）まで。暗号化・非対応方式・上限超えでは nil（research.md R24）
+- `.archive` / `.directory` / `.parent` の行では縮小画像を要求しない。UI は SF Symbol を出す（data-model.md の IconPresentation）
 - リスト形式の行頭アイコン（FR-048）は `pointSize: 16` とバッキング倍率で要求し、32px は
   64px 段階に丸められる。UI は取得中・失敗時に形式別の SF Symbol を表示し、取得後に同じ URL の
   セルへだけ差し替える（`IconPresentation`、[data-model.md](../data-model.md)）。
@@ -276,6 +306,16 @@ public struct FocusNavigator {
         move: FocusMove,
         layout: FocusLayout
     ) -> Int?
+
+    /// フルスクリーン用（FR-046）。移動先が isNavigable(index) == false なら、同じ方向に同じ規則で移動を繰り返す。
+    /// 移動できる行に当たらないまま端に達したら nil。currentIndex が nil のときは、先頭から順に最初の移動できる行
+    public static func targetIndex(
+        currentIndex: Int?,
+        fileCount: Int,
+        move: FocusMove,
+        layout: FocusLayout,
+        isNavigable: (Int) -> Bool
+    ) -> Int?
 }
 ```
 
@@ -284,6 +324,90 @@ public struct FocusNavigator {
 - 呼び出し側は返されたインデックスを `BrowserModel.select([url], focused: url)` に渡すだけで、
   インデックス計算を UI に持たない
 - `columns` が 0 以下の場合は 1 として扱う
+
+- フルスクリーン（`FileListViewController.moveFocusInFullScreen`）は `isNavigable` に `files[i].kind.isMedia` を渡す。
+  通常表示は `isNavigable` なしの関数を使い、メディア以外の行にも止まる
+
+## zip（FR-068〜075、research.md R22〜R27）
+
+```swift
+/// zip の中の項目の URL（data-model.md の ArchiveURL）。生成と解析はここだけで行う
+public enum ArchiveURL {
+    public static let scheme: String                                   // "mvzip"
+    public static func entry(archive: URL, path: String) -> URL       // ディレクトリはパスの末尾が "/"
+    public static func parentLink(of location: ArchiveLocation) -> URL // 表示中の階層の URL + "#parent"
+    public static func parse(_ url: URL) -> (archive: URL, path: String, isParentLink: Bool)?
+}
+
+public struct ArchiveLocation: Sendable, Hashable {
+    public var archive: URL
+    public var directory: String        // 最上位は ""、それ以外は "a/b/"
+    public var parent: ArchiveLocation? { get }   // 最上位では nil
+}
+
+public enum ArchiveError: Error, Sendable, Equatable {
+    case notFound
+    case accessDenied
+    case notAZip                // 終端レコードが見つからない・構造が壊れている
+    case multiDisk              // 分割 zip
+    case entryEncrypted
+    case unsupportedMethod(UInt16)
+    case tooLarge               // 画像の 512MB 上限（R24）
+    case corrupted(String)
+    public var message: String { get }   // 「zip を開けません: …」「暗号化されているため表示できません」など、UI にそのまま出す文言
+}
+
+public protocol ArchiveReading: Sendable {
+    /// 中央ディレクトリを読んで索引を作る。UI スレッドで呼ばない（R22）
+    func open(_ archive: URL) async throws(ArchiveError) -> ArchiveIndex
+    /// 項目全体を読む（画像用）。展開後のサイズが limit を超えるなら .tooLarge
+    func data(for entryURL: URL, limit: Int) async throws(ArchiveError) -> Data
+    /// 項目の範囲読み出し（動画用、R25）。暗号化・非対応方式なら失敗する
+    func stream(for entryURL: URL) async throws(ArchiveError) -> ArchiveEntryStream
+    /// zip ファイルのいまの同一性。消えていれば nil
+    func identity(of archive: URL) -> ArchiveIdentity?
+}
+
+public struct ArchiveIndex: Sendable {
+    public var archive: URL { get }
+    public var identity: ArchiveIdentity { get }
+    /// 階層の直下の行（`...`・ディレクトリ・対応メディア）。並べ替え前。`...` は含めず、BrowserModel が先頭に加える
+    public func items(in directory: String) -> [MediaFile]
+    public func entry(at path: String) -> ArchiveEntry?
+}
+
+/// 名前の文字コードの判定（FR-074、R27）
+public enum ArchiveNameDecoder {
+    public static func decode(_ bytes: Data, utf8Flag: Bool) -> String
+}
+
+/// 項目の任意範囲の読み出し（R25）。メモリは格納方式ごとの上限で決まり、項目のサイズに依存しない
+public final class ArchiveEntryStream: Sendable {
+    public var length: UInt64 { get }
+    public func read(offset: UInt64, maxLength: Int) throws(ArchiveError) -> Data
+}
+
+/// mvzip の URL から再生・代表フレーム用の AVURLAsset を作る。asset が生きている間、読み込み器を保持する（R25）
+public enum ArchiveAssetFactory {
+    public static func makeAsset(for entryURL: URL, reader: any ArchiveReading) -> AVURLAsset
+}
+
+/// 行の種類と「zip の中か」から操作の可否を返す（FR-073、data-model.md の ListItemCommands）
+public struct ListItemCommands: Sendable {
+    public init(kind: ListItemKind?, isBrowsingArchive: Bool)
+    public var canOpenContainer: Bool      // ダブルクリック・⌘↓
+    public var canGoUp: Bool               // ⌘↑
+    public var allowsFileOperations: Bool  // 開く・コピー・複製・名前の変更・ゴミ箱・Finder に表示・ドラッグ
+    public var allowsPaste: Bool           // 一覧へのペースト・移動ペースト
+}
+```
+
+- `ArchiveReading` の既定の実装 `ZipArchiveReader` は、開いた zip のファイル記述子を参照カウントで共有し、`pread` だけで読む。
+  一覧・縮小画像・再生のすべてで一時ファイルを作らない（FR-072）
+- 名前の要素が `.` で始まる項目、`__MACOSX/` 以下、`..` を含む名前、対応メディア以外のファイルは `items(in:)` に出さない
+- `ArchiveEntryStream` は無圧縮なら直接読み、deflate なら `InflateCursor`（2 本、LRU）と 32MB のチャンクキャッシュで読む
+- `ArchiveAssetFactory` の asset は `contentType`（拡張子の UTType）・`contentLength`（展開後のサイズ）・範囲読み出しの可否を返し、
+  要求範囲を 512KB ずつ応答する。取り消された要求はそこで止める
 
 ## ファイル操作
 

@@ -1579,6 +1579,431 @@ quickstart.md の手動シナリオで検証する。
 
 ---
 
+## Phase 20: zip ファイルの中の閲覧（FR-068〜071・073〜075 追加、US1）
+
+**Purpose**: ファイルリストに zip ファイルを出し、ダブルクリックか ⌘↓ で zip の中の一覧（先頭行の `...`・ディレクトリ・対応メディア）を
+ファイルリストの中だけで辿れるようにする。⌘↑ か `...` で戻り、戻った先では出てきた行を選択する。zip の中でも表示形式・並べ替え・
+画像のプレビュー（アニメーションを含む）・縮小画像・フルスクリーン・種類フィルタを通常のフォルダと同じに使え、zip の中は読み取り専用にする。
+zip は Core の自前の読み取り器で読み、一時ファイルを作らない。名前の文字コードは UTF-8 → CP932 → CP437 の順に判定する
+（[spec.md](./spec.md) FR-068〜071・073〜075・US1 の受け入れシナリオ 15〜20、[plan.md](./plan.md) の「変更点（2026-10-21: zip ファイル）」、
+[research.md](./research.md) R22〜R24・R26〜R28、[data-model.md](./data-model.md) の `ListItemKind`・`MediaFile`・`FolderListing`・
+`ArchiveLocation`・`ArchiveURL`・`ArchiveIndex と ArchiveEntry`・`ArchiveIdentity`・`ListItemCommands`・`PreviewContent`・`FocusNavigator`、
+[contracts/core-api.md](./contracts/core-api.md)「形式判定」「ブラウザ状態」「種類フィルタ」「プレビュー用デコード」「サムネイル」
+「矢印キーによる選択移動」「zip」、[contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md)「ファイルリスト」「プレビュー」
+「右クリックメニュー（ファイルリスト）」「メニューバー」、[contracts/settings.md](./contracts/settings.md)）。
+zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 20 の時点では、zip の中の動画は一覧に出て選択できるが再生されず、
+行頭アイコンは汎用アイコンのままでよい。
+
+**Independent Test**: `swift test` で `ArchiveURL`・`ArchiveNameDecoder`・`ZipStructure`・`ArchiveIndex`・`ZipArchiveReader`・`ListItemCommands`・
+`BrowserModel` の zip の操作・`FocusNavigator` の読み飛ばしのテストが通ること。`.app` で quickstart.md「zip ファイル（FR-068〜075）」の
+1〜7・10〜16 を確認し、zip の行・中の表示・戻る操作と選択・読み取り専用・文字コード・異常系・外部変更が期待どおりであること。
+
+### Preparation for User Story 1
+
+- [ ] T162 [US1] テスト用の zip を書き出す `Sources/FixtureKit/CRC32.swift` と `Sources/FixtureKit/ZipFixtureWriter.swift`（どちらも新規、
+  `public`）を作る（research.md R28。T164〜T174 のテストはこれを使う）:
+  - `CRC32.checksum(_ data: Data) -> UInt32` と、追記用の `update(_ crc: UInt32, _ bytes: UnsafeRawBufferPointer) -> UInt32`
+    （多項式 0xEDB88320 の表引き。`"123456789"` で 0xCBF43926 になる）
+  - `ZipFixtureEntry`: `name: String`、`rawName: Data?`（指定時は名前のバイト列をそのまま書く。CP932 の名前用）、
+    `content: Content`（`.bytes(Data)` / `.zeros(count: UInt64)`。`.zeros` は全体をメモリに持たずに書く）、
+    `method: Method`（`.stored` / `.deflated` / `.raw(UInt16)`。`.raw` は方式番号だけを書き、中身は無圧縮のまま）、
+    `utf8Flag: Bool`（既定 true、汎用フラグのビット 11）、`encryptedFlag: Bool`（既定 false、ビット 0 を立てるだけで暗号化はしない）、
+    `isDirectory: Bool`（名前の末尾を `/` にし、中身は空）、`usesDataDescriptor: Bool`（既定 false、ビット 3 とデータ記述子）、
+    `modificationDate: Date`（DOS 日時で書く）、`unixModificationTime: Date?`（指定時は拡張タイムスタンプ 0x5455 を書く）
+  - `ZipFixtureWriter.write(_ entries: [ZipFixtureEntry], to url: URL, forceZip64: Bool = false, comment: Data = Data()) throws`:
+    ローカルヘッダ・データ・（必要なら）データ記述子・中央ディレクトリ・終端レコードを順に書く。deflate は Compression の
+    `compression_stream`（`COMPRESSION_STREAM_ENCODE`、`COMPRESSION_ZLIB`）で 1MB ずつ圧縮して書き、CRC とサイズを書きながら計算する。
+    `forceZip64` かサイズ・位置が 0xFFFFFFFF 以上なら、ZIP64 拡張フィールド（0x0001）・ZIP64 終端レコード・ロケータを書く。
+    出力は `FileHandle` に追記し、1GB の `.zeros` を書く間もメモリの増加を 16MB 以下（1MB の圧縮の入出力バッファ程度）に保つ
+  - `ZipFixtureWriter.archiveData(_ entries: [ZipFixtureEntry]) throws -> Data`: 同じ内容をメモリ上に作る（小さな解析テスト用）
+  - `swift build` が通ることを確認する
+- [ ] T163 [US1] 一覧の行の種類を加える（R23）。`Sources/MediaViewerCore/Model/MediaKind.swift` に `ListItemKind`（`.media(MediaKind)` / `.archive` /
+  `.directory` / `.parent`、`Sendable`・`Hashable`）と `isMedia`・`mediaKind`・`isVideo`（`.media` の動画だけ true）・
+  `opensAsContainer`（`.archive` / `.directory` / `.parent` で true）を追加する。`Sources/MediaViewerCore/Model/MediaFile.swift` の `kind` の型を
+  `ListItemKind` にする。続けて、ビルドが通るように既存の参照を直す:
+  - `Sources/MediaViewerCore/FileSystem/DirectoryLister.swift`: `kind: .media(kind)`、`typeDescription` の既定は `kind.rawValue.uppercased()` のまま
+  - `Sources/MediaViewerCore/Model/MediaTypeFilter.swift`: `includes` を `file.kind.mediaKind` で判定する（この時点では `.media` 以外は来ない）
+  - `Sources/MediaViewerCore/Model/Sorting.swift`: 種類の第2キーを `ListItemKind` の文字列表現（`.media` は `MediaKind.rawValue`、ほかは
+    `"archive"`・`"directory"`・`"parent"`）で比べる
+  - `Sources/MediaViewerCore/Browser/BrowserModel.swift` の `file.kind.isVideo` は `ListItemKind.isVideo` でそのまま通す
+  - `Sources/MediaViewerApp/Shared/IconCatalog.swift`: `fallbackIcon(for: MediaKind)` は残し、呼び出し側（`ListModeView`・`ThumbnailModeView`）は
+    `file.kind.mediaKind` があるときだけ呼ぶ（メディア以外の行のアイコンは T190 で加える。この時点では nil でよい）
+  - テスト（`SortingTests`・`MediaTypeFilterTests`・`BrowserModelTests`・`BrowserModelVideoTests`）の `MediaFile(... kind: .jpeg ...)` を
+    `kind: .media(.jpeg)` に置き換える。期待値は変えない
+  - `swift build` と `swift test`（既存のテスト）が通ることを確認する。新しいテスト（T164〜T174）はこのタスクの後に書く
+
+### Tests for User Story 1
+
+- [ ] T164 [P] [US1] `Tests/MediaViewerCoreTests/ArchiveURLTests.swift`（新規、`@Suite("ArchiveURL")`）を先に書く（T175 の前にビルドエラーになる
+  ことを確認する）。zip は `URL(fileURLWithPath: "/tmp/z/写真 集.zip")`:
+  - `entry(archive:path: "sub/a b.jpg")` の `scheme == "mvzip"`、`lastPathComponent == "a b.jpg"`、`pathExtension == "jpg"`、`isFileURL == false`
+  - `parse` で `(archive, "sub/a b.jpg", false)` に戻る。日本語・空白・`#`・`?`・`%` を含むパスと zip のパスでも往復で一致する
+  - ディレクトリ `entry(archive:path: "sub/")` は末尾 `/` を保ち、最上位 `entry(archive:path: "")` は `mvzip:///?archive=…`
+  - `parentLink(of: ArchiveLocation(archive:, directory: "sub/"))` の `fragment == "parent"`、`parse` の `isParentLink == true`、パスは `"sub/"`。
+    同じ階層の `parentLink` 同士は `==`、別の階層とは `!=`
+  - 同じ引数で作った URL は `==` で、`Set<URL>` で1つにまとまる。ファイル URL や `mvzip` 以外のスキームの `parse` は nil
+  - `ArchiveLocation.parent`: `"a/b/"` → `"a/"`、`"a/"` → `""`、`""` → nil
+- [ ] T165 [P] [US1] `Tests/MediaViewerCoreTests/ArchiveNameDecoderTests.swift`（新規、`@Suite("ArchiveNameDecoder")`）を先に書く（FR-074、R27）:
+  - `utf8Flag: true` の `"写真.jpg"` の UTF-8 バイト列 → `"写真.jpg"`。不正なバイトを含む場合も落ちずに置換文字を含む文字列を返す
+  - `utf8Flag: false` で UTF-8 として正しいバイト列 → UTF-8 で読む（`"日本語/画像.png"`）
+  - `utf8Flag: false` で CP932 のバイト列（`"写真①.jpg"` を `CFStringConvertEncodingToNSStringEncoding(CFStringEncodings.dosJapanese)` で
+    エンコードしたもの）→ `"写真①.jpg"`。`"表示.png"`（2バイト目が 0x5C の文字を含む）も壊れない
+  - `utf8Flag: false` で UTF-8 でも CP932 でもないバイト列（例: `[0x80, 0xFF, 0x41]`）→ CP437 で読んだ文字列（`"ÇA"` の前後を含む3文字）
+  - ASCII だけの名前はフラグに関わらず同じ結果
+- [ ] T166 [P] [US1] `Tests/MediaViewerCoreTests/ZipStructureTests.swift`（新規、`@Suite("ZipStructure")`）を先に書く。入力は
+  `ZipFixtureWriter.archiveData` の `Data`:
+  - 終端レコードの探索: コメントなし・コメント 1KB・コメント 65535 バイトで見つかる。末尾が切れた `Data` と、ランダムな 1KB では
+    `ArchiveError.notAZip`
+  - 中央ディレクトリの解析: 名前のバイト列・汎用フラグ・方式・CRC・サイズ・ローカルヘッダの位置・DOS 日時・拡張フィールドが書いた値と一致する
+  - データ記述子（ビット 3）の項目でも、サイズは中央ディレクトリの値になる
+  - `forceZip64: true` の zip で、ZIP64 の終端レコードとロケータを辿り、ZIP64 拡張フィールドのサイズと位置を読む
+  - 終端レコードのディスク番号を 1 に書き換えた `Data` → `ArchiveError.multiDisk`。中央ディレクトリの位置がファイルの外を指す → `.notAZip`
+  - ローカルヘッダの解析: 名前の長さと拡張フィールドの長さから、データの開始位置（ローカルヘッダの位置 + 30 + 名前 + 拡張）を返す。
+    中央ディレクトリと拡張フィールドの長さが違う項目でも正しい位置を返す
+  - 0x5455 の更新時刻（UTC）を読み、なければ DOS 日時を `TimeZone.current` で `Date` にする
+- [ ] T167 [P] [US1] `Tests/MediaViewerCoreTests/ArchiveIndexTests.swift`（新規、`@Suite("ArchiveIndex")`）を先に書く（data-model の
+  「ArchiveIndex と ArchiveEntry」）:
+  - ディレクトリの項目がない `sub/deep/a.jpg` だけの zip で、`items(in: "")` は `sub`（`.directory`）、`items(in: "sub/")` は `deep`、
+    `items(in: "sub/deep/")` は `a.jpg`（`.media(.jpeg)`）を返す
+  - 「一覧に出さない項目: 名前の要素が `.` で始まるもの、`__MACOSX/` 以下、`..` を含む名前、対応メディア以外のファイル（入れ子の zip を含む）」:
+    `.hidden.jpg`・`.git/x.png`・`__MACOSX/._a.jpg`・`a/../b.jpg`・`readme.txt`・`inner.zip` が出ない
+  - 先頭の `/`・空の要素・`.` は取り除く（`/x//./y.png` → `x/y.png`）。`\` は名前の一部（`a\b.jpg` は最上位の1項目）
+  - 「同じパスの重複は、中央ディレクトリで先に出たものを使う。ファイルとディレクトリが同じ名前ならディレクトリとして扱う」
+  - `readability`: 方式 0・8 で暗号化なし → `.readable`、ビット 0 → `.encrypted`、方式 12 → `.unsupportedMethod`。3件とも `items(in:)` に出る
+  - 行の値: `name` は判定後の名前、`creationDate` は更新日時、`fileSize` は展開後のサイズ、ディレクトリの `typeDescription == "フォルダ"`、
+    メディアの `typeDescription` は空でない。`url` は `ArchiveURL.entry(archive:path:)` と一致する
+  - `items(in:)` は `...` を含まない。存在しない階層は空配列
+  - CP932 の名前（UTF-8 フラグなし）の `フォルダ/画像.png` で、`フォルダ` の中に `画像.png` が出る（FR-074）
+- [ ] T168 [P] [US1] `Tests/MediaViewerCoreTests/ZipArchiveReaderTests.swift`（新規、`@Suite("ZipArchiveReader")`）を先に書く。既存のテストと同じく、
+  ファイル内の非公開の `makeTemporaryDirectory()`（`FileManager.default.temporaryDirectory` の下に UUID のフォルダを作る）に zip を書いて使い、テスト後に削除する:
+  - `open` で索引ができ、`identity` のサイズ・更新日時・inode が `stat` と一致する
+  - `data(for:limit:)`: 無圧縮・deflate・データ記述子・ZIP64 の各項目で、書いた内容と一致する
+  - 展開後のサイズが `limit` を超える項目 → `.tooLarge`（読み出さずに失敗する）。暗号化 → `.entryEncrypted`、方式 12 → `.unsupportedMethod(12)`
+  - 存在しない zip → `.notFound`。権限 `0o000` の zip → `.accessDenied`（テスト後に権限を戻す）。テキストの `.zip` と途中で切れた zip → `.notAZip`
+    または `.corrupted`。どれもクラッシュしない
+  - 索引にない項目の URL → `.corrupted`（または `.notFound`）。zip を開いた後に削除・上書きした場合の `identity(of:)` は nil・別の値になる
+  - 同じ reader で2つの zip を交互に読んでも結果が混ざらない
+  - `ArchiveError.message`: `.notAZip` → 「zip を開けません: zip ファイルとして読めません」、`.multiDisk` →
+    「zip を開けません: 分割された zip には対応していません」、`.entryEncrypted` → 「暗号化されているため表示できません」、
+    `.unsupportedMethod` → 「対応していない圧縮方式です」、`.tooLarge` → 「zip の中の画像が大きすぎるため表示できません」
+- [ ] T169 [P] [US1] `Tests/MediaViewerCoreTests/ListItemCommandsTests.swift`（新規、`@Suite("ListItemCommands")`）を先に書く。data-model の
+  「ListItemCommands」の表の全行を検証する（`kind` 4種 + nil × `isBrowsingArchive` の true / false）。特に、zip の外の `.archive` は
+  `allowsFileOperations == true`・`canOpenContainer == true`、zip の中はどの行でも `allowsFileOperations == false`・`allowsPaste == false`・
+  `canGoUp == true`、`.media` の `canOpenContainer == false`、zip の外の `canGoUp == false`
+- [ ] T170 [P] [US1] `Tests/MediaViewerCoreTests/FocusNavigatorTests.swift` に `isNavigable` 付きのケースを追加する（FR-046）:
+  - リスト形式で `[media, dir, dir, media]`、位置 0 から ↓ → 3。位置 3 から ↑ → 0
+  - グリッド 2 列で `[parent, dir, media, media]`、位置 2 から ↑ → nil（上の行に移動できる行がない）。位置 3 から ← → 2
+  - 移動先の方向にメディアがない（`[media, dir, dir]` の位置 0 から ↓）→ nil。全部がメディアでない → nil
+  - `currentIndex: nil` → 先頭から順に最初のメディアの位置。メディアがなければ nil
+  - `isNavigable` が常に true のとき、既存の関数と同じ結果になる（既存のケースを流用して比べる）
+- [ ] T171 [P] [US1] `Tests/MediaViewerCoreTests/MediaTypeFilterTests.swift` と `Tests/MediaViewerCoreTests/SortingTests.swift` にケースを追加する:
+  - `apply(to:)`: `imagesOnly` で `.archive`・`.directory`・`.parent` の行が残り、並び順も保つ。`videosOnly` でも同じ
+  - 並べ替え: `.parent` を含む配列を名前・作成日・種類の昇順と降順で並べても、`.parent` は先頭。ディレクトリとメディアは区別なく名前の
+    自然順に混ざる（`b`（ディレクトリ）が `a.jpg` と `c.png` の間に入る）
+- [ ] T172 [P] [US1] `Tests/MediaViewerCoreTests/DirectoryListerTests.swift` と `Tests/MediaViewerCoreTests/ImageDecoderTests.swift` にケースを追加する:
+  - `mediaFiles(in:)` が `a.zip` と `B.ZIP` を `kind == .archive` で返し、`typeDescription` が空でない。`x.zip` という名前の**ディレクトリ**は返さない。
+    `.hidden.zip` は返さない
+  - `subfolders(of:)` と `hasSubfolders(in:)` は zip ファイルを数えない（zip だけのフォルダで `false`）
+  - `decode(data:maxPixelSize:)` が JPEG・PNG のファイルの中身から、ファイル URL の `decode` と同じ `pixelSize` を返す。壊れた `Data` は
+    `.corrupted` か `.unreadable`。`isAnimated(data:)` はアニメーション GIF で true、静止画 PNG で false
+- [ ] T173 [US1] `Tests/MediaViewerCoreTests/BrowserModelArchiveTests.swift`（新規、`@Suite("BrowserModel の zip")`、`@MainActor`）を先に書く。
+  一時フォルダに `cover.jpg` と `photos.zip`（`sub/deep/a.jpg`・`b.png`・`anim.gif`・`readme.txt`）を作り、実際の `DirectoryLister`・
+  `ImageDecoder`・`ZipArchiveReader` で `BrowserModel` を作る:
+  - `selectFolder` 後の `listing.files` に `photos.zip`（`.archive`）と `cover.jpg` が並び、`listing.state == .loaded`
+  - zip の行を選ぶとプレビューは `.empty`（FR-075）。動画を再生中（`.video`）に zip の行へ移ると `stopPlaybackSignal` が増える
+  - `openItem(<zip の URL>)`: `listing.archive == ArchiveLocation(archive:, directory: "")`、`listing.folder` は一時フォルダのまま、
+    `files[0].kind == .parent`、続いて `sub`・`anim.gif`・`b.png`（名前の自然順、`readme.txt` なし）、選択は空、プレビューは `.empty`
+  - `openItem(sub)` → `openItem(deep)` → `goToEnclosingLevel()` で `sub/` の一覧に戻り、`selection.selected == [deep の URL]`・
+    `focused == deep の URL`。もう一度で最上位に戻り `sub` が選ばれる。もう一度でフォルダの一覧に戻り、`photos.zip` の行が選ばれ、
+    `listing.archive == nil`。さらに `goToEnclosingLevel()` は何もしない
+  - `openItem(<parent 行の URL>)` は `goToEnclosingLevel()` と同じ結果。メディアの行の `openItem` は何もしない
+  - zip の中で `b.png` を選ぶと `.image`、`anim.gif` を選ぶと `.animatedImageData(url, data)` になる（`.loading` を経て）
+  - `settings.viewSettings.lastFolder` は zip に入っても戻っても一時フォルダのまま（FR-003）
+  - zip の中で `selectFolder(<別のフォルダ>)` を呼ぶと `listing.archive == nil` で、そのフォルダの一覧になる（FR-069）
+  - 空の判定（FR-060）: `readme.txt` だけの zip で `files == [parent]`・`.empty`。ディレクトリだけの zip で `.loaded`。画像だけの zip で
+    `videosOnly` にすると `files == [parent]`（とディレクトリ）・`.noMatches`。zip だけのフォルダは `.loaded`
+  - 壊れた zip の `openItem` で `.failed("zip を開けません: …")`・`files == [parent]`。`goToEnclosingLevel()` で戻れる
+  - 暗号化の画像を選ぶと `.unavailable(name:, reason: "暗号化されているため表示できません")`
+  - FSEvents: zip の中で、zip を書き換えて（内容を変えて書き直す）`handleFileSystemEvent([一時フォルダ])` を呼ぶと、`listing.archive == nil` で
+    フォルダの一覧に戻り、プレビューは `.empty`。zip を変えずに同じ呼び出しをした場合は zip の中のまま変わらない。zip を削除した場合も戻る
+  - zip の中で `reloadCurrentFolder()` を呼んでも、zip の中の一覧のまま変わらない
+- [ ] T174 [P] [US1] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に、10,000 個の小さな JPEG（各 1KB 前後、無圧縮）を持つ
+  zip の `ZipArchiveReader.open` と `items(in: "")` の合計が 0.5 秒以内であることの計測を追加する（SC-015、quickstart.md「性能の検証」）。
+  zip の生成時間は計測に含めない
+
+### Implementation for User Story 1
+
+- [ ] T175 [P] [US1] `Sources/MediaViewerCore/Archive/ArchiveURL.swift` と `Sources/MediaViewerCore/Archive/ArchiveLocation.swift`（どちらも新規）を
+  作り、T164 を通す。data-model の「ArchiveURL」の形（`mvzip:///<項目のパス>?archive=<zip の絶対パス>`、ディレクトリは末尾 `/`、最上位は空のパス、
+  `...` は表示中の階層の URL + `#parent`）を `URLComponents` の `percentEncodedPath` と `percentEncodedQueryItems` で組み立て、文字列の連結はしない。
+  パスの各要素は `/` 以外を `.urlPathAllowed` から `#`・`?`・`%`・`;` を除いた集合でエンコードする。`ArchiveLocation` は `archive: URL`・
+  `directory: String`（「最上位は ""、それ以外は "a/b/"」）と `parent` を持つ
+- [ ] T176 [P] [US1] `Sources/MediaViewerCore/Archive/ArchiveNameDecoder.swift`（新規）を作り、T165 を通す（R27 の 1〜4 の順。CP932 は
+  `CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.dosJapanese.rawValue))`、CP437 は `.dosLatinUS` を
+  `String(data:encoding:)` に渡す。UTF-8 の厳密な判定は `String(validating:as: UTF8.self)` を使う）
+- [ ] T177 [US1] `Sources/MediaViewerCore/Archive/ArchiveError.swift` と `Sources/MediaViewerCore/Archive/ZipStructure.swift`（どちらも新規）を作り、
+  T166 を通す（R22）:
+  - `ArchiveError`（contracts/core-api.md の case）と `message`（T168 の文言。`.notFound` は「zip を開けません: zip ファイルが見つかりません」、
+    `.accessDenied` は「zip を開けません: アクセスできません」、`.corrupted(reason)` は「zip を開けません: \(reason)」）
+  - `ZipStructure` は `Data` を受けて構造体を返す純粋関数の集まりにし、ファイルを読まない:
+    `endOfCentralDirectory(inTail:fileSize:)`（末尾 `min(fileSize, 65_557)` バイトの中で署名 0x06054b50 を後ろから探す。ディスク番号が 0 以外なら
+    `.multiDisk`）、`zip64Locator(_:)`・`zip64EndOfCentralDirectory(_:)`、`centralDirectoryEntries(_:count:)`（署名 0x02014b50、
+    ZIP64 拡張 0x0001 のうち値が 0xFFFFFFFF / 0xFFFF の項目だけを順に読む）、`dataOffset(localHeader:localHeaderOffset:)`（署名 0x04034b50）、
+    `modificationDate(dosDate:dosTime:extra:)`。すべての読み出しで範囲を確かめ、範囲外は `.notAZip` か `.corrupted` にしてクラッシュしない
+- [ ] T178 [US1] `Sources/MediaViewerCore/Archive/ArchiveIndex.swift`（新規）に `ArchiveIndex`・`ArchiveEntry`・`ArchiveIdentity` を作り、T167 を通す。
+  data-model の表のとおりに名前を `ArchiveNameDecoder` で判定し、パスを正規化し、隠し項目・`__MACOSX/`・`..`・重複・ファイルとディレクトリの衝突を扱い、
+  途中のディレクトリを補った `children` を作る。`items(in:)` は直下のディレクトリ（`.directory`）と対応メディア（`MediaKind(fileExtension:)` が nil でない
+  ファイル、`.media`）だけを `MediaFile` にして返す（並べ替えはしない）。メディアの `typeDescription` は
+  `UTType(filenameExtension:)?.localizedDescription ?? 拡張子の大文字`、ディレクトリは「フォルダ」。`readability` を `ArchiveEntry` に持たせる
+- [ ] T179 [US1] `Sources/MediaViewerCore/Archive/InflateCursor.swift`（新規）を作る（R24・R25）。`compression_stream_init(..., COMPRESSION_STREAM_DECODE,
+  COMPRESSION_ZLIB)` を包む `final class`。入力は「zip ファイルの記述子・データの開始位置・圧縮後のサイズ」から 64KB ずつ `pread` で読む。
+  `position`（展開後の位置）、`reset()`（先頭から展開し直す）、`skip(to:)`（読み捨てて進む）、`read(into:maxLength:)`（展開して返す）を持つ。
+  圧縮データの終わりより先を求められたら、展開できた分だけを返す。`deinit` で `compression_stream_destroy` を呼ぶ。直接のテストは T168 の
+  deflate の読み出しで兼ねる
+- [ ] T180 [US1] `Sources/MediaViewerCore/Archive/ZipArchiveReader.swift`（新規）に `ArchiveReading` プロトコル（contracts/core-api.md の `open`・
+  `data(for:limit:)`・`identity(of:)`。`stream(for:)` は Phase 21 の T203 で加える）と、その実装 `ZipArchiveReader`（`final class`、`@unchecked Sendable`、
+  内部は `NSLock`）を作り、T168 を通す（R22・R24）:
+  - zip ファイルは `open(2)`（`O_RDONLY`）で開き、記述子を `ArchiveFile`（`deinit` で `close`）として参照カウントで共有する。読み出しはすべて `pread`
+  - `open`: `fstat` で `ArchiveIdentity` を作り、末尾を読んで `ZipStructure` で解析し、中央ディレクトリを1回の `pread` で読んで `ArchiveIndex` を作る。
+    最後に開いた 2 つの zip の索引と `ArchiveFile` を、パスをキーに覚える（`data(for:)` で項目を引くため）。処理は `Task.detached` で行い、UI スレッドで読まない
+  - `data(for:limit:)`: `ArchiveURL.parse` → 索引の項目 → `readability` を確かめ（`.encrypted` / `.unsupportedMethod`）→ 展開後のサイズを `limit` と比べ →
+    ローカルヘッダからデータの開始位置を求めて項目ごとに覚え → 無圧縮は `pread`、deflate は `InflateCursor` で全体を読む。読んだサイズが展開後のサイズと
+    違えば `.corrupted`
+  - `identity(of:)`: `stat` の結果。消えていれば nil
+  - `Sources/MediaViewerCore/Imaging/MemoryLimits.swift` に `archiveImageBytes = 512 * 1024 * 1024` を追加する（「1項目 512MB」）
+- [ ] T181 [P] [US1] `Sources/MediaViewerCore/Model/ListItemCommands.swift`（新規）を作り、T169 を通す（data-model の「ListItemCommands」の表のとおり）
+- [ ] T182 [P] [US1] `Sources/MediaViewerCore/Layout/FocusNavigator.swift` に `isNavigable` 付きの `targetIndex` を追加し、T170 を通す。既存の関数で
+  1歩ずつ進め、`isNavigable` が true の行に当たるか nil になるまで繰り返す（最大 `fileCount` 回）。既存の関数の結果は変えない
+- [ ] T183 [P] [US1] `Sources/MediaViewerCore/Model/MediaTypeFilter.swift` の `apply(to:)` で `kind.isMedia == false` の行を常に残し、
+  `Sources/MediaViewerCore/Model/Sorting.swift` の `sorted` で `.parent` の行を取り除いてから並べ、先頭に戻す。T171 を通す
+- [ ] T184 [P] [US1] `Sources/MediaViewerCore/FileSystem/DirectoryLister.swift` の `mediaFiles(in:)` で、ディレクトリでない拡張子 `zip`（大文字小文字を
+  区別しない）のファイルを `kind: .archive` の `MediaFile` として返す（`typeDescription` は `localizedTypeDescription`、なければ「ZIP アーカイブ」）。
+  プロトコルの説明コメントを contracts/core-api.md の文言に合わせる。T172 の前半を通す
+- [ ] T185 [P] [US1] `Sources/MediaViewerCore/Imaging/ImageDecoder.swift` に `decode(data:maxPixelSize:)` と `isAnimated(data:)` を追加し、プロトコル
+  `ImageDecoding` にも加える。`CGImageSourceCreateWithData` から先は、ファイル URL の `decodeSynchronously` と同じ判定（対応する型・フレーム数・
+  サムネイルのオプション・`byteCost`）を共有する関数にまとめる。テスト用のフェイクの `ImageDecoding`（`BrowserModelTests` など）にも実装を足す。T172 の後半を通す
+- [ ] T186 [US1] `Sources/MediaViewerCore/Model/BrowserState.swift` に `FolderListing.archive: ArchiveLocation?`（イニシャライザの既定引数 nil）と
+  `PreviewContent.animatedImageData(URL, Data)` を追加する。網羅的な `switch` を持つ `Sources/MediaViewerApp/Preview/PreviewViewController.swift` には、
+  この時点では `.animatedImageData` を `.loading` と同じ表示にする仮の分岐を入れ（T196 で置き換える）、`swift build` を通す
+- [ ] T187 [US1] `Sources/MediaViewerCore/Browser/BrowserModel.swift` に zip の中の移動を加える（R23・R26、contracts/core-api.md「ブラウザ状態」）:
+  - イニシャライザに `archiveReader: any ArchiveReading = ZipArchiveReader()` を追加する。`private var archiveIndex: ArchiveIndex?` を持つ。
+    `public var isBrowsingArchive: Bool { listing.archive != nil }`
+  - `selectFolder(_:)` の先頭の「読み込み・プレビュー・先読みの取り消し、動画の停止、選択とプレビューを空にする」処理を `private func resetForNavigation()`
+    に切り出し、`selectFolder` と zip の移動で共有する。`selectFolder` では `archiveIndex = nil` にする（`FolderListing` の `archive` は既定の nil）
+  - `openItem(_ url:)`: `listing.files` から行を探し、`.archive` なら `resetForNavigation()` → `listing = FolderListing(folder: listing.folder, files: [],
+    state: .loading, archive: ArchiveLocation(archive: url, directory: ""))` → `archiveReader.open(url)` を待ち、取り消されていない・同じ位置のままなら
+    `archiveIndex` に入れて一覧を作る。失敗したら `allFiles = []`・`listing.state = .failed(error.message)`。`.directory` なら索引から（読み直さずに）その階層の
+    一覧を作る。`.parent` なら `goToEnclosingLevel()`。`.media` と見つからない URL では何もしない
+  - `goToEnclosingLevel()`: zip の外なら何もしない。`listing.archive.parent` があれば、その階層の一覧を作り、直前の階層のディレクトリの URL
+    （`ArchiveURL.entry(archive:path: 直前の directory)`）を `select([url], focused: url)` する。最上位なら `archiveIndex = nil`、`listing.folder` を
+    ディスクから読み直し（`lastFolder` は書き換えない）、zip のファイル URL の行を同じく選択する（行が消えていれば何も選ばない）
+  - `rebuildListing()`: zip の中なら `files = [parent 行] + mediaTypeFilter.apply(to: allFiles)`（`parent` 行は `MediaFile(url: ArchiveURL.parentLink(of:),
+    name: "...", kind: .parent, typeDescription: "", creationDate: nil, fileSize: 0)`）。状態は data-model の「FolderListing」の規則で決める:
+    メディアも `...` 以外の行もない → `.empty`、絞り込み前にメディアがあり後に0件 → `.noMatches`、それ以外 → `.loaded`（`.failed` のときは呼ばない）
+  - `sortOrder` の `didSet` と `reloadCurrentFolder()`: zip の中では `allFiles` を並べ直して `rebuildListing()` するだけにし、`reloadCurrentFolder()` は
+    zip の中なら何もしない（フォルダの一覧で zip の中の一覧を上書きしない）
+  - `handleFileSystemEvent`: zip の中で、通知に `listing.folder` が含まれていたら `archiveReader.identity(of:)` を `archiveIndex.identity` と比べ、
+    nil か違えば `archiveIndex = nil` にしてフォルダの一覧を読み直し、選択とプレビューを空にする。同じなら何もしない。フォルダ自体が消えた場合の既存の
+    処理はそのまま
+  - T173 のうち、移動・選択・空の判定・FSEvents・`lastFolder` のケースを通す
+- [ ] T188 [US1] `Sources/MediaViewerCore/Browser/BrowserModel.swift` のプレビューと先読みを zip に対応させる（R24・R26）:
+  - `loadPreview(for:)`: `listing.files` の行の `kind` を先に見て、メディアでなければ `.empty`（FR-075）。`MediaKind(fileExtension:)` による判定は
+    行が見つからないときだけ使う
+  - `ArchiveURL.parse(url) != nil` の画像: 索引の項目の `readability` が `.encrypted` / `.unsupportedMethod` なら `.unavailable(name:, reason: error.message)`。
+    それ以外はキャッシュにあれば `.image`、なければ `.loading(url)` にしてから、タスクで `archiveReader.data(for: url, limit: MemoryLimits.archiveImageBytes)`
+    → `decoder.isAnimated(data:)` なら `.animatedImageData(url, data)`、静止画なら `decoder.decode(data:maxPixelSize:)` → キャッシュに入れて `.image`。
+    失敗は `.unavailable(name:, reason: ArchiveError.message または既存の理由)`。世代番号の確認は既存のとおり
+  - `ArchiveURL.parse(url) != nil` の動画: 既存どおり `.video(url)`（再生は Phase 21）
+  - `schedulePrefetch(around:)`: zip の中の画像では同期の `decoder.isAnimated(url)` を呼ばずに、タスクの中で `Data` を読み、アニメーションでなければデコードして
+    キャッシュに入れる。動画とメディア以外の行は先読みしない
+  - T173 の残り（`.image`・`.animatedImageData`・暗号化・プレビューの空・動画の停止通知）を通す。`swift test` がすべて通ることを確認する
+- [ ] T189 [US1] `Sources/MediaViewerCore/Imaging/ThumbnailProvider.swift` を zip の中の画像に対応させる（R24）。イニシャライザに
+  `archiveReader: (any ArchiveReading)? = nil` を追加する。`ArchiveURL.parse(url) != nil` のとき QuickLook を使わず、同時 4 件までに制限した
+  （`actor` の簡単なセマフォ）タスクで `data(for:limit: MemoryLimits.archiveImageBytes)` → `CGImageSourceCreateWithData` →
+  `CGImageSourceCreateThumbnailAtIndex`（`kCGImageSourceThumbnailMaxPixelSize` = 段階に丸めたピクセル数、`CreateThumbnailWithTransform`、`FromImageAlways`）。
+  キャッシュのキーは既存のもの。`cancel(for:pointSize:scale:)` は zip の中の要求のタスクも URL + ピクセル数で取り消す。zip の中の動画・暗号化・
+  非対応方式・失敗では nil を返す（動画は Phase 21 の T205 で対応する）。`Tests/MediaViewerCoreTests/ThumbnailProviderTests.swift` に、zip の中の PNG で
+  画像が返ること・暗号化の項目で nil が返ることを追加する
+- [ ] T190 [P] [US1] `Sources/MediaViewerApp/Shared/IconCatalog.swift` に `listItemIcon(for kind: ListItemKind, pointSize: CGFloat) -> NSImage?` を追加する。
+  `.media` は既存の `fallbackIcon` と同じ名前、`.archive` は `doc.zipper`、`.directory` は `folder`、`.parent` は `arrowshape.turn.up.left`（template）。
+  `fallbackIcon(for:)` はこの関数を `pointSize: 16` で呼ぶ形にする
+- [ ] T191 [US1] 組み立てとメニューを結線する:
+  - `Sources/MediaViewerApp/App/MainSplitViewController.swift` の `init()` で `ZipArchiveReader()` を1つ作り、`BrowserModel(... archiveReader:)` と
+    `ThumbnailProvider(archiveReader:)` に渡す。インスタンスを保持する
+  - `Sources/MediaViewerApp/App/MainMenu.swift`: 「ファイル」メニューの「開く」の直後に
+    `NSMenuItem(title: "中を表示", action: #selector(FileListViewController.openFocusedItem(_:)), keyEquivalent: String(UnicodeScalar(NSDownArrowFunctionKey)!))`
+    と、`NSUpArrowFunctionKey` の「上の階層へ」（`#selector(FileListViewController.goToEnclosingLevel(_:))`）を追加する。どちらも
+    `keyEquivalentModifierMask = [.command]`、`target = nil`
+- [ ] T192 [US1] `Sources/MediaViewerApp/FileList/FileListViewController.swift` を zip に対応させる（R26、contracts/keyboard-and-menus.md）:
+  - `@objc func openFocusedItem(_:)`: テキスト編集中なら何もしない。フォーカス行の URL で `openItem(_ url: URL)` を呼ぶ。`openItem(_:)`（内部公開）は
+    `Task { await model.openItem(url); <戻った場合はフォーカス行を見える位置へ> }`。リスト形式とサムネイル形式のダブルクリックからも呼ぶ
+  - `@objc func goToEnclosingLevel(_:)`: テキスト編集中なら何もしない。`await model.goToEnclosingLevel()` の後、リスト形式は
+    `ListModeView` のフォーカス行を `scrollRowToVisible`、サムネイル形式は `thumbnailModeView.scrollToFocused()` を呼ぶ（FR-070）
+  - `validateMenuItem`: `openFocusedItem` はテキスト編集中でなく、フォーカス行の `ListItemCommands.canOpenContainer` が true のとき有効。
+    `goToEnclosingLevel` はテキスト編集中でなく `model.isBrowsingArchive` のとき有効。`model.isBrowsingArchive` のときは `copy`・`open`・
+    `revealInFinder`・`moveToTrash`・`duplicate`・`rename`・`paste`・`movePaste` を無効にする（FR-073）
+  - `copy`・`paste`・`movePaste`・`duplicate`・`rename`・`moveToTrash`・`open`・`revealInFinder` の先頭で、`model.isBrowsingArchive` なら何もせずに戻る
+  - `refresh()`・`updateModeVisibility()`: `.empty` / `.noMatches` / `.failed` でも `listing.files` が空でなければ一覧を表示したまま、一覧の下端に
+    高さ 24pt のメッセージの帯（`NSTextField` のラベル、`secondaryLabelColor`、帯は一覧のスクロールビューの下端に制約し、下部のサイズバーより上）を出して
+    メッセージを入れる。`files` が空のときは従来どおり中央のメッセージ。`.empty` の文言は既存のもの、`.noMatches` は `noMatchesMessage`、`.failed` はその文字列
+  - `moveFocusInFullScreen(_:)`: `FocusNavigator.targetIndex(..., isNavigable: { files[$0].kind.isMedia })` を使う（FR-046）
+- [ ] T193 [US1] `Sources/MediaViewerApp/FileList/ListModeView.swift` を zip に対応させる:
+  - `tableView.target = self`・`doubleAction` を設定し、`clickedRow` が有効なら、その行を単一選択にしてから `onOpenItem?(url)` を呼ぶ
+    （`var onOpenItem: ((URL) -> Void)?` を追加し、T192 で `FileListViewController.openItem(_:)` に結ぶ）
+  - `FileListTableView.keyDown`: Command だけを押した ↓ / ↑（`specialKey == .downArrow / .upArrow`）は `super` に渡さずに消費する（メニュー項目が無効なときの
+    既定の動作を止める、R26）
+  - `onReturn`: フォーカス行の `ListItemCommands(kind:isBrowsingArchive:)` の `allowsFileOperations` が false なら、名前の変更を始めずに true を返す（FR-073）
+  - `pasteboardWriterForRow`: 同じ判定が false の行では nil を返す（ドラッグを始めない）
+  - 名前のセル: メディア以外の行は `IconCatalog.listItemIcon(for:pointSize: 16)` を設定し、縮小画像を要求しない（取り消しの対象にもしない）。
+    `.parent` の行は名前を `...`、a11y のラベルを「上の階層へ」にする。「作成日」「種類」の列は既存の表示（nil は「--」）
+- [ ] T194 [US1] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` を zip に対応させる:
+  - `ThumbnailCollectionView.mouseDown(with:)` を override し、`super` の後に `event.clickCount == 2` なら、その位置の項目を `onDoubleClickItem?(index)` で伝える。
+    `ThumbnailModeView` はその行を単一選択にしてから `onOpenItem?(url)` を呼ぶ（T192 で結ぶ）
+  - `keyDown`: Command だけの ↓ / ↑ を消費する。`onReturnKey`: T193 と同じ判定で名前の変更を始めない
+  - `pasteboardWriterForItemAt`: T193 と同じ判定で nil を返す
+  - `ThumbnailItemView.configure(with:)`・`requestThumbnail(for:)`: メディア以外の行は `IconCatalog.listItemIcon(for:pointSize:)`（サムネイルの大きさの半分程度）を
+    中央に出し、縮小画像を要求しない。`.parent` の a11y のラベルは「上の階層へ」
+- [ ] T195 [US1] `Sources/MediaViewerApp/FileList/FileContextMenu.swift`: メニューの先頭に「中を表示（⌘↓）」（`openFocusedItem(_:)`）と「上の階層へ（⌘↑）」
+  （`goToEnclosingLevel(_:)`）と区切り線を追加する。どちらも宛先を `host` にし、有効・無効は T192 の `validateMenuItem` に任せる。
+  `menuNeedsUpdate(_:)` で、`host` の `model.isBrowsingArchive` が true なら「上の階層へ」を表示し、false なら隠す。zip の中ではペースト・移動ペーストの
+  `isEnabled` を false にする（contracts/keyboard-and-menus.md「右クリックメニュー（ファイルリスト）」）
+- [ ] T196 [US1] アニメーションの `Data` を表示する:
+  - `Sources/MediaViewerApp/Preview/ImagePreviewView.swift`: アニメーションの元を `enum AnimatedSource { case url(URL), data(Data) }` にし、
+    `showAnimated(source:fileName:fallback:)` で `.url` は既存の `CGAnimateImageAtURLWithBlock`、`.data` は `CGAnimateImageDataWithBlock(data as CFData, nil, …)` を
+    使う。停止・「視差効果を減らす」の扱い・フォールバックは既存の処理を共有する。既存の `showAnimated(url:fileName:fallback:)` は `.url` を渡す形にする
+  - `Sources/MediaViewerApp/Preview/PreviewViewController.swift`: T186 の仮の分岐を置き換え、`.animatedImageData(url, data)` では
+    `decoder.decode(data:maxPixelSize:)` をフォールバックにして `showAnimated(source: .data(data), …)` を呼ぶ。表示前に `model.preview` が同じ URL のままかを
+    既存どおり確かめる
+- [ ] T197 [P] [US1] `Sources/FixtureKit/FixtureSets.swift` に `zip(in:)` を追加し、`makeAll(in:)` に加える。quickstart.md「検証用フォルダの準備」の `zip/` の表の
+  ファイルをすべて作る（画像・動画の中身は既存の `ImageFixtures`・`VideoFixtures` の生成物を使う）。`huge.zip` は 10,000 個の小さな JPEG:
+  - `Sources/FixtureKit/VideoFixtures.swift` の `mp4(at:…)`・`mov(at:…)` に `fastStart: Bool = false`（true なら `AVAssetWriter.shouldOptimizeForNetworkUse = true`
+    で再生用の情報を先頭に置く）と `averageBitRate: Int? = nil`（指定時は `AVVideoCompressionPropertiesKey` の `AVVideoAverageBitRateKey`）を追加する。
+    既定値では従来と同じファイルになる（再生用の情報は末尾）
+  - `videos-stored.zip`: 無圧縮で、640×360 の mp4・mov と、SC-014 の再生開始の計測用の 1080p の mp4（`width: 1920, height: 1080, seconds: 10`、
+    `fastStart: true`）を入れる
+  - `videos-deflated.zip`: deflate で、`fastStart: true` の mp4 と、既定（再生用の情報が末尾）の mov を入れる
+  - `scripts/make-fixtures.sh ~/MediaViewerFixtures` で `zip/` ができることを確認する
+  - 大きな動画（SC-014 のメモリの確認用）: `FixtureSets.bigVideoZips(in:)` を追加し、`zip-big/` に、1080p・`averageBitRate: 60_000_000`・150 秒の
+    mp4（フレームは毎フレーム変わる模様にして、実際に約 1.1GB になるようにする）を、無圧縮で格納した `big-video-stored.zip` と deflate で格納した
+    `big-video-deflated.zip` を作る。生成に時間とディスク（約 2.3GB）を使うため `makeAll` には含めず、`Sources/make-fixtures/main.swift` の
+    `--big` 引数のときだけ作る。`scripts/make-fixtures.sh` は2番目以降の引数を `make-fixtures` へそのまま渡すようにする
+    （`scripts/make-fixtures.sh ~/MediaViewerFixtures --big`）
+- [ ] T198 [P] [US1] `README.md` の「主な機能」と「使い方（主なショートカット）」の表に、zip の中の表示（ダブルクリック・⌘↓ で中を表示、⌘↑ または `...` で
+  戻る、ツリーには出ない）、zip の中は読み取り専用であること、日本語のファイル名の自動判定を追記する
+
+### Verification for User Story 1
+
+- [ ] T199 [US1] 自動テストと手動確認を行う（T162〜T198 に依存）:
+  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す。`swift test` に含まれる `MediaViewerPerformanceTests` が quickstart.md「性能の検証」の
+    基準内であることを確かめ、10,000 項目の zip の索引作成の時間を記録する（憲章 原則 II）
+  - SC-015 の操作の継続を確かめる: `huge.zip` をダブルクリックした直後から、ツリーを ↑↓ で移動し続け、ファイルリストのスクロールも行う。
+    画面収録または Instruments で、100ms 以上の停止が 0 回で、最初の項目が 1 秒以内に出ることを確認する。計測方法・最大停止時間・最初の項目までの
+    時間を記録し、基準を超えた場合は作業を止めて状況を報告する
+  - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。依頼時は
+    `scripts/make-fixtures.sh ~/MediaViewerFixtures` の準備コマンドと、quickstart.md「zip ファイル（FR-068〜075）」の確認ポイント 1〜7・10〜16 を
+    具体的に示す（8・9 の動画は Phase 21 で確認する）。起動しない場合は AGENTS.md の lldb 手順で例外を止める
+  - ⌘↓ / ⌘↑ がアプリに届かない（常駐アプリなどに先取りされる）場合は、作業を止めてユーザーにキーの変更を相談する
+  - 回帰確認: 通常のフォルダのリスト形式・サムネイル形式の矢印キー・⇧ + 矢印・⌘A・Return の名前の変更・⌘C / ⌘V / ⌥⌘V / ⌘D / ⌘Delete・ツリーへのドラッグ・
+    右クリックメニュー、種類フィルタ（FR-056〜060）、フルスクリーンの矢印移動（FR-046）、行頭アイコン（FR-048）、ツリーの操作が従来どおり動く
+  - 結果（実行日、OS、確認項目、合否、性能テストの主な計測値）を `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+
+**Checkpoint**: ファイルリストの zip ファイルをダブルクリックか ⌘↓ で開き、ディレクトリを辿り、`...` か ⌘↑ で戻れる。zip の中の画像は通常のフォルダと
+同じにプレビュー・サムネイル・フルスクリーンで見られ、zip の中は変更できない。日本語の名前の zip も文字化けしない
+
+---
+
+## Phase 21: zip の中の動画のストリーミング再生（FR-071・072、SC-014 追加、US1）
+
+**Purpose**: zip の中の動画（mp4 / mov）を、一時ファイルにもメモリ全体にも展開せず、AVPlayer の範囲要求に応じて必要な部分だけを zip から読んで
+再生する。無圧縮の項目は直接読み、deflate の項目は順方向の展開カーソル 2 本と 32MB のチャンクキャッシュで読む。代表フレーム（サムネイル・
+行頭アイコン）も同じ仕組みで作る（[spec.md](./spec.md) FR-071・072・SC-014・US1 の受け入れシナリオ 17・19、[plan.md](./plan.md) の
+「変更点（2026-10-21: zip ファイル）」、[research.md](./research.md) R25、[data-model.md](./data-model.md) の `ArchiveEntryStream`、
+[contracts/core-api.md](./contracts/core-api.md)「zip」）。
+
+**Independent Test**: `swift test` で `ArchiveEntryStream` と `ArchiveAssetLoader` のテスト、展開後 1GB の項目の読み出しのメモリの計測が通ること。
+`.app` で quickstart.md「zip ファイル（FR-068〜075）」の 8・9 を確認し、zip の中の動画がループ再生・シーク・停止でき、一時ファイルが作られないこと。
+
+### Tests for User Story 1
+
+- [ ] T200 [P] [US1] `Tests/MediaViewerCoreTests/ArchiveEntryStreamTests.swift`（新規、`@Suite("ArchiveEntryStream")`）を先に書く（T203 の前に
+  ビルドエラーになることを確認する）。中身は 0〜255 を繰り返す 5MB のバイト列（位置が分かるもの）を、無圧縮と deflate で格納した zip を使う:
+  - `length` が展開後のサイズと一致する
+  - `read(offset:maxLength:)` を、先頭・1MB の境界をまたぐ位置・末尾の手前・末尾ちょうど（空の `Data`）・末尾より先（空の `Data`）で呼び、
+    元のバイト列の同じ範囲と一致する
+  - deflate で、位置 4MB → 1MB → 3MB → 0 の順（後ろ向きを含む）に読んでも一致する。2 か所の離れた位置を交互に 20 回読んでも一致する
+  - 複数のタスクから同時に別々の範囲を読んでも、それぞれ一致する（スレッド安全）
+  - 暗号化・方式 12 の項目の `ZipArchiveReader.stream(for:)` → `.entryEncrypted` / `.unsupportedMethod(12)`
+  - 一時ファイルを作らないこと（FR-072）は、このテストでは判定しない。共有の一時ディレクトリは、並列に動くほかのテストもフィクスチャを
+    作るため、中身の増減では判定できない。代わりに `scripts/check-no-archive-writes.sh`（T203 で追加）で、`Sources/MediaViewerCore/Archive/` に
+    書き込み系の API（`forWritingAtPath`・`createFile`・`write(to:`・`FileHandle(forWritingTo:`・`O_WRONLY`・`O_RDWR`・`O_CREAT`）が現れないことを確かめる。
+    実行時の確認は T207 の `fs_usage` で行う
+- [ ] T201 [P] [US1] `Tests/MediaViewerCoreTests/ArchiveAssetLoaderTests.swift`（新規、`@Suite("ArchiveAssetLoader")`）を先に書く。`VideoFixtures` の
+  mp4 と mov（再生用の情報が末尾）を、無圧縮と deflate で格納した zip を使う:
+  - `ArchiveAssetFactory.makeAsset(for:reader:)` の asset で `try await asset.load(.duration)` が、元のファイルの `AVURLAsset` の `duration` と一致する
+    （4 通りすべて）。`load(.tracks)` に動画のトラックがある
+  - `AVAssetImageGenerator(asset:)` の `image(at: .zero)` が画像を返す
+  - asset を作った関数を抜けた後も（読み込み器を外から保持していなくても）読み込みが完了する（asset が読み込み器を保持していること）
+  - 暗号化の項目の asset では `load(.duration)` が失敗し、クラッシュしない
+- [ ] T202 [P] [US1] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に SC-014 の計測を追加する（R25）。`ZipFixtureWriter` で
+  `.zeros(count: 1 << 30)` を deflate で格納した `zeros.mp4` の zip を一時ディレクトリに作る（生成は計測に含めない）。`ZipArchiveReader.stream(for:)` で
+  先頭から末尾まで 512KB ずつ読み、続けて 900MB・100MB・10MB の位置（後ろ向き）から各 4MB を読む。64 回の読み出しごとに `task_info`（`TASK_VM_INFO`）の
+  `phys_footprint` を測り、読み出し前からの最大の増加が 128MB 以下であることを確かめる。最大の増加量と所要時間を出力する
+
+### Implementation for User Story 1
+
+- [ ] T203 [US1] `Sources/MediaViewerCore/Archive/ArchiveEntryStream.swift`（新規）を作り、`ArchiveReading` に `stream(for:)` を加えて `ZipArchiveReader` に
+  実装し、T200 を通す（R25、data-model の「ArchiveEntryStream」）。T200 の `scripts/check-no-archive-writes.sh`（実行権限付き、`scripts/check-no-network.sh` と
+  同じ書き方）を追加し、通ることを確かめる:
+  - `final class ArchiveEntryStream: @unchecked Sendable`。`length`（展開後のサイズ）と `read(offset:maxLength:) throws(ArchiveError) -> Data`。
+    `ArchiveFile` を保持する（zip を閉じた後も読み出せる）。内部は `NSLock` で1回の `read` ごとに直列化する
+  - 無圧縮: 「要求範囲を `pread` で直接読む」。キャッシュしない
+  - deflate: 1MB 単位のチャンクで読む。チャンクは LRU キャッシュ（合計 `MemoryLimits.archiveStreamCacheBytes = 32 * 1024 * 1024`、`MemoryLimits.swift` に追加）に置く。
+    キャッシュにないチャンクは、`InflateCursor` を最大 2 本の LRU から、位置がチャンクの先頭以下で最も近いものを選んで `skip(to:)` で進めて作る。
+    どれも先頭より後ろにいれば、最も古く使ったカーソルを `reset()` する
+  - `read` は `offset` から `maxLength` まで（末尾で打ち切る）をチャンクから組み立てて返す
+- [ ] T204 [US1] `Sources/MediaViewerCore/Archive/ArchiveAssetLoader.swift`（新規）に `ArchiveAssetLoader`（`NSObject`、`AVAssetResourceLoaderDelegate`、
+  `@unchecked Sendable`）と `ArchiveAssetFactory` を作り、T201 を通す（R25）:
+  - `makeAsset(for:reader:)`: `AVURLAsset(url: entryURL)` を作り、`resourceLoader.setDelegate(loader, queue: <専用の直列キュー>)` を設定し、
+    `objc_setAssociatedObject(asset, <static のキー>, loader, .OBJC_ASSOCIATION_RETAIN)` で asset に読み込み器を保持させる
+  - `resourceLoader(_:shouldWaitForLoadingOfRequestedResource:)`: true を返し、要求ごとに `Task.detached` を始めて、要求の識別子で覚える。タスクは
+    最初に `reader.stream(for:)` を1回だけ作って共有し、`contentInformationRequest` があれば `contentType = UTType(filenameExtension:)?.identifier`、
+    `contentLength = Int64(stream.length)`、`isByteRangeAccessSupported = true` を入れる。`dataRequest` があれば、`currentOffset` から
+    `requestsAllDataToEndOfResource` なら末尾まで、そうでなければ `requestedOffset + requestedLength` まで、512KB ずつ `read` して `respond(with:)` で返し、
+    各チャンクの間で `Task.isCancelled` を確かめる。最後に `finishLoading()`、失敗は `finishLoading(with: NSError)`（説明に `ArchiveError.message`）
+  - `resourceLoader(_:didCancel:)`: そのタスクを取り消して、識別子を忘れる
+- [ ] T205 [US1] `Sources/MediaViewerCore/Imaging/ThumbnailProvider.swift`: zip の中の動画で、`ArchiveAssetFactory.makeAsset(for:reader:)` の asset から
+  `AVAssetImageGenerator`（`appliesPreferredTrackTransform = true`、`maximumSize` = 段階に丸めたピクセル数の正方形）の `image(at: .zero)` で代表フレームを作る。
+  zip の中の動画の取得は同時 2 件までに制限する（画像の 4 件とは別）。`Tests/MediaViewerCoreTests/ThumbnailProviderTests.swift` に、zip の中の mp4 で
+  画像が返ることを追加する
+- [ ] T206 [US1] zip の中の動画をプレビューで再生する:
+  - `Sources/MediaViewerApp/Preview/VideoPreviewView.swift`: `configure(asset: AVAsset, autoplay:loop:fileName:)` を追加し、既存の `configure(url:…)` は
+    `AVURLAsset(url:)` を作ってこれを呼ぶ形にする。`AVPlayerItem(asset:)` を使う。ループ・終端の停止・再生状態の扱いは変えない
+  - `Sources/MediaViewerApp/Preview/PreviewViewController.swift`: イニシャライザに `archiveReader: any ArchiveReading` を追加する。`.video(url)` で
+    `ArchiveURL.parse(url) != nil` なら `ArchiveAssetFactory.makeAsset(for: url, reader: archiveReader)` を渡し、それ以外は従来どおり URL を渡す
+  - `Sources/MediaViewerApp/App/MainSplitViewController.swift`: T191 の `ZipArchiveReader` を `PreviewViewController` にも渡す
+  - os_signpost の `VideoPlaybackStart` は zip の中の動画でも同じく記録する（変更不要であることを確認する）
+
+### Verification for User Story 1
+
+- [ ] T207 [US1] 自動テストと手動確認を行う（T200〜T206 に依存）:
+  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す。T202 の最大のメモリ増加量と所要時間を記録する。128MB を超えた場合は
+    作業を止めて状況を報告する（憲章 原則 II）
+  - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。依頼時は quickstart.md「zip ファイル（FR-068〜075）」の
+    確認ポイント 8・9 と、Instruments（Points of Interest）での `videos-stored.zip` の 1080p 動画の `VideoPlaybackStart`（1 秒以内）の計測手順、
+    `sudo fs_usage -w -f filesys MediaViewer` で zip 以外への書き込みがないことの確認手順を具体的に示す
+  - SC-014 のメモリを必ず確かめる: `scripts/make-fixtures.sh ~/MediaViewerFixtures --big` で `zip-big/` を作り、`big-video-stored.zip` と
+    `big-video-deflated.zip` の動画をそれぞれ再生し、先頭・中ほど・末尾・先頭へのシークを含めて 1 分以上操作する。動画を選ぶ前と操作中に
+    `footprint MediaViewer`（または `footprint -p <pid>`）で `phys_footprint` を測り、増加が 128MB 以下であることを確認する。依頼時はこの手順と
+    コマンドを具体的に示す。128MB を超えた場合は作業を止めて状況を報告する
+  - 回帰確認: 通常のフォルダの動画の自動再生・ループ・シーク・Space・フルスクリーンの再生の維持（FR-031〜037）と、リスト形式・サムネイル形式の
+    動画の代表フレームが従来どおり動く
+  - 結果（実行日、OS、確認項目、合否、T202 と `footprint` によるメモリの最大増加量、再生開始の時間）を
+    `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+
+**Checkpoint**: zip の中の動画を、一時ファイルを作らずに通常のファイルと同じ操作で再生・シークでき、メモリの使用量は動画のサイズに比例しない
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -1626,6 +2051,15 @@ quickstart.md の手動シナリオで検証する。
   済ませてから着手する。T145〜T148（テスト）→ T149（`FavoriteFolders`）→ T150（`FavoriteCommands`）・T151（`FavoriteProbe`）・
   T152（`SettingsStore`）→ T156 → T157 → T158（同じ `DirectoryTreeViewController.swift`）→ T159（メニューの結線）の順に進め、
   T161 は最後に行う。T153〜T155 は T156 の前ならいつでもよい。T160（README）はいつでも並行できる
+- **zip の中の閲覧 (Phase 20)**: FR-068〜071・073〜075 の追加作業。US1 の `BrowserModel`・`DirectoryLister`、US3 の `ListModeView`・`ThumbnailModeView`・
+  `ThumbnailProvider`・`FileListViewController`、Phase 13 の `FocusNavigator`、Phase 18 の `MediaTypeFilter` と `.noMatches` に依存する。Phase 単位で
+  コミットするため、Phase 19 の T161 とコミットを済ませてから着手する。T162（フィクスチャの書き出し）→ T163（`ListItemKind` と既存の参照の修正。
+  既存のテストを通してから次へ進む）→ T164〜T174（テスト）→ T175〜T185（Core の部品）→ T186（`BrowserState`）→ T187 → T188（同じ `BrowserModel.swift`）→ T189 → App の T190〜T196 の順に進め、
+  T199 は最後に行う。T177 → T178 → T179 → T180 は順に依存する（構造の解析 → 索引 → 展開 → 読み取り器）。T197（`FixtureSets`）は T162 の後、
+  T198（README）はいつでも並行できる
+- **zip の中の動画 (Phase 21)**: FR-072・SC-014 の追加作業。Phase 20 の `ZipArchiveReader`・`InflateCursor`・`ThumbnailProvider`・`PreviewViewController` に依存する。
+  Phase 20 の T199 とコミットを済ませてから着手する。T200〜T202（テスト）→ T203（`ArchiveEntryStream`）→ T204（`ArchiveAssetLoader`）→ T205・T206 の順に
+  進め、T207 は最後に行う
 
 ### User Story Dependencies
 
@@ -1679,6 +2113,12 @@ quickstart.md の手動シナリオで検証する。
   T155（`SettingsWindowController.swift`）は互いに、また Core のタスクとも並行できる。T156〜T158 は同じ
   `DirectoryTreeViewController.swift` を編集するため並行せず、この順に進める。T156 は `MainSplitViewController.swift` の `init()` も、
   T159 は同じファイルのメニュー検証も編集するため、T156 と T159 は並行しない。T160（`README.md`）は他と重ならない
+- zip の中の閲覧: T164〜T172 と T174 はファイルが重ならないため並行できる（T173 は T172 と同じく先に書けるが、`BrowserModel` の多くの API を
+  参照するため最後に書くとよい）。T175（`ArchiveURL`・`ArchiveLocation`）・T176（`ArchiveNameDecoder`）・T181（`ListItemCommands`）・
+  T182（`FocusNavigator`）・T183（`MediaTypeFilter`・`Sorting`）・T184（`DirectoryLister`）・T185（`ImageDecoder`）は T163 の後に互いに並行できる。
+  T177〜T180 は順に進める。T187・T188 は同じ `BrowserModel.swift`、T192 と T193・T194・T195 は `FileListViewController` の結線を共有するため、この順に
+  進める。T190（`IconCatalog.swift`）は T193・T194 の前に行う。T196 は T186 の後なら App のほかのタスクと並行できる
+- zip の中の動画: T200・T201・T202 はファイルが重ならないため並行できる。T205（`ThumbnailProvider.swift`）と T206（App）は T204 の後に並行できる
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -1729,6 +2169,8 @@ Task: "T033 FitCalculatorTests"
 14. ツリーの開閉 → 行のダブルクリックで開閉でき、三角はサブフォルダがあるフォルダにだけ出る（FR-053〜055）
 15. 種類フィルタ → ツールバー・メニュー・⇧⌘I / ⇧⌘M で画像だけ・動画だけに絞り込める（FR-056〜060）
 16. お気に入り → ツリー最上部の「お気に入り」から登録したフォルダをすぐに開け、⌃⌘T / ⌘⌫ / ⇧⌘F で操作できる（FR-061〜067）
+17. zip の中の閲覧 → ファイルリストで zip を開いて中の画像を見られ、⌘↓ / ⌘↑ と `...` で辿れる。zip の中は読み取り専用（FR-068〜071・073〜075）
+18. zip の中の動画 → zip の中の動画を、一時ファイルを作らずにストリーミングで再生できる（FR-072、SC-014）
 
 ---
 
@@ -1774,4 +2216,8 @@ Task: "T033 FitCalculatorTests"
   ショートカット・右クリックで同じ判断を使う。⌘⌫ は新しいメニュー項目を作らず、既存の「ゴミ箱に入れる」をレスポンダーチェーンで
   ツリーに振り分け、項目名を「お気に入りから削除」に変える。削除は確認モーダル（ファイル操作と同じ省略設定）を通し、実際のフォルダは
   変えない（research.md R21）
+- FR-068〜075（2026-10-21）により、ファイルリストに zip ファイルを出し、zip の中をファイルリストの中だけで辿る。zip はツリーに出さない。
+  zip の読み取りは外部依存を使わず Core に自前で持ち（Complexity Tracking）、zip の中の項目は `mvzip:` の URL で表して既存の選択・キャッシュを使う。
+  zip の中は読み取り専用で、判断は `ListItemCommands` に集める。zip の中身は一時ファイルにもユーザーのフォルダにも書き出さない。動画は
+  `AVAssetResourceLoaderDelegate` で必要な範囲だけを読み、メモリは 32MB のチャンクキャッシュと展開カーソル 2 本で頭打ちにする（research.md R22〜R28）
 - Commit after each task or logical group

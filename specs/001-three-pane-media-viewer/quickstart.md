@@ -19,6 +19,7 @@
 swift build                                      # Core と App をビルド
 swift test --filter MediaViewerCoreTests         # 単体・異常系テスト（原則 IV）
 swift test --filter MediaViewerPerformanceTests  # 性能基準の計測（原則 II）。結果は PR に記載する
+scripts/check-no-archive-writes.sh              # zip の読み取りのコードに書き込み系の API がないこと（FR-072）
 ```
 
 **期待結果**: すべてのテストが通る。性能テストは基準値（下の「性能の検証」）を超えると失敗する。
@@ -67,6 +68,35 @@ scripts/make-fixtures.sh ~/MediaViewerFixtures
 | `huge/` | 10,000 個の小さな JPEG |
 | `bigimage/` | 1億画素級の PNG |
 | `ops/` | ファイル操作の検証用。毎回作り直してよい |
+| `zip/` | zip 対応の検証用（FR-068〜075）。下の表を参照 |
+
+`zip/` の内容（`FixtureKit` の `ZipFixtureWriter` で生成する。外部の `zip` コマンドは使わない。research.md R28）:
+
+| ファイル | 内容 |
+|----------|------|
+| `cover.jpg` | 通常の画像（zip と並んで一覧に出ることの確認用） |
+| `photos.zip` | deflate。ディレクトリの項目なしで `sub/deep/` まで階層を持つ。JPEG・PNG・アニメーション GIF・WebP・.txt・`.hidden.jpg`・`__MACOSX/._01.jpg`・入れ子の `inner.zip` |
+| `videos-stored.zip` | 無圧縮で格納した 640×360 の mp4 と mov、1080p の mp4（10 秒、faststart。SC-014 の再生開始の計測用） |
+| `videos-deflated.zip` | deflate で格納した mp4（faststart: `VideoFixtures` の `fastStart: true`）と mov（再生用の情報が末尾: 既定） |
+| `names-sjis.zip` | UTF-8 フラグなし・CP932 の名前（`写真①.jpg`、`フォルダ/画像.png`） |
+| `names-utf8.zip` | UTF-8 フラグありの日本語の名前 |
+| `locked.zip` | 暗号化フラグの JPEG、格納方式 12（bzip2）の PNG、通常の JPEG |
+| `no-media.zip` | .txt だけ |
+| `empty.zip` | 項目なし |
+| `broken.zip` | 途中で切れた zip |
+| `not-a-zip.zip` | 中身がテキストのファイル |
+| `huge.zip` | 10,000 個の小さな JPEG（SC-015） |
+
+SC-014 のメモリの確認用に、大きな動画の zip を別に作れる。生成に時間とディスク（約 2.3GB）を使うため、既定では作らない。
+
+```bash
+scripts/make-fixtures.sh ~/MediaViewerFixtures --big   # zip-big/ を追加で作る
+```
+
+| ファイル | 内容 |
+|----------|------|
+| `zip-big/big-video-stored.zip` | 1080p・約 1.1GB の mp4 を無圧縮で格納 |
+| `zip-big/big-video-deflated.zip` | 同じ mp4 を deflate で格納 |
 
 ## 手動の検証シナリオ
 
@@ -157,6 +187,42 @@ chmod 000 ~/MediaViewerFixtures/tree/denied
     **期待結果**: 項目名はどちらも「ゴミ箱に入れる」で、無効になっている。ツリーへ戻って（⌥⌘1）開き直すと「お気に入りから削除」になる
 19. 「お気に入り」を展開した状態で、外付けドライブまたはディスクイメージをマウント・取り外しする。**期待結果**: ボリュームの行が
     増減しても、「お気に入り」の見出しは最上部のまま動かず、展開状態と項目の並びも変わらない（FR-061）
+
+### zip ファイル（FR-068〜075）
+
+1. `zip/` を開く。**期待結果**: 一覧に `cover.jpg` と各 zip ファイルが並び、zip の行頭には zip のアイコンが出る。ツリーの `zip` の下に
+   zip ファイルは出ず、`zip` フォルダに開閉の三角も出ない（FR-068）
+2. `photos.zip` の行を選ぶ。**期待結果**: プレビューは空になる（FR-075）。⌘C → 別フォルダで ⌘V、Return での名前の変更、⌘Delete が
+   通常のファイルと同じに使える（`ops/` にコピーした zip で確かめる。FR-073 の最後の文）
+3. `photos.zip` をダブルクリックする。**期待結果**: 一覧の先頭行が `...`、続いて `sub` ディレクトリと JPEG・PNG・GIF・WebP が並ぶ。
+   .txt・`.hidden.jpg`・`__MACOSX`・`inner.zip` は出ない。ツリーの選択は `zip` のまま変わらない（FR-069・070）
+4. ↓ で画像を順に選ぶ。**期待結果**: プレビューが追従し、GIF は動く。⌘2 / ⌘1 で表示形式を切り替えると、サムネイルとリストの行頭アイコンに
+   内容の縮小画像が出る。列見出しで並べ替えると、ディレクトリと画像が区別なく並び替わり、`...` は先頭のまま（FR-071、spec Assumptions）
+5. `sub` を選んで ⌘↓、続けて `deep` をダブルクリックする。**期待結果**: それぞれの中の一覧に切り替わる。⌘↑ を押すと `sub` の一覧に戻り、
+   `deep` の行が選択されて見える位置にある。`...` をダブルクリックすると最上位に戻り `sub` が選択されている。最上位で ⌘↑ を押すと
+   `zip/` の一覧に戻り、`photos.zip` の行が選択されている（FR-070）
+6. zip の中で画像を選び、右クリックする。**期待結果**: 「中を表示」「上の階層へ」以外の項目は淡色。Return・⌘C・⌘D・⌘Delete・⌘O を押しても
+   何も起きず、ツリーやデスクトップへドラッグできない。zip の更新日時は変わらない（FR-073）
+7. 「画像のみ表示」をオンにして `videos-stored.zip` を開く。**期待結果**: `...` は残り、一覧の下端に「画像のみ表示中: 該当するファイルは
+   ありません」が出る。オフに戻すと mp4 と mov が出る（FR-056・060）
+8. `videos-stored.zip` の mp4 を選ぶ。**期待結果**: 自動でループ再生が始まり、シーク・音量・Space が通常のファイルと同じに使える。
+   `...` の行へ ↑ で移ると再生（音声を含む）が止まり、プレビューが空になる（FR-071・075）
+9. `videos-deflated.zip` の mp4 と mov を再生し、シークバーで前後に動かす。**期待結果**: 再生・シークができる。mov は再生開始まで
+   通常より時間がかかってもよい（spec Assumptions）。再生中に `sudo fs_usage -w -f filesys MediaViewer` を見て、zip 以外のファイルへの書き込みが
+   ないこと（一時ファイルを作らないこと: FR-072、SC-014）
+10. zip の中で画像をフルスクリーンにし、↓ / → を押し続ける。**期待結果**: ディレクトリの行を飛ばして次の画像・動画に移り、最後の
+   メディアで止まる。解除すると移動後のファイルが選択されている（FR-046）
+11. `names-sjis.zip` と `names-utf8.zip` を開く。**期待結果**: どちらも `写真①.jpg` などの日本語名が文字化けせずに出て、`フォルダ` の中へ
+   入れる（FR-074）
+12. `locked.zip` を開いて各項目を選ぶ。**期待結果**: 3件とも一覧に出る。暗号化の JPEG は「暗号化されているため表示できません」、bzip2 の
+   PNG は「対応していない圧縮方式です」と出て、行頭アイコンは汎用アイコン。通常の JPEG は表示される。パスワードは求められない
+13. `no-media.zip` と `empty.zip` を開く。**期待結果**: `...` だけが出て、一覧の下端に従来の空のメッセージが出る。`broken.zip` と
+   `not-a-zip.zip` では、`...` と「zip を開けません」とその理由が出て、アプリは落ちない。どれも ⌘↑ で戻れる
+14. `photos.zip` の中を表示したまま、ターミナルで `touch zip/photos.zip` を実行する（または zip を別名に変える）。**期待結果**: `zip/` の一覧に
+   戻り、プレビューは空になる（spec Edge Cases）
+15. `photos.zip` の中を表示したまま、ツリーで別のフォルダを選ぶ。**期待結果**: そのフォルダの一覧になる。zip の中で終了して再起動すると、
+   `zip/` の一覧から始まる（FR-003・069）
+16. `huge.zip` を開く。**期待結果**: 読み込み中の表示が出て、1 秒以内に最初の項目が出る。読み込み中もツリーとスクロールを操作できる（SC-015）
 
 ### プレビューのフィット（FR-028）
 1. `mixed/02-image.png`（400×300）を選ぶ。**期待結果**: 縦横比を保ったまま、ペインの幅・高さの
@@ -277,7 +343,7 @@ chmod 000 ~/MediaViewerFixtures/tree/denied
 
 ### 異常系（SC-007）
 `broken/` の全ファイルを順に選択する。**期待結果**: アプリは落ちず、プレビューにファイル名と
-「表示できません」が出る。システム設定で「書類」フォルダへのアクセスを拒否した状態でツリーから開くと、
+「表示できません」が出る。`zip/` の `broken.zip`・`not-a-zip.zip`・`locked.zip` も同様に落ちない（「zip ファイル」の手順 12・13）。システム設定で「書類」フォルダへのアクセスを拒否した状態でツリーから開くと、
 「アクセスできません」が出る。
 
 ## 性能の検証
@@ -298,6 +364,10 @@ chmod 000 ~/MediaViewerFixtures/tree/denied
 | 1080p 動画の選択から再生開始まで | 1 秒以内 | SC-010 |
 | ペイン幅・サムネイルサイズのドラッグ中の表示停止 | 100ms 以上の停止が 0 回 | SC-004 |
 | デコード済みプレビューのキャッシュ | 256MB を超えない | 憲章 原則 II、research.md R8 |
+| 10,000 項目の zip の索引作成（`ZipArchiveReader.open`） | 0.5 秒以内（一覧の最初の表示は 1 秒以内） | SC-015、research.md R22 |
+| 展開後 1GB の deflate 項目の先頭から末尾までの読み出し（途中で後ろ向きのシークを含む、`ArchiveEntryStream`） | 物理フットプリントの増加が 128MB 以下。一時ファイルを作らない | SC-014、research.md R25 |
+| 無圧縮で格納した 1080p 動画（`videos-stored.zip`）の選択から再生開始まで | 1 秒以内（os_signpost `VideoPlaybackStart`） | SC-014 |
+| `zip-big/` の約 1.1GB の動画を再生し、先頭・中ほど・末尾・先頭へシークしながら 1 分以上操作したときのメモリ | `footprint MediaViewer` の `phys_footprint` の増加が 128MB 以下（無圧縮・deflate の両方） | SC-014、research.md R25 |
 
 SC-004 は実際のドラッグ操作を伴うため自動テストには含めず、T080 の手動確認（画面収録または Instruments）で測る。
 

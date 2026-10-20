@@ -1,6 +1,6 @@
 # Data Model: 3ペイン型メディアビューア
 
-**Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Date**: 2026-10-19
+**Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Date**: 2026-10-19（zip 対応: 2026-10-21）
 
 型はすべて `MediaViewerCore` に置き、AppKit に依存しない。永続化するのは表示設定と動作オプションだけで
 （[contracts/settings.md](./contracts/settings.md)）、それ以外はファイルシステムから都度読み出す。
@@ -20,6 +20,25 @@
 
 - `MediaKind(fileExtension:)` は上の表以外の拡張子に対して `nil` を返す。`nil` のファイルはリストに表示しない（FR-008）
 - `isVideo` プロパティで画像と動画を区別する
+- zip ファイル（.zip）は `MediaKind` に含めない。一覧の行の種類は `ListItemKind` で表す
+
+## ListItemKind（ファイルリストの行の種類・永続化しない）
+
+ファイルリストの1行が何を表すか（FR-068〜070・075、research.md R23）。
+
+| 値 | 出る場所 | 説明 |
+|----|----------|------|
+| `.media(MediaKind)` | 通常のフォルダ・zip の中 | 対応メディアファイル。プレビュー・縮小画像・種類フィルタの対象 |
+| `.archive` | 通常のフォルダ | zip ファイル（拡張子 .zip、大文字小文字を区別しない）。開くと zip の中の最上位を表示する |
+| `.directory` | zip の中 | zip の中のディレクトリ。開くとその中を表示する |
+| `.parent` | zip の中の先頭行 | `...`。開くと1つ上の階層へ戻る。並べ替えの対象にせず、常に先頭に置く |
+
+| プロパティ | 型 | 値 |
+|------------|----|----|
+| `isMedia` | Bool | `.media` のときだけ true |
+| `mediaKind` | MediaKind? | `.media` のときだけその値 |
+| `isVideo` | Bool | `.media` の動画のときだけ true |
+| `opensAsContainer` | Bool | `.archive` / `.directory` / `.parent` で true（ダブルクリック・⌘↓ で開ける） |
 
 ## FolderNode（ツリーのノード）
 
@@ -138,26 +157,32 @@
 
 | フィールド | 型 | 説明 |
 |------------|----|------|
-| `url` | URL | ファイルの場所（同一性のキー） |
-| `name` | String | 拡張子を含むファイル名 |
-| `kind` | MediaKind | 種類 |
-| `typeDescription` | String | 「種類」列に出す OS のローカライズ名（例: 「JPEG イメージ」） |
-| `creationDate` | Date? | 「作成日」列。取得できない場合は `nil` で、表示は「--」 |
-| `fileSize` | Int64 | バイト数（並べ替えと a11y 用。列は表示しない） |
+| `url` | URL | ファイルの場所（同一性のキー）。zip の中の項目は `ArchiveURL` の `mvzip` URL |
+| `name` | String | 拡張子を含むファイル名。zip の中の項目は FR-074 で判定した名前。`.parent` は `...` |
+| `kind` | ListItemKind | 行の種類（2026-10-21 に `MediaKind` から変更） |
+| `typeDescription` | String | 「種類」列に出す OS のローカライズ名（例: 「JPEG イメージ」）。zip の中のディレクトリは「フォルダ」、`.parent` は空 |
+| `creationDate` | Date? | 「作成日」列。取得できない場合は `nil` で、表示は「--」。zip の中の項目は zip に記録された更新日時 |
+| `fileSize` | Int64 | バイト数（並べ替えと a11y 用。列は表示しない）。zip の中の項目は展開後のサイズ、ディレクトリと `.parent` は 0 |
 
 - リスト形式の行頭アイコンは `kind` からフォールバックを選び、`url` をキーに非同期取得した
   縮小画像で置き換える（`IconPresentation`）。`MediaFile` 自体には画像を保持しない
+- 型の名前は `MediaFile` のまま、zip ファイル・ディレクトリ・`...` の行にも使う（research.md R23）
 
 ## FolderListing（ファイルリストの内容）
 
 | フィールド | 型 | 説明 |
 |------------|----|------|
-| `folder` | URL | 対象フォルダ |
-| `files` | `[MediaFile]` | 対応形式で絞り込み、並べ替えたうえで、種類フィルタ（`MediaTypeFilter`）を適用したファイル。UI・選択・先読み・フルスクリーン移動はこの配列だけを見る |
+| `folder` | URL | 対象フォルダ。zip の中を表示中も、zip ファイルを含むフォルダのまま |
+| `archive` | ArchiveLocation? | zip の中を表示中なら、その zip と階層。通常のフォルダでは `nil` |
+| `files` | `[MediaFile]` | 対応形式（と zip ファイル、zip の中ではディレクトリと `...`）で絞り込み、並べ替えたうえで、種類フィルタ（`MediaTypeFilter`）を適用した行。UI・選択・先読み・フルスクリーン移動はこの配列だけを見る |
 | `state` | `.loading` / `.loaded` / `.empty` / `.noMatches` / `.denied` / `.failed(String)` | 表示状態 |
 
-- `.empty` は対象ファイルが元々1件もない状態、`.noMatches` は対象ファイルはあるが種類フィルタで
-  1件も残らない状態（FR-060）。種類フィルタが絞り込んでいないとき `.noMatches` にはならない
+- `.empty` は対応メディアが元々1件もなく、`...` 以外の行（zip ファイル・ディレクトリ）もない状態、`.noMatches` は対応メディアは
+  あるが種類フィルタで1件も残らない状態（FR-060）。種類フィルタが絞り込んでいないとき `.noMatches` にはならない
+- メディアが0件でも zip ファイルかディレクトリの行があれば `.loaded`。zip ファイル・ディレクトリ・`...` は件数の判定で数えない
+- `.empty` / `.noMatches` / `.failed` でも、zip の中では `files` に `...`（とディレクトリ）が残る。UI は行を出したまま、一覧の下端に
+  メッセージを出す（research.md R26）
+- zip を開けないときは `.failed("zip を開けません: <理由>")` で、`files` は `...` だけ
 - `BrowserModel` は種類フィルタを適用する前の並べ替え済みの全件を非公開で保持し、絞り込みの変更では
   ディスクを読み直さない
 
@@ -169,8 +194,24 @@
                          ├→ noMatches│← 種類フィルタの変更（loaded ⇄ noMatches）
                          ├→ denied  │
                          └→ failed  │
-(別フォルダ選択) ── 任意の状態 → loading（前の読み込みは取り消す。種類フィルタは保つ）
+(別フォルダ選択) ── 任意の状態 → loading（前の読み込みは取り消す。種類フィルタは保つ。zip の状態は捨てる）
+(zip・ディレクトリ・`...` を開く) ── loaded / empty / noMatches / failed → loading → （上と同じ分岐）
 ```
+
+**zip の中の移動**（FR-069・070、research.md R23・R26）:
+
+```text
+フォルダの一覧 ─(zip の行を開く)→ zip の最上位 ─(ディレクトリを開く)→ zip の中の階層
+      ↑                            │  ↑                                │
+      └──(`...` / ⌘↑)──────────────┘  └────────(`...` / ⌘↑)─────────────┘
+      ↑
+      └──(ツリーで別のフォルダ / FSEvents で zip が変わった・消えた)── zip の中の任意の階層
+```
+
+- 中へ入ったときは選択を空にし、プレビューを空にする（`selectFolder` と同じ）
+- 戻ったときは、直前まで中を表示していた zip ファイルまたはディレクトリの行だけを選択し、フォーカスにする（FR-070）
+- 階層の移動では zip を読み直さず、開いたときの `ArchiveIndex` から一覧を作る。zip の最上位から戻ったときは、
+  フォルダの一覧をディスクから読み直す
 
 ## MediaTypeFilter（種類フィルタ・永続化しない）
 
@@ -191,6 +232,7 @@
 | true | true | 画像と動画すべて | false | nil |
 
 - `apply(to:)` は入力の並び順を保つ（並べ替えは先に済ませる）
+- `apply(to:)` は `kind` が `.media` 以外の行（zip ファイル・ディレクトリ・`...`）を常に残す（FR-056）
 - ツールバーのセグメントの押された状態とメニューのチェックは、各フィールドの値をそのまま映す
   （両方オンでもボタンは両方押された見た目のまま）
 
@@ -267,6 +309,9 @@
 - 結果は `0...(fileCount - 1)` にクランプする。リスト形式の ←→ は `currentIndex` に関わらず `nil`。
   それ以外で `currentIndex` が `nil` の場合は 0 を返す
 - 列数が 0 以下の場合は 1 として扱う（ゼロ除算・同一行内の無限移動を避ける）
+- フルスクリーンでは `isNavigable`（行がメディアか）を渡し、移動先がメディア以外の行なら同じ方向に同じ規則で
+  移動を繰り返す。メディアの行に当たらないまま端に達したら `nil`（選択を変えない）（FR-046、research.md R26）。
+  通常表示では `isNavigable` を渡さず、メディア以外の行にも止まる
 
 ## FullScreenNavigationContext（フルスクリーン中のみ・永続化しない）
 
@@ -282,10 +327,15 @@
 ## PreviewContent（プレビュー状態）
 
 ```text
-empty ──(focused 設定)──→ loading ──→ image(DecodedImage) / animatedImage(URL) / video(URL)
+empty ──(focused 設定)──→ loading ──→ image(DecodedImage) / animatedImage(URL) / animatedImageData(URL, Data) / video(URL)
                                   └──→ unavailable(name, reason)   ← 破損・非対応エンコード（FR-038）
-任意 ──(focused が nil / ファイル消失)──→ empty
+任意 ──(focused が nil / ファイル消失 / focused がメディア以外の行)──→ empty
 ```
+
+- `animatedImageData(URL, Data)` は zip の中のアニメーション画像だけで使う。`Data` は zip から読んだ項目の内容で、
+  プレビューを離れたら捨てる（research.md R24）
+- フォーカスが zip ファイル・ディレクトリ・`...` の行になったら `empty` にし、再生中の動画は停止する（FR-075）
+- zip の中の画像で、暗号化・非対応の格納方式・512MB 超のときは `unavailable` にする（spec Edge Cases、research.md R24）
 
 - 動画は `video` 状態になると、自動再生・ループの各オプションに従って再生を始める（FR-031・032）
 - `focused` が変わったら、前の動画を停止してから遷移する（FR-034）
@@ -378,6 +428,9 @@ requested ─(確認 ON)→ awaitingConfirmation ─(キャンセル)→ cancell
 | リスト（生成中・失敗時） | `MediaKind.mp4` | `film` の SF Symbol |
 | リスト（生成中・失敗時） | `MediaKind.mov` | `video` の SF Symbol |
 | リスト（取得後） | `ThumbnailProviding` の 64px 画像 | 内容の縮小画像（動画は代表フレーム） |
+| リスト・サムネイル | `ListItemKind.archive` | `doc.zipper` の SF Symbol（縮小画像は取得しない） |
+| リスト・サムネイル | `ListItemKind.directory` | `folder` の SF Symbol（縮小画像は取得しない） |
+| リスト・サムネイル | `ListItemKind.parent` | `arrowshape.turn.up.left` の SF Symbol。a11y のラベルは「上の階層へ」 |
 
 - アイコンは装飾で、選択・フォーカス・並べ替えのキーにはならない。a11y 要素にはせず、
   フォルダ名・ファイル名の読み上げを維持する
@@ -385,6 +438,103 @@ requested ─(確認 ON)→ awaitingConfirmation ─(キャンセル)→ cancell
   セル再利用時は同じ URL・要求サイズの取得だけを取り消し、他のサイズ（サムネイル形式の
   128 / 256 / 512px）の要求は残す。取得結果はメモリ上のサムネイルキャッシュにのみ置く
 - ツリーのアイコンは展開状態で変化しない。アイコン自体は永続化しない
+
+## ArchiveLocation（zip の中の現在位置・永続化しない）
+
+`FolderListing.archive` に入る、表示中の zip とその中の階層（FR-069・070、research.md R23）。
+
+| フィールド | 型 | 説明 |
+|------------|----|------|
+| `archive` | URL | zip ファイルのファイル URL |
+| `directory` | String | zip の中の階層のパス。最上位は空文字、それ以外は `a/b/` のように末尾が `/` |
+
+- `parent` は1つ上の階層。最上位の `parent` は `nil`（zip を含むフォルダへ戻る）
+- 永続化しない。終了時に zip の中を表示していても、`lastFolder` は zip を含むフォルダのまま（FR-003）
+
+## ArchiveURL（zip の中の項目の URL）
+
+zip の中の項目・ディレクトリ・`...` を、既存の選択とキャッシュのキー（URL）で表すための形式（research.md R23）。
+
+| 対象 | 形 |
+|------|----|
+| 項目 | `mvzip:///<項目のパス>?archive=<zip の絶対パス>` |
+| ディレクトリ | `mvzip:///<ディレクトリのパス>/?archive=<zip の絶対パス>` |
+| 最上位 | `mvzip:///?archive=<zip の絶対パス>` |
+| `...` | 表示中の階層の URL + `#parent` |
+
+- パスはどちらもパーセントエンコードする。生成と解析は `ArchiveURL` だけで行う
+- `lastPathComponent` と `pathExtension` は項目の名前と拡張子を返すため、既存の形式判定（FR-009）がそのまま使える
+- `isFileURL` は false。`FileManager`・`NSWorkspace`・ペーストボードには渡さない（FR-073）
+
+## ArchiveIndex と ArchiveEntry（開いている zip の索引・永続化しない）
+
+zip の中央ディレクトリを1回読んで作る索引。`BrowserModel` が開いている zip について1つだけ持つ（research.md R22・R23）。
+
+| `ArchiveIndex` のフィールド | 型 | 説明 |
+|-----------------------------|----|------|
+| `archive` | URL | zip ファイル |
+| `identity` | ArchiveIdentity | 開いたときの zip ファイルの同一性 |
+| `entries` | `[String: ArchiveEntry]` | 項目のパス → 項目 |
+| `children` | `[String: [String]]` | ディレクトリのパス → 直下の項目とディレクトリのパス（途中のディレクトリを補ったもの） |
+
+| `ArchiveEntry` のフィールド | 型 | 説明 |
+|-----------------------------|----|------|
+| `path` | String | FR-074 で判定した名前による、zip の中のパス |
+| `name` | String | パスの最後の要素 |
+| `isDirectory` | Bool | ディレクトリか |
+| `method` | UInt16 | 格納方式（0 = 無圧縮、8 = deflate、それ以外は非対応） |
+| `isEncrypted` | Bool | 汎用フラグのビット 0 |
+| `compressedSize` / `uncompressedSize` | UInt64 | 中央ディレクトリ（ZIP64 拡張を含む）の値 |
+| `localHeaderOffset` | UInt64 | ローカルヘッダの位置。データの開始位置は初めて読むときに求める |
+| `modificationDate` | Date? | 0x5455 の更新時刻、なければ DOS 日時（現地時刻） |
+
+| `readability` | 条件 | 一覧 | プレビュー・縮小画像 |
+|---------------|------|------|----------------------|
+| `.readable` | 方式が 0 または 8、暗号化なし | 出す | 通常どおり |
+| `.encrypted` | ビット 0 | 出す | 「暗号化されているため表示できません」、汎用アイコン |
+| `.unsupportedMethod` | 方式が 0・8 以外 | 出す | 「対応していない圧縮方式です」、汎用アイコン |
+
+- 一覧に出さない項目: 名前の要素が `.` で始まるもの、`__MACOSX/` 以下、`..` を含む名前、対応メディア以外のファイル（入れ子の zip を含む）
+- 同じパスの重複は、中央ディレクトリで先に出たものを使う。ファイルとディレクトリが同じ名前ならディレクトリとして扱う
+- 名前の判定は `ArchiveNameDecoder`（FR-074、research.md R27）
+
+## ArchiveIdentity（zip ファイルの同一性・永続化しない）
+
+| フィールド | 型 | 説明 |
+|------------|----|------|
+| `fileSize` | UInt64 | 開いたときのサイズ |
+| `modificationDate` | Date | 開いたときの更新日時 |
+| `inode` | UInt64 | 開いたときの inode |
+
+- zip を含むフォルダの FSEvents を受けたら、いまの値と比べる。違っていれば（または zip が消えていれば）zip を閉じ、
+  フォルダの一覧に戻ってプレビューを空にする（spec Edge Cases）
+
+## ArchiveEntryStream（zip の中の項目の範囲読み出し・永続化しない）
+
+動画の再生と代表フレームの取得で、項目の任意の範囲を読む（FR-072、research.md R25）。
+
+| 格納方式 | 読み方 | メモリ |
+|----------|--------|--------|
+| 無圧縮 | 要求範囲を `pread` で直接読む | 応答中のチャンク（512KB）だけ |
+| deflate | `InflateCursor`（最大 2 本、LRU）で展開。前へ戻るときは先頭から展開し直す | 1MB 単位のチャンクの LRU キャッシュ 32MB + カーソル 2 本 + 応答中のチャンク |
+
+- 1つの asset が使うメモリは上の合計で決まり、動画のサイズに依存しない（SC-014: 追加分 128MB 以下）
+- 一時ファイルを作らない。zip ファイルの読み出し以外のディスクの入出力を行わない
+
+## ListItemCommands（一覧の行に対する操作の可否・永続化しない）
+
+行の種類と「zip の中を表示中か」から、操作ごとの可否を返す純粋計算（FR-069・073、research.md R26）。
+
+| 操作 | 通常のフォルダのメディア | 通常のフォルダの zip ファイル | zip の中（メディア・ディレクトリ・`...`） |
+|------|--------------------------|-------------------------------|-------------------------------------------|
+| 中を表示（ダブルクリック・⌘↓） | 何もしない | 中へ入る | ディレクトリは中へ、`...` は上へ。メディアは何もしない |
+| 上の階層へ（⌘↑） | 何もしない | 何もしない | 1つ上へ |
+| 開く（⌘O） | 可 | 可 | 不可 |
+| コピー・複製・名前の変更・ゴミ箱・Finder に表示 | 可 | 可 | 不可 |
+| ペースト・移動ペースト（一覧へ） | 可 | 可 | 不可 |
+| ドラッグ | 可 | 可 | 不可 |
+
+- 不可の操作は、メニュー項目を淡色にし、キーボードショートカットとドラッグでは何もしない（FR-073）
 
 ## AppIcon（ビルド時のみ・Core の型ではない）
 

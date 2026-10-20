@@ -567,3 +567,234 @@ Technical Context の未確定事項と主要な技術選択について、決�
   - 既存の右クリックメニューの項目だけ選択中の行を対象のまま残す案: お気に入りの項目と対象の決め方が食い違い、同じメニューの中で
     別の行に効く項目が混ざるため却下
   - お気に入りの項目へのドロップ・ペーストを受け付ける案: spec の対象外で、経路を増やすため今回は却下（必要になれば追加する）
+
+## R22. zip の読み取り方式
+
+- **Decision**:
+  - zip の読み取りは Core の自前実装 `ZipArchive` で行う。外部依存は増やさない。対応範囲は、単一ファイルの zip（ZIP64 を含む）と、
+    格納方式の無圧縮（0）・deflate（8）。暗号化された項目（汎用フラグのビット 0）と、それ以外の格納方式（deflate64・bzip2・LZMA など）は
+    一覧には出し、プレビューで表示できない旨を示す（spec Edge Cases）。分割 zip（ディスク番号が 0 以外）は開けない
+  - 開くときは、末尾の終端レコード（EOCD）を末尾 64KB + 22 バイトの範囲から後ろ向きに探し、ZIP64 ならロケータから ZIP64 の終端レコードを読む。
+    続けて中央ディレクトリを1回で読み、索引 `ArchiveIndex` を作る。読み出しはファイル記述子への `pread` で行い、zip 全体を読み込まない・
+    メモリマップしない。中央ディレクトリの読み込みと解析は UI スレッドで行わない
+  - 項目のデータの開始位置は、ローカルヘッダ（30 バイト + 名前 + 拡張フィールド）を読んで決める。中央ディレクトリとローカルヘッダで
+    拡張フィールドの長さが異なることがあるため。初めて読むときに1回だけ求め、項目ごとに覚える
+  - サイズは中央ディレクトリの値を使う（データ記述子を使う zip、ビット 3 でも正しい）。ZIP64 拡張フィールド（0x0001）があればその値を使う
+  - 階層は、名前を `/` で区切って木にする。ディレクトリの項目を持たない zip でも、途中のディレクトリを補う。名前の先頭の `/`・空の要素・`.` は
+    取り除き、`..` を含む名前の項目は捨てる（展開しないので書き出しの危険はないが、表示上の階層を崩さないため）。区切りは `/` だけとし、
+    `\` は名前の一部として扱う（ZIP の仕様 APPNOTE 4.4.17。CP932 の2バイト目には 0x5C が現れるため、`\` で区切ると日本語名が壊れる）
+  - 隠し項目: 名前の要素が `.` で始まる項目と `__MACOSX/` 以下（macOS が作るリソースフォーク）は出さない。FR-008 の隠しファイルと
+    同じ扱いにする。`__MACOSX/._a.jpg` は拡張子が jpg でも中身は画像ではなく、出すと壊れたファイルとして並ぶため
+  - 同じパスが重複した場合は、中央ディレクトリで先に出た項目を使う。同じ名前がファイルとディレクトリの両方にある場合はディレクトリとして扱う
+  - 「作成日」の列には更新日時を出す（spec Assumptions）。拡張タイムスタンプ（0x5455）の更新時刻（UTC）があれば使い、なければ DOS の日時を
+    現地時刻として解釈する
+  - CRC は検証しない。範囲を指定した読み出し（R25）では検証できないため。壊れたデータは、デコードや再生の失敗として FR-038 の表示になる
+  - 開いたときに zip ファイルの同一性 `ArchiveIdentity`（パス・サイズ・更新日時・inode）を記録する。FSEvents の後に比べて違っていれば、
+    zip が変わったものとして閉じる（R26）
+- **Rationale**:
+  - Apple 標準のフレームワークには、zip の中を一覧して項目の一部だけを読み出す公開 API がない。AppleArchive は独自形式で zip を読めない。
+    `NSFileCoordinator` の `.forUploading` は zip を作る側。libarchive は OS に含まれるが SDK に公開ヘッダがない
+  - zip の構造（終端レコード・中央ディレクトリ・ローカルヘッダ）は固定長のフィールドが中心で、読み取り専用なら数百行で書ける。
+    判断をすべて Core に置けるため、壊れた zip・ZIP64・データ記述子・重複などの異常系を自動テストで網羅できる（原則 IV）
+  - 中央ディレクトリは 10,000 項目でも 1MB 前後で、1回の読み込みと解析で SC-015（最初の項目を 1 秒以内）を満たせる
+  - `pread` はオフセットを指定する読み出しなので、同じファイル記述子を複数の読み出し（一覧・サムネイル・再生）で共有しても互いに干渉しない
+- **Alternatives considered**:
+  - `/usr/bin/unzip` や `ditto` を子プロセスで呼ぶ案: 項目の一部だけを読み出せず、再生には一時ファイルへの展開が要る（FR-072 に反する）ため却下
+  - libarchive を使う案: SDK に公開ヘッダがなく、自前でヘッダを持ち込むと外部依存と同じ扱いになる（原則 V）ため却下
+  - ZIPFoundation などのパッケージを使う案: 外部依存を増やさない方針（原則 V、AGENTS.md）に反するため却下
+  - `Data(contentsOf:options: .alwaysMapped)` で zip 全体をメモリマップする案: 実装は簡単だが、読み出しのエラーがページフォールト（SIGBUS）として
+    起き、取り外されたボリュームや壊れたファイルをエラーとして扱えない。常駐メモリにも数えられ、SC-014 の計測を難しくするため却下
+
+## R23. zip の中の項目の識別と一覧のモデル
+
+- **Decision**:
+  - zip の中の項目は、独自スキーム `mvzip` の URL で表す。形は `mvzip:///<項目のパス>?archive=<zip の絶対パス>` とし、どちらも
+    パーセントエンコードする。ディレクトリはパスの末尾を `/` にする。zip の最上位は空のパス（`mvzip:///?archive=…`）。
+    先頭行の `...` は、表示中の階層の URL にフラグメント `parent` を付けたものにする。生成と解析は `ArchiveURL` に集め、ほかの場所で
+    文字列を組み立てない
+  - 一覧の行の型は既存の `MediaFile` を使い続け、`kind` の型を `MediaKind` から行の種類 `ListItemKind`
+    （`.media(MediaKind)` / `.archive` / `.directory` / `.parent`）に変える。`ListItemKind` には `isVideo`（メディアの動画だけ true）・
+    `mediaKind`・`isMedia`・`opensAsContainer`（`.archive` / `.directory` / `.parent`）を持たせ、既存の `file.kind.isVideo` などの呼び出しは
+    そのまま通るようにする
+  - 通常のフォルダの zip ファイルの行は、`url` を zip のファイル URL、`kind` を `.archive` にする。zip ファイルそのもののファイル操作
+    （FR-073 の最後の文）は、既存の経路がそのまま使える
+  - `DirectoryListing.mediaFiles(in:)` は、対応メディアに加えて `.zip` のファイル（拡張子の大文字小文字を区別しない）も返す（FR-068）。
+    ツリー用の `subfolders(of:)` と `hasSubfolders(in:)` は変えない（zip はディレクトリとして扱わない）
+  - `FolderListing` に `archive: ArchiveLocation?`（開いている zip と、その中の階層のパス）を加える。`folder` は zip の中を表示中も、zip を含む
+    フォルダのまま変えない。ペーストの宛先・FSEvents の対象・`lastFolder`（FR-003）がそのまま「zip を含むフォルダ」になる
+  - `BrowserModel` は、開いている zip の `ArchiveIndex` を1つだけ持つ（10,000 項目で数 MB）。zip の中の階層を移るときは zip を読み直さず、
+    索引から一覧を作る。zip から出たとき（最上位の `...`・⌘↑・ツリーで別のフォルダを選んだとき・FSEvents で zip が変わったとき）に捨てる
+  - 並べ替え: `...` は並べ替えの前に取り除き、結果の先頭に戻す（FR-070）。ディレクトリとメディアファイルは区別せず、同じ規則で並べる
+    （spec Assumptions）。「種類」列の値は、zip の中のメディアは拡張子の `UTType` の説明、ディレクトリは「フォルダ」、zip ファイルは既存の
+    リソース値（`localizedTypeDescription`）とする
+  - 種類フィルタ: `MediaTypeFilter.apply(to:)` は `.media` 以外の行を常に残す（FR-056）
+  - 空の判定（FR-060）: `.noMatches` は「フィルタ前にメディアが1件以上あり、フィルタ後に0件」。`.empty` は「メディアが0件で、`...` 以外の行も
+    ない」。メディアが0件でも zip ファイルかディレクトリがあれば `.loaded` にする
+  - 1つ上の階層へ戻ったら、直前まで中を表示していた zip ファイルまたはディレクトリの行だけを選択し、フォーカスにする（FR-070）。
+    プレビューは FR-075 により空になる。UI は選択の変化で既存のスクロール追従（`scrollToFocused()`）を呼ぶ
+- **Rationale**:
+  - URL のまま識別すると、選択（`Set<URL>`）・プレビューのキャッシュ（URL がキー）・サムネイルのキャッシュ（`absoluteString` がキー）・
+    `lastPathComponent` と `pathExtension` による形式判定を変えずに使える。AVFoundation の独自スキームの読み込み（R25）にもそのまま渡せる
+  - `isFileURL` が false になるため、`FileManager`・`NSWorkspace`・ペーストボードに zip の中の URL が渡る経路を、1つの条件で止められる（R26）
+  - 一覧の行の型を1つにすると、リスト形式・サムネイル形式・選択・矢印キーの移動・並べ替えに「ディレクトリとメディアが同じ並びに混ざる」
+    規則をそのまま通せる。`MediaFile` の名前は残し、型の名前の変更による差分を避ける
+- **Alternatives considered**:
+  - 項目の場所を `enum MediaLocation { case file(URL), archiveEntry(...) }` にして選択やキャッシュのキーを置き換える案: 型としては明確だが、
+    UI とキャッシュの全経路の型が変わり、差分とテストの書き換えが大きいため却下
+  - `MediaFile` とは別に「ディレクトリと zip の行」の配列を持つ案: 並べ替えと矢印キーの移動でディレクトリとメディアが混ざる規則を
+    2つの配列で再現する必要があり、ずれやすいため却下
+  - `MediaKind` に `.zip` や `.directory` を加える案: `MediaKind(fileExtension:)` が「対応メディアか」の判定（FR-009）を兼ねており、
+    種類フィルタやプレビューの判定が壊れるため却下
+  - `MediaFile` の型名を `FileListItem` に変える案: 意味は正確になるが、今回の機能と関係のない差分が広がるため今回は見送る
+
+## R24. zip の中の画像とサムネイル
+
+- **Decision**:
+  - zip の中の画像は、項目全体を `Data` に読み込んでから ImageIO でデコードする。無圧縮の項目は `pread`、deflate の項目は Compression
+    フレームワークの `compression_stream`（`COMPRESSION_ZLIB`、ヘッダのない生の DEFLATE）で展開する。読み込む前に中央ディレクトリの
+    展開後のサイズを確かめ、1項目 512MB を超える画像は読まずに「zip の中の画像が大きすぎるため表示できません」とする（FR-038）。
+    `Data` はデコードが終わったら捨て、キャッシュにはデコード結果だけを置く（既存の 256MB の上限、R8）
+  - `ImageDecoding` に `decode(data:maxPixelSize:)` と `isAnimated(data:)` を加える。`BrowserModel` は、zip の中の画像では同期の
+    `isAnimated(url)` を呼ばない（読み出しが UI スレッドで起きるため）。`.loading` にしてから、バックグラウンドで `Data` を読み、
+    アニメーションかどうかを決める。アニメーションなら新しい `PreviewContent.animatedImageData(URL, Data)` にし、`ImagePreviewView` は
+    `CGAnimateImageDataWithBlock` で再生する。静止画なら `decode(data:)` の結果を `.image` にする
+  - 前後1件の先読みも、zip の中の画像は同じ経路（`Data` を読んでデコード）を通す。動画とアニメーションは先読みしない（既存どおり）
+  - サムネイル: `ThumbnailProvider` は、`mvzip` の URL では QuickLook を使わない（QuickLook はファイル URL を必要とするため）。画像は `Data` から
+    `CGImageSourceCreateThumbnailAtIndex` で作り、動画は R25 の `AVURLAsset` から `AVAssetImageGenerator` で代表フレームを作る。
+    zip の中の取得は同時 4 件（動画は 2 件）までに制限し、先頭からの展開が積み上がらないようにする。キャッシュと、URL と要求サイズの組での
+    取り消しは既存のものを使う
+  - 暗号化・非対応の格納方式・上限超えの項目では、サムネイルは nil を返す。UI は形式別の汎用アイコンにフォールバックする（spec Edge Cases）
+- **Rationale**:
+  - ImageIO はデータ全体を参照してデコードするため、`Data` で渡すのが最も単純で確実。画像は通常数 MB で、上限で巨大な項目を止められる
+  - 画像のデコードとアニメーション判定を1回の読み出しで済ませられ、UI スレッドで zip を読まない（原則 II）
+- **Alternatives considered**:
+  - `CGDataProvider` の順次コールバックで展開しながら ImageIO に渡す案: ImageIO が内部で全体を複製することがあり、メモリの効果が不確か。
+    巻き戻しのたびに展開をやり直す複雑さもあるため却下
+  - QuickLook に渡すため一時ファイルへ書き出す案: FR-072 に反するため却下
+  - 画像の上限を設けない案: 1項目の展開でメモリを使い切るおそれがあり、原則 II のメモリ上限の考え方に反するため却下
+
+## R25. zip の中の動画のストリーミング再生
+
+- **Decision**:
+  - `AVURLAsset(url: <mvzip の URL>)` に、Core の `ArchiveAssetLoader`（`AVAssetResourceLoaderDelegate`）を設定する。
+    `ArchiveAssetFactory.makeAsset(for:)` が asset とデリゲートを組で作り、asset が生きている間はデリゲートを保持する
+    （`AVAssetResourceLoader` はデリゲートを弱参照するため）。`VideoPreviewView` は、ファイル URL では従来どおり `AVPlayerItem(url:)`、
+    `mvzip` の URL では factory の asset から `AVPlayerItem(asset:)` を作る。`AVPlayerLooper` が作る項目の複製は同じ asset を共有するため、
+    ループ再生でも読み込み器は1つ
+  - 内容の情報: `contentType` は拡張子の `UTType`（`.mpeg4Movie` / `.quickTimeMovie`）、`contentLength` は展開後のサイズ、
+    `isByteRangeAccessSupported = true` を返す
+  - データの要求: 要求された範囲（`requestedOffset` から `requestedLength` まで、または `requestsAllDataToEndOfResource` なら末尾まで）を、
+    512KB ずつ `respond(with:)` で返す。1つの要求をまとめて読み込まない。各チャンクの間で取り消し（`resourceLoader(_:didCancel:)`）を確かめる。
+    デリゲートのコールバックは専用の直列キューで受け、読み出しは要求ごとのタスクで行う。ある要求の展開が、ほかの要求を待たせないようにする
+  - 無圧縮の項目: `pread` で要求範囲を直接読む。使うメモリは応答中のチャンクだけ
+  - deflate の項目: `InflateCursor`（`compression_stream` を包み、展開後の位置を覚える順方向のカーソル）で展開する
+    - 要求位置がカーソルより前なら先頭から展開し直し、後ろなら読み捨てながら進む
+    - カーソルは1つの asset につき最大 2 本を LRU で使い回す（再生位置用と、末尾の moov など離れた位置の読み出し用）。離れた位置への
+      交互の要求で、先頭からの展開が繰り返されないようにする
+    - 展開済みのデータは 1MB 単位のチャンクで LRU キャッシュ（1 asset あたり 32MB）に置き、AVPlayer の小さな後戻りや重複した要求に、
+      展開し直さずに応える
+    - 1 asset のメモリは、キャッシュ 32MB + カーソル 2 本（各 `compression_stream` の状態と 64KB の入出力バッファ）+ 応答中のチャンクで
+      上限が決まり、動画のサイズに依存しない（FR-072、SC-014）
+    - 後ろへのシークでは先頭から目的の位置まで展開し直すため、大きな動画では数秒かかることがある（spec Assumptions）。非 faststart の
+      mp4 / mov は、再生の開始前に1回末尾まで展開する
+  - 展開の途中経過を保存して任意の位置から展開を再開する方式（zlib の `zran` の考え方）は、今回は採らない。Compression フレームワークは
+    展開器の内部状態（32KB の窓とビット位置）を外に出せず、自前の inflate の実装（数百行）が必要になるため。シークの遅さが問題に
+    なったら、`InflateCursor` の内部だけを置き換える（インターフェースは変えない）
+  - SC-014 の計測: 性能テストで、展開後 1GB の deflate 項目（ゼロ埋めのため zip 自体は数 MB）を `ArchiveEntryStream` で先頭から末尾まで
+    読み、途中で後ろ向きのシークを挟む。読み出しの前後でプロセスの物理フットプリント（`task_info` の `phys_footprint`）を比べ、
+    増加が 128MB 以下であることを確かめる。無圧縮の 1080p 動画の再生開始は、既存の os_signpost `VideoPlaybackStart` で 1 秒以内を確かめる
+- **Rationale**:
+  - 独自スキームの読み込みは AVFoundation 標準の拡張点で、ネットワークを使わずに、AVPlayer の範囲要求に合わせて必要な部分だけを読める
+  - 無圧縮で格納された動画は、通常のファイルとほぼ同じ速さで読めるため、SC-014 の再生開始 1 秒を満たせる
+  - 読み込み器を Core に置くと、AppKit なしで `AVURLAsset` の `duration` の読み込みなどを自動テストできる（原則 IV）
+- **Alternatives considered**:
+  - 一時ファイルに展開して再生する案: ユーザー判断（ストリーミング方式、2026-10-21）と FR-072 に反するため却下
+  - 動画全体をメモリに展開して渡す案: メモリが動画のサイズに比例し、SC-014 に反するため却下
+  - 自前の inflate でチェックポイントの索引を作る案: シークは速くなるが実装量が増える。上記のとおり、必要になったときの置き換え先として残す
+  - `AVSampleBufferDisplayLayer` に自前でデマックスして渡す案: 実装量が大きく、`AVPlayerView` の標準コントロール（FR-033）を失うため却下
+
+## R26. zip の中の操作（開く・戻る・読み取り専用・プレビュー・フルスクリーン）
+
+- **Decision**:
+  - 開く: ダブルクリック（`NSTableView.doubleAction`、`NSCollectionView` のクリック数 2 の `mouseDown`）と ⌘↓ を、
+    `FileListViewController.openFocusedItem(_:)` に集める。対象はフォーカス行。zip ファイル・ディレクトリなら中へ入り、`...` なら1つ上へ戻る。
+    メディアの行では何もしない（FR-069）
+  - 戻る: ⌘↑ を `FileListViewController.goToEnclosingLevel(_:)` に割り当てる。zip の中でなければ何もしない
+  - メニュー: 「ファイル」メニューの「開く」の後ろに「中を表示」（⌘↓）と「上の階層へ」（⌘↑）を置く（Finder の「開く」と「移動 > 内包しているフォルダ」に
+    相当。「移動」メニューは新しく作らない）。アクションは宛先なしで、ファイルリストがレスポンダーチェーンにあるときだけ有効にする。
+    名前の変更中は無効。ツリーやプレビューにフォーカスがあるときは無効になり、⌘↓ / ⌘↑ はほかのペインに影響しない
+  - メニュー項目が無効なとき（メディアの行での ⌘↓、zip の外での ⌘↑）でも、キーは `NSTableView` / `NSCollectionView` の既定の動作
+    （⌘↓ = 末尾へ移動など）に渡さない。`ListModeView` / `ThumbnailModeView` の `keyDown` で ⌘↓ / ⌘↑ を消費し、何もしない（FR-069 の「何もしない」）
+  - 読み取り専用（FR-073）: 判断は Core の `ListItemCommands`（行の種類と「zip の中を表示中か」から、操作ごとの可否を返す純粋計算）に置く。
+    `FileListViewController.validateMenuItem` は、zip の中を表示中なら「開く」「ゴミ箱に入れる」「名前を変更」「複製」「コピー」「ペースト」
+    「移動ペースト」「Finder に表示」を無効にする。「Finder に表示」も、zip の中の項目を Finder で指せないため無効にする。各アクションの先頭でも同じ
+    条件で何もせずに戻る（メニューを通らないキー操作への備え）。`ListModeView` / `ThumbnailModeView` の Return による名前の変更も止める。
+    ドラッグは、`pasteboardWriterForRow` / `pasteboardWriterForItemAt` が `mvzip` の URL と `.parent` の行に nil を返して始めない
+  - 通常のフォルダの zip ファイルの行は、既存のファイルと同じく全操作を有効にする。「開く」（⌘O）は既定のアプリで開く既存の動作のまま
+    （ユーザーが明示的に選ぶ操作で、FR-072 の「ユーザーのフォルダへの書き出し」はアプリ自身による展開を禁じるもの）
+  - プレビュー（FR-075）: `BrowserModel.loadPreview` は、フォーカス行がメディアでなければ `.empty` にする。`select` の既存の停止通知で
+    動画は止まる。これまで `MediaKind(fileExtension:)` で判定していた部分は、一覧の行の `kind` で判定する（拡張子が .zip の行が
+    「対応していない形式」と表示されないようにする）
+  - フルスクリーン（FR-046）: `FocusNavigator.targetIndex` に `isNavigable: (Int) -> Bool` を受けるオーバーロードを加え、移動先がメディアの行に
+    当たるまで同じ方向への移動を繰り返す。見つからなければ nil（端で停止）。通常表示の矢印キーは従来の関数のまま（メディア以外の行にも止まる）
+  - 行頭アイコンとサムネイル: zip ファイルは SF Symbol `doc.zipper`、ディレクトリは `folder`、`...` は `arrowshape.turn.up.left` を使い、
+    縮小画像は取得しない。a11y のラベルは名前（`...` は「上の階層へ」）にする
+  - 読み込み中: zip を開く間は既存の `.loading` の表示（プログレス）を使う（SC-015）
+  - 失敗の表示: zip を開けない（壊れている・zip ではない・分割 zip）ときは `FolderListing.State.failed("zip を開けません: <理由>")` にし、
+    行は `...` だけを出す。⌘↑ とダブルクリックで戻れる
+  - メッセージと行の両立: `.empty` / `.noMatches` / `.failed` で行が残る場合（`...` やディレクトリ）は、一覧を表示したまま、一覧の下端に
+    1行のメッセージの帯を出す。行が1つもないときは、従来どおり一覧の中央に出す
+  - FSEvents: zip の中を表示中に、zip を含むフォルダの変更が通知されたら `ArchiveIdentity` を比べる。変わった・消えたときは zip を閉じて
+    フォルダの一覧を読み直し、プレビューを空にする（spec Edge Cases）。変わっていなければ何もしない（戻るときにフォルダを読み直す）
+  - ツリーで別のフォルダを選んだとき（FR-069）は、既存の `selectFolder(_:)` が zip の状態を捨てる
+- **Rationale**:
+  - 開く・戻るをメニュー項目にすると、キー割り当てがメニューに表示され、a11y からも操作を見つけられる（原則 III）。レスポンダーチェーンで
+    有効範囲がファイルリストに限られ、ツリーの ⌘↓ などとぶつからない
+  - 読み取り専用の判断を純粋計算にまとめると、メニュー・キー・ドラッグで同じ規則を使え、Core のテストで網羅できる（原則 IV）
+  - フルスクリーンの読み飛ばしを `FocusNavigator` に置くと、既存の端の規則（FR-046）と同じ関数で検証できる
+- **Alternatives considered**:
+  - Return で開く案: ユーザー判断（⌘↓ / ⌘↑、2026-10-21）と異なるため却下
+  - ツリーに zip を出す案: ユーザー要件（ツリーで zip をディレクトリとして扱わない）に反するため却下
+  - zip の中の項目のドラッグやコピーで取り出す案: ユーザー判断（読み取り専用、2026-10-21）と異なるため却下
+  - `...` を一覧の行ではなく一覧の上のボタンにする案: ユーザー要件（先頭の行の項目）と異なり、矢印キーで届かないため却下
+  - zip の中を表示中も FSEvents のたびにフォルダを読み直す案: zip の中の一覧には関係のない読み込みが増えるため却下
+
+## R27. zip の中の名前の文字コードの判定
+
+- **Decision**:
+  - Core の純粋関数 `ArchiveNameDecoder.decode(_ bytes: Data, utf8Flag: Bool) -> String` にする（FR-074）
+    1. 汎用フラグのビット 11 があれば UTF-8 として読む（不正なバイトは置換文字にする）
+    2. ビット 11 がなく、厳密な UTF-8 として読めれば UTF-8
+    3. 読めなければ CP932（CoreFoundation の `CFStringEncodings.dosJapanese`）
+    4. それでも読めなければ CP437（`CFStringEncodings.dosLatinUS`。256 バイトすべてが定義されているため必ず読める）
+  - 変換は CoreFoundation 標準の文字コード変換を使い、自前の変換表を持たない
+  - 判定は名前ごとに行う。区切りの `/` は判定後の文字列で分ける（CP932 の2バイト目に 0x2F は現れないため、バイト列で分けても結果は同じ）
+  - Info-ZIP の Unicode Path 拡張フィールド（0x7075）は使わない。FR-074 の規則に含まれないため
+- **Rationale**:
+  - 日本語環境の古い zip（Windows の標準機能や古いアーカイバで作ったもの）の名前は CP932 で記録されている。ASCII だけの名前は、どの規則でも
+    同じ結果になる
+  - CP932 の日本語のバイト列が、偶然に厳密な UTF-8 として正しくなることはまれなので、2 の判定で誤ることはほとんどない
+  - CoreFoundation の変換は OS 標準で、表を同梱・保守する必要がない（原則 V）
+- **Alternatives considered**:
+  - `String.Encoding.shiftJIS` を使う案: JIS X 0208 だけを対象にした変換で、①② や NEC・IBM の拡張文字を読めないため却下
+  - zip 全体で1つの文字コードを決める案: spec は名前ごとの判定（FR-074）を求めているため却下
+  - 自前の変換表を持つ案: CoreFoundation で足りるため却下
+  - 0x7075 を優先して使う案: spec の規則の外で、名前の表示が規則と食い違うことがあるため今回は見送る
+
+## R28. zip のフィクスチャと検証
+
+- **Decision**:
+  - `FixtureKit` に、テスト用の zip を書き出す `ZipFixtureWriter` を置く。無圧縮・deflate（Compression フレームワークで圧縮）・データ記述子
+    （ビット 3）・UTF-8 フラグの有無（CP932 の名前）・暗号化フラグ・非対応の格納方式（12 = bzip2、中身はダミー）・ZIP64・ディレクトリの
+    項目の有無・`__MACOSX/`・入れ子の zip・同じパスの重複を指定して作れるようにする。CRC32 は `FixtureKit` の中の小さな実装で計算する
+  - 壊れた zip（途中で切れたもの・終端レコードのないもの・中身がテキストの `.zip`）と、10,000 項目の zip（SC-015）、展開後 1GB の
+    ゼロ埋めの deflate 項目を持つ zip（SC-014。zip 自体は数 MB）を生成できるようにする
+  - 外部の `zip` コマンドには頼らない。テストの結果を環境に依存させず、異常系を正確に作るため
+  - `scripts/make-fixtures.sh` は、手動検証用に `zip/` フォルダを作る（[quickstart.md](./quickstart.md)）。SC-014 のメモリの確認用の約 1.1GB の動画の zip
+    （`zip-big/`）は、時間とディスクを使うため `--big` を付けたときだけ作る。動画の素材は `VideoFixtures` に faststart とビットレートの指定を足して作る
+  - 一時ファイルを作らないこと（FR-072）は、実行時に共有の一時ディレクトリの増減では判定できない（並列のテストもフィクスチャを作る）。
+    `scripts/check-no-archive-writes.sh` で zip の読み取りのコードに書き込み系の API がないことを確かめ、実行時は `fs_usage` で確認する
+- **Rationale**: 異常系（暗号化・非対応方式・壊れた zip・文字コード）を、自動テストで確実に再現できる（原則 IV）
+- **Alternatives considered**:
+  - `/usr/bin/zip` でフィクスチャを作る案: 暗号化フラグだけを立てる、方式を偽る、CP932 の名前を書くといった異常系を作れないため却下
+  - フィクスチャの zip をリポジトリにコミットする案: 1GB 相当の項目や 10,000 項目の zip は大きく、生成で済むため却下

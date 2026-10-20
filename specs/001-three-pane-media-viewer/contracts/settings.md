@@ -9,7 +9,7 @@
 | `view.thumbnailSize` | Double | 128 | FR-014 |
 | `view.sort.column` | String（`name` / `creationDate` / `kind`） | `name` | FR-012 |
 | `view.sort.ascending` | Bool | true | FR-012 |
-| `view.lastFolderPath` | String（絶対パス） | （未設定 = ホーム） | FR-003 |
+| `view.lastFolderPath` | String（絶対パス） | （未設定 = ホーム） | FR-003（zip の中を表示中に終了しても、zip を含むフォルダ） |
 | `view.showsToolbar` | Bool | false | FR-003・049 |
 | `playback.autoplay` | Bool | true | FR-031・032 |
 | `playback.loop` | Bool | true | FR-031・032 |
@@ -24,6 +24,8 @@
 - お気に入りはパスだけを保存し、ブックマークデータは保存しない。登録したフォルダが移動・名前変更されても追従せず、
   見つからない項目として残す（FR-067）。見つかるかどうか（`FavoriteAvailability`）と「お気に入り」の見出しの
   開閉状態は保存しない。起動時の見出しは折りたたんだ状態で始まる
+- zip の中の位置（開いている zip と階層）は保存しない。zip の中へ入っても `view.lastFolderPath` は変えず、次回は zip を含む
+  フォルダの一覧から始まる（FR-003）。保存キーは追加しない
 - ツールバーの構成は保存しない（`NSToolbar.autosavesConfiguration = false`）。表示状態だけを
   `view.showsToolbar` に保存し、フルスクリーン中の自動非表示はこの値を変えない
 
