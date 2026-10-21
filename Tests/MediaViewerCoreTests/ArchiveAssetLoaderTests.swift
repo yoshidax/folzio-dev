@@ -4,7 +4,8 @@ import Testing
 @testable import FixtureKit
 @testable import MediaViewerCore
 
-@Suite("ArchiveAssetLoader")
+/// `VideoFixtures` は書き出しの間スレッドをブロックする。並列に走らせると協調スレッドを使い切って止まるため、直列にする
+@Suite("ArchiveAssetLoader", .serialized)
 struct ArchiveAssetLoaderTests {
     struct Case: Sendable, CustomTestStringConvertible {
         let name: String
