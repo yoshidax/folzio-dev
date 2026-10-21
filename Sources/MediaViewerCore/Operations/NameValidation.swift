@@ -6,7 +6,14 @@ public enum NameValidation: Sendable, Equatable {
     case invalid(reason: String)
 }
 
-public func validateNewName(_ name: String, for file: URL, existingNames: Set<String>) -> NameValidation {
+/// `isDirectory` が true（フォルダの名前の変更）のときは、名前の `.` 以降を拡張子として扱わず、
+/// 拡張子の変更の確認（`needsExtensionChangeConfirmation`）を返さない（research.md R32）
+public func validateNewName(
+    _ name: String,
+    for file: URL,
+    existingNames: Set<String>,
+    isDirectory: Bool = false
+) -> NameValidation {
     guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
         return .invalid(reason: "名前を入力してください")
     }
@@ -19,6 +26,8 @@ public func validateNewName(_ name: String, for file: URL, existingNames: Set<St
     guard !existingNames.contains(where: { $0.caseInsensitiveCompare(name) == .orderedSame }) else {
         return .invalid(reason: "同じ名前の項目がすでに存在します")
     }
+
+    guard !isDirectory else { return .ok }
 
     let newExtension = (name as NSString).pathExtension
     guard newExtension.caseInsensitiveCompare(file.pathExtension) == .orderedSame else {

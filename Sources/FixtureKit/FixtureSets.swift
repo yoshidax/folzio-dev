@@ -8,6 +8,7 @@ public enum FixtureSets {
         try bigImage(in: directory)
         try ops(in: directory)
         try zip(in: directory)
+        try folders(in: directory)
     }
 
     public static func mixed(in directory: URL) throws {
@@ -77,6 +78,47 @@ public enum FixtureSets {
             at: folder.appendingPathComponent("dest", isDirectory: true),
             withIntermediateDirectories: true
         )
+
+        // フォルダの操作の検証用（quickstart.md「US4」の 7〜9）
+        let album = folder.appendingPathComponent("album", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: album.appendingPathComponent("inner", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        try ImageFixtures.jpeg(at: album.appendingPathComponent("a.jpg"), width: 64, height: 64)
+        try ImageFixtures.jpeg(at: album.appendingPathComponent("b.jpg"), width: 64, height: 64)
+    }
+
+    /// `folders/`（quickstart.md「検証用フォルダの準備」の表）を作る。ファイルリストのフォルダの検証用（FR-076〜078）
+    public static func folders(in directory: URL) throws {
+        let folder = try prepare(directory.appendingPathComponent("folders", isDirectory: true))
+        let fileManager = FileManager.default
+        func makeFolder(_ path: String) throws -> URL {
+            let url = folder.appendingPathComponent(path, isDirectory: true)
+            try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
+            return url
+        }
+
+        try ImageFixtures.jpeg(at: folder.appendingPathComponent("cover.jpg"), width: 320, height: 240)
+
+        let day1 = try makeFolder("trip/day1")
+        for index in 1...3 {
+            try ImageFixtures.jpeg(at: day1.appendingPathComponent("\(index).jpg"), width: 320, height: 240)
+        }
+        let best = try makeFolder("trip/day1/best")
+        try ImageFixtures.jpeg(at: best.appendingPathComponent("best.jpg"), width: 320, height: 240)
+        let day2 = try makeFolder("trip/day2")
+        try ImageFixtures.png(at: day2.appendingPathComponent("map.png"), width: 200, height: 150)
+
+        _ = try makeFolder("only-subfolders/inner")
+        _ = try makeFolder("empty-folder")
+        let hidden = try makeFolder(".hidden-folder")
+        try ImageFixtures.jpeg(at: hidden.appendingPathComponent("secret.jpg"), width: 32, height: 32)
+        // 拡張子 .app のディレクトリはパッケージになり、一覧にもツリーにも出ない
+        _ = try makeFolder("Viewer.app/Contents")
+        // 名前が .zip のディレクトリは、zip ではなくフォルダとして出る
+        let dirZip = try makeFolder("dir.zip")
+        try ImageFixtures.jpeg(at: dirZip.appendingPathComponent("inside.jpg"), width: 64, height: 64)
     }
 
     // MARK: - zip

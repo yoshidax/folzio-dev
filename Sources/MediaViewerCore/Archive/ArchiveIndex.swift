@@ -143,7 +143,7 @@ public struct ArchiveIndex: Sendable {
         entries[path]
     }
 
-    /// 階層の直下の行（ディレクトリ `.directory` と対応メディア `.media`）。並べ替え前。`...` は含めない
+    /// 階層の直下の行（ディレクトリ `.directory` と対応メディア `.media`）。並べ替え前。`..` は含めない
     public func items(in directory: String) -> [MediaFile] {
         guard let paths = children[directory] else { return [] }
         var descriptions: [String: String] = [:]

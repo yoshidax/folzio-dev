@@ -173,6 +173,28 @@ open .build/MediaViewer.app
   不具合の挙動を固定していた `abortsWithoutChanges` は置き換えた
 - 確認: 修正後の `.app` で、ゴミ箱（⌘Delete・右クリック）・名前の変更・キャンセルをユーザーが確認した
 
+## ファイルリストのフォルダ・`..`・ツリーの同期・フォルダの操作（FR-076〜078、Phase 22・23）
+
+2026-10-21 に macOS 26.6.2 で `scripts/make-app.sh` により `.build/MediaViewer.app` を生成し、GUI で確認した。
+
+| 確認項目 | 結果 | 根拠 |
+|----------|------|------|
+| 自動テスト（`swift test`） | PASS | Core 338 テスト、性能 10 テスト成功。`FolderNavigationTests`・`ParentLinkTests`・`BrowserModelFolderTests`（新規）と、`DirectoryListerTests`・`ListItemCommandsTests`・`NameValidationTests`・`FileOperationServiceTests`・`SortingTests`・`MediaTypeFilterTests`・`FocusNavigatorTests` の追加ケースを含む |
+| T216: 10,000 ファイルと 1,000 サブフォルダの列挙（基準 1 秒） | PASS | 実測 0.40 秒（ロードアベレージ約 8）。ロードアベレージ約 20 の間は 0.75〜2.5 秒で、既存の 24MP デコード・zip の索引・10,000 件の列挙のテストも同時に基準を超えたため、負荷が下がってから再計測した。フォルダなしの 10,000 件と比べて増加は見られない。基準は計画時の 0.5 秒からユーザーの判断で 1 秒（SC-003 の列挙と同じ）に変更した |
+| 外部通信の不在（`scripts/check-no-network.sh`） | PASS | `no network API references in Sources` |
+| フォルダの行・`..`・ダブルクリック / ⌘↓ / ⌘↑ での移動とツリーの同期、ルートでの `..` の扱い | PASS | GUI でユーザー確認（quickstart「ファイルリストのフォルダ」、FR-076〜078） |
+| フォルダの操作（コピー・名前の変更・ゴミ箱・移動）とツリーへの反映 | PASS | GUI でユーザー確認（quickstart「US4」7〜9、FR-018・076） |
+
+### 検証中に見つけた不具合（Phase 22 の実装）
+
+- 症状: 一覧でフォルダへ入る・戻ると、キーボードフォーカスが外れ、マウスでクリックし直すまで矢印キーが効かない
+- 原因: 読み込み中（`.loading`）は一覧のビューを隠すため、AppKit がフォーカスを次のキービュー（プレビューの `ImagePreviewView`）へ移していた。
+  zip の中の移動は読み込みが同期的に終わり一覧が隠れないため、起きていなかった。firstResponder の変化を標準エラーへ出す一時的な調査用コードで
+  呼び出し元（`updateModeVisibility()` の `isHidden`）を特定した（調査用コードは削除済み）
+- 修正: `FileListViewController.updateModeVisibility()` で、一覧を隠したことでフォーカスが移った先を覚え、一覧を出し直したときにフォーカスが
+  まだそこにあればファイルリストへ戻す。読み込み中にユーザーが別のペインへ移った場合は戻さない。UI の配線のため自動テストは追加せず、
+  修正後の `.app` でユーザーが確認した
+
 ## 未実施の検証
 
 - T079: Accessibility Inspector によるラベル確認

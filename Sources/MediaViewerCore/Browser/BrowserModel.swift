@@ -13,6 +13,24 @@ public final class BrowserModel {
     public var playbackRequest: PlaybackOptions { settings.playback }
     /// zip の中を表示中か（FR-069）
     public var isBrowsingArchive: Bool { listing.archive != nil }
+    /// ⌘↑ で戻る先があるか。zip の中、またはツリーのルート以外の通常のフォルダ（FR-077）
+    public var hasEnclosingLevel: Bool {
+        listing.archive != nil || enclosingFolder != nil
+    }
+    /// 一覧の並び順の選択から `..` の行を除いたもの。ファイル操作・コピー・ドラッグの対象（R30）
+    public var operableSelection: [URL] {
+        let selected = selection.selected
+        guard !selected.isEmpty else { return [] }
+        var urls = listing.files.filter { selected.contains($0.url) && $0.kind != .parent }.map(\.url)
+        let listed = Set(listing.files.map(\.url))
+        for url in selected where !listed.contains(url) && !ParentLink.isParentLink(url) {
+            urls.append(url)
+        }
+        return urls
+    }
+    /// ファイルリストの中でフォルダを移ったときに、ツリーへ出す選択の同期の依頼（FR-078、R31）。
+    /// ツリーからの選択（`selectFolder`）・zip の中の移動・外部の変更による移動では変えない
+    public private(set) var treeSyncRequest: TreeSyncRequest?
     public var sortOrder: SortOrder {
         didSet {
             guard sortOrder != oldValue else { return }
@@ -33,11 +51,15 @@ public final class BrowserModel {
     private let settings: SettingsStore
     private let archiveReader: any ArchiveReading
 
+    /// ツリーのルート（ホーム・ボリューム）。通常のフォルダの `..` と ⌘↑ の戻る先を決める（R30）
+    private var navigationRoots: [URL] = []
+    private var treeSyncCounter = 0
+
     /// 表示中の zip の索引。zip の外、または開いている途中・開けなかったときは nil
     private var archiveIndex: ArchiveIndex?
     /// フォルダ・zip の移動のたびに増やし、古い非同期処理の結果を捨てるのに使う
     private var navigationGeneration = 0
-    /// 並べ替え済み・種類フィルタ適用前の行。`...` は含めず、`rebuildListing()` で1回だけ加える
+    /// 並べ替え済み・種類フィルタ適用前の行。`..` は含めず、`rebuildListing()` で1回だけ加える
     private var allFiles: [MediaFile] = []
     private var listingTask: Task<Void, Never>?
     private var previewTask: Task<Void, Never>?
@@ -92,7 +114,29 @@ public final class BrowserModel {
         await task.value
     }
 
-    /// 一覧の行を開く。zip ファイル・ディレクトリは中へ、`...` は上へ。メディアと一覧にない URL では何もしない（FR-069）
+    /// ツリーのルートを受け取る。変わったら、読み込み済みの通常のフォルダの一覧の `..` を作り直す（ディスクは読まない）
+    public func setNavigationRoots(_ urls: [URL]) {
+        guard urls != navigationRoots else { return }
+        navigationRoots = urls
+        guard listing.archive == nil else { return }
+        switch listing.state {
+        case .loaded, .empty, .noMatches:
+            rebuildListing()
+        case .denied, .failed:
+            listing.files = unreadableFolderRows()
+        case .loading:
+            return
+        }
+
+        let restricted = selection.restricted(toVisible: listing.files.map(\.url))
+        if restricted.focused == selection.focused {
+            selection = restricted
+        } else {
+            select(restricted.selected, focused: restricted.focused)
+        }
+    }
+
+    /// 一覧の行を開く。zip ファイル・フォルダ・ディレクトリは中へ、`..` は上へ。メディアと一覧にない URL では何もしない（FR-069・076）
     public func openItem(_ url: URL) async {
         guard let file = listing.files.first(where: { $0.url == url }) else { return }
 
@@ -108,14 +152,22 @@ public final class BrowserModel {
             showArchiveLevel(ArchiveLocation(archive: location.archive, directory: parsed.path), index: index)
         case .parent:
             await goToEnclosingLevel()
+        case .folder:
+            await navigateToFolder(file.url, selecting: nil)
         case .media:
             break
         }
     }
 
-    /// 1つ上の階層へ。zip の最上位からはフォルダの一覧へ戻る。zip の外では何もしない（FR-070）
+    /// 1つ上の階層へ。zip の最上位からはフォルダの一覧へ戻る（FR-070）。zip の外では親フォルダへ戻り、
+    /// ツリーのルートでは何もしない（FR-077）
     public func goToEnclosingLevel() async {
-        guard let location = listing.archive else { return }
+        guard let location = listing.archive else {
+            if let parent = enclosingFolder {
+                await navigateToFolder(parent, selecting: listing.folder)
+            }
+            return
+        }
 
         if let parentLocation = location.parent {
             guard let index = archiveIndex else { return }
@@ -183,7 +235,7 @@ public final class BrowserModel {
         } catch {
             guard listing.folder == folder, listing.archive == nil else { return }
             allFiles = []
-            listing.files = []
+            listing.files = unreadableFolderRows()
             switch error {
             case .accessDenied:
                 listing.state = .denied
@@ -255,16 +307,17 @@ public final class BrowserModel {
 
     // MARK: - 一覧
 
-    /// `allFiles`（`...` を含まない）から表示する行と状態を作る。`...` は zip の中のときだけここで1回加える
+    /// `allFiles`（`..` を含まない）から表示する行と状態を作る。`..` は zip の中では常に、通常のフォルダでは
+    /// 戻る先があるときだけ、ここで1回加える（FR-070・077）
     private func rebuildListing() {
         let filtered = mediaTypeFilter.apply(to: allFiles)
         if let location = listing.archive {
             listing.files = [Self.parentRow(for: location)] + filtered
         } else {
-            listing.files = filtered
+            listing.files = folderParentRows() + filtered
         }
 
-        // zip ファイル・ディレクトリ・`...` は「メディアがない」の判定で数えない（FR-060）
+        // zip ファイル・フォルダ・ディレクトリ・`..` は「メディアがない」の判定で数えない（FR-060）
         let hasMedia = allFiles.contains { $0.kind.isMedia }
         let hasOtherRows = allFiles.contains { !$0.kind.isMedia }
         if !hasMedia && !hasOtherRows {
@@ -277,14 +330,53 @@ public final class BrowserModel {
     }
 
     private static func parentRow(for location: ArchiveLocation) -> MediaFile {
+        parentRow(url: ArchiveURL.parentLink(of: location))
+    }
+
+    private static func parentRow(url: URL) -> MediaFile {
         MediaFile(
-            url: ArchiveURL.parentLink(of: location),
-            name: "...",
+            url: url,
+            name: "..",
             kind: .parent,
             typeDescription: "",
             creationDate: nil,
             fileSize: 0
         )
+    }
+
+    /// 通常のフォルダの1つ上の階層。ツリーのルートとルートの外では nil
+    private var enclosingFolder: URL? {
+        FolderNavigation.enclosingFolder(of: listing.folder, roots: navigationRoots)
+    }
+
+    /// 通常のフォルダの先頭に置く `..` の行。戻る先がなければ空
+    private func folderParentRows() -> [MediaFile] {
+        guard enclosingFolder != nil else { return [] }
+        return [Self.parentRow(url: ParentLink.url(for: listing.folder))]
+    }
+
+    /// 読めない通常のフォルダ（`.denied` / `.failed`）の行。ルート以外では `..` だけを残し、行き止まりにしない（FR-077）
+    private func unreadableFolderRows() -> [MediaFile] {
+        listing.archive == nil ? folderParentRows() : []
+    }
+
+    /// ファイルリストの中でフォルダを移る（フォルダの行を開く・`..`・⌘↑）。`selectFolder` と同じく読み込み、
+    /// ツリーへ同期の依頼を出す。読み込み後に `target` の行があれば、その行だけを選択する（FR-076〜078）
+    private func navigateToFolder(_ url: URL, selecting target: URL?) async {
+        treeSyncCounter += 1
+        let request = TreeSyncRequest(folder: url, id: treeSyncCounter)
+        // 依頼は読み込みの前に出し、ツリーの同期を一覧の完了で待たせない
+        treeSyncRequest = request
+        await selectFolder(url)
+
+        guard treeSyncRequest == request,
+              listing.folder == url,
+              listing.archive == nil,
+              let target else { return }
+        let standardized = target.standardizedFileURL
+        if let row = listing.files.first(where: { $0.kind != .parent && $0.url.standardizedFileURL == standardized }) {
+            select([row.url], focused: row.url)
+        }
     }
 
     /// 読み込み・プレビュー・先読みの取り消し、動画の停止、選択とプレビューを空にする。
@@ -393,7 +485,7 @@ public final class BrowserModel {
             guard !Task.isCancelled, generation == navigationGeneration, listing.folder == url else { return }
 
             allFiles = []
-            listing.files = []
+            listing.files = unreadableFolderRows()
             switch error {
             case .accessDenied:
                 listing.state = .denied
@@ -418,7 +510,7 @@ public final class BrowserModel {
             return
         }
 
-        // 一覧の行の種類を先に見る。メディア以外（zip ファイル・ディレクトリ・`...`）はプレビューしない（FR-075）
+        // 一覧の行の種類を先に見る。メディア以外（zip ファイル・ディレクトリ・`..`）はプレビューしない（FR-075）
         let kind: MediaKind
         if let file = listing.files.first(where: { $0.url == url }) {
             guard case let .media(mediaKind) = file.kind else {
@@ -549,7 +641,7 @@ public final class BrowserModel {
 
         for neighborIndex in [index - 1, index + 1] where listing.files.indices.contains(neighborIndex) {
             let file = listing.files[neighborIndex]
-            // 動画とメディア以外の行（zip ファイル・ディレクトリ・`...`）は先読みしない
+            // 動画とメディア以外の行（zip ファイル・ディレクトリ・`..`）は先読みしない
             guard file.kind.isMedia, !file.kind.isVideo else { continue }
             guard prefetchTasks[file.url] == nil else { continue }
 

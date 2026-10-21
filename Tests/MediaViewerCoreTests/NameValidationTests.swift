@@ -46,6 +46,25 @@ struct NameValidationTests {
         #expect(validateNewName("a.jpg", for: file, existingNames: existingNames) == .invalid(reason: "同じ名前の項目がすでに存在します"))
     }
 
+    @Test("フォルダの名前の変更では拡張子の確認を求めない")
+    func folderSkipsExtensionConfirmation() {
+        let folder = URL(fileURLWithPath: "/tmp/album", isDirectory: true)
+        #expect(validateNewName("album.2024", for: folder, existingNames: [], isDirectory: true) == .ok)
+        let dotted = URL(fileURLWithPath: "/tmp/photos.old", isDirectory: true)
+        #expect(validateNewName("photos", for: dotted, existingNames: [], isDirectory: true) == .ok)
+        // isDirectory を省略したファイルは従来どおり
+        #expect(validateNewName("a.png", for: file, existingNames: existingNames) == .needsExtensionChangeConfirmation)
+    }
+
+    @Test("フォルダでも空・不正な文字・先頭のドット・同名は拒否する", arguments: ["", "a/b", ".x", "ALBUM 2"])
+    func folderRejectsInvalidNames(name: String) {
+        let folder = URL(fileURLWithPath: "/tmp/album", isDirectory: true)
+        guard case .invalid = validateNewName(name, for: folder, existingNames: ["album 2"], isDirectory: true) else {
+            Issue.record("\(String(reflecting: name)) was accepted")
+            return
+        }
+    }
+
     @Test("uniqueName は 2 から連番を振る")
     func numbersUniqueNames() {
         #expect(uniqueName(for: "a.jpg", existingNames: []) == "a 2.jpg")

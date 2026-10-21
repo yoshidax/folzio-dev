@@ -3,7 +3,7 @@ import Testing
 
 @Suite("ListItemCommands")
 struct ListItemCommandsTests {
-    private static let allKinds: [ListItemKind] = [.media(.jpeg), .media(.mp4), .archive, .directory, .parent]
+    private static let allKinds: [ListItemKind] = [.media(.jpeg), .media(.mp4), .archive, .folder, .directory, .parent]
 
     // MARK: - 通常のフォルダ（zip の外）
 
@@ -50,6 +50,42 @@ struct ListItemCommandsTests {
         }
     }
 
+    @Test("通常のフォルダのフォルダの行は中へ入れて、全操作も有効")
+    func folderOutsideArchive() {
+        let commands = ListItemCommands(kind: .folder, isBrowsingArchive: false)
+        #expect(commands.canOpenContainer == true)
+        #expect(commands.allowsFileOperations == true)
+        #expect(commands.allowsPaste == true)
+    }
+
+    @Test("通常のフォルダの .. の行は開けるが、ファイル操作の対象にならない。ペーストは表示中のフォルダへできる")
+    func parentOutsideArchive() {
+        let commands = ListItemCommands(kind: .parent, isBrowsingArchive: false, hasEnclosingLevel: true)
+        #expect(commands.canOpenContainer == true)
+        #expect(commands.canGoUp == true)
+        #expect(commands.allowsFileOperations == false)
+        #expect(commands.allowsPaste == true)
+    }
+
+    @Test("hasEnclosingLevel を省略すると、canGoUp は isBrowsingArchive と同じ")
+    func hasEnclosingLevelDefaultsToBrowsingArchive() {
+        let kinds: [ListItemKind?] = Self.allKinds + [nil]
+        for kind in kinds {
+            #expect(ListItemCommands(kind: kind, isBrowsingArchive: false).hasEnclosingLevel == false)
+            #expect(ListItemCommands(kind: kind, isBrowsingArchive: true).hasEnclosingLevel == true)
+        }
+    }
+
+    @Test("zip の外では、戻る先があればどの行の種類でも canGoUp が true、なければ false")
+    func canGoUpFollowsEnclosingLevel() {
+        let kinds: [ListItemKind?] = Self.allKinds + [nil]
+        for kind in kinds {
+            let label = "kind=\(String(describing: kind))"
+            #expect(ListItemCommands(kind: kind, isBrowsingArchive: false, hasEnclosingLevel: true).canGoUp == true, Comment(rawValue: label))
+            #expect(ListItemCommands(kind: kind, isBrowsingArchive: false, hasEnclosingLevel: false).canGoUp == false, Comment(rawValue: label))
+        }
+    }
+
     // MARK: - zip の中
 
     @Test("zip の中のメディアは中へ入れず、上へは戻れて、ファイル操作とペーストは不可")
@@ -72,7 +108,7 @@ struct ListItemCommandsTests {
         #expect(commands.allowsPaste == false)
     }
 
-    @Test("zip の中の ... は上へ戻れる")
+    @Test("zip の中の .. は上へ戻れる")
     func parentInsideArchive() {
         let commands = ListItemCommands(kind: .parent, isBrowsingArchive: true)
         #expect(commands.canOpenContainer == true)

@@ -187,7 +187,7 @@ struct BrowserModelArchiveTests {
 
         env.model.sortOrder = SortOrder(column: .name, ascending: false)
 
-        #expect(env.model.listing.files.map(\.name) == ["...", "sub", "b.png", "anim.gif"])
+        #expect(env.model.listing.files.map(\.name) == ["..", "sub", "b.png", "anim.gif"])
     }
 
     @Test("ディレクトリを辿り、戻るたびに直前の行が選ばれる")
@@ -203,12 +203,12 @@ struct BrowserModelArchiveTests {
 
         await model.openItem(sub)
         #expect(model.listing.archive == ArchiveLocation(archive: env.zip, directory: "sub/"))
-        #expect(model.listing.files.map(\.name) == ["...", "deep"])
+        #expect(model.listing.files.map(\.name) == ["..", "deep"])
         #expect(model.selection.selected.isEmpty)
 
         await model.openItem(deep)
         #expect(model.listing.archive?.directory == "sub/deep/")
-        #expect(model.listing.files.map(\.name) == ["...", "a.jpg"])
+        #expect(model.listing.files.map(\.name) == ["..", "a.jpg"])
 
         await model.goToEnclosingLevel()
         #expect(model.listing.archive?.directory == "sub/")
@@ -232,7 +232,7 @@ struct BrowserModelArchiveTests {
         #expect(model.selection.selected == [env.zip])
     }
 
-    @Test("... の行を開くと goToEnclosingLevel と同じ結果になる")
+    @Test(".. の行を開くと goToEnclosingLevel と同じ結果になる")
     func openParentRowGoesUp() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -455,7 +455,7 @@ struct BrowserModelArchiveTests {
 
         await env.model.openItem(env.zip)
 
-        #expect(env.model.listing.files.map(\.name) == ["...", "docs", "empty"])
+        #expect(env.model.listing.files.map(\.name) == ["..", "docs", "empty"])
         #expect(env.model.listing.state == .loaded)
     }
 
@@ -473,11 +473,11 @@ struct BrowserModelArchiveTests {
 
         env.model.setMediaTypeFilter(MediaTypeFilter(videosOnly: true))
 
-        #expect(env.model.listing.files.map(\.name) == ["...", "dir"])
+        #expect(env.model.listing.files.map(\.name) == ["..", "dir"])
         #expect(env.model.listing.state == .noMatches)
 
         env.model.setMediaTypeFilter(MediaTypeFilter())
-        #expect(env.model.listing.files.map(\.name) == ["...", "a.jpg", "dir"])
+        #expect(env.model.listing.files.map(\.name) == ["..", "a.jpg", "dir"])
         #expect(env.model.listing.state == .loaded)
     }
 

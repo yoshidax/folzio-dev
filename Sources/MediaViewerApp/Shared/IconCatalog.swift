@@ -44,7 +44,7 @@ enum IconCatalog {
             }
         case .archive:
             name = "doc.zipper"
-        case .directory:
+        case .folder, .directory:
             name = "folder"
         case .parent:
             name = "arrowshape.turn.up.left"

@@ -2023,7 +2023,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 
 ### Preparation for User Story 1
 
-- [ ] T208 [US1] 行の種類 `.folder` を加え、戻る行の表記を `..` にする（R29・R30）。続けて既存の参照を直し、ビルドとテストを通す:
+- [X] T208 [US1] 行の種類 `.folder` を加え、戻る行の表記を `..` にする（R29・R30）。続けて既存の参照を直し、ビルドとテストを通す:
   - `Sources/MediaViewerCore/Model/MediaKind.swift`: `ListItemKind` に `case folder`（コメント「通常のフォルダのサブフォルダ（ファイル操作の対象）」）を
     `.archive` の後に加える。`opensAsContainer` は `.archive` / `.folder` / `.directory` / `.parent` で true、`sortKey` は `"folder"`。`.parent` のコメントを
     「先頭行 `..`（zip の中と、ツリーのルート以外の通常のフォルダ）」にする
@@ -2035,7 +2035,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
   - `switch` が網羅でなくなった箇所（`BrowserModel.openItem(_:)` など）は、この時点では `.folder` を `.media` と同じく何もしない分岐にしてビルドを通す（T221 で置き換える）
   - `Tests/MediaViewerCoreTests/BrowserModelArchiveTests.swift`・`ArchiveIndexTests.swift` などで `"..."` を期待している箇所を `".."` にする
   - `swift build` と `swift test`（既存のテスト）が通ることを確認する。新しいテスト（T210〜T216）はこのタスクの後に書く
-- [ ] T209 [P] [US1] `Sources/FixtureKit/FixtureSets.swift` に `folders(in:)` を追加して `makeAll(in:)` に加え、`ops(in:)` に `album/` を加える
+- [X] T209 [P] [US1] `Sources/FixtureKit/FixtureSets.swift` に `folders(in:)` を追加して `makeAll(in:)` に加え、`ops(in:)` に `album/` を加える
   （quickstart.md「検証用フォルダの準備」の `folders/` の表と `ops/` の行のとおり）:
   - `folders/`: `cover.jpg`（`ImageFixtures.jpeg` 320×240）、`trip/day1/` に JPEG 3 枚（`1.jpg`〜`3.jpg`）、`trip/day1/best/` に JPEG 1 枚、`trip/day2/` に
     PNG 1 枚、`only-subfolders/inner/`（空）、`empty-folder/`、`.hidden-folder/`（中に JPEG 1 枚）、`Viewer.app/Contents/`（空。拡張子 .app の
@@ -2045,35 +2045,35 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 
 ### Tests for User Story 1
 
-- [ ] T210 [P] [US1] `Tests/MediaViewerCoreTests/FolderNavigationTests.swift`（新規、`@Suite("FolderNavigation")`）を先に書く（T217 の前にビルドエラーに
+- [X] T210 [P] [US1] `Tests/MediaViewerCoreTests/FolderNavigationTests.swift`（新規、`@Suite("FolderNavigation")`）を先に書く（T217 の前にビルドエラーに
   なることを確認する）。data-model の「FolderNavigation」の表の全行を検証する。ルートは `URL(fileURLWithPath:)` で `/`・`/Users/me`・`/Volumes/Ext`:
   - ルートそのもの（`/Users/me`・`/`・`/Volumes/Ext`、末尾 `/` 付きも）→ nil
   - `/Users/me/a` → `/Users/me`、`/Users/me/a/b` → `/Users/me/a`（ホームが最も深いルート）
   - `/Users/x` → `/Users`、`/Users` → `/`（起動ボリューム `/` の中）。`/Volumes/Ext/p` → `/Volumes/Ext`
   - 「比較は `standardizedFileURL` のパスの要素で行う」: ルートを `/Users/me` だけにしたとき `/Users/me2/a` → nil（ルート外）。`/Users/me/./a/../b` → `/Users/me`
   - 「どのルートにも含まれない、またはルートの一覧が空」→ nil（ルートが空なら `/Users/me/a` も nil）
-- [ ] T211 [P] [US1] `Tests/MediaViewerCoreTests/ParentLinkTests.swift`（新規、`@Suite("ParentLink")`）を先に書く:
+- [X] T211 [P] [US1] `Tests/MediaViewerCoreTests/ParentLinkTests.swift`（新規、`@Suite("ParentLink")`）を先に書く:
   - `url(for: URL(fileURLWithPath: "/tmp/写真 集/a#b"))` の `scheme == "mvparent"`、`isFileURL == false`、同じフォルダで2回作ると `==`、別のフォルダとは `!=`
   - `isParentLink` は `mvparent` の URL で true、ファイル URL・`mvzip` の URL（`ArchiveURL.parentLink(of:)` を含む）で false
-- [ ] T212 [P] [US1] `Tests/MediaViewerCoreTests/ListItemCommandsTests.swift` を data-model の新しい「ListItemCommands」の表に合わせる:
+- [X] T212 [P] [US1] `Tests/MediaViewerCoreTests/ListItemCommandsTests.swift` を data-model の新しい「ListItemCommands」の表に合わせる:
   - `allKinds` に `.folder` を加える
   - zip の外の `.folder`: `canOpenContainer == true`・`allowsFileOperations == true`・`allowsPaste == true`
   - zip の外の `.parent`: `canOpenContainer == true`・`allowsFileOperations == false`・`allowsPaste == true`（既存の期待値が true なら false に直す）
   - `hasEnclosingLevel` を省略すると `canGoUp == isBrowsingArchive`（既存のケースが変わらない）。`isBrowsingArchive: false, hasEnclosingLevel: true` で
     どの種類（nil を含む）でも `canGoUp == true`、`hasEnclosingLevel: false` で false
   - zip の中はどの種類でも従来どおり `allowsFileOperations == false`・`allowsPaste == false`
-- [ ] T213 [P] [US1] `Tests/MediaViewerCoreTests/DirectoryListerTests.swift` にケースを追加する（R29）。一時フォルダに `a.jpg`・`sub/`・`.hidden-dir/`・`Pkg.app/Contents/`・
+- [X] T213 [P] [US1] `Tests/MediaViewerCoreTests/DirectoryListerTests.swift` にケースを追加する（R29）。一時フォルダに `a.jpg`・`sub/`・`.hidden-dir/`・`Pkg.app/Contents/`・
   `dir.zip/`（ディレクトリ）・`z.zip`（ファイル）・`notes.txt` を作る:
   - `mediaFiles(in:)` が `sub`（`kind == .folder`、`typeDescription == "フォルダ"`、`fileSize == 0`、`creationDate != nil`）と `dir.zip`（`.folder`）を返し、
     `.hidden-dir` と `Pkg.app` は返さない。`z.zip` は `.archive`、`a.jpg` は `.media(.jpeg)`、`notes.txt` は返さない
   - `mediaFiles(in:)` の `.folder` の URL の集合が、`subfolders(of:)` の結果と一致する（`standardizedFileURL` で比べる）
   - 既存の「`x.zip` という名前のディレクトリは返さない」ケースを、「`.archive` としては返さず `.folder` として返す」に直す
-- [ ] T214 [P] [US1] `Tests/MediaViewerCoreTests/SortingTests.swift`・`MediaTypeFilterTests.swift`・`FocusNavigatorTests.swift` にケースを追加する:
+- [X] T214 [P] [US1] `Tests/MediaViewerCoreTests/SortingTests.swift`・`MediaTypeFilterTests.swift`・`FocusNavigatorTests.swift` にケースを追加する:
   - 並べ替え: `.parent`・`.folder`（`b`）・`a.jpg`・`c.png`・`.archive`（`d.zip`）を名前・作成日・種類の昇順と降順で並べ、`.parent` は常に先頭、`b` は名前の
     自然順で `a.jpg` と `c.png` の間に入る（フォルダを上にまとめない）
   - `apply(to:)`: `imagesOnly`・`videosOnly` で `.folder` の行が残り、並び順を保つ
   - `isNavigable`（`kind.isMedia`）付きの移動で、`[parent, folder, media, folder, media]` の位置 2 から ↓ → 4、位置 2 から ↑ → nil
-- [ ] T215 [US1] `Tests/MediaViewerCoreTests/BrowserModelFolderTests.swift`（新規、`@Suite("BrowserModel のフォルダ")`、`@MainActor`）を先に書く。
+- [X] T215 [US1] `Tests/MediaViewerCoreTests/BrowserModelFolderTests.swift`（新規、`@Suite("BrowserModel のフォルダ")`、`@MainActor`）を先に書く。
   `BrowserModelArchiveTests` と同じく `/private/var/...` 表記の一時フォルダに `root/cover.jpg`・`root/trip/day1/1.jpg`・`root/trip/day2/`・`root/empty/`・
   `root/only/inner/` を作り、実際の `DirectoryLister`・`ImageDecoder` で `BrowserModel` を作る。`setNavigationRoots([root])` を呼んでから `selectFolder(root)` する:
   - ルートの一覧: `files` に `.parent` がなく、`cover.jpg`・`empty`・`only`・`trip` が名前の順。`hasEnclosingLevel == false`。`goToEnclosingLevel()` は何もせず、
@@ -2095,26 +2095,26 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
   - `operableSelection`: `select([parent, day1, day2], focused: parent)` で `[day1, day2]`（一覧の並び順）。`select([parent], focused: parent)` で `[]`
   - zip の中の移動（`root/a.zip` を `ZipFixtureWriter` で作って `openItem` → `goToEnclosingLevel()`）では `treeSyncRequest` が変わらず、`lastFolder` も変わらない
   - `handleFileSystemEvent` で表示中の `root/trip/day2` を削除して呼ぶと親へ移るが、`treeSyncRequest` は変わらない
-- [ ] T216 [P] [US1] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に、10,000 個の小さな JPEG と 1,000 個の空のサブフォルダを持つフォルダで
-  `DirectoryLister().mediaFiles(in:)` が 0.5 秒以内（返す件数は 11,000）であることの計測を追加する（quickstart.md「性能の検証」、R29）。生成は計測に含めない
+- [X] T216 [P] [US1] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に、10,000 個の小さな JPEG と 1,000 個の空のサブフォルダを持つフォルダで
+  `DirectoryLister().mediaFiles(in:)` が 1 秒以内（返す件数は 11,000。SC-003 の列挙と同じ基準。実測でフォルダなしの 10,000 件でも約 0.8 秒のため 0.5 秒から変更）であることの計測を追加する（quickstart.md「性能の検証」、R29）。生成は計測に含めない
 
 ### Implementation for User Story 1
 
-- [ ] T217 [P] [US1] `Sources/MediaViewerCore/Model/FolderNavigation.swift`（新規、`public enum FolderNavigation`）に
+- [X] T217 [P] [US1] `Sources/MediaViewerCore/Model/FolderNavigation.swift`（新規、`public enum FolderNavigation`）に
   `enclosingFolder(of folder: URL, roots: [URL]) -> URL?` を作り、T210 を通す。`standardizedFileURL.pathComponents` で比べ、`folder` がどれかのルートと同じなら nil、
   `folder` を接頭に含むルートのうち要素数が最も多いものを選んで `deletingLastPathComponent()` を返す。含むルートがなければ nil
-- [ ] T218 [P] [US1] `Sources/MediaViewerCore/Model/ParentLink.swift`（新規、`public enum ParentLink`）に `scheme = "mvparent"`・`url(for:)`・`isParentLink(_:)` を作り、
+- [X] T218 [P] [US1] `Sources/MediaViewerCore/Model/ParentLink.swift`（新規、`public enum ParentLink`）に `scheme = "mvparent"`・`url(for:)`・`isParentLink(_:)` を作り、
   T211 を通す。`URLComponents` の `scheme` と `percentEncodedPath`（フォルダの `standardizedFileURL.path` の各要素を `ArchiveURL` と同じ集合でエンコード）で組み立てる
-- [ ] T219 [P] [US1] `Sources/MediaViewerCore/Model/ListItemCommands.swift` に `hasEnclosingLevel: Bool` を加え、T212 を通す。`init(kind:isBrowsingArchive:hasEnclosingLevel: Bool? = nil)`
+- [X] T219 [P] [US1] `Sources/MediaViewerCore/Model/ListItemCommands.swift` に `hasEnclosingLevel: Bool` を加え、T212 を通す。`init(kind:isBrowsingArchive:hasEnclosingLevel: Bool? = nil)`
   （nil なら `isBrowsingArchive`）、`canGoUp` は `hasEnclosingLevel`、`allowsFileOperations` は `!isBrowsingArchive && kind != .parent`。`allowsPaste` は変えない。
   型のコメントを data-model の表に合わせる
-- [ ] T220 [P] [US1] `Sources/MediaViewerCore/FileSystem/DirectoryLister.swift` の `mediaFiles(in:)` を変え、T213 を通す（R29）:
+- [X] T220 [P] [US1] `Sources/MediaViewerCore/FileSystem/DirectoryLister.swift` の `mediaFiles(in:)` を変え、T213 を通す（R29）:
   - `fileKeys` に `.isPackageKey` を加える。`isDirectory == true` の URL は、`isVisibleSubfolder` と同じ条件（パッケージでない）のときだけ
     `MediaFile(url:, name: url.lastPathComponent, kind: .folder, typeDescription: "フォルダ", creationDate: values?.creationDate, fileSize: 0)` にし、それ以外のディレクトリは捨てる
   - ディレクトリでない URL の扱い（`.zip` は `.archive`、メディアは `.media`）は変えない。`contentsOfDirectory` は1回のまま
   - プロトコル `DirectoryListing.mediaFiles(in:)` のドキュメントコメントを contracts/core-api.md のとおりにする
   - `swift test --filter DirectoryLister` に加え、T216 の性能テストを通す
-- [ ] T221 [US1] `Sources/MediaViewerCore/Model/BrowserState.swift` に `TreeSyncRequest`（`folder: URL`・`id: Int`、`Sendable`・`Equatable`）を追加し、
+- [X] T221 [US1] `Sources/MediaViewerCore/Model/BrowserState.swift` に `TreeSyncRequest`（`folder: URL`・`id: Int`、`Sendable`・`Equatable`）を追加し、
   `Sources/MediaViewerCore/Browser/BrowserModel.swift` を変えて T215 と既存の `BrowserModelTests`・`BrowserModelArchiveTests`・`BrowserModelVideoTests` を通す（R30・R31）:
   - 非公開の `navigationRoots: [URL] = []` と `public func setNavigationRoots(_ urls: [URL])`。値が変わり、`listing.archive == nil` で状態が `.loaded` / `.empty` / `.noMatches` なら
     `rebuildListing()` を呼ぶ（選択は `restricted(toVisible:)` で整える）
@@ -2133,7 +2133,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
   - `openItem(_:)`: `.folder` は `navigateToFolder(file.url, selecting: nil)`。`.parent` は従来どおり `goToEnclosingLevel()`
   - `goToEnclosingLevel()`: `listing.archive == nil` なら、`enclosingFolder` があれば `navigateToFolder(parent, selecting: listing.folder)`、なければ何もしない。zip の中は従来どおり
   - `selectFolder(_:)`・`returnToFolder(selecting:)`・`handleFileSystemEvent` は `treeSyncRequest` を変えない
-- [ ] T222 [US1] ファイルリストの判定を `hasEnclosingLevel` と `operableSelection` に揃える（R30）:
+- [X] T222 [US1] ファイルリストの判定を `hasEnclosingLevel` と `operableSelection` に揃える（R30）:
   - `Sources/MediaViewerApp/FileList/ListItemSupport.swift`: `focusedItemCommands` と `itemCommands(forRowAt:)` で
     `ListItemCommands(kind:, isBrowsingArchive:, hasEnclosingLevel: hasEnclosingLevel)` を作る
   - `Sources/MediaViewerApp/FileList/FileListViewController.swift`: `selectedFileURLs` を `model.operableSelection` を返す形にする。コピー・複製・ゴミ箱・開く・Finder に表示は
@@ -2147,7 +2147,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
   - `ListModeView.swift`・`ThumbnailModeView.swift`: `.folder` の行は `kind.mediaKind` が nil のため縮小画像を要求せず、`IconCatalog.listItemIcon(for: .folder, …)` の `folder` を出すことを
     確かめる（必要なら分岐を足す）。ドラッグ・Return の判定は `itemCommands(forRowAt:)` / `focusedItemCommands` のままで、`.folder` は可・`.parent` は不可になる
   - `swift build` が通ることを確認する
-- [ ] T223 [US1] ツリーのルートの受け渡しと同期を結線する（R30・R31）:
+- [X] T223 [US1] ツリーのルートの受け渡しと同期を結線する（R30・R31）:
   - `Sources/MediaViewerApp/App/MainSplitViewController.swift` の `init()`: `BrowserModel` を作った直後、ツリーを作る前に
     `model.setNavigationRoots(volumes.rootNodes().map(\.url))` を呼ぶ（ツリーの初回の `reveal` → `selectFolder` より前に、ルートを渡しておく）
   - `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift`:
@@ -2165,13 +2165,13 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
       `reveal` は従来どおり選択して `selectFolder` を起こす（`isRestoringSelection` を立てない）
     - お気に入りの項目を選択中でも、同期は実際の階層の行を選択する（`rowForURL` は `roots` だけを見る既存のまま）
   - `swift build` が通ることを確認する
-- [ ] T224 [P] [US1] `README.md` の「主な機能」と「使い方（主なショートカット）」に、ファイルリストのフォルダの表示、ダブルクリック・⌘↓ で中へ、⌘↑ または先頭行の `..` で親へ戻る
+- [X] T224 [P] [US1] `README.md` の「主な機能」と「使い方（主なショートカット）」に、ファイルリストのフォルダの表示、ダブルクリック・⌘↓ で中へ、⌘↑ または先頭行の `..` で親へ戻る
   （ホーム・ボリュームの最上位では `..` は出ない）、ツリーの選択が同期することを追記し、zip の戻る行の記述 `...` を `..` に直す
 
 ### Verification for User Story 1
 
-- [ ] T225 [US1] 自動テストと手動確認を行う（T208〜T224 に依存）:
-  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す。T216 の計測値を記録する。0.5 秒を超えた場合は作業を止めて状況を報告する（憲章 原則 II）
+- [X] T225 [US1] 自動テストと手動確認を行う（T208〜T224 に依存）:
+  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す。T216 の計測値を記録する。1 秒を超えた場合は作業を止めて状況を報告する（憲章 原則 II）
   - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。依頼時は `scripts/make-fixtures.sh ~/MediaViewerFixtures` の準備コマンドと、
     quickstart.md「ファイルリストのフォルダ（FR-076〜078）」の確認ポイント 1〜14、US1 の 3（`mixed/` の `sub` と `..`）、「zip ファイル（FR-068〜075）」の 1・3・5・13（表記が `..`）を
     具体的に示す。起動しない場合は AGENTS.md の lldb 手順で例外を止める
@@ -2197,7 +2197,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 
 ### Tests for User Story 4
 
-- [ ] T226 [P] [US4] `Tests/MediaViewerCoreTests/NameValidationTests.swift` と `Tests/MediaViewerCoreTests/FileOperationServiceTests.swift` にケースを追加する（T227 の前に
+- [X] T226 [P] [US4] `Tests/MediaViewerCoreTests/NameValidationTests.swift` と `Tests/MediaViewerCoreTests/FileOperationServiceTests.swift` にケースを追加する（T227 の前に
   ビルドエラーになることを確認する）:
   - `validateNewName("album.2024", for: <album のフォルダ URL>, existingNames: [], isDirectory: true)` → `.ok`（拡張子の確認なし）。`isDirectory` を省略したファイルの
     `a.jpg` → `a.png` は従来どおり `.needsExtensionChangeConfirmation`。フォルダでも空・`a/b`・`.x`・同名（大文字小文字違いを含む）は `.invalid`
@@ -2208,15 +2208,15 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 
 ### Implementation for User Story 4
 
-- [ ] T227 [US4] `Sources/MediaViewerCore/Operations/NameValidation.swift` の `validateNewName` に `isDirectory: Bool = false` を足し、true のときは拡張子の比較を飛ばして `.ok` を
+- [X] T227 [US4] `Sources/MediaViewerCore/Operations/NameValidation.swift` の `validateNewName` に `isDirectory: Bool = false` を足し、true のときは拡張子の比較を飛ばして `.ok` を
   返す（R32）。T226 を通す。`FileOperationService` は変更しない（T226 のフォルダのケースが既存の実装で通ることを確かめる。通らない場合は原因を直し、そのテストを残す）
-- [ ] T228 [US4] `Sources/MediaViewerApp/Operations/FileOperationCoordinator.swift` と `Sources/MediaViewerApp/Operations/ConfirmationPresenter.swift` を変える（R32）:
+- [X] T228 [US4] `Sources/MediaViewerApp/Operations/FileOperationCoordinator.swift` と `Sources/MediaViewerApp/Operations/ConfirmationPresenter.swift` を変える（R32）:
   - `FileOperationCoordinator`: `var onFoldersChanged: ((Set<URL>) -> Void)?` を追加し、`transfer`（コピー・移動）・`duplicate`・`trash`・`rename` の `model.reloadCurrentFolder()` の後で、
     対象の親フォルダ（`deletingLastPathComponent()`）と操作先（コピー・移動）の集合を `standardizedFileURL` にして渡す。キャンセルされた操作では呼ばない
   - `rename(_:to:)`: `file.hasDirectoryPath` か `FileManager` の `fileExists(atPath:isDirectory:)` でフォルダかを調べ、`validateNewName(…, isDirectory:)` に渡す
   - `ConfirmationPresenter.informativeText(for:)`: `sources` にディレクトリ（`fileExists(atPath:isDirectory:)`）が1つでもあれば、対象の行の後に
     「フォルダは中身ごと操作します」（ゴミ箱は「フォルダは中身ごとゴミ箱に入ります」）の1行を加える。メッセージの見出しと「今後この確認を表示しない」は変えない
-- [ ] T229 [US4] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` と `Sources/MediaViewerApp/App/MainSplitViewController.swift` を変える（R32）:
+- [X] T229 [US4] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` と `Sources/MediaViewerApp/App/MainSplitViewController.swift` を変える（R32）:
   - ツリーに `func refreshFolders(_ changed: Set<URL>)` を追加し、`eventTask` の `for await changed in self.watcher.events` の本体から `model.handleFileSystemEvent` を除いた処理
     （`reloadExpandedNodes(in:)`・`recheckCollapsedNodes(in:)`・`updateWatchSet()`・`refreshFavoriteAvailabilityIfNeeded(in:)`）を移して共有する。`eventTask` はそれを呼ぶ形にする
   - `validateDrop`: `fileURLs(from:)` の URL のどれかについて、ドロップ先のノードの `url.standardizedFileURL.pathComponents` がその URL の要素を接頭に含む
@@ -2227,7 +2227,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 
 ### Verification for User Story 4
 
-- [ ] T230 [US4] 自動テストと手動確認を行う（T226〜T229 に依存）:
+- [X] T230 [US4] 自動テストと手動確認を行う（T226〜T229 に依存）:
   - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す
   - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。依頼時は `scripts/make-fixtures.sh ~/MediaViewerFixtures`（`ops/` を作り直す）と、
     quickstart.md「US4」の確認ポイント 1〜9（7〜9 がフォルダ）と US1 の受け入れシナリオ 23 を具体的に示す。フォルダをゴミ箱に入れた後、Finder の「戻す」で復元できることも確かめてもらう

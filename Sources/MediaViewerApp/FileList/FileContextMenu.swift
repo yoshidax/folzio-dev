@@ -44,8 +44,8 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
             copyItem.title = "コピー"
         }
 
-        // 「上の階層へ」は zip の中だけ出す。有効・無効は validateMenuItem に任せる
-        goUpItem.isHidden = !(host?.isBrowsingArchive ?? false)
+        // 「上の階層へ」は戻る先があるとき（zip の中、またはツリーのルート以外のフォルダ）だけ出す。有効・無効は validateMenuItem に任せる
+        goUpItem.isHidden = !(host?.focusedItemCommands.canGoUp ?? false)
 
         // zip の中ではペースト・移動ペーストを使えない（FR-073）
         let allowsPaste = host?.focusedItemCommands.allowsPaste ?? true

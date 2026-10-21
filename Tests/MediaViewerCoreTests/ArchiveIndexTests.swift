@@ -173,11 +173,11 @@ struct ArchiveIndexTests {
         #expect(abs(date.timeIntervalSince(modified)) <= 2)
     }
 
-    @Test("items に ... は含まれず、存在しない階層は空配列")
+    @Test("items に .. は含まれず、存在しない階層は空配列")
     func noParentRowAndMissingDirectory() throws {
         let index = try makeIndex([file("sub/a.jpg")])
-        #expect(!index.items(in: "").contains { $0.kind == .parent || $0.name == "..." })
-        #expect(!index.items(in: "sub/").contains { $0.kind == .parent || $0.name == "..." })
+        #expect(!index.items(in: "").contains { $0.kind == .parent || $0.name == ".." })
+        #expect(!index.items(in: "sub/").contains { $0.kind == .parent || $0.name == ".." })
         #expect(index.items(in: "missing/").isEmpty)
         #expect(index.items(in: "sub/a.jpg").isEmpty)
     }

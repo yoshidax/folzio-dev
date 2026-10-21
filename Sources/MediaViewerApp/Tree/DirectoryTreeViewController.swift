@@ -404,10 +404,7 @@ final class DirectoryTreeViewController: NSViewController {
             guard let self else { return }
             for await changed in self.watcher.events {
                 await self.model.handleFileSystemEvent(changed)
-                await self.reloadExpandedNodes(in: changed)
-                self.recheckCollapsedNodes(in: changed)
-                self.updateWatchSet()
-                self.refreshFavoriteAvailabilityIfNeeded(in: changed)
+                await self.refreshFolders(changed)
             }
         }
 
@@ -423,6 +420,7 @@ final class DirectoryTreeViewController: NSViewController {
         }
 
         observeDisplayedFolder()
+        observeTreeSyncRequest()
         updateWatchSet()
     }
 
@@ -473,6 +471,7 @@ final class DirectoryTreeViewController: NSViewController {
         startProbes(for: roots, key: .roots)
         updateWatchSet()
         refreshFavoriteAvailability()
+        model.setNavigationRoots(roots.map(\.url))
     }
 
     /// 登録した場所にフォルダがあるかを確かめ、変わった行だけ描き直す（FR-067）。stat は FavoriteProbe のタスク内で行う
@@ -520,19 +519,39 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
-    private func reveal(_ target: URL) async {
-        let targetURL = target.standardizedFileURL
-        let targetComponents = targetURL.pathComponents
+    /// 変更のあったフォルダの子・サブフォルダの有無・お気に入りの存在を読み直す。FSEvents のバッチと、
+    /// ファイル操作の完了（FSEvents を待たずに反映する。FR-027、R32）の両方から呼ぶ
+    func refreshFolders(_ changed: Set<URL>) async {
+        await reloadExpandedNodes(in: changed)
+        recheckCollapsedNodes(in: changed)
+        updateWatchSet()
+        refreshFavoriteAvailabilityIfNeeded(in: changed)
+    }
 
-        var root = roots.first { node in
-            targetComponents.starts(with: node.url.standardizedFileURL.pathComponents)
+    private func reveal(_ target: URL) async {
+        guard let node = await expandAncestors(of: target) else { return }
+        let row = outlineView.row(forItem: node)
+        if row >= 0 {
+            outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+            outlineView.scrollRowToVisible(row)
         }
+    }
+
+    /// ルートから対象のフォルダまで、各段の子を読み込んで展開する。辿れた最も深いノードを返す（取り消されたら nil）
+    private func expandAncestors(of target: URL) async -> Node? {
+        let targetComponents = target.standardizedFileURL.pathComponents
+
+        // 対象を含むルートのうち最も深いものから辿る（ホームの配下を起動ボリューム側から辿らない。R30）
+        var root = roots
+            .filter { targetComponents.starts(with: $0.url.standardizedFileURL.pathComponents) }
+            .max { $0.url.standardizedFileURL.pathComponents.count < $1.url.standardizedFileURL.pathComponents.count }
         if root == nil {
             root = roots.first { $0.folder.kind == .home }
         }
-        guard var current = root else { return }
+        guard var current = root else { return nil }
 
         await loadAndExpand(current)
+        guard !Task.isCancelled else { return nil }
 
         let rootComponents = current.url.standardizedFileURL.pathComponents
         if targetComponents.count > rootComponents.count {
@@ -543,14 +562,49 @@ final class DirectoryTreeViewController: NSViewController {
                     break
                 }
                 await loadAndExpand(next)
+                guard !Task.isCancelled else { return nil }
                 current = next
             }
         }
+        return current
+    }
 
-        let row = outlineView.row(forItem: current)
-        if row >= 0 {
-            outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
-            outlineView.scrollRowToVisible(row)
+    /// ファイルリストの中での移動（フォルダを開く・戻る）をツリーの選択に反映する（FR-078、R31）
+    private func observeTreeSyncRequest() {
+        withObservationTracking {
+            _ = model.treeSyncRequest
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                if let request = self.model.treeSyncRequest {
+                    self.syncSelection(to: request)
+                }
+                self.observeTreeSyncRequest()
+            }
+        }
+    }
+
+    /// 実際の階層で依頼のフォルダまで展開し、その行を選択して必要最小限スクロールする。
+    /// 選択の変更から selectFolder を呼び返さず、キーボードフォーカスも移さない
+    private func syncSelection(to request: TreeSyncRequest) {
+        revealTask?.cancel()
+        revealTask = Task { [weak self] in
+            guard let self else { return }
+            let node = await self.expandAncestors(of: request.folder)
+            // 後の依頼・ツリーでの選択・一覧の別の移動があれば、古い同期で選択を上書きしない
+            guard !Task.isCancelled,
+                  let node,
+                  self.model.treeSyncRequest?.id == request.id,
+                  self.model.listing.folder.standardizedFileURL == request.folder.standardizedFileURL else {
+                return
+            }
+            let row = self.outlineView.row(forItem: node)
+            guard row >= 0 else { return }
+            self.isRestoringSelection = true
+            self.outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+            self.isRestoringSelection = false
+            self.outlineView.scrollRowToVisible(row)
+            self.updateWatchSet()
         }
     }
 
@@ -795,7 +849,12 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
         guard let role = role(for: item), FavoriteCommands.acceptsFiles(role) else { return [] }
         guard let node = item as? Node,
               node.folder.accessState != .denied,
-              fileURLs(from: info.draggingPasteboard) != nil else {
+              let urls = fileURLs(from: info.draggingPasteboard) else {
+            return []
+        }
+        // フォルダを自分自身やその配下へはドロップできない（spec Edge Cases、R32）
+        let destination = node.url.standardizedFileURL.pathComponents
+        if urls.contains(where: { destination.starts(with: $0.standardizedFileURL.pathComponents) }) {
             return []
         }
 
@@ -951,6 +1010,9 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
         }
         // 見出しでは一覧を切り替えない（FR-065）。お気に入りの項目でも実際の階層は動かさない（FR-063）
         guard let url = FavoriteCommands.folderToShow(for: role) else { return }
+        // ツリーからの選択は treeSyncRequest を変えないため、進行中の同期がユーザーの選択を上書きしないよう取り消す（R31）
+        revealTask?.cancel()
+        revealTask = nil
         Task { [weak self] in
             await self?.model.selectFolder(url)
         }

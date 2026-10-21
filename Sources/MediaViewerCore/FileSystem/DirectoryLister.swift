@@ -7,7 +7,9 @@ public enum ListingError: Error, Sendable, Equatable {
 }
 
 public protocol DirectoryListing: Sendable {
-    /// 直下の対応メディアファイルと zip ファイル（.zip、kind = .archive）を返す（隠しファイル・サブフォルダ・非対応形式は除く。FR-008・068）
+    /// 直下のサブフォルダ（kind = .folder。判定は subfolders(of:) と同じで、隠しフォルダ・パッケージは除く）、
+    /// 対応メディアファイル、zip ファイル（.zip、kind = .archive）を返す（隠しファイル・非対応形式は除く。FR-008・068・076）。
+    /// 1回のディレクトリの列挙から作り、並べ替えはしない
     func mediaFiles(in folder: URL) async throws(ListingError) -> [MediaFile]
     func subfolders(of folder: URL) async throws(ListingError) -> [URL]
     func hasSubfolders(in folder: URL) async throws(ListingError) -> Bool
@@ -62,7 +64,19 @@ public struct DirectoryLister: DirectoryListing {
 
             return urls.compactMap { url -> MediaFile? in
                 let values = try? url.resourceValues(forKeys: Self.fileKeys)
-                guard values?.isDirectory != true else { return nil }
+                if values?.isDirectory == true {
+                    // ツリーと同じく、パッケージ（.app など）はフォルダとして出さない（R29）。
+                    // isPackage の判定は重いため、ディレクトリだけに問い合わせる
+                    guard (try? url.resourceValues(forKeys: [.isPackageKey]))?.isPackage != true else { return nil }
+                    return MediaFile(
+                        url: url,
+                        name: url.lastPathComponent,
+                        kind: .folder,
+                        typeDescription: "フォルダ",
+                        creationDate: values?.creationDate,
+                        fileSize: 0
+                    )
+                }
 
                 if url.pathExtension.lowercased() == Self.archiveExtension {
                     return MediaFile(

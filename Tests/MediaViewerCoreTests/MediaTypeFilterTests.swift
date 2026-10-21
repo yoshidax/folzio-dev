@@ -60,7 +60,7 @@ struct MediaTypeFilterTests {
     func applyKeepsNonMediaRows() {
         let folder = URL(fileURLWithPath: "/tmp/filter", isDirectory: true)
         let files = [
-            item("...", .parent, in: folder),
+            item("..", .parent, in: folder),
             item("sub", .directory, in: folder),
             item("a.jpg", .media(.jpeg), in: folder),
             item("pack.zip", .archive, in: folder),
@@ -70,11 +70,11 @@ struct MediaTypeFilterTests {
 
         #expect(
             MediaTypeFilter(imagesOnly: true).apply(to: files).map(\.name)
-                == ["...", "sub", "a.jpg", "pack.zip", "c.png"]
+                == ["..", "sub", "a.jpg", "pack.zip", "c.png"]
         )
         #expect(
             MediaTypeFilter(videosOnly: true).apply(to: files).map(\.name)
-                == ["...", "sub", "pack.zip", "b.mov"]
+                == ["..", "sub", "pack.zip", "b.mov"]
         )
         #expect(MediaTypeFilter().apply(to: files).map(\.name) == files.map(\.name))
     }
@@ -82,9 +82,22 @@ struct MediaTypeFilterTests {
     @Test("media が 1 つもなくても、media 以外の行は絞り込み中でも残る")
     func applyKeepsOnlyNonMediaRows() {
         let folder = URL(fileURLWithPath: "/tmp/filter", isDirectory: true)
-        let files = [item("...", .parent, in: folder), item("sub", .directory, in: folder)]
-        #expect(MediaTypeFilter(imagesOnly: true).apply(to: files).map(\.name) == ["...", "sub"])
-        #expect(MediaTypeFilter(videosOnly: true).apply(to: files).map(\.name) == ["...", "sub"])
+        let files = [item("..", .parent, in: folder), item("sub", .directory, in: folder)]
+        #expect(MediaTypeFilter(imagesOnly: true).apply(to: files).map(\.name) == ["..", "sub"])
+        #expect(MediaTypeFilter(videosOnly: true).apply(to: files).map(\.name) == ["..", "sub"])
+    }
+
+    @Test("apply はフォルダの行を残し、並び順を保つ")
+    func applyKeepsFolderRows() {
+        let folder = URL(fileURLWithPath: "/tmp/filter", isDirectory: true)
+        let files = [
+            item("..", .parent, in: folder),
+            item("a.jpg", .media(.jpeg), in: folder),
+            item("album", .folder, in: folder),
+            item("b.mov", .media(.mov), in: folder),
+        ]
+        #expect(MediaTypeFilter(imagesOnly: true).apply(to: files).map(\.name) == ["..", "a.jpg", "album"])
+        #expect(MediaTypeFilter(videosOnly: true).apply(to: files).map(\.name) == ["..", "album", "b.mov"])
     }
 
     @Test("apply は空配列に対して空配列を返す")

@@ -29,6 +29,19 @@ public struct FolderListing: Sendable {
     }
 }
 
+/// ファイルリストの中での移動をツリーに伝える依頼（FR-078、research.md R31）。`BrowserModel.treeSyncRequest` で公開する
+public struct TreeSyncRequest: Sendable, Equatable {
+    /// ツリーで選択するフォルダ（ファイルリストに表示しているフォルダ）
+    public let folder: URL
+    /// 依頼のたびに増やす。ツリーは最新の `id` の結果だけを選択に反映する
+    public let id: Int
+
+    public init(folder: URL, id: Int) {
+        self.folder = folder
+        self.id = id
+    }
+}
+
 public struct SelectionState: Sendable {
     public var selected: Set<URL>
     public var focused: URL?

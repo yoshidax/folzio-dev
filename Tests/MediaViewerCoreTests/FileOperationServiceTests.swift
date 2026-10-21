@@ -333,6 +333,137 @@ struct FileOperationServiceTests {
         #expect(FileManager.default.fileExists(atPath: source.path))
     }
 
+    // MARK: - フォルダ（FR-018・076）
+
+    /// `ops/album/`（`a.jpg`・`inner/`）に、配下の `inner/b.jpg` を足したもの
+    private func makeAlbum(in folder: URL) throws -> URL {
+        let album = folder.appendingPathComponent("album", isDirectory: true)
+        try ImageFixtures.jpeg(at: album.appendingPathComponent("inner/b.jpg"), width: 8, height: 8)
+        return album
+    }
+
+    private func contents(of folder: URL) -> Set<String> {
+        let enumerator = FileManager.default.enumerator(atPath: folder.path)
+        return Set((enumerator?.allObjects as? [String]) ?? [])
+    }
+
+    @Test("フォルダをコピーすると中身ごと複製され、元も残る")
+    func copiesFolderWithContents() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let album = try makeAlbum(in: folder)
+        let destination = folder.appendingPathComponent("dest", isDirectory: true)
+
+        let result = await service.execute(
+            FileOperation(kind: .copy, sources: [album], destination: destination),
+            resolution: .abort
+        )
+
+        #expect(result.failed.isEmpty)
+        let copied = destination.appendingPathComponent("album", isDirectory: true)
+        #expect(contents(of: copied) == contents(of: album))
+        #expect(contents(of: album).contains("inner/b.jpg"))
+    }
+
+    @Test("フォルダを移動すると中身ごと操作先へ移る")
+    func movesFolderWithContents() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let album = try makeAlbum(in: folder)
+        let expected = contents(of: album)
+        let destination = folder.appendingPathComponent("dest", isDirectory: true)
+
+        let result = await service.execute(
+            FileOperation(kind: .move, sources: [album], destination: destination),
+            resolution: .abort
+        )
+
+        #expect(result.failed.isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: album.path))
+        #expect(contents(of: destination.appendingPathComponent("album", isDirectory: true)) == expected)
+    }
+
+    @Test("フォルダの名前を変えても中身は残る")
+    func renamesFolder() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let album = try makeAlbum(in: folder)
+        let expected = contents(of: album)
+
+        let result = await service.execute(
+            FileOperation(kind: .rename(newName: "album 2024"), sources: [album]),
+            resolution: .abort
+        )
+
+        #expect(result.failed.isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: album.path))
+        #expect(contents(of: folder.appendingPathComponent("album 2024", isDirectory: true)) == expected)
+    }
+
+    @Test("フォルダをゴミ箱に入れると元の場所から消え、ゴミ箱の URL を返す")
+    func trashesFolder() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let album = try makeAlbum(in: folder)
+
+        let result = await service.execute(FileOperation(kind: .trash, sources: [album]), resolution: .abort)
+
+        #expect(result.failed.isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: album.path))
+        let trashed = try #require(result.succeeded.first)
+        #expect(trashed != album)
+        #expect(FileManager.default.fileExists(atPath: trashed.appendingPathComponent("inner/b.jpg").path))
+        try? FileManager.default.removeItem(at: trashed)
+    }
+
+    @Test("同名のフォルダがあると衝突し、置き換えはフォルダごと、両方残すは連番になる")
+    func folderConflicts() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let album = try makeAlbum(in: folder)
+        let destination = folder.appendingPathComponent("dest", isDirectory: true)
+        let existing = destination.appendingPathComponent("album", isDirectory: true)
+        try FileManager.default.createDirectory(at: existing, withIntermediateDirectories: true)
+        try ImageFixtures.jpeg(at: existing.appendingPathComponent("old.jpg"), width: 8, height: 8)
+
+        let operation = FileOperation(kind: .copy, sources: [album], destination: destination)
+        #expect(service.conflicts(for: operation) == [album])
+
+        let kept = await service.execute(operation, resolution: .keepBoth)
+        #expect(kept.failed.isEmpty)
+        #expect(contents(of: destination.appendingPathComponent("album 2", isDirectory: true)) == contents(of: album))
+
+        let replaced = await service.execute(operation, resolution: .replace)
+        #expect(replaced.failed.isEmpty)
+        #expect(contents(of: existing) == contents(of: album))
+        #expect(!contents(of: existing).contains("old.jpg"))
+    }
+
+    @Test("フォルダを自分の配下へ移動・コピーすると失敗し、何も変わらない")
+    func refusesMovingFolderIntoDescendant() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let album = try makeAlbum(in: folder)
+        let expected = contents(of: album)
+        let inner = album.appendingPathComponent("inner", isDirectory: true)
+
+        for kind in [FileOperation.Kind.move, .copy] {
+            let result = await service.execute(
+                FileOperation(kind: kind, sources: [album], destination: inner),
+                resolution: .abort
+            )
+            #expect(result.succeeded.isEmpty)
+            #expect(result.failed.first?.reason == "フォルダを自分自身またはその配下へ移動・コピーすることはできません")
+            #expect(contents(of: album) == expected)
+        }
+    }
+
     private func makeTemporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("MediaViewerOpsTests-\(UUID().uuidString)", isDirectory: true)

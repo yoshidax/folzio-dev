@@ -150,7 +150,7 @@ private final class ThumbnailItemView: NSCollectionViewItem {
         updateSelectionAppearance()
     }
 
-    /// zip ファイル・ディレクトリ・`...` の行の、種類のアイコン。縮小画像は要求しない
+    /// zip ファイル・ディレクトリ・`..` の行の、種類のアイコン。縮小画像は要求しない
     func showListItemIcon(for kind: ListItemKind, pointSize: Double) {
         thumbnailImageView.imageScaling = .scaleNone
         thumbnailImageView.contentTintColor = .secondaryLabelColor
@@ -900,7 +900,7 @@ extension ThumbnailModeView: NSCollectionViewDelegateFlowLayout {
     ) -> NSPasteboardWriting? {
         let files = model.listing.files
         guard files.indices.contains(indexPath.item) else { return nil }
-        // zip の中の行・`...` はドラッグを始めない（FR-073）
+        // zip の中の行・`..` はドラッグを始めない（FR-073）
         guard model.itemCommands(forRowAt: indexPath.item).allowsFileOperations else { return nil }
         return files[indexPath.item].url as NSURL
     }

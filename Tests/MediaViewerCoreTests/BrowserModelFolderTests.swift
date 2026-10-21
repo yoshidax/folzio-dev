@@ -1,0 +1,355 @@
+import Foundation
+import Testing
+@testable import FixtureKit
+@testable import MediaViewerCore
+
+@Suite("BrowserModel のフォルダ")
+@MainActor
+struct BrowserModelFolderTests {
+    // MARK: - フィクスチャ
+
+    /// 一時フォルダ `root`。`cover.jpg`・`trip/day1/1.jpg`・`trip/day2/`・`empty/`・`only/inner/` を持つ
+    private struct Env {
+        let root: URL
+        let defaults: UserDefaults
+        let suite: String
+        let model: BrowserModel
+
+        func url(_ path: String) -> URL {
+            root.appendingPathComponent(path, isDirectory: true)
+        }
+
+        /// 一覧の行のうち、パスが `path` のもの
+        @MainActor
+        func row(_ path: String) -> MediaFile? {
+            let target = url(path).standardizedFileURL.path
+            return model.listing.files.first { $0.url.standardizedFileURL.path == target }
+        }
+
+        /// 保存された最後のフォルダ（FR-003）
+        var lastFolder: URL? {
+            SettingsStore(defaults: defaults).viewSettings.lastFolder
+        }
+
+        func cleanup() {
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: root)
+        }
+    }
+
+    /// `DirectoryLister` は `/private/var/...` の URL を返すため、同じ表記の一時フォルダを作る
+    private func makeEnv(roots: [String] = [""]) throws -> Env {
+        var root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("BrowserModelFolderTests-\(UUID().uuidString)", isDirectory: true)
+        if root.path.hasPrefix("/var/") {
+            root = URL(fileURLWithPath: "/private" + root.path, isDirectory: true)
+        }
+        let fileManager = FileManager.default
+        for path in ["trip/day1", "trip/day2", "empty", "only/inner"] {
+            try fileManager.createDirectory(
+                at: root.appendingPathComponent(path, isDirectory: true),
+                withIntermediateDirectories: true
+            )
+        }
+        try ImageFixtures.jpeg(at: root.appendingPathComponent("cover.jpg"), width: 32, height: 24)
+        try ImageFixtures.jpeg(at: root.appendingPathComponent("trip/day1/1.jpg"), width: 32, height: 24)
+
+        let suite = "BrowserModelFolderTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let model = BrowserModel(
+            lister: DirectoryLister(),
+            decoder: ImageDecoder(),
+            cache: DecodedImageCache(costLimitBytes: 50_000_000),
+            settings: SettingsStore(defaults: defaults),
+            archiveReader: ZipArchiveReader()
+        )
+        model.setNavigationRoots(roots.map { root.appendingPathComponent($0, isDirectory: true) })
+        return Env(root: root, defaults: defaults, suite: suite, model: model)
+    }
+
+    private func path(_ url: URL?) -> String? {
+        url?.standardizedFileURL.path
+    }
+
+    private func isEmptyPreview(_ preview: PreviewContent) -> Bool {
+        if case .empty = preview { return true }
+        return false
+    }
+
+    private func setPermissions(_ permissions: Int, of url: URL) throws {
+        try FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: url.path)
+    }
+
+    // MARK: - フォルダの行と ..
+
+    @Test("ツリーのルートの一覧には .. がなく、フォルダとファイルが名前の順に並び、戻る操作は何もしない")
+    func rootHasNoParentRow() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.root)
+
+        #expect(env.model.listing.files.map(\.name) == ["cover.jpg", "empty", "only", "trip"])
+        #expect(env.row("trip")?.kind == .folder)
+        #expect(!env.model.listing.files.contains { $0.kind == .parent })
+        #expect(env.model.hasEnclosingLevel == false)
+
+        await env.model.goToEnclosingLevel()
+        #expect(path(env.model.listing.folder) == path(env.root))
+        #expect(env.model.treeSyncRequest == nil)
+    }
+
+    @Test("フォルダの行を開くと、その一覧になり、.. が先頭に入り、lastFolder と同期の依頼が更新される")
+    func openingFolderNavigates() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.root)
+        let trip = try #require(env.row("trip"))
+
+        await env.model.openItem(trip.url)
+
+        #expect(path(env.model.listing.folder) == path(env.url("trip")))
+        let first = try #require(env.model.listing.files.first)
+        #expect(first.kind == .parent)
+        #expect(first.name == "..")
+        #expect(ParentLink.isParentLink(first.url))
+        #expect(env.model.listing.files.dropFirst().map(\.name) == ["day1", "day2"])
+        #expect(env.model.selection.selected.isEmpty)
+        #expect(isEmptyPreview(env.model.preview))
+        #expect(path(env.lastFolder) == path(env.url("trip")))
+        #expect(path(env.model.treeSyncRequest?.folder) == path(env.url("trip")))
+        #expect(env.model.hasEnclosingLevel == true)
+    }
+
+    @Test(".. と goToEnclosingLevel で親へ戻り、直前のフォルダの行が選ばれる")
+    func goingUpSelectsPreviousFolder() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.root)
+        await env.model.openItem(try #require(env.row("trip")).url)
+        await env.model.openItem(try #require(env.row("trip/day1")).url)
+        let idBeforeUp = try #require(env.model.treeSyncRequest?.id)
+
+        await env.model.goToEnclosingLevel()
+
+        #expect(path(env.model.listing.folder) == path(env.url("trip")))
+        let day1 = try #require(env.row("trip/day1"))
+        #expect(env.model.selection.selected == [day1.url])
+        #expect(env.model.selection.focused == day1.url)
+        #expect(path(env.model.treeSyncRequest?.folder) == path(env.url("trip")))
+        #expect((env.model.treeSyncRequest?.id ?? 0) > idBeforeUp)
+        #expect(path(env.lastFolder) == path(env.url("trip")))
+
+        // .. の行を開いても同じ結果になる
+        await env.model.openItem(day1.url)
+        let parent = try #require(env.model.listing.files.first { $0.kind == .parent })
+        await env.model.openItem(parent.url)
+        #expect(path(env.model.listing.folder) == path(env.url("trip")))
+        #expect(env.model.selection.focused == env.row("trip/day1")?.url)
+
+        // もう一度戻るとルートで、trip が選ばれ、.. はない
+        await env.model.goToEnclosingLevel()
+        #expect(path(env.model.listing.folder) == path(env.root))
+        #expect(env.model.selection.focused == env.row("trip")?.url)
+        #expect(!env.model.listing.files.contains { $0.kind == .parent })
+    }
+
+    @Test("ツリーからの選択では同期の依頼を出さないが、ルート以外なら .. は出る")
+    func selectFolderDoesNotRequestTreeSync() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+
+        await env.model.selectFolder(env.url("trip/day2"))
+
+        #expect(env.model.treeSyncRequest == nil)
+        #expect(env.model.hasEnclosingLevel == true)
+        #expect(env.model.listing.files.map(\.kind) == [.parent])
+    }
+
+    @Test("ルートが空なら .. を出さず、setNavigationRoots で読み直さずに .. が入る")
+    func navigationRootsControlParentRow() async throws {
+        let env = try makeEnv(roots: [])
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.url("trip"))
+
+        #expect(env.model.listing.files.map(\.name) == ["day1", "day2"])
+        #expect(env.model.hasEnclosingLevel == false)
+
+        env.model.setNavigationRoots([env.root])
+
+        #expect(env.model.listing.files.map(\.name) == ["..", "day1", "day2"])
+        #expect(env.model.hasEnclosingLevel == true)
+
+        env.model.setNavigationRoots([env.url("trip")])
+        #expect(env.model.listing.files.map(\.name) == ["day1", "day2"])
+    }
+
+    // MARK: - 空の判定（FR-060）と種類フィルタ
+
+    @Test("空のフォルダは .. だけで .empty、フォルダだけのフォルダは .loaded")
+    func emptyStates() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+
+        await env.model.selectFolder(env.url("empty"))
+        #expect(env.model.listing.files.map(\.kind) == [.parent])
+        #expect(env.model.listing.state == .empty)
+
+        await env.model.selectFolder(env.url("only"))
+        #expect(env.model.listing.files.map(\.name) == ["..", "inner"])
+        #expect(env.model.listing.state == .loaded)
+    }
+
+    @Test("種類フィルタでもフォルダは残り、メディアが元々ない階層は .loaded のまま")
+    func filterKeepsFolders() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        env.model.setMediaTypeFilter(MediaTypeFilter(videosOnly: true))
+
+        await env.model.selectFolder(env.url("trip"))
+        #expect(env.model.listing.files.map(\.name) == ["..", "day1", "day2"])
+        #expect(env.model.listing.state == .loaded)
+
+        await env.model.selectFolder(env.url("trip/day1"))
+        #expect(env.model.listing.files.map(\.kind) == [.parent])
+        #expect(env.model.listing.state == .noMatches)
+    }
+
+    // MARK: - 読めないフォルダ（FR-077）
+
+    @Test("権限のないフォルダへ入ると .. だけが残り、.. で戻れる")
+    func deniedFolderKeepsParentRow() async throws {
+        let env = try makeEnv()
+        let locked = env.url("locked")
+        try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: true)
+        try setPermissions(0o000, of: locked)
+        defer {
+            try? setPermissions(0o755, of: locked)
+            env.cleanup()
+        }
+        await env.model.selectFolder(env.root)
+
+        await env.model.openItem(try #require(env.row("locked")).url)
+
+        #expect(env.model.listing.state == .denied)
+        #expect(env.model.listing.files.map(\.kind) == [.parent])
+
+        await env.model.openItem(try #require(env.model.listing.files.first).url)
+        #expect(path(env.model.listing.folder) == path(env.root))
+        #expect(env.model.selection.focused == env.row("locked")?.url)
+    }
+
+    @Test("存在しないフォルダと、読み直しで読めなくなったフォルダでも .. だけが残る")
+    func failedFolderKeepsParentRow() async throws {
+        let env = try makeEnv()
+        let trip = env.url("trip")
+        defer {
+            try? setPermissions(0o755, of: trip)
+            env.cleanup()
+        }
+
+        // standardizedFileURL は存在するパスだけ先頭の /private を外すため、存在しないフォルダは外した表記で作る
+        let missing = env.root.standardizedFileURL.appendingPathComponent("missing", isDirectory: true)
+        await env.model.selectFolder(missing)
+        if case .failed = env.model.listing.state {} else {
+            Issue.record("state should be failed, got \(env.model.listing.state)")
+        }
+        #expect(env.model.listing.files.map(\.kind) == [.parent])
+
+        await env.model.selectFolder(trip)
+        try setPermissions(0o000, of: trip)
+        await env.model.reloadCurrentFolder()
+        #expect(env.model.listing.state == .denied)
+        #expect(env.model.listing.files.map(\.kind) == [.parent])
+    }
+
+    @Test("ルートが読めないときは .. も出さない")
+    func deniedRootHasNoParentRow() async throws {
+        let env = try makeEnv()
+        defer {
+            try? setPermissions(0o755, of: env.root)
+            env.cleanup()
+        }
+        try setPermissions(0o000, of: env.root)
+
+        await env.model.selectFolder(env.root)
+
+        #expect(env.model.listing.state == .denied)
+        #expect(env.model.listing.files.isEmpty)
+    }
+
+    // MARK: - プレビュー・操作の対象
+
+    @Test("フォルダの行を選ぶとプレビューは空になり、再生中の動画は止まる")
+    func selectingFolderClearsPreview() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let video = env.root.appendingPathComponent("clip.mp4")
+        try Data().write(to: video)
+        await env.model.selectFolder(env.root)
+
+        let clip = try #require(env.model.listing.files.first { $0.name == "clip.mp4" })
+        env.model.select([clip.url], focused: clip.url)
+        guard case .video = env.model.preview else {
+            Issue.record("preview should be video, got \(env.model.preview)")
+            return
+        }
+        let before = env.model.stopPlaybackSignal
+
+        let trip = try #require(env.row("trip"))
+        env.model.select([trip.url], focused: trip.url)
+
+        #expect(isEmptyPreview(env.model.preview))
+        #expect(env.model.stopPlaybackSignal > before)
+    }
+
+    @Test("operableSelection は一覧の並び順で .. を除く")
+    func operableSelectionExcludesParent() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.url("trip"))
+        let parent = try #require(env.model.listing.files.first { $0.kind == .parent })
+        let day1 = try #require(env.row("trip/day1"))
+        let day2 = try #require(env.row("trip/day2"))
+
+        env.model.select([day2.url, parent.url, day1.url], focused: parent.url)
+        #expect(env.model.operableSelection == [day1.url, day2.url])
+
+        env.model.select([parent.url], focused: parent.url)
+        #expect(env.model.operableSelection.isEmpty)
+    }
+
+    // MARK: - 同期の依頼を出さない経路
+
+    @Test("zip の中の移動では同期の依頼と lastFolder が変わらない")
+    func archiveNavigationDoesNotRequestTreeSync() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let zip = env.root.appendingPathComponent("a.zip")
+        try ZipFixtureWriter.write(
+            [ZipFixtureEntry(name: "sub/x.png", content: .bytes(Data([0x89, 0x50])))],
+            to: zip
+        )
+        await env.model.selectFolder(env.root)
+        let lastFolder = env.lastFolder
+
+        await env.model.openItem(try #require(env.model.listing.files.first { $0.name == "a.zip" }).url)
+        #expect(env.model.isBrowsingArchive)
+        await env.model.goToEnclosingLevel()
+
+        #expect(env.model.treeSyncRequest == nil)
+        #expect(path(env.lastFolder) == path(lastFolder))
+    }
+
+    @Test("表示中のフォルダが外部で消えて親へ移っても、同期の依頼は出さない")
+    func fileSystemEventDoesNotRequestTreeSync() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.url("trip/day2"))
+        try FileManager.default.removeItem(at: env.url("trip/day2"))
+
+        await env.model.handleFileSystemEvent([env.model.listing.folder])
+
+        #expect(path(env.model.listing.folder) == path(env.url("trip")))
+        #expect(env.model.treeSyncRequest == nil)
+    }
+}

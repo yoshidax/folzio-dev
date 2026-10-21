@@ -35,15 +35,17 @@ public enum MediaKind: String, CaseIterable, Sendable {
     }
 }
 
-/// ファイルリストの行の種類（FR-068〜070、data-model.md の ListItemKind）。`MediaFile.kind` の型
+/// ファイルリストの行の種類（FR-068〜070・076・077、data-model.md の ListItemKind）。`MediaFile.kind` の型
 public enum ListItemKind: Sendable, Hashable {
     /// 対応メディアファイル
     case media(MediaKind)
     /// 通常のフォルダの zip ファイル
     case archive
-    /// zip の中のディレクトリ
+    /// 通常のフォルダのサブフォルダ（ファイル操作の対象）
+    case folder
+    /// zip の中のディレクトリ（読み取り専用）
     case directory
-    /// zip の中の先頭行 `...`
+    /// 先頭行 `..`（zip の中と、ツリーのルート以外の通常のフォルダ）
     case parent
 
     public var isMedia: Bool {
@@ -61,12 +63,12 @@ public enum ListItemKind: Sendable, Hashable {
         mediaKind?.isVideo ?? false
     }
 
-    /// ダブルクリック・⌘↓ で開ける行（`.archive` / `.directory` / `.parent`）
+    /// ダブルクリック・⌘↓ で開ける行（`.archive` / `.folder` / `.directory` / `.parent`）
     public var opensAsContainer: Bool {
         switch self {
         case .media:
             return false
-        case .archive, .directory, .parent:
+        case .archive, .folder, .directory, .parent:
             return true
         }
     }
@@ -76,6 +78,7 @@ public enum ListItemKind: Sendable, Hashable {
         switch self {
         case .media(let kind): return kind.rawValue
         case .archive: return "archive"
+        case .folder: return "folder"
         case .directory: return "directory"
         case .parent: return "parent"
         }

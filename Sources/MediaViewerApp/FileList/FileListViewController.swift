@@ -93,6 +93,10 @@ final class FileListViewController: NSViewController {
         fatalError("init(coder:) is not supported")
     }
 
+    /// 一覧を隠したことで AppKit がフォーカスを移した先（次のキービュー。プレビューなど）。
+    /// 一覧を出し直したとき、フォーカスがまだここにあればファイルリストへ戻す
+    private weak var displacedFocus: NSResponder?
+
     var primaryFocusView: NSView {
         displayMode == .thumbnails
             ? thumbnailModeView.focusView
@@ -153,24 +157,19 @@ final class FileListViewController: NSViewController {
         }
     }
 
+    /// ファイル操作の対象。一覧の並び順で、`..` の行を除く（R30）
     var selectedFileURLs: [URL] {
-        let selected = model.selection.selected
-        guard !selected.isEmpty else { return [] }
-        var urls = model.listing.files.map(\.url).filter(selected.contains)
-        for url in selected where !urls.contains(url) {
-            urls.append(url)
-        }
-        return urls
-    }
-
-    /// zip の中を表示中か（右クリックメニューの項目の出し分けに使う）
-    var isBrowsingArchive: Bool {
-        model.isBrowsingArchive
+        model.operableSelection
     }
 
     /// フォーカス行と表示中の場所から決まる、操作ごとの可否
     var focusedItemCommands: ListItemCommands {
         model.focusedItemCommands
+    }
+
+    /// 選択に対するファイル操作の可否（フォーカスが `..` でも、ほかの選択の行で判断する）
+    var selectionItemCommands: ListItemCommands {
+        model.selectionItemCommands
     }
 
     var isEditingText: Bool {
@@ -331,14 +330,15 @@ final class FileListViewController: NSViewController {
         }
     }
 
-    /// 一覧の行が残っているとき（`...` やディレクトリ）は、メッセージの状態でも一覧を表示し続ける
+    /// 一覧の行が残っているとき（`..` やディレクトリ）は、メッセージの状態でも一覧を表示し続ける。
+    /// 読めないフォルダでも `..` が残れば一覧を出し、メッセージは下端の帯に出す（FR-077）
     private var showsFileList: Bool {
         switch model.listing.state {
         case .loaded:
             return true
-        case .empty, .noMatches, .failed:
+        case .empty, .noMatches, .denied, .failed:
             return !model.listing.files.isEmpty
-        case .loading, .denied:
+        case .loading:
             return false
         }
     }
@@ -382,12 +382,29 @@ final class FileListViewController: NSViewController {
 
     private func updateModeVisibility() {
         let showsFiles = showsFileList
+        let firstResponder = view.window?.firstResponder as? NSView
+        let focusWasInFileList = firstResponder.map {
+            isView($0, inside: listModeView) || isView($0, inside: thumbnailModeView)
+        } ?? false
 
         listModeView.isHidden = !(showsFiles && displayMode == .list)
         let thumbnailWasHidden = thumbnailModeView.isHidden
         thumbnailModeView.isHidden = !(showsFiles && displayMode == .thumbnails)
         if thumbnailWasHidden, !thumbnailModeView.isHidden {
             thumbnailModeView.needsLayout = true
+        }
+
+        // 読み込み中は一覧を隠すため、AppKit がフォーカスを次のキービュー（プレビューなど）へ移す。
+        // フォルダへ入る・戻る間もキーボードフォーカスをファイルリストに残すよう、一覧を出し直したときに戻す（FR-078）
+        if focusWasInFileList, !showsFiles, let window = view.window {
+            displacedFocus = window.firstResponder
+        }
+        if showsFiles, let displaced = displacedFocus {
+            displacedFocus = nil
+            // 読み込み中にユーザーがほかのペインへ移ったときは、フォーカスを奪わない
+            if let window = view.window, window.firstResponder === displaced {
+                window.makeFirstResponder(primaryFocusView)
+            }
         }
 
         let showsBand = showsFiles && !messageBandLabel.stringValue.isEmpty
@@ -553,7 +570,7 @@ final class FileListViewController: NSViewController {
     }
 
     @objc func copy(_ sender: Any?) {
-        guard focusedItemCommands.allowsFileOperations else { return }
+        guard selectionItemCommands.allowsFileOperations else { return }
         let urls = selectedFileURLs
         guard !urls.isEmpty else { return }
         let pasteboard = NSPasteboard.general
@@ -580,7 +597,7 @@ final class FileListViewController: NSViewController {
     }
 
     @objc func duplicate(_ sender: Any?) {
-        guard focusedItemCommands.allowsFileOperations else { return }
+        guard selectionItemCommands.allowsFileOperations else { return }
         guard !isEditingText else { return }
         let urls = selectedFileURLs
         guard !urls.isEmpty else { return }
@@ -624,7 +641,7 @@ final class FileListViewController: NSViewController {
     }
 
     @objc func moveToTrash(_ sender: Any?) {
-        guard focusedItemCommands.allowsFileOperations else { return }
+        guard selectionItemCommands.allowsFileOperations else { return }
         guard !isEditingText else { return }
         let urls = selectedFileURLs
         guard !urls.isEmpty else { return }
@@ -634,7 +651,7 @@ final class FileListViewController: NSViewController {
     }
 
     @objc func open(_ sender: Any?) {
-        guard focusedItemCommands.allowsFileOperations else { return }
+        guard selectionItemCommands.allowsFileOperations else { return }
         guard !isEditingText else { return }
         for url in selectedFileURLs {
             _ = NSWorkspace.shared.open(url)
@@ -642,13 +659,13 @@ final class FileListViewController: NSViewController {
     }
 
     @objc func revealInFinder(_ sender: Any?) {
-        guard focusedItemCommands.allowsFileOperations else { return }
+        guard selectionItemCommands.allowsFileOperations else { return }
         let urls = selectedFileURLs
         guard !urls.isEmpty else { return }
         NSWorkspace.shared.activateFileViewerSelecting(urls)
     }
 
-    /// フォーカス行の zip ファイル・ディレクトリの中を表示する。`...` なら1つ上へ戻る（⌘↓、FR-069）
+    /// フォーカス行の zip ファイル・ディレクトリの中を表示する。`..` なら1つ上へ戻る（⌘↓、FR-069）
     @objc func openFocusedItem(_ sender: Any?) {
         guard !isEditingText,
               focusedItemCommands.canOpenContainer,
@@ -735,16 +752,17 @@ extension FileListViewController: NSMenuItemValidation {
             return !isEditingText && focusedItemCommands.canGoUp
         }
 
-        // zip の中は読み取り専用（FR-073）。判断は ListItemCommands に任せる
-        let commands = focusedItemCommands
+        // zip の中は読み取り専用（FR-073）。`..` は操作の対象にならない（R30）。判断は ListItemCommands に任せる
+        let commands = selectionItemCommands
         switch menuItem.action {
         case #selector(copy(_:)),
              #selector(open(_:)),
              #selector(revealInFinder(_:)),
              #selector(moveToTrash(_:)),
-             #selector(duplicate(_:)),
-             #selector(rename(_:)):
+             #selector(duplicate(_:)):
             if !commands.allowsFileOperations { return false }
+        case #selector(rename(_:)):
+            if !focusedItemCommands.allowsFileOperations { return false }
         case #selector(paste(_:)), #selector(movePaste(_:)):
             if !commands.allowsPaste { return false }
         default:

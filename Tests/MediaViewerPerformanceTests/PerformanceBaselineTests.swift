@@ -176,6 +176,36 @@ struct PerformanceBaselineTests {
         )
     }
 
+    @Test("10,000 ファイルと 1,000 サブフォルダのフォルダの列挙が 1 秒以内")
+    func listsLargeFolderWithSubfoldersWithinBudget() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        for index in 0..<10_000 {
+            let path = directory.appendingPathComponent(String(format: "%05d.jpg", index)).path
+            FileManager.default.createFile(atPath: path, contents: nil)
+        }
+        for index in 0..<1_000 {
+            try FileManager.default.createDirectory(
+                at: directory.appendingPathComponent(String(format: "folder-%04d", index), isDirectory: true),
+                withIntermediateDirectories: false
+            )
+        }
+
+        let lister = DirectoryLister()
+        let start = ContinuousClock.now
+        let files = try await lister.mediaFiles(in: directory)
+        let elapsed = ContinuousClock.now - start
+
+        #expect(files.count == 11_000)
+        #expect(files.filter { $0.kind == .folder }.count == 1_000)
+        print("mediaFiles(in:) 10,000 files + 1,000 folders: \(elapsed)")
+        #expect(
+            elapsed < .seconds(1),
+            "10,000 ファイルと 1,000 サブフォルダの列挙は SC-003 の列挙と同じ 1 秒以内 (実測: \(elapsed))"
+        )
+    }
+
     @Test("100MP グレースケール PNG をデコードしバイトコストを抑える")
     func decodesHundredMegapixelPNGWithinMemoryBudget() async throws {
         let directory = try makeTemporaryDirectory()

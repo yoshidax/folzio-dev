@@ -9,13 +9,14 @@ final class ConfirmationPresenter {
         self.settings = settings
     }
 
-    func confirm(_ operation: FileOperation) async -> Bool {
+    /// `includesFolders` が true なら、フォルダは中身ごと操作する旨を添える（R32）
+    func confirm(_ operation: FileOperation, includesFolders: Bool = false) async -> Bool {
         guard settings.confirmation.confirmBeforeFileOperations else {
             return true
         }
         return await present(
             messageText: messageText(for: operation.kind),
-            informativeText: informativeText(for: operation),
+            informativeText: informativeText(for: operation, includesFolders: includesFolders),
             confirmTitle: "実行"
         )
     }
@@ -75,12 +76,20 @@ final class ConfirmationPresenter {
         }
     }
 
-    private func informativeText(for operation: FileOperation) -> String {
+    private func informativeText(for operation: FileOperation, includesFolders: Bool) -> String {
         let sources = operation.sources
         var lines = ["対象: \(sources.count) 件"]
         lines.append(contentsOf: sources.prefix(5).map { "・\($0.lastPathComponent)" })
         if sources.count > 5 {
             lines.append("ほか \(sources.count - 5) 件")
+        }
+        if includesFolders {
+            switch operation.kind {
+            case .trash:
+                lines.append("フォルダは中身ごとゴミ箱に入ります")
+            case .copy, .move, .rename:
+                lines.append("フォルダは中身ごと操作します")
+            }
         }
         switch operation.kind {
         case .copy, .move:

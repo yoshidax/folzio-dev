@@ -26,7 +26,7 @@ public enum ArchiveURL {
         makeURL(archive: archive, path: path, fragment: nil)
     }
 
-    /// `...` の行の URL。表示中の階層の URL に `#parent` を付けたもの
+    /// `..` の行の URL。表示中の階層の URL に `#parent` を付けたもの
     public static func parentLink(of location: ArchiveLocation) -> URL {
         makeURL(archive: location.archive, path: location.directory, fragment: parentFragment)
     }

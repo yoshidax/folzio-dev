@@ -511,7 +511,7 @@ extension ListModeView: NSTableViewDelegate {
         }
 
         if !file.kind.isMedia {
-            // zip ファイル・ディレクトリ・`...` は縮小画像を要求せず、種類のアイコンを出す
+            // zip ファイル・ディレクトリ・`..` は縮小画像を要求せず、種類のアイコンを出す
             cell.cancelIconRequest(using: provider)
             cell.iconPointSize = 0
             cell.iconScale = 0
@@ -522,7 +522,7 @@ extension ListModeView: NSTableViewDelegate {
                 setEditingAppearance(cell.nameField, editing: false)
             }
             if file.kind == .parent {
-                cell.nameField.stringValue = "..."
+                cell.nameField.stringValue = ".."
                 cell.nameField.setAccessibilityLabel("上の階層へ")
             } else {
                 cell.nameField.stringValue = file.name
@@ -627,7 +627,7 @@ extension ListModeView {
         pasteboardWriterForRow row: Int
     ) -> NSPasteboardWriting? {
         guard row >= 0, row < model.listing.files.count else { return nil }
-        // zip の中の行・`...` はドラッグを始めない（FR-073）
+        // zip の中の行・`..` はドラッグを始めない（FR-073）
         guard model.itemCommands(forRowAt: row).allowsFileOperations else { return nil }
         return model.listing.files[row].url as NSURL
     }

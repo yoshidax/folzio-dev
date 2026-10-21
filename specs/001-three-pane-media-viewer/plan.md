@@ -679,7 +679,7 @@ Core（`Sources/MediaViewerCore/`）:
   返すフォルダが `subfolders(of:)` と一致する）、`ListItemCommandsTests`（`.folder` と通常のフォルダの `..` の行、`hasEnclosingLevel` の有無）、
   `NameValidationTests`（フォルダで拡張子の確認を出さない）、`SortingTests`（フォルダが混ざって並び `..` が先頭）、`FocusNavigatorTests`
   （`.folder` を読み飛ばす）、`MediaTypeFilterTests`（`.folder` を残す）。既存の `BrowserModelArchiveTests` の `...` の期待値を `..` にする
-- `MediaViewerPerformanceTests/PerformanceBaselineTests.swift`: 10,000 ファイルと 1,000 サブフォルダのフォルダで `mediaFiles(in:)` が 0.5 秒以内
+- `MediaViewerPerformanceTests/PerformanceBaselineTests.swift`: 10,000 ファイルと 1,000 サブフォルダのフォルダで `mediaFiles(in:)` が 1 秒以内（SC-003 の列挙と同じ基準）
 
 フィクスチャ（`Sources/FixtureKit/`）:
 

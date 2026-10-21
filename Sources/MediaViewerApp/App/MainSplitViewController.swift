@@ -86,6 +86,8 @@ final class MainSplitViewController: NSSplitViewController {
             archiveReader: archiveReader
         )
         let volumes = VolumeProvider(changes: MainSplitViewController.makeVolumeChanges())
+        // ツリーの初回の選択（selectFolder）より前に、`..` と ⌘↑ の戻る先を決めるルートを渡す（R30）
+        model.setNavigationRoots(volumes.rootNodes().map(\.url))
         let fileSystemWatcher = FileSystemWatcher()
         let thumbnailProvider = ThumbnailProvider(archiveReader: archiveReader)
         let coordinator = FileOperationCoordinator(
@@ -116,6 +118,11 @@ final class MainSplitViewController: NSSplitViewController {
 
         super.init(nibName: nil, bundle: nil)
 
+        fileOperationCoordinator.onFoldersChanged = { [weak treeViewController] folders in
+            Task { @MainActor in
+                await treeViewController?.refreshFolders(folders)
+            }
+        }
         fileListViewController.onRename = { [weak self] url, newName in
             guard let self else { return }
             await self.fileOperationCoordinator.rename(url, to: newName)

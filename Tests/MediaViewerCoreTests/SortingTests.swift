@@ -46,19 +46,19 @@ struct SortingTests {
         #expect(result.map(\.name) == ["b.jpg", "c.mp4", "a.png"])
     }
 
-    @Test("... の行は並べ替えの列と向きに関わらず先頭に置く")
+    @Test(".. の行は並べ替えの列と向きに関わらず先頭に置く")
     func keepsParentRowFirst() {
         let created = Date(timeIntervalSince1970: 100)
         let files = [
             item("c.png", .media(.png), created: created),
-            item("...", .parent, created: nil),
+            item("..", .parent, created: nil),
             item("a.jpg", .media(.jpeg), created: created),
             item("b", .directory, created: created),
         ]
         for column in [SortColumn.name, .creationDate, .kind] {
             for ascending in [true, false] {
                 let result = sorted(files, by: SortOrder(column: column, ascending: ascending))
-                #expect(result.first?.name == "...", "column=\(column) ascending=\(ascending)")
+                #expect(result.first?.name == "..", "column=\(column) ascending=\(ascending)")
                 #expect(result.count == files.count)
             }
         }
@@ -68,15 +68,39 @@ struct SortingTests {
     func mixesDirectoriesAndMediaByName() {
         let files = [
             item("c.png", .media(.png)),
-            item("...", .parent),
+            item("..", .parent),
             item("b", .directory),
             item("a.jpg", .media(.jpeg)),
         ]
         let ascending = sorted(files, by: SortOrder(column: .name, ascending: true))
-        #expect(ascending.map(\.name) == ["...", "a.jpg", "b", "c.png"])
+        #expect(ascending.map(\.name) == ["..", "a.jpg", "b", "c.png"])
 
         let descending = sorted(files, by: SortOrder(column: .name, ascending: false))
-        #expect(descending.map(\.name) == ["...", "c.png", "b", "a.jpg"])
+        #expect(descending.map(\.name) == ["..", "c.png", "b", "a.jpg"])
+    }
+
+    @Test("フォルダもファイルと区別なく並び、.. は常に先頭に置く")
+    func mixesFoldersWithFiles() {
+        let created = Date(timeIntervalSince1970: 100)
+        let files = [
+            item("c.png", .media(.png), created: created),
+            item("d.zip", .archive, created: created),
+            item("..", .parent, created: nil),
+            item("b", .folder, created: created),
+            item("a.jpg", .media(.jpeg), created: created),
+        ]
+        let ascending = sorted(files, by: SortOrder(column: .name, ascending: true))
+        #expect(ascending.map(\.name) == ["..", "a.jpg", "b", "c.png", "d.zip"])
+        let descending = sorted(files, by: SortOrder(column: .name, ascending: false))
+        #expect(descending.map(\.name) == ["..", "d.zip", "c.png", "b", "a.jpg"])
+
+        for column in [SortColumn.name, .creationDate, .kind] {
+            for ascending in [true, false] {
+                let result = sorted(files, by: SortOrder(column: column, ascending: ascending))
+                #expect(result.first?.name == "..", "column=\(column) ascending=\(ascending)")
+                #expect(result.count == files.count)
+            }
+        }
     }
 
     private func item(_ name: String, _ kind: ListItemKind, created: Date? = nil) -> MediaFile {

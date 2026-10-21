@@ -5,7 +5,7 @@ import Testing
 
 @Suite("DirectoryLister")
 struct DirectoryListerTests {
-    @Test("mixed から対応メディアだけを返す")
+    @Test("mixed から対応メディアとサブフォルダだけを返す")
     func listsOnlySupportedMedia() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -15,8 +15,9 @@ struct DirectoryListerTests {
         let lister = DirectoryLister()
 
         let files = try await lister.mediaFiles(in: folder)
-        #expect(files.count == 7)
+        #expect(files.count == 8)
         #expect(Set(files.map(\.name)) == [
+            "sub",
             "01-photo.jpg",
             "02-image.png",
             "03-animation.gif",
@@ -28,7 +29,7 @@ struct DirectoryListerTests {
         #expect(!files.contains { $0.name == "notes.txt" })
         #expect(!files.contains { $0.name == "document.pdf" })
         #expect(!files.contains { $0.name == ".hidden.jpg" })
-        #expect(!files.contains { $0.name == "sub" })
+        #expect(files.first { $0.name == "sub" }?.kind == .folder)
 
         let subfolders = try await lister.subfolders(of: folder)
         #expect(subfolders.map(\.lastPathComponent) == ["sub"])
@@ -124,7 +125,7 @@ struct DirectoryListerTests {
         }
     }
 
-    @Test("zip ファイルを kind == .archive で返し、zip という名前のディレクトリと隠し zip は返さない")
+    @Test("zip ファイルを kind == .archive で返し、zip という名前のディレクトリはフォルダとして返し、隠し zip は返さない")
     func listsZipFilesAsArchives() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -141,13 +142,48 @@ struct DirectoryListerTests {
 
         let files = try await DirectoryLister().mediaFiles(in: root)
 
-        #expect(Set(files.map(\.name)) == ["a.zip", "B.ZIP", "c.jpg"])
+        #expect(Set(files.map(\.name)) == ["a.zip", "B.ZIP", "c.jpg", "x.zip"])
+        #expect(files.first { $0.name == "x.zip" }?.kind == .folder)
         for name in ["a.zip", "B.ZIP"] {
             let file = try #require(files.first { $0.name == name })
             #expect(file.kind == .archive)
             #expect(!file.typeDescription.isEmpty)
         }
         #expect(files.first { $0.name == "c.jpg" }?.kind == .media(.jpeg))
+    }
+
+    @Test("サブフォルダを kind == .folder で返し、隠しフォルダとパッケージは返さない。subfolders と同じフォルダになる")
+    func listsSubfoldersAsFolders() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let fileManager = FileManager.default
+        for path in ["sub", ".hidden-dir", "Pkg.app/Contents", "dir.zip"] {
+            try fileManager.createDirectory(
+                at: root.appendingPathComponent(path, isDirectory: true),
+                withIntermediateDirectories: true
+            )
+        }
+        try ImageFixtures.jpeg(at: root.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        fileManager.createFile(atPath: root.appendingPathComponent("z.zip").path, contents: Data([0x50, 0x4B]))
+        fileManager.createFile(atPath: root.appendingPathComponent("notes.txt").path, contents: Data("x".utf8))
+
+        let lister = DirectoryLister()
+        let files = try await lister.mediaFiles(in: root)
+
+        #expect(Set(files.map(\.name)) == ["sub", "dir.zip", "z.zip", "a.jpg"])
+        let sub = try #require(files.first { $0.name == "sub" })
+        #expect(sub.kind == .folder)
+        #expect(sub.typeDescription == "フォルダ")
+        #expect(sub.fileSize == 0)
+        #expect(sub.creationDate != nil)
+        #expect(files.first { $0.name == "dir.zip" }?.kind == .folder)
+        #expect(files.first { $0.name == "z.zip" }?.kind == .archive)
+        #expect(files.first { $0.name == "a.jpg" }?.kind == .media(.jpeg))
+
+        let folderURLs = Set(files.filter { $0.kind == .folder }.map(\.url.standardizedFileURL))
+        let subfolders = Set(try await lister.subfolders(of: root).map(\.standardizedFileURL))
+        #expect(folderURLs == subfolders)
     }
 
     @Test("subfolders と hasSubfolders は zip ファイルを数えない")

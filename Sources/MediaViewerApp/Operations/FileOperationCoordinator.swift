@@ -8,6 +8,9 @@ final class FileOperationCoordinator {
     private let confirmation: ConfirmationPresenter
     private let conflictPrompt: ConflictPrompt
 
+    /// 操作が終わったときに、影響したフォルダ（対象の親フォルダと操作先）を渡す。ツリーが FSEvents を待たずに反映する（FR-027、R32）
+    var onFoldersChanged: ((Set<URL>) -> Void)?
+
     init(model: BrowserModel, service: any FileOperating, settings: SettingsStore) {
         self.model = model
         self.service = service
@@ -26,7 +29,7 @@ final class FileOperationCoordinator {
     func duplicate(_ urls: [URL]) async {
         guard !urls.isEmpty else { return }
         let operation = FileOperation(kind: .copy, sources: urls)
-        guard await confirmation.confirm(operation) else { return }
+        guard await confirmation.confirm(operation, includesFolders: await containsFolder(urls)) else { return }
 
         var result = FileOperationResult()
         for source in urls {
@@ -40,16 +43,18 @@ final class FileOperationCoordinator {
         }
         await presentFailures(result)
         await model.reloadCurrentFolder()
+        notifyFoldersChanged(sources: urls, destination: nil)
     }
 
     func trash(_ urls: [URL]) async {
         guard !urls.isEmpty else { return }
         let operation = FileOperation(kind: .trash, sources: urls)
-        guard await confirmation.confirm(operation) else { return }
+        guard await confirmation.confirm(operation, includesFolders: await containsFolder(urls)) else { return }
 
         let result = await service.execute(operation, resolution: .abort)
         await presentFailures(result)
         await model.reloadCurrentFolder()
+        notifyFoldersChanged(sources: urls, destination: nil)
     }
 
     func paste(into destination: URL, move: Bool) async {
@@ -66,7 +71,8 @@ final class FileOperationCoordinator {
         let parent = file.deletingLastPathComponent()
         let existingNames = await siblingNames(in: parent).subtracting([file.lastPathComponent])
 
-        switch validateNewName(newName, for: file, existingNames: existingNames) {
+        let isDirectory = await containsFolder([file])
+        switch validateNewName(newName, for: file, existingNames: existingNames, isDirectory: isDirectory) {
         case .invalid(let reason):
             await showError(message: "名前を変更できません", detail: reason)
             return
@@ -77,17 +83,18 @@ final class FileOperationCoordinator {
         }
 
         let operation = FileOperation(kind: .rename(newName: newName), sources: [file])
-        guard await confirmation.confirm(operation) else { return }
+        guard await confirmation.confirm(operation, includesFolders: isDirectory) else { return }
 
         let result = await service.execute(operation, resolution: .abort)
         await presentFailures(result)
         await model.reloadCurrentFolder()
+        notifyFoldersChanged(sources: [file], destination: nil)
     }
 
     private func transfer(_ urls: [URL], to destination: URL, kind: FileOperation.Kind) async {
         guard !urls.isEmpty else { return }
         let operation = FileOperation(kind: kind, sources: urls, destination: destination)
-        guard await confirmation.confirm(operation) else { return }
+        guard await confirmation.confirm(operation, includesFolders: await containsFolder(urls)) else { return }
 
         var result = FileOperationResult()
         var sharedResolution: ConflictResolution?
@@ -126,6 +133,26 @@ final class FileOperationCoordinator {
 
         await presentFailures(result)
         await model.reloadCurrentFolder()
+        notifyFoldersChanged(sources: urls, destination: destination)
+    }
+
+    /// 対象にフォルダが含まれるか。stat は UI スレッドで行わない
+    private func containsFolder(_ urls: [URL]) async -> Bool {
+        await Task.detached(priority: .userInitiated) {
+            urls.contains { url in
+                var isDirectory: ObjCBool = false
+                return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+                    && isDirectory.boolValue
+            }
+        }.value
+    }
+
+    private func notifyFoldersChanged(sources: [URL], destination: URL?) {
+        var folders = Set(sources.map { $0.deletingLastPathComponent().standardizedFileURL })
+        if let destination {
+            folders.insert(destination.standardizedFileURL)
+        }
+        onFoldersChanged?(folders)
     }
 
     private func pasteboardFileURLs() -> [URL] {

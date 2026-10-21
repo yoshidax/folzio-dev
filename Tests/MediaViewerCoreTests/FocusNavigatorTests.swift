@@ -209,6 +209,13 @@ struct FocusNavigatorTests {
         #expect(target(kinds, from: 2, .down, .list) == nil)
     }
 
+    @Test("フォルダと .. の行も読み飛ばす")
+    func navigableSkipsFolders() {
+        let kinds: [ListItemKind] = [.parent, .folder, .media(.jpeg), .folder, .media(.png)]
+        #expect(target(kinds, from: 2, .down, .list) == 4)
+        #expect(target(kinds, from: 2, .up, .list) == nil)
+    }
+
     @Test("全部がメディアでなければ nil")
     func navigableAllNonMedia() {
         let kinds: [ListItemKind] = [.parent, .directory, .archive]
