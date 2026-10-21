@@ -25,4 +25,27 @@ public enum FolderNavigation {
         guard deepest != nil else { return nil }
         return target.deletingLastPathComponent()
     }
+
+    /// ツリーでフォルダをゴミ箱に入れたあとに表示するフォルダ（FR-079、research.md R33）。
+    /// `showing`（表示中のフォルダ。zip の中なら zip を含むフォルダ）が `trashed` のどれか自身かその配下なら、
+    /// 該当するもののうち最も浅いフォルダの `enclosingFolder` を返す。どれとも祖先・子孫の関係にない、
+    /// 該当するフォルダがルート、`trashed` が空のときは nil。
+    /// 比較は `standardizedFileURL` のパスの要素で行う（`/a/b2` を `/a/b` の配下と誤らない）
+    public static func folderToShow(afterTrashing trashed: [URL], showing: URL, roots: [URL]) -> URL? {
+        let showingComponents = showing.standardizedFileURL.pathComponents
+
+        var shallowest: URL?
+        var shallowestCount = Int.max
+        for url in trashed {
+            let standardized = url.standardizedFileURL
+            let components = standardized.pathComponents
+            guard showingComponents.starts(with: components),
+                  components.count < shallowestCount else { continue }
+            shallowest = standardized
+            shallowestCount = components.count
+        }
+
+        guard let shallowest else { return nil }
+        return enclosingFolder(of: shallowest, roots: roots)
+    }
 }
