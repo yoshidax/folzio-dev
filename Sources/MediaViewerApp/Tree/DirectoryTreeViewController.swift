@@ -133,6 +133,8 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
+    private var rootURLs: [URL] { roots.map(\.url) }
+
     private var selectedItem: Any? {
         let row = outlineView.selectedRow
         guard row >= 0 else { return nil }
@@ -194,6 +196,13 @@ final class DirectoryTreeViewController: NSViewController {
                 keyEquivalent: String(UnicodeScalar(NSBackspaceCharacter)!)
             )
             menuItem.keyEquivalentModifierMask = [.command]
+        case .moveToTrash:
+            menuItem = NSMenuItem(
+                title: "ゴミ箱に入れる",
+                action: #selector(trashFolderFromMenu(_:)),
+                keyEquivalent: String(UnicodeScalar(NSBackspaceCharacter)!)
+            )
+            menuItem.keyEquivalentModifierMask = [.command]
         case .separator:
             return .separator()
         }
@@ -218,11 +227,26 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
-    /// ⌘⌫。お気に入りの項目を選択中のときだけ、確認のうえお気に入りから削除する（FR-064）
+    /// ⌘⌫。お気に入りの項目ならお気に入りから削除（FR-064）、ルート以外のフォルダならゴミ箱に入れる（FR-079）
     @objc func moveToTrash(_ sender: Any?) {
-        guard let entry = selectedFavoriteEntry else { return }
-        Task { [weak self] in
-            await self?.removeFavorite(entry)
+        if let entry = selectedFavoriteEntry {
+            Task { [weak self] in
+                await self?.removeFavorite(entry)
+            }
+            return
+        }
+        guard let url = FavoriteCommands.trashTarget(role(for: selectedItem), roots: rootURLs) else { return }
+        Task { @MainActor [coordinator] in
+            await coordinator.trash([url])
+        }
+    }
+
+    /// 右クリックメニューの「ゴミ箱に入れる」。右クリックした行を対象にし、キーボードフォーカスは移さない（R33）
+    @objc private func trashFolderFromMenu(_ sender: Any?) {
+        let role = role(for: targetItem(for: sender))
+        guard let url = FavoriteCommands.trashTarget(role, roots: rootURLs) else { return }
+        Task { @MainActor [coordinator] in
+            await coordinator.trash([url])
         }
     }
 
@@ -772,15 +796,28 @@ final class DirectoryTreeViewController: NSViewController {
     private func reloadChildren(of node: Node) async {
         let selectedURL = selectedNode?.url
 
+        let result: Result<[URL], ListingError>
         do {
-            let urls = try await lister.subfolders(of: node.url)
-            applyListing(.success(urls), to: node)
+            result = .success(try await lister.subfolders(of: node.url))
         } catch {
-            applyListing(.failure(error), to: node)
+            result = .failure(error)
         }
 
-        if let selectedURL, let row = rowForURL(selectedURL) {
-            outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        // 選択中の行が読み直しで消えても selectFolder が呼ばれないよう、反映と選び直しは isRestoringSelection の間に行う（R33）
+        isRestoringSelection = true
+        defer { isRestoringSelection = false }
+        applyListing(result, to: node)
+
+        guard let selectedURL else { return }
+        // 選択中の行がなければ、残っている最も近い祖先の行を選ぶ
+        var candidate: URL? = selectedURL
+        while let url = candidate {
+            if let row = rowForURL(url) {
+                outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+                return
+            }
+            let parent = url.deletingLastPathComponent()
+            candidate = parent.standardizedFileURL.path == url.standardizedFileURL.path ? nil : parent
         }
     }
 
@@ -1036,13 +1073,15 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
         case #selector(revealInFinder(_:)):
             return fileTargetNode(for: menuItem) != nil
         case #selector(moveToTrash(_:)):
-            // ⌘⌫ はお気に入りの項目でだけ有効。ほかの行では何もしない（FR-064）
+            // ⌘⌫ はお気に入りの項目なら「お気に入りから削除」（FR-064）、ルート以外のフォルダなら「ゴミ箱に入れる」（FR-079）
             if selectedFavoriteEntry != nil {
                 menuItem.title = "お気に入りから削除"
                 return true
             }
             menuItem.title = "ゴミ箱に入れる"
-            return false
+            return FavoriteCommands.trashTarget(role(for: selectedItem), roots: rootURLs) != nil
+        case #selector(trashFolderFromMenu(_:)):
+            return FavoriteCommands.trashTarget(role(for: targetItem(for: menuItem)), roots: rootURLs) != nil
         case #selector(addToFavorites(_:)):
             return FavoriteCommands.canAdd(role(for: targetItem(for: menuItem)), favorites: favorites)
         case #selector(removeFavoriteFromMenu(_:)):
@@ -1064,7 +1103,7 @@ extension DirectoryTreeViewController: NSMenuDelegate {
             return
         }
         // 見出しは項目なし（メニューを出さない）
-        for kind in FavoriteCommands.contextMenu(for: role) {
+        for kind in FavoriteCommands.contextMenu(for: role, roots: rootURLs) {
             menu.addItem(makeContextMenuItem(kind, representing: item))
         }
     }

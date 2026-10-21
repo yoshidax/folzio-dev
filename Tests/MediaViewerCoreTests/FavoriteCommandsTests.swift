@@ -48,4 +48,48 @@ struct FavoriteCommandsTests {
         #expect(!FavoriteCommands.acceptsFiles(.favorite(registered)))
         #expect(!FavoriteCommands.acceptsFiles(.favoritesHeader))
     }
+
+    // MARK: ツリーのフォルダをゴミ箱に入れる（FR-079）
+
+    private let roots = [URL(fileURLWithPath: "/"), URL(fileURLWithPath: "/Users/me")]
+
+    @Test("trashTarget は通常のフォルダの URL を返す（ルートに / を含むボリュームの下も対象）")
+    func trashTargetForOrdinaryFolder() {
+        let home = URL(fileURLWithPath: "/Users/me/a")
+        let volume = URL(fileURLWithPath: "/Volumes/Ext/a")
+        #expect(FavoriteCommands.trashTarget(.folder(home), roots: roots) == home)
+        #expect(FavoriteCommands.trashTarget(.folder(volume), roots: roots) == volume)
+    }
+
+    @Test("trashTarget はルート・お気に入り・見出し・選択なし・ルート一覧が空のとき nil")
+    func trashTargetIsNilForOthers() {
+        let a = URL(fileURLWithPath: "/Users/me/a")
+        #expect(FavoriteCommands.trashTarget(.folder(URL(fileURLWithPath: "/Users/me")), roots: roots) == nil)
+        #expect(FavoriteCommands.trashTarget(.folder(URL(fileURLWithPath: "/")), roots: roots) == nil)
+        #expect(FavoriteCommands.trashTarget(.folder(URL(fileURLWithPath: "/Users/me/")), roots: roots) == nil)
+        #expect(FavoriteCommands.trashTarget(.favorite(a), roots: roots) == nil)
+        #expect(FavoriteCommands.trashTarget(.favoritesHeader, roots: roots) == nil)
+        #expect(FavoriteCommands.trashTarget(nil, roots: roots) == nil)
+        #expect(FavoriteCommands.trashTarget(.folder(a), roots: []) == nil)
+    }
+
+    @Test("通常のフォルダの右クリックメニューは先頭に「ゴミ箱に入れる」と区切り線を置く")
+    func contextMenuForOrdinaryFolderHasTrash() {
+        let a = URL(fileURLWithPath: "/Users/me/a")
+        #expect(
+            FavoriteCommands.contextMenu(for: .folder(a), roots: roots)
+                == [.moveToTrash, .separator, .pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder]
+        )
+    }
+
+    @Test("ルートのフォルダと roots 省略時は従来の並び。お気に入り・見出しは roots を渡しても変わらない")
+    func contextMenuWithoutTrash() {
+        let plain: [TreeContextMenuItem] =
+            [.pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder]
+        let a = URL(fileURLWithPath: "/Users/me/a")
+        #expect(FavoriteCommands.contextMenu(for: .folder(URL(fileURLWithPath: "/Users/me")), roots: roots) == plain)
+        #expect(FavoriteCommands.contextMenu(for: .folder(a)) == plain)
+        #expect(FavoriteCommands.contextMenu(for: .favorite(a), roots: roots) == [.removeFromFavorites])
+        #expect(FavoriteCommands.contextMenu(for: .favoritesHeader, roots: roots).isEmpty)
+    }
 }
