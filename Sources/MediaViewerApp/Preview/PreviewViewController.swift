@@ -152,12 +152,22 @@ final class PreviewViewController: NSViewController {
         guard configuredVideoURL != url else { return }
         configuredVideoURL = url
         let playback = model.playbackRequest
-        videoView.configure(
-            url: url,
-            autoplay: playback.autoplay,
-            loop: playback.loop,
-            fileName: url.lastPathComponent
-        )
+        if ArchiveURL.parse(url) != nil {
+            // zip の中の動画は ArchiveAssetFactory 経由の AVURLAsset で再生する
+            videoView.configure(
+                asset: ArchiveAssetFactory.makeAsset(for: url, reader: archiveReader),
+                autoplay: playback.autoplay,
+                loop: playback.loop,
+                fileName: url.lastPathComponent
+            )
+        } else {
+            videoView.configure(
+                url: url,
+                autoplay: playback.autoplay,
+                loop: playback.loop,
+                fileName: url.lastPathComponent
+            )
+        }
     }
 
     private func showImageView() {
