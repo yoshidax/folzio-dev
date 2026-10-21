@@ -1,6 +1,6 @@
 # Research: 3ペイン型メディアビューア
 
-**Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Date**: 2026-10-19
+**Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Date**: 2026-10-19（ファイルリストのフォルダ: 2026-10-21）
 
 Technical Context の未確定事項と主要な技術選択について、決定・理由・検討した代替案を記録する。
 
@@ -610,7 +610,7 @@ Technical Context の未確定事項と主要な技術選択について、決�
 - **Decision**:
   - zip の中の項目は、独自スキーム `mvzip` の URL で表す。形は `mvzip:///<項目のパス>?archive=<zip の絶対パス>` とし、どちらも
     パーセントエンコードする。ディレクトリはパスの末尾を `/` にする。zip の最上位は空のパス（`mvzip:///?archive=…`）。
-    先頭行の `...` は、表示中の階層の URL にフラグメント `parent` を付けたものにする。生成と解析は `ArchiveURL` に集め、ほかの場所で
+    先頭行の `..` は、表示中の階層の URL にフラグメント `parent` を付けたものにする。生成と解析は `ArchiveURL` に集め、ほかの場所で
     文字列を組み立てない
   - 一覧の行の型は既存の `MediaFile` を使い続け、`kind` の型を `MediaKind` から行の種類 `ListItemKind`
     （`.media(MediaKind)` / `.archive` / `.directory` / `.parent`）に変える。`ListItemKind` には `isVideo`（メディアの動画だけ true）・
@@ -623,12 +623,12 @@ Technical Context の未確定事項と主要な技術選択について、決�
   - `FolderListing` に `archive: ArchiveLocation?`（開いている zip と、その中の階層のパス）を加える。`folder` は zip の中を表示中も、zip を含む
     フォルダのまま変えない。ペーストの宛先・FSEvents の対象・`lastFolder`（FR-003）がそのまま「zip を含むフォルダ」になる
   - `BrowserModel` は、開いている zip の `ArchiveIndex` を1つだけ持つ（10,000 項目で数 MB）。zip の中の階層を移るときは zip を読み直さず、
-    索引から一覧を作る。zip から出たとき（最上位の `...`・⌘↑・ツリーで別のフォルダを選んだとき・FSEvents で zip が変わったとき）に捨てる
-  - 並べ替え: `...` は並べ替えの前に取り除き、結果の先頭に戻す（FR-070）。ディレクトリとメディアファイルは区別せず、同じ規則で並べる
+    索引から一覧を作る。zip から出たとき（最上位の `..`・⌘↑・ツリーで別のフォルダを選んだとき・FSEvents で zip が変わったとき）に捨てる
+  - 並べ替え: `..` は並べ替えの前に取り除き、結果の先頭に戻す（FR-070）。ディレクトリとメディアファイルは区別せず、同じ規則で並べる
     （spec Assumptions）。「種類」列の値は、zip の中のメディアは拡張子の `UTType` の説明、ディレクトリは「フォルダ」、zip ファイルは既存の
     リソース値（`localizedTypeDescription`）とする
   - 種類フィルタ: `MediaTypeFilter.apply(to:)` は `.media` 以外の行を常に残す（FR-056）
-  - 空の判定（FR-060）: `.noMatches` は「フィルタ前にメディアが1件以上あり、フィルタ後に0件」。`.empty` は「メディアが0件で、`...` 以外の行も
+  - 空の判定（FR-060）: `.noMatches` は「フィルタ前にメディアが1件以上あり、フィルタ後に0件」。`.empty` は「メディアが0件で、`..` 以外の行も
     ない」。メディアが0件でも zip ファイルかディレクトリがあれば `.loaded` にする
   - 1つ上の階層へ戻ったら、直前まで中を表示していた zip ファイルまたはディレクトリの行だけを選択し、フォーカスにする（FR-070）。
     プレビューは FR-075 により空になる。UI は選択の変化で既存のスクロール追従（`scrollToFocused()`）を呼ぶ
@@ -717,7 +717,7 @@ Technical Context の未確定事項と主要な技術選択について、決�
 
 - **Decision**:
   - 開く: ダブルクリック（`NSTableView.doubleAction`、`NSCollectionView` のクリック数 2 の `mouseDown`）と ⌘↓ を、
-    `FileListViewController.openFocusedItem(_:)` に集める。対象はフォーカス行。zip ファイル・ディレクトリなら中へ入り、`...` なら1つ上へ戻る。
+    `FileListViewController.openFocusedItem(_:)` に集める。対象はフォーカス行。zip ファイル・ディレクトリなら中へ入り、`..` なら1つ上へ戻る。
     メディアの行では何もしない（FR-069）
   - 戻る: ⌘↑ を `FileListViewController.goToEnclosingLevel(_:)` に割り当てる。zip の中でなければ何もしない
   - メニュー: 「ファイル」メニューの「開く」の後ろに「中を表示」（⌘↓）と「上の階層へ」（⌘↑）を置く（Finder の「開く」と「移動 > 内包しているフォルダ」に
@@ -737,12 +737,12 @@ Technical Context の未確定事項と主要な技術選択について、決�
     「対応していない形式」と表示されないようにする）
   - フルスクリーン（FR-046）: `FocusNavigator.targetIndex` に `isNavigable: (Int) -> Bool` を受けるオーバーロードを加え、移動先がメディアの行に
     当たるまで同じ方向への移動を繰り返す。見つからなければ nil（端で停止）。通常表示の矢印キーは従来の関数のまま（メディア以外の行にも止まる）
-  - 行頭アイコンとサムネイル: zip ファイルは SF Symbol `doc.zipper`、ディレクトリは `folder`、`...` は `arrowshape.turn.up.left` を使い、
-    縮小画像は取得しない。a11y のラベルは名前（`...` は「上の階層へ」）にする
+  - 行頭アイコンとサムネイル: zip ファイルは SF Symbol `doc.zipper`、ディレクトリは `folder`、`..` は `arrowshape.turn.up.left` を使い、
+    縮小画像は取得しない。a11y のラベルは名前（`..` は「上の階層へ」）にする
   - 読み込み中: zip を開く間は既存の `.loading` の表示（プログレス）を使う（SC-015）
   - 失敗の表示: zip を開けない（壊れている・zip ではない・分割 zip）ときは `FolderListing.State.failed("zip を開けません: <理由>")` にし、
-    行は `...` だけを出す。⌘↑ とダブルクリックで戻れる
-  - メッセージと行の両立: `.empty` / `.noMatches` / `.failed` で行が残る場合（`...` やディレクトリ）は、一覧を表示したまま、一覧の下端に
+    行は `..` だけを出す。⌘↑ とダブルクリックで戻れる
+  - メッセージと行の両立: `.empty` / `.noMatches` / `.denied` / `.failed` で行が残る場合（`..` やディレクトリ）は、一覧を表示したまま、一覧の下端に
     1行のメッセージの帯を出す。行が1つもないときは、従来どおり一覧の中央に出す
   - FSEvents: zip の中を表示中に、zip を含むフォルダの変更が通知されたら `ArchiveIdentity` を比べる。変わった・消えたときは zip を閉じて
     フォルダの一覧を読み直し、プレビューを空にする（spec Edge Cases）。変わっていなければ何もしない（戻るときにフォルダを読み直す）
@@ -756,7 +756,7 @@ Technical Context の未確定事項と主要な技術選択について、決�
   - Return で開く案: ユーザー判断（⌘↓ / ⌘↑、2026-10-21）と異なるため却下
   - ツリーに zip を出す案: ユーザー要件（ツリーで zip をディレクトリとして扱わない）に反するため却下
   - zip の中の項目のドラッグやコピーで取り出す案: ユーザー判断（読み取り専用、2026-10-21）と異なるため却下
-  - `...` を一覧の行ではなく一覧の上のボタンにする案: ユーザー要件（先頭の行の項目）と異なり、矢印キーで届かないため却下
+  - `..` を一覧の行ではなく一覧の上のボタンにする案: ユーザー要件（先頭の行の項目）と異なり、矢印キーで届かないため却下
   - zip の中を表示中も FSEvents のたびにフォルダを読み直す案: zip の中の一覧には関係のない読み込みが増えるため却下
 
 ## R27. zip の中の名前の文字コードの判定
@@ -798,3 +798,122 @@ Technical Context の未確定事項と主要な技術選択について、決�
 - **Alternatives considered**:
   - `/usr/bin/zip` でフィクスチャを作る案: 暗号化フラグだけを立てる、方式を偽る、CP932 の名前を書くといった異常系を作れないため却下
   - フィクスチャの zip をリポジトリにコミットする案: 1GB 相当の項目や 10,000 項目の zip は大きく、生成で済むため却下
+
+## R29. ファイルリストのフォルダの行（FR-008・076）
+
+- **Decision**:
+  - `ListItemKind` に `.folder` を加える。通常のフォルダの一覧に出るサブフォルダの行で、zip の中のディレクトリ（`.directory`）とは
+    別の値にする。`.folder` はファイル URL を持ち、ファイル操作の対象になる。`.directory` は `mvzip` の URL で読み取り専用のまま
+  - `DirectoryLister.mediaFiles(in:)` は、メディアと zip ファイルに加えて、サブフォルダを `kind: .folder` で返す。どのフォルダを出すかは
+    ツリーの `subfolders(of:)` と同じ判定（`isVisibleSubfolder`: ディレクトリで、パッケージではない。隠しフォルダは `.skipsHiddenFiles` で除く）に
+    そろえ、ツリーとファイルリストで出るフォルダを一致させる。パッケージ（`.app` など）はツリーと同じく出さない。拡張子が .zip の
+    ディレクトリはパッケージでなければ `.folder` として出す（zip としては扱わない）
+  - `.folder` の行の `typeDescription` は「フォルダ」、`creationDate` はファイルシステムの作成日時、`fileSize` は 0（中身を数えない）
+  - メソッド名 `mediaFiles(in:)` は変えない（呼び出し側・テストのフェイクを広く書き換えないため）。ドキュメントコメントで返す行を明記する
+  - 並べ替え: `sorted(_:by:)` は `.folder` も区別せずに混ぜる（2026-10-21 のユーザー判断）。「種類」列の第2キー `sortKey` に `"folder"` を加える
+  - `.folder` の行は、プレビュー（`.empty`）・先読み（しない）・縮小画像（取得しない。SF Symbol `folder`）・種類フィルタ（常に残す）・
+    FR-060 の件数（数えない）・フルスクリーンの矢印移動（読み飛ばす）で、`.directory` と同じ経路を通す。既存の判定は `kind.isMedia` で
+    書かれているため、`ListItemKind` に値を足すだけで成り立つ
+- **Rationale**:
+  - ツリーとリストで出るフォルダの判定を共有すると、ツリーにないフォルダへリストから入る（その結果ツリーの同期ができない）ことが起きない
+  - `.directory` と分けると、操作の可否（`ListItemCommands`）を「行の種類」だけで決められ、zip の中の読み取り専用の規則を崩さない
+- **Alternatives considered**:
+  - `.directory` を通常のフォルダにも使う案: 操作の可否が URL のスキームに依存し、判定が散らばるため却下
+  - フォルダ用に別の列挙メソッド（`folderItems(in:)`）を足して `BrowserModel` で合成する案: ディレクトリを2回読むことになり、10,000 件規模の
+    フォルダで SC-003 に響くため却下（`contentsOfDirectory` の1回の結果からフォルダとファイルを分ける）
+  - パッケージもフォルダとして出す案: ツリーに出ないため FR-078 の同期ができず、Finder もパッケージを1つのファイルとして扱うため却下
+
+## R30. 上の階層へ戻る行 `..` と ⌘↑（FR-070・077）
+
+- **Decision**:
+  - 戻る行の表記を、zip の中も含めて `..` に統一する（2026-10-21 のユーザー判断。zip の行の旧表記 `...` を置き換える）。行の種類は
+    zip の中と同じ `.parent`。zip の中で名前が `..` の項目は既存の `ArchiveIndex` が捨てるため、実在の項目と見分けがつかなくなることはない
+  - ツリーのルートの一覧を Core に渡す: `BrowserModel.setNavigationRoots(_ urls: [URL])` を追加し、`MainSplitViewController` が最初の
+    `selectFolder` の前に `VolumeProvider.rootNodes()` の URL を渡す。ツリーの `applyRoots`（ボリュームの増減）でも渡し直す。既定は空で、
+    空のときは通常のフォルダに `..` を出さない（既存のテストの一覧を変えない）
+  - 親の決め方は純粋関数 `FolderNavigation.enclosingFolder(of folder: URL, roots: [URL]) -> URL?` に置く:
+    - `folder` がいずれかのルートと同じなら nil（ツリーのルートでは `..` を出さず、⌘↑ も何もしない）
+    - `folder` を含むルートのうち最も深いもの（ホーム `/Users/me` と起動ボリューム `/` の両方に含まれるときはホーム）を選び、
+      その中での親を返す。どのルートにも含まれないときは nil（ツリーの外へ出ない）
+    - 比較は `standardizedFileURL` のパスの要素で行う（`/Users/me2` を `/Users/me` の配下と誤らない）
+  - `rebuildListing()` は、zip の中では従来どおり `ArchiveURL.parentLink(of:)` の行を、通常のフォルダでは `enclosingFolder` が nil でない
+    ときに `ParentLink.url(for: folder)`（独自スキーム `mvparent:` とフォルダのパス）の行を先頭に1回だけ加える。名前は `..`、
+    `typeDescription` は空、`creationDate` は nil
+  - `mvparent:` の URL は `FileManager`・`NSWorkspace`・ペーストボードに渡さない。`.parent` の行は `ListItemCommands` でファイル操作を
+    不可にし、操作の対象の URL（`BrowserModel.operableSelection`）からも除く（⌘A で `..` が選択に入っても、コピー・ゴミ箱などの対象にならない）
+  - `BrowserModel.goToEnclosingLevel()`: zip の中は従来どおり。zip の外では `enclosingFolder` があればその一覧へ移り（R31 の
+    `navigateToFolder`）、読み込み後に直前まで表示していたフォルダの行だけを選択する。なければ何もしない
+  - `ListItemCommands.canGoUp` は「zip の中」ではなく「戻る先があるか」（`hasEnclosingLevel`）で決める。`BrowserModel.hasEnclosingLevel` は
+    `listing.archive != nil || enclosingFolder(of: listing.folder) != nil`
+  - お気に入りの項目のフォルダを表示中も同じ規則で、そのフォルダがルートでなければ `..` を出す（FR-077）
+  - 読めないフォルダ（`.denied` / `.failed`。一覧から権限のないフォルダへ入った場合など）でも、ルートでなければ `files` を `..` だけにし、メッセージは
+    一覧の下端の帯に出す（zip を開けないときと同じ。R26）。ダブルクリックだけでも戻れるようにし、行き止まりを作らない
+  - 中へ入った直後の一覧は、zip の中と同じく何も選択しない（Finder と同じ。spec の Outstanding をこの規則で閉じる）
+- **Rationale**:
+  - ツリーのルートの集合はツリー（ボリュームの増減を受け取る側）が持っているため、Core に値で渡すと判定を純粋関数にでき、テストで
+    ホーム・起動ボリューム・外付けボリュームの組み合わせを網羅できる（原則 IV）
+  - 親の判定を「最も深いルート」にそろえると、ツリーの `reveal` と同じ階層で親を選べ、ホームから `/Users` へ抜けることがない
+  - 戻る行を zip の中と同じ `.parent` にすると、並べ替え（常に先頭）・種類フィルタ・FR-060・プレビュー・フルスクリーンの既存の扱いをそのまま使える
+- **Alternatives considered**:
+  - `BrowserModel` が `VolumeProvider` を直接持つ案: Core の中でボリュームの監視が二重になり、テストでルートを差し替えにくいため却下
+  - `..` の行の URL に親フォルダのファイル URL を使う案: 一覧の中の同名の行や、ペーストボード・ドラッグへ誤って渡る経路ができるため却下
+  - ルートでも `..` を淡色で出す案: ユーザー判断（ルートでは出さない、2026-10-21）と異なるため却下
+
+## R31. ファイルリストの移動とツリーの選択の同期（FR-078）
+
+- **Decision**:
+  - `BrowserModel` に非公開の `navigateToFolder(_ url: URL, selecting: URL?)` を置き、`.folder` の行を開く・`..`・⌘↑ の3経路で使う。
+    中身は `selectFolder(_:)` と同じ（読み込みの取り消し、`lastFolder` の保存、種類フィルタの保持）に加え、読み込み後に `selecting` の行だけを
+    選択し、ツリーへの同期の依頼を出す
+  - 依頼は観測できる値 `public private(set) var treeSyncRequest: TreeSyncRequest?`（`folder: URL` と、毎回増やす `id: Int`）で出す。
+    ツリーから呼ばれる `selectFolder(_:)` は依頼を出さない（ツリー自身の操作を送り返さない）
+  - ツリー（`DirectoryTreeViewController`）は `treeSyncRequest` を `withObservationTracking` で監視し、変わったら `reveal(folder)` を実行する:
+    - 進行中の `revealTask` を取り消してから始め、完了時に `id` が最新でなければ選択を変えない（⌘↓ を続けて押したときに古い結果で戻らない）
+    - ユーザーがツリーで行を選んだとき（`isRestoringSelection` でない `outlineViewSelectionDidChange`）は、進行中の同期の `revealTask` を取り消す。
+      ツリーからの選択は `treeSyncRequest` を変えないため、`id` の比較だけでは、遅れて終わった同期がユーザーの選択を上書きしてしまう
+    - さらに選択を当てる直前に、`model.listing.folder` と依頼の `folder` が同じ（`standardizedFileURL`）であることを確かめ、違えば選択を変えない
+      （取り消しが間に合わなかった場合の保険。ツリーの選択がファイルリストの表示と食い違ったまま残らない）
+    - `reveal` はルートのうち最も深いもの（R30 と同じ規則）から辿り、各段で子を読み込んでから展開する（既存の `loadAndExpand`）。
+      展開に伴う FR-055 のサブフォルダ確認も既存のまま行う
+    - 行の選択は `isRestoringSelection = true` の間に行い、`outlineViewSelectionDidChange` から `selectFolder` を呼び返さない。
+      スクロールは `scrollRowToVisible`（必要最小限）。`makeFirstResponder` は呼ばず、キーボードフォーカスはファイルリストに残す
+    - お気に入りの項目を選択中でも、実際の階層の行へ選択を移す（FR-078）
+    - 子フォルダの展開状態は変えない（戻ったときに折りたたまない）
+    - 途中の段が見つからない（読めない・直前に消えた）ときは、辿れた最も深い行を選択して止める。一覧の表示は変えない
+  - 一覧の読み込みとツリーの `reveal` は独立に進み、一覧の表示はツリーの完了を待たない
+- **Rationale**:
+  - 依頼を値として公開すると、Core のテストで「どの操作で依頼が出るか」（フォルダを開く・戻るでは出る、ツリーからの選択・zip の中の移動では
+    出ない）を検証できる（原則 IV）。ツリーの UI はその値を描画するだけになる
+  - `isRestoringSelection` は、ボリュームの増減でお気に入りの選択を戻すときに使っている既存の仕組みで、選択の送り返しを防げる
+- **Alternatives considered**:
+  - ツリーが `listing.folder` の変化を直接見て `reveal` する案: ツリーからの選択でも走り、FSEvents で消えたフォルダの親へ戻ったときなど
+    同期すべきでない経路でも選択が動くため却下
+  - ファイルリストからツリーのメソッドを直接呼ぶ案: ビューコントローラ同士の結合が増え、Core のテストで経路を検証できないため却下
+  - 同期のときにツリーへフォーカスを移す案: ユーザー判断（フォーカスはファイルリストに残す、2026-10-21）と異なるため却下
+
+## R32. フォルダのファイル操作（FR-018・076）
+
+- **Decision**:
+  - `ListItemCommands` の可否（data-model の表）: `.folder` は通常のファイルと同じく、開く（⌘O）・コピー・複製・名前の変更・ゴミ箱・
+    Finder に表示・ドラッグを可にする。⌘O は既存どおり `NSWorkspace` の既定のアプリ（フォルダなら Finder）で開き、一覧の中で開くのは
+    ダブルクリックと ⌘↓ だけにする。`.parent` は zip の外でもすべて不可。zip の中は従来どおりすべて不可
+  - 操作の対象: `FileListViewController.selectedFileURLs` を `BrowserModel.operableSelection`（一覧の並び順で、`.parent` を除いた選択）に
+    置き換える。フォーカスが `..` で、ほかに選択がないときは、メニュー項目を淡色にする
+  - 実行は既存の `FileOperationService` のまま（`copyItem` / `moveItem` / `trashItem` はディレクトリを中身ごと扱う。自分自身や配下への移動・
+    コピーの拒否も既にある）。同名の衝突（FR-025）の「置き換える」はフォルダごと置き換える
+  - 名前の変更: `validateNewName(_:for:existingNames:)` に `isDirectory: Bool = false` を足し、フォルダでは拡張子の変更の確認を出さない
+    （フォルダの名前の `.` 以降は拡張子として扱わない）。空・使えない文字・同名の判定は同じ
+  - 確認モーダル（FR-022）: 対象にフォルダが含まれるときは、文言に「フォルダは中身ごと」を添える（例: 「「旅行」をゴミ箱に入れますか？
+    フォルダは中身ごと移動します」）。省略設定（FR-023）の扱いは変えない
+  - ツリーへのドロップ: `validateDrop` で、ドラッグ中の URL にドロップ先のフォルダ自身またはその祖先が含まれるときは `[]` を返す
+    （実行時の拒否に加え、ドロップできない見た目にする）
+  - ツリーへの即時反映（FR-027）: `FileOperationCoordinator` に `onFoldersChanged: ((Set<URL>) -> Void)?` を足し、操作の完了後に
+    影響したフォルダ（対象の親フォルダと操作先）を渡す。ツリーはそれを FSEvents のバッチと同じ処理（`reloadChildren(of:)` と
+    サブフォルダの再確認、お気に入りの存在の確認）に流す。FSEvents の通知も従来どおり受け、重複しても結果は同じ
+  - フォルダの削除はファイルリストだけで行い、ツリーの右クリックメニューと ⌘⌫ は変えない（FR-064、2026-10-21 のユーザー判断）
+- **Rationale**:
+  - 既存のファイル操作のサービスは URL の種類を区別しないため、可否の表と対象の絞り込みを変えるだけで成り立つ（原則 V）
+  - FSEvents だけに頼るとツリーの反映に通知の遅延（最大で約 1 秒）がかかるため、操作の完了時に直接知らせる
+- **Alternatives considered**:
+  - フォルダの操作を別のサービスに分ける案: 実行の中身が同じで、重複になるため却下
+  - フォルダのゴミ箱に中身の件数を数えて確認モーダルに出す案: 巨大なフォルダで確認の表示が遅れ、件数の取得自体が UI を待たせうるため見送る

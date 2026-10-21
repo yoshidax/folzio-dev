@@ -12,16 +12,17 @@ public enum MediaKind: Sendable {
     public var isVideo: Bool { get }
 }
 
-/// ファイルリストの行の種類（FR-068〜070、data-model.md）。MediaFile.kind の型
+/// ファイルリストの行の種類（FR-068〜070・076・077、data-model.md）。MediaFile.kind の型
 public enum ListItemKind: Sendable, Hashable {
     case media(MediaKind)
     case archive        // 通常のフォルダの zip ファイル
-    case directory      // zip の中のディレクトリ
-    case parent         // zip の中の先頭行 `...`
+    case folder         // 通常のフォルダのサブフォルダ（ファイル操作の対象）
+    case directory      // zip の中のディレクトリ（読み取り専用）
+    case parent         // 先頭行 `..`（zip の中と、ツリーのルート以外の通常のフォルダ）
     public var isMedia: Bool { get }
     public var mediaKind: MediaKind? { get }
     public var isVideo: Bool { get }          // .media の動画だけ true
-    public var opensAsContainer: Bool { get } // .archive / .directory / .parent
+    public var opensAsContainer: Bool { get } // .archive / .folder / .directory / .parent
 }
 ```
 
@@ -29,7 +30,9 @@ public enum ListItemKind: Sendable, Hashable {
 
 ```swift
 public protocol DirectoryListing: Sendable {
-    /// 直下の対応メディアファイルと zip ファイル（.zip、kind = .archive）を返す（隠しファイル・サブフォルダ・非対応形式は除く。FR-008・068）
+    /// 直下のサブフォルダ（kind = .folder。判定は subfolders(of:) と同じで、隠しフォルダ・パッケージは除く）、
+    /// 対応メディアファイル、zip ファイル（.zip、kind = .archive）を返す（隠しファイル・非対応形式は除く。FR-008・068・076）。
+    /// 1回のディレクトリの列挙から作り、並べ替えはしない
     func mediaFiles(in folder: URL) async throws(ListingError) -> [MediaFile]
     /// 直下のフォルダのみを返す（隠しフォルダ・パッケージは除く）。名前の自然順
     func subfolders(of folder: URL) async throws(ListingError) -> [URL]
@@ -170,9 +173,33 @@ public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile]
     public func handleFileSystemEvent(_ folders: Set<URL>) async
 
     // zip（FR-069・070、research.md R23・R26）
-    public func openItem(_ url: URL) async              // zip の行・ディレクトリなら中へ、`...` なら上へ。メディアの行では何もしない
-    public func goToEnclosingLevel() async              // zip の中なら1つ上へ（最上位ならフォルダの一覧へ）。zip の外では何もしない
+    public func openItem(_ url: URL) async              // zip の行・ディレクトリなら中へ、`..` なら上へ。メディアの行では何もしない
+    public func goToEnclosingLevel() async              // zip の中なら1つ上へ（最上位ならフォルダの一覧へ）。zip の外では親フォルダへ（戻る先がなければ何もしない）
     public var isBrowsingArchive: Bool { get }          // listing.archive != nil
+
+    // ファイルリストのフォルダ（FR-076〜078、research.md R29〜R31）
+    public func setNavigationRoots(_ urls: [URL])       // ツリーのルート（ホーム・ボリューム）。変わったら一覧の `..` を作り直す。既定は空（`..` を出さない）
+    public var hasEnclosingLevel: Bool { get }          // zip の中、または FolderNavigation.enclosingFolder が nil でない
+    public var operableSelection: [URL] { get }         // 一覧の並び順の選択から `.parent` を除いたもの。ファイル操作・コピー・ドラッグの対象
+    public private(set) var treeSyncRequest: TreeSyncRequest? // フォルダを開く・`..`・⌘↑ で親へ戻るたびに id を増やして出す
+}
+
+public struct TreeSyncRequest: Sendable, Equatable {
+    public let folder: URL
+    public let id: Int
+}
+
+/// 通常のフォルダの戻る先（data-model.md の FolderNavigation）
+public enum FolderNavigation {
+    /// folder がルートと同じ、またはどのルートにも含まれなければ nil。含むルートのうち最も深いものの中での親を返す
+    public static func enclosingFolder(of folder: URL, roots: [URL]) -> URL?
+}
+
+/// 通常のフォルダの `..` の行の URL（data-model.md の ParentLink）
+public enum ParentLink {
+    public static let scheme: String                    // "mvparent"
+    public static func url(for folder: URL) -> URL
+    public static func isParentLink(_ url: URL) -> Bool
 }
 ```
 
@@ -182,6 +209,12 @@ public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile]
 - `select(_:focused:)` は、フォーカス行がメディアでなければプレビューを `.empty` にする（FR-075）。動画の停止通知は既存どおり
 - `handleFileSystemEvent` は、zip の中を表示中なら `ArchiveIdentity` を比べ、zip が変わった・消えたときだけ zip を閉じてフォルダを読み直す
 - `lastFolder`（FR-003）は zip の中へ入っても変えない
+- `openItem` で `.folder` の行を開く、通常のフォルダで `..` を開く、`goToEnclosingLevel()` で親フォルダへ戻る、の3つは
+  `selectFolder(_:)` と同じく読み込みを取り消してから読み直し、`lastFolder` を保存し、種類フィルタを保つ。親へ戻ったときは、
+  直前まで表示していたフォルダの行だけを選択する。3つとも `treeSyncRequest` を出す。`selectFolder(_:)`（ツリーからの選択）、
+  zip の中の移動、`handleFileSystemEvent` で表示中のフォルダが消えて親へ移る経路では出さない
+- `listing.files` の先頭の `..` は、zip の中では常に、通常のフォルダでは `hasEnclosingLevel` のときだけ置く。`.denied` / `.failed` の
+  通常のフォルダでは、`files` を `..` だけにする（`hasEnclosingLevel` でなければ空）。ダブルクリック・⌘↓・⌘↑ のどれでも戻れる（FR-077）
 
 - UI は `BrowserModel` の変化を監視して描画するだけにし、選択・プレビュー・先読みの判断を UI に持たせない
 - `listing.files` は種類フィルタ適用後の配列。絞り込みで0件のときは `listing.state == .noMatches` になる（FR-060）
@@ -371,7 +404,7 @@ public protocol ArchiveReading: Sendable {
 public struct ArchiveIndex: Sendable {
     public var archive: URL { get }
     public var identity: ArchiveIdentity { get }
-    /// 階層の直下の行（`...`・ディレクトリ・対応メディア）。並べ替え前。`...` は含めず、BrowserModel が先頭に加える
+    /// 階層の直下の行（`..`・ディレクトリ・対応メディア）。並べ替え前。`..` は含めず、BrowserModel が先頭に加える
     public func items(in directory: String) -> [MediaFile]
     public func entry(at path: String) -> ArchiveEntry?
 }
@@ -392,12 +425,12 @@ public enum ArchiveAssetFactory {
     public static func makeAsset(for entryURL: URL, reader: any ArchiveReading) -> AVURLAsset
 }
 
-/// 行の種類と「zip の中か」から操作の可否を返す（FR-073、data-model.md の ListItemCommands）
+/// 行の種類・「zip の中か」・「戻る先があるか」から操作の可否を返す（FR-073・076・077、data-model.md の ListItemCommands）
 public struct ListItemCommands: Sendable {
-    public init(kind: ListItemKind?, isBrowsingArchive: Bool)
+    public init(kind: ListItemKind?, isBrowsingArchive: Bool, hasEnclosingLevel: Bool? = nil) // nil は isBrowsingArchive と同じ
     public var canOpenContainer: Bool      // ダブルクリック・⌘↓
-    public var canGoUp: Bool               // ⌘↑
-    public var allowsFileOperations: Bool  // 開く・コピー・複製・名前の変更・ゴミ箱・Finder に表示・ドラッグ
+    public var canGoUp: Bool               // ⌘↑。hasEnclosingLevel
+    public var allowsFileOperations: Bool  // 開く・コピー・複製・名前の変更・ゴミ箱・Finder に表示・ドラッグ。zip の中と `.parent` では false
     public var allowsPaste: Bool           // 一覧へのペースト・移動ペースト
 }
 ```
@@ -420,7 +453,8 @@ public protocol FileOperating: Sendable {
 public enum ConflictResolution: Sendable { case replace, keepBoth, abort }
 
 public enum NameValidation { case ok, needsExtensionChangeConfirmation, invalid(reason: String) }
-public func validateNewName(_ name: String, for file: URL, existingNames: Set<String>) -> NameValidation
+/// isDirectory が true（フォルダの名前の変更）のときは、拡張子の変更の確認（needsExtensionChangeConfirmation）を返さない（R32）
+public func validateNewName(_ name: String, for file: URL, existingNames: Set<String>, isDirectory: Bool = false) -> NameValidation
 
 /// 「両方残す」用の名前を返す: "a.jpg" → "a 2.jpg" → "a 3.jpg" …
 public func uniqueName(for name: String, existingNames: Set<String>) -> String
