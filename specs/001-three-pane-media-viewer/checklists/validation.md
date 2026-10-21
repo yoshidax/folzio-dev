@@ -195,6 +195,23 @@ open .build/MediaViewer.app
   まだそこにあればファイルリストへ戻す。読み込み中にユーザーが別のペインへ移った場合は戻さない。UI の配線のため自動テストは追加せず、
   修正後の `.app` でユーザーが確認した
 
+## zip の中の動画のストリーミング再生（FR-071・072、SC-014、Phase 21）
+
+2026-10-21 に macOS 26.6.2 で `scripts/make-app.sh` により `.build/MediaViewer.app` を生成し、GUI で確認した。
+
+| 確認項目 | 結果 | 根拠 |
+|----------|------|------|
+| 自動テスト（`swift test`） | PASS | Core 350 テスト、性能 11 テスト成功。`ArchiveEntryStreamTests`・`ArchiveAssetLoaderTests`（新規）と `ThumbnailProviderTests` の zip の中の mp4 のケースを含む |
+| T202: 展開後 1GB の deflate 項目の `ArchiveEntryStream` での読み出し（基準 増加 128MB 以下） | PASS | 最大増加 34MB、読み出し 2,072 回で 0.43 秒 |
+| 外部通信の不在（`scripts/check-no-network.sh`） | PASS | `no network API references in Sources` |
+| zip の処理に書き込み API がないこと（`scripts/check-no-archive-writes.sh`） | PASS | `no write API references in Sources/MediaViewerCore/Archive` |
+| 無圧縮で格納した 1080p 動画の再生開始（基準 1 秒以内、SC-014） | PASS | `videos-stored.zip` の `video-1080p.mp4` で `VideoPlaybackStart` 49.77 ms（同じ記録の `LaunchToList` は 465.65 ms）。この環境の xctrace 27.1 には quickstart の `Points of Interest` テンプレートがないため、`xcrun xctrace record --template Logging` で記録し、`xctrace export` の `OSSignpostIntervals` から読んだ |
+| quickstart「zip ファイル」8・9（ループ再生・シーク・音量・Space、`..` で停止、deflate の mp4 / mov の再生・シーク） | PASS | GUI でユーザー確認 |
+| 一時ファイルを作らないこと（FR-072） | PASS | 再生中の `sudo fs_usage -w -f filesys MediaViewer` を zip の中の動画名・`.mp4`・`.mov`・`/T/`・`/tmp/` で絞り込み、該当なし（ユーザー確認） |
+| zip の中の動画の代表フレーム（サムネイル形式・リスト形式の行頭アイコン） | PASS | GUI でユーザー確認 |
+| SC-014: `zip-big/` の約 1.1GB の動画を 1 分以上操作したときのメモリ（基準 増加 128MB 以下） | PASS | `footprint` の `phys_footprint`。`big-video-stored.zip`: 選択前 51MB → 操作後 85MB（増加 34MB、ピーク 125MB で選択前比 74MB）。`big-video-deflated.zip`: 選択前 41MB → 操作後 122MB（増加 81MB、ピーク 147MB で選択前比 106MB）。増加の主な内訳は `MALLOC_SMALL`（チャンクキャッシュ 32MB を含む。deflate では 49MB が reclaimable）と AVFoundation の `CoreMedia HTTP cache`（約 30MB、両方式で同程度） |
+| 回帰（通常のフォルダの動画の自動再生・ループ・シーク・Space・フルスクリーン再生、リスト形式・サムネイル形式の代表フレーム） | PASS | GUI でユーザー確認 |
+
 ## 未実施の検証
 
 - T079: Accessibility Inspector によるラベル確認

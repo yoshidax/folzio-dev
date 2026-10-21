@@ -1925,7 +1925,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 
 ### Tests for User Story 1
 
-- [ ] T200 [P] [US1] `Tests/MediaViewerCoreTests/ArchiveEntryStreamTests.swift`（新規、`@Suite("ArchiveEntryStream")`）を先に書く（T203 の前に
+- [X] T200 [P] [US1] `Tests/MediaViewerCoreTests/ArchiveEntryStreamTests.swift`（新規、`@Suite("ArchiveEntryStream")`）を先に書く（T203 の前に
   ビルドエラーになることを確認する）。中身は 0〜255 を繰り返す 5MB のバイト列（位置が分かるもの）を、無圧縮と deflate で格納した zip を使う:
   - `length` が展開後のサイズと一致する
   - `read(offset:maxLength:)` を、先頭・1MB の境界をまたぐ位置・末尾の手前・末尾ちょうど（空の `Data`）・末尾より先（空の `Data`）で呼び、
@@ -1937,21 +1937,21 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
     作るため、中身の増減では判定できない。代わりに `scripts/check-no-archive-writes.sh`（T203 で追加）で、`Sources/MediaViewerCore/Archive/` に
     書き込み系の API（`forWritingAtPath`・`createFile`・`write(to:`・`FileHandle(forWritingTo:`・`O_WRONLY`・`O_RDWR`・`O_CREAT`）が現れないことを確かめる。
     実行時の確認は T207 の `fs_usage` で行う
-- [ ] T201 [P] [US1] `Tests/MediaViewerCoreTests/ArchiveAssetLoaderTests.swift`（新規、`@Suite("ArchiveAssetLoader")`）を先に書く。`VideoFixtures` の
+- [X] T201 [P] [US1] `Tests/MediaViewerCoreTests/ArchiveAssetLoaderTests.swift`（新規、`@Suite("ArchiveAssetLoader")`）を先に書く。`VideoFixtures` の
   mp4 と mov（再生用の情報が末尾）を、無圧縮と deflate で格納した zip を使う:
   - `ArchiveAssetFactory.makeAsset(for:reader:)` の asset で `try await asset.load(.duration)` が、元のファイルの `AVURLAsset` の `duration` と一致する
     （4 通りすべて）。`load(.tracks)` に動画のトラックがある
   - `AVAssetImageGenerator(asset:)` の `image(at: .zero)` が画像を返す
   - asset を作った関数を抜けた後も（読み込み器を外から保持していなくても）読み込みが完了する（asset が読み込み器を保持していること）
   - 暗号化の項目の asset では `load(.duration)` が失敗し、クラッシュしない
-- [ ] T202 [P] [US1] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に SC-014 の計測を追加する（R25）。`ZipFixtureWriter` で
+- [X] T202 [P] [US1] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に SC-014 の計測を追加する（R25）。`ZipFixtureWriter` で
   `.zeros(count: 1 << 30)` を deflate で格納した `zeros.mp4` の zip を一時ディレクトリに作る（生成は計測に含めない）。`ZipArchiveReader.stream(for:)` で
   先頭から末尾まで 512KB ずつ読み、続けて 900MB・100MB・10MB の位置（後ろ向き）から各 4MB を読む。64 回の読み出しごとに `task_info`（`TASK_VM_INFO`）の
   `phys_footprint` を測り、読み出し前からの最大の増加が 128MB 以下であることを確かめる。最大の増加量と所要時間を出力する
 
 ### Implementation for User Story 1
 
-- [ ] T203 [US1] `Sources/MediaViewerCore/Archive/ArchiveEntryStream.swift`（新規）を作り、`ArchiveReading` に `stream(for:)` を加えて `ZipArchiveReader` に
+- [X] T203 [US1] `Sources/MediaViewerCore/Archive/ArchiveEntryStream.swift`（新規）を作り、`ArchiveReading` に `stream(for:)` を加えて `ZipArchiveReader` に
   実装し、T200 を通す（R25、data-model の「ArchiveEntryStream」）。T200 の `scripts/check-no-archive-writes.sh`（実行権限付き、`scripts/check-no-network.sh` と
   同じ書き方）を追加し、通ることを確かめる:
   - `final class ArchiveEntryStream: @unchecked Sendable`。`length`（展開後のサイズ）と `read(offset:maxLength:) throws(ArchiveError) -> Data`。
@@ -1961,7 +1961,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
     キャッシュにないチャンクは、`InflateCursor` を最大 2 本の LRU から、位置がチャンクの先頭以下で最も近いものを選んで `skip(to:)` で進めて作る。
     どれも先頭より後ろにいれば、最も古く使ったカーソルを `reset()` する
   - `read` は `offset` から `maxLength` まで（末尾で打ち切る）をチャンクから組み立てて返す
-- [ ] T204 [US1] `Sources/MediaViewerCore/Archive/ArchiveAssetLoader.swift`（新規）に `ArchiveAssetLoader`（`NSObject`、`AVAssetResourceLoaderDelegate`、
+- [X] T204 [US1] `Sources/MediaViewerCore/Archive/ArchiveAssetLoader.swift`（新規）に `ArchiveAssetLoader`（`NSObject`、`AVAssetResourceLoaderDelegate`、
   `@unchecked Sendable`）と `ArchiveAssetFactory` を作り、T201 を通す（R25）:
   - `makeAsset(for:reader:)`: `AVURLAsset(url: entryURL)` を作り、`resourceLoader.setDelegate(loader, queue: <専用の直列キュー>)` を設定し、
     `objc_setAssociatedObject(asset, <static のキー>, loader, .OBJC_ASSOCIATION_RETAIN)` で asset に読み込み器を保持させる
@@ -1971,11 +1971,11 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
     `requestsAllDataToEndOfResource` なら末尾まで、そうでなければ `requestedOffset + requestedLength` まで、512KB ずつ `read` して `respond(with:)` で返し、
     各チャンクの間で `Task.isCancelled` を確かめる。最後に `finishLoading()`、失敗は `finishLoading(with: NSError)`（説明に `ArchiveError.message`）
   - `resourceLoader(_:didCancel:)`: そのタスクを取り消して、識別子を忘れる
-- [ ] T205 [US1] `Sources/MediaViewerCore/Imaging/ThumbnailProvider.swift`: zip の中の動画で、`ArchiveAssetFactory.makeAsset(for:reader:)` の asset から
+- [X] T205 [US1] `Sources/MediaViewerCore/Imaging/ThumbnailProvider.swift`: zip の中の動画で、`ArchiveAssetFactory.makeAsset(for:reader:)` の asset から
   `AVAssetImageGenerator`（`appliesPreferredTrackTransform = true`、`maximumSize` = 段階に丸めたピクセル数の正方形）の `image(at: .zero)` で代表フレームを作る。
   zip の中の動画の取得は同時 2 件までに制限する（画像の 4 件とは別）。`Tests/MediaViewerCoreTests/ThumbnailProviderTests.swift` に、zip の中の mp4 で
   画像が返ることを追加する
-- [ ] T206 [US1] zip の中の動画をプレビューで再生する:
+- [X] T206 [US1] zip の中の動画をプレビューで再生する:
   - `Sources/MediaViewerApp/Preview/VideoPreviewView.swift`: `configure(asset: AVAsset, autoplay:loop:fileName:)` を追加し、既存の `configure(url:…)` は
     `AVURLAsset(url:)` を作ってこれを呼ぶ形にする。`AVPlayerItem(asset:)` を使う。ループ・終端の停止・再生状態の扱いは変えない
   - `Sources/MediaViewerApp/Preview/PreviewViewController.swift`: イニシャライザに `archiveReader: any ArchiveReading` を追加する。`.video(url)` で
@@ -1985,7 +1985,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 
 ### Verification for User Story 1
 
-- [ ] T207 [US1] 自動テストと手動確認を行う（T200〜T206 に依存）:
+- [X] T207 [US1] 自動テストと手動確認を行う（T200〜T206 に依存）:
   - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す。T202 の最大のメモリ増加量と所要時間を記録する。128MB を超えた場合は
     作業を止めて状況を報告する（憲章 原則 II）
   - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。依頼時は quickstart.md「zip ファイル（FR-068〜075）」の
