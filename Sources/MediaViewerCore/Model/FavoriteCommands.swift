@@ -10,6 +10,8 @@ public enum TreeItemRole: Sendable, Equatable {
 
 public enum TreeContextMenuItem: Sendable, Equatable {
     case pasteHere, movePasteHere, addToFavorites, revealInFinder, removeFromFavorites
+    /// ツリーのフォルダをゴミ箱に入れる（FR-079）
+    case moveToTrash
     case separator
 }
 
@@ -26,15 +28,26 @@ public enum FavoriteCommands {
         return url
     }
 
-    /// 右クリックメニューの項目と並び。.favoritesHeader は空（メニューを出さない）
-    public static func contextMenu(for role: TreeItemRole) -> [TreeContextMenuItem] {
+    /// ⌘⌫ と右クリックメニューの「ゴミ箱に入れる」の対象（FR-079）。.folder で、かつルート
+    /// （`FolderNavigation.enclosingFolder` が nil）でないときだけ URL を返す。.favorite・.favoritesHeader・nil は nil（FR-064）
+    public static func trashTarget(_ role: TreeItemRole?, roots: [URL]) -> URL? {
+        guard case .folder(let url) = role,
+              FolderNavigation.enclosingFolder(of: url, roots: roots) != nil else { return nil }
+        return url
+    }
+
+    /// 右クリックメニューの項目と並び。.favoritesHeader は空（メニューを出さない）。
+    /// `trashTarget` が URL を返す行では先頭に .moveToTrash と区切り線を置く。`roots` の既定値は空（このとき .moveToTrash を出さない）
+    public static func contextMenu(for role: TreeItemRole, roots: [URL] = []) -> [TreeContextMenuItem] {
         switch role {
         case .folder:
-            [.pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder]
+            let items: [TreeContextMenuItem] =
+                [.pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder]
+            return trashTarget(role, roots: roots) != nil ? [.moveToTrash, .separator] + items : items
         case .favorite:
-            [.removeFromFavorites]
+            return [.removeFromFavorites]
         case .favoritesHeader:
-            []
+            return []
         }
     }
 
