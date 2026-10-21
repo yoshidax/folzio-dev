@@ -2257,7 +2257,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 
 ### Tests for User Story 1
 
-- [ ] T231 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteCommandsTests.swift` にケースを追加する（T234 の前にビルドエラーになることを確認する）。ルートは
+- [X] T231 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteCommandsTests.swift` にケースを追加する（T234 の前にビルドエラーになることを確認する）。ルートは
   `[URL(fileURLWithPath: "/"), URL(fileURLWithPath: "/Users/me")]` を使う:
   - `trashTarget(.folder(/Users/me/a), roots:)` → `/Users/me/a`。`/Volumes/Ext/a`（ルートに `/` を含むため対象）→ URL
   - `trashTarget` が nil になる: `.folder(/Users/me)`・`.folder(/)`・`.folder(/Users/me/)`（末尾の `/`）、`.favorite(/Users/me/a)`、`.favoritesHeader`、`nil`、
@@ -2267,7 +2267,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
     `[.pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder]`。`.favorite` は `[.removeFromFavorites]`、`.favoritesHeader` は空のまま
     （`roots` を渡しても変わらない）
   - 既存のケース（`canAdd`・`removalTarget`・`folderToShow`・`acceptsFiles`）は変えずに通す
-- [ ] T232 [P] [US1] `Tests/MediaViewerCoreTests/FolderNavigationTests.swift` に `folderToShow(afterTrashing:showing:roots:)` のケースを追加する（T235 の前にビルドエラーに
+- [X] T232 [P] [US1] `Tests/MediaViewerCoreTests/FolderNavigationTests.swift` に `folderToShow(afterTrashing:showing:roots:)` のケースを追加する（T235 の前にビルドエラーに
   なることを確認する）。ルートは `/` と `/Users/me`:
   - 表示中のフォルダ自身: `trashed [/Users/me/a/b]`、`showing /Users/me/a/b` → `/Users/me/a`
   - 祖先: `trashed [/Users/me/a]`、`showing /Users/me/a/b/c` → `/Users/me`（ルートそのものが親でもよい）
@@ -2275,7 +2275,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
   - nil になる: 兄弟（`trashed [/Users/me/a/x]`、`showing /Users/me/a/b`）、`showing` の配下だけ（`trashed [/Users/me/a/b/c]`、`showing /Users/me/a/b`）、
     名前の接頭辞だけが同じ（`trashed [/Users/me/a/b]`、`showing /Users/me/a/b2`）、空の配列、ルート（`trashed [/Users/me]`、`showing /Users/me/a`）、ルートの一覧が空
   - 末尾の `/` や `..` を含む表記（`/Users/me/a/b/`・`/Users/me/a/x/../b`）でも同じ結果になる（`standardizedFileURL` のパスの要素で比べる）
-- [ ] T233 [P] [US1] `Tests/MediaViewerCoreTests/BrowserModelFolderTests.swift` に `leaveTrashedFolders(_:)` のケースを追加する（T236 の前にビルドエラーになることを確認する）。
+- [X] T233 [P] [US1] `Tests/MediaViewerCoreTests/BrowserModelFolderTests.swift` に `leaveTrashedFolders(_:)` のケースを追加する（T236 の前にビルドエラーになることを確認する）。
   既存の `makeEnv()` の一時フォルダを使い、ゴミ箱には入れずに `FileManager.removeItem` で消してから呼ぶ（ゴミ箱を汚さない）:
   - `trip/day1` を表示中（`openItem` で入る）に `trip/day1` を消して `leaveTrashedFolders([trip/day1])` → `true`。一覧の `folder` が `trip`、`state` が `.loaded`、
     選択とフォーカスが空、プレビューが `.empty`、`lastFolder` が `trip`、`treeSyncRequest` の `folder` が `trip` で `id` が呼ぶ前より増えている。
@@ -2290,29 +2290,29 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 
 ### Implementation for User Story 1
 
-- [ ] T234 [US1] `Sources/MediaViewerCore/Model/FavoriteCommands.swift` を変える（R33。T231 を通す）:
+- [X] T234 [US1] `Sources/MediaViewerCore/Model/FavoriteCommands.swift` を変える（R33。T231 を通す）:
   - `TreeContextMenuItem` に `case moveToTrash` を足す（コメント「ツリーのフォルダをゴミ箱に入れる（FR-079）」）
   - `public static func trashTarget(_ role: TreeItemRole?, roots: [URL]) -> URL?` を足す。`.folder(url)` で、かつ
     `FolderNavigation.enclosingFolder(of: url, roots: roots) != nil` のときだけ `url` を返し、それ以外は nil
   - `contextMenu(for:)` を `contextMenu(for role: TreeItemRole, roots: [URL] = [])` にする。`trashTarget(role, roots:)` が URL を返すときは、従来の `.folder` の並びの先頭に
     `.moveToTrash, .separator` を足す。ほかの役割の結果は変えない
   - `swift build` が通ることを確認する（App の `makeContextMenuItem` の `switch` が網羅されずエラーになる場合は、T238 の `.moveToTrash` の分岐だけを先に足してよい）
-- [ ] T235 [P] [US1] `Sources/MediaViewerCore/Model/FolderNavigation.swift` に `public static func folderToShow(afterTrashing trashed: [URL], showing: URL, roots: [URL]) -> URL?` を
+- [X] T235 [P] [US1] `Sources/MediaViewerCore/Model/FolderNavigation.swift` に `public static func folderToShow(afterTrashing trashed: [URL], showing: URL, roots: [URL]) -> URL?` を
   足す（R33、data-model の表。T232 を通す）。`showing` と各 `trashed` を `standardizedFileURL.pathComponents` にし、`showing` の要素が `trashed` の要素を接頭に含む
   （同じ、または配下）ものの中で要素数が最も少ないものを選び、その `enclosingFolder(of:roots:)` を返す。該当がなければ nil。ドキュメントコメントに FR-079 を書く
-- [ ] T236 [US1] `Sources/MediaViewerCore/Browser/BrowserModel.swift` に `@discardableResult public func leaveTrashedFolders(_ trashed: [URL]) async -> Bool` を足す（R33。T235 の後。
+- [X] T236 [US1] `Sources/MediaViewerCore/Browser/BrowserModel.swift` に `@discardableResult public func leaveTrashedFolders(_ trashed: [URL]) async -> Bool` を足す（R33。T235 の後。
   T233 を通す）。`FolderNavigation.folderToShow(afterTrashing: trashed, showing: listing.folder, roots: navigationRoots)` が親を返したら
   `await navigateToFolder(parent, selecting: nil)` を呼んで true、nil なら何もせず false。`listing.folder` は zip の中でも zip を含むフォルダなので、zip の状態は
   `selectFolder` の中で捨てられる。ドキュメントコメントに「表示中のフォルダ（zip の中なら zip を含むフォルダ）自身か祖先をゴミ箱に入れたときに親へ移る。
   `treeSyncRequest` を出す（FR-079）」と書く。既存の `BrowserModelFolderTests`・`BrowserModelArchiveTests` が通ることを確かめる
-- [ ] T237 [US1] `Sources/MediaViewerApp/Operations/FileOperationCoordinator.swift` の `trash(_:)` を変える（R33。T236 の後）:
+- [X] T237 [US1] `Sources/MediaViewerApp/Operations/FileOperationCoordinator.swift` の `trash(_:)` を変える（R33。T236 の後）:
   - 確認でキャンセルしたときは従来どおり何もしない
   - `service.execute` と `presentFailures` の後、まず `notifyFoldersChanged(sources: urls, destination: nil)` を呼んでツリーへ知らせ（親の一覧の読み込みを待たずに、
     ゴミ箱に入れた行をツリーから消すため。FR-027）、続けて `await model.leaveTrashedFolders(trashedSources)`（次の項目）を呼ぶ。false のときだけ従来どおり
     `await model.reloadCurrentFolder()` を呼ぶ（true のときに読み直すと、消えたフォルダの「フォルダが見つかりません」が一瞬出るため）
   - `trashedSources` は、`urls` から `result.failed` の URL を除いた元の場所の配列とする。`result.succeeded` はゴミ箱の中の URL を返すため（T226）渡さない。`FileOperationService` の結果の型は変えない
   - ファイルリストからのゴミ箱は、表示中のフォルダやその祖先を対象にしないため、`leaveTrashedFolders` が false を返して従来どおりの経路になることをコメントに書く
-- [ ] T238 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` を変える（R33。T234・T237 の後）:
+- [X] T238 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` を変える（R33。T234・T237 の後）:
   - `private var rootURLs: [URL] { roots.map(\.url) }` を足す
   - `menuNeedsUpdate(_:)` を `FavoriteCommands.contextMenu(for: role, roots: rootURLs)` にする
   - `makeContextMenuItem` に `.moveToTrash` を足す: タイトル「ゴミ箱に入れる」、アクション `trashFolderFromMenu(_:)`、`keyEquivalent` は `NSBackspaceCharacter`、
@@ -2328,7 +2328,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
     ずれて一覧が切り替わらないようにする。R33）。行があれば従来どおりその行を選び直す。お気に入りの項目を選択中（`selectedNode` が nil）のときは従来どおり何もしない
   - `syncSelection(to:)`・`reveal(_:)`・`removeFavorite`・ペースト・ドロップは変えない
   - `swift build` が通ることを確認する
-- [ ] T239 [P] [US1] `README.md` のツリーの操作説明に、通常のフォルダを ⌘⌫ または右クリックメニューの「ゴミ箱に入れる」で中身ごとゴミ箱に入れられること
+- [X] T239 [P] [US1] `README.md` のツリーの操作説明に、通常のフォルダを ⌘⌫ または右クリックメニューの「ゴミ箱に入れる」で中身ごとゴミ箱に入れられること
   （確認モーダルあり・設定で省略可、ホーム・ボリュームの最上位は不可、表示中のフォルダを入れたときは親フォルダを表示する、お気に入りの項目の ⌘⌫ は
   お気に入りから削除）を追記する。Phase 23 の「ツリーでは削除できない」旨の記述があれば直す
 
