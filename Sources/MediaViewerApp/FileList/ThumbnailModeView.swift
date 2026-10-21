@@ -517,7 +517,14 @@ final class ThumbnailModeView: NSView {
         }
     }
 
+    override func viewDidUnhide() {
+        super.viewDidUnhide()
+        applyModel()
+    }
+
     private func applyModel() {
+        // 表示していない形式では、再読み込みと選択の反映を表示したとき（viewDidUnhide）まで遅らせる（SC-015）
+        guard !isHidden else { return }
         let files = model.listing.files
         let urls = files.map(\.url)
 

@@ -308,7 +308,44 @@ struct PerformanceBaselineTests {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        // 小さな JPEG（各 1KB 前後、無圧縮）。zip の生成時間は計測に含めない
+        // zip の生成時間は計測に含めない
+        let zip = try makeLargeZip(in: directory)
+
+        let reader = ZipArchiveReader()
+        let start = ContinuousClock.now
+        let index = try await reader.open(zip)
+        let items = index.items(in: "")
+        let elapsed = ContinuousClock.now - start
+
+        print("ZipArchiveReader.open + items(in:) 10,000 件: \(elapsed)")
+        #expect(items.count == 10_000, "10,000 件が列挙されること (実際: \(items.count))")
+        #expect(
+            elapsed < .milliseconds(500),
+            "10,000 項目の zip の open + items は 0.5 秒以内 (実測: \(elapsed))"
+        )
+    }
+
+    /// `items(in:)` は zip を開いた後に MainActor の `BrowserModel` から呼ばれる。行は `open` のバックグラウンドで
+    /// 作っておき、ここでは作らない（SC-015 の 100ms 以上の停止 0 回）
+    @Test("10,000 項目の zip を開いた後の items(in:) が 10ms 以内 (SC-015)")
+    func archiveItemsAreReadyAfterOpen() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let zip = try makeLargeZip(in: directory)
+        let index = try await ZipArchiveReader().open(zip)
+
+        let start = ContinuousClock.now
+        let items = index.items(in: "")
+        let elapsed = ContinuousClock.now - start
+
+        print("ArchiveIndex.items(in:) 10,000 件: \(elapsed)")
+        #expect(items.count == 10_000, "10,000 件が列挙されること (実際: \(items.count))")
+        #expect(elapsed < .milliseconds(10), "items(in:) は 10ms 以内 (実測: \(elapsed))")
+    }
+
+    /// 小さな JPEG（各 1KB、無圧縮）10,000 個の zip
+    private func makeLargeZip(in directory: URL) throws -> URL {
         let zip = directory.appendingPathComponent("large.zip")
         let body = Data(repeating: 0xAB, count: 1024)
         let entries = (0..<10_000).map { index in
@@ -319,18 +356,7 @@ struct PerformanceBaselineTests {
             )
         }
         try ZipFixtureWriter.write(entries, to: zip)
-
-        let reader = ZipArchiveReader()
-        let start = ContinuousClock.now
-        let index = try await reader.open(zip)
-        let items = index.items(in: "")
-        let elapsed = ContinuousClock.now - start
-
-        #expect(items.count == 10_000, "10,000 件が列挙されること (実際: \(items.count))")
-        #expect(
-            elapsed < .milliseconds(500),
-            "10,000 項目の zip の open + items は 0.5 秒以内 (実測: \(elapsed))"
-        )
+        return zip
     }
 
     @Test("1GB の deflate 項目の stream 読み出しで phys_footprint の増加が 128MB 以下 (SC-014)")

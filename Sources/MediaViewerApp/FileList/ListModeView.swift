@@ -233,7 +233,19 @@ final class ListModeView: NSView {
         }
     }
 
+    override func viewDidUnhide() {
+        super.viewDidUnhide()
+        applyModel()
+    }
+
     private func applyModel() {
+        // 表示していない形式では、行の再読み込みと選択の反映を表示したとき（viewDidUnhide）まで遅らせる。
+        // 10,000 行の zip を開くときに、見えない一覧の分までメインスレッドを止めないため（SC-015）
+        guard !isHidden else {
+            syncSortDescriptors()
+            updateSortMenuItems()
+            return
+        }
         let urls = model.listing.files.map(\.url)
         let selected = IndexSet(model.selection.selected.compactMap { url in
             urls.firstIndex(of: url)

@@ -52,6 +52,8 @@ public struct ArchiveIndex: Sendable {
     public private(set) var entries: [String: ArchiveEntry]
     /// ディレクトリのパス（最上位は ""）→ 直下の項目とディレクトリのパス（中央ディレクトリでの出現順）
     public private(set) var children: [String: [String]]
+    /// ディレクトリのパス → `items(in:)` の行。開くとき（バックグラウンド）に作り、MainActor で呼ぶ `items(in:)` では作らない（SC-015）
+    private let rows: [String: [MediaFile]]
 
     private static let utf8Flag: UInt16 = 0x0800
     private static let encryptedFlag: UInt16 = 0x0001
@@ -137,6 +139,7 @@ public struct ArchiveIndex: Sendable {
         }
         self.entries = entries
         self.children = children
+        self.rows = Self.makeRows(archive: archive, entries: entries, children: children)
     }
 
     public func entry(at path: String) -> ArchiveEntry? {
@@ -145,39 +148,51 @@ public struct ArchiveIndex: Sendable {
 
     /// 階層の直下の行（ディレクトリ `.directory` と対応メディア `.media`）。並べ替え前。`..` は含めない
     public func items(in directory: String) -> [MediaFile] {
-        guard let paths = children[directory] else { return [] }
-        var descriptions: [String: String] = [:]
-        var result: [MediaFile] = []
-        result.reserveCapacity(paths.count)
-        for path in paths {
-            guard let entry = entries[path] else { continue }
-            let url = ArchiveURL.entry(archive: archive, path: path)
-            if entry.isDirectory {
-                result.append(MediaFile(
-                    url: url, name: entry.name, kind: .directory, typeDescription: "フォルダ",
-                    creationDate: entry.modificationDate, fileSize: 0
-                ))
-            } else if let kind = Self.mediaKind(ofName: entry.name) {
-                let fileExtension = Self.fileExtension(ofName: entry.name)
-                let description: String
-                if let cached = descriptions[fileExtension] {
-                    description = cached
-                } else {
-                    description = UTType(filenameExtension: fileExtension)?.localizedDescription
-                        ?? fileExtension.uppercased()
-                    descriptions[fileExtension] = description
-                }
-                result.append(MediaFile(
-                    url: url, name: entry.name, kind: .media(kind), typeDescription: description,
-                    creationDate: entry.modificationDate,
-                    fileSize: Int64(clamping: entry.uncompressedSize)
-                ))
-            }
-        }
-        return result
+        rows[directory] ?? []
     }
 
     // MARK: - 補助
+
+    private static func makeRows(
+        archive: URL,
+        entries: [String: ArchiveEntry],
+        children: [String: [String]]
+    ) -> [String: [MediaFile]] {
+        var descriptions: [String: String] = [:]
+        var rows: [String: [MediaFile]] = [:]
+        rows.reserveCapacity(children.count)
+        for (directory, paths) in children {
+            var result: [MediaFile] = []
+            result.reserveCapacity(paths.count)
+            for path in paths {
+                guard let entry = entries[path] else { continue }
+                let url = ArchiveURL.entry(archive: archive, path: path)
+                if entry.isDirectory {
+                    result.append(MediaFile(
+                        url: url, name: entry.name, kind: .directory, typeDescription: "フォルダ",
+                        creationDate: entry.modificationDate, fileSize: 0
+                    ))
+                } else if let kind = mediaKind(ofName: entry.name) {
+                    let fileExtension = fileExtension(ofName: entry.name)
+                    let description: String
+                    if let cached = descriptions[fileExtension] {
+                        description = cached
+                    } else {
+                        description = UTType(filenameExtension: fileExtension)?.localizedDescription
+                            ?? fileExtension.uppercased()
+                        descriptions[fileExtension] = description
+                    }
+                    result.append(MediaFile(
+                        url: url, name: entry.name, kind: .media(kind), typeDescription: description,
+                        creationDate: entry.modificationDate,
+                        fileSize: Int64(clamping: entry.uncompressedSize)
+                    ))
+                }
+            }
+            rows[directory] = result
+        }
+        return rows
+    }
 
     private static func makeEntry(
         _ candidate: Candidate,
