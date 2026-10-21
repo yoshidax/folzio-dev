@@ -239,6 +239,10 @@ private final class SlowArchiveReader: ArchiveReading, @unchecked Sendable {
         return payload
     }
 
+    func stream(for entryURL: URL) async throws(ArchiveError) -> ArchiveEntryStream {
+        throw ArchiveError.notFound
+    }
+
     func identity(of archive: URL) -> ArchiveIdentity? {
         nil
     }
