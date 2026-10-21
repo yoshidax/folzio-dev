@@ -6,6 +6,8 @@ public protocol ArchiveReading: Sendable {
     func open(_ archive: URL) async throws(ArchiveError) -> ArchiveIndex
     /// 項目全体を読む（画像用）。展開後のサイズが limit を超えるなら `.tooLarge`
     func data(for entryURL: URL, limit: Int) async throws(ArchiveError) -> Data
+    /// 項目の範囲読み出し（動画用、R25）。暗号化・非対応方式なら失敗する。UI スレッドで呼ばない
+    func stream(for entryURL: URL) async throws(ArchiveError) -> ArchiveEntryStream
     /// zip ファイルのいまの同一性。消えていれば nil
     func identity(of archive: URL) -> ArchiveIdentity?
 }
@@ -50,6 +52,12 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
     public func data(for entryURL: URL, limit: Int) async throws(ArchiveError) -> Data {
         try await runDetached { [self] () throws(ArchiveError) -> Data in
             try readEntry(entryURL, limit: limit)
+        }
+    }
+
+    public func stream(for entryURL: URL) async throws(ArchiveError) -> ArchiveEntryStream {
+        try await runDetached { [self] () throws(ArchiveError) -> ArchiveEntryStream in
+            try makeStream(entryURL)
         }
     }
 
@@ -159,7 +167,8 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
 
     // MARK: - 項目を読む
 
-    private func readEntry(_ entryURL: URL, limit: Int) throws(ArchiveError) -> Data {
+    /// URL の項目を索引から引く。暗号化・非対応の方式はここで弾く
+    private func locateEntry(_ entryURL: URL) throws(ArchiveError) -> (state: State, entry: ArchiveEntry) {
         guard let parsed = ArchiveURL.parse(entryURL), !parsed.isParentLink else {
             throw .corrupted("項目の場所が不正です")
         }
@@ -173,6 +182,36 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
         case .unsupportedMethod: throw .unsupportedMethod(entry.method)
         case .readable: break
         }
+        return (state, entry)
+    }
+
+    /// 範囲読み出し用のストリームを作る。サイズの食い違いは `data(for:limit:)` と同じ基準で壊れているとみなす
+    private func makeStream(_ entryURL: URL) throws(ArchiveError) -> ArchiveEntryStream {
+        let (state, entry) = try locateEntry(entryURL)
+        try validateSizes(of: entry)
+        let start = try dataOffset(of: entry, in: state)
+        return ArchiveEntryStream(
+            file: state.file, dataOffset: start, isStored: entry.method == 0,
+            compressedSize: entry.compressedSize, uncompressedSize: entry.uncompressedSize
+        )
+    }
+
+    /// 格納方式に対して展開後のサイズが食い違っていないか
+    private func validateSizes(of entry: ArchiveEntry) throws(ArchiveError) {
+        if entry.method == 0 {
+            guard entry.uncompressedSize <= entry.compressedSize else {
+                throw .corrupted("項目のサイズが一致しません")
+            }
+            return
+        }
+        let (limitBytes, overflow) = entry.compressedSize.multipliedReportingOverflow(by: Self.maxInflateRatio)
+        guard overflow || entry.uncompressedSize <= limitBytes + 1024 else {
+            throw .corrupted("項目のサイズが一致しません")
+        }
+    }
+
+    private func readEntry(_ entryURL: URL, limit: Int) throws(ArchiveError) -> Data {
+        let (state, entry) = try locateEntry(entryURL)
         guard limit >= 0, entry.uncompressedSize <= UInt64(limit) else { throw .tooLarge }
         guard entry.uncompressedSize > 0 else { return Data() }
         guard entry.uncompressedSize <= UInt64(Int.max) else { throw .tooLarge }
@@ -182,9 +221,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
         let file = state.file
 
         if entry.method == 0 {
-            guard entry.uncompressedSize <= entry.compressedSize else {
-                throw .corrupted("項目のサイズが一致しません")
-            }
+            try validateSizes(of: entry)
             return try Self.makeData(count: expected) { buffer throws(ArchiveError) in
                 var done = 0
                 while done < buffer.count {
@@ -199,10 +236,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
             }
         }
 
-        let (limitBytes, overflow) = entry.compressedSize.multipliedReportingOverflow(by: Self.maxInflateRatio)
-        guard overflow || entry.uncompressedSize <= limitBytes + 1024 else {
-            throw .corrupted("項目のサイズが一致しません")
-        }
+        try validateSizes(of: entry)
         let cursor = InflateCursor(file: file, dataOffset: start, compressedSize: entry.compressedSize)
         return try Self.makeData(count: expected) { buffer throws(ArchiveError) in
             var done = 0
