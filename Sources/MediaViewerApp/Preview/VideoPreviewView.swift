@@ -36,10 +36,14 @@ final class VideoPreviewView: NSView {
     }
 
     func configure(url: URL, autoplay: Bool, loop: Bool, fileName: String) {
+        configure(asset: AVURLAsset(url: url), autoplay: autoplay, loop: loop, fileName: fileName)
+    }
+
+    func configure(asset: AVAsset, autoplay: Bool, loop: Bool, fileName: String) {
         stop()
 
         let player = AVQueuePlayer()
-        let item = AVPlayerItem(url: url)
+        let item = AVPlayerItem(asset: asset)
 
         if loop {
             looper = AVPlayerLooper(player: player, templateItem: item)

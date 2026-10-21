@@ -114,7 +114,11 @@ final class MainSplitViewController: NSSplitViewController {
             thumbnailProvider: thumbnailProvider,
             coordinator: coordinator
         )
-        self.previewViewController = PreviewViewController(model: model, decoder: decoder)
+        self.previewViewController = PreviewViewController(
+            model: model,
+            decoder: decoder,
+            archiveReader: archiveReader
+        )
 
         super.init(nibName: nil, bundle: nil)
 
