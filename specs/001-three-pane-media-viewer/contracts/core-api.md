@@ -112,6 +112,7 @@ public enum TreeItemRole: Sendable, Equatable {
 
 public enum TreeContextMenuItem: Sendable, Equatable {
     case pasteHere, movePasteHere, addToFavorites, revealInFinder, removeFromFavorites
+    case moveToTrash                                    // ツリーのフォルダをゴミ箱に入れる（FR-079、R33）
     case separator
 }
 
@@ -120,8 +121,12 @@ public enum FavoriteCommands {
     public static func canAdd(_ role: TreeItemRole?, favorites: FavoriteFolders) -> Bool
     /// ⌘⌫ と「お気に入りから削除」の対象。.favorite のときだけ URL を返す
     public static func removalTarget(_ role: TreeItemRole?) -> URL?
-    /// 右クリックメニューの項目と並び。.favoritesHeader は空
-    public static func contextMenu(for role: TreeItemRole) -> [TreeContextMenuItem]
+    /// ⌘⌫ と右クリックメニューの「ゴミ箱に入れる」の対象。.folder で、かつルート（FolderNavigation.enclosingFolder が nil）でない
+    /// ときだけ URL を返す。.favorite・.favoritesHeader・nil は nil（FR-064・079）
+    public static func trashTarget(_ role: TreeItemRole?, roots: [URL]) -> URL?
+    /// 右クリックメニューの項目と並び。.favoritesHeader は空。trashTarget が URL を返す行では先頭に .moveToTrash と区切り線を置く。
+    /// roots の既定値は空（このとき .moveToTrash を出さない）
+    public static func contextMenu(for role: TreeItemRole, roots: [URL] = []) -> [TreeContextMenuItem]
     /// 選択したときに一覧を切り替えるフォルダ。.favoritesHeader は nil（FR-065）
     public static func folderToShow(for role: TreeItemRole) -> URL?
     /// ドロップ・ペーストを受け付けるか。.folder だけ true（アクセス可否は従来どおり UI 側で見る）
@@ -146,7 +151,7 @@ public enum FavoriteProbe {
 }
 ```
 
-- 判断（追加・削除の可否、右クリックメニュー、選択時の一覧の切り替え、ドロップの可否）は `FavoriteCommands` だけで行い、
+- 判断（追加・削除・ゴミ箱の可否、右クリックメニュー、選択時の一覧の切り替え、ドロップの可否）は `FavoriteCommands` だけで行い、
   UI は行から `TreeItemRole` を作って渡す。表 [data-model.md](../data-model.md) の「TreeItemRole と FavoriteCommands」と一致させる
 - `FavoriteProbe` は `SubfolderProbe` と同じく、取り消しに追従し、URL ごとの失敗をほかに波及させない
 
@@ -182,6 +187,12 @@ public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile]
     public var hasEnclosingLevel: Bool { get }          // zip の中、または FolderNavigation.enclosingFolder が nil でない
     public var operableSelection: [URL] { get }         // 一覧の並び順の選択から `.parent` を除いたもの。ファイル操作・コピー・ドラッグの対象
     public private(set) var treeSyncRequest: TreeSyncRequest? // フォルダを開く・`..`・⌘↑ で親へ戻るたびに id を増やして出す
+
+    // ツリーのフォルダのゴミ箱（FR-079、research.md R33）
+    /// ゴミ箱に入れたフォルダが表示中のフォルダ（zip の中なら zip を含むフォルダ）自身か祖先なら、その親へ移って true を返す。
+    /// 移り方は `..` で親へ戻るときと同じ（読み込みの取り消し・選択とプレビューを空に・動画の停止・lastFolder の保存・treeSyncRequest）。
+    /// ただし直前のフォルダの行は選択しない。該当しなければ何もせず false
+    @discardableResult public func leaveTrashedFolders(_ trashed: [URL]) async -> Bool
 }
 
 public struct TreeSyncRequest: Sendable, Equatable {
@@ -193,6 +204,8 @@ public struct TreeSyncRequest: Sendable, Equatable {
 public enum FolderNavigation {
     /// folder がルートと同じ、またはどのルートにも含まれなければ nil。含むルートのうち最も深いものの中での親を返す
     public static func enclosingFolder(of folder: URL, roots: [URL]) -> URL?
+    /// showing が trashed のどれか自身かその配下なら、該当する最も浅いフォルダの enclosingFolder を返す。該当しなければ nil（FR-079）
+    public static func folderToShow(afterTrashing trashed: [URL], showing: URL, roots: [URL]) -> URL?
 }
 
 /// 通常のフォルダの `..` の行の URL（data-model.md の ParentLink）
@@ -212,7 +225,8 @@ public enum ParentLink {
 - `openItem` で `.folder` の行を開く、通常のフォルダで `..` を開く、`goToEnclosingLevel()` で親フォルダへ戻る、の3つは
   `selectFolder(_:)` と同じく読み込みを取り消してから読み直し、`lastFolder` を保存し、種類フィルタを保つ。親へ戻ったときは、
   直前まで表示していたフォルダの行だけを選択する。3つとも `treeSyncRequest` を出す。`selectFolder(_:)`（ツリーからの選択）、
-  zip の中の移動、`handleFileSystemEvent` で表示中のフォルダが消えて親へ移る経路では出さない
+  zip の中の移動、`handleFileSystemEvent` で表示中のフォルダが消えて親へ移る経路では出さない。`leaveTrashedFolders` で親へ移ったときは出す
+  （ツリーの実際の階層で親を選ぶため。R33）
 - `listing.files` の先頭の `..` は、zip の中では常に、通常のフォルダでは `hasEnclosingLevel` のときだけ置く。`.denied` / `.failed` の
   通常のフォルダでは、`files` を `..` だけにする（`hasEnclosingLevel` でなければ空）。ダブルクリック・⌘↓・⌘↑ のどれでも戻れる（FR-077）
 

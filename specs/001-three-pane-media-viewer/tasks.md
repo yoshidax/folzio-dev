@@ -2188,12 +2188,14 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 **Purpose**: ファイルリストのフォルダを、ファイルと同じくコピー・ペースト・名前の変更・ゴミ箱・移動・複製・ツリーへのドラッグの対象にする。フォルダは中身ごと
 操作し、名前の変更では拡張子の確認を出さず、確認モーダルではフォルダは中身ごと操作する旨を示す。操作の結果は FSEvents を待たずにツリーへ反映し、
 フォルダを自分自身やその配下へドロップできない見た目にする。フォルダの削除はファイルリストからだけで、ツリーの ⌘⌫ と右クリックメニューは変えない
+（2026-10-21 の FR-079 で変更し、ツリーのフォルダのゴミ箱を Phase 24 で加える。この Phase の記述は履歴として残す）
 （[spec.md](./spec.md) FR-018・022・027・076・US1 の受け入れシナリオ 23・Edge Cases、[plan.md](./plan.md) の「変更点（2026-10-21: ファイルリストのフォルダ・`..`・ツリーの同期）」、
 [research.md](./research.md) R32、[data-model.md](./data-model.md) の `ListItemCommands`、[contracts/core-api.md](./contracts/core-api.md)「ファイル操作」、
 [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md)「ファイルリスト」「確認モーダルと衝突ダイアログ」）。
 
 **Independent Test**: `swift test` で `NameValidation` と `FileOperationService` のフォルダのケースが通ること。`.app` で quickstart.md「US4」の 7〜9 を `ops/` で確認し、
-フォルダの各操作・確認モーダルの文言・ツリーへの即時反映・自分自身へのドロップの拒否・ツリーの ⌘⌫ が期待どおりであること。
+フォルダの各操作・確認モーダルの文言・ツリーへの即時反映・自分自身へのドロップの拒否・ツリーの ⌘⌫ が期待どおりであること（US4 の 9 は Phase 24 で
+「ツリーのフォルダのゴミ箱」の参照に変わった）。
 
 ### Tests for User Story 4
 
@@ -2221,7 +2223,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
     （`reloadExpandedNodes(in:)`・`recheckCollapsedNodes(in:)`・`updateWatchSet()`・`refreshFavoriteAvailabilityIfNeeded(in:)`）を移して共有する。`eventTask` はそれを呼ぶ形にする
   - `validateDrop`: `fileURLs(from:)` の URL のどれかについて、ドロップ先のノードの `url.standardizedFileURL.pathComponents` がその URL の要素を接頭に含む
     （ドロップ先が自分自身か配下）なら `[]` を返す
-  - 右クリックメニューと `moveToTrash(_:)` の判定は変えない（お気に入り以外の行で ⌘⌫ は何もしない。FR-064）
+  - 右クリックメニューと `moveToTrash(_:)` の判定は変えない（お気に入り以外の行で ⌘⌫ は何もしない。FR-064。後に Phase 24 の T238 で FR-079 のゴミ箱を加える）
   - `MainSplitViewController.init()`: ツリーを作った後に `fileOperationCoordinator.onFoldersChanged = { [weak tree] folders in tree?.refreshFolders(folders) }` を設定する
   - `swift build` が通ることを確認する
 
@@ -2236,6 +2238,114 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
   - 結果（実行日、OS、確認項目、合否）を `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
 
 **Checkpoint**: ファイルリストのフォルダを、ファイルと同じ操作で中身ごとコピー・名前の変更・ゴミ箱・移動でき、結果はツリーにもすぐ反映される
+
+---
+
+## Phase 24: ツリーのフォルダをゴミ箱に入れる（FR-064・079 追加、US1）
+
+**Purpose**: ツリーの通常のフォルダ（ホーム・ボリュームの最上位を除く）を、右クリックメニューの「ゴミ箱に入れる」と ⌘⌫ で、確認モーダルを経て中身ごとゴミ箱に入れられる
+ようにする。表示中のフォルダ（またはその祖先）を入れたときは、親フォルダをツリーで選択してその一覧を表示し、プレビューを空にする。お気に入りの項目の ⌘⌫ は従来どおり
+「お気に入りから削除」のまま。Phase 23 の「ツリーの ⌘⌫ と右クリックメニューは変えない」はこの Phase で置き換える
+（[spec.md](./spec.md) FR-064・079・US1 の受け入れシナリオ 24・Edge Cases、[plan.md](./plan.md) の「変更点（2026-10-21: ツリーのフォルダをゴミ箱に入れる）」、
+[research.md](./research.md) R33、[data-model.md](./data-model.md) の「TreeItemRole と FavoriteCommands」「FolderNavigation」、
+[contracts/core-api.md](./contracts/core-api.md)「お気に入り」「ブラウザ状態」、[contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md)「ディレクトリツリー」
+「右クリックメニュー（ツリー）」「メニューバー」）。
+
+**Independent Test**: `swift test` で `FavoriteCommandsTests`・`FolderNavigationTests`・`BrowserModelFolderTests` の追加ケースが通ること。`.app` で quickstart.md
+「ツリーのフォルダのゴミ箱（FR-079）」の 1〜9 を確認し、ツリーから中身ごとゴミ箱に入れられ、表示中のフォルダ（または祖先）を入れたときは親が選択・表示され、
+ホーム・ボリュームの最上位・見出しでは何も起きず、お気に入りの項目の ⌘⌫ が従来どおりであること。
+
+### Tests for User Story 1
+
+- [ ] T231 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteCommandsTests.swift` にケースを追加する（T234 の前にビルドエラーになることを確認する）。ルートは
+  `[URL(fileURLWithPath: "/"), URL(fileURLWithPath: "/Users/me")]` を使う:
+  - `trashTarget(.folder(/Users/me/a), roots:)` → `/Users/me/a`。`/Volumes/Ext/a`（ルートに `/` を含むため対象）→ URL
+  - `trashTarget` が nil になる: `.folder(/Users/me)`・`.folder(/)`・`.folder(/Users/me/)`（末尾の `/`）、`.favorite(/Users/me/a)`、`.favoritesHeader`、`nil`、
+    ルートが空の `.folder(/Users/me/a)`
+  - `contextMenu(for: .folder(/Users/me/a), roots:)` が `[.moveToTrash, .separator, .pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder]`
+  - `contextMenu(for: .folder(/Users/me), roots:)`（ルート）と `contextMenu(for: .folder(/Users/me/a))`（`roots` 省略）が従来どおり
+    `[.pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder]`。`.favorite` は `[.removeFromFavorites]`、`.favoritesHeader` は空のまま
+    （`roots` を渡しても変わらない）
+  - 既存のケース（`canAdd`・`removalTarget`・`folderToShow`・`acceptsFiles`）は変えずに通す
+- [ ] T232 [P] [US1] `Tests/MediaViewerCoreTests/FolderNavigationTests.swift` に `folderToShow(afterTrashing:showing:roots:)` のケースを追加する（T235 の前にビルドエラーに
+  なることを確認する）。ルートは `/` と `/Users/me`:
+  - 表示中のフォルダ自身: `trashed [/Users/me/a/b]`、`showing /Users/me/a/b` → `/Users/me/a`
+  - 祖先: `trashed [/Users/me/a]`、`showing /Users/me/a/b/c` → `/Users/me`（ルートそのものが親でもよい）
+  - 複数（最も浅いものの親）: `trashed [/Users/me/a/b, /Users/me/a]`、`showing /Users/me/a/b/c` → `/Users/me`。配列の順を入れ替えても同じ
+  - nil になる: 兄弟（`trashed [/Users/me/a/x]`、`showing /Users/me/a/b`）、`showing` の配下だけ（`trashed [/Users/me/a/b/c]`、`showing /Users/me/a/b`）、
+    名前の接頭辞だけが同じ（`trashed [/Users/me/a/b]`、`showing /Users/me/a/b2`）、空の配列、ルート（`trashed [/Users/me]`、`showing /Users/me/a`）、ルートの一覧が空
+  - 末尾の `/` や `..` を含む表記（`/Users/me/a/b/`・`/Users/me/a/x/../b`）でも同じ結果になる（`standardizedFileURL` のパスの要素で比べる）
+- [ ] T233 [P] [US1] `Tests/MediaViewerCoreTests/BrowserModelFolderTests.swift` に `leaveTrashedFolders(_:)` のケースを追加する（T236 の前にビルドエラーになることを確認する）。
+  既存の `makeEnv()` の一時フォルダを使い、ゴミ箱には入れずに `FileManager.removeItem` で消してから呼ぶ（ゴミ箱を汚さない）:
+  - `trip/day1` を表示中（`openItem` で入る）に `trip/day1` を消して `leaveTrashedFolders([trip/day1])` → `true`。一覧の `folder` が `trip`、`state` が `.loaded`、
+    選択とフォーカスが空、プレビューが `.empty`、`lastFolder` が `trip`、`treeSyncRequest` の `folder` が `trip` で `id` が呼ぶ前より増えている。
+    一覧に `day1` の行がなく、`day2` は残っている
+  - `trip/day1` を表示中に、祖先の `trip` を消して `leaveTrashedFolders([trip])` → `true`。一覧の `folder` が `root`
+  - `trip/day1` を表示中に、無関係な `empty` を消して `leaveTrashedFolders([empty])` → `false`。一覧の `folder`・選択・`treeSyncRequest` が呼ぶ前と同じ
+  - 空の配列 → `false` で何も変わらない
+  - 動画のプレビュー中: `trip/day1` に `VideoFixtures.mp4` で `clip.mp4` を作ってから選択し、プレビューが `.video` になったことを確かめてから `trip/day1` を消して
+    `leaveTrashedFolders([trip/day1])` を呼ぶ → `stopPlaybackSignal` が増える
+  - zip の中: `root/trip` に `ZipFixtureWriter`（`BrowserModelArchiveTests` と同じ使い方）で JPEG 1 枚の `photos.zip` を作り、`trip` を表示して `photos.zip` を
+    `openItem` で開いた後、`trip` を消して `leaveTrashedFolders([trip])` → `true`。`isBrowsingArchive` が false、一覧の `folder` が `root`
+
+### Implementation for User Story 1
+
+- [ ] T234 [US1] `Sources/MediaViewerCore/Model/FavoriteCommands.swift` を変える（R33。T231 を通す）:
+  - `TreeContextMenuItem` に `case moveToTrash` を足す（コメント「ツリーのフォルダをゴミ箱に入れる（FR-079）」）
+  - `public static func trashTarget(_ role: TreeItemRole?, roots: [URL]) -> URL?` を足す。`.folder(url)` で、かつ
+    `FolderNavigation.enclosingFolder(of: url, roots: roots) != nil` のときだけ `url` を返し、それ以外は nil
+  - `contextMenu(for:)` を `contextMenu(for role: TreeItemRole, roots: [URL] = [])` にする。`trashTarget(role, roots:)` が URL を返すときは、従来の `.folder` の並びの先頭に
+    `.moveToTrash, .separator` を足す。ほかの役割の結果は変えない
+  - `swift build` が通ることを確認する（App の `makeContextMenuItem` の `switch` が網羅されずエラーになる場合は、T238 の `.moveToTrash` の分岐だけを先に足してよい）
+- [ ] T235 [P] [US1] `Sources/MediaViewerCore/Model/FolderNavigation.swift` に `public static func folderToShow(afterTrashing trashed: [URL], showing: URL, roots: [URL]) -> URL?` を
+  足す（R33、data-model の表。T232 を通す）。`showing` と各 `trashed` を `standardizedFileURL.pathComponents` にし、`showing` の要素が `trashed` の要素を接頭に含む
+  （同じ、または配下）ものの中で要素数が最も少ないものを選び、その `enclosingFolder(of:roots:)` を返す。該当がなければ nil。ドキュメントコメントに FR-079 を書く
+- [ ] T236 [US1] `Sources/MediaViewerCore/Browser/BrowserModel.swift` に `@discardableResult public func leaveTrashedFolders(_ trashed: [URL]) async -> Bool` を足す（R33。T235 の後。
+  T233 を通す）。`FolderNavigation.folderToShow(afterTrashing: trashed, showing: listing.folder, roots: navigationRoots)` が親を返したら
+  `await navigateToFolder(parent, selecting: nil)` を呼んで true、nil なら何もせず false。`listing.folder` は zip の中でも zip を含むフォルダなので、zip の状態は
+  `selectFolder` の中で捨てられる。ドキュメントコメントに「表示中のフォルダ（zip の中なら zip を含むフォルダ）自身か祖先をゴミ箱に入れたときに親へ移る。
+  `treeSyncRequest` を出す（FR-079）」と書く。既存の `BrowserModelFolderTests`・`BrowserModelArchiveTests` が通ることを確かめる
+- [ ] T237 [US1] `Sources/MediaViewerApp/Operations/FileOperationCoordinator.swift` の `trash(_:)` を変える（R33。T236 の後）:
+  - 確認でキャンセルしたときは従来どおり何もしない
+  - `service.execute` と `presentFailures` の後、まず `notifyFoldersChanged(sources: urls, destination: nil)` を呼んでツリーへ知らせ（親の一覧の読み込みを待たずに、
+    ゴミ箱に入れた行をツリーから消すため。FR-027）、続けて `await model.leaveTrashedFolders(trashedSources)`（次の項目）を呼ぶ。false のときだけ従来どおり
+    `await model.reloadCurrentFolder()` を呼ぶ（true のときに読み直すと、消えたフォルダの「フォルダが見つかりません」が一瞬出るため）
+  - `trashedSources` は、`urls` から `result.failed` の URL を除いた元の場所の配列とする。`result.succeeded` はゴミ箱の中の URL を返すため（T226）渡さない。`FileOperationService` の結果の型は変えない
+  - ファイルリストからのゴミ箱は、表示中のフォルダやその祖先を対象にしないため、`leaveTrashedFolders` が false を返して従来どおりの経路になることをコメントに書く
+- [ ] T238 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` を変える（R33。T234・T237 の後）:
+  - `private var rootURLs: [URL] { roots.map(\.url) }` を足す
+  - `menuNeedsUpdate(_:)` を `FavoriteCommands.contextMenu(for: role, roots: rootURLs)` にする
+  - `makeContextMenuItem` に `.moveToTrash` を足す: タイトル「ゴミ箱に入れる」、アクション `trashFolderFromMenu(_:)`、`keyEquivalent` は `NSBackspaceCharacter`、
+    修飾キー `[.command]`（「お気に入りから削除」と同じ表示）。`target` と `representedObject`（右クリックした行）は既存の項目と同じく設定する
+  - `@objc private func trashFolderFromMenu(_ sender: Any?)`: `targetItem(for: sender)` の役割で `FavoriteCommands.trashTarget(_:roots:)` を求め、URL があれば
+    `Task { await coordinator.trash([url]) }`。フォーカスは移さない（R33）
+  - `moveToTrash(_:)`: 選択中の行がお気に入りの項目なら従来どおり `removeFavorite`。そうでなく `trashTarget(role(for: selectedItem), roots: rootURLs)` が URL を返せば
+    `Task { await coordinator.trash([url]) }`。ドキュメントコメントを「⌘⌫。お気に入りの項目ならお気に入りから削除（FR-064）、ルート以外のフォルダならゴミ箱に入れる（FR-079）」にする
+  - `validateMenuItem`: `moveToTrash(_:)` は、お気に入りの項目で「お気に入りから削除」・true（従来どおり）、`trashTarget` が URL を返す行で「ゴミ箱に入れる」・true、
+    それ以外で「ゴミ箱に入れる」・false。`trashFolderFromMenu(_:)` は `trashTarget(role(for: targetItem(for: menuItem)), roots: rootURLs) != nil`
+  - `reloadChildren(of:)`: `applyListing` を `isRestoringSelection = true` の間に行う（`defer` で戻す）。読み直し後に `selectedURL` の行がなければ、`selectedURL` から
+    `deletingLastPathComponent()` で祖先を辿り、`rowForURL` で最初に見つかった行を同じく `isRestoringSelection` の間に選ぶ（`selectFolder` を呼び返さず、隣の行へ選択が
+    ずれて一覧が切り替わらないようにする。R33）。行があれば従来どおりその行を選び直す。お気に入りの項目を選択中（`selectedNode` が nil）のときは従来どおり何もしない
+  - `syncSelection(to:)`・`reveal(_:)`・`removeFavorite`・ペースト・ドロップは変えない
+  - `swift build` が通ることを確認する
+- [ ] T239 [P] [US1] `README.md` のツリーの操作説明に、通常のフォルダを ⌘⌫ または右クリックメニューの「ゴミ箱に入れる」で中身ごとゴミ箱に入れられること
+  （確認モーダルあり・設定で省略可、ホーム・ボリュームの最上位は不可、表示中のフォルダを入れたときは親フォルダを表示する、お気に入りの項目の ⌘⌫ は
+  お気に入りから削除）を追記する。Phase 23 の「ツリーでは削除できない」旨の記述があれば直す
+
+### Verification for User Story 1
+
+- [ ] T240 [US1] 自動テストと手動確認を行う（T231〜T239 に依存）:
+  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す
+  - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。依頼時は `scripts/make-fixtures.sh ~/MediaViewerFixtures`（`ops/` を作り直す）、
+    quickstart.md「ツリーのフォルダのゴミ箱（FR-079）」の準備のコマンドと確認ポイント 1〜9、US1 の受け入れシナリオ 24 を具体的に示す。ゴミ箱に入れたフォルダを
+    Finder の「戻す」で復元できることも確かめてもらう
+  - 回帰確認: quickstart.md「お気に入り」の 7・9・10・16・18（お気に入りの項目の ⌘⌫ と「お気に入りから削除」、ホームの ⌘⌫ が無効）、「US4」の 3・7（ファイルリストからの
+    ファイル・フォルダのゴミ箱）、「ファイルリストのフォルダ」の 2・4・14（ツリーの同期）。さらに、アプリを前面にしたままターミナルで表示中のフォルダを `rm -rf` したとき、
+    一覧が親フォルダに移り、ツリーの選択が隣の行へずれずに親の行になること（T238 の `reloadChildren` の変更。FR-042）
+  - 結果（実行日、OS、確認項目、合否）を `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+
+**Checkpoint**: ツリーの通常のフォルダを ⌘⌫ と右クリックメニューからゴミ箱に入れられ、表示中のフォルダを入れたときは親フォルダの表示に移る。お気に入りの削除と
+ファイルリストのゴミ箱は従来どおり
 
 ---
 
@@ -2302,6 +2412,10 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 - **フォルダのファイル操作 (Phase 23)**: FR-018・022・027・076 の追加作業。Phase 22 の `.folder` の行と `operableSelection`、US4 の `FileOperationCoordinator`・
   `ConfirmationPresenter` に依存する。Phase 22 の T225 とコミットを済ませてから着手する。T226（テスト）→ T227（`NameValidation`）→ T228（App の操作）→
   T229（ツリーと結線）の順に進め、T230 は最後に行う
+- **ツリーのフォルダのゴミ箱 (Phase 24)**: FR-064・079 の追加作業。Phase 19 の `FavoriteCommands` とツリーのメニューの振り分け、Phase 22 の `FolderNavigation`・
+  `navigateToFolder`・`treeSyncRequest`、Phase 23 の `FileOperationCoordinator.onFoldersChanged` とツリーの `refreshFolders` に依存する。Phase 23 の T230 とコミットを
+  済ませてから着手する。T231〜T233（テスト）→ T234（`FavoriteCommands`）・T235（`FolderNavigation`）→ T236（`BrowserModel`）→ T237（`FileOperationCoordinator`）→
+  T238（ツリー）の順に進め、T240 は最後に行う。T239（README）はいつでも並行できる
 
 ### User Story Dependencies
 
@@ -2367,6 +2481,8 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
   T209（`FixtureSets.swift`）と T224（`README.md`）は他と重ならない
 - フォルダのファイル操作: T226 の後、T227（Core）と T228（`FileOperationCoordinator.swift`・`ConfirmationPresenter.swift`）は T228 が T227 の `isDirectory` を使うため順に進める。
   T229 は `DirectoryTreeViewController.swift` と `MainSplitViewController.swift` を編集し、T228 の `onFoldersChanged` に依存する
+- ツリーのフォルダのゴミ箱: T231・T232・T233 はファイルが重ならないため並行できる。T234（`FavoriteCommands.swift`）と T235（`FolderNavigation.swift`）は並行できるが、
+  T234 は T235 の `enclosingFolder` を使うだけなので順序の制約はない。T236 は T235 の後、T237 は T236 の後、T238 は T234・T237 の後に行う。T239（`README.md`）は他と重ならない
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -2421,6 +2537,7 @@ Task: "T033 FitCalculatorTests"
 18. zip の中の動画 → zip の中の動画を、一時ファイルを作らずにストリーミングで再生できる（FR-072、SC-014）
 19. ファイルリストのフォルダ → 一覧にフォルダが出て、ダブルクリック・⌘↓ で入り、`..`・⌘↑ で戻れる。ツリーの選択が追従する（FR-076〜078）
 20. フォルダのファイル操作 → フォルダもファイルと同じくコピー・名前の変更・ゴミ箱・移動でき、ツリーにすぐ反映される（FR-018・076）
+21. ツリーのフォルダのゴミ箱 → ツリーの通常のフォルダを ⌘⌫ と右クリックメニューからゴミ箱に入れられ、表示中なら親フォルダへ移る（FR-079）
 
 ---
 
@@ -2473,5 +2590,9 @@ Task: "T033 FitCalculatorTests"
 - FR-076〜078（2026-10-21）により、ファイルリストにサブフォルダ（`ListItemKind.folder`）を出し、通常のフォルダの先頭行にも `..` を置く（ツリーのルートでは出さない）。
   戻る行の表記は zip の中も含めて `..` に統一した。Phase 20 の完了済みタスクの `...` は履歴として残し、T208 で実装を `..` に置き換える。ツリーの同期は
   `BrowserModel.treeSyncRequest` を介して行い、ツリーからの選択を送り返さない。フォルダはファイルと同じ全操作の対象にし、`..` の行は操作の対象から除く。
-  フォルダの削除はファイルリストからだけで、ツリーの ⌘⌫ は変えない（research.md R29〜R32）
+  フォルダの削除はファイルリストからだけで、ツリーの ⌘⌫ は変えない（research.md R29〜R32）。この最後の点は FR-079 で変更した（次の項目）
+- FR-079（2026-10-21）により、ツリーのルート以外の通常のフォルダを ⌘⌫ と右クリックメニューの「ゴミ箱に入れる」でゴミ箱に入れられるようにする。新しいメニュー項目・キーは
+  作らず、既存の「ゴミ箱に入れる」の検証で振り分ける（お気に入りの項目は「お気に入りから削除」のまま）。ルートの判定は `..` と同じ `FolderNavigation.enclosingFolder` を使い、
+  `TreeItemRole` に種類を足さない。実行はファイルリストと同じ `FileOperationCoordinator.trash(_:)` を通し、表示中のフォルダかその祖先を入れたときは
+  `BrowserModel.leaveTrashedFolders` が `navigateToFolder` で親へ移り、`treeSyncRequest` でツリーの親を選ぶ（research.md R33）
 - Commit after each task or logical group
