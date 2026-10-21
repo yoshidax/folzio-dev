@@ -92,7 +92,7 @@ struct ThumbnailProviderTests {
         #expect(again === thumbnail)
     }
 
-    @Test("zip の中の暗号化された項目・動画・壊れた画像では nil が返る", .timeLimit(.minutes(1)))
+    @Test("zip の中の暗号化された項目・壊れた動画と画像では nil が返る", .timeLimit(.minutes(1)))
     func returnsNilForUnreadableEntriesInsideZip() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -115,6 +115,31 @@ struct ThumbnailProviderTests {
             )
             #expect(image == nil, "\(name)")
         }
+    }
+
+    @Test("zip の中の mp4 は先頭フレームの縮小画像が返り、2 回目はキャッシュから返る", .timeLimit(.minutes(2)))
+    func generatesThumbnailForVideoInsideZip() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        // VideoFixtures は書き出しの間スレッドを塞ぐので、並列に走るテストと重ならないよう 1 本にまとめる
+        let video = root.appendingPathComponent("clip.mp4")
+        try VideoFixtures.mp4(at: video, fastStart: false)
+        let zip = try makeZip(in: root, entries: [
+            ZipFixtureEntry(name: "movies/clip.mp4", content: .bytes(try Data(contentsOf: video)), method: .deflated),
+        ])
+        let reader = ZipArchiveReader()
+        _ = try await reader.open(zip)
+        let provider = ThumbnailProvider(archiveReader: reader)
+        let url = ArchiveURL.entry(archive: zip, path: "movies/clip.mp4")
+
+        let image = await provider.thumbnail(for: url, pointSize: 50, scale: 2)
+        let thumbnail = try #require(image)
+        #expect(thumbnail.width > 0)
+        #expect(max(thumbnail.width, thumbnail.height) <= 128)
+
+        let again = await provider.thumbnail(for: url, pointSize: 50, scale: 2)
+        #expect(again === thumbnail)
     }
 
     @Test("archiveReader がないと zip の中の URL は nil が返る")
