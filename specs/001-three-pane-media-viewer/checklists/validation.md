@@ -195,6 +195,37 @@ open .build/MediaViewer.app
   まだそこにあればファイルリストへ戻す。読み込み中にユーザーが別のペインへ移った場合は戻さない。UI の配線のため自動テストは追加せず、
   修正後の `.app` でユーザーが確認した
 
+## zip ファイルの中の閲覧（FR-068〜071・073〜075、SC-015、Phase 20）
+
+2026-10-21 に macOS 26.6.2 で `scripts/make-app.sh` により `.build/MediaViewer.app` を生成し、GUI で確認した。
+
+| 確認項目 | 結果 | 根拠 |
+|----------|------|------|
+| 自動テスト（`swift test`） | PASS | Core 350 テスト、性能 12 テスト成功（下記の不具合の修正後） |
+| 性能テスト（quickstart「性能の検証」の基準内） | PASS | 10,000 項目の zip の `ZipArchiveReader.open` + `items(in:)` 0.113 秒（基準 0.5 秒）。開いた後の `items(in:)` 0.0006ms（基準 10ms、下記の修正で追加）。10,000 ファイルと 1,000 サブフォルダの列挙 0.36 秒 |
+| 外部通信の不在（`scripts/check-no-network.sh`） | PASS | `no network API references in Sources` |
+| SC-015: `huge.zip` を開いた直後からのツリーの ↑↓・一覧のスクロールで、100ms 以上の停止 0 回、最初の項目 1 秒以内 | PASS | 下記の修正後に、リスト形式とサムネイル形式で 2 回ずつ計測した。最初の項目まで 96.91〜116.38 ms、zip を開いている間の 100ms 以上の停止 0 件。計測方法: 一時的な os_signpost `ArchiveOpenToFirstItem`（zip の行を開いてから中の一覧の最初の行が描かれるまで。計測後に削除）と、Instruments の Hangs（しきい値 100ms）を `xcrun xctrace record --template Logging --instrument Hangs --recording-options <hangsThreshold 100 の JSON>` で記録し、`xctrace export` の `OSSignpostIntervals`・`potential-hangs` から読んだ。同じ記録の起動中（`LaunchToList` の途中）に 116.53 ms の停止が 1 件あったが、zip の操作とは関係ない（SC-015 の対象外） |
+| quickstart「zip ファイル」1〜7・10〜16 | PASS | GUI でユーザー確認 |
+| ⌘↓ / ⌘↑ がアプリに届くこと | PASS | GUI でユーザー確認 |
+| 回帰（通常のフォルダのリスト形式・サムネイル形式の矢印キー・⇧ + 矢印・⌘A・Return の名前の変更・⌘C / ⌘V / ⌥⌘V / ⌘D / ⌘Delete・ツリーへのドラッグ・右クリックメニュー、種類フィルタ、フルスクリーンの矢印移動、行頭アイコン、ツリーの操作） | PASS | GUI でユーザー確認 |
+| 回帰（下記の修正 2: フォルダ・zip の中を移った後の ⌘1 / ⌘2 の切り替えでの一覧・選択行・スクロール位置、切り替え後の縮小画像、サムネイル形式で変えた並べ替えのリスト形式の列見出しへの反映） | PASS | GUI でユーザー確認 |
+
+### 検証中に見つけた不具合（Phase 20 の実装）
+
+- 症状: `huge.zip`（10,000 項目）を開くと、メインスレッドが 1 回あたり 120〜170ms 続けて処理し、Hangs で 226.29 ms と 144.78 ms の停止が
+  記録された（SC-015 の 100ms 以上の停止 0 回を満たさない）。最初の項目までは 130〜316 ms で基準内だった
+- 原因: Time Profiler（`xctrace symbolicate` で dSYM を当てて集計）で、zip を開いている間のメインスレッドの内訳を調べた
+  - `ArchiveIndex.items(in:)` が約 50ms。MainActor の `BrowserModel.showArchiveLevel` から呼ばれ、10,000 項目の `MediaFile` と
+    `ArchiveURL`（`ArchiveURL.encodePath`）をその場で作っていた
+  - 表示していない形式のビュー（リスト形式のときの `ThumbnailModeView`）も、一覧が変わるたびに再読み込みしてセルを作っていた（約 16〜24ms）
+- 修正:
+  1. `ArchiveIndex` が、ディレクトリごとの行を索引の作成時（`ZipArchiveReader.open` のバックグラウンド）に作っておき、`items(in:)` はそれを
+     返すだけにした。公開 API は変えていない。性能テスト「10,000 項目の zip を開いた後の items(in:) が 10ms 以内」を先に追加し、修正前に
+     失敗（88ms）・修正後に成功することを確認した
+  2. `ListModeView`・`ThumbnailModeView` は、非表示のときは行の再読み込みと選択の反映を `viewDidUnhide` まで遅らせる。リスト形式の
+     並べ替えの列見出しとメニューは非表示でも従来どおり反映する。UI の配線のため自動テストは追加せず、修正後の `.app` での再計測と
+     ユーザーの回帰確認で確かめた
+
 ## zip の中の動画のストリーミング再生（FR-071・072、SC-014、Phase 21）
 
 2026-10-21 に macOS 26.6.2 で `scripts/make-app.sh` により `.build/MediaViewer.app` を生成し、GUI で確認した。

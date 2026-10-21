@@ -1893,7 +1893,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 
 ### Verification for User Story 1
 
-- [ ] T199 [US1] 自動テストと手動確認を行う（T162〜T198 に依存）:
+- [X] T199 [US1] 自動テストと手動確認を行う（T162〜T198 に依存）:
   - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す。`swift test` に含まれる `MediaViewerPerformanceTests` が quickstart.md「性能の検証」の
     基準内であることを確かめ、10,000 項目の zip の索引作成の時間を記録する（憲章 原則 II）
   - SC-015 の操作の継続を確かめる: `huge.zip` をダブルクリックした直後から、ツリーを ↑↓ で移動し続け、ファイルリストのスクロールも行う。
