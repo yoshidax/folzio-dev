@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -46,10 +47,13 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
 
     /// zip の中の取得を同時に走らせる件数（research.md R24）
     static let maxConcurrentArchiveReads = 4
+    /// zip の中の動画の代表フレームを同時に作る件数（画像とは別枠。research.md R24・R25）
+    static let maxConcurrentArchiveVideoReads = 2
 
     private let generator: QLThumbnailGenerator
     private let archiveReader: (any ArchiveReading)?
     private let archiveLimiter = ConcurrencyLimiter(limit: ThumbnailProvider.maxConcurrentArchiveReads)
+    private let archiveVideoLimiter = ConcurrencyLimiter(limit: ThumbnailProvider.maxConcurrentArchiveVideoReads)
     private let cache = NSCache<NSString, CachedEntry>()
     private let lock = NSLock()
     private var inFlight: [UUID: InFlightRequest] = [:]
@@ -120,17 +124,23 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
         }
     }
 
-    /// zip の中の画像。QuickLook は使わず、`Data` から ImageIO で縮小画像を作る。動画・暗号化・非対応方式・失敗では nil
+    /// zip の中の画像と動画。QuickLook は使わない。画像は `Data` から ImageIO で縮小画像を、動画は `AVAssetImageGenerator` で先頭フレームを作る。
+    /// 暗号化・非対応方式・失敗では nil
     private func archiveThumbnail(for url: URL, path: String, pixelSize: Int, key: NSString) async -> CGImage? {
         guard let archiveReader,
-              let kind = MediaKind(fileExtension: (path as NSString).pathExtension),
-              !kind.isVideo
+              let kind = MediaKind(fileExtension: (path as NSString).pathExtension)
         else { return nil }
 
-        let limiter = archiveLimiter
+        let isVideo = kind.isVideo
+        let limiter = isVideo ? archiveVideoLimiter : archiveLimiter
         let task = Task.detached(priority: .utility) { () -> CGImage? in
             guard await limiter.acquire() else { return nil }
-            let image = await Self.makeArchiveThumbnail(url: url, pixelSize: pixelSize, reader: archiveReader)
+            let image: CGImage?
+            if isVideo {
+                image = await Self.makeArchiveVideoThumbnail(url: url, pixelSize: pixelSize, reader: archiveReader)
+            } else {
+                image = await Self.makeArchiveThumbnail(url: url, pixelSize: pixelSize, reader: archiveReader)
+            }
             await limiter.release()
             return image
         }
@@ -177,6 +187,27 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
             kCGImageSourceShouldCacheImmediately: true,
         ]
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+    }
+
+    /// zip の中の動画の先頭フレーム。asset が読み込み器を保持するので、生成が終わるまで asset を手放さない
+    private static func makeArchiveVideoThumbnail(
+        url: URL,
+        pixelSize: Int,
+        reader: any ArchiveReading
+    ) async -> CGImage? {
+        guard !Task.isCancelled else { return nil }
+        let asset = ArchiveAssetFactory.makeAsset(for: url, reader: reader)
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        generator.maximumSize = CGSize(width: pixelSize, height: pixelSize)
+        let box = SendableBox((generator, asset))
+        return await withTaskCancellationHandler {
+            let image = try? await box.value.0.image(at: .zero).image
+            withExtendedLifetime(box.value.1) {}
+            return image
+        } onCancel: {
+            box.value.0.cancelAllCGImageGeneration()
+        }
     }
 
     private static func cacheKey(for url: URL, pixelSize: Int) -> NSString {
