@@ -2334,7 +2334,7 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 
 ### Verification for User Story 1
 
-- [ ] T240 [US1] 自動テストと手動確認を行う（T231〜T239 に依存）:
+- [X] T240 [US1] 自動テストと手動確認を行う（T231〜T239 に依存）:
   - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す
   - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。依頼時は `scripts/make-fixtures.sh ~/MediaViewerFixtures`（`ops/` を作り直す）、
     quickstart.md「ツリーのフォルダのゴミ箱（FR-079）」の準備のコマンドと確認ポイント 1〜9、US1 の受け入れシナリオ 24 を具体的に示す。ゴミ箱に入れたフォルダを

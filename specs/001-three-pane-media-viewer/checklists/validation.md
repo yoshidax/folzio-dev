@@ -243,6 +243,24 @@ open .build/MediaViewer.app
 | SC-014: `zip-big/` の約 1.1GB の動画を 1 分以上操作したときのメモリ（基準 増加 128MB 以下） | PASS | `footprint` の `phys_footprint`。`big-video-stored.zip`: 選択前 51MB → 操作後 85MB（増加 34MB、ピーク 125MB で選択前比 74MB）。`big-video-deflated.zip`: 選択前 41MB → 操作後 122MB（増加 81MB、ピーク 147MB で選択前比 106MB）。増加の主な内訳は `MALLOC_SMALL`（チャンクキャッシュ 32MB を含む。deflate では 49MB が reclaimable）と AVFoundation の `CoreMedia HTTP cache`（約 30MB、両方式で同程度） |
 | 回帰（通常のフォルダの動画の自動再生・ループ・シーク・Space・フルスクリーン再生、リスト形式・サムネイル形式の代表フレーム） | PASS | GUI でユーザー確認 |
 
+## ツリーのフォルダをゴミ箱に入れる（FR-064・079、Phase 24）
+
+2026-10-22 に macOS 26.6.2 で `scripts/make-app.sh` により `.build/MediaViewer.app` を生成し、GUI で確認した。
+
+| 確認項目 | 結果 | 根拠 |
+|----------|------|------|
+| 自動テスト（`swift test`） | PASS | 365 テスト（37 スイート）成功。性能テスト 12 テストを含む。`FavoriteCommandsTests`（`trashTarget`・`contextMenu(for:roots:)`）、`FolderNavigationTests`（`folderToShow(afterTrashing:showing:roots:)`）、`BrowserModelFolderTests`（`leaveTrashedFolders`）の追加ケースを含む |
+| 外部通信の不在（`scripts/check-no-network.sh`） | PASS | `no network API references in Sources` |
+| quickstart「ツリーのフォルダのゴミ箱（FR-079）」1〜3（⌘⌫ の確認モーダル・キャンセル・確定後に親を選択して表示・プレビューが空・フォーカスがツリーに残る・Finder の「戻す」で復元） | PASS | GUI でユーザー確認 |
+| 同 4（表示中のフォルダの祖先を右クリックメニューの先頭の「ゴミ箱に入れる」で削除、動画の停止、親の表示へ移る） | PASS | GUI でユーザー確認 |
+| 同 5（無関係なフォルダの削除で選択と一覧が変わらない） | PASS | GUI でユーザー確認 |
+| 同 6（ホーム・ボリューム・見出しに「ゴミ箱に入れる」がなく ⌘⌫ も無効、お気に入りの項目の ⌘⌫ は「お気に入りから削除」） | PASS | GUI でユーザー確認 |
+| 同 7（お気に入りに登録したフォルダをツリーでゴミ箱に入れると、実際のフォルダは削除され、お気に入りの項目は淡色で残る。FR-067） | PASS | GUI でユーザー確認 |
+| 同 8（確認 OFF で確認なしにゴミ箱へ） | PASS | GUI でユーザー確認 |
+| US1 の受け入れシナリオ 24 | PASS | 上記 1〜6 で確認 |
+| 回帰（アプリの外で表示中のフォルダを `rm -rf` したとき、一覧が親に移りツリーの選択が隣の行へずれない。T238 の `reloadChildren` の変更） | PASS | GUI でユーザー確認 |
+| 回帰（ファイルリストからのファイル・フォルダのゴミ箱、お気に入りの削除、ツリーの同期） | PASS | GUI でユーザー確認 |
+
 ## 未実施の検証
 
 - T079: Accessibility Inspector によるラベル確認
