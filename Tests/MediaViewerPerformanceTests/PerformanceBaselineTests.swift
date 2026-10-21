@@ -332,6 +332,74 @@ struct PerformanceBaselineTests {
             "10,000 項目の zip の open + items は 0.5 秒以内 (実測: \(elapsed))"
         )
     }
+
+    @Test("1GB の deflate 項目の stream 読み出しで phys_footprint の増加が 128MB 以下 (SC-014)")
+    func entryStreamReadsStayWithinMemoryBudget() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        // ゼロ埋め 1GB を deflate で格納する。zip の生成時間は計測に含めない
+        let zip = directory.appendingPathComponent("big-deflated.zip")
+        let length: UInt64 = 1 << 30
+        try ZipFixtureWriter.write(
+            [ZipFixtureEntry(name: "zeros.mp4", content: .zeros(count: length), method: .deflated)],
+            to: zip
+        )
+
+        let reader = ZipArchiveReader()
+        _ = try await reader.open(zip)
+        let stream = try await reader.stream(for: ArchiveURL.entry(archive: zip, path: "zeros.mp4"))
+        #expect(stream.length == length, "展開後のサイズが 1GB であること (実際: \(stream.length))")
+
+        let chunk = 512 * 1024
+        let mebibyte: UInt64 = 1 << 20
+        // 先頭から末尾まで 512KB ずつ、続けて 900MB・100MB・10MB の位置（後ろ向き）から各 4MB
+        var plan: [(offset: UInt64, count: Int)] = []
+        var position: UInt64 = 0
+        while position < length {
+            plan.append((position, chunk))
+            position += UInt64(chunk)
+        }
+        for startMiB in [UInt64(900), 100, 10] {
+            for step in 0..<(4 * 1024 * 1024 / chunk) {
+                plan.append((startMiB * mebibyte + UInt64(step * chunk), chunk))
+            }
+        }
+
+        let baseline = physicalFootprint()
+        var maximumIncrease: Int64 = 0
+        var readBytes = 0
+        let start = ContinuousClock.now
+        for (index, step) in plan.enumerated() {
+            let data = try stream.read(offset: step.offset, maxLength: step.count)
+            readBytes += data.count
+            if (index + 1) % 64 == 0 || index == plan.count - 1 {
+                maximumIncrease = max(maximumIncrease, Int64(physicalFootprint()) - Int64(baseline))
+            }
+        }
+        let elapsed = ContinuousClock.now - start
+
+        print("ArchiveEntryStream 1GB deflate: 最大増加 \(maximumIncrease / 1_048_576)MB (\(maximumIncrease) bytes), 所要時間 \(elapsed), 読み出し \(plan.count) 回")
+        #expect(readBytes > 0)
+        #expect(
+            maximumIncrease <= 128 * 1024 * 1024,
+            "64 回ごとの phys_footprint の最大増加は 128MB 以下 (実測: \(maximumIncrease) bytes)"
+        )
+    }
+}
+
+/// 現在のプロセスの `phys_footprint`（バイト）。
+private func physicalFootprint() -> UInt64 {
+    var info = task_vm_info_data_t()
+    var count = mach_msg_type_number_t(
+        MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size
+    )
+    let result = withUnsafeMutablePointer(to: &info) { pointer in
+        pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+            task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+        }
+    }
+    return result == KERN_SUCCESS ? info.phys_footprint : 0
 }
 
 private func makeTemporaryDirectory() throws -> URL {
