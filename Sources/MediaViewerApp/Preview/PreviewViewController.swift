@@ -5,15 +5,17 @@ import MediaViewerCore
 final class PreviewViewController: NSViewController {
     private let model: BrowserModel
     private let decoder: any ImageDecoding
+    private let archiveReader: any ArchiveReading
     private let imageView = ImagePreviewView()
     private let videoView = VideoPreviewView()
     private let containerView = NSView()
     private var animatedTask: Task<Void, Never>?
     private var configuredVideoURL: URL?
 
-    init(model: BrowserModel, decoder: any ImageDecoding) {
+    init(model: BrowserModel, decoder: any ImageDecoding, archiveReader: any ArchiveReading) {
         self.model = model
         self.decoder = decoder
+        self.archiveReader = archiveReader
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -135,16 +137,7 @@ final class PreviewViewController: NSViewController {
             animatedTask = nil
             imageView.showEmpty()
             showVideoView()
-            if configuredVideoURL != url {
-                configuredVideoURL = url
-                let playback = model.playbackRequest
-                videoView.configure(
-                    url: url,
-                    autoplay: playback.autoplay,
-                    loop: playback.loop,
-                    fileName: url.lastPathComponent
-                )
-            }
+            showVideo(url)
         case let .unavailable(name, reason):
             animatedTask?.cancel()
             animatedTask = nil
@@ -152,6 +145,19 @@ final class PreviewViewController: NSViewController {
             showImageView()
             imageView.showUnavailable(name: name, reason: reason)
         }
+    }
+
+    /// 動画 URL を再生に渡す。同じ URL の再設定は無視する。
+    private func showVideo(_ url: URL) {
+        guard configuredVideoURL != url else { return }
+        configuredVideoURL = url
+        let playback = model.playbackRequest
+        videoView.configure(
+            url: url,
+            autoplay: playback.autoplay,
+            loop: playback.loop,
+            fileName: url.lastPathComponent
+        )
     }
 
     private func showImageView() {
