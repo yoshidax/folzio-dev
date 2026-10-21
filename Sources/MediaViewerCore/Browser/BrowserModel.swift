@@ -159,6 +159,19 @@ public final class BrowserModel {
         }
     }
 
+    /// 表示中のフォルダ（zip の中なら zip を含むフォルダ）自身か祖先をゴミ箱に入れたときに、親へ移る。
+    /// `treeSyncRequest` を出す（FR-079）。移ったら true、該当しなければ何もせず false
+    @discardableResult
+    public func leaveTrashedFolders(_ trashed: [URL]) async -> Bool {
+        guard let parent = FolderNavigation.folderToShow(
+            afterTrashing: trashed,
+            showing: listing.folder,
+            roots: navigationRoots
+        ) else { return false }
+        await navigateToFolder(parent, selecting: nil)
+        return true
+    }
+
     /// 1つ上の階層へ。zip の最上位からはフォルダの一覧へ戻る（FR-070）。zip の外では親フォルダへ戻り、
     /// ツリーのルートでは何もしない（FR-077）
     public func goToEnclosingLevel() async {

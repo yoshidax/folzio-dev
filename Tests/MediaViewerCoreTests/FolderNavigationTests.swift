@@ -49,4 +49,53 @@ struct FolderNavigationTests {
         #expect(enclosing("/Volumes/Other/a", roots: [folder("/Users/me"), folder("/Volumes/Ext")]) == nil)
         #expect(enclosing("/Users/me/a", roots: []) == nil)
     }
+
+    // MARK: - folderToShow(afterTrashing:showing:roots:)（FR-079）
+
+    private static let trashRoots = [
+        URL(fileURLWithPath: "/", isDirectory: true),
+        URL(fileURLWithPath: "/Users/me", isDirectory: true),
+    ]
+
+    private func shown(_ trashed: [String], showing: String, roots: [URL] = Self.trashRoots) -> String? {
+        FolderNavigation.folderToShow(
+            afterTrashing: trashed.map { folder($0) },
+            showing: folder(showing),
+            roots: roots
+        )?.standardizedFileURL.path
+    }
+
+    @Test("表示中のフォルダ自身をゴミ箱に入れたら親を返す")
+    func trashedShowingFolder() {
+        #expect(shown(["/Users/me/a/b"], showing: "/Users/me/a/b") == "/Users/me/a")
+    }
+
+    @Test("祖先をゴミ箱に入れたら祖先の親を返す（ルートそのものが親でもよい）")
+    func trashedAncestor() {
+        #expect(shown(["/Users/me/a"], showing: "/Users/me/a/b/c") == "/Users/me")
+    }
+
+    @Test("複数なら最も浅いものの親を返し、配列の順に依らない")
+    func shallowestWins() {
+        #expect(shown(["/Users/me/a/b", "/Users/me/a"], showing: "/Users/me/a/b/c") == "/Users/me")
+        #expect(shown(["/Users/me/a", "/Users/me/a/b"], showing: "/Users/me/a/b/c") == "/Users/me")
+    }
+
+    @Test("兄弟・配下だけ・名前の接頭辞だけ・空・ルート・ルートが空は nil")
+    func unrelatedIsNil() {
+        #expect(shown(["/Users/me/a/x"], showing: "/Users/me/a/b") == nil)
+        #expect(shown(["/Users/me/a/b/c"], showing: "/Users/me/a/b") == nil)
+        #expect(shown(["/Users/me/a/b"], showing: "/Users/me/a/b2") == nil)
+        #expect(shown([], showing: "/Users/me/a/b") == nil)
+        #expect(shown(["/Users/me"], showing: "/Users/me/a") == nil)
+        #expect(shown(["/Users/me/a/b"], showing: "/Users/me/a/b", roots: []) == nil)
+    }
+
+    @Test("末尾の / や .. を含む表記でも同じ結果になる")
+    func standardizesPaths() {
+        #expect(shown(["/Users/me/a/b/"], showing: "/Users/me/a/b") == "/Users/me/a")
+        #expect(shown(["/Users/me/a/b"], showing: "/Users/me/a/b/") == "/Users/me/a")
+        #expect(shown(["/Users/me/a/x/../b"], showing: "/Users/me/a/b/c") == "/Users/me/a")
+        #expect(shown(["/Users/me/a/b"], showing: "/Users/me/a/x/../b") == "/Users/me/a")
+    }
 }

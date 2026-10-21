@@ -352,4 +352,129 @@ struct BrowserModelFolderTests {
         #expect(path(env.model.listing.folder) == path(env.url("trip")))
         #expect(env.model.treeSyncRequest == nil)
     }
+
+    // MARK: - ゴミ箱に入れたフォルダから出る（FR-079）
+
+    @Test("表示中のフォルダ自身を消すと、親の一覧になり、選択とプレビューが空で、同期の依頼が増える")
+    func leavingTrashedShowingFolder() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.root)
+        await env.model.openItem(try #require(env.row("trip")).url)
+        await env.model.openItem(try #require(env.row("trip/day1")).url)
+        let idBefore = try #require(env.model.treeSyncRequest?.id)
+        try FileManager.default.removeItem(at: env.url("trip/day1"))
+
+        let moved = await env.model.leaveTrashedFolders([env.url("trip/day1")])
+
+        #expect(moved == true)
+        #expect(path(env.model.listing.folder) == path(env.url("trip")))
+        #expect(env.model.listing.state == .loaded)
+        #expect(env.model.selection.selected.isEmpty)
+        #expect(env.model.selection.focused == nil)
+        #expect(isEmptyPreview(env.model.preview))
+        #expect(path(env.lastFolder) == path(env.url("trip")))
+        #expect(path(env.model.treeSyncRequest?.folder) == path(env.url("trip")))
+        #expect(try #require(env.model.treeSyncRequest?.id) > idBefore)
+        #expect(env.row("trip/day1") == nil)
+        #expect(env.row("trip/day2") != nil)
+    }
+
+    @Test("表示中のフォルダの祖先を消すと、その親の一覧になる")
+    func leavingTrashedAncestor() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.root)
+        await env.model.openItem(try #require(env.row("trip")).url)
+        await env.model.openItem(try #require(env.row("trip/day1")).url)
+        try FileManager.default.removeItem(at: env.url("trip"))
+
+        let moved = await env.model.leaveTrashedFolders([env.url("trip")])
+
+        #expect(moved == true)
+        #expect(path(env.model.listing.folder) == path(env.root))
+        #expect(env.row("trip") == nil)
+    }
+
+    @Test("無関係なフォルダを消しても、一覧・選択・同期の依頼は変わず false を返す")
+    func leavingUnrelatedFolderDoesNothing() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.root)
+        await env.model.openItem(try #require(env.row("trip")).url)
+        await env.model.openItem(try #require(env.row("trip/day1")).url)
+        let day1Image = try #require(env.model.listing.files.first { $0.name == "1.jpg" })
+        env.model.select([day1Image.url], focused: day1Image.url)
+        let requestBefore = env.model.treeSyncRequest
+        let selectionBefore = env.model.selection.selected
+        try FileManager.default.removeItem(at: env.url("empty"))
+
+        let moved = await env.model.leaveTrashedFolders([env.url("empty")])
+
+        #expect(moved == false)
+        #expect(path(env.model.listing.folder) == path(env.url("trip/day1")))
+        #expect(env.model.selection.selected == selectionBefore)
+        #expect(env.model.treeSyncRequest == requestBefore)
+    }
+
+    @Test("空の配列では false を返し、何も変わらない")
+    func leavingNothingDoesNothing() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.root)
+        await env.model.openItem(try #require(env.row("trip")).url)
+        let requestBefore = env.model.treeSyncRequest
+
+        let moved = await env.model.leaveTrashedFolders([])
+
+        #expect(moved == false)
+        #expect(path(env.model.listing.folder) == path(env.url("trip")))
+        #expect(env.model.treeSyncRequest == requestBefore)
+    }
+
+    @Test("動画のプレビュー中に表示中のフォルダを消すと、停止の合図が増える")
+    func leavingTrashedFolderStopsVideo() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        try VideoFixtures.mp4(at: env.url("trip/day1").appendingPathComponent("clip.mp4"), seconds: 0.5)
+        await env.model.selectFolder(env.root)
+        await env.model.openItem(try #require(env.row("trip")).url)
+        await env.model.openItem(try #require(env.row("trip/day1")).url)
+        let clip = try #require(env.model.listing.files.first { $0.name == "clip.mp4" })
+        env.model.select([clip.url], focused: clip.url)
+        guard case .video = env.model.preview else {
+            Issue.record("preview should be video, got \(env.model.preview)")
+            return
+        }
+        let before = env.model.stopPlaybackSignal
+        try FileManager.default.removeItem(at: env.url("trip/day1"))
+
+        let moved = await env.model.leaveTrashedFolders([env.url("trip/day1")])
+
+        #expect(moved == true)
+        #expect(env.model.stopPlaybackSignal > before)
+        #expect(isEmptyPreview(env.model.preview))
+    }
+
+    @Test("zip の中を表示中に、zip を含むフォルダを消すと、zip の状態を捨てて親の一覧になる")
+    func leavingTrashedFolderContainingOpenArchive() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let jpeg = env.root.appendingPathComponent("cover.jpg")
+        try ZipFixtureWriter.write(
+            [ZipFixtureEntry(name: "a.jpg", content: .bytes(try Data(contentsOf: jpeg)), method: .deflated)],
+            to: env.url("trip").appendingPathComponent("photos.zip")
+        )
+        await env.model.selectFolder(env.root)
+        await env.model.openItem(try #require(env.row("trip")).url)
+        await env.model.openItem(try #require(env.row("trip/photos.zip")).url)
+        #expect(env.model.isBrowsingArchive)
+        try FileManager.default.removeItem(at: env.url("trip"))
+
+        let moved = await env.model.leaveTrashedFolders([env.url("trip")])
+
+        #expect(moved == true)
+        #expect(env.model.isBrowsingArchive == false)
+        #expect(path(env.model.listing.folder) == path(env.root))
+    }
 }

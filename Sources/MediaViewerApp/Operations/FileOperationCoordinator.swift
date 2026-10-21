@@ -53,8 +53,17 @@ final class FileOperationCoordinator {
 
         let result = await service.execute(operation, resolution: .abort)
         await presentFailures(result)
-        await model.reloadCurrentFolder()
+        // ツリーへ先に知らせ、親の一覧の読み込みを待たずにゴミ箱に入れた行を消す（FR-027）
         notifyFoldersChanged(sources: urls, destination: nil)
+        // result.succeeded はゴミ箱の中の URL のため使わず、失敗しなかった元の場所を渡す
+        let failedPaths = Set(result.failed.map { $0.url.standardizedFileURL.path })
+        let trashedSources = urls.filter { !failedPaths.contains($0.standardizedFileURL.path) }
+        // 表示中のフォルダやその祖先を入れたときだけ親へ移る（FR-079）。ファイルリストからのゴミ箱は
+        // それらを対象にしないため false になり、従来どおり読み直す。移ったときに読み直すと
+        // 消えたフォルダの「フォルダが見つかりません」が一瞬出るため、false のときだけ呼ぶ
+        if await !model.leaveTrashedFolders(trashedSources) {
+            await model.reloadCurrentFolder()
+        }
     }
 
     func paste(into destination: URL, move: Bool) async {
