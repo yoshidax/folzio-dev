@@ -1,0 +1,174 @@
+schema_version: "1.0"
+workflow:
+  id: "sdd-increment"
+  name: "SDD increment"
+  version: "0.2.0"
+  author: "igachan"
+  description: >-
+    既存 feature への追加要件を、clarify → plan → tasks → analyze と修正のループ → 実装・検証・converge のループで進める。
+    人が判断するのは、clarify（manual のとき）、設計のレビュー、GUI の起動確認の3か所だけ
+
+requires:
+  # command / prompt の手順の capture: true は v1.2.1 から
+  speckit_version: ">=1.2.1"
+  integrations:
+    any: ["claude"]
+
+inputs:
+  change:
+    type: string
+    required: true
+    prompt: "追加・変更したい要件"
+  clarify_mode:
+    type: string
+    default: "auto"
+    enum: ["auto", "manual"]
+    prompt: "clarify の進め方（auto: 推奨回答を自動で採用し、後のレビューでまとめて確認 / manual: Claude Code で対話）"
+  impl_model:
+    type: string
+    default: "sonnet"
+    enum: ["sonnet", "opus"]
+    prompt: "実装を担当する sub agent のモデル"
+
+steps:
+  # ── 1. 仕様の明確化 ─────────────────────────────────────────────
+  # -p 実行では質問に答えられないため、auto では推奨回答を採用し、決められない質問は出力に残す。
+  # 出力は 3. のレビューで表示し、人がまとめて確認する
+  - id: clarify
+    type: if
+    condition: "{{ inputs.clarify_mode == 'auto' }}"
+    then:
+      - id: clarify_auto
+        type: prompt
+        capture: true
+        timeout: 1800
+        prompt: |
+          /speckit-clarify {{ inputs.change }}
+
+          この実行では対話できません。各質問は、提示する推奨回答をそのまま採用して spec.md に反映してください。
+          推奨を決められない（ユーザーの判断が必要な）質問は採用しないでください。
+          最後に「採用した回答」と「未決の質問（選択肢と推奨）」を一覧で出力してください。
+    else:
+      - id: clarify_manual
+        type: gate
+        message: |
+          Claude Code で `/speckit-clarify <追加要件>` を実行し、質問に答えて spec.md を更新してから approve してください。
+        options: [approve, reject]
+        on_reject: abort
+
+  # ── 2. 設計とタスク（間にゲートを置かない。レビューは 3. でまとめて行う） ──
+  - id: plan
+    command: speckit.plan
+
+  - id: tasks
+    command: speckit.tasks
+
+  # ── 3. 分析と修正のループ（analyze は tasks.md ができてから実行する） ──
+  - id: review_loop
+    type: do-while
+    max_iterations: 3
+    condition: "{{ steps.review_gate.output.choice == 'fix' }}"
+    steps:
+      - id: analyze
+        command: speckit.analyze
+        capture: true
+        timeout: 1800
+
+      - id: review_gate
+        type: gate
+        message: |
+          ── clarify の結果 ──
+          {{ steps.clarify_auto.output.stdout | default('（manual で実行）') }}
+
+          ── analyze のレポート ──
+          {{ steps.analyze.output.stdout }}
+
+          spec / plan / tasks の差分（git diff）も確認してください。
+            approve: 実装へ進む
+            fix:     レポートの推奨どおりに直して、もう一度 analyze する
+            reject:  中止
+          未決の質問や人の判断が要る指摘は、Claude Code で決めて反映してから approve か fix を選んでください。
+        options: [approve, fix, reject]
+        on_reject: abort
+
+      - id: apply_fixes
+        type: if
+        condition: "{{ steps.review_gate.output.choice == 'fix' }}"
+        then:
+          - id: apply_fixes_prompt
+            type: prompt
+            prompt: |
+              次の /speckit-analyze のレポートの指摘のうち、CRITICAL・HIGH・MEDIUM を推奨どおりに
+              spec.md・plan.md・research.md・data-model.md・contracts/・quickstart.md・tasks.md へ反映してください。
+              完了済み（[X]）のタスクは書き換えず、注記で対応してください。アプリのコードとテストは変更しないでください。
+              人の判断が必要で推奨を決められない指摘は反映せず、最後に一覧で示してください。
+
+              {{ steps.analyze.output.stdout }}
+
+  # 実装の sub agent は worktree を Phase ブランチから切るため、文書を先にコミットする（AGENTS.md）
+  - id: commit_docs
+    type: shell
+    run: |
+      git add specs
+      git diff --cached --quiet || git commit -q -m "docs: specify the next increment (spec, plan, tasks)"
+
+  # ── 4. 実装・検証・converge のループ（converge がタスクを追記したら繰り返す） ──
+  - id: delivery
+    type: do-while
+    max_iterations: 3
+    condition: "{{ steps.converge_check.output.stdout }}"
+    steps:
+      # 長く動くため capture しない（途中経過をターミナルに流す）
+      - id: implement
+        command: speckit.implement
+        input:
+          args: >-
+            sub agent で実装してください。ファイルが重ならない作業は、AGENTS.md の worktree 規約に従って複数の sub agent を
+            並行で起動してください（sub agent のモデルは {{ inputs.impl_model }}）。統合は Phase ブランチへ git merge --no-ff で行い、
+            各マージ後に swift build と swift test を通してください。GUI の起動確認が必要なタスクは実施せず、未チェックのまま残してください。
+            GUI は起動しないでください
+
+      # AGENTS.md の Phase の検証ゲート 1〜3 と、起動スモーク用の .app の作成
+      - id: verify
+        type: shell
+        timeout: 3600
+        run: swift build && swift test && scripts/check-no-network.sh && scripts/make-app.sh
+
+      - id: gui_smoke
+        type: gate
+        message: |
+          古い MediaViewer を終了してから `open .build/MediaViewer.app` で起動し、tasks.md の未チェックの
+          検証タスクが指す quickstart.md のシナリオを確認してください。問題がなければ approve してください。
+        options: [approve, reject]
+        on_reject: abort
+
+      - id: record
+        type: prompt
+        model: sonnet
+        prompt: |
+          ユーザーが GUI の起動確認を終え、問題がないと報告しました。tasks.md の未チェックの検証タスク（GUI 確認を含むもの）について、
+          specs/*/checklists/validation.md に既存の形式で結果（実行日、OS、確認項目、合否）を記録し、そのタスクを [X] にして、
+          tasks.md と validation.md をコミットしてください。以前の Phase から残っている、今回の対象ではない未チェックのタスクには触れないでください。
+
+      - id: converge
+        command: speckit.converge
+        capture: true
+        timeout: 1800
+
+      # converge がタスクを追記したかは、出力の文言ではなく tasks.md の変更で判定する（文言の揺れに左右されない）
+      - id: converge_check
+        type: shell
+        run: |
+          tasks=$(.specify/scripts/bash/check-prerequisites.sh --json --paths-only \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["TASKS"])')
+          if git diff --quiet -- "$tasks"; then echo false; else echo true; fi
+
+  - id: summary
+    type: gate
+    message: |
+      ── converge の結果 ──
+      {{ steps.converge.output.stdout }}
+
+      確認したら approve で終了します。
+    options: [approve]
+    on_reject: skip
