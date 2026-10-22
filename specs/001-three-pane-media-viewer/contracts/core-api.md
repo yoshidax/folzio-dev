@@ -85,9 +85,19 @@ public protocol VolumeProviding: Sendable {
 
 public protocol FileSystemWatching: Sendable {
     /// 監視対象を差し替える。直下の追加・削除・名前変更が起きたフォルダの URL を流す。
-    /// ツリーは表示中のフォルダ（ルートと展開中のフォルダの子）も渡し、三角の有無を追従させる（FR-054）
-    func watch(_ folders: Set<URL>)
+    /// ツリーは表示中のフォルダ（ルートと展開中のフォルダの子）も渡し、三角の有無を追従させる（FR-054）。
+    /// subtrees のフォルダは配下のすべての階層を監視し、変更のあったパスの親フォルダを流す（検索結果の整理、FR-087・R38）。
+    /// 流す URL は渡された起点の URL に相対の要素をつないで組み立て、FSEvents の /private 付きの実体パスをそのまま流さない。
+    /// 起点自身またはその祖先の削除・移動も、渡された起点の URL として流す（kFSEventStreamCreateFlagWatchRoot）。
+    /// subtrees の配下でも、隠しフォルダ（名前が "." で始まる、または isHidden。例: ~/Library）の中の変更は流さない。
+    /// 送出は最後の変更から 0.3 秒後、ただし最初の未送出の変更から最大 1 秒で必ず行う（変更が続いても通知を止めない）
+    func watch(_ folders: Set<URL>, subtrees: Set<URL>)
     var events: AsyncStream<Set<URL>> { get }
+}
+
+extension FileSystemWatching {
+    /// 既定実装: watch(folders, subtrees: [])（既存の呼び出しを壊さない）
+    public func watch(_ folders: Set<URL>)
 }
 ```
 
@@ -158,8 +168,14 @@ public enum FavoriteProbe {
 ## 並べ替え
 
 ```swift
+public enum SortColumn: String { case name, creationDate, kind, location }  // location は検索結果の表示中だけ（FR-084）。保存しない
 public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile]
+/// 並べ替え済みの2つの配列から、sorted(existing + incoming, by: order) と同じ順序の配列を1回の走査で作る。同順位は existing が先（R36）。
+/// 列の値と名前の第2キーが同じ行は同順位で、相対順は届いた順（別フォルダの同名ファイルは起動や検索のたびに変わりうる）
+public func sortedMerge(_ existing: [MediaFile], _ incoming: [MediaFile], by order: SortOrder) -> [MediaFile]
 ```
+
+- `.location` はファイルを含むフォルダのパスの自然順で比べ、同じ値なら名前の自然順を第2キーにする
 
 ## ブラウザ状態（UI から呼ぶ中心のモデル）
 
@@ -193,6 +209,15 @@ public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile]
     /// 移り方は `..` で親へ戻るときと同じ（読み込みの取り消し・選択とプレビューを空に・動画の停止・lastFolder の保存・treeSyncRequest）。
     /// ただし直前のフォルダの行は選択しない。該当しなければ何もせず false
     @discardableResult public func leaveTrashedFolders(_ trashed: [URL]) async -> Bool
+
+    // ファイル名の検索（FR-080〜087、research.md R36〜R38）
+    public var isShowingSearchResults: Bool { get }     // listing.search != nil
+    /// 実行中の検索を止め、選択・プレビューを空にして（動画は停止）検索を始める。結果はバッチごとに listing.files へ並べ替えて加える。
+    /// listing.folder・lastFolder・treeSyncRequest は変えない。種類フィルタは保つ。列挙が終わるまで待たずに戻る
+    public func startSearch(_ pattern: SearchPattern, root: URL)
+    /// 検索結果の表示中だけ、名前を変更した行の URL・名前・種類を差し替えて並べ直し、選択とフォーカスも置き換える。
+    /// 新しい名前が対応メディアでなければ行を外す。検索結果の表示中でなければ何もしない（FR-087）
+    public func didRenameItem(at oldURL: URL, to newURL: URL)
 }
 
 public struct TreeSyncRequest: Sendable, Equatable {
@@ -229,6 +254,68 @@ public enum ParentLink {
   （ツリーの実際の階層で親を選ぶため。R33）
 - `listing.files` の先頭の `..` は、zip の中では常に、通常のフォルダでは `hasEnclosingLevel` のときだけ置く。`.denied` / `.failed` の
   通常のフォルダでは、`files` を `..` だけにする（`hasEnclosingLevel` でなければ空）。ダブルクリック・⌘↓・⌘↑ のどれでも戻れる（FR-077）
+
+検索結果の表示中（`isShowingSearchResults`）の既存のメソッドの振る舞い（research.md R37・R38）:
+
+- `selectFolder(_:)`・`openItem(_:)` で別の一覧へ移る経路・`leaveTrashedFolders(_:)` で親へ移る経路は、`resetForNavigation` で実行中の検索を止め、
+  `listing.search` を nil にする。`sortOrder.column == .location` なら保存済みの並べ替えに戻す
+- `hasEnclosingLevel` は false、`listing.files` に `..` を置かない。`setNavigationRoots(_:)` も `..` を作らない
+- `reloadCurrentFolder()` はディスクを列挙し直さず、結果の URL の存在を UI スレッドの外で確かめて、消えたものを外す。フォーカスが外れたらプレビューを空にする
+- `handleFileSystemEvent(_:)` は、届いたフォルダのいずれか以下にある結果だけを同じく確かめて外す。`listing.folder` が消えても親へ移らない
+- `sortOrder` の `didSet` は `.location` を設定に書かない。検索結果の表示中でなければ `.location` への代入を受け付けず `oldValue` に戻す。
+  戻す代入の間は設定の書き込みと並べ直しを行わない（`didSet` の再入を避ける）
+- `focusedItemCommands` / `selectionItemCommands` は `isShowingSearchResults` を `ListItemCommands` に渡す
+
+```swift
+/// 検索キーワード（data-model.md の SearchPattern、research.md R34）
+public struct SearchPattern: Sendable, Equatable {
+    public init?(keyword: String)            // 前後の空白を除いて空なら nil
+    public var keyword: String { get }       // 前後の空白を除いたもの
+    public var usesWildcards: Bool { get }   // `*` か `?` を含む
+    /// ファイル名（拡張子を含む）だけと照合する。NFC と大文字小文字をそろえる。ワイルドカードなしは部分一致、ありは全体一致
+    public func matches(fileName: String) -> Bool
+}
+
+/// 検索起点ディレクトリ（data-model.md の SearchRoot、research.md R35）
+public enum SearchRootError: Error, Sendable, Equatable {
+    case empty, notAbsolute, notFound, notAFolder, accessDenied
+    public var message: String { get }       // モーダルの入力欄の下に出す文言
+}
+
+public enum SearchRoot {
+    /// 前後の空白を除き、`~` / `~/` をホームに置き換え、末尾の `/` を除く。ディスクは読まない
+    public static func parse(_ input: String, home: URL) -> Result<URL, SearchRootError>
+    /// 存在・フォルダか（パッケージと zip ファイルは不可）・読めるかを UI スレッドの外で確かめる。シンボリックリンクはリンク先にする
+    public static func validate(_ url: URL) async -> Result<URL, SearchRootError>
+}
+
+/// 検索結果の表示の状態（data-model.md の SearchListing）。FolderListing.search に置く
+public struct SearchListing: Sendable, Equatable {
+    public enum Phase: Sendable, Equatable { case searching, finished }
+    public var keyword: String
+    public var root: URL
+    public var phase: Phase
+    public var totalCount: Int               // 種類フィルタ適用前の件数
+    /// 「場所」列の文字列。起点のフォルダ名から始まる、ファイルを含むフォルダのパス（起点が `/` なら絶対パス）
+    public func location(of fileURL: URL) -> String
+}
+
+/// ファイル名の検索（research.md R36）
+public protocol FileNameSearching: Sendable {
+    /// root 以下のすべての階層を辿り、名前が pattern に一致する対応メディアファイル（FR-039）をバッチで流す。
+    /// 隠しファイル・隠しフォルダ・パッケージの中・シンボリックリンクのフォルダは辿らず、読めないフォルダは飛ばす。zip の中は開かない。
+    /// ファイルへのシンボリックリンクは、DirectoryLister と同じく通常のファイルとして拡張子と名前で照合する（FR-083）。
+    /// 全階層を辿り終えたら終える。ストリームの終了（取り消し）で列挙を止める。UI スレッドで列挙しない
+    func search(in root: URL, matching pattern: SearchPattern) -> AsyncStream<[MediaFile]>
+}
+
+public struct FileNameSearcher: FileNameSearching {
+    public init(batchSize: Int = 256, batchInterval: Duration = .milliseconds(100))
+}
+```
+
+- `BrowserModel` のイニシャライザに `searcher: any FileNameSearching = FileNameSearcher()` を足す（既存の呼び出しとテストを壊さない）
+- `FileNameSearcher` が返す `MediaFile` は `DirectoryLister.mediaFiles(in:)` と同じ値の作り方（`kind: .media(...)`・種類の説明・作成日・サイズ）
 
 - UI は `BrowserModel` の変化を監視して描画するだけにし、選択・プレビュー・先読みの判断を UI に持たせない
 - `listing.files` は種類フィルタ適用後の配列。絞り込みで0件のときは `listing.state == .noMatches` になる（FR-060）
@@ -439,13 +526,18 @@ public enum ArchiveAssetFactory {
     public static func makeAsset(for entryURL: URL, reader: any ArchiveReading) -> AVURLAsset
 }
 
-/// 行の種類・「zip の中か」・「戻る先があるか」から操作の可否を返す（FR-073・076・077、data-model.md の ListItemCommands）
+/// 行の種類・「zip の中か」・「戻る先があるか」・「検索結果か」から操作の可否を返す（FR-073・076・077・087、data-model.md の ListItemCommands）
 public struct ListItemCommands: Sendable {
-    public init(kind: ListItemKind?, isBrowsingArchive: Bool, hasEnclosingLevel: Bool? = nil) // nil は isBrowsingArchive と同じ
+    public init(
+        kind: ListItemKind?,
+        isBrowsingArchive: Bool,
+        hasEnclosingLevel: Bool? = nil,        // nil は isBrowsingArchive と同じ
+        isShowingSearchResults: Bool = false
+    )
     public var canOpenContainer: Bool      // ダブルクリック・⌘↓
-    public var canGoUp: Bool               // ⌘↑。hasEnclosingLevel
+    public var canGoUp: Bool               // ⌘↑。hasEnclosingLevel。検索結果では false
     public var allowsFileOperations: Bool  // 開く・コピー・複製・名前の変更・ゴミ箱・Finder に表示・ドラッグ。zip の中と `.parent` では false
-    public var allowsPaste: Bool           // 一覧へのペースト・移動ペースト
+    public var allowsPaste: Bool           // 一覧へのペースト・移動ペースト。zip の中と検索結果では false
 }
 ```
 

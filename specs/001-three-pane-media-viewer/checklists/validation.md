@@ -265,3 +265,7 @@ open .build/MediaViewer.app
 
 - T079: Accessibility Inspector によるラベル確認
 - T080: US1〜US6、キーボードのみの操作、異常系の手動シナリオ
+- T085: アプリアイコンの GUI 確認（Finder・Dock・⌘Tab・About・ライト／ダークと `swift run` の標準アイコン）。
+  コマンドラインの確認は「アプリアイコン（FR-043〜045、SC-011）」に記録済み
+- T088: quickstart「プレビューのフィット（FR-028）」の手動確認と結果の記録
+- T093: quickstart「サムネイル形式のキーボード追従スクロール（FR-017）」の手動確認と結果の記録

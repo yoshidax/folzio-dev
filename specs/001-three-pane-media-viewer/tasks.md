@@ -539,6 +539,9 @@ quickstart.md の手動シナリオで検証する。
 - [ ] T085 `scripts/make-app.sh` を実行し、quickstart.md「アプリアイコンの検証」を実施して
   `specs/001-three-pane-media-viewer/checklists/validation.md` に結果を追記する
   （ファイルがなければ作成する。T084 に依存）:
+  - 注記（2026-10-22）: validation.md「アプリアイコン（FR-043〜045、SC-011）」にコマンドラインの確認結果を記録済み。
+    GUI の Finder・Dock・⌘Tab・About・ライト／ダークと `swift run` の確認が残っているため未チェックとし、
+    「未実施の検証」に記録した
   - `Contents/Resources/AppIcon.icns` の存在と `plutil -extract CFBundleIconFile raw ...` が `AppIcon`
   - `iconutil -c iconset` で10スロットが展開でき、`icon_16x16.png` が 16×16、`icon_512x512@2x.png` が 1024×1024
   - `open` 後、Finder・Dock・⌘Tab・About に同じ3ペインのアイコンが出る。16px と 32px でも判別できる
@@ -573,6 +576,7 @@ quickstart.md の手動シナリオで検証する。
 - [ ] T088 [US1] `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、`specs/001-three-pane-media-viewer/quickstart.md`
   の「プレビューのフィット（FR-028）」を実施して `specs/001-three-pane-media-viewer/checklists/validation.md` に
   結果を追記する（ファイルがなければ作成する。T086・T087 に依存）:
+  - 注記（2026-10-22）: 未実施のため validation.md「未実施の検証」に記録した
   - 実施前に `swift build` / `swift test` / `scripts/check-no-network.sh` を通す
   - `mixed/02-image.png`（400×300）がペインに収まる最大サイズまで拡大され、はみ出さない
   - ウィンドウの最大化と復帰、ペイン幅のドラッグに追従し、縦横比が崩れない（SC-004 の停止 0 回も確認する）
@@ -636,6 +640,7 @@ quickstart.md の手動シナリオで検証する。
     ウィンドウサイズの変更時には呼ばない
   - `Sources/MediaViewerApp/FileList/ListModeView.swift` は変更しない
 - [ ] T093 [US1] 自動テストと手動確認を行う（T091・T092 に依存）:
+  - 注記（2026-10-22）: 手動確認が未実施のため validation.md「未実施の検証」に記録した
   - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す
   - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と quickstart の確認を依頼する。
     依頼時は実行コマンドと確認ポイントを具体的に示す
@@ -2349,6 +2354,298 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 
 ---
 
+## Phase 25: ファイル名の検索（FR-080〜087・SC-016 追加、US1）
+
+**Purpose**: ⌘F（「ファイル」メニューの「検索…」）で検索のモーダル（シート）を開き、検索キーワード（`*`・`?` のワイルドカード対応）と検索起点ディレクトリで
+ファイル名を検索できるようにする。結果は起点以下のすべての階層の対応メディアファイルを、ファイルリストにフラットな1つの一覧として、見つかった順に
+現在の並べ替えで加える。リスト形式には「場所」列を出し、一覧の上部に検索バーを置く。ツリーでフォルダを選ぶ（選択中の行のクリックを含む）と検索結果の
+表示を終える（ファイルリストにフォーカスがあるときの Esc でも同じ）。検索結果ではペーストと ⌘↑ を不可にし、ほかのファイル操作は通常のフォルダと同じに行える。
+消えた結果は外し、名前を変更した結果は残す。
+検索の条件・結果・「場所」の並べ替えは保存しない
+（[spec.md](./spec.md) FR-080〜087・SC-016・US1 の受け入れシナリオ 25〜28・Edge Cases、[plan.md](./plan.md) の「変更点（2026-10-22: ファイル名の検索）」と
+Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](./data-model.md) の `FolderListing`・`SortOrder`・`ListItemCommands`・`SearchPattern`・
+「SearchRoot と SearchRootError」・`SearchListing`・「検索結果の整理」、[contracts/core-api.md](./contracts/core-api.md)「ディレクトリ・ボリューム・監視」「並べ替え」
+「ブラウザ状態」「zip」の `ListItemCommands`、[contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md)「ファイルリスト」の検索結果の項・「検索」・
+「右クリックメニュー（ファイルリスト）」・「メニューバー」、[contracts/settings.md](./contracts/settings.md)）。
+
+**Independent Test**: `swift test` で `SearchPatternTests`・`SearchRootTests`・`SearchListingTests`・`FileNameSearcherTests`・`BrowserModelSearchTests`（新規）と、
+`SortingTests`・`ListItemCommandsTests`・`FileSystemWatcherTests`・`SettingsStoreTests` の追加ケース、`PerformanceBaselineTests` の検索の3件が通ること。
+`.app` で quickstart.md「ファイル名の検索（FR-080〜087）」の 1〜16 を確認し、⌘F のモーダル・照合・「場所」列・検索バー・解除・検索結果でのファイル操作・
+外部の変更の反映・検索中の操作が期待どおりであること。
+
+### Preparation for User Story 1
+
+- [ ] T241 [P] [US1] `Sources/FixtureKit/FixtureSets.swift` に `public static func search(in directory: URL) throws` を追加し、`makeAll(in:)` の最後で呼ぶ（plan の「フィクスチャ」、
+  quickstart.md の `search/` の表）。既存の `prepare(_:)`（`search/` を作り直す）と `ImageFixtures`・`VideoFixtures`・`ZipFixtureWriter` を使い、次を作る:
+  - `Cat01.jpg`・`a/my_cat.mov`・`a/dog.png`・`a/b/deep/cat-deep.png`・`b/Cat01.jpg`・`numbers/IMG_0001.jpg`・`numbers/IMG_12.jpg`
+  - `kana/` に、名前を NFD（`"か\u{3099}.png"`。`decomposedStringWithCanonicalMapping` で作り、作成後の `lastPathComponent` に結合用濁点が残ることを確かめる）にした PNG
+  - `cat.txt`（`writeText`）、`cats.zip`（中に `cat.jpg` を1つ。`ZipFixtureWriter`）、`cat-folder/x.jpg`、`.hidden/cat-hidden.jpg`、`.cat-dot.jpg`、`Viewer.app/Contents/cat-pkg.jpg`
+  - `link`（`a/` を指すシンボリックリンク。`FileManager.createSymbolicLink(at:withDestinationURL:)`）と、`linked.jpg`（起点の直下の `Cat01.jpg` を指すファイルへの
+    シンボリックリンク。名前に `cat` を含めず、`cat`・`*.png`・`IMG_????.jpg`・`が` の結果を変えない。キーワード `link` には部分一致する（T249）。FR-083）
+  - 権限のないフォルダは作らない（テストの後片付けと `prepare` の作り直しを壊さないため。quickstart ではターミナルで作る）
+  - `swift build` が通り、`swift run make-fixtures <一時ディレクトリ>` で `search/` ができることを確かめる
+
+### Tests for User Story 1
+
+- [ ] T242 [P] [US1] `Tests/MediaViewerCoreTests/SearchPatternTests.swift` を新規に作る（T252 の前にビルドエラーになることを確認する。R34、data-model の `SearchPattern` の表）:
+  - `SearchPattern(keyword:)` が nil: `""`・`"  "`・`"\n\t"`。`" cat "` の `keyword` は `"cat"`。`usesWildcards` は `*` か `?` を含むときだけ true
+  - ワイルドカードなし（部分一致）: `cat` が `Cat01.jpg`・`my_cat.mov`・`CAT.PNG` に一致し、`dog.png` に一致しない。拡張子も照合する（`png` が `a.png` に一致）
+  - 正規化: キーワード `"が"`（NFC）が NFD の `"か\u{3099}.png"` に一致し、NFD のキーワードが NFC の名前に一致する。`"か"` は `"が.png"` に一致しない（濁点を無視しない）。
+    全角の `ｃａｔ` は `cat.jpg` に一致しない。`ネコ` は `ねこ.jpg` に一致しない
+  - ワイルドカードあり（全体一致）: `*.png` が `a.png` に一致し `a.png.txt`・`a.PNG.bak` に一致しない。`*.PNG` は `a.png` に一致する（大文字小文字）。
+    `IMG_????.jpg` が `IMG_0001.jpg` に一致し `IMG_12.jpg`・`IMG_00001.jpg` に一致しない。`*` は `""` 以外の任意の名前に一致する。`a*b*c` が `aXbYc`・`abc` に一致し
+    `acb` に一致しない。`**.jpg`（連続）が `x.jpg` に一致する。`?.png` が NFD の `"か\u{3099}.png"` に一致する（書記素クラスタで1文字）。`cat*` は `my_cat.mov` に一致しない（先頭から）
+  - 記号はただの文字: `[1].jpg` が `[1].jpg` に一致し `1.jpg` に一致しない。`a\b` は `a\b.jpg` に部分一致する
+  - 長い名前と多くの `*`（例: 200 文字の名前に `*a*a*a*a*b`）でも一致しない結果をすぐ返す（時間の上限は付けず、ハングしないことだけを確かめる）
+- [ ] T243 [P] [US1] `Tests/MediaViewerCoreTests/SearchRootTests.swift` を新規に作る（T253 の前にビルドエラーになることを確認する。R35、data-model の「SearchRoot と SearchRootError」の3つの表の全行）:
+  - `parse(_:home:)`（`home` は `/Users/me`）: `""`・`"  "` → `.failure(.empty)`。`"~"` → `/Users/me`。`" ~/a/b "` → `/Users/me/a/b`。`"/a/b/"` → `/a/b`。`"/"` → `/`。
+    `"/a/./b/../c"` → `/a/c`。`"~user/a"`・`"a/b"`・`"./a"` → `.failure(.notAbsolute)`。ディスクを読まない（存在しないパスでも `.success`）
+  - `validate(_:)`（一時ディレクトリ）: フォルダ → `.success`（同じパス）。フォルダへのシンボリックリンク → `.success(リンク先の URL)`。存在しない → `.notFound`。
+    ファイル・`ZipFixtureWriter` で作った `x.zip` → `.notAFolder`。`Viewer.app/Contents/` を持つパッケージ → `.notAFolder`。`0o000` にしたフォルダ → `.accessDenied`
+    （テストの最後に `0o755` に戻してから削除する。root で実行されていて開けてしまう場合はそのケースを飛ばす）
+  - `SearchRootError` の5つの `message` が data-model の表の文言と一致する
+- [ ] T244 [P] [US1] `Tests/MediaViewerCoreTests/SearchListingTests.swift` を新規に作る（T254 の前にビルドエラーになることを確認する。R37、data-model の `SearchListing`）。
+  `SearchListing(keyword:root:phase:totalCount:)` の `location(of:)`:
+  - 起点 `/Users/me/Pictures`: `/Users/me/Pictures/a.jpg` → `Pictures`。`/Users/me/Pictures/2024/trip/a.jpg` → `Pictures/2024/trip`
+  - 起点 `/`: `/Users/me/a.jpg` → `/Users/me`。`/a.jpg` → `/`
+  - 名前に空白・日本語を含むパス（`/Users/me/写真 2024/旅行/a.jpg`、起点 `/Users/me/写真 2024`）→ `写真 2024/旅行`。起点の末尾に `/` がある URL でも同じ結果
+- [ ] T245 [P] [US1] `Tests/MediaViewerCoreTests/SortingTests.swift` にケースを追加する（T255 の前にビルドエラーになることを確認する。data-model の `SortOrder`）:
+  - `.location` の昇順: `/r/b/x.jpg`・`/r/a/z.jpg`・`/r/a/y.jpg`・`/r/a10/w.jpg`・`/r/a2/v.jpg` → `/r/a/y.jpg`・`/r/a/z.jpg`・`/r/a2/v.jpg`・`/r/a10/w.jpg`・`/r/b/x.jpg`
+    （親フォルダのパスの自然順、同じ場所では名前の自然順）。降順では場所の順が逆になる（同じ場所の中は名前の昇順のまま。既存の第2キーの規則）
+  - `sortedMerge(a, b, by:)` が `sorted(a + b, by:)` と同じ配列になる: 4つの列（`.name`・`.creationDate`（nil の作成日を含む）・`.kind`・`.location`）×昇順・降順で、
+    固定のシードの乱数で作った 0〜50 件の `a`・`b`（それぞれ `sorted` 済み）を 100 通り。同順位（同じ名前・同じ作成日）の行は `a` の行が先に来る。`a` か `b` が空でも一致する
+- [ ] T246 [P] [US1] `Tests/MediaViewerCoreTests/ListItemCommandsTests.swift` にケースを追加する（T257 の前にビルドエラーになることを確認する。data-model の `ListItemCommands` の表の
+  「検索結果」の列）: `ListItemCommands(kind: .media(.image), isBrowsingArchive: false, hasEnclosingLevel: true, isShowingSearchResults: true)` で `allowsPaste` と `canGoUp` が false、
+  `allowsFileOperations` が true、`canOpenContainer` が false。`kind: nil` でも `allowsPaste` が false。`isShowingSearchResults` を省略した既存の呼び出しの結果は変わらない
+- [ ] T247 [P] [US1] `Tests/MediaViewerCoreTests/FileSystemWatcherTests.swift` にケースを追加する（T258 の前にビルドエラーになることを確認する。R38）。既存のテストと同じ一時ディレクトリと
+  イベントの待ち方を使う:
+  - `watch([], subtrees: [root])` で `root/a/b/c/x.jpg` を作る・消す → `root/a/b/c` が流れる。`root/y.jpg` → `root` が流れる
+  - `subtrees` の外（`root` と兄弟の `other/x.jpg`）の変更は流れない
+  - `watch([root/a], subtrees: [])` は従来どおり `root/a` の直下だけを流し、`root/a/b/x.jpg` は流れない（`watch(_:)` の既定実装も同じ）
+  - 隠しフォルダ: `watch([], subtrees: [root])` で `root/.cache/x.jpg`・`root/a/.git/objects/y` を作る・消すだけでは何も流れない。`isHidden` を付けたフォルダ
+    （`URLResourceValues.isHidden = true` を設定した `root/Hidden/`）の中の変更も流れない。同じ間に `root/a/z.jpg` を作ると `root/a` は流れる
+  - 変更が続く場合: `watch([root/a], subtrees: [])` で、`root/a` に 0.1 秒ごとにファイルを作り続ける（3 秒間）。最初の変更から 1.5 秒以内に1回目の `root/a` が流れ、
+    作り続けている間に2回以上流れる（デバウンスが送出を延ばし続けない）。`subtrees` の配下で同じことをしても同じく流れる
+  - パスの形: 一時ディレクトリ（`FileManager.default.temporaryDirectory` 以下。`/var/folders/...` で、実体は `/private/var/folders/...`）に作った `root` を、`/var/...` の形の URL のまま
+    `watch([], subtrees: [root])` に渡し、`root/a/b/x.jpg` を作る → 流れる URL の `path` が `root.appendingPathComponent("a/b").path` と文字列で一致する（`/private` が付かない）。
+    `root/a/b` をフォルダごと消す → `root/a` が同じく渡した形で流れる（消えたフォルダでもパスの形が崩れない）。`root` の実体のパス（`/private/var/...`）を渡した場合は
+    `/private` 付きの形で流れる（渡した形をそのまま返す）
+  - 起点自身の変更: `watch([], subtrees: [root])` で `root` をフォルダごと消す、または別の名前へ移す → `root`（渡した URL）が流れる。`root` の親フォルダを別の名前へ移した場合も
+    `root` が流れる（`kFSEventStreamCreateFlagWatchRoot`）。`watch([root/a], subtrees: [])` だけのときに `root/a` を消しても、従来どおり `root/a` 自身は流れない
+- [ ] T248 [P] [US1] `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` にケースを追加する（T256 の前に失敗することを確認する。contracts/settings.md）: `viewSettings` に
+  `SortOrder(column: .location, ascending: false)` を書いても `view.sort.column` と `view.sort.ascending` は書く前の値（例: `kind`・`true`）のままで、ほかの項目（表示形式など）は書かれる。
+  `view.sort.column` に文字列 `"location"` が入っていたら、読んだ `sortOrder.column` は `.name`
+- [ ] T249 [P] [US1] `Tests/MediaViewerCoreTests/FileNameSearcherTests.swift` を新規に作る（T241 の後。T259 の前にビルドエラーになることを確認する。R36）。
+  `FixtureSets.search(in:)` で一時ディレクトリに作り、ストリームを最後まで集めて比べる:
+  - キーワード `cat`: 結果のパスの集合が `search/Cat01.jpg`・`search/a/my_cat.mov`・`search/a/b/deep/cat-deep.png`・`search/b/Cat01.jpg` の4件だけ
+    （`cat.txt`・`cats.zip`・zip の中・`cat-folder`・隠しフォルダと隠しファイル・パッケージの中・`link` 経由のものがない）
+  - `*.png` → `dog.png`・`cat-deep.png`・NFD の `が.png` の3件。`IMG_????.jpg` → `IMG_0001.jpg` だけ。`が` → NFD の名前の1件
+  - シンボリックリンク: `linked` → ファイルへのリンクの `search/linked.jpg` の1件（URL はリンク自身のパス。`DirectoryLister.mediaFiles(in:)` が `search/` の一覧に
+    `linked.jpg` を出すことと一致する）。`link` → 部分一致する `search/linked.jpg` の1件だけ（フォルダへのリンク `link` 自身と、`link/` の中の
+    `my_cat.mov`・`dog.png` などは出ない。FR-082 のとおりワイルドカードなしは部分一致のため、0 件にはならない）。`dog` → `search/a/dog.png` の1件だけ（`link` 経由で重複しない）
+  - 返す `MediaFile`: `kind` が拡張子から（`.jpg` は画像、`.mov` は動画）、`name` がディスク上の `lastPathComponent`、`fileSize` と `creationDate` が
+    `DirectoryLister.mediaFiles(in:)` で同じファイルを列挙したときの値と一致し、`typeDescription` が空でない
+  - 権限のないサブフォルダ（`0o000` にした `search/denied/cat-denied.jpg`）があっても、ほかの4件を返してストリームが終わる（最後に `0o755` に戻す）
+  - 起点が存在しないフォルダ・空のフォルダでは、何も流さずに終わる
+  - バッチ: `FileNameSearcher(batchSize: 2, batchInterval: .seconds(10))` で `cat` を検索すると、各バッチの件数が 2 以下で合計 4 件
+  - 取り消し: `FixtureSets.huge(in:)` の 10,000 ファイルを起点に `*` で検索し、最初のバッチを受け取ったらストリームを集める `Task` を取り消す。その後 0.5 秒待っても
+    追加のバッチが届かず、集めた件数が 10,000 未満（`onTermination` で列挙が止まる）
+- [ ] T250 [US1] `Tests/MediaViewerCoreTests/BrowserModelSearchTests.swift` を新規に作る（T252〜T259 の API を参照するため最後に書く。T260・T261 の前にビルドエラーになることを確認する。
+  plan の「テスト」、data-model の「検索結果の表示」「検索結果の整理」）。結果をテストから任意の順・時点で流すフェイクの `FileNameSearching`（`AsyncStream.makeStream` の
+  continuation を保持し、取り消されたかを記録する）を `BrowserModel(…, searcher:)` に渡す。一時フォルダは `BrowserModelFolderTests` の `makeEnv()` と同じ作り方にする:
+  - 開始: `trip/day1` を表示して画像を選択しプレビューが出た状態で `startSearch(SearchPattern(keyword: "a")!, root: root)` → `isShowingSearchResults` が true、
+    `listing.search` の `keyword`・`root`・`phase == .searching`・`totalCount == 0`、`state == .loading`、選択とフォーカスが空、プレビューが `.empty`。`listing.folder`・
+    `lastFolder`（設定）・`treeSyncRequest` が呼ぶ前と同じ。動画のプレビュー中に始めると `stopPlaybackSignal` が増える
+  - バッチ: 名前順で `[b.jpg, d.jpg]`、続けて `[a.jpg, c.jpg]` を流すと、`listing.files` の名前が `a, b, c, d` になり `state == .loaded`、`totalCount == 4`。2つ目のバッチの前に
+    `b.jpg` を選んでいれば、選択とフォーカスが保たれプレビューを読み直さない。`..` の行・フォルダの行がない。`hasEnclosingLevel` が false
+  - 完了: ストリームを終えると `phase == .finished`。結果が0件で終えると `state == .empty`
+  - 種類フィルタ: 画像だけの結果で「動画のみ表示」にすると `state == .noMatches`、`totalCount` は変わらない
+  - 解除: 検索中に `selectFolder(trip)` → `isShowingSearchResults` が false、フェイクが取り消しを記録し、その後に流したバッチは `listing.files` に加わらない。
+    `setNavigationRoots` を呼んでも検索結果の表示中は `..` ができない
+  - 新しい検索: 結果の表示中に別のキーワードで `startSearch` → 前のストリームが取り消され、結果が新しい検索のものだけに置き換わる
+  - zip の中から開始: `photos.zip` を `openItem` で開いた後に `startSearch` → `isBrowsingArchive` が false、`listing.folder` は zip を含むフォルダのまま
+  - 並べ替え: 検索結果の表示中に `sortOrder = SortOrder(column: .location, ascending: true)` → 一覧が場所の順になり、設定の `sortOrder` は呼ぶ前の値のまま。続けて
+    `selectFolder` で解除すると `model.sortOrder` が設定の値に戻る。`.location` 以外を選んでいた場合は解除しても変わらない
+  - 通常のフォルダで `.location` を拒む: 検索結果の表示中でないときに `sortOrder = SortOrder(column: .location, ascending: true)`（`ascending: false` も）を代入する →
+    `model.sortOrder` が代入前の値のまま、設定の `sortOrder`（`view.sort.column`・`view.sort.ascending`）が変わらず、`listing.files` の順も変わらない。値を戻すときに
+    `didSet` が再び呼ばれても、設定への書き込みと並べ直しが起きない（`UserDefaults` に書いた値と `listing.files` が代入前と同じ）
+  - `reloadCurrentFolder()`: 結果の1件（フォーカス中）を `FileManager.removeItem` で消してから呼ぶ → その行だけが外れ、フォーカスが空になりプレビューが `.empty`。
+    同じフォルダに新しいファイルを作っても加わらない（ディスクを列挙し直さない）
+  - `didRenameItem(at:to:)`: フォーカス中の `cat.jpg` をディスク上で `kitten.jpg` に名前を変えてから呼ぶ → 行の `url`・`name` が新しくなり、並べ直され、選択とフォーカスが新しい URL。
+    `kitten.txt`（対応メディアでない）に変えた場合は行が外れる。検索結果の表示中でなければ何もしない
+  - `handleFileSystemEvent(_:)`: `root/sub` の結果を消してから `[root/sub]` を渡す → その結果だけが外れる。`root/other` にある結果は、消えていても `[root/sub]` だけを渡したときは
+    残る。`listing.folder`（検索前のフォルダ）を消して渡しても親へ移らない。`root/sub/deep` の結果があるときに `root/sub` をフォルダごと別の場所へ移してから
+    `[root]` を渡すと、`root/sub` と `root/sub/deep` の結果が外れる（フォルダごとの辞書の接頭の引き方）。`didRenameItem` の後に新しい URL を消して
+    `[その親]` を渡すと外れる（辞書が名前の変更に追従している）
+  - 検索起点そのものが消える: 起点 `root` 以下の複数のフォルダに結果がある状態で、`root` をフォルダごと消す（または別の名前へ移す）してから `[root]` を渡す →
+    すべての結果が外れ、`phase == .finished` なら `state == .empty`。検索結果の表示は続き（`isShowingSearchResults` が true、`listing.search` の `keyword`・`root` は同じ）、
+    `listing.folder`・`lastFolder`・`treeSyncRequest` は変わらない。フォーカス中の結果が動画なら `stopPlaybackSignal` が増える。続けて `reloadCurrentFolder()` を呼んでも
+    同じ結果になる（ボリュームの取り外しの経路。T269）
+  - `leaveTrashedFolders(_:)`: 検索前のフォルダの祖先を消して呼ぶ → true で親フォルダの一覧になり、検索結果の表示が終わる。無関係なフォルダでは false で、検索結果のまま
+- [ ] T251 [P] [US1] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に3件を追加する（quickstart.md「性能の検証」の検索の3行。T259・T260 の後に通す）:
+  - 「10,000 ファイルの階層の検索が 3 秒以内（SC-016）」: 一時ディレクトリに 100 フォルダ × 100 ファイル（半数の名前に `cat` を含む、中身は小さな JPEG を1つ作ってコピー）を作り、
+    `FileNameSearcher().search(in:matching: cat)` の最後のバッチまでの時間を計る
+  - 「10,000 件への 256 件のマージが 0.05 秒以内（FR-085）」: 名前順に並べた 10,000 件と 256 件の `MediaFile` で、`sortedMerge` と、フェイクの `FileNameSearching` を渡した
+    `BrowserModel` に 10,000 件を流した後の 256 件のバッチ1回分の処理（バッチを流してから `listing.files.count` が増えるまで）を計る
+  - 「50,000 件への 256 件のバッチの処理が 100ms 未満（FR-085・SC-016）」: 上と同じ方法で、ディスクを使わずに作った 50,000 件の `MediaFile`（複数のフォルダに分散）を
+    `BrowserModel` に流した後の1バッチ分を計る（ホームを起点に `*` で検索した規模。結果の件数に上限がないため）。基準を満たさなければ、T255 の `sortedMerge` を
+    R36 の二分探索の方式に置き換え、T245 の `sorted` との一致を通したまま基準を満たすことを確かめる
+
+### Implementation for User Story 1
+
+- [ ] T252 [P] [US1] `Sources/MediaViewerCore/Search/SearchPattern.swift` を新規に作る（R34、contracts/core-api.md の `SearchPattern`。T242 を通す）:
+  - `public struct SearchPattern: Sendable, Equatable`。`public init?(keyword: String)` は `trimmingCharacters(in: .whitespacesAndNewlines)` が空なら nil。`keyword`・`usesWildcards` を持つ
+  - 正規化は `precomposedStringWithCanonicalMapping` の後に `folding(options: [.caseInsensitive], locale: nil)`。キーワードの正規化はイニシャライザで1回だけ行い、保持する
+  - `matches(fileName:)`: 名前を同じく正規化し、ワイルドカードなしは `contains`、ありは `Array(Character)` 同士の glob 照合（直前の `*` の位置を覚えて戻る反復。再帰しない）。
+    `NSRegularExpression`・`NSPredicate`・`fnmatch` は使わない。ドキュメントコメントに FR-082 を書く
+- [ ] T253 [P] [US1] `Sources/MediaViewerCore/Search/SearchRoot.swift` を新規に作る（R35、contracts/core-api.md。T243 を通す）:
+  - `public enum SearchRootError: Error, Sendable, Equatable { case empty, notAbsolute, notFound, notAFolder, accessDenied }` と、data-model の表の文言を返す `message`
+  - `SearchRoot.parse(_:home:)`: 空白を除き、空なら `.empty`。`"~"` と `"~/"` で始まるものはホームに置き換え、`"/"` で始まらなければ `.notAbsolute`。
+    `URL(fileURLWithPath:).standardizedFileURL` で `.`・`..`・末尾の `/` を畳む。ディスクを読まない
+  - `SearchRoot.validate(_:) async`: `Task.detached` の中で、`resolvingSymlinksInPath()` → `fileExists(atPath:isDirectory:)`（なければ `.notFound`、ディレクトリでなければ
+    `.notAFolder`）→ `URLResourceValues.isPackage`（true なら `.notAFolder`）→ `opendir`（`nil` なら `.accessDenied`、開けたら `closedir`）の順に確かめ、成功ならリンクを解決した URL
+- [ ] T254 [P] [US1] `Sources/MediaViewerCore/Search/SearchListing.swift` を新規に作り、`Sources/MediaViewerCore/Model/BrowserState.swift` の `FolderListing` に
+  `public var search: SearchListing?` を足す（R37。T244 を通す）:
+  - `SearchListing`（`Sendable, Equatable`）は `keyword`・`root`・`phase`（`.searching` / `.finished`）・`totalCount` とメンバーごとの `public init`
+  - `location(of:)`: `root` と `fileURL.deletingLastPathComponent()` の `standardizedFileURL.pathComponents` を比べ、起点が `/` ならファイルを含むフォルダの絶対パス、
+    それ以外は `root.lastPathComponent` に残りの要素を `/` でつないだ文字列
+  - `FolderListing.init` に `search: SearchListing? = nil` を最後の引数として足す（既存の呼び出しを壊さない）。ドキュメントコメントに「検索結果を表示中なら、その条件と進み具合。
+    表示中は `folder` を検索前のフォルダのまま変えず、`archive` は nil（FR-084・085）」と書く
+- [ ] T255 [US1] `Sources/MediaViewerCore/Model/Settings.swift` の `SortColumn` に `case location` を足し、`Sources/MediaViewerCore/Model/Sorting.swift` を変える（data-model の `SortOrder`。T245 を通す）:
+  - `comparePrimary` に `.location`: `a.url.deletingLastPathComponent().path.localizedStandardCompare(…)`。コメント「検索結果の表示中だけ使う（FR-084）。保存しない」
+  - `public func sortedMerge(_ existing: [MediaFile], _ incoming: [MediaFile], by order: SortOrder) -> [MediaFile]`: `sorted` の比較（作成日の nil の扱い・主キー・名前の第2キー）を
+    `private func precedes(_ a: MediaFile, _ b: MediaFile, by order: SortOrder) -> Bool?`（同順位は nil）に切り出して `sorted` と共有し、2つの添字で1回だけ走査する。
+    同順位と `incoming` が後ろのときは `existing` を先に置く。`.parent` の行は渡されない前提で、ドキュメントコメントにそう書く
+  - `swift build` で `SortColumn` を網羅する `switch` がほかにないことを確かめる（App の `ListModeView` は `SortColumn(rawValue:)` だけ）
+- [ ] T256 [US1] `Sources/MediaViewerCore/Settings/SettingsStore.swift` の `viewSettings` を変える（contracts/settings.md。T255 の後。T248 を通す）: 読み込みで `SortColumn(rawValue:)` が
+  `.location` なら `.name` にする。書き込みでは `newValue.sortOrder.column == .location` のとき `view.sort.column` と `view.sort.ascending` を書かない（ほかの項目は従来どおり書く）
+- [ ] T257 [P] [US1] `Sources/MediaViewerCore/Model/ListItemCommands.swift` に `public let isShowingSearchResults: Bool` と init の引数 `isShowingSearchResults: Bool = false` を足す（R38。T246 を通す）。
+  `canGoUp` は `hasEnclosingLevel && !isShowingSearchResults`、`allowsPaste` は `!isBrowsingArchive && !isShowingSearchResults`。型のドキュメントコメントに FR-087 を足す
+- [ ] T258 [P] [US1] `Sources/MediaViewerCore/FileSystem/FileSystemWatcher.swift` を変える（R38、contracts/core-api.md の `FileSystemWatching`。T247 を通す）:
+  - プロトコルの要件を `func watch(_ folders: Set<URL>, subtrees: Set<URL>)` にし、`extension FileSystemWatching { public func watch(_ folders: Set<URL>) { watch(folders, subtrees: []) } }` を足す。
+    テストやほかのターゲットにある `FileSystemWatching` の準拠型（フェイク）があれば、新しい要件に合わせる
+  - `FileSystemWatcher`: キューの中で `watchedSubtrees` も保持し、`watchedFolders` と合わせて変わったときだけストリームを作り直す。`watchedSubtrees` は起点ごとに、
+    渡された URL（流すときに使う）と、その実体のパスの要素（`realpath(3)` の結果。FSEvents が返す `/private/var/...` の形。`realpath` が失敗したら `key(for:)` のパス）の組で持つ。
+    ストリームのパスは両方の和集合。ストリームの作成フラグに `kFSEventStreamCreateFlagWatchRoot` を足す（起点自身とその祖先の移動・削除を受け取る）
+  - `handleEventPaths`: 従来の「親が `watchedFolders` にある」に加え、イベントのパスの親（`URL(fileURLWithPath:).deletingLastPathComponent().standardizedFileURL`）の
+    パスの要素が、`watchedSubtrees` のいずれかの実体のパスの要素と同じか、それを接頭に持つなら、起点からの相対の要素を**渡された起点の URL** に
+    `appendingPathComponent` でつないだ URL を流す（FSEvents のパスや `key(for:)` の結果をそのまま流さない。`resolvingSymlinksInPath` は `/private` を取り除くため、
+    検索の起点・結果の URL・`BrowserModel` の `searchResultsByFolder` のキーと同じ形にそろえる。R38）。イベントのパス自身が起点の実体のパスと同じか、その祖先のとき
+    （起点自身・祖先の削除や移動。`WatchRoot` の通知を含む）は、渡された起点の URL を流す（R38）。ただし `subtrees` の起点から親までの相対パスに、名前が `.` で始まる要素か、
+    `isHiddenKey` が true のフォルダ（例: `~/Library`）を含むときは捨てる（`scheduleEmit` を呼ばない。R38）。`isHiddenKey` の結果はフォルダのキーごとに `[String: Bool]` で覚え、
+    `applyFolders` で `subtrees` が変わったときに捨てる。絞り込みは監視用のキューで行う
+  - `scheduleEmit`: 未送出の変更が始まった時刻（`pendingSince`）を持ち、予約の時刻を `min(今 + debounceInterval, pendingSince + maxLatency)`（`maxLatency` は 1 秒）にする。
+    `emitPending` と `applyFolders` で `pendingSince` を消す。変更が続いても最初の変更から 1 秒以内に送る（すべての監視に適用。ツリーの更新 FR-054 と FR-042 の読み直しを止めない）
+- [ ] T259 [US1] `Sources/MediaViewerCore/Search/FileNameSearcher.swift` を新規に作り、`Sources/MediaViewerCore/FileSystem/DirectoryLister.swift` の `MediaFile` の作り方を共有する（R36。T252 の後。T249 を通す）:
+  - `DirectoryLister.mediaFiles(in:)` の中で、メディアの `MediaFile` を作っている部分（`fileKeys` の値から `kind: .media(...)`・種類の説明・作成日・サイズを作る）を
+    `static func mediaFile(at url: URL, kind: MediaKind) -> MediaFile?`（internal）に切り出し、`DirectoryLister` の結果を変えない（既存の `DirectoryListerTests` を通す）
+  - `public protocol FileNameSearching: Sendable { func search(in root: URL, matching pattern: SearchPattern) -> AsyncStream<[MediaFile]> }`
+  - `public struct FileNameSearcher: FileNameSearching`（`init(batchSize: Int = 256, batchInterval: Duration = .milliseconds(100))`）。`search` は `AsyncStream.makeStream` で作り、
+    `Task.detached(priority: .userInitiated)` の中で `FileManager.default.enumerator(at:includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey], options: [.skipsHiddenFiles, .skipsPackageDescendants], errorHandler: { _, _ in true })`
+    を回す。ディレクトリと、リンク先がフォルダのシンボリックリンク（`isSymbolicLink` が true の項目だけ `resolvingSymlinksInPath()` の `isDirectoryKey` で確かめる）を除き、
+    拡張子が `MediaKind` に当たり、`pattern.matches(fileName: url.lastPathComponent)` のものだけ `mediaFile(at:kind:)` で作る。ファイルへのリンクは `DirectoryLister` と同じく
+    通常のファイルとして扱い、URL はリンク自身のパスにする（FR-083。R36）。
+    `batchSize` 件たまるか、前回の送出から `batchInterval` たったら `yield` し、最後に残りを送って `finish()`。経過時間の判定は一致したときだけでなく、列挙の1項目ごと
+    （一致しない項目・ディレクトリを含む）に行い、未送出の結果があれば送る（大きな起点で1件見つかった後、次の一致や列挙の終わりまで表示が遅れないため。FR-085・R36）。
+    1件ごとに `Task.isCancelled` を見る。`continuation.onTermination` で
+    列挙の `Task` を取り消す
+  - ドキュメントコメントに FR-083・085 と「UI スレッドで列挙しない。zip の中は開かない」を書く
+- [ ] T260 [US1] `Sources/MediaViewerCore/Browser/BrowserModel.swift` で検索の開始・表示・解除を実装する（R36・R37、plan の「変更点」の `BrowserModel`。T252〜T259 の後）:
+  - イニシャライザの最後に `searcher: any FileNameSearching = FileNameSearcher()` を足す。`private var searchTask: Task<Void, Never>?` を持つ
+  - `public var isShowingSearchResults: Bool { listing.search != nil }`。`hasEnclosingLevel` は検索結果の表示中に false
+  - `public func startSearch(_ pattern: SearchPattern, root: URL)`: `resetForNavigation()`（ここで `searchTask` も取り消すようにする）、`archiveIndex = nil`、
+    `listing = FolderListing(folder: listing.folder, files: [], state: .loading, search: SearchListing(keyword: pattern.keyword, root: root, phase: .searching, totalCount: 0))`。
+    `lastFolder`・`treeSyncRequest` は変えない。`searchTask` で `for await batch in searcher.search(in:matching:)` を回し、`navigationGeneration` を確かめてから
+    `allFiles = sortedMerge(allFiles, sorted(batch, by: sortOrder), by: sortOrder)`・`totalCount` の更新・`rebuildListing()`、選択は `selection.restricted(toVisible:)` で保つ
+    （フォーカスが変わらなければプレビューを読み直さない）。ループを抜けたら（取り消しでなければ）`phase = .finished` にして `rebuildListing()`。列挙の完了を待たずに戻る
+  - `rebuildListing()`: 検索結果の表示中は `..` を加えない。`phase == .searching` で `allFiles` が空なら `.loading`、それ以外は既存の規則（`.loaded` / `.empty` / `.noMatches`）
+  - `setNavigationRoots`: 検索結果の表示中は `rebuildListing()` で `..` を作らない（既存の分岐で `rebuildListing` を通るため、`folderParentRows()` の側で検索結果なら空を返す）
+  - `sortOrder` の `didSet`: `.location` のときは設定を書かない。`.location` を通常のフォルダで選べないよう、検索結果の表示中でなければ代入を受け付けない（`oldValue` に戻す）。
+    `didSet` の中で値を戻すと `didSet` が再び呼ばれるため、戻すための代入の間は設定の書き込みと並べ直しを行わない（`private var isRevertingSortOrder` などで区別する。T250 で確かめる）
+  - `private func leaveSearchIfNeeded()`: `listing.search` を捨てる前に、`sortOrder.column == .location` なら `sortOrder = settings.viewSettings.sortOrder` に戻す。
+    `selectFolder`・`openArchive`（zip の中への移動）・`returnToFolder` の `listing` の作り直しの前に呼ぶ（`navigateToFolder` と `leaveTrashedFolders` は `selectFolder` を通る）
+  - ドキュメントコメントに FR-084〜086 を書く。既存の `BrowserModelTests`・`BrowserModelFolderTests`・`BrowserModelArchiveTests`・`BrowserModelVideoTests` が通ることを確かめる
+- [ ] T261 [US1] `Sources/MediaViewerCore/Browser/BrowserModel.swift` で検索結果の整理を実装する（R38、data-model の「検索結果の整理」。T260 の後。T250 を通す）:
+  - `private var searchResultsByFolder: [String: Set<URL>]`（キーはファイルを含むフォルダの `standardizedFileURL.path`）を持つ。T260 のバッチのマージで加え、結果の除去と
+    `didRenameItem` で `allFiles` と一緒に更新し、`resetForNavigation` で空にする（`startSearch` と検索の解除の両方が通る。R38）
+  - `private func pruneMissingResults(under folders: Set<URL>?) async`: 対象の結果（`folders` が nil なら全件。あれば `searchResultsByFolder` のキーのうち、届いたフォルダと同じか、
+    それをパスの要素の単位で接頭に持つキーの結果だけ。キーの走査はフォルダの数に比例し、結果の全件は走査しない。対象が空なら何もせずに戻る）の URL を
+    `Task.detached` で `FileManager.fileExists` し、戻ったときに `navigationGeneration` が変わっていなければ、消えたものを `allFiles` から除いて `totalCount` を更新し `rebuildListing()`。
+    選択を整理し、フォーカスが外れたらプレビューを空にして、動画なら `stopPlaybackSignal` を増やす（既存の `reloadCurrentFolder` と同じ扱い）
+  - `reloadCurrentFolder()`: 先頭で、検索結果の表示中なら `await pruneMissingResults(under: nil)` を呼んで戻る（ディスクを列挙し直さない）
+  - `handleFileSystemEvent(_:)`: 先頭で、検索結果の表示中なら `await pruneMissingResults(under: folders)` を呼んで戻る（`listing.folder` が消えても親へ移らない）
+  - `public func didRenameItem(at oldURL: URL, to newURL: URL)`: 検索結果の表示中でなければ何もしない。`allFiles` で `oldURL` の行を探し、`MediaKind(url: newURL)`（既存の拡張子の判定）が
+    nil なら行を外す。そうでなければ `url`・`name`・`kind`・`typeDescription`（`localizedTypeDescriptionKey` を読めなければ元の値）を差し替え、`sorted` で並べ直して `rebuildListing()`。
+    選択とフォーカスの `oldURL` を `newURL` に置き換える（プレビューは新しい URL で読み直す）
+  - `leaveTrashedFolders(_:)` は変えない（`listing.folder` が検索前のフォルダのため、祖先のときは `selectFolder` で解除される。T250 で確かめる）
+- [ ] T262 [US1] `Sources/MediaViewerApp/FileList/ListItemSupport.swift` の `focusedItemCommands`・`selectionItemCommands`・`itemCommands(forRowAt:)` で、`ListItemCommands` に
+  `isShowingSearchResults: isShowingSearchResults` を渡す（R38。T257・T260 の後）。ドキュメントコメントに FR-087 を足す。`FileContextMenu.swift` は変えず、ペーストが淡色・
+  「上の階層へ」が出なくなることを `swift build` の後にコードで確かめる
+- [ ] T263 [P] [US1] `Sources/MediaViewerApp/Search/SearchPanelController.swift` を新規に作る（R39、contracts/keyboard-and-menus.md「検索」。T252・T253 の後）:
+  - `final class SearchPanelController: NSViewController, NSTextFieldDelegate`。`init(keyword: String?, rootPath: String, onSearch: @escaping (SearchPattern, URL) -> Void)`
+  - 部品: 「検索キーワード」「検索起点ディレクトリ」のラベルと1行の `NSTextField`（`setAccessibilityLabel` にラベルと同じ文言）、理由のラベル（赤系の `systemRed`、通常は空で非表示）、
+    「キャンセル」（`keyEquivalent` Esc、`dismiss`）と「検索」（`keyEquivalent` `"\r"`、既定ボタン）。`NSStackView` で並べ、制約は `addSubview` の後に有効化する。幅は 420pt 程度
+  - ボタンは `canBecomeKeyView` を true にした小さな `NSButton` のサブクラスを使い、`nextKeyView` をキーワード → 起点 → キャンセル → 検索 → キーワードにする
+  - `viewDidAppear`: キーワード欄を first responder にし、`keyword` があれば入れて全選択（`currentEditor()?.selectAll(nil)`）
+  - `controlTextDidChange`: `SearchPattern(keyword:)` が nil なら「検索」を無効にする（Return も効かない）
+  - 「検索」: `SearchRoot.parse` → 失敗なら理由を出す。成功なら「検索」を無効にして `await SearchRoot.validate` → 失敗なら理由を出して「検索」を戻す。成功なら `dismiss` してから
+    `onSearch(pattern, url)`。理由を出すときは `NSAccessibility.post(element:notification: .announcementRequested, userInfo:)` で読み上げる
+- [ ] T264 [US1] `Sources/MediaViewerApp/App/MainMenu.swift` と `Sources/MediaViewerApp/App/MainSplitViewController.swift` を変える（R39。T260・T263 の後）:
+  - `MainMenu`: 「ファイル」メニューの「お気に入りに追加」の後ろに「検索…」（`keyEquivalent: "f"`、修飾キー `[.command]`、アクション `#selector(MainSplitViewController.showSearch(_:))`、宛先なし）を足す
+  - `MainSplitViewController`: `private var lastSearchKeyword: String?`（保存しない）。`@objc func showSearch(_ sender: Any?)` は `SearchPanelController(keyword: lastSearchKeyword,
+    rootPath: model.listing.folder.path, onSearch:)` を `presentAsSheet` で出す。`onSearch` で `lastSearchKeyword = pattern.keyword`、`model.startSearch(pattern, root: url)`、
+    ファイルリストへフォーカス（既存の `focusPane` と同じ経路）
+  - `validateMenuItem`: `showSearch(_:)` は `!panesCollapsedForFullScreen && !fileListViewController.isEditingText`
+  - ⌘F が ⇧⌘F（お気に入りへ移動）・⌃⌘F（フルスクリーン）と衝突しないことを、メニューの `keyEquivalentModifierMask` で確かめる
+- [ ] T265 [US1] `Sources/MediaViewerApp/FileList/FileListViewController.swift` に検索バーを足す（R37、data-model の `SearchListing` の文言。T260 の後）:
+  - 一覧（表示形式のコンテナ）の上端に、ラベルと小さな `NSProgressIndicator`（スピナー）を持つ検索バーの `NSView` を置く。一覧の上端の制約を検索バーの下端に付け、
+    検索バーの高さの制約を表示中 24pt・非表示 0 にする（`addSubview` の後に有効化。ペイン幅を引き戻さないよう、ラベルは既存の帯と同じく hugging・圧縮抵抗を下げる）
+  - 文言: 「「<keyword>」の検索結果 — <root.lastPathComponent（起点が / なら /）> — <totalCount> 件」。`phase == .searching` のときは末尾に「検索中…」とスピナー。
+    種類フィルタで絞っているとき（`listing.files.count != totalCount`）は件数の部分を「<totalCount> 件中 <listing.files.count> 件を表示」にする
+  - 検索バーのラベルの `toolTip` に `listing.search?.root.path` を設定し、同じ名前の起点を見分けられるようにする
+  - `observeModel()` の監視に `listing.search` を加え、変化で検索バーを更新する
+  - `refresh()`: `listing.search` があるとき、`.loading` の文言を「検索中…」、`.empty` を「該当するファイルはありません」にする（`.noMatches` は種類フィルタの文言のまま）
+  - ファイルリストにフォーカスがあり、フルスクリーン中でも名前の変更中でもないときに Esc が押されたら、`listing.search` がある場合だけ `await model.selectFolder(model.listing.folder)` を呼び、
+    検索結果の表示を終えて検索前のフォルダの一覧に戻す（検索中なら止まる。FR-086）。キーはビューの `keyDown` で消費し、ほかの Esc の用途を変えない
+- [ ] T266 [US1] `Sources/MediaViewerApp/FileList/ListModeView.swift` に「場所」列を足す（R37。T255・T260 の後。T265 と同じく `FileListViewController` の観測を使うため、T265 の後に行う）:
+  - 「種類」の後ろに識別子 `location`・見出し「場所」・`sortDescriptorPrototype` のキー `location` の列を足し、`listing.search` が nil のときは `isHidden = true`
+  - セル: `case "location"` で `model.listing.search?.location(of: file.url) ?? ""`（行の折り返しなし・中央の省略）
+  - `sortEntries` に `(.location, "場所")` を足し、「表示 > 並べ替え」の「場所」は検索結果の表示中だけ有効にする（`NSMenuItemValidation` か `isEnabled` の更新）。
+    `listing.search` の変化で列の表示と `updateSortMenuItems()`・ソート記述子の同期を行う（解除で `.location` から保存済みの並べ替えに戻ったときに見出しの矢印も戻す）
+- [ ] T267 [P] [US1] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` のセルの `configure(with:iconPointSize:)` の呼び出し側で、検索結果の表示中は
+  `toolTip` に `model.listing.search?.location(of: file.url)`、それ以外は nil を設定する（R37、FR-084。T254 の後）。名前のラベルは変えない
+- [ ] T268 [P] [US1] `Sources/MediaViewerApp/Operations/FileOperationCoordinator.swift` の `rename(_:to:)` で、`presentFailures` の後に、`result.succeeded.first` があれば
+  `model.didRenameItem(at: file, to: <その URL>)` を呼んでから従来どおり `model.reloadCurrentFolder()` を呼ぶ（R38。T261 の後）。通常のフォルダでは `didRenameItem` が何もしないことを
+  コメントに書く。ゴミ箱・移動・複製・ペーストは変えない（`reloadCurrentFolder` が検索結果の整理を行う）
+- [ ] T269 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` を変える（R37・R38、contracts/keyboard-and-menus.md「ディレクトリツリー」。T258・T260 の後）:
+  - `outlineView.action = #selector(clickedRow(_:))`（`target` は self）。`@objc private func clickedRow(_:)`: `model.isShowingSearchResults` で、`outlineView.clickedRow` が
+    `selectedRow` と同じで、その行の `FavoriteCommands.folderToShow(for:)` が URL を返すときだけ、`outlineViewSelectionDidChange` と同じく `revealTask` を取り消して
+    `Task { await model.selectFolder(url) }`。開閉の三角のクリックと「お気に入り」の見出しでは何もしない。選択が変わるクリックは従来どおり `outlineViewSelectionDidChange` に任せる
+  - `updateWatchSet()`: `watcher.watch(folders, subtrees: model.listing.search.map { [$0.root.standardizedFileURL] } ?? [])` にする
+  - `observeDisplayedFolder()`: 監視に `model.listing.search?.root` を加え、検索の開始・解除で `updateWatchSet()` が走るようにする
+  - `volumes.changes` のループ（ボリュームのマウント・取り外し）で、ルートを更新した後に `model.isShowingSearchResults` なら `await model.reloadCurrentFolder()` を呼ぶ
+    （起点を含むボリュームが外されたとき、存在しなくなった結果を外す。spec の Edge Cases、R38）
+  - `swift build` が通ることを確認する
+- [ ] T270 [P] [US1] `README.md` の操作説明に、ファイル名の検索（⌘F・「ファイル」メニューの「検索…」、モーダルの2つの入力と既定値、`*`・`?` のワイルドカードと部分一致・全体一致、
+  大文字小文字と濁点の正規化を区別しない、隠しファイル・パッケージ・シンボリックリンクのフォルダ・zip を対象にしない、「場所」列と検索バー、検索結果でのファイル操作とペーストの不可、
+  ツリーでフォルダを選ぶと解除、条件と結果は保存しない）を追記する
+
+### Verification for User Story 1
+
+- [ ] T271 [US1] 自動テストと手動確認を行う（T241〜T270 に依存）:
+  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す。`swift test --filter MediaViewerPerformanceTests` の検索の3件の計測値を控える
+  - `scripts/make-app.sh` で `.build/MediaViewer.app` を作り、ユーザーに起動と GUI 確認を依頼する。依頼時は `scripts/make-fixtures.sh ~/MediaViewerFixtures`（`search/` を作る）、
+    quickstart.md「ファイル名の検索（FR-080〜087）」の準備のコマンド（`denied` の作成と確認後の `chmod 755`）と確認ポイント 1〜16、US1 の受け入れシナリオ 25〜28 を具体的に示す。
+    手順 14（ホームを起点に `*` で検索しながらの操作）で 100ms 以上の停止がないことを体感で確かめてもらう（SC-016）
+  - 回帰確認: quickstart.md「ファイルリストのフォルダ」の 2・4・14（`..`・⌘↑・ツリーの同期）、「US4」の 1〜3・7（ファイル操作とペースト）、「お気に入り」の 9・16（⇧⌘F と ⌘⌫）、
+    種類フィルタ（⇧⌘I / ⇧⌘M）、フルスクリーン（⌃⌘F）、通常のフォルダでの並べ替え（「場所」が出ない・選べない）、アプリを再起動したときの並べ替えと最後のフォルダが従来どおりであること
+  - 結果（実行日、OS、確認項目、合否、T251 の計測値）を `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+
+**Checkpoint**: ⌘F で検索のモーダルを開き、ファイル名で起点以下を検索できる。結果はファイルリストにフラットに出て、「場所」列・検索バー・プレビュー・ファイル操作が使え、
+ツリーでフォルダを選ぶと通常の一覧に戻る。検索中も操作は止まらず、条件と結果は保存されない
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -2416,6 +2713,10 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
   `navigateToFolder`・`treeSyncRequest`、Phase 23 の `FileOperationCoordinator.onFoldersChanged` とツリーの `refreshFolders` に依存する。Phase 23 の T230 とコミットを
   済ませてから着手する。T231〜T233（テスト）→ T234（`FavoriteCommands`）・T235（`FolderNavigation`）→ T236（`BrowserModel`）→ T237（`FileOperationCoordinator`）→
   T238（ツリー）の順に進め、T240 は最後に行う。T239（README）はいつでも並行できる
+- **ファイル名の検索 (Phase 25)**: FR-080〜087・SC-016 の追加作業。Phase 18 の `MediaTypeFilter` と `.noMatches`、Phase 20 の `ListItemCommands`・zip の状態、Phase 22 の
+  `..` の行・`navigateToFolder`・`treeSyncRequest`、Phase 23 の `FileOperationCoordinator`、Phase 24 の `leaveTrashedFolders`・ツリーの `refreshFolders` に依存する。Phase 24 の T240 と
+  コミットを済ませ、未コミットの仕様文書の変更（2026-10-22 の検索の追加）もコミットしてから着手する。T241（フィクスチャ）→ T242〜T251（テスト）→ T252〜T258（Core の部品）→
+  T259（`FileNameSearcher`）→ T260 → T261（同じ `BrowserModel.swift`）→ T262（App の可否）→ T263〜T269（App）の順に進め、T271 は最後に行う。T270（README）はいつでも並行できる
 
 ### User Story Dependencies
 
@@ -2483,6 +2784,12 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
   T229 は `DirectoryTreeViewController.swift` と `MainSplitViewController.swift` を編集し、T228 の `onFoldersChanged` に依存する
 - ツリーのフォルダのゴミ箱: T231・T232・T233 はファイルが重ならないため並行できる。T234（`FavoriteCommands.swift`）と T235（`FolderNavigation.swift`）は並行できるが、
   T234 は T235 の `enclosingFolder` を使うだけなので順序の制約はない。T236 は T235 の後、T237 は T236 の後、T238 は T234・T237 の後に行う。T239（`README.md`）は他と重ならない
+- ファイル名の検索: T241（`FixtureSets.swift`）は最初に行う。T242〜T248 と T251 はファイルが重ならないため並行できる（T249 は T241 の後、T250 は Core の API を参照するため最後に書く）。
+  T252（`SearchPattern.swift`）・T253（`SearchRoot.swift`）・T254（`SearchListing.swift`・`BrowserState.swift`）・T255（`Settings.swift`・`Sorting.swift`）・T257（`ListItemCommands.swift`）・
+  T258（`FileSystemWatcher.swift`）は互いに並行できる。T256 は T255 の後、T259 は T252 の後に行う。T260・T261 は同じ `BrowserModel.swift` を編集するため並行せず、この順に進める。
+  App では T263（新規の `SearchPanelController.swift`）・T267（`ThumbnailModeView.swift`）・T268（`FileOperationCoordinator.swift`）が互いに並行できる。T264（`MainMenu.swift`・
+  `MainSplitViewController.swift`）は T263 の後、T266（`ListModeView.swift`）は T265（`FileListViewController.swift`）の後、T269（`DirectoryTreeViewController.swift`）は T258・T260 の後に行う。
+  T270（`README.md`）は他と重ならない。worktree で並列化する場合も、`BrowserModel.swift` を編集する T260・T261 は直列にする
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -2538,6 +2845,7 @@ Task: "T033 FitCalculatorTests"
 19. ファイルリストのフォルダ → 一覧にフォルダが出て、ダブルクリック・⌘↓ で入り、`..`・⌘↑ で戻れる。ツリーの選択が追従する（FR-076〜078）
 20. フォルダのファイル操作 → フォルダもファイルと同じくコピー・名前の変更・ゴミ箱・移動でき、ツリーにすぐ反映される（FR-018・076）
 21. ツリーのフォルダのゴミ箱 → ツリーの通常のフォルダを ⌘⌫ と右クリックメニューからゴミ箱に入れられ、表示中なら親フォルダへ移る（FR-079）
+22. ファイル名の検索 → ⌘F のモーダルでキーワード（`*`・`?`）と起点を入れて検索し、結果をファイルリストにフラットに見て操作できる。ツリーでフォルダを選ぶと戻る（FR-080〜087、SC-016）
 
 ---
 
@@ -2595,4 +2903,8 @@ Task: "T033 FitCalculatorTests"
   作らず、既存の「ゴミ箱に入れる」の検証で振り分ける（お気に入りの項目は「お気に入りから削除」のまま）。ルートの判定は `..` と同じ `FolderNavigation.enclosingFolder` を使い、
   `TreeItemRole` に種類を足さない。実行はファイルリストと同じ `FileOperationCoordinator.trash(_:)` を通し、表示中のフォルダかその祖先を入れたときは
   `BrowserModel.leaveTrashedFolders` が `navigateToFolder` で親へ移り、`treeSyncRequest` でツリーの親を選ぶ（research.md R33）
+- FR-080〜087（2026-10-22）により、⌘F の検索のモーダルからファイル名で検索し、結果を既存の `FolderListing.files` に載せる（`FolderListing.search` を1つ足すだけで、状態の種類は増やさない）。
+  `listing.folder` は検索前のフォルダのまま変えず、`lastFolder`・`treeSyncRequest`・設定も変えない。解除は既存の `selectFolder` の経路で行い、選択中の行のクリックだけ
+  `outlineView.action` で補う。照合（NFC と大文字小文字・glob）・起点の解釈と確認・場所の文字列・列挙・マージ・可否は Core に置き、UI スレッドでは列挙も存在確認もしない。
+  並べ替えの「場所」（`.location`）は保存しない。外部の変更は `FileSystemWatching` の `subtrees` で起点1つを監視する（research.md R34〜R39、plan の Complexity Tracking）
 - Commit after each task or logical group

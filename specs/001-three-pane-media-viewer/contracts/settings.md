@@ -28,6 +28,9 @@
   フォルダの一覧から始まる（FR-003）。保存キーは追加しない
 - ツールバーの構成は保存しない（`NSToolbar.autosavesConfiguration = false`）。表示状態だけを
   `view.showsToolbar` に保存し、フルスクリーン中の自動非表示はこの値を変えない
+- 検索の条件（キーワード・検索起点ディレクトリ）と検索結果は保存しない。前回のキーワードは起動中だけ覚える。検索を始めても
+  `view.lastFolderPath` は変えない（FR-081・086）。並べ替えの「場所」（`location`）は検索結果の表示中だけ使い、`view.sort.column` には
+  書かない（保存済みの値は `name` / `creationDate` / `kind` のまま）。保存キーは追加しない
 
 ## 設定ウインドウ（⌘,）
 
