@@ -2,8 +2,10 @@ schema_version: "1.0"
 workflow:
   id: "sdd-increment"
   name: "SDD increment"
-  version: "0.2.0"
+  version: "0.3.1"
   author: "igachan"
+  # command / prompt の手順で使う integration の既定値。指定しないと prompt の手順が integration なしで失敗する
+  integration: "claude"
   description: >-
     既存 feature への追加要件を、clarify → plan → tasks → analyze と修正のループ → 実装・検証・converge のループで進める。
     人が判断するのは、clarify（manual のとき）、設計のレビュー、GUI の起動確認の3か所だけ
@@ -49,6 +51,9 @@ steps:
           推奨を決められない（ユーザーの判断が必要な）質問は採用しないでください。
           最後に「採用した回答」と「未決の質問（選択肢と推奨）」を一覧で出力してください。
     else:
+      - id: notify_clarify
+        type: shell
+        run: scripts/sdd-notify.sh "clarify を対話で行ってください"
       - id: clarify_manual
         type: gate
         message: |
@@ -74,6 +79,10 @@ steps:
         capture: true
         timeout: 1800
 
+      - id: notify_review
+        type: shell
+        run: scripts/sdd-notify.sh "設計レビュー待ち（analyze の結果を確認してください）"
+
       - id: review_gate
         type: gate
         message: |
@@ -97,6 +106,8 @@ steps:
         then:
           - id: apply_fixes_prompt
             type: prompt
+            # prompt の手順は capture しなくても既定で 300 秒で打ち切られる
+            timeout: 3600
             prompt: |
               次の /speckit-analyze のレポートの指摘のうち、CRITICAL・HIGH・MEDIUM を推奨どおりに
               spec.md・plan.md・research.md・data-model.md・contracts/・quickstart.md・tasks.md へ反映してください。
@@ -134,6 +145,10 @@ steps:
         timeout: 3600
         run: swift build && swift test && scripts/check-no-network.sh && scripts/make-app.sh
 
+      - id: notify_gui
+        type: shell
+        run: scripts/sdd-notify.sh "GUI の起動確認待ち"
+
       - id: gui_smoke
         type: gate
         message: |
@@ -144,6 +159,7 @@ steps:
 
       - id: record
         type: prompt
+        timeout: 1200
         model: sonnet
         prompt: |
           ユーザーが GUI の起動確認を終え、問題がないと報告しました。tasks.md の未チェックの検証タスク（GUI 確認を含むもの）について、
@@ -162,6 +178,10 @@ steps:
           tasks=$(.specify/scripts/bash/check-prerequisites.sh --json --paths-only \
             | python3 -c 'import json, sys; print(json.load(sys.stdin)["TASKS"])')
           if git diff --quiet -- "$tasks"; then echo false; else echo true; fi
+
+  - id: notify_summary
+    type: shell
+    run: scripts/sdd-notify.sh "converge まで終わりました。結果を確認してください"
 
   - id: summary
     type: gate
