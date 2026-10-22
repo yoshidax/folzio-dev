@@ -261,6 +261,21 @@ open .build/MediaViewer.app
 | 回帰（アプリの外で表示中のフォルダを `rm -rf` したとき、一覧が親に移りツリーの選択が隣の行へずれない。T238 の `reloadChildren` の変更） | PASS | GUI でユーザー確認 |
 | 回帰（ファイルリストからのファイル・フォルダのゴミ箱、お気に入りの削除、ツリーの同期） | PASS | GUI でユーザー確認 |
 
+## ファイル名の検索（FR-080〜087・SC-016、Phase 25）
+
+2026-10-22 に macOS 26.6.2 で自動テストを実行し、`scripts/make-app.sh` で `.build/MediaViewer.app` を生成して GUI で確認した。
+
+| 確認項目 | 結果 | 根拠 |
+|----------|------|------|
+| 自動テスト（`swift test`） | PASS | 412 テスト（42 スイート）成功。`SearchPatternTests`・`SearchRootTests`・`SearchListingTests`・`FileNameSearcherTests`・`BrowserModelSearchTests`（新規）と、`SortingTests`・`ListItemCommandsTests`・`FileSystemWatcherTests`・`SettingsStoreTests` の追加ケースを含む |
+| 性能テスト（`MediaViewerPerformanceTests`） | PASS | 15 テスト成功。検索の3件の計測値（debug ビルド）: 10,000 ファイルの階層の検索 0.53 秒（基準 3 秒）、10,000 件への 256 件のマージ `sortedMerge` 3.9ms・`BrowserModel` の1バッチ 6.7ms（基準 50ms）、50,000 件への 256 件のバッチ 27.8ms（基準 100ms 未満。二分探索の方式への置き換えは不要） |
+| 外部通信の不在（`scripts/check-no-network.sh`） | PASS | `no network API references in Sources` |
+| `swift run make-fixtures <dir>` で `search/` ができる | PASS | quickstart の `search/` の表の項目がすべてでき、`kana/` の名前に結合用濁点（U+3099）が残る |
+| quickstart「ファイル名の検索（FR-080〜087）」1〜16 | PASS | GUI でユーザー確認 |
+| US1 の受け入れシナリオ 25〜28 | PASS | GUI でユーザー確認 |
+| 手順 14 の表示停止（100ms 以上の停止が 0 回。SC-016） | PASS | GUI でユーザー確認（体感） |
+| 回帰（`..`・⌘↑・ツリーの同期、ファイル操作とペースト、⇧⌘F と ⌘⌫、種類フィルタ、⌃⌘F、通常のフォルダの並べ替え、再起動時の並べ替えと最後のフォルダ） | PASS | GUI でユーザー確認 |
+
 ## 未実施の検証
 
 - T079: Accessibility Inspector によるラベル確認

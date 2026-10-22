@@ -5,8 +5,13 @@ import MediaViewerCore
 private final class FileListTableView: NSTableView {
     var onSpace: (() -> Bool)?
     var onReturn: (() -> Bool)?
+    var onEscape: (() -> Bool)?
 
     override func keyDown(with event: NSEvent) {
+        if event.isPlainEscape, onEscape?() == true {
+            return
+        }
+
         if event.specialKey == .carriageReturn
             || event.specialKey == .enter
             || event.charactersIgnoringModifiers == "\r" {
@@ -95,6 +100,11 @@ final class ListModeView: NSView {
     var onTogglePlayback: (() -> Void)?
     var onRename: ((URL, String) async -> Void)?
     var onOpenItem: ((URL) -> Void)?
+    /// Esc。処理したら true（検索結果の表示を終える。FR-086）
+    var onEscape: (() -> Bool)? {
+        get { tableView.onEscape }
+        set { tableView.onEscape = newValue }
+    }
 
     var contextMenu: NSMenu? {
         get { tableView.menu }
@@ -105,6 +115,7 @@ final class ListModeView: NSView {
         (.name, "名前"),
         (.creationDate, "作成日"),
         (.kind, "種類"),
+        (.location, "場所"),
     ]
 
     private var lastURLs: [URL] = []
@@ -178,6 +189,9 @@ final class ListModeView: NSView {
         addColumn(identifier: "name", title: "名前", width: 220)
         addColumn(identifier: "creationDate", title: "作成日", width: 150)
         addColumn(identifier: "kind", title: "種類", width: 150)
+        // 検索結果の表示中だけ出す（FR-084、R37）
+        addColumn(identifier: "location", title: "場所", width: 180)
+        tableView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier("location"))?.isHidden = true
 
         scrollView.documentView = tableView
         addSubview(scrollView)
@@ -225,6 +239,7 @@ final class ListModeView: NSView {
             _ = model.selection.selected
             _ = model.selection.focused
             _ = model.sortOrder
+            _ = model.listing.search
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.applyModel()
@@ -239,6 +254,7 @@ final class ListModeView: NSView {
     }
 
     private func applyModel() {
+        updateLocationColumn()
         // 表示していない形式では、行の再読み込みと選択の反映を表示したとき（viewDidUnhide）まで遅らせる。
         // 10,000 行の zip を開くときに、見えない一覧の分までメインスレッドを止めないため（SC-015）
         guard !isHidden else {
@@ -270,6 +286,14 @@ final class ListModeView: NSView {
 
         syncSortDescriptors()
         updateSortMenuItems()
+    }
+
+    /// 「場所」列は検索結果の表示中だけ出す
+    private func updateLocationColumn() {
+        let hidden = !model.isShowingSearchResults
+        guard let column = tableView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier("location")),
+              column.isHidden != hidden else { return }
+        column.isHidden = hidden
     }
 
     private func syncSortDescriptors() {
@@ -339,6 +363,8 @@ final class ListModeView: NSView {
     @objc private func chooseSortColumn(_ sender: NSMenuItem) {
         guard sender.tag >= 0, sender.tag < Self.sortEntries.count else { return }
         let column = Self.sortEntries[sender.tag].column
+        // 「場所」は検索結果の表示中だけ選べる（FR-084）
+        guard column != .location || model.isShowingSearchResults else { return }
         let current = model.sortOrder
         let ascending = current.column == column ? !current.ascending : true
         model.sortOrder = SortOrder(column: column, ascending: ascending)
@@ -435,6 +461,15 @@ final class ListModeView: NSView {
     }
 }
 
+extension ListModeView: NSMenuItemValidation {
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        guard menuItem.action == #selector(chooseSortColumn(_:)),
+              Self.sortEntries.indices.contains(menuItem.tag) else { return true }
+        // 「表示 > 並べ替え」の「場所」は検索結果の表示中だけ有効（FR-084）
+        return Self.sortEntries[menuItem.tag].column != .location || model.isShowingSearchResults
+    }
+}
+
 extension ListModeView: NSTableViewDataSource {
     func numberOfRows(in tableView: NSTableView) -> Int {
         model.listing.files.count
@@ -501,6 +536,8 @@ extension ListModeView: NSTableViewDelegate {
             cell.textField?.stringValue = file.creationDate.map(dateFormatter.string(from:)) ?? "--"
         case "kind":
             cell.textField?.stringValue = file.typeDescription
+        case "location":
+            cell.textField?.stringValue = model.listing.search?.location(of: file.url) ?? ""
         default:
             cell.textField?.stringValue = ""
         }

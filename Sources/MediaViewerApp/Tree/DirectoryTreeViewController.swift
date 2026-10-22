@@ -48,6 +48,9 @@ final class DirectoryTreeViewController: NSViewController {
     private var favoriteEntries: [FavoriteEntry] = []
     private var volumeTask: Task<Void, Never>?
     private var revealTask: Task<Void, Never>?
+    /// クリック（mouseDown）で選択が変わったときの、そのクリックのイベント番号。同じクリックの mouseUp で
+    /// 送られる `action` では、選択の変化で始めた `selectFolder` を重ねて呼ばない
+    private var selectionChangeClickNumber: Int?
     private var eventTask: Task<Void, Never>?
     private var favoriteProbeTask: Task<Void, Never>?
     private var activationObserver: NSObjectProtocol?
@@ -336,6 +339,28 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
+    /// 検索結果の表示中に、選択中のフォルダの行をクリックしたら、そのフォルダの一覧に戻す（FR-086）。
+    /// 開閉の三角と「お気に入り」の見出しでは何もしない。選択が変わるクリックは outlineViewSelectionDidChange に任せる
+    @objc private func clickedRow(_ sender: Any?) {
+        let event = NSApp.currentEvent
+        defer { selectionChangeClickNumber = nil }
+        guard model.isShowingSearchResults else { return }
+        let row = outlineView.clickedRow
+        guard row >= 0, row == outlineView.selectedRow else { return }
+        if let event, let number = selectionChangeClickNumber, event.eventNumber == number { return }
+        if let event {
+            let point = outlineView.convert(event.locationInWindow, from: nil)
+            if outlineView.frameOfOutlineCell(atRow: row).contains(point) { return }
+        }
+        guard let role = role(for: outlineView.item(atRow: row)),
+              let url = FavoriteCommands.folderToShow(for: role) else { return }
+        revealTask?.cancel()
+        revealTask = nil
+        Task { [weak self] in
+            await self?.model.selectFolder(url)
+        }
+    }
+
     @objc private func toggleClickedFolder(_ sender: Any?) {
         let row = outlineView.clickedRow
         guard row >= 0 else { return }
@@ -388,6 +413,8 @@ final class DirectoryTreeViewController: NSViewController {
         outlineView.menu = makeContextMenu()
         outlineView.target = self
         outlineView.doubleAction = #selector(toggleClickedFolder(_:))
+        // 選択中の行のクリックは選択の変化を通知しないため、検索結果の表示を終えるのに action を使う（FR-086、R37）
+        outlineView.action = #selector(clickedRow(_:))
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("folder"))
         column.title = "フォルダ"
@@ -421,6 +448,10 @@ final class DirectoryTreeViewController: NSViewController {
             guard let self else { return }
             for await newRoots in self.volumes.changes {
                 self.applyRoots(newRoots)
+                // 起点を含むボリュームが外されたとき、存在しなくなった検索結果を外す（Edge Cases、R38）
+                if self.model.isShowingSearchResults {
+                    await self.model.reloadCurrentFolder()
+                }
             }
         }
 
@@ -729,6 +760,8 @@ final class DirectoryTreeViewController: NSViewController {
     private func observeDisplayedFolder() {
         withObservationTracking {
             _ = model.listing.folder
+            // 検索の開始・解除で、起点以下の監視（subtrees）を差し替える
+            _ = model.listing.search?.root
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.updateWatchSet()
@@ -748,7 +781,8 @@ final class DirectoryTreeViewController: NSViewController {
         }
         // お気に入りのフォルダの移動・削除を親フォルダの変更として受け取る（FR-067）
         folders.formUnion(favoriteParentFolders())
-        watcher.watch(folders)
+        // 検索結果の表示中は、起点以下のすべての階層の変更を受け取り、消えた結果を外す（FR-087、R38）
+        watcher.watch(folders, subtrees: model.listing.search.map { [$0.root.standardizedFileURL] } ?? [])
     }
 
     private func displayedNodes() -> [Node] {
@@ -1039,6 +1073,9 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
         guard !isRestoringSelection else { return }
+        if let event = NSApp.currentEvent, event.type == .leftMouseDown {
+            selectionChangeClickNumber = event.eventNumber
+        }
         updateWatchSet()
         let row = outlineView.selectedRow
         guard row >= 0, let role = role(for: outlineView.item(atRow: row)) else { return }

@@ -96,6 +96,11 @@ final class FileOperationCoordinator {
 
         let result = await service.execute(operation, resolution: .abort)
         await presentFailures(result)
+        // 検索結果では元の URL が消えて外れてしまうため、読み直しの前に行を差し替える（FR-087、R38）。
+        // 通常のフォルダでは didRenameItem は何もせず、従来どおり読み直しで反映される
+        if let renamed = result.succeeded.first {
+            model.didRenameItem(at: file, to: renamed)
+        }
         await model.reloadCurrentFolder()
         notifyFoldersChanged(sources: [file], destination: nil)
     }

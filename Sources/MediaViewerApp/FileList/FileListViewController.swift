@@ -17,7 +17,12 @@ final class FileListViewController: NSViewController {
     private let messageBand = NSView()
     private let messageBandLabel = NSTextField(labelWithString: "")
     private let sizeSlider = NSSlider()
+    /// 検索結果を表示中に一覧の上端に出す帯（R37）
+    private let searchBar = NSView()
+    private let searchBarLabel = NSTextField(labelWithString: "")
+    private let searchBarSpinner = NSProgressIndicator()
 
+    private var searchBarHeightConstraint: NSLayoutConstraint?
     private var bottomBarHeightConstraint: NSLayoutConstraint?
     private var messageBandHeightConstraint: NSLayoutConstraint?
     private var displayMode: DisplayMode
@@ -86,6 +91,25 @@ final class FileListViewController: NSViewController {
         thumbnailModeView.onOpenItem = { [weak self] url in
             self?.openItem(url)
         }
+        listModeView.onEscape = { [weak self] in
+            self?.leaveSearchResults() ?? false
+        }
+        thumbnailModeView.onEscape = { [weak self] in
+            self?.leaveSearchResults() ?? false
+        }
+    }
+
+    /// Esc。検索結果の表示中（フルスクリーン中と名前の変更中を除く）なら、検索前のフォルダの一覧に戻る。
+    /// 検索中なら検索は止まる。それ以外では処理しない（FR-086）
+    private func leaveSearchResults() -> Bool {
+        guard model.isShowingSearchResults,
+              fullScreenNavigationLayout == nil,
+              !isEditingText else { return false }
+        let folder = model.listing.folder
+        Task { @MainActor [model] in
+            await model.selectFolder(folder)
+        }
+        return true
     }
 
     @available(*, unavailable)
@@ -204,11 +228,23 @@ final class FileListViewController: NSViewController {
             messageBandHeight,
         ])
 
+        setupSearchBar()
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(searchBar)
+        let searchBarHeight = searchBar.heightAnchor.constraint(equalToConstant: 0)
+        searchBarHeightConstraint = searchBarHeight
+        NSLayoutConstraint.activate([
+            searchBar.topAnchor.constraint(equalTo: container.topAnchor),
+            searchBar.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            searchBarHeight,
+        ])
+
         for modeView in [listModeView as NSView, thumbnailModeView as NSView] {
             modeView.translatesAutoresizingMaskIntoConstraints = false
             container.addSubview(modeView)
             NSLayoutConstraint.activate([
-                modeView.topAnchor.constraint(equalTo: container.topAnchor),
+                modeView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
                 modeView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
                 modeView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
                 modeView.bottomAnchor.constraint(equalTo: messageBand.topAnchor),
@@ -276,6 +312,66 @@ final class FileListViewController: NSViewController {
         ])
     }
 
+    private func setupSearchBar() {
+        searchBar.isHidden = true
+        searchBar.clipsToBounds = true
+
+        searchBarLabel.translatesAutoresizingMaskIntoConstraints = false
+        searchBarLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        searchBarLabel.textColor = .secondaryLabelColor
+        searchBarLabel.lineBreakMode = .byTruncatingMiddle
+        // 下端の帯と同じく、ラベルの幅でペイン幅を引き戻さない（holdingPriority 250 を下回らせる）
+        searchBarLabel.setContentHuggingPriority(.init(1), for: .horizontal)
+        searchBarLabel.setContentCompressionResistancePriority(.init(1), for: .horizontal)
+
+        searchBarSpinner.translatesAutoresizingMaskIntoConstraints = false
+        searchBarSpinner.style = .spinning
+        searchBarSpinner.controlSize = .small
+        searchBarSpinner.isDisplayedWhenStopped = false
+
+        searchBar.addSubview(searchBarLabel)
+        searchBar.addSubview(searchBarSpinner)
+        NSLayoutConstraint.activate([
+            searchBarSpinner.leadingAnchor.constraint(equalTo: searchBar.leadingAnchor, constant: 8),
+            searchBarSpinner.centerYAnchor.constraint(equalTo: searchBar.centerYAnchor),
+            searchBarSpinner.widthAnchor.constraint(equalToConstant: 16),
+            searchBarSpinner.heightAnchor.constraint(equalToConstant: 16),
+            searchBarLabel.leadingAnchor.constraint(equalTo: searchBarSpinner.trailingAnchor, constant: 6),
+            searchBarLabel.trailingAnchor.constraint(equalTo: searchBar.trailingAnchor, constant: -12),
+            searchBarLabel.centerYAnchor.constraint(equalTo: searchBar.centerYAnchor),
+        ])
+    }
+
+    /// 「「<keyword>」の検索結果 — <起点のフォルダ名> — <件数> 件」。検索中は「検索中…」とスピナーを添え、
+    /// 種類フィルタで絞っているときは「<件数> 件中 <表示件数> 件を表示」にする（R37）
+    private func updateSearchBar() {
+        guard let search = model.listing.search else {
+            searchBar.isHidden = true
+            searchBarHeightConstraint?.constant = 0
+            searchBarSpinner.stopAnimation(nil)
+            searchBarLabel.stringValue = ""
+            searchBarLabel.toolTip = nil
+            return
+        }
+
+        let rootName = search.root.path == "/" ? "/" : search.root.lastPathComponent
+        let shownCount = model.listing.files.count
+        let count = shownCount != search.totalCount
+            ? "\(search.totalCount) 件中 \(shownCount) 件を表示"
+            : "\(search.totalCount) 件"
+        var text = "「\(search.keyword)」の検索結果 — \(rootName) — \(count)"
+        if search.phase == .searching {
+            text += " 検索中…"
+            searchBarSpinner.startAnimation(nil)
+        } else {
+            searchBarSpinner.stopAnimation(nil)
+        }
+        searchBarLabel.stringValue = text
+        searchBarLabel.toolTip = search.root.path
+        searchBar.isHidden = false
+        searchBarHeightConstraint?.constant = 24
+    }
+
     private func setupBottomBar() {
         let label = NSTextField(labelWithString: "サイズ")
         label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
@@ -308,6 +404,7 @@ final class FileListViewController: NSViewController {
         withObservationTracking {
             _ = model.listing.state
             _ = model.listing.files
+            _ = model.listing.search
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.refresh()
@@ -350,6 +447,7 @@ final class FileListViewController: NSViewController {
         progressIndicator.stopAnimation(nil)
         progressIndicator.isHidden = true
 
+        let isSearch = model.isShowingSearchResults
         var message: String?
         switch model.listing.state {
         case .loaded:
@@ -357,9 +455,10 @@ final class FileListViewController: NSViewController {
         case .loading:
             progressIndicator.isHidden = false
             progressIndicator.startAnimation(nil)
-            message = "読み込み中…"
+            message = isSearch ? "検索中…" : "読み込み中…"
         case .empty:
-            message = "対応するメディアファイルがありません"
+            // FR-060 の「対応するメディアファイルがありません」と区別する
+            message = isSearch ? "該当するファイルはありません" : "対応するメディアファイルがありません"
         case .noMatches:
             message = model.mediaTypeFilter.noMatchesMessage ?? ""
         case .denied:
@@ -377,6 +476,7 @@ final class FileListViewController: NSViewController {
             }
         }
 
+        updateSearchBar()
         updateModeVisibility()
     }
 

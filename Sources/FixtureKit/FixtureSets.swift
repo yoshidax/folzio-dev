@@ -9,6 +9,7 @@ public enum FixtureSets {
         try ops(in: directory)
         try zip(in: directory)
         try folders(in: directory)
+        try search(in: directory)
     }
 
     public static func mixed(in directory: URL) throws {
@@ -119,6 +120,71 @@ public enum FixtureSets {
         // 名前が .zip のディレクトリは、zip ではなくフォルダとして出る
         let dirZip = try makeFolder("dir.zip")
         try ImageFixtures.jpeg(at: dirZip.appendingPathComponent("inside.jpg"), width: 64, height: 64)
+    }
+
+    /// `search/`（quickstart.md の `search/` の表）を作る。ファイル名の検索の検証用（FR-080〜087）。
+    /// 権限のないフォルダは作らない（後片付けと作り直しを壊さないため。quickstart ではターミナルで作る）
+    public static func search(in directory: URL) throws {
+        let folder = try prepare(directory.appendingPathComponent("search", isDirectory: true))
+        let fileManager = FileManager.default
+        func makeFolder(_ path: String) throws -> URL {
+            let url = folder.appendingPathComponent(path, isDirectory: true)
+            try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
+            return url
+        }
+        func jpeg(_ path: String) throws {
+            try ImageFixtures.jpeg(at: folder.appendingPathComponent(path), width: 64, height: 48)
+        }
+        func png(_ path: String) throws {
+            try ImageFixtures.png(at: folder.appendingPathComponent(path), width: 64, height: 48)
+        }
+
+        try jpeg("Cat01.jpg")
+        _ = try makeFolder("a/b/deep")
+        try VideoFixtures.mov(at: folder.appendingPathComponent("a/my_cat.mov"))
+        try png("a/dog.png")
+        try png("a/b/deep/cat-deep.png")
+        _ = try makeFolder("b")
+        try jpeg("b/Cat01.jpg")
+        _ = try makeFolder("numbers")
+        try jpeg("numbers/IMG_0001.jpg")
+        try jpeg("numbers/IMG_12.jpg")
+
+        // 名前を NFD（か + 結合用濁点）で書く。キーワード「が」（NFC）で見つかることの確認用
+        let kana = try makeFolder("kana")
+        let nfdName = "か\u{3099}.png".decomposedStringWithCanonicalMapping
+        let nfdURL = kana.appendingPathComponent(nfdName)
+        try ImageFixtures.png(at: nfdURL, width: 64, height: 48)
+        let stored = try fileManager.contentsOfDirectory(atPath: kana.path)
+        guard stored.contains(where: { $0.unicodeScalars.contains("\u{3099}") }) else {
+            throw FixtureError.writeFailed(nfdURL)
+        }
+
+        try writeText("This file is not a supported media file.\n", to: folder.appendingPathComponent("cat.txt"))
+        let scratch = try makeScratchDirectory()
+        defer { try? fileManager.removeItem(at: scratch) }
+        let catJPEG = try imageData(scratch, "cat.jpg") { try ImageFixtures.jpeg(at: $0, width: 64, height: 48) }
+        try ZipFixtureWriter.write([
+            ZipFixtureEntry(name: "cat.jpg", content: .bytes(catJPEG), method: .deflated),
+        ], to: folder.appendingPathComponent("cats.zip"))
+        _ = try makeFolder("cat-folder")
+        try jpeg("cat-folder/x.jpg")
+        _ = try makeFolder(".hidden")
+        try jpeg(".hidden/cat-hidden.jpg")
+        try jpeg(".cat-dot.jpg")
+        _ = try makeFolder("Viewer.app/Contents")
+        try jpeg("Viewer.app/Contents/cat-pkg.jpg")
+
+        // フォルダへのリンクは辿らない。ファイルへのリンクは通常のファイルとして扱う（FR-083）。
+        // linked.jpg の名前には cat を含めず、cat・*.png・IMG_????.jpg・が の結果を変えない
+        try fileManager.createSymbolicLink(
+            at: folder.appendingPathComponent("link"),
+            withDestinationURL: folder.appendingPathComponent("a", isDirectory: true)
+        )
+        try fileManager.createSymbolicLink(
+            at: folder.appendingPathComponent("linked.jpg"),
+            withDestinationURL: folder.appendingPathComponent("Cat01.jpg")
+        )
     }
 
     // MARK: - zip

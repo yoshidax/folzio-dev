@@ -5,6 +5,7 @@ import MediaViewerCore
 private final class ThumbnailCollectionView: NSCollectionView {
     var onArrowKey: ((NSEvent.SpecialKey, NSEvent.ModifierFlags) -> Bool)?
     var onReturnKey: (() -> Bool)?
+    var onEscape: (() -> Bool)?
     var onDoubleClickItem: ((Int) -> Void)?
 
     override var acceptsFirstResponder: Bool { true }
@@ -18,6 +19,10 @@ private final class ThumbnailCollectionView: NSCollectionView {
     }
 
     override func keyDown(with event: NSEvent) {
+        if event.isPlainEscape, onEscape?() == true {
+            return
+        }
+
         if event.specialKey == .carriageReturn
             || event.specialKey == .enter
             || event.charactersIgnoringModifiers == "\r" {
@@ -321,6 +326,11 @@ final class ThumbnailModeView: NSView {
 
     var onRename: ((URL, String) async -> Void)?
     var onOpenItem: ((URL) -> Void)?
+    /// Esc。処理したら true（検索結果の表示を終える。FR-086）
+    var onEscape: (() -> Bool)? {
+        get { collectionView.onEscape }
+        set { collectionView.onEscape = newValue }
+    }
 
     var contextMenu: NSMenu? {
         get { collectionView.menu }
@@ -875,6 +885,8 @@ extension ThumbnailModeView: NSCollectionViewDataSource {
             self?.commitRename(url: url, newName: newName)
         }
         thumbnailItem.configure(with: file, iconPointSize: listItemIconPointSize)
+        // 検索結果では、名前だけで見分けられない同名のファイルを場所のツールチップで示す（FR-084、R37）
+        thumbnailItem.view.toolTip = model.listing.search?.location(of: file.url)
         requestThumbnail(for: file)
         return thumbnailItem
     }

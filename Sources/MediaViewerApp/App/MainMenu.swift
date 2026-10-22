@@ -88,6 +88,16 @@ final class MainMenu {
         addFavoriteItem.keyEquivalentModifierMask = [.command, .control]
         addFavoriteItem.target = nil
         fileMenu.addItem(addFavoriteItem)
+
+        // ⌘F。⇧⌘F（お気に入りへ移動）・⌃⌘F（フルスクリーン）とは修飾キーで区別する（FR-080、R39）
+        let searchItem = NSMenuItem(
+            title: "検索…",
+            action: #selector(MainSplitViewController.showSearch(_:)),
+            keyEquivalent: "f"
+        )
+        searchItem.keyEquivalentModifierMask = [.command]
+        searchItem.target = nil
+        fileMenu.addItem(searchItem)
         fileMenu.addItem(.separator())
 
         let fileTrashItem = NSMenuItem(

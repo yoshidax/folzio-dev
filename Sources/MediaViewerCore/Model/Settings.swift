@@ -45,6 +45,8 @@ public enum SortColumn: String, Sendable, CaseIterable {
     case name
     case creationDate
     case kind
+    /// 検索結果の表示中だけ使う（FR-084）。保存しない
+    case location
 }
 
 public struct SortOrder: Sendable, Equatable {

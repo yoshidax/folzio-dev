@@ -177,6 +177,257 @@ struct FileSystemWatcherTests {
         await stopCollector(collector)
     }
 
+    // MARK: - subtrees（検索結果の整理、R38）
+
+    @Test("subtrees は配下のすべての階層の変更を、変更のあったパスの親フォルダとして流す")
+    func subtreeDeliversDeepChanges() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let deep = root.appendingPathComponent("a/b/c", isDirectory: true)
+        try FileManager.default.createDirectory(at: deep, withIntermediateDirectories: true)
+        try await Task.sleep(for: .milliseconds(200))
+
+        let watcher = FileSystemWatcher()
+        watcher.watch([], subtrees: [root])
+        let (recorder, collector) = startCollector(watcher)
+        defer { collector.cancel() }
+
+        let file = deep.appendingPathComponent("x.jpg")
+        try Data("x".utf8).write(to: file)
+        let observed1 = await recorder.waitForFolder(deep)
+        let seen1 = await recorder.snapshot()
+        #expect(observed1, "作成: \(describe(seen1))")
+
+        let count = await recorder.snapshot().count
+        try FileManager.default.removeItem(at: file)
+        let observed2 = await recorder.waitForFolder(deep, after: count)
+        let seen2 = await recorder.snapshot()
+        #expect(observed2, "削除: \(describe(seen2))")
+
+        try Data("y".utf8).write(to: root.appendingPathComponent("y.jpg"))
+        let observed3 = await recorder.waitForFolder(root)
+        let seen3 = await recorder.snapshot()
+        #expect(observed3, "直下: \(describe(seen3))")
+
+        await stopCollector(collector)
+    }
+
+    @Test("subtrees の外の変更と、folders の孫の変更は流れない")
+    func subtreeIgnoresOutsideChanges() async throws {
+        let base = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: base) }
+        let root = base.appendingPathComponent("root", isDirectory: true)
+        let other = base.appendingPathComponent("other", isDirectory: true)
+        let nested = root.appendingPathComponent("a/b", isDirectory: true)
+        try FileManager.default.createDirectory(at: other, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        try await Task.sleep(for: .milliseconds(200))
+
+        let subtreeWatcher = FileSystemWatcher()
+        subtreeWatcher.watch([], subtrees: [root])
+        let (subtreeRecorder, subtreeCollector) = startCollector(subtreeWatcher)
+        defer { subtreeCollector.cancel() }
+
+        let folderWatcher = FileSystemWatcher()
+        folderWatcher.watch([root.appendingPathComponent("a", isDirectory: true)])
+        let (folderRecorder, folderCollector) = startCollector(folderWatcher)
+        defer { folderCollector.cancel() }
+
+        try Data("x".utf8).write(to: other.appendingPathComponent("x.jpg"))
+        try Data("x".utf8).write(to: nested.appendingPathComponent("x.jpg"))
+        try await Task.sleep(for: .milliseconds(1500))
+
+        let subtreeEvents = await subtreeRecorder.snapshot()
+        #expect(!subtreeEvents.contains { event in event.contains { $0.path.hasPrefix(other.path) } },
+                "subtrees の外: \(describe(subtreeEvents))")
+        let folderEvents = await folderRecorder.snapshot()
+        #expect(folderEvents.isEmpty, "folders の孫: \(describe(folderEvents))")
+
+        await stopCollector(subtreeCollector)
+        await stopCollector(folderCollector)
+    }
+
+    @Test("subtrees の配下でも、隠しフォルダの中の変更は流れない")
+    func subtreeIgnoresHiddenFolders() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fileManager = FileManager.default
+        let cache = root.appendingPathComponent(".cache", isDirectory: true)
+        let objects = root.appendingPathComponent("a/.git/objects", isDirectory: true)
+        var hidden = root.appendingPathComponent("Hidden", isDirectory: true)
+        for url in [cache, objects, hidden] {
+            try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
+        }
+        var values = URLResourceValues()
+        values.isHidden = true
+        try hidden.setResourceValues(values)
+        try await Task.sleep(for: .milliseconds(200))
+
+        let watcher = FileSystemWatcher()
+        watcher.watch([], subtrees: [root])
+        let (recorder, collector) = startCollector(watcher)
+        defer { collector.cancel() }
+
+        for folder in [cache, objects, hidden] {
+            let file = folder.appendingPathComponent("x.jpg")
+            try Data("x".utf8).write(to: file)
+            try fileManager.removeItem(at: file)
+        }
+        let a = root.appendingPathComponent("a", isDirectory: true)
+        try Data("z".utf8).write(to: a.appendingPathComponent("z.jpg"))
+
+        let observed4 = await recorder.waitForFolder(a)
+        let seen4 = await recorder.snapshot()
+        #expect(observed4, "root/a: \(describe(seen4))")
+        try await Task.sleep(for: .milliseconds(500))
+        let events = await recorder.snapshot()
+        let hiddenPaths = [cache, objects, hidden].map(\.standardizedFileURL.path)
+        #expect(!events.contains { event in
+            event.contains { url in hiddenPaths.contains { url.standardizedFileURL.path.hasPrefix($0) } }
+        }, "隠しフォルダ: \(describe(events))")
+        #expect(!events.contains { $0.contains { $0.standardizedFileURL.path.contains("/.git") } })
+
+        await stopCollector(collector)
+    }
+
+    @Test("変更が続いても、最初の変更から 1.5 秒以内に流れ、続く間も流れ続ける")
+    func continuousChangesAreNotStarved() async throws {
+        for useSubtrees in [false, true] {
+            let root = try makeTemporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: root) }
+            let a = root.appendingPathComponent("a", isDirectory: true)
+            try FileManager.default.createDirectory(at: a, withIntermediateDirectories: true)
+            try await Task.sleep(for: .milliseconds(200))
+
+            let watcher = FileSystemWatcher()
+            if useSubtrees {
+                watcher.watch([], subtrees: [root])
+            } else {
+                watcher.watch([a])
+            }
+            let (recorder, collector) = startCollector(watcher)
+
+            let start = ContinuousClock.now
+            var index = 0
+            while ContinuousClock.now - start < .seconds(3) {
+                try Data("x".utf8).write(to: a.appendingPathComponent("f\(index).jpg"))
+                index += 1
+                try await Task.sleep(for: .milliseconds(100))
+            }
+
+            let instants = await recorder.instants(containing: a)
+            #expect(instants.count >= 2, "subtrees=\(useSubtrees) 回数: \(instants.count)")
+            if let first = instants.first {
+                #expect(first - start < .milliseconds(1500), "subtrees=\(useSubtrees) 1回目: \(first - start)")
+            }
+            collector.cancel()
+            await collector.value
+        }
+    }
+
+    @Test("subtrees の通知は、渡した起点の URL の形で流す（/private を付け外ししない）")
+    func subtreeKeepsGivenPathForm() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        #expect(root.path.hasPrefix("/var/"), "一時ディレクトリが /var 以下でない: \(root.path)")
+        let ab = root.appendingPathComponent("a/b", isDirectory: true)
+        try FileManager.default.createDirectory(at: ab, withIntermediateDirectories: true)
+        try await Task.sleep(for: .milliseconds(200))
+
+        let watcher = FileSystemWatcher()
+        watcher.watch([], subtrees: [root])
+        let (recorder, collector) = startCollector(watcher)
+        defer { collector.cancel() }
+
+        try Data("x".utf8).write(to: ab.appendingPathComponent("x.jpg"))
+        let observed5 = await recorder.waitForPath(root.appendingPathComponent("a/b").path)
+        let seen5 = await recorder.snapshot()
+        #expect(observed5, "作成: \(describe(seen5))")
+
+        try FileManager.default.removeItem(at: ab)
+        let observed6 = await recorder.waitForPath(root.appendingPathComponent("a").path)
+        let seen6 = await recorder.snapshot()
+        #expect(observed6, "フォルダの削除: \(describe(seen6))")
+        await stopCollector(collector)
+
+        let privateRoot = URL(fileURLWithPath: "/private" + root.path, isDirectory: true)
+        let privateWatcher = FileSystemWatcher()
+        privateWatcher.watch([], subtrees: [privateRoot])
+        let (privateRecorder, privateCollector) = startCollector(privateWatcher)
+        defer { privateCollector.cancel() }
+
+        try Data("y".utf8).write(to: root.appendingPathComponent("a/y.jpg"))
+        let observed7 = await privateRecorder.waitForPath(privateRoot.appendingPathComponent("a").path)
+        let seen7 = await privateRecorder.snapshot()
+        #expect(observed7, "/private の形: \(describe(seen7))")
+        await stopCollector(privateCollector)
+    }
+
+    @Test("起点自身・親フォルダの削除と移動は、起点の URL として流す。folders だけなら自身は流さない")
+    func subtreeReportsRootChanges() async throws {
+        let base = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: base) }
+        let fileManager = FileManager.default
+
+        func watchRoot(_ root: URL) -> (FileSystemWatcher, EventRecorder, Task<Void, Never>) {
+            let watcher = FileSystemWatcher()
+            watcher.watch([], subtrees: [root])
+            let (recorder, collector) = startCollector(watcher)
+            return (watcher, recorder, collector)
+        }
+
+        // 削除
+        let removed = base.appendingPathComponent("removed", isDirectory: true)
+        try fileManager.createDirectory(at: removed.appendingPathComponent("a"), withIntermediateDirectories: true)
+        try await Task.sleep(for: .milliseconds(200))
+        let (w1, r1, c1) = watchRoot(removed)
+        try fileManager.removeItem(at: removed)
+        let observed8 = await r1.waitForPath(removed.path)
+        let seen8 = await r1.snapshot()
+        #expect(observed8, "削除: \(describe(seen8))")
+        await stopCollector(c1)
+        _ = w1
+
+        // 名前の変更
+        let renamed = base.appendingPathComponent("renamed", isDirectory: true)
+        try fileManager.createDirectory(at: renamed, withIntermediateDirectories: true)
+        try await Task.sleep(for: .milliseconds(200))
+        let (w2, r2, c2) = watchRoot(renamed)
+        try fileManager.moveItem(at: renamed, to: base.appendingPathComponent("renamed-2", isDirectory: true))
+        let observed9 = await r2.waitForPath(renamed.path)
+        let seen9 = await r2.snapshot()
+        #expect(observed9, "移動: \(describe(seen9))")
+        await stopCollector(c2)
+        _ = w2
+
+        // 親フォルダの名前の変更
+        let parent = base.appendingPathComponent("parent", isDirectory: true)
+        let child = parent.appendingPathComponent("child", isDirectory: true)
+        try fileManager.createDirectory(at: child, withIntermediateDirectories: true)
+        try await Task.sleep(for: .milliseconds(200))
+        let (w3, r3, c3) = watchRoot(child)
+        try fileManager.moveItem(at: parent, to: base.appendingPathComponent("parent-2", isDirectory: true))
+        let observed10 = await r3.waitForPath(child.path)
+        let seen10 = await r3.snapshot()
+        #expect(observed10, "親の移動: \(describe(seen10))")
+        await stopCollector(c3)
+        _ = w3
+
+        // folders だけのときは、そのフォルダ自身の削除を流さない
+        let plain = base.appendingPathComponent("plain", isDirectory: true)
+        let plainA = plain.appendingPathComponent("a", isDirectory: true)
+        try fileManager.createDirectory(at: plainA, withIntermediateDirectories: true)
+        try await Task.sleep(for: .milliseconds(200))
+        let folderWatcher = FileSystemWatcher()
+        folderWatcher.watch([plainA])
+        let (r4, c4) = startCollector(folderWatcher)
+        try fileManager.removeItem(at: plainA)
+        try await Task.sleep(for: .milliseconds(1500))
+        let events = await r4.snapshot()
+        #expect(!events.contains { containsFolder($0, plainA) }, "folders: \(describe(events))")
+        await stopCollector(c4)
+    }
+
     // MARK: - Helpers
 
     private func makeTemporaryDirectory() throws -> URL {
@@ -248,9 +499,45 @@ struct FileSystemWatcherTests {
 
 private actor EventRecorder {
     private var events: [Set<URL>] = []
+    private var times: [ContinuousClock.Instant] = []
 
     func record(_ event: Set<URL>) {
         events.append(event)
+        times.append(.now)
+    }
+
+    func snapshot() -> [Set<URL>] {
+        events
+    }
+
+    /// `folder` を含むイベントが届いた時刻
+    func instants(containing folder: URL) -> [ContinuousClock.Instant] {
+        let target = folder.standardizedFileURL
+        return zip(events, times).filter { event, _ in
+            event.contains { $0.standardizedFileURL == target }
+        }.map(\.1)
+    }
+
+    /// `after` 番目以降のイベントに `folder` が含まれるまで待つ
+    func waitForFolder(_ folder: URL, after index: Int = 0, timeout: Duration = .seconds(3)) async -> Bool {
+        let target = folder.standardizedFileURL
+        return await waitFor(after: index, timeout: timeout) { $0.standardizedFileURL == target }
+    }
+
+    /// パスの文字列が `path` と一致する URL が流れるまで待つ（パスの形も比べる）
+    func waitForPath(_ path: String, timeout: Duration = .seconds(3)) async -> Bool {
+        await waitFor(after: 0, timeout: timeout) { $0.path == path }
+    }
+
+    private func waitFor(after index: Int, timeout: Duration, _ matches: (URL) -> Bool) async -> Bool {
+        let deadline = ContinuousClock.now + timeout
+        repeat {
+            if events.dropFirst(index).contains(where: { $0.contains(where: matches) }) {
+                return true
+            }
+            try? await Task.sleep(for: .milliseconds(20))
+        } while ContinuousClock.now < deadline
+        return false
     }
 
     func waitForEvent(

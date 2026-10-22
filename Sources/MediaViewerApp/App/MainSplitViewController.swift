@@ -65,6 +65,8 @@ final class MainSplitViewController: NSSplitViewController {
     private var panesCollapsedForFullScreen = false
     private var isAppInitiatedFullScreenTransition = false
     private var fullScreenKeyMonitor: Any?
+    /// 同じ起動中に前回検索したキーワード。保存しない（FR-081、R39）
+    private var lastSearchKeyword: String?
 
     var onInitialListingDisplayed: (() -> Void)? {
         didSet {
@@ -422,6 +424,22 @@ final class MainSplitViewController: NSSplitViewController {
         treeViewController.addSelectedFolderToFavorites()
     }
 
+    /// ⌘F。検索のモーダルを開く。起点の既定値は表示中のフォルダ（検索結果の表示中は検索前のフォルダ。FR-080・081）
+    @objc func showSearch(_ sender: Any?) {
+        guard !panesCollapsedForFullScreen, !fileListViewController.isEditingText else { return }
+        let panel = SearchPanelController(
+            keyword: lastSearchKeyword,
+            rootPath: model.listing.folder.path
+        ) { [weak self] pattern, root in
+            guard let self else { return }
+            self.lastSearchKeyword = pattern.keyword
+            self.model.startSearch(pattern, root: root)
+            // 続けて矢印キーで結果を辿れるよう、ファイルリストへフォーカスを移す
+            self.focusPane(self.fileListViewController.primaryFocusView)
+        }
+        presentAsSheet(panel)
+    }
+
     private func focusPane(_ view: NSView) {
         view.window?.makeFirstResponder(view)
     }
@@ -451,6 +469,8 @@ extension MainSplitViewController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
         case #selector(focusFavorites(_:)):
+            return !panesCollapsedForFullScreen && !fileListViewController.isEditingText
+        case #selector(showSearch(_:)):
             return !panesCollapsedForFullScreen && !fileListViewController.isEditingText
         case #selector(addSelectedFolderToFavorites(_:)):
             return !fileListViewController.isEditingText

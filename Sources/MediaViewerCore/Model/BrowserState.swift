@@ -15,17 +15,21 @@ public struct FolderListing: Sendable {
     public var state: State
     /// zip の中を表示中なら、その zip と階層。通常のフォルダでは nil（`folder` は zip を含むフォルダのまま）
     public var archive: ArchiveLocation?
+    /// 検索結果を表示中なら、その条件と進み具合。表示中は `folder` を検索前のフォルダのまま変えず、`archive` は nil（FR-084・085）
+    public var search: SearchListing?
 
     public init(
         folder: URL,
         files: [MediaFile] = [],
         state: State = .empty,
-        archive: ArchiveLocation? = nil
+        archive: ArchiveLocation? = nil,
+        search: SearchListing? = nil
     ) {
         self.folder = folder
         self.files = files
         self.state = state
         self.archive = archive
+        self.search = search
     }
 }
 

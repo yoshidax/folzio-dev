@@ -30,6 +30,13 @@ public struct DirectoryLister: DirectoryListing {
         .localizedTypeDescriptionKey,
     ]
 
+    /// メディアの行の値に使うキー（一致したファイルだけ読む検索で使う）
+    private static let mediaKeys: Set<URLResourceKey> = [
+        .creationDateKey,
+        .fileSizeKey,
+        .localizedTypeDescriptionKey,
+    ]
+
     private static let archiveExtension = "zip"
 
     private static let folderKeys: Set<URLResourceKey> = [
@@ -89,17 +96,25 @@ public struct DirectoryLister: DirectoryListing {
                     )
                 }
                 guard let kind = MediaKind(fileExtension: url.pathExtension) else { return nil }
-
-                return MediaFile(
-                    url: url,
-                    name: url.lastPathComponent,
-                    kind: .media(kind),
-                    typeDescription: values?.localizedTypeDescription ?? kind.rawValue.uppercased(),
-                    creationDate: values?.creationDate,
-                    fileSize: Int64(values?.fileSize ?? 0)
-                )
+                return Self.mediaFile(at: url, kind: kind, values: values)
             }
         }
+    }
+
+    /// メディアファイルの行を作る。`FileNameSearcher` と共有し、通常の一覧と検索結果で同じ値にする（R36）
+    static func mediaFile(at url: URL, kind: MediaKind) -> MediaFile? {
+        mediaFile(at: url, kind: kind, values: try? url.resourceValues(forKeys: mediaKeys))
+    }
+
+    private static func mediaFile(at url: URL, kind: MediaKind, values: URLResourceValues?) -> MediaFile {
+        MediaFile(
+            url: url,
+            name: url.lastPathComponent,
+            kind: .media(kind),
+            typeDescription: values?.localizedTypeDescription ?? kind.rawValue.uppercased(),
+            creationDate: values?.creationDate,
+            fileSize: Int64(values?.fileSize ?? 0)
+        )
     }
 
     public func subfolders(of folder: URL) async throws(ListingError) -> [URL] {

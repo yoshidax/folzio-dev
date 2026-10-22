@@ -181,6 +181,28 @@ struct SettingsStoreTests {
         }
     }
 
+    @Test("並べ替えの「場所」は保存せず、ほかの表示設定は書く。保存値の location は名前として読む")
+    func locationSortIsNotPersisted() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+            var view = store.viewSettings
+            view.sortOrder = SortOrder(column: .kind, ascending: true)
+            store.viewSettings = view
+
+            view.sortOrder = SortOrder(column: .location, ascending: false)
+            view.displayMode = .thumbnails
+            store.viewSettings = view
+
+            #expect(defaults.string(forKey: "view.sort.column") == "kind")
+            #expect(defaults.object(forKey: "view.sort.ascending") as? Bool == true)
+            #expect(store.viewSettings.displayMode == .thumbnails)
+            #expect(store.viewSettings.sortOrder == SortOrder(column: .kind, ascending: true))
+
+            defaults.set("location", forKey: "view.sort.column")
+            #expect(store.viewSettings.sortOrder.column == .name)
+        }
+    }
+
     private func withDefaults(_ body: (UserDefaults) -> Void) {
         let suiteName = "SettingsStoreTests.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {

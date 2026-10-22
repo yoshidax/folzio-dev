@@ -412,6 +412,118 @@ struct PerformanceBaselineTests {
             "64 回ごとの phys_footprint の最大増加は 128MB 以下 (実測: \(maximumIncrease) bytes)"
         )
     }
+
+    // MARK: - ファイル名の検索（FR-085・SC-016）
+
+    @Test("10,000 ファイルの階層の検索が 3 秒以内（SC-016）")
+    func searchingTenThousandFilesWithinBudget() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let templateURL = directory.appendingPathComponent("template.jpg")
+        try ImageFixtures.jpeg(at: templateURL, width: 8, height: 8)
+        let template = try Data(contentsOf: templateURL)
+        try FileManager.default.removeItem(at: templateURL)
+        let root = directory.appendingPathComponent("tree", isDirectory: true)
+        for folderIndex in 0..<100 {
+            let folder = root.appendingPathComponent(String(format: "folder-%03d", folderIndex), isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            for fileIndex in 0..<100 {
+                let name = fileIndex.isMultiple(of: 2)
+                    ? String(format: "cat_%03d.jpg", fileIndex)
+                    : String(format: "dog_%03d.jpg", fileIndex)
+                try template.write(to: folder.appendingPathComponent(name))
+            }
+        }
+
+        let pattern = try #require(SearchPattern(keyword: "cat"))
+        let start = ContinuousClock.now
+        var count = 0
+        for await batch in FileNameSearcher().search(in: root, matching: pattern) {
+            count += batch.count
+        }
+        let elapsed = ContinuousClock.now - start
+
+        #expect(count == 5_000, "半数の 5,000 件が見つかること (実際: \(count))")
+        #expect(elapsed < .seconds(3), "10,000 ファイルの階層の検索は 3 秒以内 (実測: \(elapsed))")
+        print("[perf] search 10,000 files: \(elapsed)")
+    }
+
+    @Test("10,000 件への 256 件のマージが 0.05 秒以内（FR-085）")
+    @MainActor
+    func mergingBatchIntoTenThousandWithinBudget() async throws {
+        let order = SortOrder()
+        let existing = sorted(syntheticResults(count: 10_000, folders: 1, prefix: "img"), by: order)
+        let batch = sorted(syntheticResults(count: 256, folders: 1, prefix: "img", offset: 10_000), by: order)
+
+        let mergeStart = ContinuousClock.now
+        let merged = sortedMerge(existing, batch, by: order)
+        let mergeElapsed = ContinuousClock.now - mergeStart
+        #expect(merged.count == 10_256)
+        #expect(mergeElapsed < .milliseconds(50), "sortedMerge は 0.05 秒以内 (実測: \(mergeElapsed))")
+
+        let modelElapsed = try await measureBatch(existing: existing, batch: batch)
+        #expect(modelElapsed < .milliseconds(50), "BrowserModel の1バッチの処理は 0.05 秒以内 (実測: \(modelElapsed))")
+        print("[perf] merge 256 into 10,000: sortedMerge \(mergeElapsed), BrowserModel \(modelElapsed)")
+    }
+
+    @Test("50,000 件への 256 件のバッチの処理が 100ms 未満（FR-085・SC-016）")
+    @MainActor
+    func processingBatchIntoFiftyThousandWithinBudget() async throws {
+        let order = SortOrder()
+        let existing = sorted(syntheticResults(count: 50_000, folders: 500, prefix: "photo"), by: order)
+        let batch = sorted(syntheticResults(count: 256, folders: 500, prefix: "photo", offset: 50_000), by: order)
+
+        let elapsed = try await measureBatch(existing: existing, batch: batch)
+        #expect(elapsed < .milliseconds(100), "50,000 件への1バッチの処理は 100ms 未満 (実測: \(elapsed))")
+        print("[perf] batch 256 into 50,000: \(elapsed)")
+    }
+
+    /// フェイクの検索器で `existing` を流した後、`batch` を流してから一覧の件数が増えるまでの時間
+    @MainActor
+    private func measureBatch(existing: [MediaFile], batch: [MediaFile]) async throws -> Duration {
+        let suite = "PerformanceBaselineTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let searcher = StreamingSearcher()
+        let model = BrowserModel(
+            lister: DirectoryLister(),
+            decoder: ImageDecoder(),
+            cache: DecodedImageCache(),
+            settings: SettingsStore(defaults: defaults),
+            searcher: searcher
+        )
+        model.startSearch(try #require(SearchPattern(keyword: "*")), root: URL(fileURLWithPath: "/r", isDirectory: true))
+        searcher.send(existing)
+        let loaded = await waitUntil { model.listing.files.count == existing.count }
+        #expect(loaded, "既存の結果が一覧に入ること (実際: \(model.listing.files.count))")
+
+        let start = ContinuousClock.now
+        searcher.send(batch)
+        while model.listing.files.count == existing.count, ContinuousClock.now - start < .seconds(5) {
+            await Task.yield()
+        }
+        let elapsed = ContinuousClock.now - start
+        #expect(model.listing.files.count == existing.count + batch.count)
+        return elapsed
+    }
+
+    /// ディスクを使わない検索結果。`folders` 個のフォルダに分散する
+    private func syntheticResults(count: Int, folders: Int, prefix: String, offset: Int = 0) -> [MediaFile] {
+        (0..<count).map { index in
+            let serial = index + offset
+            let folder = "/r/folder-\(serial % folders)"
+            let name = "\(prefix)_\((serial * 7_919) % 1_000_003).jpg"
+            return MediaFile(
+                url: URL(fileURLWithPath: "\(folder)/\(serial)-\(name)"),
+                name: name,
+                kind: .media(.jpeg),
+                typeDescription: "JPEG イメージ",
+                creationDate: nil,
+                fileSize: 0
+            )
+        }
+    }
 }
 
 /// 現在のプロセスの `phys_footprint`（バイト）。
@@ -465,4 +577,21 @@ private func waitForCache(
         try? await Task.sleep(for: .milliseconds(10))
     }
     return await cache.get(url) != nil
+}
+
+/// テストから任意の時点で結果を流す検索器
+private final class StreamingSearcher: FileNameSearching, @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: AsyncStream<[MediaFile]>.Continuation?
+
+    func search(in root: URL, matching pattern: SearchPattern) -> AsyncStream<[MediaFile]> {
+        let (stream, continuation) = AsyncStream.makeStream(of: [MediaFile].self)
+        lock.withLock { self.continuation = continuation }
+        return stream
+    }
+
+    func send(_ batch: [MediaFile]) {
+        let continuation = lock.withLock { self.continuation }
+        continuation?.yield(batch)
+    }
 }

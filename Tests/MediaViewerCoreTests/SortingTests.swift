@@ -103,6 +103,79 @@ struct SortingTests {
         }
     }
 
+    // MARK: - 場所と sortedMerge（FR-084・085）
+
+    @Test("場所は親フォルダのパスの自然順で、同じ場所では名前の自然順")
+    func sortsByLocation() {
+        let files = ["/r/b/x.jpg", "/r/a/z.jpg", "/r/a/y.jpg", "/r/a10/w.jpg", "/r/a2/v.jpg"].map(located)
+        let ascending = sorted(files, by: SortOrder(column: .location, ascending: true))
+        #expect(ascending.map(\.url.path) == ["/r/a/y.jpg", "/r/a/z.jpg", "/r/a2/v.jpg", "/r/a10/w.jpg", "/r/b/x.jpg"])
+
+        let descending = sorted(files, by: SortOrder(column: .location, ascending: false))
+        #expect(descending.map(\.url.path) == ["/r/b/x.jpg", "/r/a10/w.jpg", "/r/a2/v.jpg", "/r/a/y.jpg", "/r/a/z.jpg"])
+    }
+
+    @Test("sortedMerge は sorted(a + b) と同じ配列になり、同順位は a の行が先")
+    func sortedMergeMatchesSorted() {
+        var generator = SeededGenerator(seed: 0x5EA2C4)
+        let dates: [Date?] = [nil, Date(timeIntervalSince1970: 100), Date(timeIntervalSince1970: 200), Date(timeIntervalSince1970: 300)]
+        let names = ["a.jpg", "b.png", "c 2.jpg", "img10.mp4", "img2.jpg", "Cat.mov", "z.webp"]
+        let folders = ["/r/a", "/r/a2", "/r/a10", "/r/b"]
+        let types = ["JPEG イメージ", "PNG イメージ", "ムービー"]
+        var serial = 0
+        func randomFiles() -> [MediaFile] {
+            let count = Int.random(in: 0...50, using: &generator)
+            return (0..<count).map { _ in
+                serial += 1
+                let name = names.randomElement(using: &generator)!
+                let folder = folders.randomElement(using: &generator)!
+                return MediaFile(
+                    // 同じ名前・同じ場所の行（同順位）も作り、fileSize の通し番号で区別する
+                    url: URL(fileURLWithPath: "\(folder)/\(name)"),
+                    name: name,
+                    kind: .media(MediaKind(fileExtension: (name as NSString).pathExtension) ?? .jpeg),
+                    typeDescription: types.randomElement(using: &generator)!,
+                    creationDate: dates.randomElement(using: &generator)!,
+                    fileSize: Int64(serial)
+                )
+            }
+        }
+
+        for column in [SortColumn.name, .creationDate, .kind, .location] {
+            for ascending in [true, false] {
+                let order = SortOrder(column: column, ascending: ascending)
+                for _ in 0..<100 {
+                    let a = sorted(randomFiles(), by: order)
+                    let b = sorted(randomFiles(), by: order)
+                    let merged = sortedMerge(a, b, by: order)
+                    let expected = sorted(a + b, by: order)
+                    #expect(merged.map(\.fileSize) == expected.map(\.fileSize), "column=\(column) ascending=\(ascending)")
+                }
+            }
+        }
+    }
+
+    @Test("sortedMerge は片方が空でも一致する")
+    func sortedMergeWithEmptySide() {
+        let order = SortOrder(column: .name, ascending: true)
+        let files = sorted([file("b.jpg"), file("a.jpg")], by: order)
+        #expect(sortedMerge(files, [], by: order).map(\.name) == ["a.jpg", "b.jpg"])
+        #expect(sortedMerge([], files, by: order).map(\.name) == ["a.jpg", "b.jpg"])
+        #expect(sortedMerge([], [], by: order).isEmpty)
+    }
+
+    private func located(_ path: String) -> MediaFile {
+        let url = URL(fileURLWithPath: path)
+        return MediaFile(
+            url: url,
+            name: url.lastPathComponent,
+            kind: .media(.jpeg),
+            typeDescription: "JPEG イメージ",
+            creationDate: nil,
+            fileSize: 0
+        )
+    }
+
     private func item(_ name: String, _ kind: ListItemKind, created: Date? = nil) -> MediaFile {
         MediaFile(
             url: URL(fileURLWithPath: "/tmp/\(name)"),
@@ -127,5 +200,22 @@ struct SortingTests {
             creationDate: created,
             fileSize: 0
         )
+    }
+}
+
+/// 固定のシードの乱数（SplitMix64）
+struct SeededGenerator: RandomNumberGenerator {
+    private var state: UInt64
+
+    init(seed: UInt64) {
+        state = seed
+    }
+
+    mutating func next() -> UInt64 {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+        return z ^ (z >> 31)
     }
 }

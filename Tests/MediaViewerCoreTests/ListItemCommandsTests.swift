@@ -136,4 +136,44 @@ struct ListItemCommandsTests {
             #expect(commands.canGoUp == true, "kind=\(String(describing: kind))")
         }
     }
+
+    // MARK: - 検索結果（FR-087）
+
+    @Test("検索結果ではペーストと上の階層へが不可で、ほかのファイル操作は通常のフォルダと同じ")
+    func searchResults() {
+        let commands = ListItemCommands(
+            kind: .media(.jpeg),
+            isBrowsingArchive: false,
+            hasEnclosingLevel: true,
+            isShowingSearchResults: true
+        )
+        #expect(commands.allowsPaste == false)
+        #expect(commands.canGoUp == false)
+        #expect(commands.allowsFileOperations == true)
+        #expect(commands.canOpenContainer == false)
+
+        let noFocus = ListItemCommands(kind: nil, isBrowsingArchive: false, isShowingSearchResults: true)
+        #expect(noFocus.allowsPaste == false)
+    }
+
+    @Test("isShowingSearchResults を省略した呼び出しの結果は変わらない")
+    func searchFlagDefaultsToFalse() {
+        let kinds: [ListItemKind?] = Self.allKinds + [nil]
+        for kind in kinds {
+            for archive in [false, true] {
+                for enclosing in [false, true] {
+                    let omitted = ListItemCommands(kind: kind, isBrowsingArchive: archive, hasEnclosingLevel: enclosing)
+                    let explicit = ListItemCommands(
+                        kind: kind,
+                        isBrowsingArchive: archive,
+                        hasEnclosingLevel: enclosing,
+                        isShowingSearchResults: false
+                    )
+                    #expect(omitted == explicit)
+                    #expect(omitted.canGoUp == enclosing)
+                    #expect(omitted.allowsPaste == !archive)
+                }
+            }
+        }
+    }
 }

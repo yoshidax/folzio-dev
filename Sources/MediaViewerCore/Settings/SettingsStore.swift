@@ -26,8 +26,10 @@ public struct SettingsStore {
                 .flatMap(DisplayMode.init(rawValue:)) ?? .list
             let thumbnailSize = storedDouble(forKey: Keys.thumbnailSize)
                 ?? ViewSettings.defaultThumbnailSize
+            // 「場所」は検索結果の表示中だけ使い、保存しない（FR-084）。万一入っていたら名前にする
             let column = (defaults.object(forKey: Keys.sortColumn) as? String)
-                .flatMap(SortColumn.init(rawValue:)) ?? .name
+                .flatMap(SortColumn.init(rawValue:))
+                .flatMap { $0 == .location ? nil : $0 } ?? .name
             let ascending = storedBool(forKey: Keys.sortAscending) ?? true
             let lastFolder = (defaults.object(forKey: Keys.lastFolderPath) as? String)
                 .flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
@@ -44,8 +46,10 @@ public struct SettingsStore {
         nonmutating set {
             defaults.set(newValue.displayMode.rawValue, forKey: Keys.displayMode)
             defaults.set(newValue.thumbnailSize, forKey: Keys.thumbnailSize)
-            defaults.set(newValue.sortOrder.column.rawValue, forKey: Keys.sortColumn)
-            defaults.set(newValue.sortOrder.ascending, forKey: Keys.sortAscending)
+            if newValue.sortOrder.column != .location {
+                defaults.set(newValue.sortOrder.column.rawValue, forKey: Keys.sortColumn)
+                defaults.set(newValue.sortOrder.ascending, forKey: Keys.sortAscending)
+            }
             if let lastFolder = newValue.lastFolder {
                 defaults.set(lastFolder.path, forKey: Keys.lastFolderPath)
             } else {
