@@ -32,7 +32,13 @@
       "Bash(git switch *)",
       "Bash(git branch *)",
       "Bash(git worktree *)",
-      "Agent"
+      "Agent",
+      "Bash(defaults read *)",
+      "Bash(log show *)",
+      "Bash(xcrun xctrace list *)",
+      "Bash(unzip -l *)",
+      "mcp__Claude_Preview__preview_screenshot",
+      "mcp__claude-in-chrome__tabs_context_mcp"
     ],
     "deny": [
       "Bash(git push *)",
