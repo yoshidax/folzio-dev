@@ -8,4 +8,4 @@ DerivedData/
 .specify/.workflow-install.lock
 .specify/workflows/.cache/
 .specify/workflows/runs/
-./*.code-workspace
+*.code-workspace
