@@ -2,7 +2,7 @@ schema_version: "1.0"
 workflow:
   id: "sdd-increment-kilo"
   name: "SDD increment (Kilo)"
-  version: "0.1.1"
+  version: "0.3.0"
   author: "igachan"
   # spec-kit は command / prompt を integration の CLI アダプタ経由でしか実行できない。
   # 公式の kilocode integration には CLI ディスパッチがないため、Kilo CLI (kilo) と
@@ -13,8 +13,9 @@ workflow:
   # メインエージェント（command / prompt の各 step）を固定する
   model: "openrouter/deepseek/deepseek-v4.1-flash-1017"
   description: >-
-    既存 feature への追加要件を、clarify → plan → tasks → analyze と修正のループ → 実装・検証・converge のループで進める。
-    Kilo CLI をバックエンドにする。人が判断するのは、clarify（manual のとき）、設計のレビュー、GUI の起動確認の3か所だけ
+    既存のプロダクトへの追加要件を新しい feature として、specify → clarify → plan → tasks → analyze と修正のループ →
+    実装・検証・converge のループ → specs/product/ への反映で進める。
+    Kilo CLI をバックエンドにする。人が判断するのは、clarify（manual のとき）、設計のレビュー、GUI の起動確認、specs/product/ への反映の確認の4か所だけ
 
 requires:
   # command / prompt の手順の capture: true は v1.2.1 から
@@ -28,16 +29,59 @@ inputs:
     type: string
     required: true
     prompt: "追加・変更したい要件"
+  base_branch:
+    type: string
+    default: "master"
+    prompt: "feature ブランチを切る元のブランチ"
   clarify_mode:
     type: string
     default: "auto"
-    enum: ["auto", "manual"]
-    prompt: "clarify の進め方（auto: 推奨回答を自動で採用し、後のレビューでまとめて確認 / manual: Kilo Code で対話）"
+    enum: ["auto", "manual", "skip"]
+    prompt: "clarify の進め方（auto: 推奨回答を自動で採用し、後のレビューでまとめて確認 / manual: Kilo Code で対話 / skip: 行わない。小さな変更向け）"
 
 steps:
-  # ── 1. 仕様の明確化 ─────────────────────────────────────────────
-  # 非対話実行では質問に答えられないため、auto では推奨回答を採用し、決められない質問は出力に残す。
-  # 出力は 3. のレビューで表示し、人がまとめて確認する
+  # ── 0. 事前チェック ─────────────────────────────────────────────
+  # specify の before_specify フック（git 拡張の speckit.git.feature）が今の HEAD から feature ブランチを切るため、
+  # クリーンな元のブランチから始める
+  - id: preflight
+    type: shell
+    run: |
+      branch=$(git branch --show-current)
+      if [ "$branch" != "{{ inputs.base_branch }}" ]; then
+        echo "{{ inputs.base_branch }} で実行してください（現在: $branch）" >&2; exit 1
+      fi
+      if [ -n "$(git status --porcelain)" ]; then
+        echo "未コミットの変更があります。コミットするか stash してから実行してください" >&2; exit 1
+      fi
+
+  # ── 1. 新しい feature の仕様 ─────────────────────────────────────
+  # 現在の仕様の正本は specs/product/。新しい feature の spec.md には変更点だけを書く（書き方は specs/product/README.md）。
+  # 非対話実行では質問に答えられないため、推奨回答を採用し、決められない点は出力に残す。出力は 4. のレビューで表示する
+  - id: specify
+    type: prompt
+    capture: true
+    timeout: 1800
+    prompt: |
+      /speckit.specify {{ inputs.change }}
+
+      これは既存のプロダクトへの追加・変更です。現在の仕様の正本は specs/product/ です。
+      先に specs/product/README.md と、この変更に関係する領域のファイルを読んでください。
+      spec.md は specs/product/README.md の「feature の spec.md の書き方」と「ID の付け方」に従い、変更点だけを書いてください。
+      specs/product/ はこの段階では変更しないでください。
+      この実行では対話できません。[NEEDS CLARIFICATION] は推奨回答を採用して埋めてください。推奨を決められないものはマーカーのまま残してください。
+      最後に「作った feature ディレクトリ」「採用した推奨回答」「残したマーカー（選択肢と推奨）」を一覧で出力してください。
+
+  - id: check_branch
+    type: shell
+    run: |
+      branch=$(git branch --show-current)
+      if [ "$branch" = "{{ inputs.base_branch }}" ]; then
+        echo "feature ブランチが作られていません（before_specify フックを確認してください）" >&2; exit 1
+      fi
+      echo "feature ブランチ: $branch"
+
+  # ── 2. 仕様の明確化（skip のときは行わない） ─────────────────────────
+  # clarify は feature の spec.md しか読まないため、関係する specs/product/ の領域との矛盾と影響範囲も質問の候補にさせる
   - id: clarify
     type: if
     condition: "{{ inputs.clarify_mode == 'auto' }}"
@@ -49,10 +93,16 @@ steps:
         prompt: |
           /speckit.clarify {{ inputs.change }}
 
+          spec.md が参照している specs/product/ の領域のファイルも読み、既存の仕様との矛盾と、変更の影響が及ぶ既存の項目も
+          質問の候補に含めてください。
           この実行では対話できません。各質問は、提示する推奨回答をそのまま採用して spec.md に反映してください。
           推奨を決められない（ユーザーの判断が必要な）質問は採用しないでください。
           最後に「採用した回答」と「未決の質問（選択肢と推奨）」を一覧で出力してください。
-    else:
+
+  - id: clarify_by_hand
+    type: if
+    condition: "{{ inputs.clarify_mode == 'manual' }}"
+    then:
       - id: notify_clarify
         type: shell
         run: scripts/sdd-notify.sh "clarify を対話で行ってください"
@@ -60,17 +110,18 @@ steps:
         type: gate
         message: |
           Kilo Code で `/speckit.clarify <追加要件>` を実行し、質問に答えて spec.md を更新してから approve してください。
+          spec.md が参照している specs/product/ の領域との矛盾と影響範囲も確認してください。
         options: [approve, reject]
         on_reject: abort
 
-  # ── 2. 設計とタスク（間にゲートを置かない。レビューは 3. でまとめて行う） ──
+  # ── 3. 設計とタスク（間にゲートを置かない。レビューは 4. でまとめて行う） ──
   - id: plan
     command: speckit.plan
 
   - id: tasks
     command: speckit.tasks
 
-  # ── 3. 分析と修正のループ（analyze は tasks.md ができてから実行する） ──
+  # ── 4. 分析と修正のループ（analyze は tasks.md ができてから実行する） ──
   - id: review_loop
     type: do-while
     max_iterations: 3
@@ -88,8 +139,11 @@ steps:
       - id: review_gate
         type: gate
         message: |
+          ── specify の結果 ──
+          {{ steps.specify.output.stdout }}
+
           ── clarify の結果 ──
-          {{ steps.clarify_auto.output.stdout | default('（manual で実行）') }}
+          {{ steps.clarify_auto.output.stdout | default('（manual で実行、または skip）') }}
 
           ── analyze のレポート ──
           {{ steps.analyze.output.stdout }}
@@ -113,8 +167,9 @@ steps:
             timeout: 3600
             prompt: |
               次の analyze（`/speckit.analyze`）のレポートの指摘のうち、CRITICAL・HIGH・MEDIUM を推奨どおりに
-              spec.md・plan.md・research.md・data-model.md・contracts/・quickstart.md・tasks.md へ反映してください。
-              完了済み（[X]）のタスクは書き換えず、注記で対応してください。アプリのコードとテストは変更しないでください。
+              作業中の feature ディレクトリの spec.md・plan.md・research.md・data-model.md・contracts/・quickstart.md・tasks.md へ反映してください。
+              完了済み（[X]）のタスクは書き換えず、注記で対応してください。アプリのコードとテスト、および specs/product/ は変更しないでください
+              （specs/product/ への反映は実装の後に行います）。
               人の判断が必要で推奨を決められない指摘は反映せず、最後に一覧で示してください。
 
               {{ steps.analyze.output.stdout }}
@@ -126,7 +181,7 @@ steps:
       git add specs
       git diff --cached --quiet || git commit -q -m "docs: specify the next increment (spec, plan, tasks)"
 
-  # ── 4. 実装・検証・converge のループ（converge がタスクを追記したら繰り返す） ──
+  # ── 5. 実装・検証・converge のループ（converge がタスクを追記したら繰り返す） ──
   - id: delivery
     type: do-while
     max_iterations: 3
@@ -168,9 +223,10 @@ steps:
         type: prompt
         timeout: 1200
         prompt: |
-          ユーザーが GUI の起動確認を終え、問題がないと報告しました。tasks.md の未チェックの検証タスク（GUI 確認を含むもの）について、
-          specs/*/checklists/validation.md に既存の形式で結果（実行日、OS、確認項目、合否）を記録し、そのタスクを [X] にして、
-          tasks.md と validation.md をコミットしてください。以前の Phase から残っている、今回の対象ではない未チェックのタスクには触れないでください。
+          ユーザーが GUI の起動確認を終え、問題がないと報告しました。作業中の feature の tasks.md の未チェックの検証タスク（GUI 確認を含むもの）
+          について、その feature ディレクトリの checklists/validation.md（なければ specs/001-three-pane-media-viewer/checklists/validation.md の
+          形式に倣って作る）に結果（実行日、OS、確認項目、合否）を記録し、そのタスクを [X] にして、tasks.md と validation.md をコミットしてください。
+          以前の Phase から残っている、今回の対象ではない未チェックのタスクには触れないでください。
 
       - id: converge
         command: speckit.converge
@@ -185,9 +241,45 @@ steps:
             | python3 -c 'import json, sys; print(json.load(sys.stdin)["TASKS"])')
           if git diff --quiet -- "$tasks"; then echo false; else echo true; fi
 
+  # ── 6. specs/product/ への反映（以後の正本になるため、人が確認してからコミットする） ──
+  - id: merge_back
+    type: prompt
+    capture: true
+    timeout: 1800
+    prompt: |
+      作業中の feature（.specify/feature.json の feature_directory）の実装と検証が終わりました。
+      specs/product/README.md の「更新の流れ」と「feature の spec.md の書き方」に従い、feature の spec.md の「反映先」の表にある項目を
+      specs/product/ の領域のファイルへ反映してください。
+      - 追加は反映先のファイルの該当する見出しの下に置き、変更は同じ ID の項目を書き換え、削除は項目を消してください
+      - 横断の契約に関わる変更は、feature の contracts/ の内容を specs/product/contracts/ へ反映してください
+      - 最後に feature の spec.md の冒頭へ、移行済み・凍結の注記を入れてください
+      コミットはしないでください。最後に、反映した項目（ID・種別・反映先）と、反映先を決められなかった項目を一覧で出力してください。
+
+  - id: notify_merge_back
+    type: shell
+    run: scripts/sdd-notify.sh "specs/product/ への反映を確認してください"
+
+  - id: merge_back_gate
+    type: gate
+    message: |
+      ── specs/product/ への反映 ──
+      {{ steps.merge_back.output.stdout }}
+
+      `git diff -- specs` で差分を確認してください。
+        approve: 反映をコミットする
+        reject:  一時停止（直してから resume すると、この確認からやり直す）
+    options: [approve, reject]
+    on_reject: retry
+
+  - id: commit_product
+    type: shell
+    run: |
+      git add specs
+      git diff --cached --quiet || git commit -q -m "docs: reflect the increment into specs/product"
+
   - id: notify_summary
     type: shell
-    run: scripts/sdd-notify.sh "converge まで終わりました。結果を確認してください"
+    run: scripts/sdd-notify.sh "specs/product/ への反映まで終わりました。結果を確認してください"
 
   - id: summary
     type: gate
@@ -195,6 +287,7 @@ steps:
       ── converge の結果 ──
       {{ steps.converge.output.stdout }}
 
+      feature ブランチを {{ inputs.base_branch }} へマージするかは、確認してから手で行ってください。
       確認したら approve で終了します。
     options: [approve]
     on_reject: skip

@@ -1,7 +1,8 @@
 # MediaViewer — Agent Notes
 
 このリポジトリ固有のルールです。全体の原則はグローバルの `AGENTS.md` に従います。
-仕様・設計の正本は `.specify/memory/constitution.md` と `specs/001-three-pane-media-viewer/` です。
+仕様の正本は `specs/product/`（領域別の Living spec）、仕様の運用ルールは `.specify/memory/constitution.md` の「仕様の管理」です。
+`specs/001-three-pane-media-viewer/` は凍結した実装の記録です。
 
 ## プロジェクト概要
 
@@ -9,8 +10,10 @@
 - `MediaViewerCore` は AppKit を import しない。判断ロジックは Core、描画と入力は `MediaViewerApp` に置く
 - デコード・ディレクトリ列挙・ファイル操作を UI スレッドで行わない
 - `URLSession` / `Network` / `NWConnection` などのネットワーク API を使わない
-- 仕様文書は承認済み。`tasks.md` のチェック更新と、タスクで明示された追記（例: T077 の quickstart）以外は変更しない
-- 進捗は `specs/001-three-pane-media-viewer/tasks.md` を正とする
+- 新しい要件は新しい feature ディレクトリ（`specs/NNN-xxx/`）で扱い、実装と検証が終わってから変更点を `specs/product/` へ反映する
+  （手順と ID の付け方は `specs/product/README.md`）
+- 実装中に更新する仕様文書は、作業中の feature の `tasks.md` のチェックと、タスクで明示された追記（例: T077 の quickstart）だけにする
+- 進捗は作業中の feature の `tasks.md` を正とする
 
 ## Phase の検証ゲート
 
@@ -26,6 +29,20 @@
 5. 問題がなければ Phase 単位でコミットする
 
 起動スモークを省略して「テストが通ったから完了」にしないこと。
+
+## バグ修正
+
+bug 拡張の `/speckit-bug-assess` → `/speckit-bug-fix` → `/speckit-bug-test` で直す（Kilo では `/speckit.bug.*`）。
+記録は `.specify/bugs/<slug>/` に残る。
+
+1. クリーンな master から `bugfix/<slug>` ブランチを切る
+2. assess: `assessment.md` の「Symptom」の後に「## 仕様との照合」を置き、該当する `specs/product/` の ID と、次のどちらかの判定を書く
+   - 実装が仕様に反している: fix へ進む
+   - 仕様が誤っている、または定めていない: fix へ進まず、仕様の変更として sdd-increment（小さければ `clarify_mode=skip`）で扱う
+3. assess の判定と診断をユーザーに確認してもらってから fix へ進む
+4. fix: 再現を固定する回帰テストを足す（Core のロジックは `Tests/MediaViewerCoreTests`）
+5. test: 「Phase の検証ゲート」の 1〜4 を行う。GUI で再現を確かめていなければ判定は `partial` にする
+6. ソースの変更と `.specify/bugs/<slug>/` を1つのコミットにする（例: `fix: <内容> (bug: <slug>)`）
 
 ## 起動しないときの初動（AppKit / macOS）
 

@@ -1,4 +1,9 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(.specify/extensions/git/scripts/bash/*)"
+    ]
+  },
   "hooks": {
     "PostToolUse": [
       {

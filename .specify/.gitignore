@@ -10,3 +10,6 @@ extensions/*/local-config.yml
 
 # Integration catalog cache fetched by the Specify CLI.
 integrations/.cache/
+
+# Extension catalog cache fetched by the Specify CLI.
+extensions/.cache/
