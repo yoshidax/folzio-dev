@@ -158,7 +158,7 @@ final class FileListViewController: NSViewController {
             width: thumbnailModeView.navigationWidth
         )
 
-        guard selectingEntry else { return }
+        guard selectingEntry, PaneLayout.shouldAutoSelectEntry(in: model.listing) else { return }
         let files = model.listing.files
         let currentIndex = model.selection.focused.flatMap { focused in
             files.firstIndex { $0.url == focused }

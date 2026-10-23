@@ -218,6 +218,21 @@ struct PaneLayoutTests {
         #expect(!PaneLayout.previewOnly.showsNoMediaMessage(in: nonMediaListing))
     }
 
+    @Test("shouldAutoSelectEntry は読み込み中だけ false で、ほかの状態は true")
+    func shouldAutoSelectEntryOnlyWhileNotLoading() {
+        let folder = makeFolder()
+
+        #expect(!PaneLayout.shouldAutoSelectEntry(
+            in: FolderListing(folder: folder, state: .loading)
+        ))
+        for state in [FolderListing.State.loaded, .empty, .noMatches, .denied, .failed("x")] {
+            #expect(
+                PaneLayout.shouldAutoSelectEntry(in: FolderListing(folder: folder, state: state)),
+                "state=\(state)"
+            )
+        }
+    }
+
     @Test("PanePresentation の3状態×フルスクリーンの6通りが表示ペインを決める")
     func presentationResolvesVisiblePanes() {
         let cases: [(PaneLayout, Bool, [Pane])] = [

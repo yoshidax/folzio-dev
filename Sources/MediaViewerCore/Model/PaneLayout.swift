@@ -100,6 +100,12 @@ public enum PaneLayout: Sendable, Equatable {
         }
     }
 
+    /// プレビューのみ表示に切り替えたときに、最初のファイルを自動選択してよいか（FR-093）。
+    /// 通常の読み込み中と検索中の `.loading` では自動選択しない（読み込み完了後もやり直さない）
+    public static func shouldAutoSelectEntry(in listing: FolderListing) -> Bool {
+        listing.state != .loading
+    }
+
     /// プレビューのみ表示で、読み込み中でなく、表示中の一覧にメディアが1件もないとき true（FR-093）。
     /// プレビューに「表示するメディアファイルがありません」を出す
     public func showsNoMediaMessage(in listing: FolderListing) -> Bool {
