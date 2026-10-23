@@ -204,6 +204,19 @@ final class ImagePreviewView: NSView {
         messageStack.isHidden = false
     }
 
+    func showMessage(_ text: String) {
+        stopAnimation(clearAnimatedSource: true)
+        setAccessibilityLabel(text)
+        displayedImage = nil
+        contentLayer.contents = nil
+
+        spinner.stopAnimation(nil)
+        spinner.isHidden = true
+        nameLabel.stringValue = text
+        detailLabel.stringValue = ""
+        messageStack.isHidden = false
+    }
+
     fileprivate func isCurrentAnimation(_ state: AnimationState) -> Bool {
         animationState === state
     }

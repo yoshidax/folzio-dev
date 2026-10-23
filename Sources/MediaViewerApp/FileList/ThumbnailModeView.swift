@@ -353,6 +353,23 @@ final class ThumbnailModeView: NSView {
         columnCount()
     }
 
+    /// 隠れたファイルリストの移動に使う、セクションの余白を除いた幅（R43）
+    var navigationWidth: Double {
+        Double(max(
+            0,
+            collectionView.bounds.width - Self.sectionInset.left - Self.sectionInset.right
+        ))
+    }
+
+    /// 指定した幅での列数（R43）
+    func columnCount(forWidth width: Double) -> Int {
+        max(1, ThumbnailGridLayout.columns(
+            availableWidth: width,
+            thumbnailSize: storedThumbnailSize,
+            spacing: Double(Self.spacing)
+        ).count)
+    }
+
     func scrollToFocused() {
         guard let focused = model.selection.focused,
               let index = model.listing.files.firstIndex(where: { $0.url == focused }) else {
@@ -661,15 +678,7 @@ final class ThumbnailModeView: NSView {
     }
 
     private func columnCount() -> Int {
-        let available = Double(max(
-            0,
-            collectionView.bounds.width - Self.sectionInset.left - Self.sectionInset.right
-        ))
-        return max(1, ThumbnailGridLayout.columns(
-            availableWidth: available,
-            thumbnailSize: storedThumbnailSize,
-            spacing: Double(Self.spacing)
-        ).count)
+        columnCount(forWidth: navigationWidth)
     }
 
     /// メディア以外の行のアイコンの大きさ（サムネイルの大きさの半分程度）

@@ -17,7 +17,11 @@ final class MainWindowController: NSWindowController {
         self.splitViewController = splitViewController
         let settings = SettingsStore(defaults: .standard)
         let fileList = splitViewController.fileListViewController
-        let toolbarController = MainToolbarController(fileList: fileList, settings: settings)
+        let toolbarController = MainToolbarController(
+            fileList: fileList,
+            panes: splitViewController,
+            settings: settings
+        )
         self.toolbarController = toolbarController
         super.init(window: window)
 

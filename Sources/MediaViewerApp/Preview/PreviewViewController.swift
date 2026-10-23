@@ -12,6 +12,20 @@ final class PreviewViewController: NSViewController {
     private var animatedTask: Task<Void, Never>?
     private var configuredVideoURL: URL?
 
+    var paneLayout: PaneLayout = .all {
+        didSet {
+            guard oldValue != paneLayout else { return }
+            updateFromModel()
+        }
+    }
+
+    var isPaneVisible = true {
+        didSet {
+            guard oldValue != isPaneVisible else { return }
+            updateFromModel()
+        }
+    }
+
     init(model: BrowserModel, decoder: any ImageDecoding, archiveReader: any ArchiveReading) {
         self.model = model
         self.decoder = decoder
@@ -25,7 +39,7 @@ final class PreviewViewController: NSViewController {
     }
 
     var primaryFocusView: NSView {
-        if case .video = model.preview {
+        if case .video = model.preview, !videoView.isHidden {
             return videoView
         }
         return imageView
@@ -91,6 +105,7 @@ final class PreviewViewController: NSViewController {
     private func observePreview() {
         withObservationTracking {
             _ = model.preview
+            _ = model.listing
             _ = model.selection.focused
             _ = model.stopPlaybackSignal
         } onChange: { [weak self] in
@@ -108,7 +123,11 @@ final class PreviewViewController: NSViewController {
             animatedTask = nil
             stopVideo()
             showImageView()
-            imageView.showEmpty()
+            if paneLayout.showsNoMediaMessage(in: model.listing) {
+                imageView.showMessage("表示するメディアファイルがありません")
+            } else {
+                imageView.showEmpty()
+            }
         case let .loading(url):
             animatedTask?.cancel()
             animatedTask = nil
@@ -135,6 +154,12 @@ final class PreviewViewController: NSViewController {
         case let .video(url):
             animatedTask?.cancel()
             animatedTask = nil
+            guard isPaneVisible else {
+                stopVideo()
+                showImageView()
+                imageView.showEmpty()
+                return
+            }
             imageView.showEmpty()
             showVideoView()
             showVideo(url)

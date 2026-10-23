@@ -97,6 +97,12 @@ final class DirectoryTreeViewController: NSViewController {
 
     var primaryFocusView: NSView { outlineView }
 
+    func scrollSelectedRowToVisible() {
+        let row = outlineView.selectedRow
+        guard row >= 0 else { return }
+        outlineView.scrollRowToVisible(row)
+    }
+
     private var selectedNode: Node? {
         let row = outlineView.selectedRow
         guard row >= 0 else { return nil }

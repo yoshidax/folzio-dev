@@ -27,7 +27,11 @@ final class FileListViewController: NSViewController {
     private var messageBandHeightConstraint: NSLayoutConstraint?
     private var displayMode: DisplayMode
     private let initialThumbnailSize: Double
-    private var fullScreenNavigationLayout: FocusLayout?
+    private struct HiddenListNavigation {
+        let width: Double
+    }
+
+    private var hiddenListNavigation: HiddenListNavigation?
     private var installedViewMenuItems = false
     private weak var thumbnailMenuItem: NSMenuItem?
     private weak var listMenuItem: NSMenuItem?
@@ -103,7 +107,7 @@ final class FileListViewController: NSViewController {
     /// 検索中なら検索は止まる。それ以外では処理しない（FR-086）
     private func leaveSearchResults() -> Bool {
         guard model.isShowingSearchResults,
-              fullScreenNavigationLayout == nil,
+              hiddenListNavigation == nil,
               !isEditingText else { return false }
         let folder = model.listing.folder
         Task { @MainActor [model] in
@@ -140,19 +144,37 @@ final class FileListViewController: NSViewController {
         }
     }
 
-    func beginFullScreenNavigation() {
-        guard fullScreenNavigationLayout == nil else { return }
-        fullScreenNavigationLayout = displayMode == .thumbnails
-            ? .grid(columns: thumbnailModeView.currentColumnCount)
-            : .list
+    func beginHiddenListNavigation(selectingEntry: Bool) {
+        guard hiddenListNavigation == nil else { return }
+        hiddenListNavigation = HiddenListNavigation(
+            width: thumbnailModeView.navigationWidth
+        )
+
+        guard selectingEntry else { return }
+        let files = model.listing.files
+        let currentIndex = model.selection.focused.flatMap { focused in
+            files.firstIndex { $0.url == focused }
+        }
+        guard let target = FocusNavigator.entryIndex(
+            currentIndex: currentIndex,
+            fileCount: files.count,
+            isNavigable: { files[$0].kind.isMedia }
+        ), target != currentIndex else {
+            return
+        }
+        let url = files[target].url
+        model.select([url], focused: url)
     }
 
     @discardableResult
-    func moveFocusInFullScreen(_ move: FocusMove) -> Bool {
-        guard let layout = fullScreenNavigationLayout else { return false }
+    func moveFocusInHiddenList(_ move: FocusMove) -> Bool {
+        guard let navigation = hiddenListNavigation else { return false }
         let files = model.listing.files
         guard !files.isEmpty else { return true }
 
+        let layout: FocusLayout = displayMode == .thumbnails
+            ? .grid(columns: thumbnailModeView.columnCount(forWidth: navigation.width))
+            : .list
         let currentIndex = model.selection.focused.flatMap { focused in
             files.firstIndex { $0.url == focused }
         }
@@ -171,13 +193,18 @@ final class FileListViewController: NSViewController {
         return true
     }
 
-    func endFullScreenNavigation() {
-        guard let layout = fullScreenNavigationLayout else { return }
-        fullScreenNavigationLayout = nil
+    func endHiddenListNavigation() {
+        guard hiddenListNavigation != nil else { return }
+        hiddenListNavigation = nil
 
-        guard case .grid = layout else { return }
         DispatchQueue.main.async { [weak self] in
-            self?.thumbnailModeView.scrollToFocused()
+            guard let self else { return }
+            switch self.displayMode {
+            case .list:
+                self.listModeView.scrollToFocused()
+            case .thumbnails:
+                self.thumbnailModeView.scrollToFocused()
+            }
         }
     }
 

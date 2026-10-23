@@ -241,6 +241,76 @@ struct FocusNavigatorTests {
         #expect(target([], from: nil, .down, .list) == nil)
     }
 
+    // MARK: - entryIndex（FR-093）
+
+    private func entry(
+        _ kinds: [ListItemKind],
+        from currentIndex: Int?
+    ) -> Int? {
+        FocusNavigator.entryIndex(
+            currentIndex: currentIndex,
+            fileCount: kinds.count,
+            isNavigable: { kinds[$0].isMedia }
+        )
+    }
+
+    @Test("メディアにフォーカスがあれば選択を変えない")
+    func entryKeepsMediaFocus() {
+        let kinds: [ListItemKind] = [.media(.jpeg), .media(.png)]
+        #expect(entry(kinds, from: 0) == 0)
+        #expect(entry(kinds, from: 1) == 1)
+    }
+
+    @Test("メディア以外なら後ろの最初のメディアを選ぶ")
+    func entryFindsNextMedia() {
+        let kinds: [ListItemKind] = [.parent, .folder, .media(.jpeg), .archive, .media(.png)]
+        #expect(entry(kinds, from: 0) == 2)
+        #expect(entry(kinds, from: 1) == 2)
+        #expect(entry(kinds, from: 3) == 4)
+    }
+
+    @Test("後ろにメディアがなければ前の最も近いメディアを選ぶ")
+    func entryFallsBackToPreviousMedia() {
+        let kinds: [ListItemKind] = [.media(.jpeg), .folder, .media(.png), .folder, .archive]
+        #expect(entry(kinds, from: 3) == 2)
+        #expect(entry(kinds, from: 4) == 2)
+    }
+
+    @Test("未選択なら先頭から最初のメディアを選ぶ")
+    func entrySelectsFirstMediaWhenUnselected() {
+        let kinds: [ListItemKind] = [.parent, .directory, .media(.jpeg), .media(.png)]
+        #expect(entry(kinds, from: nil) == 2)
+    }
+
+    @Test("メディアが1件もなければ nil")
+    func entryReturnsNilWithoutMedia() {
+        let kinds: [ListItemKind] = [.parent, .folder, .archive, .directory]
+        #expect(entry(kinds, from: 0) == nil)
+        #expect(entry(kinds, from: nil) == nil)
+        #expect(entry([], from: nil) == nil)
+    }
+
+    @Test("範囲外の currentIndex は未選択と同じく先頭のメディア")
+    func entryTreatsOutOfRangeAsUnselected() {
+        let kinds: [ListItemKind] = [.parent, .directory, .media(.jpeg), .media(.png)]
+        #expect(entry(kinds, from: -1) == 2)
+        #expect(entry(kinds, from: kinds.count) == 2)
+        #expect(entry(kinds, from: 10) == 2)
+    }
+
+    @Test("プレビューのみ表示で選択がなくなった後の矢印キーは先頭のメディアへ移る")
+    func navigableNilCurrentIndexAfterPreviewOnly() {
+        let kinds: [ListItemKind] = [.parent, .folder, .media(.jpeg), .archive, .media(.png)]
+        #expect(target(kinds, from: nil, .up, .list) == 2)
+        #expect(target(kinds, from: nil, .down, .list) == 2)
+        #expect(target(kinds, from: nil, .left, .grid(columns: 2)) == 2)
+        #expect(target(kinds, from: nil, .right, .grid(columns: 2)) == 2)
+        #expect(target(kinds, from: nil, .up, .grid(columns: 2)) == 2)
+        #expect(target(kinds, from: nil, .down, .grid(columns: 2)) == 2)
+        #expect(target(kinds, from: nil, .left, .list) == nil)
+        #expect(target(kinds, from: nil, .right, .list) == nil)
+    }
+
     @Test("isNavigable が常に true なら既存の関数と同じ結果になる")
     func navigableAlwaysTrueMatchesBase() {
         let layouts: [FocusLayout] = [.list, .grid(columns: 1), .grid(columns: 3), .grid(columns: 0), .grid(columns: 10)]

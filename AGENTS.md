@@ -57,7 +57,7 @@ lldb -b \
   - `splitView(_:shouldCollapseSubview:forDoubleClickOnDividerAt:)`
   - Auto Layout 使用時は起動時に例外になる
 - ペインの最小幅は `NSSplitViewItem.minimumThickness`（160 / 240 / 320pt）で守る
-- 通常時は `canCollapse = false`、フルスクリーン時だけ `canCollapse = true` にしてから `isCollapsed` を設定する
+- 通常時は `canCollapse = false`。フルスクリーンとペインの表示切り替えで隠すペインだけ `canCollapse = true` にしてから `isCollapsed` を設定する
 - 制約は必ず対象ビューを `addSubview` した後に有効化する
 - 異なる view hierarchy に属するアンカー同士を制約しない
 - ウインドウの表示・contentViewController の設定は MainActor で行う

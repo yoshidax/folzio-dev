@@ -79,4 +79,26 @@ public struct FocusNavigator {
         }
         return nil
     }
+
+    /// プレビューのみ表示に切り替えたときの最初のファイル（FR-093）。`currentIndex` の行が `isNavigable` ならそのまま。
+    /// そうでなければ後ろの最初の `isNavigable` な行、後ろになければ前の最も近い行。`currentIndex` が nil（範囲外も同じ扱い）なら
+    /// 先頭から最初の行。`isNavigable` な行がなければ nil
+    public static func entryIndex(
+        currentIndex: Int?,
+        fileCount: Int,
+        isNavigable: (Int) -> Bool
+    ) -> Int? {
+        guard fileCount > 0 else { return nil }
+
+        guard let currentIndex, (0..<fileCount).contains(currentIndex) else {
+            return (0..<fileCount).first(where: isNavigable)
+        }
+
+        if isNavigable(currentIndex) { return currentIndex }
+
+        if let after = (currentIndex + 1..<fileCount).first(where: isNavigable) {
+            return after
+        }
+        return stride(from: currentIndex - 1, through: 0, by: -1).first(where: isNavigable)
+    }
 }

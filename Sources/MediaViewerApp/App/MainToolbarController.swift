@@ -3,6 +3,7 @@ import MediaViewerCore
 
 @MainActor
 final class MainToolbarController: NSObject {
+    private static let paneLayoutIdentifier = NSToolbarItem.Identifier("paneLayout")
     private static let mediaTypeFilterIdentifier = NSToolbarItem.Identifier("mediaTypeFilter")
     private static let viewModeIdentifier = NSToolbarItem.Identifier("viewMode")
     private static let thumbnailSizeIdentifier = NSToolbarItem.Identifier("thumbnailSize")
@@ -10,15 +11,18 @@ final class MainToolbarController: NSObject {
     let toolbar = NSToolbar(identifier: "MainToolbar")
 
     private let fileList: FileListViewController
+    private let panes: MainSplitViewController
     private let settings: SettingsStore
     private let sizeSlider = NSSlider()
-    private var mediaTypeFilterGroup: NSToolbarItemGroup?
-    private var viewModeGroup: NSToolbarItemGroup?
+    private var paneLayoutControl: NSSegmentedControl?
+    private var mediaTypeFilterControl: NSSegmentedControl?
+    private var viewModeControl: NSSegmentedControl?
     private var sizeItem: NSToolbarItem?
     private var visibilityObservation: NSKeyValueObservation?
 
-    init(fileList: FileListViewController, settings: SettingsStore) {
+    init(fileList: FileListViewController, panes: MainSplitViewController, settings: SettingsStore) {
         self.fileList = fileList
+        self.panes = panes
         self.settings = settings
         super.init()
 
@@ -53,10 +57,20 @@ final class MainToolbarController: NSObject {
                 self?.toolbarVisibilityChanged(isVisible)
             }
         }
+
+        panes.onPaneLayoutChange = { [weak self] layout in
+            self?.apply(paneLayout: layout)
+        }
+    }
+
+    func apply(paneLayout: PaneLayout) {
+        paneLayoutControl?.setSelected(paneLayout.soloPane == .fileList, forSegment: 0)
+        paneLayoutControl?.setSelected(paneLayout.soloPane == .preview, forSegment: 1)
+        paneLayoutControl?.isEnabled = panes.paneCommands.canChangeLayout
     }
 
     func apply(displayMode: DisplayMode, thumbnailSize: Double) {
-        viewModeGroup?.selectedIndex = displayMode == .thumbnails ? 0 : 1
+        viewModeControl?.selectedSegment = displayMode == .thumbnails ? 0 : 1
         if abs(sizeSlider.doubleValue - thumbnailSize) > 0.01 {
             sizeSlider.doubleValue = thumbnailSize
         }
@@ -70,8 +84,8 @@ final class MainToolbarController: NSObject {
     }
 
     func apply(mediaTypeFilter: MediaTypeFilter) {
-        mediaTypeFilterGroup?.setSelected(mediaTypeFilter.imagesOnly, at: 0)
-        mediaTypeFilterGroup?.setSelected(mediaTypeFilter.videosOnly, at: 1)
+        mediaTypeFilterControl?.setSelected(mediaTypeFilter.imagesOnly, forSegment: 0)
+        mediaTypeFilterControl?.setSelected(mediaTypeFilter.videosOnly, forSegment: 1)
     }
 
     private func applyCurrentState() {
@@ -90,31 +104,84 @@ final class MainToolbarController: NSObject {
         settings.viewSettings = viewSettings
     }
 
-    @objc private func mediaTypeFilterSelected(_ sender: NSToolbarItemGroup) {
+    @objc private func paneLayoutSelected(_ sender: NSSegmentedControl) {
+        panes.applyToolbarSelection(
+            fileListSelected: sender.isSelected(forSegment: 0),
+            previewSelected: sender.isSelected(forSegment: 1)
+        )
+    }
+
+    @objc private func mediaTypeFilterSelected(_ sender: NSSegmentedControl) {
         fileList.applyMediaTypeFilter(
             MediaTypeFilter(
-                imagesOnly: sender.isSelected(at: 0),
-                videosOnly: sender.isSelected(at: 1)
+                imagesOnly: sender.isSelected(forSegment: 0),
+                videosOnly: sender.isSelected(forSegment: 1)
             )
         )
     }
 
-    @objc private func viewModeSelected(_ sender: NSToolbarItemGroup) {
-        fileList.selectDisplayMode(sender.selectedIndex == 0 ? .thumbnails : .list)
+    @objc private func viewModeSelected(_ sender: NSSegmentedControl) {
+        fileList.selectDisplayMode(sender.selectedSegment == 0 ? .thumbnails : .list)
     }
 
     @objc private func thumbnailSizeChanged(_ sender: NSSlider) {
         fileList.applyThumbnailSize(sender.doubleValue)
     }
+
+    /// 3つのボタングループを同じ見た目・同じ幅で並べる（FR-045・051・056・089）
+    private func makeSegmentedControl(
+        items: [(symbol: String, label: String)],
+        trackingMode: NSSegmentedControl.SwitchTracking,
+        action: Selector
+    ) -> NSSegmentedControl? {
+        let images = items.compactMap { item in
+            NSImage(
+                systemSymbolName: item.symbol,
+                accessibilityDescription: item.label
+            )
+        }
+        guard images.count == items.count else { return nil }
+
+        let control = NSSegmentedControl(
+            images: images,
+            trackingMode: trackingMode,
+            target: self,
+            action: action
+        )
+        control.segmentStyle = .texturedRounded
+        control.controlSize = .regular
+        for index in items.indices {
+            control.setWidth(36, forSegment: index)
+            control.setToolTip(items[index].label, forSegment: index)
+        }
+        control.setAccessibilityLabel(items.map(\.label).joined(separator: "、"))
+        control.sizeToFit()
+        return control
+    }
+
+    private func makeGroupItem(
+        identifier: NSToolbarItem.Identifier,
+        label: String,
+        control: NSSegmentedControl
+    ) -> NSToolbarItem {
+        let item = NSToolbarItem(itemIdentifier: identifier)
+        item.label = label
+        item.paletteLabel = label
+        item.toolTip = label
+        item.view = control
+        item.target = self
+        item.action = control.action
+        return item
+    }
 }
 
 extension MainToolbarController: NSToolbarDelegate {
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.mediaTypeFilterIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
+        [Self.paneLayoutIdentifier, Self.mediaTypeFilterIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.mediaTypeFilterIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
+        [Self.paneLayoutIdentifier, Self.mediaTypeFilterIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
     }
 
     func toolbar(
@@ -123,45 +190,63 @@ extension MainToolbarController: NSToolbarDelegate {
         willBeInsertedIntoToolbar flag: Bool
     ) -> NSToolbarItem? {
         switch itemIdentifier {
-        case Self.mediaTypeFilterIdentifier:
-            let images = [
-                NSImage(systemSymbolName: "photo", accessibilityDescription: "画像のみ表示"),
-                NSImage(systemSymbolName: "film", accessibilityDescription: "動画のみ表示"),
-            ].compactMap { $0 }
-            let group = NSToolbarItemGroup(
-                itemIdentifier: itemIdentifier,
-                images: images,
-                selectionMode: .selectAny,
-                labels: ["画像のみ表示", "動画のみ表示"],
-                target: self,
-                action: #selector(mediaTypeFilterSelected(_:))
-            )
-            group.label = "種類"
-            group.toolTip = "種類"
-            for (subitem, title) in zip(group.subitems, ["画像のみ表示", "動画のみ表示"]) {
-                subitem.toolTip = title
+        case Self.paneLayoutIdentifier:
+            guard let control = makeSegmentedControl(
+                items: [
+                    ("list.bullet.rectangle", "ファイルリストのみ表示"),
+                    ("sidebar.right", "プレビューのみ表示"),
+                ],
+                trackingMode: .selectAny,
+                action: #selector(paneLayoutSelected(_:))
+            ) else {
+                return nil
             }
-            mediaTypeFilterGroup = group
-            apply(mediaTypeFilter: fileList.currentMediaTypeFilter)
-            return group
-        case Self.viewModeIdentifier:
-            let images = [
-                NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "サムネイル"),
-                NSImage(systemSymbolName: "list.bullet", accessibilityDescription: "リスト"),
-            ].compactMap { $0 }
-            let group = NSToolbarItemGroup(
-                itemIdentifier: itemIdentifier,
-                images: images,
-                selectionMode: .selectOne,
-                labels: ["サムネイル", "リスト"],
-                target: self,
-                action: #selector(viewModeSelected(_:))
+            paneLayoutControl = control
+            let item = makeGroupItem(
+                identifier: itemIdentifier,
+                label: "ペイン",
+                control: control
             )
-            group.label = "表示形式"
-            group.toolTip = "表示形式"
-            viewModeGroup = group
+            apply(paneLayout: panes.paneLayout)
+            return item
+        case Self.mediaTypeFilterIdentifier:
+            guard let control = makeSegmentedControl(
+                items: [
+                    ("photo", "画像のみ表示"),
+                    ("film", "動画のみ表示"),
+                ],
+                trackingMode: .selectAny,
+                action: #selector(mediaTypeFilterSelected(_:))
+            ) else {
+                return nil
+            }
+            mediaTypeFilterControl = control
+            let item = makeGroupItem(
+                identifier: itemIdentifier,
+                label: "種類",
+                control: control
+            )
+            apply(mediaTypeFilter: fileList.currentMediaTypeFilter)
+            return item
+        case Self.viewModeIdentifier:
+            guard let control = makeSegmentedControl(
+                items: [
+                    ("square.grid.2x2", "サムネイル"),
+                    ("list.bullet", "リスト"),
+                ],
+                trackingMode: .selectOne,
+                action: #selector(viewModeSelected(_:))
+            ) else {
+                return nil
+            }
+            viewModeControl = control
+            let item = makeGroupItem(
+                identifier: itemIdentifier,
+                label: "表示形式",
+                control: control
+            )
             applyCurrentState()
-            return group
+            return item
         case Self.thumbnailSizeIdentifier:
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
             item.label = "サイズ"
@@ -174,5 +259,14 @@ extension MainToolbarController: NSToolbarDelegate {
         default:
             return nil
         }
+    }
+}
+
+extension MainToolbarController: NSToolbarItemValidation {
+    func validateToolbarItem(_ item: NSToolbarItem) -> Bool {
+        guard item.itemIdentifier == Self.paneLayoutIdentifier else { return true }
+        let enabled = panes.paneCommands.canChangeLayout
+        paneLayoutControl?.isEnabled = enabled
+        return enabled
     }
 }

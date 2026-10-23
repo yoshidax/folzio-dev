@@ -6,7 +6,7 @@ private final class NotificationTokens: @unchecked Sendable {
     var tokens: [NSObjectProtocol] = []
 }
 
-private struct FullScreenKeyPress: Sendable {
+private struct HiddenListKeyPress: Sendable {
     enum Key: Sendable {
         case left
         case right
@@ -62,11 +62,29 @@ final class MainSplitViewController: NSSplitViewController {
     private var installedFocusMenu = false
     private var treeSplitItem: NSSplitViewItem?
     private var fileListSplitItem: NSSplitViewItem?
-    private var panesCollapsedForFullScreen = false
+    private var previewSplitItem: NSSplitViewItem?
+    private(set) var paneLayout: PaneLayout = .all
+    private var isFullScreenPresentation = false
+    private var appliedPresentation = PanePresentation(layout: .all, isFullScreen: false)
+    private var savedPaneWidths: [Double]?
+    private var focusBeforeFullScreen: Pane?
+    private var isApplyingPresentation = false
+    private var collapseObservations: [NSKeyValueObservation] = []
+    private var didNormalizeInitialPaneState = false
     private var isAppInitiatedFullScreenTransition = false
-    private var fullScreenKeyMonitor: Any?
+    private var hiddenListKeyMonitor: Any?
     /// 同じ起動中に前回検索したキーワード。保存しない（FR-081、R39）
     private var lastSearchKeyword: String?
+
+    var onPaneLayoutChange: ((PaneLayout) -> Void)?
+
+    var paneCommands: PaneCommands {
+        PaneCommands(
+            layout: paneLayout,
+            isFullScreen: isFullScreenPresentation,
+            isEditingText: fileListViewController.isEditingText
+        )
+    }
 
     var onInitialListingDisplayed: (() -> Void)? {
         didSet {
@@ -162,13 +180,16 @@ final class MainSplitViewController: NSSplitViewController {
         fileListSplitItem = fileListItem
         addSplitViewItem(fileListItem)
 
-        addSplitViewItem(makeItem(
+        let previewItem = makeItem(
             for: previewViewController,
             minimumThickness: 320,
             holdingPriority: 249
-        ))
+        )
+        previewSplitItem = previewItem
+        addSplitViewItem(previewItem)
 
         splitView.autosaveName = "MainSplit"
+        observeCollapseChanges()
         fileListViewController.onTogglePlayback = { [weak self] in
             self?.previewViewController.togglePlayback()
         }
@@ -177,6 +198,42 @@ final class MainSplitViewController: NSSplitViewController {
         }
         installFocusMenuItems()
         observeInitialListingState()
+    }
+
+    private func observeCollapseChanges() {
+        let items: [(Pane, NSSplitViewItem?)] = [
+            (.tree, treeSplitItem),
+            (.fileList, fileListSplitItem),
+            (.preview, previewSplitItem)
+        ]
+        for (pane, item) in items {
+            guard let item else { continue }
+            let observation = item.observe(\.isCollapsed, options: [.new]) { [weak self] _, change in
+                guard let isCollapsed = change.newValue else { return }
+                MainActor.assumeIsolated {
+                    self?.handleCollapseChange(pane: pane, isCollapsed: isCollapsed)
+                }
+            }
+            collapseObservations.append(observation)
+        }
+    }
+
+    private func handleCollapseChange(pane: Pane, isCollapsed: Bool) {
+        guard !isApplyingPresentation else { return }
+        guard !appliedPresentation.isVisible(pane) else { return }
+        guard !isCollapsed else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.recollapseHiddenPanes()
+        }
+    }
+
+    private func recollapseHiddenPanes() {
+        guard !isApplyingPresentation else { return }
+        for pane in Pane.allCases where !appliedPresentation.isVisible(pane) {
+            guard let item = splitItem(for: pane) else { continue }
+            item.canCollapse = true
+            item.isCollapsed = true
+        }
     }
 
     private func observeInitialListingState() {
@@ -217,8 +274,192 @@ final class MainSplitViewController: NSSplitViewController {
         if let window = view.window, window.delegate == nil {
             window.delegate = self
         }
-        configureKeyViewLoop()
+        normalizeInitialPaneStateIfNeeded()
+        configureKeyViewLoop(for: appliedPresentation.visiblePanes)
         applyInitialPositionsIfNeeded()
+    }
+
+    private func normalizeInitialPaneStateIfNeeded() {
+        guard !didNormalizeInitialPaneState else { return }
+        didNormalizeInitialPaneState = true
+        for pane in Pane.allCases {
+            guard let item = splitItem(for: pane) else { continue }
+            if item.isCollapsed {
+                item.isCollapsed = false
+            }
+            if item.canCollapse {
+                item.canCollapse = false
+            }
+        }
+    }
+
+    func setPaneLayout(_ layout: PaneLayout) {
+        guard paneCommands.canChangeLayout, layout != paneLayout else {
+            onPaneLayoutChange?(paneLayout)
+            return
+        }
+
+        let focused = focusedPane()
+        paneLayout = layout
+        applyPanePresentation()
+        if let target = layout.focusTarget(afterSwitchingFrom: focused) {
+            focusPane(focusView(for: target))
+        }
+        onPaneLayoutChange?(paneLayout)
+    }
+
+    func togglePaneLayout(_ pane: SoloPane) {
+        setPaneLayout(paneLayout.toggling(pane))
+    }
+
+    func applyToolbarSelection(fileListSelected: Bool, previewSelected: Bool) {
+        setPaneLayout(
+            paneLayout.applyingToolbarSelection(
+                fileListSelected: fileListSelected,
+                previewSelected: previewSelected
+            )
+        )
+    }
+
+    private func applyPanePresentation() {
+        let presentation = PanePresentation(
+            layout: paneLayout,
+            isFullScreen: isFullScreenPresentation
+        )
+        guard presentation != appliedPresentation else { return }
+
+        isApplyingPresentation = true
+        defer { isApplyingPresentation = false }
+
+        if appliedPresentation.showsAllPanes && !presentation.showsAllPanes {
+            let widths = [
+                treeViewController.view.frame.width,
+                fileListViewController.view.frame.width,
+                previewViewController.view.frame.width
+            ].map(Double.init)
+            if widths.count == 3 && widths.allSatisfy({ $0.isFinite && $0 > 0 }) {
+                savedPaneWidths = widths
+            }
+            splitView.autosaveName = nil
+        }
+
+        if !appliedPresentation.navigatesHiddenFileList && presentation.navigatesHiddenFileList {
+            fileListViewController.beginHiddenListNavigation(
+                selectingEntry: !isFullScreenPresentation && paneLayout == .previewOnly
+            )
+            installHiddenListKeyMonitor()
+        }
+
+        for pane in presentation.visiblePanes {
+            guard let item = splitItem(for: pane) else { continue }
+            item.isCollapsed = false
+            item.canCollapse = false
+        }
+        for pane in Pane.allCases where !presentation.isVisible(pane) {
+            guard let item = splitItem(for: pane) else { continue }
+            item.canCollapse = true
+            item.isCollapsed = true
+        }
+
+        previewViewController.paneLayout = paneLayout
+        previewViewController.isPaneVisible = presentation.isVisible(.preview)
+
+        let returnsToAllPanes = presentation.showsAllPanes && !appliedPresentation.showsAllPanes
+
+        if appliedPresentation.navigatesHiddenFileList && !presentation.navigatesHiddenFileList {
+            removeHiddenListKeyMonitor()
+            if !returnsToAllPanes {
+                fileListViewController.endHiddenListNavigation()
+            }
+        }
+
+        if returnsToAllPanes {
+            splitView.autosaveName = "MainSplit"
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.appliedPresentation == presentation else { return }
+                self.splitView.layoutSubtreeIfNeeded()
+                let positions = PaneWidths.dividerPositions(
+                    savedWidths: self.savedPaneWidths ?? [],
+                    totalWidth: Double(self.splitView.bounds.width),
+                    dividerThickness: Double(self.splitView.dividerThickness),
+                    minimumWidths: [160, 240, 320]
+                )
+                for (index, position) in positions.enumerated() {
+                    self.splitView.setPosition(CGFloat(position), ofDividerAt: index)
+                }
+                self.treeViewController.scrollSelectedRowToVisible()
+                self.fileListViewController.endHiddenListNavigation()
+            }
+        }
+
+        configureKeyViewLoop(for: presentation.visiblePanes)
+        appliedPresentation = presentation
+    }
+
+    private func splitItem(for pane: Pane) -> NSSplitViewItem? {
+        switch pane {
+        case .tree:
+            return treeSplitItem
+        case .fileList:
+            return fileListSplitItem
+        case .preview:
+            return previewSplitItem
+        }
+    }
+
+    private func focusedPane() -> Pane? {
+        guard let responder = view.window?.firstResponder as? NSView else { return nil }
+        if isView(responder, inside: treeViewController.view) {
+            return .tree
+        }
+        if isView(responder, inside: fileListViewController.view) {
+            return .fileList
+        }
+        if isView(responder, inside: previewViewController.view) {
+            return .preview
+        }
+        return nil
+    }
+
+    private func focusView(for pane: Pane) -> NSView {
+        switch pane {
+        case .tree:
+            return treeViewController.primaryFocusView
+        case .fileList:
+            return fileListViewController.primaryFocusView
+        case .preview:
+            return previewViewController.primaryFocusView
+        }
+    }
+
+    private func isView(_ view: NSView, inside ancestor: NSView) -> Bool {
+        var current: NSView? = view
+        while let candidate = current {
+            if candidate === ancestor {
+                return true
+            }
+            current = candidate.superview
+        }
+        return false
+    }
+
+    private func enterFullScreenPresentation() {
+        guard !isFullScreenPresentation else { return }
+        focusBeforeFullScreen = focusedPane()
+        isFullScreenPresentation = true
+        applyPanePresentation()
+    }
+
+    private func leaveFullScreenPresentation() {
+        guard isFullScreenPresentation else { return }
+        isFullScreenPresentation = false
+        applyPanePresentation()
+
+        let presentation = PanePresentation(layout: paneLayout, isFullScreen: false)
+        if let pane = focusBeforeFullScreen, presentation.isVisible(pane) {
+            focusPane(focusView(for: pane))
+        }
+        focusBeforeFullScreen = nil
     }
 
     @objc func togglePreviewFullScreen() {
@@ -229,7 +470,7 @@ final class MainSplitViewController: NSSplitViewController {
             return
         }
 
-        collapsePanesForFullScreen()
+        enterFullScreenPresentation()
         isAppInitiatedFullScreenTransition = true
         window.toggleFullScreen(nil)
     }
@@ -240,50 +481,31 @@ final class MainSplitViewController: NSSplitViewController {
         if window.styleMask.contains(.fullScreen) {
             window.toggleFullScreen(nil)
         } else {
-            restorePanesAfterFullScreen()
+            leaveFullScreenPresentation()
         }
     }
 
-    private func collapsePanesForFullScreen() {
-        guard !panesCollapsedForFullScreen else { return }
-        fileListViewController.beginFullScreenNavigation()
-        panesCollapsedForFullScreen = true
-        treeSplitItem?.canCollapse = true
-        fileListSplitItem?.canCollapse = true
-        treeSplitItem?.isCollapsed = true
-        fileListSplitItem?.isCollapsed = true
-    }
-
-    private func restorePanesAfterFullScreen() {
-        guard panesCollapsedForFullScreen else { return }
-        panesCollapsedForFullScreen = false
-        treeSplitItem?.isCollapsed = false
-        fileListSplitItem?.isCollapsed = false
-        treeSplitItem?.canCollapse = false
-        fileListSplitItem?.canCollapse = false
-    }
-
-    private func installFullScreenKeyMonitor() {
-        guard fullScreenKeyMonitor == nil else { return }
-        fullScreenKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            let press = FullScreenKeyPress(event: event)
+    private func installHiddenListKeyMonitor() {
+        guard hiddenListKeyMonitor == nil else { return }
+        hiddenListKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            let press = HiddenListKeyPress(event: event)
             let handled = MainActor.assumeIsolated {
-                self?.handleFullScreenKey(press) ?? false
+                self?.handleHiddenListKey(press) ?? false
             }
             return handled ? nil : event
         }
     }
 
-    private func removeFullScreenKeyMonitor() {
-        guard let fullScreenKeyMonitor else { return }
-        NSEvent.removeMonitor(fullScreenKeyMonitor)
-        self.fullScreenKeyMonitor = nil
+    private func removeHiddenListKeyMonitor() {
+        guard let hiddenListKeyMonitor else { return }
+        NSEvent.removeMonitor(hiddenListKeyMonitor)
+        self.hiddenListKeyMonitor = nil
     }
 
-    private func handleFullScreenKey(_ press: FullScreenKeyPress) -> Bool {
+    private func handleHiddenListKey(_ press: HiddenListKeyPress) -> Bool {
         guard let window = view.window,
               press.windowNumber == window.windowNumber,
-              window.styleMask.contains(.fullScreen) else {
+              appliedPresentation.navigatesHiddenFileList else {
             return false
         }
         guard !(window.firstResponder is NSTextView) else { return false }
@@ -304,7 +526,7 @@ final class MainSplitViewController: NSSplitViewController {
             default:
                 move = .down
             }
-            return fileListViewController.moveFocusInFullScreen(move)
+            return fileListViewController.moveFocusInHiddenList(move)
         case .less, .greater:
             let disallowed: NSEvent.ModifierFlags = [.command, .option, .control]
             guard flags.intersection(disallowed).isEmpty else { return false }
@@ -339,16 +561,15 @@ final class MainSplitViewController: NSSplitViewController {
         splitView.setPosition(secondDivider, ofDividerAt: 1)
     }
 
-    private func configureKeyViewLoop() {
-        let tree = treeViewController.primaryFocusView
-        let list = fileListViewController.primaryFocusView
-        let preview = previewViewController.primaryFocusView
+    private func configureKeyViewLoop(for visiblePanes: [Pane]) {
+        let views = visiblePanes.map(focusView(for:))
+        guard let first = views.first else { return }
 
-        tree.nextKeyView = list
-        list.nextKeyView = preview
-        preview.nextKeyView = tree
+        for (index, view) in views.enumerated() {
+            view.nextKeyView = views[(index + 1) % views.count]
+        }
 
-        view.window?.initialFirstResponder = tree
+        view.window?.initialFirstResponder = first
     }
 
     private func installFocusMenuItems() {
@@ -361,6 +582,24 @@ final class MainSplitViewController: NSSplitViewController {
         installedFocusMenu = true
 
         viewMenu.addItem(.separator())
+        let fileListOnlyItem = NSMenuItem(
+            title: "ファイルリストのみ表示",
+            action: #selector(toggleFileListOnly(_:)),
+            keyEquivalent: "2"
+        )
+        fileListOnlyItem.keyEquivalentModifierMask = [.command, .control]
+        fileListOnlyItem.target = self
+        viewMenu.addItem(fileListOnlyItem)
+
+        let previewOnlyItem = NSMenuItem(
+            title: "プレビューのみ表示",
+            action: #selector(togglePreviewOnly(_:)),
+            keyEquivalent: "3"
+        )
+        previewOnlyItem.keyEquivalentModifierMask = [.command, .control]
+        previewOnlyItem.target = self
+        viewMenu.addItem(previewOnlyItem)
+
         addFocusItem(
             to: viewMenu,
             title: "ディレクトリツリーへフォーカス",
@@ -403,30 +642,46 @@ final class MainSplitViewController: NSSplitViewController {
         menu.addItem(item)
     }
 
+    @objc private func toggleFileListOnly(_ sender: Any?) {
+        togglePaneLayout(.fileList)
+    }
+
+    @objc private func togglePreviewOnly(_ sender: Any?) {
+        togglePaneLayout(.preview)
+    }
+
     @objc private func focusTreePane(_ sender: Any?) {
+        guard paneCommands.canFocus(.tree) else { return }
         focusPane(treeViewController.primaryFocusView)
     }
 
     @objc private func focusFileListPane(_ sender: Any?) {
+        guard paneCommands.canFocus(.fileList) else { return }
         focusPane(fileListViewController.primaryFocusView)
     }
 
     @objc private func focusPreviewPane(_ sender: Any?) {
+        guard paneCommands.canFocus(.preview) else { return }
         focusPane(previewViewController.primaryFocusView)
     }
 
     @objc private func focusFavorites(_ sender: Any?) {
+        guard paneCommands.canGoToFavorites else { return }
         treeViewController.focusFavoritesHeader()
     }
 
     /// ⌃⌘T。どのペインにフォーカスがあっても、ツリーで選択中のフォルダを登録する（FR-062）
     @objc func addSelectedFolderToFavorites(_ sender: Any?) {
+        guard paneCommands.allowsAddingFavorite,
+              treeViewController.canAddSelectedFolderToFavorites else {
+            return
+        }
         treeViewController.addSelectedFolderToFavorites()
     }
 
     /// ⌘F。検索のモーダルを開く。起点の既定値は表示中のフォルダ（検索結果の表示中は検索前のフォルダ。FR-080・081）
     @objc func showSearch(_ sender: Any?) {
-        guard !panesCollapsedForFullScreen, !fileListViewController.isEditingText else { return }
+        guard paneCommands.canSearch else { return }
         let panel = SearchPanelController(
             keyword: lastSearchKeyword,
             rootPath: model.listing.folder.path
@@ -468,12 +723,24 @@ final class MainSplitViewController: NSSplitViewController {
 extension MainSplitViewController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
+        case #selector(toggleFileListOnly(_:)):
+            menuItem.state = paneLayout.soloPane == .fileList ? .on : .off
+            return paneCommands.canChangeLayout
+        case #selector(togglePreviewOnly(_:)):
+            menuItem.state = paneLayout.soloPane == .preview ? .on : .off
+            return paneCommands.canChangeLayout
+        case #selector(focusTreePane(_:)):
+            return paneCommands.canFocus(.tree)
+        case #selector(focusFileListPane(_:)):
+            return paneCommands.canFocus(.fileList)
+        case #selector(focusPreviewPane(_:)):
+            return paneCommands.canFocus(.preview)
         case #selector(focusFavorites(_:)):
-            return !panesCollapsedForFullScreen && !fileListViewController.isEditingText
+            return paneCommands.canGoToFavorites
         case #selector(showSearch(_:)):
-            return !panesCollapsedForFullScreen && !fileListViewController.isEditingText
+            return paneCommands.canSearch
         case #selector(addSelectedFolderToFavorites(_:)):
-            return !fileListViewController.isEditingText
+            return paneCommands.allowsAddingFavorite
                 && treeViewController.canAddSelectedFolderToFavorites
         default:
             return true
@@ -495,21 +762,18 @@ extension MainSplitViewController: NSWindowDelegate {
         if isAppInitiatedFullScreenTransition {
             isAppInitiatedFullScreenTransition = false
         } else {
-            collapsePanesForFullScreen()
+            enterFullScreenPresentation()
         }
     }
 
     func windowDidEnterFullScreen(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow, window === view.window else { return }
-        installFullScreenKeyMonitor()
+        isAppInitiatedFullScreenTransition = false
     }
 
     func windowDidExitFullScreen(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window === view.window else { return }
 
-        removeFullScreenKeyMonitor()
         isAppInitiatedFullScreenTransition = false
-        restorePanesAfterFullScreen()
-        fileListViewController.endFullScreenNavigation()
+        leaveFullScreenPresentation()
     }
 }
