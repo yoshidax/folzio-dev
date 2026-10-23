@@ -10,6 +10,8 @@ workflow:
   # 必ず scripts/sdd-run-kilo.sh から実行すること
   # （SPECKIT_INTEGRATION_OPENCODE_EXECUTABLE=kilo と SPECKIT_INTEGRATION_OPENCODE_EXTRA_ARGS=--auto を設定する）。
   integration: "opencode"
+  # メインエージェント（command / prompt の各 step）を固定する
+  model: "openrouter/deepseek/deepseek-v4.1-flash-1017"
   description: >-
     既存 feature への追加要件を、clarify → plan → tasks → analyze と修正のループ → 実装・検証・converge のループで進める。
     Kilo CLI をバックエンドにする。人が判断するのは、clarify（manual のとき）、設計のレビュー、GUI の起動確認の3か所だけ
@@ -31,10 +33,6 @@ inputs:
     default: "auto"
     enum: ["auto", "manual"]
     prompt: "clarify の進め方（auto: 推奨回答を自動で採用し、後のレビューでまとめて確認 / manual: Kilo Code で対話）"
-  impl_model:
-    type: string
-    default: "openrouter/~anthropic/claude-sonnet-latest"
-    prompt: "実装を担当する sub agent のモデル（Kilo の provider/model ID。例: openrouter/~anthropic/claude-sonnet-latest）"
 
 steps:
   # ── 1. 仕様の明確化 ─────────────────────────────────────────────
@@ -141,7 +139,7 @@ steps:
           args: >-
             実装してください。AGENTS.md の worktree 規約に従い、ファイルが重ならない作業を並行化する場合は、
             `git worktree add` で作業ツリーを分けてから
-            `kilo run --dir <worktree> --auto -m {{ inputs.impl_model }} "<作業指示>"` を並行して起動してください。
+            `kilo run --dir <worktree> --auto -m openrouter/deepseek/deepseek-v4.1-flash-1017 "<作業指示>"` を並行して起動してください。
             `kilo run` を並行起動できない場合は、同じ worktree 規約で直列に実装してください。
             内部の task サブエージェントは調査・レビューにだけ使い、実装の並列化には使わないでください。
             統合は Phase ブランチへ git merge --no-ff で行い、各マージ後に swift build と swift test を通してください。
@@ -169,7 +167,6 @@ steps:
       - id: record
         type: prompt
         timeout: 1200
-        model: "openrouter/~anthropic/claude-sonnet-latest"
         prompt: |
           ユーザーが GUI の起動確認を終え、問題がないと報告しました。tasks.md の未チェックの検証タスク（GUI 確認を含むもの）について、
           specs/*/checklists/validation.md に既存の形式で結果（実行日、OS、確認項目、合否）を記録し、そのタスクを [X] にして、
