@@ -37,9 +37,13 @@ final class FileListViewController: NSViewController {
     private weak var listMenuItem: NSMenuItem?
     private weak var imagesOnlyMenuItem: NSMenuItem?
     private weak var videosOnlyMenuItem: NSMenuItem?
+    private weak var zipVisibilityMenuItem: NSMenuItem?
+    /// 一覧の作り直しをまたいで保つスクロール位置（SC-017）
+    private var pendingScrollOrigin: CGPoint?
 
     var onViewStateChange: ((DisplayMode, Double) -> Void)?
     var onMediaTypeFilterChange: ((MediaTypeFilter) -> Void)?
+    var onShowsZipFilesChange: ((Bool) -> Void)?
 
     var isToolbarShown = false {
         didSet {
@@ -58,6 +62,10 @@ final class FileListViewController: NSViewController {
 
     var currentMediaTypeFilter: MediaTypeFilter {
         model.mediaTypeFilter
+    }
+
+    var currentShowsZipFiles: Bool {
+        model.showsZipFiles
     }
 
     init(
@@ -311,6 +319,7 @@ final class FileListViewController: NSViewController {
         refresh()
         observeModel()
         observeMediaTypeFilter()
+        observeShowsZipFiles()
     }
 
     override func viewDidAppear() {
@@ -454,6 +463,19 @@ final class FileListViewController: NSViewController {
         }
     }
 
+    private func observeShowsZipFiles() {
+        withObservationTracking {
+            _ = model.showsZipFiles
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.updateViewMenuState()
+                self.onShowsZipFilesChange?(self.model.showsZipFiles)
+                self.observeShowsZipFiles()
+            }
+        }
+    }
+
     /// 一覧の行が残っているとき（`..` やディレクトリ）は、メッセージの状態でも一覧を表示し続ける。
     /// 読めないフォルダでも `..` が残れば一覧を出し、メッセージは下端の帯に出す（FR-077）
     private var showsFileList: Bool {
@@ -468,6 +490,7 @@ final class FileListViewController: NSViewController {
     }
 
     private func refresh() {
+        let originBeforeRefresh = currentVisibleOrigin
         messageLabel.isHidden = true
         messageLabel.stringValue = ""
         messageBandLabel.stringValue = ""
@@ -505,6 +528,35 @@ final class FileListViewController: NSViewController {
 
         updateSearchBar()
         updateModeVisibility()
+        restoreScrollOriginIfNeeded(originBeforeRefresh)
+    }
+
+    /// 表示中の一覧のスクロール位置。一覧を隠している間は控えない
+    private var currentVisibleOrigin: CGPoint? {
+        switch displayMode {
+        case .list:
+            return listModeView.isHidden ? nil : listModeView.visibleOrigin
+        case .thumbnails:
+            return thumbnailModeView.isHidden ? nil : thumbnailModeView.visibleOrigin
+        }
+    }
+
+    /// 一覧の作り直しの前にスクロール位置を控える（SC-017）
+    private func captureScrollOrigin() {
+        pendingScrollOrigin = currentVisibleOrigin
+    }
+
+    /// 控えた位置へ戻す。一覧の作り直しで原点が変わった場合だけ反映する
+    private func restoreScrollOriginIfNeeded(_ fallback: CGPoint? = nil) {
+        let target = pendingScrollOrigin ?? fallback
+        pendingScrollOrigin = nil
+        guard let target, let current = currentVisibleOrigin, current != target else { return }
+        switch displayMode {
+        case .list:
+            listModeView.restoreVisibleOrigin(target)
+        case .thumbnails:
+            thumbnailModeView.restoreVisibleOrigin(target)
+        }
     }
 
     private func updateModeVisibility() {
@@ -611,6 +663,16 @@ final class FileListViewController: NSViewController {
         viewMenu.addItem(videosOnlyItem)
         videosOnlyMenuItem = videosOnlyItem
 
+        let zipVisibilityItem = NSMenuItem(
+            title: "zipファイルを表示",
+            action: #selector(toggleShowsZipFiles(_:)),
+            keyEquivalent: "z"
+        )
+        zipVisibilityItem.keyEquivalentModifierMask = [.command, .control]
+        zipVisibilityItem.target = self
+        viewMenu.addItem(zipVisibilityItem)
+        zipVisibilityMenuItem = zipVisibilityItem
+
         updateViewMenuState()
     }
 
@@ -619,6 +681,7 @@ final class FileListViewController: NSViewController {
         listMenuItem?.state = displayMode == .list ? .on : .off
         imagesOnlyMenuItem?.state = model.mediaTypeFilter.imagesOnly ? .on : .off
         videosOnlyMenuItem?.state = model.mediaTypeFilter.videosOnly ? .on : .off
+        zipVisibilityMenuItem?.state = model.showsZipFiles ? .on : .off
     }
 
     func applyMediaTypeFilter(_ filter: MediaTypeFilter) {
@@ -626,7 +689,19 @@ final class FileListViewController: NSViewController {
             onMediaTypeFilterChange?(model.mediaTypeFilter)
             return
         }
+        captureScrollOrigin()
         model.setMediaTypeFilter(filter)
+        Task { @MainActor in self.restoreScrollOriginIfNeeded() }
+    }
+
+    func applyShowsZipFiles(_ shows: Bool) {
+        guard !isEditingText else {
+            onShowsZipFilesChange?(model.showsZipFiles)
+            return
+        }
+        captureScrollOrigin()
+        model.setShowsZipFiles(shows)
+        Task { @MainActor in self.restoreScrollOriginIfNeeded() }
     }
 
     func selectDisplayMode(_ mode: DisplayMode) {
@@ -860,6 +935,10 @@ final class FileListViewController: NSViewController {
         applyMediaTypeFilter(filter)
     }
 
+    @objc private func toggleShowsZipFiles(_ sender: Any?) {
+        applyShowsZipFiles(!model.showsZipFiles)
+    }
+
     @objc private func thumbnailSizeSliderChanged(_ sender: NSSlider) {
         setThumbnailSize(sender.doubleValue, persist: true)
     }
@@ -868,7 +947,8 @@ final class FileListViewController: NSViewController {
 extension FileListViewController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         if menuItem.action == #selector(toggleImagesOnly(_:))
-            || menuItem.action == #selector(toggleVideosOnly(_:)) {
+            || menuItem.action == #selector(toggleVideosOnly(_:))
+            || menuItem.action == #selector(toggleShowsZipFiles(_:)) {
             return !isEditingText
         }
 

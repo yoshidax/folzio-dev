@@ -5,6 +5,7 @@ import MediaViewerCore
 final class MainToolbarController: NSObject {
     private static let paneLayoutIdentifier = NSToolbarItem.Identifier("paneLayout")
     private static let mediaTypeFilterIdentifier = NSToolbarItem.Identifier("mediaTypeFilter")
+    private static let zipVisibilityIdentifier = NSToolbarItem.Identifier("zipVisibility")
     private static let viewModeIdentifier = NSToolbarItem.Identifier("viewMode")
     private static let thumbnailSizeIdentifier = NSToolbarItem.Identifier("thumbnailSize")
 
@@ -16,6 +17,7 @@ final class MainToolbarController: NSObject {
     private let sizeSlider = NSSlider()
     private var paneLayoutControl: NSSegmentedControl?
     private var mediaTypeFilterControl: NSSegmentedControl?
+    private var zipVisibilityControl: NSSegmentedControl?
     private var viewModeControl: NSSegmentedControl?
     private var sizeItem: NSToolbarItem?
     private var visibilityObservation: NSKeyValueObservation?
@@ -49,6 +51,10 @@ final class MainToolbarController: NSObject {
 
         fileList.onMediaTypeFilterChange = { [weak self] filter in
             self?.apply(mediaTypeFilter: filter)
+        }
+
+        fileList.onShowsZipFilesChange = { [weak self] shows in
+            self?.apply(showsZipFiles: shows)
         }
 
         visibilityObservation = toolbar.observe(\.isVisible, options: [.new]) { [weak self] toolbar, _ in
@@ -88,6 +94,11 @@ final class MainToolbarController: NSObject {
         mediaTypeFilterControl?.setSelected(mediaTypeFilter.videosOnly, forSegment: 1)
     }
 
+    func apply(showsZipFiles: Bool) {
+        zipVisibilityControl?.setSelected(showsZipFiles, forSegment: 0)
+        zipVisibilityControl?.isEnabled = !fileList.isEditingText
+    }
+
     private func applyCurrentState() {
         apply(
             displayMode: fileList.currentDisplayMode,
@@ -118,6 +129,10 @@ final class MainToolbarController: NSObject {
                 videosOnly: sender.isSelected(forSegment: 1)
             )
         )
+    }
+
+    @objc private func zipVisibilitySelected(_ sender: NSSegmentedControl) {
+        fileList.applyShowsZipFiles(sender.isSelected(forSegment: 0))
     }
 
     @objc private func viewModeSelected(_ sender: NSSegmentedControl) {
@@ -177,11 +192,11 @@ final class MainToolbarController: NSObject {
 
 extension MainToolbarController: NSToolbarDelegate {
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.paneLayoutIdentifier, Self.mediaTypeFilterIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
+        [Self.paneLayoutIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.paneLayoutIdentifier, Self.mediaTypeFilterIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
+        [Self.paneLayoutIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
     }
 
     func toolbar(
@@ -228,6 +243,24 @@ extension MainToolbarController: NSToolbarDelegate {
             )
             apply(mediaTypeFilter: fileList.currentMediaTypeFilter)
             return item
+        case Self.zipVisibilityIdentifier:
+            guard let control = makeSegmentedControl(
+                items: [
+                    ("doc.zipper", "zipファイルを表示"),
+                ],
+                trackingMode: .selectAny,
+                action: #selector(zipVisibilitySelected(_:))
+            ) else {
+                return nil
+            }
+            zipVisibilityControl = control
+            let item = makeGroupItem(
+                identifier: itemIdentifier,
+                label: "zipファイルを表示",
+                control: control
+            )
+            apply(showsZipFiles: fileList.currentShowsZipFiles)
+            return item
         case Self.viewModeIdentifier:
             guard let control = makeSegmentedControl(
                 items: [
@@ -264,9 +297,17 @@ extension MainToolbarController: NSToolbarDelegate {
 
 extension MainToolbarController: NSToolbarItemValidation {
     func validateToolbarItem(_ item: NSToolbarItem) -> Bool {
-        guard item.itemIdentifier == Self.paneLayoutIdentifier else { return true }
-        let enabled = panes.paneCommands.canChangeLayout
-        paneLayoutControl?.isEnabled = enabled
-        return enabled
+        switch item.itemIdentifier {
+        case Self.paneLayoutIdentifier:
+            let enabled = panes.paneCommands.canChangeLayout
+            paneLayoutControl?.isEnabled = enabled
+            return enabled
+        case Self.zipVisibilityIdentifier:
+            let enabled = !fileList.isEditingText
+            zipVisibilityControl?.isEnabled = enabled
+            return enabled
+        default:
+            return true
+        }
     }
 }
