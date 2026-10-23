@@ -7,6 +7,7 @@ Sync Impact Report
   - specs/001-three-pane-media-viewer/: 凍結済み（spec.md と contracts の冒頭に移行済みの注記）
   - specs/product/: 新設。現在の仕様の正本
   - AGENTS.md・README.md: 正本の場所を specs/product/ に更新
+  - .specify/extensions/bug: 不具合の修正は bug 拡張で行い、仕様の変更を伴うものは feature に回す（AGENTS.md の「バグ修正」）
   - .specify/workflow-src/sdd-increment*.yml: 新しい feature を specify で作り、完了後に specs/product/ へ反映する流れに変更（0.5.0 / Kilo 0.3.0）。feature ブランチは git 拡張の before_specify フックで作る
 -->
 # my_img_viewer Constitution
@@ -118,6 +119,9 @@ Sync Impact Report
 - feature の実装と検証が終わったら、変更点を `specs/product/` の該当する領域へ反映し、その feature ディレクトリは
   凍結する（以後は実装の経緯の記録として扱い、更新しない）（MUST）。
 - FR・SC などの ID は全領域で一意とし、振り直しも再利用もしない。ID の付け方は `specs/product/README.md` に従う。
+- 実装が `specs/product/` の項目に反している不具合は、bug 拡張（assess → fix → test）で直し、記録を
+  `.specify/bugs/<slug>/` に残す。このとき `specs/product/` は変更しない。
+- 仕様が誤っている、または定めていないことが原因の不具合は、仕様の変更として新しい feature で扱う（MUST）。
 
 ## Governance
 

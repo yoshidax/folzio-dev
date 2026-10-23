@@ -30,6 +30,20 @@
 
 起動スモークを省略して「テストが通ったから完了」にしないこと。
 
+## バグ修正
+
+bug 拡張の `/speckit-bug-assess` → `/speckit-bug-fix` → `/speckit-bug-test` で直す（Kilo では `/speckit.bug.*`）。
+記録は `.specify/bugs/<slug>/` に残る。
+
+1. クリーンな master から `bugfix/<slug>` ブランチを切る
+2. assess: `assessment.md` の「Symptom」の後に「## 仕様との照合」を置き、該当する `specs/product/` の ID と、次のどちらかの判定を書く
+   - 実装が仕様に反している: fix へ進む
+   - 仕様が誤っている、または定めていない: fix へ進まず、仕様の変更として sdd-increment（小さければ `clarify_mode=skip`）で扱う
+3. assess の判定と診断をユーザーに確認してもらってから fix へ進む
+4. fix: 再現を固定する回帰テストを足す（Core のロジックは `Tests/MediaViewerCoreTests`）
+5. test: 「Phase の検証ゲート」の 1〜4 を行う。GUI で再現を確かめていなければ判定は `partial` にする
+6. ソースの変更と `.specify/bugs/<slug>/` を1つのコミットにする（例: `fix: <内容> (bug: <slug>)`）
+
 ## 起動しないときの初動（AppKit / macOS）
 
 クラッシュレポートがなく、終了コードが 0 でも、AppKit が Objective-C 例外を握りつぶしていることがあります。

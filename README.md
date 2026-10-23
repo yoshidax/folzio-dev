@@ -276,6 +276,7 @@ defaults delete MediaViewerApp
 
 - 仕様の正本: `specs/product/`（領域別。索引は `specs/product/README.md`）
 - 001 の記録（凍結）: `specs/001-three-pane-media-viewer/`（spec.md・plan.md・tasks.md など）
+- バグ修正の記録: `.specify/bugs/<slug>/`（bug 拡張の assessment・fix・test。手順は AGENTS.md の「バグ修正」）
 - 憲章: `.specify/memory/constitution.md`（v1.2.0）
 - 開発の振り返り: `docs/retrospective/2026-10-19-startup-debugging.md`
 - 進捗: 実装タスク T001〜T078 は完了。T079（Accessibility Inspector）と T080（手動シナリオの記録）は
