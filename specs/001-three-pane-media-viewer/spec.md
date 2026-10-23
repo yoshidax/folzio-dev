@@ -1,5 +1,8 @@
 # Feature Specification: 3ペイン型メディアビューア
 
+> **移行済み（2026-10-24）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは 001 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `001-three-pane-media-viewer`
 
 **Created**: 2026-10-19

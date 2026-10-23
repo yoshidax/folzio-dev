@@ -3,6 +3,8 @@
 MediaViewer の現在の仕様（Living spec）を領域ごとに分けたもの。
 `specs/001-three-pane-media-viewer/spec.md` から移行した。FR・SC の ID は元のまま引き継いでいる。
 
+## 領域
+
 | ファイル | 領域 | 機能要件 |
 |---|---|---|
 | [overview.md](overview.md) | 概要と横断要件 | 保存と復元（1）、対応形式（2）、横断要件（3）、アプリアイコン（3） |
@@ -13,3 +15,28 @@ MediaViewer の現在の仕様（Living spec）を領域ごとに分けたもの
 | [file-operations.md](file-operations.md) | ファイル操作 | ファイル操作（11） |
 | [search.md](search.md) | 検索 | 検索（8） |
 | [preview.md](preview.md) | プレビュー | プレビュー（8）、フルスクリーン（4） |
+
+## 横断の契約
+
+| ファイル | 内容 |
+|---|---|
+| [contracts/keyboard-and-menus.md](contracts/keyboard-and-menus.md) | キーボード操作とメニュー。ショートカットの衝突を1か所で確認するため、領域ごとには分けない |
+| [contracts/settings.md](contracts/settings.md) | 永続化する設定のキー |
+| [contracts/app-bundle.md](contracts/app-bundle.md) | アプリバンドルの構成とアイコン |
+
+## ID の付け方
+
+- 各領域のファイルにある項目は、次のラベルを持つ。1つのラベルは1つのファイルだけで定義し、ほかの領域からは ID で参照する
+  - `FR-xxx`（機能要件）・`SC-xxx`（成功基準）: 新しい ID は全領域を通した最大値の次の番号にする
+  - `USn-ASm`（受け入れシナリオ）・`EC-xx`（エッジケース）・`A-xx`（前提）: 001 の spec.md での位置を示す。
+    新しく追加するものも同じ形式で、全領域を通した最大値の次の番号にする
+- 項目を削除しても ID は再利用しない
+
+## 更新の流れ
+
+1. 新しい要件は、`/speckit-specify` で新しい feature ディレクトリ（`specs/NNN-xxx/`）を作って扱う。
+   その spec.md には変更点（追加・変更・削除する項目）だけを書き、関係する既存の項目はこのディレクトリの ID で参照する
+2. plan・tasks・実装・converge は、その feature ディレクトリで行う
+3. 実装と検証が終わったら、変更点をこのディレクトリの該当する領域のファイルへ反映し、feature ディレクトリは凍結する
+
+完了した feature ディレクトリ（`001-three-pane-media-viewer` など）の plan.md・research.md・tasks.md は、実装の経緯の記録として残す。

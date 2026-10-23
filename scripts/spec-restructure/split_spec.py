@@ -2,8 +2,10 @@
 """001 の spec.md をドメイン別の specs/product/*.md へ機械的に移し、移動以外の変更がないことを確かめる。
 
 一回限りの移行用。対応表は docs/spec-restructure/domain-map.md。
+移行は 2026-10-24 に完了し、以後 specs/product/ は手で更新する。generate は既存のファイルを上書きするため --force を要する。
+verify は、移行直後の状態（specs/product/ が 001 の spec.md と一致すること）を確かめるためのもの。
 
-  python3 scripts/spec-restructure/split_spec.py generate [--only search]
+  python3 scripts/spec-restructure/split_spec.py generate --force [--only search]
   python3 scripts/spec-restructure/split_spec.py verify
 """
 
@@ -347,7 +349,9 @@ def render_readme(present):
     return "\n".join(out) + "\n"
 
 
-def generate(only):
+def generate(only, force):
+    if not force:
+        sys.exit("specs/product/ は移行後に手で更新している。上書きしてよい場合だけ --force を付ける")
     found, stories, blocks = parse_source()
     OUT.mkdir(parents=True, exist_ok=True)
     targets = only or list(DOMAINS)
@@ -464,10 +468,11 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     gen = sub.add_parser("generate")
     gen.add_argument("--only", nargs="*", choices=list(DOMAINS))
+    gen.add_argument("--force", action="store_true")
     sub.add_parser("verify")
     args = parser.parse_args()
     if args.command == "generate":
-        generate(args.only)
+        generate(args.only, args.force)
     else:
         verify()
 
