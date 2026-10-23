@@ -16,6 +16,14 @@
       "source": ".specify/workflow-src/sdd-increment.yml",
       "installed_at": "2026-10-22T11:48:52.634132+00:00",
       "updated_at": "2026-10-23T02:56:48.282468+00:00"
+    },
+    "sdd-increment-kilo": {
+      "name": "SDD increment (Kilo)",
+      "version": "0.1.1",
+      "description": "\u65e2\u5b58 feature \u3078\u306e\u8ffd\u52a0\u8981\u4ef6\u3092\u3001clarify \u2192 plan \u2192 tasks \u2192 analyze \u3068\u4fee\u6b63\u306e\u30eb\u30fc\u30d7 \u2192 \u5b9f\u88c5\u30fb\u691c\u8a3c\u30fbconverge \u306e\u30eb\u30fc\u30d7\u3067\u9032\u3081\u308b\u3002 Kilo CLI \u3092\u30d0\u30c3\u30af\u30a8\u30f3\u30c9\u306b\u3059\u308b\u3002\u4eba\u304c\u5224\u65ad\u3059\u308b\u306e\u306f\u3001clarify\uff08manual \u306e\u3068\u304d\uff09\u3001\u8a2d\u8a08\u306e\u30ec\u30d3\u30e5\u30fc\u3001GUI \u306e\u8d77\u52d5\u78ba\u8a8d\u306e3\u304b\u6240\u3060\u3051",
+      "source": ".specify/workflow-src/sdd-increment-kilo.yml",
+      "installed_at": "2026-10-23T02:24:42.027672+00:00",
+      "updated_at": "2026-10-23T02:56:48.532757+00:00"
     }
   }
 }

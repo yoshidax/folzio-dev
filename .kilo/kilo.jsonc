@@ -1,3 +1,10 @@
 {
-  "$schema": "https://app.kilo.ai/config.json"
+  "$schema": "https://app.kilo.ai/config.json",
+  "permission": {
+    "bash": {
+      "git push *": "deny",
+      "git reset --hard *": "deny",
+      "git clean *": "deny"
+    }
+  }
 }
