@@ -2,7 +2,7 @@ schema_version: "1.0"
 workflow:
   id: "sdd-increment"
   name: "SDD increment"
-  version: "0.3.1"
+  version: "0.3.2"
   author: "igachan"
   # command / prompt の手順で使う integration の既定値。指定しないと prompt の手順が integration なしで失敗する
   integration: "claude"
@@ -95,10 +95,11 @@ steps:
           spec / plan / tasks の差分（git diff）も確認してください。
             approve: 実装へ進む
             fix:     レポートの推奨どおりに直して、もう一度 analyze する
-            reject:  中止
+            reject:  一時停止（直してから resume すると、このレビューからやり直す）
           未決の質問や人の判断が要る指摘は、Claude Code で決めて反映してから approve か fix を選んでください。
         options: [approve, fix, reject]
-        on_reject: abort
+        # abort だと resume できなくなるため、一時停止にする
+        on_reject: retry
 
       - id: apply_fixes
         type: if
@@ -154,8 +155,9 @@ steps:
         message: |
           古い MediaViewer を終了してから `open .build/MediaViewer.app` で起動し、tasks.md の未チェックの
           検証タスクが指す quickstart.md のシナリオを確認してください。問題がなければ approve してください。
+          問題があれば reject で一時停止し、直して `scripts/make-app.sh` を実行してから resume してください（この確認からやり直します）。
         options: [approve, reject]
-        on_reject: abort
+        on_reject: retry
 
       - id: record
         type: prompt
