@@ -450,6 +450,15 @@ public struct FocusNavigator {
         layout: FocusLayout,
         isNavigable: (Int) -> Bool
     ) -> Int?
+
+    /// プレビューのみ表示に切り替えたときの最初のファイル（FR-093）。currentIndex の行が isNavigable ならそのまま。
+    /// そうでなければ後ろの最初の isNavigable な行、後ろになければ前の最も近い行。currentIndex が nil なら先頭から最初の行。
+    /// isNavigable な行がなければ nil
+    public static func entryIndex(
+        currentIndex: Int?,
+        fileCount: Int,
+        isNavigable: (Int) -> Bool
+    ) -> Int?
 }
 ```
 
@@ -459,8 +468,78 @@ public struct FocusNavigator {
   インデックス計算を UI に持たない
 - `columns` が 0 以下の場合は 1 として扱う
 
-- フルスクリーン（`FileListViewController.moveFocusInFullScreen`）は `isNavigable` に `files[i].kind.isMedia` を渡す。
+- フルスクリーンとプレビューのみ表示（`FileListViewController` の隠れたファイルリストの移動）は `isNavigable` に `files[i].kind.isMedia` を渡す。
   通常表示は `isNavigable` なしの関数を使い、メディア以外の行にも止まる
+- `entryIndex` は、プレビューのみ表示に切り替えたときだけ `FileListViewController` が呼び、結果がフォーカス中の行と違えば
+  `BrowserModel.select([url], focused: url)` に渡す。nil なら選択を変えない
+
+## ペインの表示切り替え（FR-088〜094、research.md R40〜R44）
+
+```swift
+public enum Pane: Sendable, Equatable, CaseIterable {
+    case tree, fileList, preview
+}
+
+/// ツールバーのボタンとメニュー項目の対象
+public enum SoloPane: Sendable, Equatable {
+    case fileList, preview
+}
+
+public enum PaneLayout: Sendable, Equatable {
+    case all            // 3ペイン表示（既定）
+    case fileListOnly   // ツリーとプレビューを隠す
+    case previewOnly    // ツリーとファイルリストを隠す
+
+    public init(soloPane: SoloPane?)
+    /// ツールバーの押下とメニューのチェックの対象。.all は nil
+    public var soloPane: SoloPane? { get }
+    /// メニュー・ショートカット。いまその側だけの表示なら .all、そうでなければその側だけの表示（FR-089・090）
+    public func toggling(_ pane: SoloPane) -> PaneLayout
+    /// ツールバーのボタングループ（selectAny）が報告した押下状態から次の状態を決める（FR-089）。
+    /// 両方 true なら直前に押されていなかった側だけを残す（直前が .all なら self）
+    public func applyingToolbarSelection(fileListSelected: Bool, previewSelected: Bool) -> PaneLayout
+    public func isVisible(_ pane: Pane) -> Bool
+    /// 切り替え後にフォーカスを移す先。nil は移さない（FR-091）
+    public func focusTarget(afterSwitchingFrom focused: Pane?) -> Pane?
+    /// プレビューのみ表示で、読み込み中でなく、表示中の一覧にメディアが1件もないとき true（FR-093）
+    public func showsNoMediaMessage(in listing: FolderListing) -> Bool
+}
+
+public struct PanePresentation: Sendable, Equatable {
+    public init(layout: PaneLayout, isFullScreen: Bool)
+    /// フルスクリーン中は [.preview]。それ以外は layout で表示するペイン（ツリー → ファイルリスト → プレビューの順）
+    public var visiblePanes: [Pane] { get }
+    public func isVisible(_ pane: Pane) -> Bool
+    /// 3つとも表示（ペイン幅の保持・復元と自動保存の再開に使う）
+    public var showsAllPanes: Bool { get }
+    /// ファイルリストが隠れていてプレビューが見えている（矢印キーで隠れたファイルリストの選択を動かす。FR-046・093）
+    public var navigatesHiddenFileList: Bool { get }
+}
+
+public struct PaneCommands: Sendable, Equatable {
+    public init(layout: PaneLayout, isFullScreen: Bool, isEditingText: Bool)
+    public var canChangeLayout: Bool { get }        // ⌃⌘2・⌃⌘3・ツールバー（FR-090・094）
+    public func canFocus(_ pane: Pane) -> Bool      // ⌥⌘1〜3（FR-092）
+    public var canGoToFavorites: Bool { get }       // ⇧⌘F（FR-065・092）
+    public var allowsAddingFavorite: Bool { get }   // ⌃⌘T。ツリー側の判定と AND を取る（FR-062・092）
+    public var canSearch: Bool { get }              // ⌘F（FR-080・092）
+}
+
+public enum PaneWidths {
+    /// 3ペインへ戻すときの2本の仕切りの位置（FR-088）。savedWidths・minimumWidths は ツリー・ファイルリスト・プレビューの3要素。
+    /// プレビューが最小幅に足りなければ、ファイルリスト → ツリーの順に最小幅まで詰める。不正な入力では初回の既定（220 / 360 / 残り）
+    public static func dividerPositions(
+        savedWidths: [Double],
+        totalWidth: Double,
+        dividerThickness: Double,
+        minimumWidths: [Double]
+    ) -> [Double]
+}
+```
+
+- 状態の持ち主は `MainSplitViewController`（`paneLayout`）だけ。`BrowserModel` には持たせない（一覧・選択・プレビューの状態はペインの表示に関わらず同じ）
+- 保存しない（`SettingsStore` に書かない）。起動のたびに `.all` で始まる
+- UI はこれらの値をメニューの検証・ツールバーの選択・`NSSplitViewItem` の折りたたみ・Tab の巡回・キーのモニタの有無に写すだけにする
 
 ## zip（FR-068〜075、research.md R22〜R27）
 

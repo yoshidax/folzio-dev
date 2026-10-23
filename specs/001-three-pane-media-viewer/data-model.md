@@ -401,18 +401,138 @@
 - 列数が 0 以下の場合は 1 として扱う（ゼロ除算・同一行内の無限移動を避ける）
 - フルスクリーンでは `isNavigable`（行がメディアか）を渡し、移動先がメディア以外の行なら同じ方向に同じ規則で
   移動を繰り返す。メディアの行に当たらないまま端に達したら `nil`（選択を変えない）（FR-046、research.md R26）。
-  通常表示では `isNavigable` を渡さず、メディア以外の行にも止まる
+  通常表示では `isNavigable` を渡さず、メディア以外の行にも止まる。プレビューのみ表示（FR-093）もフルスクリーンと同じ関数を使う
 
-## FullScreenNavigationContext（フルスクリーン中のみ・永続化しない）
+`entryIndex(currentIndex:fileCount:isNavigable:)`（プレビューのみ表示に切り替えたときの最初のファイル。FR-093、research.md R43）:
+
+| 入力の状態 | 出力 |
+|------------|------|
+| `currentIndex` の行がメディア | `currentIndex`（選択を変えない） |
+| `currentIndex` の行がメディア以外（フォルダ・zip ファイル・zip の中のディレクトリ・`..`） | その行より後ろの最初のメディア。後ろになければ、前にある最も近いメディア |
+| `currentIndex` が `nil`（未選択） | 先頭から最初のメディア |
+| メディアが1件もない・空リスト | `nil`（選択を変えず、プレビューにメッセージを出す） |
+
+- プレビューのみ表示に切り替えたときにだけ使う。その後に選択がなくなっても（読み込み中に切り替えた、種類フィルタで非表示になった、外部で削除された）
+  選び直さない。メディアがあれば `showsNoMediaMessage` は false でプレビューは空のまま。次の矢印キーは `targetIndex(…isNavigable:)` の
+  `currentIndex` が `nil` の規則で先頭から最初のメディアへ移る（spec Edge Cases、research.md R43）
+
+## HiddenListNavigation（ファイルリストを隠している間の矢印キーの移動・永続化しない）
+
+フルスクリーン中とプレビューのみ表示中に、隠れたファイルリストの選択を矢印キーで動かすための文脈（FR-046・093、research.md R16・R43）。
+従来の `FullScreenNavigationContext` を置き換える。
 
 | フィールド | 型 | 説明 |
 |------------|----|------|
-| `layout` | `.list` / `.grid(columns:)` | 折りたたみ前の表示形式と列数のスナップショット |
-| `isActive` | Bool | フルスクリーン中の keyDown モニタが有効か |
+| `width` | Double | ファイルリストを隠す直前のサムネイルのコレクションビューの幅（pt）のスナップショット |
 
-- 折りたたみ後はサムネイルビューの幅が 0 になり列数を再計算できないため、開始時の値を使う（R16）
-- 解除時はコンテキストを破棄し、選択は移動後の `SelectionState` のまま維持する（spec Clarifications）
+- 移動のレイアウトはキーを押すたびに決める: 表示形式がリストなら `.list`、サムネイルなら
+  `.grid(columns: ThumbnailGridLayout.columns(availableWidth: width - 左右の余白, thumbnailSize: 現在のサイズ, spacing:).count)`。
+  隠している間に表示形式・サムネイルサイズを変えても追従する
+- 始まり: `PanePresentation.navigatesHiddenFileList` が false から true になったとき（プレビューのみ表示への切り替え、フルスクリーンに入るとき）。
+  プレビューのみ表示からフルスクリーンに入る・出るときは取り直さない
+- 終わり: ファイルリストが表示に戻ったとき。文脈を捨て、選択は移動後の `SelectionState` のまま、フォーカス項目へ必要最小限のスクロールを行う
+  （リスト形式・サムネイル形式の両方。FR-017・093）
 - 永続化しない。`ViewSettings` や `UserDefaults` には追加しない
+
+## PaneLayout（ペインの表示状態・永続化しない）
+
+ペインの表示切り替えの状態（FR-088〜090、research.md R40）。`MainSplitViewController` が1つだけ持ち、ツールバー・メニュー・ショートカットで共有する。
+起動のたびに `.all` で始める。
+
+| 値 | ツリー | ファイルリスト | プレビュー | ツールバーの押下（`soloPane`） | 「表示」メニューのチェック |
+|----|--------|----------------|------------|-------------------------------|------------------------------|
+| `.all`（既定） | 表示 | 表示 | 表示 | どちらも押されていない（`nil`） | なし |
+| `.fileListOnly` | 隠す | 表示（幅いっぱい） | 隠す | ファイルリストのみ表示（`.fileList`） | ファイルリストのみ表示 |
+| `.previewOnly` | 隠す | 隠す | 表示（幅いっぱい） | プレビューのみ表示（`.preview`） | プレビューのみ表示 |
+
+- ツリーだけを隠す・ツリーだけを表示する・ファイルリストとプレビューの両方を隠す状態は、値として存在しない（FR-088）
+- `Pane`: `.tree` / `.fileList` / `.preview`。`SoloPane`: `.fileList` / `.preview`（ボタンとメニュー項目の対象）
+
+状態遷移（メニュー・ショートカット: `toggling(_:)`）:
+
+| 現在 | ⌃⌘2（ファイルリストのみ表示） | ⌃⌘3（プレビューのみ表示） |
+|------|-------------------------------|---------------------------|
+| `.all` | `.fileListOnly` | `.previewOnly` |
+| `.fileListOnly` | `.all` | `.previewOnly` |
+| `.previewOnly` | `.fileListOnly` | `.all` |
+
+ツールバーのボタングループ（`selectAny`）から（`applyingToolbarSelection(fileListSelected:previewSelected:)`）:
+
+| 現在 | ボタングループが報告した押下（ファイルリスト, プレビュー） | 次 |
+|------|-----------------------------------------------------------|----|
+| 任意 | (false, false) | `.all` |
+| 任意 | (true, false) | `.fileListOnly` |
+| 任意 | (false, true) | `.previewOnly` |
+| `.fileListOnly` | (true, true) | `.previewOnly`（後から押した側だけを残す） |
+| `.previewOnly` | (true, true) | `.fileListOnly` |
+| `.all` | (true, true) | `.all`（1回のクリックでは起きない。変えずにボタンを書き戻す） |
+
+結果は必ず `soloPane` でボタングループに書き戻し、2つが同時に押された見た目を残さない（FR-089）。
+
+切り替え後のフォーカス（`focusTarget(afterSwitchingFrom focused: Pane?) -> Pane?`、FR-091）:
+
+| 切り替え先 | フォーカスがあったペイン | 移し先 |
+|------------|--------------------------|--------|
+| `.fileListOnly` | ファイルリスト | 移さない（`nil`） |
+| `.fileListOnly` | ツリー・プレビュー・どこでもない | `.fileList` |
+| `.previewOnly` | プレビュー | 移さない |
+| `.previewOnly` | ツリー・ファイルリスト・どこでもない | `.preview` |
+| `.all` | 任意 | 移さない（切り替え前に表示していたペインに残る） |
+
+`showsNoMediaMessage(in listing: FolderListing) -> Bool`（FR-093）: `self == .previewOnly` かつ `listing.state != .loading` かつ
+`listing.files` にメディアの行（`kind.isMedia`）が1件もないとき true。プレビューに「表示するメディアファイルがありません」を出す
+
+## PanePresentation（実際に表示するペイン・永続化しない）
+
+表示状態とフルスクリーンから、実際に表示するペインを決める純粋計算（FR-094、research.md R41・R44）。
+
+| 入力 | 型 |
+|------|----|
+| `layout` | `PaneLayout` |
+| `isFullScreen` | Bool |
+
+| 出力 | 規則 |
+|------|------|
+| `visiblePanes: [Pane]` | フルスクリーン中は `[.preview]`。それ以外は `layout` で表示するペインを、ツリー → ファイルリスト → プレビューの順に（Tab の巡回順） |
+| `isVisible(_ pane:)` | `visiblePanes.contains(pane)` |
+| `showsAllPanes` | 3つとも表示（`!isFullScreen && layout == .all`）。ペイン幅の保持・復元と自動保存の再開に使う |
+| `navigatesHiddenFileList` | ファイルリストが隠れていてプレビューが見えている（フルスクリーン中、またはプレビューのみ表示）。矢印キーのモニタを入れる |
+
+- 隠すペインは `canCollapse = true` → `isCollapsed = true`、表示するペインは `isCollapsed = false` → `canCollapse = false` の順で反映し、
+  表示に戻すペインを先に出す（3つとも隠れた途中の状態を作らない）
+- フルスクリーンを解除すると `layout` に戻る（フルスクリーン前の表示状態）
+
+## PaneCommands（隠したペインに関わる操作の可否・永続化しない）
+
+`PaneCommands(layout:isFullScreen:isEditingText:)`（FR-062・065・080・090・092・094、research.md R42）。
+
+| 出力 | 対象 | 規則 |
+|------|------|------|
+| `canChangeLayout` | ⌃⌘2・⌃⌘3・ツールバーのボタン | `!isFullScreen && !isEditingText` |
+| `canFocus(_ pane:)` | ⌥⌘1・⌥⌘2・⌥⌘3 | `layout` でそのペインを表示している |
+| `canGoToFavorites` | ⇧⌘F | `!isFullScreen && !isEditingText && layout` でツリーを表示している |
+| `allowsAddingFavorite` | ⌃⌘T | `!isEditingText && layout` でツリーを表示している（ツリー側の `canAddSelectedFolderToFavorites` と AND） |
+| `canSearch` | ⌘F | `!isFullScreen && !isEditingText && layout` でファイルリストを表示している |
+
+- false の項目は「表示」「ファイル」メニューで淡色にし、ショートカットは何もしない
+- ⌘↓・⌘↑・ファイル操作の項目は、ファイルリストを隠すとレスポンダーチェーンから外れるため、既存の検証で淡色になる（この型では扱わない）
+
+## PaneWidths（3ペインへ戻すときの仕切りの位置・永続化しない）
+
+`PaneWidths.dividerPositions(savedWidths:totalWidth:dividerThickness:minimumWidths:) -> [Double]`（FR-088、research.md R41）。
+
+| 入力 | 型 | 説明 |
+|------|----|------|
+| `savedWidths` | [Double]（3要素） | 3つとも表示していた最後の、ツリー・ファイルリスト・プレビューの幅 |
+| `totalWidth` | Double | 戻すときの分割ビューの幅 |
+| `dividerThickness` | Double | 仕切りの太さ |
+| `minimumWidths` | [Double]（3要素） | 160 / 240 / 320 |
+
+- 出力は2本の仕切りの位置 `[tree, tree + dividerThickness + list]`
+- プレビューの幅 = `totalWidth - tree - list - 2 × dividerThickness`。プレビューが最小幅以上ならツリーとファイルリストは保存した幅のまま
+  （ウインドウが同じ幅なら切り替え前と同じ、広がった分はプレビューが受け取る）
+- プレビューが最小幅に足りなければ、足りない分をファイルリスト（最小幅まで）、次にツリー（最小幅まで）から詰める
+- 保存した幅がない・要素数が違う・有限でない値を含むときは、初回の既定（220 / 360 / 残り）を使う
 
 ## PreviewContent（プレビュー状態）
 
@@ -441,7 +561,7 @@ empty ──(focused 設定)──→ loading ──→ image(DecodedImage) / an
 | `sortOrder` | SortOrder | 名前の昇順 | FR-012 |
 | `lastFolder` | URL? | ホーム | 存在しない場合はホームに戻す（FR-003） |
 | `showsToolbar` | Bool | false | 値がない・不正な型の場合は false（FR-003・049） |
-| ペイン幅 | （分割ビューの自動保存） | 220 / 360 / 残り | 最小幅 160 / 240 / 320 pt（FR-002） |
+| ペイン幅 | （分割ビューの自動保存） | 220 / 360 / 残り | 最小幅 160 / 240 / 320 pt（FR-002）。1つのペインだけを表示している間は自動保存を止め、3ペインの幅だけを保存する（R41） |
 
 ## FileListChrome（下部バーとツールバーのスライダー・永続化しない）
 

@@ -1,6 +1,6 @@
 # Implementation Plan: 3ペイン型メディアビューア
 
-**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-22 (file name search; 2026-10-21: moving tree folders to the Trash; folders in the file list, `..` row and tree sync; zip archives; 2026-10-20: favorites, image/video type filter, tree double-click toggle and disclosure, toolbar, fullscreen arrow navigation, small-image upscale, tree/list icons, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-three-pane-media-viewer` | **Date**: 2026-10-23 (pane visibility toggle: file list only / preview only; 2026-10-22: file name search; 2026-10-21: moving tree folders to the Trash; folders in the file list, `..` row and tree sync; zip archives; 2026-10-20: favorites, image/video type filter, tree double-click toggle and disclosure, toolbar, fullscreen arrow navigation, small-image upscale, tree/list icons, thumbnail scroll follow; original 2026-10-19) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-three-pane-media-viewer/spec.md`
 
@@ -77,6 +77,14 @@ deflate の項目は Compression フレームワークで順に展開して返�
 検索結果ではペーストと ⌘↑ を `ListItemCommands` で不可にし、ほかのファイル操作は通常のフォルダと同じ経路を通す。操作の後と外部の変更（FSEvents の
 `subtrees` 監視）では、存在しなくなった結果だけを外し、名前の変更は `didRenameItem` で差し替える。リスト形式には「場所」列（`SortColumn.location`。
 保存しない）を出し、一覧の上部に検索バーを置く。
+ペインの表示を「3ペイン表示」「ファイルリストのみ表示」（⌃⌘2）「プレビューのみ表示」（⌃⌘3）の間で切り替えられるようにする（FR-088〜094、R40〜R45）。
+状態は Core の値型 `PaneLayout` 1つで表し（ツリーだけ・両方を隠す状態は表せない）、ツールバー左端の `selectAny` のボタングループ・「表示」メニューの
+チェック付き項目・ショートカットが `MainSplitViewController` の同じ状態を共有する。切り替え・ボタンの押下の書き戻し・フォーカスの移し先・隠したペインに
+関わる操作の可否（`PaneCommands`）・フルスクリーンとの組み合わせ（`PanePresentation`）・3ペインへ戻すときの仕切りの位置（`PaneWidths`）は Core の純粋関数に置く。
+隠すのは既存のフルスクリーンと同じ `NSSplitViewItem` の折りたたみで、隠すペインだけ `canCollapse` を true にし、1つのペインの表示中は分割ビューの
+自動保存を止めて3ペインの幅だけを残す。プレビューのみ表示では、フルスクリーンと同じキーのモニタと `FocusNavigator` で隠れたファイルリストの選択を
+矢印キーで動かし（メディア以外の行を飛ばす）、切り替えたときの最初のファイルは `FocusNavigator.entryIndex` で決め、メディアがなければプレビューにその旨を出す。
+ファイルリストのみ表示の間は隠れたプレビューで動画を再生しない（当初は spec が定めない点の判断だったが、spec FR-088 に追記した。R45）。表示状態は保存しない。
 
 ## Technical Context
 
@@ -146,6 +154,11 @@ zip の読み出し（索引・画像・サムネイル・動画）は UI スレ
 マージと一覧の作り直しだけを行う。照合する属性は名前だけで、一致したファイルだけ属性を読む。zip の中は開かず、ファイルにも書き込まない。
 検索の条件・結果・並べ替えの「場所」は保存せず、`lastFolder`・`treeSyncRequest` も変えない。保存キーは増やさない（FR-081〜087、R34〜R38）。
 実行中の検索は1つだけで、新しい検索・ツリーでのフォルダの選択・一覧の中の移動で取り消す（FR-085）。
+ペインの表示切り替えは `NSSplitViewItem` の折りたたみとフォーカス・メニューの更新だけで、デコード・列挙・一覧の作り直しを伴わない。表示状態は保存せず、
+保存キーも増やさない。1つのペインだけを表示している間は `NSSplitView` の自動保存（`MainSplit`）を止め、3ペインに戻してから幅を保存する（FR-003・088、R40・R41）。
+`NSSplitViewDelegate` の座標の制約・折りたたみのメソッドは override せず、隠すペインだけ `canCollapse = true` にする（AGENTS.md の不変条件を
+「フルスクリーンとペインの表示切り替えで隠すペインだけ」に更新する）。隠している間の矢印キーの移動はファイルリストを隠す直前の幅のスナップショットから
+列数を求め、新しい永続化状態を増やさない（FR-093、R43）。
 
 **Scale/Scope**: 1ウィンドウ（3ペイン）+ 設定ウィンドウ + 確認・衝突ダイアログ。フォルダあたり最大で
 数万ファイルを想定。単一ユーザー
@@ -158,12 +171,12 @@ zip の読み出し（索引・画像・サムネイル・動画）は UI スレ
 
 | 原則 | 判定 | 根拠 |
 |------|------|------|
-| I. ローカル完結・プライバシー | ✅ 適合 | ネットワークを使う API も依存もない。サムネイルはメモリにのみ置き、ユーザーのフォルダにもディスクキャッシュにも書かない（R7）。アプリアイコンも外部素材を取得せず、コードから生成する（R14）。ファイル操作はすべてユーザーの明示的な操作が起点になる。確認を省略できるのは、削除が常にゴミ箱経由で取り消せるため（v1.1.0 の「確認または取り消し可能性」、FR-021・024）。取り消せない上書きは常に衝突ダイアログで確認する（FR-025）種類フィルタは表示の絞り込みだけで、ファイルを変更せず通信もしない（R20）。お気に入りの登録・削除は登録内容を変えるだけで、実際のフォルダを変更せずゴミ箱にも入れない。保存先はローカルの `UserDefaults` だけ（R21）。zip の中身は一時ファイルにもユーザーのフォルダにも書き出さず、zip ファイルを `pread` で読むだけにする。動画も AVFoundation の独自スキームの読み込み器でメモリから渡し、ネットワークを使わない（R22・R25）。zip の中は読み取り専用で、zip を書き換える経路を持たない。zip ファイルそのものの操作は既存の確認・ゴミ箱の規則のまま（FR-073）。フォルダのファイル操作は既存の確認・ゴミ箱経由の規則のまま（FR-018・021・022）。ツリーのフォルダのゴミ箱も同じ確認・ゴミ箱経由の経路を通り、ホーム・ボリュームの最上位は対象にしない。確認でキャンセルしたときと失敗したときは、表示もツリーの選択も変えない（FR-079、R33）。ファイル名の検索はローカルのディレクトリの列挙とファイル名の照合だけで、通信もファイルへの書き込みもしない。検索の条件と結果は保存しない。検索結果に対するファイル操作は既存の確認・ゴミ箱経由・衝突ダイアログの経路をそのまま通り、検索結果への暗黙のペーストはできない（FR-087、R38）。 |
-| II. 体感パフォーマンス | ✅ 適合 | デコード・列挙・サムネイル生成・ファイル操作はすべてバックグラウンドで行う（R5・R7・R9・R10）。キャッシュの上限を明示した（R8）。基準値は `MediaViewerPerformanceTests` で計測する（quickstart）。小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（R5）。リスト形式の行頭アイコンもサムネイル生成を可視行だけ遅延実行し、セル再利用時は同じ URL・サイズの要求だけを取り消すため、10,000 ファイルでも一覧表示を待たせない（R17）。注: 憲章の基準「起動からファイル指定で開いた最初の画像の表示 1 秒以内」は、ファイルを指定して起動する経路を前提にしている。この経路は本機能の範囲外なので、代わりに SC-002（前回フォルダの一覧表示まで 2 秒）を計測する。ファイル指定起動を追加する機能で 1 秒基準を適用する。アイコン生成はビルド時のみで、起動時間に影響しない。ツールバーは表示状態の読み込みとビュー生成だけで、デコードや列挙を追加しない（R18）種類フィルタは保持済みの一覧を `MediaKind` で絞るだけで、列挙・デコードを追加しない。10,000 件での適用時間を性能テストで計測する（R20）。お気に入りの存在の確認は列挙を伴わない `stat` だけで、バックグラウンドで同時 4 件までに制限し、応答のないボリュームがツリーの操作を止めない（R21）。zip の索引作成・画像の読み込み・サムネイル・動画の範囲読み出しはすべてバックグラウンドで行い、zip の中の画像では同期の `isAnimated(url)` を使わない（R24）。画像の読み込みは1項目 512MB、動画は 1 asset あたり 32MB のチャンクキャッシュと展開カーソル 2 本を上限にし、動画のサイズに比例してメモリを使わない（SC-014）。10,000 項目の zip の索引作成と、展開後 1GB の項目の読み出しのメモリを性能テストで計測する（SC-014・015）。zip の中のサムネイルは同時 4 件（動画 2 件）までに制限する。ファイルリストのフォルダの行は既存の1回の列挙から作り、パッケージの判定はディレクトリだけに行う。10,000 ファイルと 1,000 サブフォルダの列挙を性能テストで計測する（R29）。ツリーの同期は一覧の読み込みと独立に進め、一覧の表示を待たせない（R31）。ファイル名の検索は、列挙・起点の確認・結果の存在確認をバックグラウンドで行い、結果を 256 件または 0.1 秒ごとのバッチにまとめて、並べ替え済みの全件へ線形のマージで加える。一致したファイルだけ属性を読む。10,000 ファイルの階層の検索 3 秒以内と、1 バッチのマージ 0.05 秒以内（10,000 件）・100ms 未満（50,000 件）を性能テストで計測し、検索中の操作の停止を手動で確かめる（SC-016、R36）。検索は取り消しに追従し、同時に1つだけ走る。外部の変更の監視は起点1つの FSEvents ストリームにまとめ、絞り込みは監視用のキューで行う。隠しフォルダの中の変更は監視の段階で捨て、送出は最初の変更から最大 1 秒で行い、変更が続いてもツリーの更新を止めない。届いたフォルダに当たる結果はフォルダごとの辞書で引き、全件を走査しない（R38）。 |
+| I. ローカル完結・プライバシー | ✅ 適合 | ネットワークを使う API も依存もない。サムネイルはメモリにのみ置き、ユーザーのフォルダにもディスクキャッシュにも書かない（R7）。アプリアイコンも外部素材を取得せず、コードから生成する（R14）。ファイル操作はすべてユーザーの明示的な操作が起点になる。確認を省略できるのは、削除が常にゴミ箱経由で取り消せるため（v1.1.0 の「確認または取り消し可能性」、FR-021・024）。取り消せない上書きは常に衝突ダイアログで確認する（FR-025）種類フィルタは表示の絞り込みだけで、ファイルを変更せず通信もしない（R20）。お気に入りの登録・削除は登録内容を変えるだけで、実際のフォルダを変更せずゴミ箱にも入れない。保存先はローカルの `UserDefaults` だけ（R21）。zip の中身は一時ファイルにもユーザーのフォルダにも書き出さず、zip ファイルを `pread` で読むだけにする。動画も AVFoundation の独自スキームの読み込み器でメモリから渡し、ネットワークを使わない（R22・R25）。zip の中は読み取り専用で、zip を書き換える経路を持たない。zip ファイルそのものの操作は既存の確認・ゴミ箱の規則のまま（FR-073）。フォルダのファイル操作は既存の確認・ゴミ箱経由の規則のまま（FR-018・021・022）。ツリーのフォルダのゴミ箱も同じ確認・ゴミ箱経由の経路を通り、ホーム・ボリュームの最上位は対象にしない。確認でキャンセルしたときと失敗したときは、表示もツリーの選択も変えない（FR-079、R33）。ファイル名の検索はローカルのディレクトリの列挙とファイル名の照合だけで、通信もファイルへの書き込みもしない。検索の条件と結果は保存しない。検索結果に対するファイル操作は既存の確認・ゴミ箱経由・衝突ダイアログの経路をそのまま通り、検索結果への暗黙のペーストはできない（FR-087、R38）。ペインの表示切り替えは表示だけを変え、ファイルにも設定にも書き込まず、通信もしない。隠れたプレビューから動画の音声を流さない（R40・R45）。 |
+| II. 体感パフォーマンス | ✅ 適合 | デコード・列挙・サムネイル生成・ファイル操作はすべてバックグラウンドで行う（R5・R7・R9・R10）。キャッシュの上限を明示した（R8）。基準値は `MediaViewerPerformanceTests` で計測する（quickstart）。小さい画像の拡大はレイヤーのフレーム変更だけで行い、デコードや再描画を増やさない（R5）。リスト形式の行頭アイコンもサムネイル生成を可視行だけ遅延実行し、セル再利用時は同じ URL・サイズの要求だけを取り消すため、10,000 ファイルでも一覧表示を待たせない（R17）。注: 憲章の基準「起動からファイル指定で開いた最初の画像の表示 1 秒以内」は、ファイルを指定して起動する経路を前提にしている。この経路は本機能の範囲外なので、代わりに SC-002（前回フォルダの一覧表示まで 2 秒）を計測する。ファイル指定起動を追加する機能で 1 秒基準を適用する。アイコン生成はビルド時のみで、起動時間に影響しない。ツールバーは表示状態の読み込みとビュー生成だけで、デコードや列挙を追加しない（R18）種類フィルタは保持済みの一覧を `MediaKind` で絞るだけで、列挙・デコードを追加しない。10,000 件での適用時間を性能テストで計測する（R20）。お気に入りの存在の確認は列挙を伴わない `stat` だけで、バックグラウンドで同時 4 件までに制限し、応答のないボリュームがツリーの操作を止めない（R21）。zip の索引作成・画像の読み込み・サムネイル・動画の範囲読み出しはすべてバックグラウンドで行い、zip の中の画像では同期の `isAnimated(url)` を使わない（R24）。画像の読み込みは1項目 512MB、動画は 1 asset あたり 32MB のチャンクキャッシュと展開カーソル 2 本を上限にし、動画のサイズに比例してメモリを使わない（SC-014）。10,000 項目の zip の索引作成と、展開後 1GB の項目の読み出しのメモリを性能テストで計測する（SC-014・015）。zip の中のサムネイルは同時 4 件（動画 2 件）までに制限する。ファイルリストのフォルダの行は既存の1回の列挙から作り、パッケージの判定はディレクトリだけに行う。10,000 ファイルと 1,000 サブフォルダの列挙を性能テストで計測する（R29）。ツリーの同期は一覧の読み込みと独立に進め、一覧の表示を待たせない（R31）。ファイル名の検索は、列挙・起点の確認・結果の存在確認をバックグラウンドで行い、結果を 256 件または 0.1 秒ごとのバッチにまとめて、並べ替え済みの全件へ線形のマージで加える。一致したファイルだけ属性を読む。10,000 ファイルの階層の検索 3 秒以内と、1 バッチのマージ 0.05 秒以内（10,000 件）・100ms 未満（50,000 件）を性能テストで計測し、検索中の操作の停止を手動で確かめる（SC-016、R36）。検索は取り消しに追従し、同時に1つだけ走る。外部の変更の監視は起点1つの FSEvents ストリームにまとめ、絞り込みは監視用のキューで行う。隠しフォルダの中の変更は監視の段階で捨て、送出は最初の変更から最大 1 秒で行い、変更が続いてもツリーの更新を止めない。届いたフォルダに当たる結果はフォルダごとの辞書で引き、全件を走査しない（R38）。ペインの表示切り替えは折りたたみの反映・フォーカスの移動・メニューの検証だけで、デコード・列挙・一覧の作り直しを伴わない。プレビューのみ表示の矢印キーの移動はフルスクリーンと同じ `FocusNavigator` の線形の走査で、先読み済みの隣接ファイルへの切替 0.1 秒（既存の基準）をそのまま使う（R41・R43）。 |
 | III. キーボードファースト & a11y | ✅ 適合 | 提供する全操作のキー割り当てを [contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md) で網羅した。手動の拡大/縮小（ズーム）とパンは提供せず、フィットは画像選択時に自動で行うため、これらへのキー割り当ては存在しない（spec Assumptions）。AppKit 標準部品の a11y を使い、プレビューとサムネイルのセルにはファイル名のラベルを付ける。行頭アイコンは装飾として a11y 要素から外し、フォルダ名・ファイル名と選択状態は従来どおり読み上げられる（FR-047・048）。ダークモードは AppKit 標準の配色で追従し、「視差効果を減らす」設定が有効な間は、アニメーション画像を自動で再生しない。サムネイル形式でもキーボードだけで一覧を辿れるよう、フォーカス項目のスクロール追従を必須にする（FR-017）。フルスクリーン中も矢印キーで選択を移動でき（FR-046）、動画のシークは `<` / `>` に残すため、フルスクリーンでも主要操作をキーボードだけで完結できる。ツールバーの表示切替には ⇧⌘T を割り当て、ツールバー上の操作（表示形式・サイズ）は既存の ⌘1 / ⌘2 / ⌘+ / ⌘- でも行えるため、ツールバーを使わなくてもキーボードだけで完結する。ボタンとスライダーにはアクセシビリティラベルを付ける（FR-050・051）。ツリーのダブルクリック開閉は既存の → / ← キーによる開閉のマウス版で、キーボード手段は既にある。開閉できないフォルダは三角を持たず、支援技術にも開閉できる項目として伝わらない（FR-053・054）種類フィルタは ⇧⌘I / ⇧⌘M と「表示」メニューで操作でき、ツールバーが非表示でもキーボードだけで切り替えられる。ツールバーのボタンにはアクセシビリティラベル（「画像のみ表示」「動画のみ表示」）を付け、メニューのチェックマークで状態を伝える（FR-057・058）。お気に入りは、登録 ⌃⌘T・削除 ⌘⌫・見出しへの移動 ⇧⌘F のキーボード手段を持ち、見出しは → / ← と ↑↓ で開閉・移動できる通常の行なので、マウスなしで登録・選択・削除を完結できる（FR-062・064・065）。見出しはラベル「お気に入り」で読み上げられ、見つからない項目はツールチップ「見つかりません」を持つ。zip の中を表示・上の階層へ戻る操作は ⌘↓ / ⌘↑ と「ファイル」メニューの項目で行え、`..` の行も矢印キーで選べるため、ダブルクリックなしで zip の中を辿れる（FR-069・070）。戻った先では出てきた行を選択し、続けてキーボードで隣へ移れる。zip ファイル・ディレクトリ・`..` の行には SF Symbol と名前の a11y ラベル（`..` は「上の階層へ」）を付ける。フォルダへ入る・戻る操作は ⌘↓ / ⌘↑ と「ファイル」メニュー、`..` の行で行え、ツリーの同期でもキーボードフォーカスをファイルリストに残すため、続けて矢印キーで操作できる（FR-076〜078）。フォルダの行には SF Symbol `folder` と名前の a11y ラベルを付ける。ツリーのフォルダのゴミ箱は ⌘⌫ と右クリックメニュー、「ファイル」「編集」メニューの
-「ゴミ箱に入れる」で行え、削除後もフォーカスはツリーに残って親フォルダが選択されるため、続けてキーボードで操作できる（FR-079）。ファイル名の検索は ⌘F と「ファイル」メニューの「検索…」で開け、モーダルは Return・Esc・Tab（ボタンにも止まる）だけで操作できる。検索を始めるとフォーカスをファイルリストへ移し、結果は矢印キー・⌘C・⌘Delete などの既存のキーで辿り操作できる。検索結果の解除はツリーでフォルダを選ぶ既存の操作（↑↓）で行える。入力欄にはアクセシビリティラベルを付け、起点の誤りの理由は読み上げる。「場所」はリスト形式の列とサムネイルのツールチップで示し、検索バーの文言で検索中であることと件数を伝える。検索結果の表示中は、フルスクリーン中とファイル名の変更中を除き、ファイルリストで Esc を押しても検索前のフォルダの一覧に戻れる（FR-080〜084・086、R39）。 |
-| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。フルスクリーンの移動規則は `FocusNavigator` として Core に置き、リスト形式・サムネイル形式・フルスクリーンの全経路で同じ関数を使う。境界（先頭・末尾・行頭・行末）と空リストのケースを `FocusNavigatorTests` で検証する。行頭アイコンは小さな要求サイズの丸め（64px 段階）を `ThumbnailProviderTests` で検証し、表示とフォールバックは quickstart の手動確認で担保する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する。ツールバーの保存状態は `SettingsStoreTests`、下部バーの表示とスライダーの有効・無効の判断は `FileListChromeTests` で検証し、ツールバーの見た目と配線は quickstart の手動確認で担保する。ツリーの開閉は、サブフォルダの有無の状態遷移とダブルクリックの判断を `FolderDisclosureTests`、`hasSubfolders(in:)` の判定（隠しフォルダ・パッケージ・権限なし・存在しない）と `subfolders(of:)` との一致を `DirectoryListerTests`、並列数の上限と取り消しを `SubfolderProbeTests` で検証する。ダブルクリックと三角の配線は quickstart の手動確認で担保する種類フィルタの4通りの組み合わせ・並び順の保持・0件のメッセージを `MediaTypeFilterTests`、選択の整理（FR-059）を同ファイルの `SelectionState.restricted(toVisible:)` のテスト、フォルダ移動後の保持・`.noMatches`・並べ替えと読み直し・動画の停止通知を `BrowserModelTests` / `BrowserModelVideoTests` で検証する。ボタン・メニューの配線は quickstart の手動確認で担保する。お気に入りは、登録順・重複の判定・削除を `FavoriteFoldersTests`、保存と不正値の扱いを `SettingsStoreTests`、行の役割ごとの操作の可否と右クリックメニューを `FavoriteCommandsTests`、存在の判定・並列数の上限・取り消しを `FavoriteProbeTests` で検証する。ツリーへの表示・メニュー・確認モーダルの配線は quickstart の手動確認で担保する。zip は、URL の生成と解析を `ArchiveURLTests`、文字コードの判定を `ArchiveNameDecoderTests`、終端レコード・ZIP64・壊れた zip・分割 zip の解析を `ZipStructureTests`、階層の補完・隠し項目・`__MACOSX`・`..`・重複・暗号化と非対応方式の扱いを `ArchiveIndexTests`、無圧縮・deflate・データ記述子の読み出しと上限を `ZipArchiveReaderTests`、任意範囲の読み出しが全体と一致することと後ろ向きの読み出しを `ArchiveEntryStreamTests`、`AVURLAsset` の読み込み（無圧縮・deflate・非 faststart）を `ArchiveAssetLoaderTests`、操作の可否を `ListItemCommandsTests`、フルスクリーンの読み飛ばしを `FocusNavigatorTests`、入る・戻る・選択・プレビューの空・FSEvents を `BrowserModelArchiveTests` で検証する。フィクスチャは `ZipFixtureWriter` で生成し、外部のコマンドに依存しない（R28）。メニュー・ダブルクリック・ドラッグの無効化の配線は quickstart の手動確認で担保する。ファイルリストのフォルダは、フォルダの行の列挙（隠しフォルダ・パッケージ・.zip のディレクトリ・`subfolders(of:)` との一致）を `DirectoryListerTests`、戻る先の判定（ルート・最も深いルート・ルート外・パスの要素の比較）を `FolderNavigationTests`、`mvparent` の URL を `ParentLinkTests`、`.folder` と `.parent` の操作の可否と `hasEnclosingLevel` を `ListItemCommandsTests`、フォルダの拡張子の確認を `NameValidationTests`、入る・戻る・選択・`lastFolder`・`treeSyncRequest` の出る経路と出ない経路・`operableSelection`・`..` の有無と FR-060 の判定を `BrowserModelFolderTests`（新規）で検証する。ツリーの選択・展開・スクロールとフォーカスの配線は quickstart の手動確認で担保する。ツリーのフォルダのゴミ箱は、対象の判定（ルート・お気に入り・見出し・通常のフォルダ）と右クリックメニューの並びを `FavoriteCommandsTests`、削除後の移り先（自身・祖先・兄弟・無関係・複数・ルート・`/a/b2`）を `FolderNavigationTests`、親へ移ること・`lastFolder`・`treeSyncRequest`・動画の停止・zip の中からの移動・該当しないときに何もしないことを `BrowserModelFolderTests` で検証する。メニューの検証・確認モーダル・ツリーの選択の配線は quickstart の手動確認で担保する。ファイル名の検索は、照合（NFC と NFD・大文字小文字・`*` と `?`・部分一致と全体一致・空白だけのキーワード・記号）を `SearchPatternTests`、起点の解釈と確認（空・`~`・`~user`・相対パス・末尾の `/`・存在しない・ファイル・zip・パッケージ・権限なし・シンボリックリンク）を `SearchRootTests`、場所の文字列（直下・深い階層・起点が `/`）を `SearchListingTests`、列挙の規則（サブフォルダ・隠し・パッケージ・シンボリックリンク・権限なし・zip とその中・フォルダ名・非対応形式・取り消し・バッチ）を `FileNameSearcherTests`、`.location` の並べ替えと `sortedMerge` が `sorted` と一致することを `SortingTests`、検索結果での可否を `ListItemCommandsTests`、`subtrees` の通知を `FileSystemWatcherTests`、開始・バッチのマージ・解除・取り消し・新しい検索での置き換え・`lastFolder` と `treeSyncRequest` が変わらないこと・`..` がないこと・種類フィルタ・`.location` を保存しないこと・存在しない結果の整理・名前の変更・外部の変更・動画の停止を `BrowserModelSearchTests`（新規）で検証する。フィクスチャは `FixtureSets.search(in:)` で生成する。モーダル・メニュー・検索バー・「場所」列・ツリーのクリックの配線は quickstart の手動確認で担保する。 |
-| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない。ツリーとリストの行頭アイコンは SF Symbols と既存のサムネイル経路を使い、新しい設定・永続化・外部素材を追加しない（R17）。フルスクリーン移動（FR-046）は既存の選択モデルとレイアウト計算を再利用し、新しい設定・永続化状態・依存を追加しない。ツールバーは AppKit 標準の `NSToolbar` と SF Symbols だけで作り、ユーザーによるカスタマイズは提供しない。永続化はツールバーの表示状態を表す Bool 1 つだけを追加する（R18）。ツリーの開閉は `NSOutlineView` 標準の `doubleAction` と `isItemExpandable` だけで作り、設定・永続化・依存を増やさない。並列数の制限は、遅いボリュームで列挙が積み上がるのを防ぐための最小限の仕組みとする（R19）種類フィルタは Bool 2 つの値型と既存の `NSToolbarItemGroup`・メニュー項目だけで作り、保存キー・設定項目・依存を増やさない。絞り込みを `listing.files` に集約し、UI の各部品に同じ判断を重複させない（R20）。お気に入りは保存キー1つ（パスの配列）と既存の `NSOutlineView`・メニュー・確認モーダルだけで作り、並べ替え・名前の変更・ドロップ先・ブックマークによる追従は作らない。⌘⌫ は既存のメニュー項目をレスポンダーチェーンで振り分け、同じキーの項目を増やさない（R21）。zip は外部依存を足さず、読み取り専用・単一ファイル・無圧縮と deflate だけに対応する（暗号化の解除・他の方式・入れ子・zip の作成は作らない）。zip の中の項目は既存の `MediaFile` と URL のまま表し、選択・キャッシュ・UI の型を作り直さない（R23）。保存キーは増やさない。シークを速くするチェックポイント索引は作らず、必要になったら `InflateCursor` の内部だけを置き換える（R25）。自前の zip 読み取りは Complexity Tracking に記録した。ファイルリストのフォルダは、既存の `ListItemKind`・`MediaFile`・`FileOperationService`・ツリーの `reveal` を使い、行の種類を1つ（`.folder`）、URL の種類を1つ（`mvparent`）、観測値を1つ（`treeSyncRequest`）足すだけにする。保存キー・設定・依存は増やさない（R29〜R32）。ツリーのフォルダのゴミ箱は、メニューの項目の種類を1つ（`.moveToTrash`）、純粋関数を2つ、`BrowserModel` のメソッドを1つ足すだけで、実行・確認・ツリーの同期は既存の経路を使う。`TreeItemRole` に種類を足さない（R33）。ファイル名の検索は、外部依存を足さず `FileManager` の列挙器と自前の小さな glob 照合で作る。検索結果は既存の `FolderListing`・`listing.files`・`selection` に載せ、状態の種類は増やさず（`search` のフィールド1つ）、選択・プレビュー・先読み・フルスクリーン・種類フィルタ・ファイル操作の経路を再利用する。保存キー・設定は増やさない。Spotlight・正規表現・並列の列挙・検索の履歴は作らない。`FileSystemWatching` の `subtrees` は Complexity Tracking に理由を記録した（R36〜R39）。 |
+「ゴミ箱に入れる」で行え、削除後もフォーカスはツリーに残って親フォルダが選択されるため、続けてキーボードで操作できる（FR-079）。ファイル名の検索は ⌘F と「ファイル」メニューの「検索…」で開け、モーダルは Return・Esc・Tab（ボタンにも止まる）だけで操作できる。検索を始めるとフォーカスをファイルリストへ移し、結果は矢印キー・⌘C・⌘Delete などの既存のキーで辿り操作できる。検索結果の解除はツリーでフォルダを選ぶ既存の操作（↑↓）で行える。入力欄にはアクセシビリティラベルを付け、起点の誤りの理由は読み上げる。「場所」はリスト形式の列とサムネイルのツールチップで示し、検索バーの文言で検索中であることと件数を伝える。検索結果の表示中は、フルスクリーン中とファイル名の変更中を除き、ファイルリストで Esc を押しても検索前のフォルダの一覧に戻れる（FR-080〜084・086、R39）。ペインの表示切り替えは ⌃⌘2 / ⌃⌘3 と「表示」メニューで行え（⌥⌘2・⌥⌘3 と同じペインの番号）、ツールバーなしでもキーボードだけで完結する。切り替えではフォーカスを表示中のペインへ移し、Tab の巡回と ⌥⌘1〜3 は表示中のペインに限る。プレビューのみ表示でも矢印キーでファイルを切り替えられ、動画のシークは `<` / `>` に残す。ツールバーのボタンにはアクセシビリティラベルを付け、メニューのチェックマークで状態を伝え、メディアがないときはプレビューにメッセージを出す（FR-089〜093、R40・R42・R43）。 |
+| IV. テスト必須 | ✅ 適合 | 判断ロジックをすべて `MediaViewerCore` に置き、UI から分離した（[contracts/core-api.md](./contracts/core-api.md)）。破損・非対応・巨大・権限なしのフィクスチャを自動生成してテストする。フィット計算は拡大（縦横比・中央寄せ・1×1 などの極小サイズ）を含めて `FitCalculatorTests` で検証する。スクロール追従の最小移動量は純粋計算として Core に置き、`ThumbnailScrollTests` で「画面外の項目へ移動したときの計算」という不具合条件を検証する。キー入力からクリップビュー更新までの UI 配線は自動テストの対象外とし、T093 の手動再現で担保する。フルスクリーンの移動規則は `FocusNavigator` として Core に置き、リスト形式・サムネイル形式・フルスクリーンの全経路で同じ関数を使う。境界（先頭・末尾・行頭・行末）と空リストのケースを `FocusNavigatorTests` で検証する。行頭アイコンは小さな要求サイズの丸め（64px 段階）を `ThumbnailProviderTests` で検証し、表示とフォールバックは quickstart の手動確認で担保する。憲章 原則 IV は UI の見た目そのものの自動テストを必須としないため、この分担でテスト要件を満たす。アイコンはビルド生成物のため、解像度セットを `scripts/make-icon.sh` が検証し、表示は quickstart の手動確認で担保する。ツールバーの保存状態は `SettingsStoreTests`、下部バーの表示とスライダーの有効・無効の判断は `FileListChromeTests` で検証し、ツールバーの見た目と配線は quickstart の手動確認で担保する。ツリーの開閉は、サブフォルダの有無の状態遷移とダブルクリックの判断を `FolderDisclosureTests`、`hasSubfolders(in:)` の判定（隠しフォルダ・パッケージ・権限なし・存在しない）と `subfolders(of:)` との一致を `DirectoryListerTests`、並列数の上限と取り消しを `SubfolderProbeTests` で検証する。ダブルクリックと三角の配線は quickstart の手動確認で担保する種類フィルタの4通りの組み合わせ・並び順の保持・0件のメッセージを `MediaTypeFilterTests`、選択の整理（FR-059）を同ファイルの `SelectionState.restricted(toVisible:)` のテスト、フォルダ移動後の保持・`.noMatches`・並べ替えと読み直し・動画の停止通知を `BrowserModelTests` / `BrowserModelVideoTests` で検証する。ボタン・メニューの配線は quickstart の手動確認で担保する。お気に入りは、登録順・重複の判定・削除を `FavoriteFoldersTests`、保存と不正値の扱いを `SettingsStoreTests`、行の役割ごとの操作の可否と右クリックメニューを `FavoriteCommandsTests`、存在の判定・並列数の上限・取り消しを `FavoriteProbeTests` で検証する。ツリーへの表示・メニュー・確認モーダルの配線は quickstart の手動確認で担保する。zip は、URL の生成と解析を `ArchiveURLTests`、文字コードの判定を `ArchiveNameDecoderTests`、終端レコード・ZIP64・壊れた zip・分割 zip の解析を `ZipStructureTests`、階層の補完・隠し項目・`__MACOSX`・`..`・重複・暗号化と非対応方式の扱いを `ArchiveIndexTests`、無圧縮・deflate・データ記述子の読み出しと上限を `ZipArchiveReaderTests`、任意範囲の読み出しが全体と一致することと後ろ向きの読み出しを `ArchiveEntryStreamTests`、`AVURLAsset` の読み込み（無圧縮・deflate・非 faststart）を `ArchiveAssetLoaderTests`、操作の可否を `ListItemCommandsTests`、フルスクリーンの読み飛ばしを `FocusNavigatorTests`、入る・戻る・選択・プレビューの空・FSEvents を `BrowserModelArchiveTests` で検証する。フィクスチャは `ZipFixtureWriter` で生成し、外部のコマンドに依存しない（R28）。メニュー・ダブルクリック・ドラッグの無効化の配線は quickstart の手動確認で担保する。ファイルリストのフォルダは、フォルダの行の列挙（隠しフォルダ・パッケージ・.zip のディレクトリ・`subfolders(of:)` との一致）を `DirectoryListerTests`、戻る先の判定（ルート・最も深いルート・ルート外・パスの要素の比較）を `FolderNavigationTests`、`mvparent` の URL を `ParentLinkTests`、`.folder` と `.parent` の操作の可否と `hasEnclosingLevel` を `ListItemCommandsTests`、フォルダの拡張子の確認を `NameValidationTests`、入る・戻る・選択・`lastFolder`・`treeSyncRequest` の出る経路と出ない経路・`operableSelection`・`..` の有無と FR-060 の判定を `BrowserModelFolderTests`（新規）で検証する。ツリーの選択・展開・スクロールとフォーカスの配線は quickstart の手動確認で担保する。ツリーのフォルダのゴミ箱は、対象の判定（ルート・お気に入り・見出し・通常のフォルダ）と右クリックメニューの並びを `FavoriteCommandsTests`、削除後の移り先（自身・祖先・兄弟・無関係・複数・ルート・`/a/b2`）を `FolderNavigationTests`、親へ移ること・`lastFolder`・`treeSyncRequest`・動画の停止・zip の中からの移動・該当しないときに何もしないことを `BrowserModelFolderTests` で検証する。メニューの検証・確認モーダル・ツリーの選択の配線は quickstart の手動確認で担保する。ファイル名の検索は、照合（NFC と NFD・大文字小文字・`*` と `?`・部分一致と全体一致・空白だけのキーワード・記号）を `SearchPatternTests`、起点の解釈と確認（空・`~`・`~user`・相対パス・末尾の `/`・存在しない・ファイル・zip・パッケージ・権限なし・シンボリックリンク）を `SearchRootTests`、場所の文字列（直下・深い階層・起点が `/`）を `SearchListingTests`、列挙の規則（サブフォルダ・隠し・パッケージ・シンボリックリンク・権限なし・zip とその中・フォルダ名・非対応形式・取り消し・バッチ）を `FileNameSearcherTests`、`.location` の並べ替えと `sortedMerge` が `sorted` と一致することを `SortingTests`、検索結果での可否を `ListItemCommandsTests`、`subtrees` の通知を `FileSystemWatcherTests`、開始・バッチのマージ・解除・取り消し・新しい検索での置き換え・`lastFolder` と `treeSyncRequest` が変わらないこと・`..` がないこと・種類フィルタ・`.location` を保存しないこと・存在しない結果の整理・名前の変更・外部の変更・動画の停止を `BrowserModelSearchTests`（新規）で検証する。フィクスチャは `FixtureSets.search(in:)` で生成する。モーダル・メニュー・検索バー・「場所」列・ツリーのクリックの配線は quickstart の手動確認で担保する。ペインの表示切り替えは、トグルとボタングループの押下からの遷移の全組み合わせ・表示するペイン・フォーカスの移し先・メッセージの条件（読み込み中・メディアなし・種類フィルタ・`..` だけ）を `PaneLayoutTests`（新規）、フルスクリーンとの組み合わせを同ファイルの `PanePresentation` のテスト、操作の可否の表の全行を同ファイルの `PaneCommands` のテスト、仕切りの位置（同じ幅・広がった・狭まった・最小幅に届く・不正な入力）を同ファイルの `PaneWidths` のテスト、最初のファイルの選び方（メディア・後ろ・前・未選択・メディアなし・空）を `FocusNavigatorTests` で検証する。折りたたみ・ツールバー・メニュー・キーのモニタ・自動保存の停止の配線は quickstart の手動確認で担保する。 |
+| V. シンプルさ（YAGNI） | ✅ 適合 | 外部依存ゼロ。UI フレームワークは AppKit に統一し、SwiftUI と混在させない。ディスクキャッシュ・Undo・プラグインは作らない。ターゲットは Core / App / テスト2つ / フィクスチャ生成 / アイコン生成の最小構成。アイコン生成はビルド時専用で、実行時の抽象化や設定項目を増やさない。ツリーとリストの行頭アイコンは SF Symbols と既存のサムネイル経路を使い、新しい設定・永続化・外部素材を追加しない（R17）。フルスクリーン移動（FR-046）は既存の選択モデルとレイアウト計算を再利用し、新しい設定・永続化状態・依存を追加しない。ツールバーは AppKit 標準の `NSToolbar` と SF Symbols だけで作り、ユーザーによるカスタマイズは提供しない。永続化はツールバーの表示状態を表す Bool 1 つだけを追加する（R18）。ツリーの開閉は `NSOutlineView` 標準の `doubleAction` と `isItemExpandable` だけで作り、設定・永続化・依存を増やさない。並列数の制限は、遅いボリュームで列挙が積み上がるのを防ぐための最小限の仕組みとする（R19）種類フィルタは Bool 2 つの値型と既存の `NSToolbarItemGroup`・メニュー項目だけで作り、保存キー・設定項目・依存を増やさない。絞り込みを `listing.files` に集約し、UI の各部品に同じ判断を重複させない（R20）。お気に入りは保存キー1つ（パスの配列）と既存の `NSOutlineView`・メニュー・確認モーダルだけで作り、並べ替え・名前の変更・ドロップ先・ブックマークによる追従は作らない。⌘⌫ は既存のメニュー項目をレスポンダーチェーンで振り分け、同じキーの項目を増やさない（R21）。zip は外部依存を足さず、読み取り専用・単一ファイル・無圧縮と deflate だけに対応する（暗号化の解除・他の方式・入れ子・zip の作成は作らない）。zip の中の項目は既存の `MediaFile` と URL のまま表し、選択・キャッシュ・UI の型を作り直さない（R23）。保存キーは増やさない。シークを速くするチェックポイント索引は作らず、必要になったら `InflateCursor` の内部だけを置き換える（R25）。自前の zip 読み取りは Complexity Tracking に記録した。ファイルリストのフォルダは、既存の `ListItemKind`・`MediaFile`・`FileOperationService`・ツリーの `reveal` を使い、行の種類を1つ（`.folder`）、URL の種類を1つ（`mvparent`）、観測値を1つ（`treeSyncRequest`）足すだけにする。保存キー・設定・依存は増やさない（R29〜R32）。ツリーのフォルダのゴミ箱は、メニューの項目の種類を1つ（`.moveToTrash`）、純粋関数を2つ、`BrowserModel` のメソッドを1つ足すだけで、実行・確認・ツリーの同期は既存の経路を使う。`TreeItemRole` に種類を足さない（R33）。ファイル名の検索は、外部依存を足さず `FileManager` の列挙器と自前の小さな glob 照合で作る。検索結果は既存の `FolderListing`・`listing.files`・`selection` に載せ、状態の種類は増やさず（`search` のフィールド1つ）、選択・プレビュー・先読み・フルスクリーン・種類フィルタ・ファイル操作の経路を再利用する。保存キー・設定は増やさない。Spotlight・正規表現・並列の列挙・検索の履歴は作らない。`FileSystemWatching` の `subtrees` は Complexity Tracking に理由を記録した（R36〜R39）。ペインの表示切り替えは、既存のフルスクリーンの折りたたみ・キーのモニタ・`FocusNavigator`・`NSToolbarItemGroup` を再利用し、3値の列挙型1つと小さな値型・純粋関数だけを足す。`BrowserModel`・保存キー・設定・依存は増やさない。フルスクリーンの折りたたみは同じ反映のメソッドにまとめ、経路を二重に持たない（R40〜R44）。 |
 
 **Phase 1 設計後の再評価**: data-model・contracts・quickstart を確認したが、新たな違反はない。
 FSEvents による監視（R9）は外部依存ではなく、OS 標準 API の利用にあたる。アイコン生成（R14）は
@@ -221,6 +234,12 @@ FR-080〜087 のファイル名の検索（2026-10-22）は、照合・起点の
 列挙と存在確認はバックグラウンドで、メインスレッドの処理はバッチのマージに限り、SC-016 を性能テストで計測する（原則 II）。⌘F は既存の割り当てと衝突せず、
 モーダルを含めキーボードだけで完結する（原則 III）。外部依存・保存キー・設定は増やさず、`FileSystemWatching` の拡張だけを Complexity Tracking に記録した（原則 V）。
 憲章の改定は不要。
+FR-088〜094 のペインの表示切り替え（2026-10-23）は、表示状態・切り替えとボタンの書き戻し・フォーカスの移し先・操作の可否・フルスクリーンとの組み合わせ・
+仕切りの位置・最初のファイルの選び方・メッセージの条件をすべて Core の純粋関数に置いてテストし（原則 IV）、UI は折りたたみ・メニュー・ツールバー・キーのモニタの
+配線だけを担う。表示だけを変え、書き込みも通信もしない（原則 I）。デコード・列挙を足さない（原則 II）。⌃⌘2 / ⌃⌘3 は既存の割り当てと衝突せず、
+隠したペインへのキーは淡色にしてキーボードだけで完結する（原則 III）。既存の折りたたみとフルスクリーンの移動の経路を再利用し、`BrowserModel`・保存キー・依存を
+増やさない（原則 V）。隠したペインの再表示に備えた `isCollapsed` の KVO 監視と次のランループでの隠し直し、1つのペインの表示中の自動保存の一時停止は、
+回避策としての複雑さにあたるため Complexity Tracking に記録した。憲章の改定は不要。
 
 ## Project Structure
 
@@ -255,7 +274,8 @@ Sources/
 │   │                                #   MediaTypeFilter（画像・動画の種類フィルタ）,
 │   │                                #   FavoriteFolders・FavoriteCommands（お気に入りの登録内容と操作の可否）,
 │   │                                #   ListItemKind（一覧の行の種類）, ListItemCommands（行の操作の可否）,
-│   │                                #   FolderNavigation（通常のフォルダの戻る先）, ParentLink（`..` の行の URL）
+│   │                                #   FolderNavigation（通常のフォルダの戻る先）, ParentLink（`..` の行の URL）,
+│   │                                #   PaneLayout・PanePresentation・PaneCommands・PaneWidths（ペインの表示切り替え）
 │   ├── Archive/                     # ZipArchiveReader, ZipStructure, ArchiveIndex, ArchiveURL, ArchiveLocation,
 │   │                                #   ArchiveNameDecoder, InflateCursor, ArchiveEntryStream, ArchiveAssetLoader（zip の読み取り）
 │   ├── Browser/                     # BrowserModel（選択・プレビュー・先読みの調停）
@@ -269,7 +289,7 @@ Sources/
 │   └── Settings/                    # SettingsStore
 ├── MediaViewerApp/                  # AppKit UI。Core の状態を描画するだけ
 │   ├── App/                         # main.swift, AppDelegate, MainMenu, MainWindowController,
-│   │                                #   MainSplitViewController（フルスクリーン切替を含む）,
+│   │                                #   MainSplitViewController（フルスクリーン切替とペインの表示切り替えを含む）,
 │   │                                #   MainToolbarController（NSToolbar の項目と表示状態）
 │   ├── Shared/                      # IconCatalog（ツリー・リストの行頭アイコンの SF Symbol と寸法）
 │   ├── Tree/                        # DirectoryTreeViewController (NSOutlineView、ドロップ先、お気に入りの見出しと項目)
@@ -879,6 +899,82 @@ App（`Sources/MediaViewerApp/`）:
 - `README.md`: 検索（⌘F・モーダルの入力・ワイルドカード・検索結果での操作と解除）を追記する
 - `specs/001-three-pane-media-viewer/contracts/core-api.md`、`contracts/keyboard-and-menus.md`、`contracts/settings.md`、`data-model.md`、`research.md`、`quickstart.md` を更新した
 
+## 変更点（2026-10-23: ペインの表示切り替え）
+
+Core（`Sources/MediaViewerCore/`）:
+
+- `Model/PaneLayout.swift`（新規）: `Pane`・`SoloPane`・`PaneLayout`（`init(soloPane:)`・`soloPane`・`toggling(_:)`・`applyingToolbarSelection(fileListSelected:previewSelected:)`・
+  `isVisible(_:)`・`focusTarget(afterSwitchingFrom:)`・`showsNoMediaMessage(in:)`）、`PanePresentation`（`visiblePanes`・`isVisible(_:)`・`showsAllPanes`・
+  `navigatesHiddenFileList`）、`PaneCommands`（`canChangeLayout`・`canFocus(_:)`・`canGoToFavorites`・`allowsAddingFavorite`・`canSearch`）、
+  `PaneWidths.dividerPositions(savedWidths:totalWidth:dividerThickness:minimumWidths:)`（R40〜R42・R44、data-model の表のとおり）
+- `Layout/FocusNavigator.swift`: `entryIndex(currentIndex:fileCount:isNavigable:)` を追加する（R43）
+- `BrowserModel`・`SettingsStore`・保存キーは変更しない
+
+テスト（`Tests/MediaViewerCoreTests/`）:
+
+- 新規 `PaneLayoutTests`: `toggling` の 3 × 2 の全組み合わせ、`applyingToolbarSelection` の data-model の表の全行と結果の `soloPane` が2つ同時に押された
+  状態を表さないこと、`isVisible` と `PanePresentation.visiblePanes` の順（フルスクリーンは `[.preview]`）、`showsAllPanes`・`navigatesHiddenFileList` の
+  6通り（3状態 × フルスクリーンの有無）、`focusTarget` の表の全行（`nil` を含む）、`showsNoMediaMessage`（`.previewOnly` 以外は false・`.loading` は false・
+  メディアあり・フォルダと zip と `..` だけ・空・`.noMatches`・`.denied`）、`PaneCommands` の表の全行（フルスクリーン・名前の変更中・各表示状態）、
+  `PaneWidths`（同じ幅で元の位置・広がった差分がプレビューへ・狭まってプレビューが最小幅に足りずファイルリストから詰める・ファイルリストも最小幅でツリーから詰める・
+  全体が最小幅の合計に届かない・要素数の違いと非有限値で既定）
+- 既存に追加 `FocusNavigatorTests`: `entryIndex`（メディアにフォーカス・後ろのメディア・後ろになく前の最も近いメディア・未選択で先頭から・メディアなし・空リスト・
+  先頭と末尾の行）
+- 性能テストは追加しない（デコード・列挙を伴わず、既存の基準で足りる）
+
+App（`Sources/MediaViewerApp/`）:
+
+- `App/MainSplitViewController.swift`:
+  - `paneLayout: PaneLayout = .all`（保存しない）・`isFullScreenPresentation`・`savedPaneWidths`・`focusBeforeFullScreen: Pane?`・
+    `onPaneLayoutChange: ((PaneLayout) -> Void)?`・`paneCommands`（現在の `PaneCommands`）を持つ
+  - `setPaneLayout(_:)`: `canChangeLayout` で `guard` し、フォーカスのあるペインを求めてから `paneLayout` を更新、`applyPanePresentation()`、
+    `focusTarget(afterSwitchingFrom:)` の先へフォーカス、`onPaneLayoutChange` を呼ぶ。`togglePaneLayout(_ pane: SoloPane)` と
+    `applyToolbarSelection(fileListSelected:previewSelected:)` はこれを通す
+  - `applyPanePresentation()`: `PanePresentation(layout:isFullScreen:)` を3つの `NSSplitViewItem` に反映する（表示に戻すペインを先に `isCollapsed = false` →
+    `canCollapse = false`、次に隠すペインを `canCollapse = true` → `isCollapsed = true`）。`showsAllPanes` から離れる直前に幅を保持して `autosaveName` を nil にし、
+    戻ったら `autosaveName = "MainSplit"` に戻してから、次のレイアウトの後で `PaneWidths.dividerPositions` の位置へ `setPosition` し、
+    `treeViewController.scrollSelectedRowToVisible()` を呼ぶ（隠している間の FR-078 の同期で変わった選択行を見せる。R41）。`configureKeyViewLoop()` を
+    `visiblePanes` で作り直す。`navigatesHiddenFileList` の変化で `fileListViewController.beginHiddenListNavigation(selectingEntry:)` /
+    `endHiddenListNavigation()` とキーのモニタの追加・削除を行う。`previewViewController.paneLayout`・`isPaneVisible` を更新する。同じ状態では何もしない
+  - 3つの `NSSplitViewItem` の `isCollapsed` を KVO で監視し、反映中でないときに隠しているペインが端の仕切りのドラッグなどで再表示されたら、次のランループで
+    `recollapseHiddenPanes()` で隠し直す（`paneLayout`・ツールバー・メニューの状態は変えない。R41）
+  - 既存の `collapsePanesForFullScreen()`・`restorePanesAfterFullScreen()` を `isFullScreenPresentation` の更新と `applyPanePresentation()` に置き換える。
+    フルスクリーンに入る前に `focusBeforeFullScreen` を保持し、`windowDidExitFullScreen` で戻す。`exitPreviewFullScreenIfNeeded()` も同じ経路にする
+  - キーのモニタ（`handleFullScreenKey` → `handleHiddenListKey`）: `navigatesHiddenFileList` の間だけ入れ、ウインドウと first responder の条件は従来のまま。
+    フルスクリーン中だけでなくプレビューのみ表示中も矢印キーと `<`・`>` を処理する
+  - 「表示」メニューのフォーカスの項目の前に、区切り線と「ファイルリストのみ表示」（`"2"`、`[.command, .control]`）・「プレビューのみ表示」（`"3"`、同）を
+    `installFocusMenuItems()` で足す（宛先は self）。`focusTreePane` などのアクションの先頭で `canFocus` を `guard` する
+  - `validateMenuItem`: 2つの項目は `canChangeLayout` と `state`（`paneLayout.soloPane` で `.on`）、⌥⌘1〜3 は `canFocus`、⇧⌘F は `canGoToFavorites`、
+    ⌘F は `canSearch`、⌃⌘T は `allowsAddingFavorite && treeViewController.canAddSelectedFolderToFavorites`。`showSearch(_:)`・`focusFavorites(_:)`・
+    `addSelectedFolderToFavorites(_:)` の先頭の `guard` も同じ値にする
+  - `viewDidAppear` の初回に、すべての項目が折りたたまれていない・`canCollapse = false` であることを確かめる（以前の版で保存された状態への備え）
+- `App/MainToolbarController.swift`: `init(fileList:panes:settings:)` にし、識別子 `paneLayout` の `NSToolbarItemGroup`（`selectAny`、SF Symbols
+  `list.bullet.rectangle`・`photo.artframe`、ラベル・ツールチップ・アクセシビリティラベル「ファイルリストのみ表示」「プレビューのみ表示」、グループのラベル「ペイン」）を
+  既定の並びの先頭に足す。アクションは `panes.applyToolbarSelection` を呼び、`panes.onPaneLayoutChange` で `setSelected(_:at:)` を書き戻す。
+  `NSToolbarItemValidation` で `panes.paneCommands.canChangeLayout` を返す
+- `App/MainWindowController.swift`: `MainToolbarController` に `splitViewController` を渡す
+- `FileList/FileListViewController.swift`: `fullScreenNavigationLayout` を `hiddenListNavigation`（幅のスナップショット）に置き換え、
+  `beginFullScreenNavigation`・`moveFocusInFullScreen`・`endFullScreenNavigation` を `beginHiddenListNavigation(selectingEntry:)`・`moveFocusInHiddenList(_:)`・
+  `endHiddenListNavigation()` にする。開始で `selectingEntry` が true（プレビューのみ表示への切り替え）なら `FocusNavigator.entryIndex` の結果を `select` する。
+  移動のたびに表示形式とサムネイルサイズからレイアウトを求める。終了ではリスト形式・サムネイル形式の両方でフォーカス項目へスクロールする。
+  `leaveSearchResults()` の `guard` は `hiddenListNavigation == nil` にする
+- `FileList/ThumbnailModeView.swift`: `columnCount(forWidth:)`（`columnCount()` の幅を引数にしたもの）と、左右の余白を除いた現在の幅 `navigationWidth` を公開する
+- `Preview/PreviewViewController.swift`: `paneLayout: PaneLayout` と `isPaneVisible: Bool` を持つ。`observePreview()` で `model.listing` も監視し、
+  `paneLayout.showsNoMediaMessage(in: model.listing)` かつ `.empty` のときにメッセージを出す。`isPaneVisible` が false の間は `.video` を構成せず
+  （`stopVideo()`）、true に戻ったら `updateFromModel()` で構成し直す（R45）
+- `Preview/ImagePreviewView.swift`: 既存のメッセージ欄に1行の文言を出す `showMessage(_:)` を追加する（「表示するメディアファイルがありません」）
+- `Tree/DirectoryTreeViewController.swift`: 選択中の行があれば `outlineView.scrollRowToVisible(_:)` で必要最小限スクロールする
+  `scrollSelectedRowToVisible()` を追加する（選択・展開状態・フォーカスは変えない。R41）。ほかは変更しない
+- 検索のモーダル・ファイル操作・設定ウインドウは変更しない
+
+ドキュメント:
+
+- `README.md`: ペインの表示切り替え（ツールバーのボタン・⌃⌘2 / ⌃⌘3・プレビューのみ表示の矢印キー）を追記する
+- `AGENTS.md`: 「AppKit UI の不変条件」の `canCollapse` の項を「通常時は `canCollapse = false`。フルスクリーンとペインの表示切り替えで隠すペインだけ
+  `canCollapse = true` にしてから `isCollapsed` を設定する」に更新する。`MainSplitViewController` の折りたたみの変更（tasks.md の T280）より前か、
+  同じコミットで行う（AGENTS.md と実装が食い違う状態をコミットに残さない）
+- `specs/001-three-pane-media-viewer/contracts/core-api.md`、`contracts/keyboard-and-menus.md`、`contracts/settings.md`、`data-model.md`、`research.md`、`quickstart.md` を更新した
+
 ## Complexity Tracking
 
 | 導入する複雑さ | 必要な理由 | 採らなかったより単純な案と、その理由 |
@@ -886,3 +982,4 @@ App（`Sources/MediaViewerApp/`）:
 | `FileSystemWatching` の `subtrees`（配下のすべての階層の監視、R38） | 検索結果は起点以下の任意の階層のファイルからなり、アプリの外で削除・移動されたものを一覧から外す（FR-087）には、結果の親フォルダすべての変更を受け取る必要がある | 結果の親フォルダをすべて `watch(_:)` に渡す（数千のパスでストリームの作り直しが結果の増加のたびに起きる）、外部の変更を反映しない（FR-087 に反する） |
 | zip の読み取り器を自前で持つ（`ZipStructure`・`ZipArchiveReader`・`InflateCursor`、R22・R25） | FR-072 の「一時ファイルに展開しない」と、動画のストリーミング再生（2026-10-21 のユーザー判断）には、zip の中の項目の任意の範囲を読む手段が要る。Apple 標準のフレームワークには公開 API がない | `unzip` / `ditto` の子プロセス（一時ファイルが必要で FR-072 に反する）、ZIPFoundation などの外部パッケージ（原則 V と AGENTS.md の「外部依存なし」に反する）、libarchive（SDK に公開ヘッダがない） |
 | 動画用の `AVAssetResourceLoaderDelegate` とチャンクキャッシュ（R25） | 動画全体をメモリに展開せずに AVPlayer へ渡すため（SC-014） | 動画全体をメモリに展開（メモリが動画のサイズに比例し SC-014 に反する）、一時ファイル（FR-072 に反する） |
+| 隠したペインの `isCollapsed` の KVO 監視と次のランループでの隠し直し（`recollapseHiddenPanes()`）、1つのペインの表示中の分割ビューの自動保存の一時停止（`autosaveName = nil`）（R41） | 隠したペインは `canCollapse = true` のまま折りたたまれ、端に残った仕切りのドラッグなどで AppKit が再表示すると、表示状態とツールバー・メニューがずれる（FR-089・090）。また、隠した状態の幅が自動保存されると、次回起動時に3ペインの幅を復元できない（FR-003・088） | research.md R41 の Alternatives considered のとおり。`splitView(_:effectiveRect:forDrawnRect:ofDividerAt:)` で仕切りをつかめなくする（`NSSplitViewController` の delegate の override で起動時の例外と同じ種類の問題を招くおそれ）、ペインのビューを `isHidden` にする・取り外す（制約の食い違いで起動時の例外の原因と同じ）、復元を AppKit に任せる（結果が決まらずテストできない）、終了時に3ペインへ戻す（終了の経路ごとに処理が要る） |

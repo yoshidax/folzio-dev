@@ -2646,6 +2646,199 @@ Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](.
 
 ---
 
+## Phase 26: ペインの表示切り替え（FR-088〜094 追加、US6）
+
+**Purpose**: ペインの表示を「3ペイン表示」（既定）・「ファイルリストのみ表示」（⌃⌘2）・「プレビューのみ表示」（⌃⌘3）の間で切り替えられるようにする。
+ツールバーの左端の1つのボタングループ（トグル。2つが同時に押された状態にならない）・「表示」メニューのチェック付きの項目・ショートカットが同じ状態を共有する。
+切り替えではフォーカスを残ったペインへ移し、隠したペインへのフォーカス・⇧⌘F・⌃⌘T・（プレビューのみ表示の）⌘F を無効にし、Tab は表示中のペインだけを巡回する。
+プレビューのみ表示では、隠れたファイルリストの選択を矢印キーで動かし（フルスクリーンと同じ規則。メディア以外の行を飛ばす）、メディアがなければプレビューにその旨を出す。
+フルスクリーンはどちらの表示からも使え、解除するとフルスクリーン前の表示に戻る。3ペインへ戻すとペイン幅は切り替え前と同じ。表示状態は保存しない
+（[spec.md](./spec.md) FR-001〜003・FR-062・065・080・088〜094・US6 の受け入れシナリオ 5〜10・Edge Cases、[plan.md](./plan.md) の「変更点（2026-10-23: ペインの表示切り替え）」、
+[research.md](./research.md) R40〜R45、[data-model.md](./data-model.md) の `FocusNavigator` の `entryIndex`・`HiddenListNavigation`・`PaneLayout`・`PanePresentation`・`PaneCommands`・
+`PaneWidths`・「保存する設定」のペイン幅、[contracts/core-api.md](./contracts/core-api.md)「ペインの表示切り替え」と `FocusNavigator`、
+[contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md)「ペインの表示切り替え」・「ツールバー」・「プレビュー」・「メニューバー」、[contracts/settings.md](./contracts/settings.md)）。
+
+**Independent Test**: `swift test` で `PaneLayoutTests`（新規）と `FocusNavigatorTests` の `entryIndex` の追加ケースが通り、既存のテストがすべて通ること。
+`.app` で quickstart.md「ペインの表示切り替え（FR-088〜094）」の 1〜18 と「キーボードだけで操作する（SC-009）」の追加の手順を確認し、ボタン・メニュー・ショートカットの同期、
+フォーカスの移動と隠したペインへの操作の無効化、プレビューのみ表示の矢印キー、メディアなしのメッセージ、フルスクリーンとの組み合わせ、ペイン幅の復元、
+3ペインに戻したときのツリーの選択行の表示、ボタンとメッセージのアクセシビリティラベルが期待どおりであること。
+
+### Tests for User Story 6
+
+- [ ] T272 [P] [US6] `Tests/MediaViewerCoreTests/PaneLayoutTests.swift` を新規に作る（T274 の前にビルドエラーになることを確認する。R40〜R42・R44、data-model の `PaneLayout`・
+  `PanePresentation`・`PaneCommands`・`PaneWidths` の表の全行）:
+  - `PaneLayout`: `init(soloPane:)` が `nil` → `.all`、`.fileList` → `.fileListOnly`、`.preview` → `.previewOnly`。`soloPane` がその逆（`.all` は `nil`）。
+    `toggling(_:)` の 3 × 2 の全組み合わせが data-model の「状態遷移」の表と一致する（例: `.previewOnly.toggling(.fileList) == .fileListOnly`、`.previewOnly.toggling(.preview) == .all`）
+  - `applyingToolbarSelection(fileListSelected:previewSelected:)`: 現在の3状態 × 押下の4通りの 12 通りが data-model の表と一致する（`(true, true)` は `.fileListOnly` → `.previewOnly`、
+    `.previewOnly` → `.fileListOnly`、`.all` → `.all`）。12 通りすべてで、結果の `soloPane` が `nil` か1つだけ（2つが同時に押された状態を書き戻さない。FR-089）
+  - `isVisible(_:)`: `.all` は3つとも true、`.fileListOnly` は `.fileList` だけ、`.previewOnly` は `.preview` だけ true
+  - `focusTarget(afterSwitchingFrom:)`: 切り替え先3つ × フォーカスのあったペイン（`.tree`・`.fileList`・`.preview`・`nil`）の 12 通りが data-model の表と一致する
+    （`.fileListOnly` は `.fileList` からなら `nil`、それ以外は `.fileList`。`.previewOnly` は `.preview` からなら `nil`、それ以外は `.preview`。`.all` は常に `nil`）
+  - `showsNoMediaMessage(in:)`（`FolderListing` と `MediaFile` は既存のテストと同じ作り方）: `.all`・`.fileListOnly` はどの一覧でも false。`.previewOnly` では、メディアの行を含む
+    `.loaded` → false、`.folder`・`.archive`・`.directory`・`.parent` の行だけの `.loaded` → true、`files` が空の `.empty`・`.noMatches`・`.denied`・`.failed("x")` → true、
+    `.loading`（行が空でも、メディア以外の行だけでも）→ false。メディアの行を含む `.loaded` は、何も選択していない状態を想定しても false
+    （メディアはあるが未選択のときはメッセージを出さず、プレビューは空のまま。spec Edge Cases）
+  - `PanePresentation(layout:isFullScreen:)`: 3状態 × フルスクリーンの有無の 6 通りで、`visiblePanes` が `.all` → `[.tree, .fileList, .preview]`、`.fileListOnly` → `[.fileList]`、
+    `.previewOnly` → `[.preview]`、フルスクリーン中はどれも `[.preview]`。`isVisible(_:)` が `visiblePanes.contains` と一致する。`showsAllPanes` は `.all` かつフルスクリーンでないときだけ true。
+    `navigatesHiddenFileList` は `.previewOnly` のとき（フルスクリーンの有無を問わない）とフルスクリーン中だけ true
+  - `PaneCommands(layout:isFullScreen:isEditingText:)`: 3状態 × フルスクリーンの有無 × 名前の変更中の有無の 12 通りで、data-model の表の5つの規則を確かめる。特に:
+    `canFocus(_:)` は `layout.isVisible` と同じでフルスクリーン・名前の変更中に左右されない。`.fileListOnly` は `canSearch` が true で `canGoToFavorites`・`allowsAddingFavorite` が false。
+    `.previewOnly` は `canSearch`・`canGoToFavorites`・`allowsAddingFavorite` が false。`.all` のフルスクリーン中は `canChangeLayout`・`canGoToFavorites`・`canSearch` が false で
+    `allowsAddingFavorite` は true。名前の変更中は `canChangeLayout`・`canGoToFavorites`・`allowsAddingFavorite`・`canSearch` がすべて false
+  - `PaneWidths.dividerPositions(savedWidths:totalWidth:dividerThickness:minimumWidths:)`（仕切りの太さ 1、最小幅 `[160, 240, 320]`、保存した幅 `[220, 360, 600]`）:
+    全体 1182 → `[220, 581]`（切り替え前と同じ）。1382 → `[220, 581]`（広がった 200 はプレビューが受け取る）。850 → `[220, 529]`（プレビューを 320 にするため、ファイルリストを 308 に詰める）。
+    730 → `[168, 409]`（ファイルリストを最小の 240、残りをツリーから詰めて 168）。700（最小幅の合計 722 に届かない）→ `[160, 401]`（両方とも最小幅）。
+    保存した幅が `[]`・2要素・`.nan` を含む・`.infinity` を含むときは、全体 1182 で既定の `[220, 581]`
+- [ ] T273 [P] [US6] `Tests/MediaViewerCoreTests/FocusNavigatorTests.swift` に `entryIndex(currentIndex:fileCount:isNavigable:)` のケースを追加する（T275 の前にビルドエラーになることを確認する。
+  R43、data-model の `entryIndex` の表）。既存の `isNavigable` 付きのケースと同じく `[ListItemKind]` と `kinds[$0].isMedia` で書く:
+  - メディアにフォーカス: `[.media(.jpeg), .media(.png)]` で `currentIndex` 0 → 0、1 → 1（選択を変えない）
+  - 後ろの最初のメディア: `[.parent, .folder, .media(.jpeg), .archive, .media(.png)]` で 0（先頭の行）→ 2、1 → 2、3 → 4
+  - 後ろになく前の最も近いメディア: `[.media(.jpeg), .folder, .media(.png), .folder, .archive]` で 3 → 2、4（末尾の行）→ 2
+  - 未選択: `[.parent, .directory, .media(.jpeg), .media(.png)]` で `nil` → 2
+  - メディアなし: `[.parent, .folder, .archive, .directory]` で 0・`nil` → `nil`。空リスト（`fileCount` 0）で `nil` → `nil`
+  - プレビューのみ表示中に選択がなくなった後の矢印キー（spec Edge Cases。`entryIndex` ではなく既存の `targetIndex(…isNavigable:)` の規則）:
+    `[.parent, .folder, .media(.jpeg), .archive, .media(.png)]` で `currentIndex` が `nil` のとき、`.list` の ↑・↓ と `.grid(columns: 2)` の ←・→・↑・↓ がすべて 2、
+    `.list` の ←・→ が `nil`。既存の「currentIndex が nil のときは先頭から順に最初のメディアの位置」のテストで足りる場合は、そのテストにこの並びを足す
+
+### Implementation for User Story 6
+
+- [ ] T274 [P] [US6] `Sources/MediaViewerCore/Model/PaneLayout.swift` を新規に作る（R40〜R42・R44、contracts/core-api.md「ペインの表示切り替え」のシグネチャのとおり。T272 を通す）。`AppKit` を import しない:
+  - `public enum Pane: Sendable, Equatable, CaseIterable { case tree, fileList, preview }`、`public enum SoloPane: Sendable, Equatable { case fileList, preview }`
+  - `public enum PaneLayout: Sendable, Equatable { case all, fileListOnly, previewOnly }` と `init(soloPane:)`・`soloPane`・`toggling(_:)`・`isVisible(_:)`・`focusTarget(afterSwitchingFrom:)`。
+    `applyingToolbarSelection(fileListSelected:previewSelected:)` は `(false, false)` → `.all`、`(true, false)` → `.fileListOnly`、`(false, true)` → `.previewOnly`、`(true, true)` は
+    `.fileListOnly` なら `.previewOnly`、`.previewOnly` なら `.fileListOnly`、`.all` なら `self`。`showsNoMediaMessage(in:)` は
+    `self == .previewOnly && listing.state != .loading && !listing.files.contains { $0.kind.isMedia }`
+  - `public struct PanePresentation: Sendable, Equatable`（`layout`・`isFullScreen` を持つ）: `visiblePanes` はフルスクリーン中なら `[.preview]`、それ以外は `Pane.allCases.filter(layout.isVisible)`。
+    `isVisible(_:)`・`showsAllPanes`（`!isFullScreen && layout == .all`）・`navigatesHiddenFileList`（`!isVisible(.fileList) && isVisible(.preview)`）
+  - `public struct PaneCommands: Sendable, Equatable`: data-model の表のとおり `canChangeLayout`（`!isFullScreen && !isEditingText`）・`canFocus(_:)`（`layout.isVisible(pane)`）・
+    `canGoToFavorites`（`!isFullScreen && !isEditingText && layout.isVisible(.tree)`）・`allowsAddingFavorite`（`!isEditingText && layout.isVisible(.tree)`）・
+    `canSearch`（`!isFullScreen && !isEditingText && layout.isVisible(.fileList)`）
+  - `public enum PaneWidths` の `dividerPositions`: `savedWidths` が3要素でないか有限でない値を含むときは、ツリー 220・ファイルリスト 360 を保存した幅の代わりに使う。
+    プレビューの幅 `totalWidth - tree - list - 2 × dividerThickness` が `minimumWidths[2]` に足りなければ、足りない分をファイルリスト（`minimumWidths[1]` まで）、次にツリー
+    （`minimumWidths[0]` まで）から引く。`[tree, tree + dividerThickness + list]` を返す
+  - 各型のドキュメントコメントに FR 番号（FR-088〜094）と「保存しない。状態の持ち主は `MainSplitViewController` だけ」を書く
+- [ ] T275 [P] [US6] `Sources/MediaViewerCore/Layout/FocusNavigator.swift` に `public static func entryIndex(currentIndex: Int?, fileCount: Int, isNavigable: (Int) -> Bool) -> Int?` を追加する
+  （R43、contracts/core-api.md のドキュメントコメントのとおり。T273 を通す）: `fileCount` が 0 なら nil。`currentIndex` が範囲内なら、その行が `isNavigable` ならそのまま、
+  そうでなければ `currentIndex + 1 ..< fileCount` の最初の行、なければ `currentIndex - 1` から先頭へ向かって最初の行。`currentIndex` が nil（範囲外も同じ扱い）なら先頭から最初の行。
+  見つからなければ nil。既存の `targetIndex` は変えない
+- [ ] T276 [P] [US6] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` に、隠れたファイルリストの列数の計算に使う2つを公開する（R43、plan の「変更点」）:
+  - `var navigationWidth: Double`: 現在の `collectionView.bounds.width` から `sectionInset` の左右を引いた幅（0 未満なら 0）
+  - `func columnCount(forWidth width: Double) -> Int`: 現在の `storedThumbnailSize` と `spacing` で `ThumbnailGridLayout.columns(availableWidth: width, …).count` を求め、1 未満なら 1
+  - 既存の `private func columnCount()` は `columnCount(forWidth: navigationWidth)` を返すようにし、`currentColumnCount` と通常表示の矢印キーの移動の結果を変えない
+- [ ] T277 [US6] `Sources/MediaViewerApp/FileList/FileListViewController.swift` の隠れたファイルリストの移動を書き換える（R43・R44、data-model の `HiddenListNavigation`。T275・T276 の後）:
+  - `fullScreenNavigationLayout: FocusLayout?` を `private var hiddenListNavigation: HiddenListNavigation?`（`private struct HiddenListNavigation { let width: Double }`。永続化しない）に置き換える
+  - `beginFullScreenNavigation()` → `func beginHiddenListNavigation(selectingEntry: Bool)`: すでに始まっていれば何もしない（プレビューのみ表示からフルスクリーンに入るときに幅を取り直さない）。
+    `thumbnailModeView.navigationWidth` を保持する。`selectingEntry` が true なら、フォーカス中の行の添字を `FocusNavigator.entryIndex(currentIndex:fileCount:isNavigable: { files[$0].kind.isMedia })`
+    に渡し、結果が nil でなくフォーカス中の行と違うときだけ `model.select([url], focused: url)` を呼ぶ（メディアにフォーカスがあれば複数選択も保つ。nil なら選択を変えない）
+  - `moveFocusInFullScreen(_:)` → `func moveFocusInHiddenList(_ move: FocusMove) -> Bool`: キーを押すたびに、表示形式がサムネイルなら
+    `.grid(columns: thumbnailModeView.columnCount(forWidth: 保持した幅))`、リストなら `.list` を求める（隠している間の ⌘1・⌘2・⌘+・⌘- に追従する）。それ以外は従来の処理のまま
+  - `endFullScreenNavigation()` → `func endHiddenListNavigation()`: 文脈を捨て、次のランループで表示形式に応じて `thumbnailModeView.scrollToFocused()` か `listModeView.scrollToFocused()` を呼ぶ
+    （従来はサムネイル形式だけ。FR-017・093）
+  - `leaveSearchResults()` の `guard` を `hiddenListNavigation == nil` にする
+  - ビルドを保つため、`Sources/MediaViewerApp/App/MainSplitViewController.swift` の3か所の呼び出しを新しい名前にだけ置き換える（`beginHiddenListNavigation(selectingEntry: false)`）。
+    `swift build` が通り、フルスクリーンの矢印キーの移動が従来どおり動くことを確かめる
+- [ ] T278 [P] [US6] `Sources/MediaViewerApp/Preview/ImagePreviewView.swift` に `func showMessage(_ text: String)` を追加する（R43）: `showUnavailable(name:reason:)` と同じく
+  アニメーションを止めて表示中の画像を消し、スピナーを止めて隠し、`nameLabel` に `text`、`detailLabel` に空文字を入れてメッセージ欄を出す。`setAccessibilityLabel(text)` で読み上げられるようにする
+- [ ] T279 [US6] `Sources/MediaViewerApp/Preview/PreviewViewController.swift` を変える（FR-088・093、spec Edge Cases の「メディアはあるが未選択」、R43・R45。T274・T278 の後）:
+  - `var paneLayout: PaneLayout = .all` と `var isPaneVisible = true` を持ち、どちらも値が変わったときだけ `updateFromModel()` を呼ぶ（保存しない）
+  - `observePreview()` の監視に `model.listing` を加える
+  - `updateFromModel()` の `.empty`: `paneLayout.showsNoMediaMessage(in: model.listing)` なら `imageView.showMessage("表示するメディアファイルがありません")`、それ以外は従来どおり `showEmpty()`
+  - `.video(url)`: `isPaneVisible` が false の間は `VideoPreviewView` を構成せず（`stopVideo()`・`showImageView()`・`imageView.showEmpty()`）、隠れたペインから音声を流さない。
+    true に戻ると `updateFromModel()` で従来どおり構成し、自動再生の設定に従う。画像のデコードと先読みは変えない。`togglePlayback()` は動画のビューが隠れている間は何もしないまま
+- [ ] T280 [US6] `Sources/MediaViewerApp/App/MainSplitViewController.swift` に表示状態とその反映を実装する（R41・R43・R44、plan の「変更点」の `MainSplitViewController`。T274・T277・T279 の後）:
+  - プロパティ: `private(set) var paneLayout: PaneLayout = .all`（保存しない）、`private var isFullScreenPresentation = false`（`panesCollapsedForFullScreen` を置き換える。
+    `showSearch(_:)` と `validateMenuItem` の参照もこれに置き換える）、`private var appliedPresentation = PanePresentation(layout: .all, isFullScreen: false)`、
+    `private var savedPaneWidths: [Double]?`、`private var focusBeforeFullScreen: Pane?`、`var onPaneLayoutChange: ((PaneLayout) -> Void)?`、
+    `var paneCommands: PaneCommands`（`PaneCommands(layout: paneLayout, isFullScreen: isFullScreenPresentation, isEditingText: fileListViewController.isEditingText)`）、
+    プレビューの `NSSplitViewItem` も `previewSplitItem` として保持する
+  - `private func focusedPane() -> Pane?`: ウインドウの first responder の `NSView` が3つのペインのどのビューの子孫かを返す（どこにもなければ nil）。`private func focusView(for pane: Pane) -> NSView` は各ペインの `primaryFocusView`
+  - `func setPaneLayout(_ layout: PaneLayout)`: `paneCommands.canChangeLayout` でないか同じ状態なら、`onPaneLayoutChange?(paneLayout)` だけ呼んで戻る（ツールバーの押下を書き戻す）。
+    そうでなければ `focusedPane()` を求めてから `paneLayout` を更新し、`applyPanePresentation()`、`layout.focusTarget(afterSwitchingFrom:)` の先があれば `focusPane(focusView(for:))`、
+    最後に `onPaneLayoutChange?(paneLayout)`。`func togglePaneLayout(_ pane: SoloPane)`（`paneLayout.toggling(pane)`）と
+    `func applyToolbarSelection(fileListSelected:previewSelected:)`（`paneLayout.applyingToolbarSelection`）はこれを通す
+  - `private func applyPanePresentation()`: `PanePresentation(layout: paneLayout, isFullScreen: isFullScreenPresentation)` が `appliedPresentation` と同じなら何もしない（Esc のたびに呼ばれても安全）。違えば次の順に行う:
+    1. `showsAllPanes` から離れるときは、3つのペインのビューの幅を `savedPaneWidths` に保持し、`splitView.autosaveName = nil` にする（隠した状態の幅を `MainSplit` に書かない。R41）
+    2. `navigatesHiddenFileList` が false から true になるときは、ファイルリストを折りたたむ前に `fileListViewController.beginHiddenListNavigation(selectingEntry: !isFullScreenPresentation && paneLayout == .previewOnly)`
+       を呼び（幅のスナップショット）、キーのモニタを入れる
+    3. 表示するペインを先に `isCollapsed = false` → `canCollapse = false` の順で出し、その後で隠すペインを `canCollapse = true` → `isCollapsed = true` の順で隠す（途中で3つとも隠れた状態を作らない）。
+       `NSSplitViewDelegate` の座標の制約・折りたたみのメソッドは override しない（AGENTS.md の不変条件）
+    4. `previewViewController.paneLayout = paneLayout`、`previewViewController.isPaneVisible = presentation.isVisible(.preview)`
+    5. `navigatesHiddenFileList` が true から false になるときは、キーのモニタを外して `fileListViewController.endHiddenListNavigation()` を呼ぶ
+    6. `showsAllPanes` に戻るときは、`splitView.autosaveName = "MainSplit"` に戻してから、次のランループで `splitView.layoutSubtreeIfNeeded()` の後に
+       `PaneWidths.dividerPositions(savedWidths: savedPaneWidths ?? [], totalWidth: splitView.bounds.width, dividerThickness: splitView.dividerThickness, minimumWidths: [160, 240, 320])`
+       の2つの位置へ `setPosition(_:ofDividerAt:)` で仕切りを動かす（戻した幅が自動保存される）。仕切りを動かした後で
+       `treeViewController.scrollSelectedRowToVisible()` を呼ぶ（隠している間に FR-078 の同期で変わったツリーの選択行を見せる。R41）
+    7. `configureKeyViewLoop()` を `visiblePanes` から作り直す（表示中のペインの `primaryFocusView` だけを順につなぎ、最後を先頭へ。1つだけならそのビュー自身を `nextKeyView` にする。
+       `initialFirstResponder` は先頭のペイン）。`appliedPresentation` を更新する
+  - 隠したペインの再表示への備え（R41）: `private var isApplyingPresentation = false` を `applyPanePresentation()` の反映中だけ true にする。
+    3つの `NSSplitViewItem` の `isCollapsed` を `observe(\.isCollapsed, options: [.new])` で監視し（`NSKeyValueObservation` を保持する）、
+    `isApplyingPresentation` が false で、`appliedPresentation.isVisible(pane)` が false のペインの `isCollapsed` が false になったら、
+    次のランループで（`DispatchQueue.main.async`）`private func recollapseHiddenPanes()` を呼ぶ。`recollapseHiddenPanes()` は `appliedPresentation` で
+    隠しているペインだけを `canCollapse = true` → `isCollapsed = true` に戻し、`paneLayout`・`appliedPresentation`・`savedPaneWidths`・`autosaveName`・
+    フォーカス・`onPaneLayoutChange` は変えない。`NSSplitViewDelegate` のメソッドは増やさない
+  - フルスクリーン: `collapsePanesForFullScreen()`・`restorePanesAfterFullScreen()` を削除し、`private func enterFullScreenPresentation()`（`isFullScreenPresentation` が false のときだけ、
+    `focusBeforeFullScreen = focusedPane()`・`isFullScreenPresentation = true`・`applyPanePresentation()`）と `private func leaveFullScreenPresentation()`（true のときだけ false にして
+    `applyPanePresentation()`、`focusBeforeFullScreen` が表示中なら `focusPane` で戻して nil にする）に置き換える。`togglePreviewFullScreen()` と `windowWillEnterFullScreen`（アプリの外からの開始）は
+    前者を、`windowDidExitFullScreen` と `exitPreviewFullScreenIfNeeded()`（フルスクリーンでないとき）は後者を呼ぶ。`exitPreviewFullScreenIfNeeded()` は `paneLayout` を変えない
+    （プレビューのみ表示中の Esc で3ペインに戻らない）。`windowDidEnterFullScreen` でのモニタの追加と `windowDidExitFullScreen` でのモニタの削除・`endFullScreenNavigation()` の呼び出しは、
+    `applyPanePresentation()` が行うため削除する
+  - キーのモニタ: `FullScreenKeyPress`・`installFullScreenKeyMonitor`・`removeFullScreenKeyMonitor`・`handleFullScreenKey` を隠れたファイルリスト用の名前（`HiddenListKeyPress`・
+    `installHiddenListKeyMonitor`・`removeHiddenListKeyMonitor`・`handleHiddenListKey`）にする。`handleHiddenListKey` の条件は `window.styleMask.contains(.fullScreen)` の代わりに
+    `appliedPresentation.navigatesHiddenFileList` を使い、ウインドウ番号の一致と `NSTextView` の素通し、修飾キーの規則（矢印は ⌘⌥⌃⇧ なし、`<`・`>` は ⌘⌥⌃ なし）は従来のまま。
+    矢印は `fileListViewController.moveFocusInHiddenList(_:)`、`<`・`>` は `previewViewController.seekVideo(by:)`
+  - `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` に `func scrollSelectedRowToVisible()` を足す: `outlineView.selectedRow` が 0 以上なら
+    `outlineView.scrollRowToVisible(_:)` を呼ぶだけで、選択・展開状態・フォーカス・`treeSyncRequest` の処理は変えない（R41、plan の「変更点」）
+  - `viewDidAppear` の初回（`applyInitialPositionsIfNeeded()` の前）に、3つの項目がすべて `isCollapsed = false`・`canCollapse = false` であることを確かめ、違えば直す（以前の版で保存された状態への備え）
+  - `swift build` が通り、3ペインからのフルスクリーン（⌃⌘F・ダブルクリック・緑のボタン）と解除後のペイン幅が従来どおりであることを確かめる。
+    1つのペインの表示中に端の仕切りをドラッグ・ダブルクリックしても、隠したペインが残らず表示状態とずれないことを確かめる（quickstart.md「ペインの表示切り替え」3）
+- [ ] T281 [US6] `Sources/MediaViewerApp/App/MainSplitViewController.swift` に「表示」メニューの項目と、隠したペインに関わる操作の無効化を足す（R40・R42、contracts/keyboard-and-menus.md「ペインの表示切り替え」
+  「メニューバー」。T280 の後）:
+  - `installFocusMenuItems()`: 既存の区切り線の直後、「ディレクトリツリーへフォーカス」の前に「ファイルリストのみ表示」（`keyEquivalent: "2"`、`keyEquivalentModifierMask = [.command, .control]`、
+    アクション `toggleFileListOnly(_:)`）と「プレビューのみ表示」（`"3"`、同じ修飾キー、`togglePreviewOnly(_:)`）を `target = self` で足す。`@objc func toggleFileListOnly(_:)` は
+    `togglePaneLayout(.fileList)`、`togglePreviewOnly(_:)` は `togglePaneLayout(.preview)`。⌃⌘2・⌃⌘3 が ⌥⌘2・⌥⌘3（フォーカス）・⌘2（リスト）と衝突しないことを修飾キーで確かめる
+  - `focusTreePane(_:)`・`focusFileListPane(_:)`・`focusPreviewPane(_:)` の先頭で `paneCommands.canFocus(.tree / .fileList / .preview)` を `guard` する。`focusFavorites(_:)` は `canGoToFavorites`、
+    `showSearch(_:)` は `canSearch`、`addSelectedFolderToFavorites(_:)` は `allowsAddingFavorite && treeViewController.canAddSelectedFolderToFavorites` で `guard` する（ショートカットが検証を経ずに届いても何もしない）
+  - `validateMenuItem`: 2つの項目は `paneCommands.canChangeLayout` を返し、`state` を `paneLayout.soloPane` がその側なら `.on`、それ以外は `.off` にする。⌥⌘1〜3 は `canFocus`、
+    `focusFavorites` は `canGoToFavorites`、`showSearch` は `canSearch`、`addSelectedFolderToFavorites` は `allowsAddingFavorite && treeViewController.canAddSelectedFolderToFavorites`
+  - ⌘↓・⌘↑・ファイル操作の項目は変えない（プレビューのみ表示ではファイルリストがレスポンダーチェーンから外れ、既存の検証で淡色になることを `.app` で確かめる。R42）
+- [ ] T282 [P] [US6] `Sources/MediaViewerApp/App/MainToolbarController.swift` と `Sources/MediaViewerApp/App/MainWindowController.swift` にペインの表示ボタンを足す（R40・R42、
+  contracts/keyboard-and-menus.md「ツールバー」。T280 の後。T281 とファイルが重ならない）:
+  - `MainToolbarController` の init を `init(fileList:panes: MainSplitViewController, settings:)` にし、`MainWindowController` から `splitViewController` を渡す
+  - 識別子 `paneLayout` の `NSToolbarItemGroup(selectionMode: .selectAny)` を作る。画像は SF Symbols の `list.bullet.rectangle`（アクセシビリティの説明「ファイルリストのみ表示」）と
+    `photo.artframe`（「プレビューのみ表示」）、`labels` とサブ項目の `toolTip` もその2つの項目名、グループの `label`・`toolTip` は「ペイン」。`toolbarDefaultItemIdentifiers` と
+    `toolbarAllowedItemIdentifiers` の先頭（種類フィルタの左）に置く
+  - `func apply(paneLayout: PaneLayout)`: `setSelected(paneLayout.soloPane == .fileList, at: 0)` と `setSelected(paneLayout.soloPane == .preview, at: 1)`。項目を作ったときに `panes.paneLayout` で呼び、
+    init で `panes.onPaneLayoutChange = { [weak self] in self?.apply(paneLayout: $0) }` を設定する
+  - アクション: `panes.applyToolbarSelection(fileListSelected: sender.isSelected(at: 0), previewSelected: sender.isSelected(at: 1))`（無効なときと同じ状態のときも `onPaneLayoutChange` で書き戻される）
+  - `NSToolbarItemValidation` に準拠し、`validateToolbarItem(_:)` は項目がペインの表示のグループ自身かその `subitems` のどれかなら `panes.paneCommands.canChangeLayout`、それ以外は true を返す
+    （種類フィルタ・表示形式・サイズの有効・無効を変えない）
+- [ ] T283 [P] [US6] `README.md` の「主な機能」と「使い方（主なショートカット）」に、ペインの表示切り替え（ツールバー左端の2つのボタン・⌃⌘2 / ⌃⌘3 と「表示」メニュー、
+  ツリーは単独で隠せない、プレビューのみ表示の矢印キーと `<` / `>`、メディアがないときのメッセージ、隠したペインへのキーが無効になること、フルスクリーンとの組み合わせ、表示状態は保存しない）を追記する
+- [ ] T284 [P] [US6] `AGENTS.md` の「AppKit UI の不変条件」の `canCollapse` の項を、plan の「変更点」のとおり「通常時は `canCollapse = false`。フルスクリーンとペインの表示切り替えで隠すペインだけ
+  `canCollapse = true` にしてから `isCollapsed` を設定する」に更新する（R41）。ほかの項目は変えない。
+  ファイルは重ならないが、T280 より前か T280 と同じコミットで行う（AGENTS.md の現行の不変条件と実装が食い違う状態をコミットに残さない）
+
+### Verification for User Story 6
+
+- [ ] T285 [US6] 自動テストと手動確認を行う（T272〜T284 に依存）:
+  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す
+  - `scripts/make-app.sh` で `.build/MediaViewer.app` を作る。折りたたみの変更で起動時に例外が出ていないか、まず AGENTS.md「起動しないときの初動」の lldb の手順をユーザーに依頼して確かめ、
+    ウインドウが表示されてから GUI 確認を依頼する。依頼時は `scripts/make-fixtures.sh ~/MediaViewerFixtures`、quickstart.md「ペインの表示切り替え（FR-088〜094）」の準備のコマンド
+    （`zip-only/` の作成と確認後の削除）と確認ポイント 1〜18、「キーボードだけで操作する（SC-009）」の追加の手順、US6 の受け入れシナリオ 5〜10 を具体的に示す
+  - アクセシビリティ（憲章 原則 III。quickstart.md「ペインの表示切り替え」18）: Accessibility Inspector で、ツールバーのペインの表示ボタン2つのラベル
+    （「ファイルリストのみ表示」「プレビューのみ表示」）・グループのラベル「ペイン」・押下の状態と、プレビューの「表示するメディアファイルがありません」のラベルを確かめ、
+    VoiceOver で読み上げられることを確かめる（既存の画面のラベルの確認は未完了の T079 で行う）
+  - 回帰確認: 3ペインからのフルスクリーン（⌃⌘F・ダブルクリック・緑のボタン・Esc）と解除後のペイン幅、フルスクリーン中の矢印キー（quickstart.md の FR-046 の手順）、Tab / ⌥⌘1〜3 / ⇧⌘F / ⌃⌘T / ⌘F
+    （3ペイン表示で従来どおり）、種類フィルタ・表示形式のツールバーのボタン、ファイルリストで Esc による検索結果の解除、仕切りのドラッグでペインが消えないこと（US6 の 1〜2）、
+    ツリーを隠している間に ⌘↓・⌘↑・`..` でフォルダを移ってから3ペインに戻したとき、ツリーで選択中の行が見えていること（FR-078、quickstart.md「ペインの表示切り替え」17）、
+    アプリを再起動したときのペイン幅（`defaults read local.my-img-viewer.MediaViewer "NSSplitView Subview Frames MainSplit"` が3ペインの幅のまま）
+  - 結果（実行日、OS、確認項目、合否）を `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+
+**Checkpoint**: ツールバーのボタン・「表示」メニュー・⌃⌘2 / ⌃⌘3 で、ファイルリストだけ・プレビューだけの表示に切り替えられ、3つの入口の状態が常に一致する。
+プレビューのみ表示でも矢印キーでファイルを辿れ、隠したペインへの操作は淡色で何もしない。フルスクリーンの解除と3ペインへの復帰で表示状態とペイン幅が元に戻り、表示状態は保存されない
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -2717,6 +2910,12 @@ Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](.
   `..` の行・`navigateToFolder`・`treeSyncRequest`、Phase 23 の `FileOperationCoordinator`、Phase 24 の `leaveTrashedFolders`・ツリーの `refreshFolders` に依存する。Phase 24 の T240 と
   コミットを済ませ、未コミットの仕様文書の変更（2026-10-22 の検索の追加）もコミットしてから着手する。T241（フィクスチャ）→ T242〜T251（テスト）→ T252〜T258（Core の部品）→
   T259（`FileNameSearcher`）→ T260 → T261（同じ `BrowserModel.swift`）→ T262（App の可否）→ T263〜T269（App）の順に進め、T271 は最後に行う。T270（README）はいつでも並行できる
+- **ペインの表示切り替え (Phase 26)**: FR-088〜094 の追加作業。US5・Phase 13 のフルスクリーンの折りたたみとキーのモニタ・`FocusNavigator`、Phase 16 の `MainToolbarController`、
+  Phase 18 の種類フィルタのボタングループ、Phase 19 の ⇧⌘F・⌃⌘T、Phase 25 の ⌘F（`showSearch`）と Esc の解除（`leaveSearchResults`）に依存する。Phase 25 の T271 とコミットを済ませ、
+  未コミットの仕様文書の変更（2026-10-23 のペインの表示切り替えの追加）もコミットしてから着手する。T272・T273（テスト）→ T274（`PaneLayout`）・T275（`FocusNavigator`）→
+  T276（`ThumbnailModeView`）→ T277（`FileListViewController`）→ T278（`ImagePreviewView`）→ T279（`PreviewViewController`）→ T280 → T281（同じ `MainSplitViewController.swift`）・
+  T282（ツールバー）の順に進め、T285 は最後に行う。T283（README）はいつでも並行できる。T284（AGENTS.md）は T280 より前か、T280 と同じコミットで行う
+  （T280 の折りたたみが AGENTS.md の現行の `canCollapse` の不変条件と食い違う状態をコミットに残さない）
 
 ### User Story Dependencies
 
@@ -2790,6 +2989,11 @@ Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](.
   App では T263（新規の `SearchPanelController.swift`）・T267（`ThumbnailModeView.swift`）・T268（`FileOperationCoordinator.swift`）が互いに並行できる。T264（`MainMenu.swift`・
   `MainSplitViewController.swift`）は T263 の後、T266（`ListModeView.swift`）は T265（`FileListViewController.swift`）の後、T269（`DirectoryTreeViewController.swift`）は T258・T260 の後に行う。
   T270（`README.md`）は他と重ならない。worktree で並列化する場合も、`BrowserModel.swift` を編集する T260・T261 は直列にする
+- ペインの表示切り替え: T272（`PaneLayoutTests.swift`）と T273（`FocusNavigatorTests.swift`）はファイルが重ならないため並行できる。T274（`PaneLayout.swift`）と T275（`FocusNavigator.swift`）は
+  並行できる。App では T276（`ThumbnailModeView.swift`）と T278（`ImagePreviewView.swift`）が互いに、また Core のタスクとも並行できる。T277 は T275・T276 の後（`MainSplitViewController.swift` の
+  呼び出しの名前の置き換えを含む）、T279 は T274・T278 の後、T280 は T277・T279 の後に行う。T281 と T280 は同じ `MainSplitViewController.swift` を編集するため直列にする。
+  T282（`MainToolbarController.swift`・`MainWindowController.swift`）は T280 の後に T281 と並行できる。T283（`README.md`）・T284（`AGENTS.md`）は他とファイルが重ならないが、T284 は T280 より前か同じコミットにする。
+  worktree で並列化する場合も、`MainSplitViewController.swift` を編集する T277（呼び出しの置き換え）・T280・T281 は直列にする
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -2846,6 +3050,7 @@ Task: "T033 FitCalculatorTests"
 20. フォルダのファイル操作 → フォルダもファイルと同じくコピー・名前の変更・ゴミ箱・移動でき、ツリーにすぐ反映される（FR-018・076）
 21. ツリーのフォルダのゴミ箱 → ツリーの通常のフォルダを ⌘⌫ と右クリックメニューからゴミ箱に入れられ、表示中なら親フォルダへ移る（FR-079）
 22. ファイル名の検索 → ⌘F のモーダルでキーワード（`*`・`?`）と起点を入れて検索し、結果をファイルリストにフラットに見て操作できる。ツリーでフォルダを選ぶと戻る（FR-080〜087、SC-016）
+23. ペインの表示切り替え → ツールバー・「表示」メニュー・⌃⌘2 / ⌃⌘3 でファイルリストだけ・プレビューだけの表示に切り替え、プレビューのみ表示でも矢印キーでファイルを辿れる（FR-088〜094）
 
 ---
 
@@ -2907,4 +3112,9 @@ Task: "T033 FitCalculatorTests"
   `listing.folder` は検索前のフォルダのまま変えず、`lastFolder`・`treeSyncRequest`・設定も変えない。解除は既存の `selectFolder` の経路で行い、選択中の行のクリックだけ
   `outlineView.action` で補う。照合（NFC と大文字小文字・glob）・起点の解釈と確認・場所の文字列・列挙・マージ・可否は Core に置き、UI スレッドでは列挙も存在確認もしない。
   並べ替えの「場所」（`.location`）は保存しない。外部の変更は `FileSystemWatching` の `subtrees` で起点1つを監視する（research.md R34〜R39、plan の Complexity Tracking）
+- FR-088〜094（2026-10-23）により、ペインの表示状態を Core の `PaneLayout`（3値）1つで表し、`MainSplitViewController` だけが持つ。ツールバー・メニュー・ショートカットは同じ `setPaneLayout(_:)` を通す。
+  隠すのはフルスクリーンと同じ `NSSplitViewItem` の折りたたみで、フルスクリーンも `PanePresentation` を介して同じ `applyPanePresentation()` で反映し、経路を二重に持たない。
+  1つのペインの表示中は分割ビューの自動保存を止め、3ペインに戻すときは `PaneWidths` で仕切りの位置を決める。フルスクリーンの矢印キーの移動（Phase 13 の T097・T098）は
+  「列数のスナップショット」から「幅のスナップショット」（`HiddenListNavigation`）に置き換え、プレビューのみ表示と共有する。ファイルリストのみ表示の間は隠れたプレビューで動画を再生しない。
+  表示状態は保存せず、`BrowserModel`・保存キーは変えない（research.md R40〜R45）
 - Commit after each task or logical group
