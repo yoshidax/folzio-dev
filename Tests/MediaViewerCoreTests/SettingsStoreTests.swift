@@ -203,6 +203,78 @@ struct SettingsStoreTests {
         }
     }
 
+    // MARK: - zip ファイルの表示（view.showsZipFiles）
+
+    @Test("zip ファイルの表示は未設定なら false（初回起動は非表示）")
+    func showsZipFilesDefaultsToFalse() {
+        withDefaults { defaults in
+            #expect(defaults.object(forKey: "view.showsZipFiles") == nil)
+            #expect(SettingsStore(defaults: defaults).viewSettings.showsZipFiles == false)
+        }
+    }
+
+    @Test("zip ファイルの表示が Bool でない値なら false")
+    func showsZipFilesFallsBackForInvalidValue() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+            defaults.set("yes", forKey: "view.showsZipFiles")
+            #expect(store.viewSettings.showsZipFiles == false)
+            defaults.set(1.5, forKey: "view.showsZipFiles")
+            #expect(store.viewSettings.showsZipFiles == false)
+        }
+    }
+
+    @Test("zip ファイルの表示は書き戻して読み直せる")
+    func showsZipFilesRoundTrips() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+
+            var view = store.viewSettings
+            view.showsZipFiles = true
+            store.viewSettings = view
+            #expect(defaults.object(forKey: "view.showsZipFiles") as? Bool == true)
+            #expect(SettingsStore(defaults: defaults).viewSettings.showsZipFiles == true)
+
+            view.showsZipFiles = false
+            store.viewSettings = view
+            #expect(defaults.object(forKey: "view.showsZipFiles") as? Bool == false)
+            #expect(SettingsStore(defaults: defaults).viewSettings.showsZipFiles == false)
+        }
+    }
+
+    @Test("zip ファイルの表示だけを変えても他の表示設定は変わらない")
+    func togglingZipVisibilityKeepsOtherViewSettings() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+            let folder = URL(fileURLWithPath: "/tmp/example", isDirectory: true)
+            store.viewSettings = ViewSettings(
+                displayMode: .thumbnails,
+                thumbnailSize: 200,
+                sortOrder: SortOrder(column: .kind, ascending: false),
+                lastFolder: folder,
+                showsToolbar: true
+            )
+
+            var updated = store.viewSettings
+            updated.showsZipFiles = true
+            store.viewSettings = updated
+
+            let view = store.viewSettings
+            #expect(view.showsZipFiles)
+            #expect(view.displayMode == .thumbnails)
+            #expect(view.thumbnailSize == 200)
+            #expect(view.sortOrder == SortOrder(column: .kind, ascending: false))
+            #expect(view.lastFolder?.path == folder.path)
+            #expect(view.showsToolbar)
+        }
+    }
+
+    @Test("ViewSettings の showsZipFiles は既定が false で、イニシャライザで指定できる")
+    func viewSettingsInitializerHandlesZipVisibility() {
+        #expect(ViewSettings().showsZipFiles == false)
+        #expect(ViewSettings(showsZipFiles: true).showsZipFiles == true)
+    }
+
     private func withDefaults(_ body: (UserDefaults) -> Void) {
         let suiteName = "SettingsStoreTests.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {

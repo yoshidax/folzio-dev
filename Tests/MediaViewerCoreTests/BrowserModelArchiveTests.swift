@@ -41,7 +41,8 @@ struct BrowserModelArchiveTests {
         return root
     }
 
-    private func makeEnv(entries: [ZipFixtureEntry]? = nil) throws -> Env {
+    /// zip ファイルの表示は既定で非表示（FR-095）のため、zip の行を扱うテストでは `showsZipFiles` をオンで始める
+    private func makeEnv(entries: [ZipFixtureEntry]? = nil, showsZipFiles: Bool = true) throws -> Env {
         let root = try makeRootDirectory()
 
         try ImageFixtures.jpeg(at: root.appendingPathComponent("cover.jpg"), width: 32, height: 24)
@@ -72,6 +73,7 @@ struct BrowserModelArchiveTests {
 
         let suite = "BrowserModelArchiveTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
+        defaults.set(showsZipFiles, forKey: "view.showsZipFiles")
         let model = BrowserModel(
             lister: DirectoryLister(),
             decoder: ImageDecoder(),
@@ -489,6 +491,7 @@ struct BrowserModelArchiveTests {
         let suite = "BrowserModelArchiveTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: "view.showsZipFiles")
         let model = BrowserModel(
             lister: DirectoryLister(),
             decoder: ImageDecoder(),
@@ -599,6 +602,82 @@ struct BrowserModelArchiveTests {
 
         #expect(env.model.listing.archive == ArchiveLocation(archive: env.zip, directory: ""))
         #expect(env.model.listing.files.map(\.url) == before)
+        #expect(env.model.listing.state == .loaded)
+    }
+
+    // MARK: - zip ファイルの表示の切り替え（FR-098）
+
+    @Test("zip の中を表示中に非表示へ切り替えても一覧・選択・プレビューは変わらず、設定だけを保存する")
+    func hidingZipFilesInsideArchiveOnlySavesSetting() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.root)
+        await env.model.openItem(env.zip)
+        let png = env.entry("b.png")
+        env.model.select([png], focused: png)
+        let loaded = await waitUntil {
+            if case .image = env.model.preview { return true }
+            return false
+        }
+        #expect(loaded)
+        let location = env.model.listing.archive
+        let folder = env.model.listing.folder
+        let files = env.model.listing.files.map(\.url)
+        let signalBefore = env.model.stopPlaybackSignal
+
+        env.model.setShowsZipFiles(false)
+
+        #expect(env.model.showsZipFiles == false)
+        #expect(env.defaults.object(forKey: "view.showsZipFiles") as? Bool == false)
+        #expect(env.model.listing.folder == folder)
+        #expect(env.model.listing.archive == location)
+        #expect(env.model.listing.files.map(\.url) == files)
+        #expect(env.model.listing.state == .loaded)
+        #expect(env.model.selection.selected == [png])
+        #expect(env.model.selection.focused == png)
+        if case .image = env.model.preview {} else {
+            Issue.record("preview should stay an image, got \(env.model.preview)")
+        }
+        #expect(env.model.stopPlaybackSignal == signalBefore)
+
+        // 中の一覧には zip ファイルの行がないため、オンに戻しても変わらない
+        env.model.setShowsZipFiles(true)
+        #expect(env.defaults.object(forKey: "view.showsZipFiles") as? Bool == true)
+        #expect(env.model.listing.archive == location)
+        #expect(env.model.listing.files.map(\.url) == files)
+        #expect(env.model.selection.selected == [png])
+    }
+
+    @Test("非表示に切り替えたあとに戻ると、zip の行は一覧になく、選択のない一覧でプレビューは空")
+    func returningAfterHidingZipFilesSelectsNothing() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.root)
+        await env.model.openItem(env.zip)
+        let png = env.entry("b.png")
+        env.model.select([png], focused: png)
+
+        env.model.setShowsZipFiles(false)
+        await env.model.goToEnclosingLevel()
+
+        #expect(env.model.listing.archive == nil)
+        #expect(env.model.listing.folder == env.root)
+        #expect(env.model.listing.files.map(\.name) == ["cover.jpg"])
+        #expect(!env.model.listing.files.contains { $0.kind == .archive })
+        #expect(env.model.selection.selected.isEmpty)
+        #expect(env.model.selection.focused == nil)
+        #expect(isEmptyPreview(env.model.preview))
+    }
+
+    @Test("非表示のまま zip を含むフォルダを選ぶと zip の行が出ない")
+    func hiddenZipFilesAreAbsentFromFolderListing() async throws {
+        let env = try makeEnv(showsZipFiles: false)
+        defer { env.cleanup() }
+
+        await env.model.selectFolder(env.root)
+
+        #expect(env.model.showsZipFiles == false)
+        #expect(env.model.listing.files.map(\.name) == ["cover.jpg"])
         #expect(env.model.listing.state == .loaded)
     }
 }

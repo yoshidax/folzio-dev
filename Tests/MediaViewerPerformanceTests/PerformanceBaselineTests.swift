@@ -154,6 +154,91 @@ struct PerformanceBaselineTests {
         )
     }
 
+    @Test("10,000 件（zip ファイルを混ぜる）への zip ファイルの表示の適用が 0.05 秒以内")
+    func zipFileVisibilityOnHugeFolderWithinBudget() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        try FixtureSets.huge(in: directory, count: 10_000)
+        let folder = directory.appendingPathComponent("huge", isDirectory: true)
+
+        let lister = DirectoryLister()
+        let files = try await lister.mediaFiles(in: folder)
+        let ordered = sorted(files, by: SortOrder())
+
+        // 準備（10件に1件を zip ファイルの行に置き換える）は計測に含めない
+        var mixed = ordered
+        for index in mixed.indices where index.isMultiple(of: 10) {
+            var archive = mixed[index]
+            archive.name = String(format: "img_%05d.zip", index + 1)
+            archive.url = folder.appendingPathComponent(archive.name)
+            archive.kind = .archive
+            mixed[index] = archive
+        }
+
+        let start = ContinuousClock.now
+        let hidden = ZipFileVisibility(showsZipFiles: false).apply(to: mixed)
+        let shown = ZipFileVisibility(showsZipFiles: true).apply(to: mixed)
+        let elapsed = ContinuousClock.now - start
+
+        #expect(hidden.count == 9_000, "非表示で 9,000 件 (実際: \(hidden.count))")
+        #expect(shown.count == 10_000, "表示で 10,000 件 (実際: \(shown.count))")
+        print("[perf] ZipFileVisibility.apply 10,000 (hide + show): \(elapsed)")
+        #expect(
+            elapsed < .milliseconds(50),
+            "zip ファイルの表示の適用は 0.05 秒以内 (実測: \(elapsed))"
+        )
+    }
+
+    @Test("10,000 ファイルのフォルダでの zip ファイルの表示の切り替えが 0.2 秒以内")
+    @MainActor
+    func toggleZipFileVisibilityOnHugeFolderWithinBudget() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        try FixtureSets.huge(in: directory, count: 10_000)
+        let folder = directory.appendingPathComponent("huge", isDirectory: true)
+
+        // 準備（10件に1件を zip ファイルに置き換える）は計測に含めない
+        let template = directory.appendingPathComponent("template.zip")
+        try ZipFixtureWriter.write([], to: template)
+        let fileManager = FileManager.default
+        for index in stride(from: 0, to: 10_000, by: 10) {
+            try fileManager.removeItem(at: folder.appendingPathComponent(String(format: "img_%05d.jpg", index + 1)))
+            try fileManager.copyItem(
+                at: template,
+                to: folder.appendingPathComponent(String(format: "img_%05d.zip", index + 1))
+            )
+        }
+
+        let suite = "PerformanceBaselineTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let model = BrowserModel(
+            lister: DirectoryLister(),
+            decoder: ImageDecoder(),
+            cache: DecodedImageCache(),
+            settings: SettingsStore(defaults: defaults)
+        )
+
+        await model.selectFolder(folder)
+        #expect(model.listing.files.count == 9_000, "非表示の既定で 9,000 件 (実際: \(model.listing.files.count))")
+
+        let showStart = ContinuousClock.now
+        model.setShowsZipFiles(true)
+        let showElapsed = ContinuousClock.now - showStart
+        #expect(model.listing.files.count == 10_000, "表示で 10,000 件 (実際: \(model.listing.files.count))")
+
+        let hideStart = ContinuousClock.now
+        model.setShowsZipFiles(false)
+        let hideElapsed = ContinuousClock.now - hideStart
+        #expect(model.listing.files.count == 9_000, "非表示で 9,000 件 (実際: \(model.listing.files.count))")
+
+        print("[perf] setShowsZipFiles 10,000: show \(showElapsed), hide \(hideElapsed)")
+        #expect(showElapsed < .milliseconds(200), "表示への切り替えは 0.2 秒以内 (実測: \(showElapsed))")
+        #expect(hideElapsed < .milliseconds(200), "非表示への切り替えは 0.2 秒以内 (実測: \(hideElapsed))")
+    }
+
     @Test("サブフォルダのない 10,000 ファイルのフォルダの hasSubfolders が 0.2 秒以内")
     func hasSubfoldersInLargeFolderWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()

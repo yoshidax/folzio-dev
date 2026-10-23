@@ -382,6 +382,240 @@ struct BrowserModelTests {
         #expect(keysBefore == keysAfter)
     }
 
+    // MARK: - zip ファイルの表示
+
+    /// `a.jpg`・`b.zip`・`c.png`・サブフォルダ `sub` を持つフォルダ
+    @MainActor
+    private func zipFolder() -> (URL, [MediaFile]) {
+        let folder = URL(fileURLWithPath: "/tmp/zipvis-\(UUID().uuidString)", isDirectory: true)
+        let files = [
+            file("a.jpg", in: folder),
+            row("b.zip", .archive, in: folder),
+            file("c.png", in: folder),
+            row("sub", .folder, in: folder),
+        ]
+        return (folder, files)
+    }
+
+    @Test("zip ファイルの表示の既定は非表示で、.. は先頭のまま zip の行だけが出ない")
+    @MainActor
+    func zipDefaultHidesArchiveRows() async {
+        let (folder, files) = zipFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        model.setNavigationRoots([folder.deletingLastPathComponent()])
+
+        #expect(model.showsZipFiles == false)
+        await model.selectFolder(folder)
+
+        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "c.png", "sub"])
+        #expect(model.listing.state == .loaded)
+    }
+
+    @Test("zip ファイルの表示をオンにすると並べ替えの位置に戻り、列挙し直さない")
+    @MainActor
+    func zipShowRestoresRowsWithoutRelisting() async {
+        let (folder, files) = zipFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        model.setNavigationRoots([folder.deletingLastPathComponent()])
+        await model.selectFolder(folder)
+        let callsBefore = await lister.callCount
+
+        model.setShowsZipFiles(true)
+
+        #expect(model.showsZipFiles == true)
+        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "b.zip", "c.png", "sub"])
+        #expect(model.listing.state == .loaded)
+        #expect(await lister.callCount == callsBefore)
+        #expect(defaults.object(forKey: "view.showsZipFiles") as? Bool == true)
+    }
+
+    @Test("zip ファイルの表示をオフに戻すと行が消え、オンに戻すと setResponse なしで同じ並びで戻る")
+    @MainActor
+    func zipHideThenShowAgain() async {
+        let (folder, files) = zipFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        model.setNavigationRoots([folder.deletingLastPathComponent()])
+        await model.selectFolder(folder)
+        let callsBefore = await lister.callCount
+
+        model.setShowsZipFiles(true)
+        let shown = model.listing.files.map(\.url)
+        model.setShowsZipFiles(false)
+        #expect(!model.listing.files.contains { $0.kind == .archive })
+        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "c.png", "sub"])
+        #expect(defaults.object(forKey: "view.showsZipFiles") as? Bool == false)
+
+        model.setShowsZipFiles(true)
+        #expect(model.listing.files.map(\.url) == shown)
+        #expect(await lister.callCount == callsBefore)
+    }
+
+    @Test("zip ファイルの表示は種類フィルタと独立に組み合わさる")
+    @MainActor
+    func zipVisibilityComposesWithMediaTypeFilter() async {
+        let (folder, files) = zipFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        model.setNavigationRoots([folder.deletingLastPathComponent()])
+        await model.selectFolder(folder)
+
+        model.setMediaTypeFilter(MediaTypeFilter(imagesOnly: true))
+        model.setShowsZipFiles(true)
+        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "b.zip", "c.png", "sub"])
+
+        model.setShowsZipFiles(false)
+        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "c.png", "sub"])
+    }
+
+    @Test("zip ファイルを非表示にするとフォーカスが外れ、残った選択へフォーカスが移りプレビューする")
+    @MainActor
+    func zipHideMovesFocusToRemainingSelection() async {
+        let (folder, files) = zipFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        model.setShowsZipFiles(true)
+        await model.selectFolder(folder)
+
+        let a = files[0].url
+        let zip = files[1].url
+        model.select([zip, a], focused: zip)
+        model.setShowsZipFiles(false)
+
+        #expect(model.selection.selected == [a])
+        #expect(model.selection.focused == a)
+        let isImage = await waitUntil { isImagePreview(model) }
+        #expect(isImage)
+    }
+
+    @Test("フォーカスが表示中のままなら選択も読み込み済みのプレビューも変わらない")
+    @MainActor
+    func zipHideKeepsPreviewWhenFocusVisible() async {
+        let (folder, files) = zipFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        model.setShowsZipFiles(true)
+        await model.selectFolder(folder)
+
+        let a = files[0].url
+        let zip = files[1].url
+        model.select([a, zip], focused: a)
+        let loaded = await waitUntil { isImagePreview(model) }
+        #expect(loaded)
+        let signalBefore = model.stopPlaybackSignal
+
+        model.setShowsZipFiles(false)
+
+        #expect(model.selection.selected == [a])
+        #expect(model.selection.focused == a)
+        #expect(!isLoadingPreview(model))
+        #expect(isImagePreview(model))
+        #expect(model.stopPlaybackSignal == signalBefore)
+    }
+
+    @Test("zip ファイルだけを選んでいたときは選択が空になり、オンに戻しても選択は戻らない")
+    @MainActor
+    func zipHideClearsSelectionWhenNothingRemains() async {
+        let (folder, files) = zipFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        model.setShowsZipFiles(true)
+        await model.selectFolder(folder)
+
+        let zip = files[1].url
+        model.select([zip], focused: zip)
+        model.setShowsZipFiles(false)
+
+        #expect(model.selection.selected.isEmpty)
+        #expect(model.selection.focused == nil)
+        #expect(isEmptyPreview(model))
+
+        model.setShowsZipFiles(true)
+        #expect(model.selection.selected.isEmpty)
+        #expect(model.selection.focused == nil)
+    }
+
+    @Test("zip ファイルだけのフォルダを非表示にすると .empty（専用の状態にしない）で、.. だけが残る")
+    @MainActor
+    func zipOnlyFolderBecomesEmpty() async {
+        let folder = URL(fileURLWithPath: "/tmp/ziponly-\(UUID().uuidString)", isDirectory: true)
+        let zips = [row("a.zip", .archive, in: folder), row("b.zip", .archive, in: folder)]
+        let lister = FakeLister(responses: [folder: .init(files: zips, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        model.setShowsZipFiles(true)
+        model.setNavigationRoots([folder.deletingLastPathComponent()])
+        await model.selectFolder(folder)
+        #expect(model.listing.state == .loaded)
+        #expect(model.listing.files.map(\.name) == ["..", "a.zip", "b.zip"])
+
+        model.setShowsZipFiles(false)
+        #expect(model.listing.state == .empty)
+        #expect(model.listing.files.map(\.name) == [".."])
+
+        // ツリーのルートでは .. もなく空になる
+        model.setNavigationRoots([folder])
+        #expect(model.listing.state == .empty)
+        #expect(model.listing.files.isEmpty)
+
+        model.setShowsZipFiles(true)
+        #expect(model.listing.state == .loaded)
+        #expect(model.listing.files.map(\.name) == ["a.zip", "b.zip"])
+    }
+
+    @Test("同じ zip ファイルの表示を再設定しても一覧と選択は変わらない")
+    @MainActor
+    func zipSameValueIsNoOp() async {
+        let (folder, files) = zipFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        await model.selectFolder(folder)
+        let a = files[0].url
+        model.select([a], focused: a)
+        let listingBefore = model.listing
+        let selectionBefore = model.selection
+        let signalBefore = model.stopPlaybackSignal
+
+        model.setShowsZipFiles(false)
+
+        #expect(model.listing.files.map(\.url) == listingBefore.files.map(\.url))
+        #expect(model.listing.state == listingBefore.state)
+        #expect(model.selection.selected == selectionBefore.selected)
+        #expect(model.selection.focused == selectionBefore.focused)
+        #expect(model.stopPlaybackSignal == signalBefore)
+    }
+
+    @Test("zip ファイルの表示は保存され、同じ設定で作った BrowserModel が復元する")
+    @MainActor
+    func zipVisibilityIsRestored() async {
+        let (folder, files) = zipFolder()
+        let lister = FakeLister(responses: [folder: .init(files: files, delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        model.setShowsZipFiles(true)
+
+        let restored = BrowserModel(
+            lister: lister,
+            decoder: FakeDecoder(),
+            cache: DecodedImageCache(costLimitBytes: 10_000_000),
+            settings: SettingsStore(defaults: defaults)
+        )
+        #expect(restored.showsZipFiles == true)
+        await restored.selectFolder(folder)
+        #expect(restored.listing.files.map(\.name) == ["a.jpg", "b.zip", "c.png", "sub"])
+    }
+
     @MainActor
     private func makeModel(
         lister: FakeLister,
@@ -406,6 +640,18 @@ struct BrowserModelTests {
             name: name,
             kind: .media(MediaKind(fileExtension: (name as NSString).pathExtension) ?? .jpeg),
             typeDescription: "JPEG イメージ",
+            creationDate: nil,
+            fileSize: 0
+        )
+    }
+
+    @MainActor
+    private func row(_ name: String, _ kind: ListItemKind, in folder: URL) -> MediaFile {
+        MediaFile(
+            url: folder.appendingPathComponent(name),
+            name: name,
+            kind: kind,
+            typeDescription: "",
             creationDate: nil,
             fileSize: 0
         )
@@ -439,6 +685,8 @@ private actor FakeLister: DirectoryListing {
     }
 
     private var responses: [URL: Response]
+    /// `mediaFiles(in:)` の呼び出し回数（列挙し直していないことの確認に使う）
+    private(set) var callCount = 0
 
     init(responses: [URL: Response]) {
         self.responses = responses
@@ -449,6 +697,7 @@ private actor FakeLister: DirectoryListing {
     }
 
     func mediaFiles(in folder: URL) async throws(ListingError) -> [MediaFile] {
+        callCount += 1
         guard let response = responses[folder] else {
             throw ListingError.notFound
         }

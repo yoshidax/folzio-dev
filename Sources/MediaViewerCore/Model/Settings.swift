@@ -9,6 +9,8 @@ public struct ViewSettings: Sendable, Equatable {
     public var sortOrder: SortOrder
     public var lastFolder: URL?
     public var showsToolbar: Bool
+    /// zip ファイルの行をファイルリストに出すか（FR-095）。既定は非表示
+    public var showsZipFiles: Bool
     private var storedThumbnailSize: Double
 
     public var thumbnailSize: Double {
@@ -21,13 +23,15 @@ public struct ViewSettings: Sendable, Equatable {
         thumbnailSize: Double = defaultThumbnailSize,
         sortOrder: SortOrder = SortOrder(),
         lastFolder: URL? = nil,
-        showsToolbar: Bool = false
+        showsToolbar: Bool = false,
+        showsZipFiles: Bool = false
     ) {
         self.displayMode = displayMode
         self.storedThumbnailSize = Self.clampThumbnailSize(thumbnailSize)
         self.sortOrder = sortOrder
         self.lastFolder = lastFolder
         self.showsToolbar = showsToolbar
+        self.showsZipFiles = showsZipFiles
     }
 
     public static func clampThumbnailSize(_ value: Double) -> Double {

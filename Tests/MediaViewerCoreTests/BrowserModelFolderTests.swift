@@ -329,6 +329,7 @@ struct BrowserModelFolderTests {
             [ZipFixtureEntry(name: "sub/x.png", content: .bytes(Data([0x89, 0x50])))],
             to: zip
         )
+        env.model.setShowsZipFiles(true)
         await env.model.selectFolder(env.root)
         let lastFolder = env.lastFolder
 
@@ -465,6 +466,7 @@ struct BrowserModelFolderTests {
             [ZipFixtureEntry(name: "a.jpg", content: .bytes(try Data(contentsOf: jpeg)), method: .deflated)],
             to: env.url("trip").appendingPathComponent("photos.zip")
         )
+        env.model.setShowsZipFiles(true)
         await env.model.selectFolder(env.root)
         await env.model.openItem(try #require(env.row("trip")).url)
         await env.model.openItem(try #require(env.row("trip/photos.zip")).url)
