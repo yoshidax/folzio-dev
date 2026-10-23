@@ -10,14 +10,18 @@ final class ConfirmationPresenter {
     }
 
     /// `includesFolders` が true なら、フォルダは中身ごと操作する旨を添える（R32）
+    /// 名前の変更と移動は設定に関わらず常に確認し、「今後表示しない」も出さない（FR-024）。
+    /// 設定で省略できるのはコピー・ゴミ箱・お気に入りの削除だけ
     func confirm(_ operation: FileOperation, includesFolders: Bool = false) async -> Bool {
-        guard settings.confirmation.confirmBeforeFileOperations else {
+        let isSkippable = Self.isSkippable(operation.kind)
+        if isSkippable, !settings.confirmation.confirmBeforeFileOperations {
             return true
         }
         return await present(
             messageText: messageText(for: operation.kind),
             informativeText: informativeText(for: operation, includesFolders: includesFolders),
-            confirmTitle: "実行"
+            confirmTitle: "実行",
+            allowsSuppression: isSkippable
         )
     }
 
@@ -28,18 +32,27 @@ final class ConfirmationPresenter {
         return await present(
             messageText: "お気に入りから削除しますか？",
             informativeText: "対象: \(name)\n実際のフォルダは変更されません",
-            confirmTitle: "削除"
+            confirmTitle: "削除",
+            allowsSuppression: true
         )
+    }
+
+    /// 設定で確認を省略できる操作か（FR-024）
+    private static func isSkippable(_ kind: FileOperation.Kind) -> Bool {
+        switch kind {
+        case .copy, .trash:
+            return true
+        case .move, .rename:
+            return false
+        }
     }
 
     private func present(
         messageText: String,
         informativeText: String,
-        confirmTitle: String
+        confirmTitle: String,
+        allowsSuppression: Bool
     ) async -> Bool {
-        guard let window = NSApp.keyWindow ?? NSApp.mainWindow else {
-            return true
-        }
 
         let alert = NSAlert()
         alert.messageText = messageText
@@ -47,16 +60,26 @@ final class ConfirmationPresenter {
         alert.addButton(withTitle: confirmTitle)
         alert.addButton(withTitle: "キャンセル")
         alert.buttons[1].keyEquivalent = "\u{1b}"
-        alert.showsSuppressionButton = true
-        alert.suppressionButton?.title = "今後この確認を表示しない"
-
-        let response = await withCheckedContinuation { continuation in
-            alert.beginSheetModal(for: window) { response in
-                continuation.resume(returning: response)
-            }
+        if allowsSuppression {
+            alert.showsSuppressionButton = true
+            alert.suppressionButton?.title = "今後この確認を表示しない"
         }
 
-        if alert.suppressionButton?.state == .on {
+        let response: NSApplication.ModalResponse
+        if let window = NSApp.keyWindow ?? NSApp.mainWindow {
+            response = await withCheckedContinuation { continuation in
+                alert.beginSheetModal(for: window) { response in
+                    continuation.resume(returning: response)
+                }
+            }
+        } else if allowsSuppression {
+            return true
+        } else {
+            // 常に確認する操作は、シートの親がなくても確認なしでは実行しない
+            response = alert.runModal()
+        }
+
+        if allowsSuppression, alert.suppressionButton?.state == .on {
             settings.confirmation = ConfirmationOptions(confirmBeforeFileOperations: false)
         }
 
