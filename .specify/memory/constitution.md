@@ -7,7 +7,7 @@ Sync Impact Report
   - specs/001-three-pane-media-viewer/: 凍結済み（spec.md と contracts の冒頭に移行済みの注記）
   - specs/product/: 新設。現在の仕様の正本
   - AGENTS.md・README.md: 正本の場所を specs/product/ に更新
-  - .specify/workflow-src/sdd-increment*.yml: 新しい feature を specify で作り、完了後に specs/product/ へ反映する流れに変更（0.4.0 / Kilo 0.2.0）
+  - .specify/workflow-src/sdd-increment*.yml: 新しい feature を specify で作り、完了後に specs/product/ へ反映する流れに変更（0.5.0 / Kilo 0.3.0）。feature ブランチは git 拡張の before_specify フックで作る
 -->
 # my_img_viewer Constitution
 

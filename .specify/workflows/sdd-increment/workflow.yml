@@ -2,7 +2,7 @@ schema_version: "1.0"
 workflow:
   id: "sdd-increment"
   name: "SDD increment"
-  version: "0.4.0"
+  version: "0.5.0"
   author: "igachan"
   # command / prompt の手順で使う integration の既定値。指定しないと prompt の手順が integration なしで失敗する
   integration: "claude"
@@ -22,6 +22,10 @@ inputs:
     type: string
     required: true
     prompt: "追加・変更したい要件"
+  base_branch:
+    type: string
+    default: "master"
+    prompt: "feature ブランチを切る元のブランチ"
   clarify_mode:
     type: string
     default: "auto"
@@ -34,6 +38,20 @@ inputs:
     prompt: "実装を担当する sub agent のモデル"
 
 steps:
+  # ── 0. 事前チェック ─────────────────────────────────────────────
+  # specify の before_specify フック（git 拡張の speckit.git.feature）が今の HEAD から feature ブランチを切るため、
+  # クリーンな元のブランチから始める
+  - id: preflight
+    type: shell
+    run: |
+      branch=$(git branch --show-current)
+      if [ "$branch" != "{{ inputs.base_branch }}" ]; then
+        echo "{{ inputs.base_branch }} で実行してください（現在: $branch）" >&2; exit 1
+      fi
+      if [ -n "$(git status --porcelain)" ]; then
+        echo "未コミットの変更があります。コミットするか stash してから実行してください" >&2; exit 1
+      fi
+
   # ── 1. 新しい feature の仕様 ─────────────────────────────────────
   # 現在の仕様の正本は specs/product/。新しい feature の spec.md には変更点だけを書く（書き方は specs/product/README.md）。
   # -p 実行では質問に答えられないため、推奨回答を採用し、決められない点は出力に残す。出力は 4. のレビューで表示する
@@ -50,6 +68,15 @@ steps:
       specs/product/ はこの段階では変更しないでください。
       この実行では対話できません。[NEEDS CLARIFICATION] は推奨回答を採用して埋めてください。推奨を決められないものはマーカーのまま残してください。
       最後に「作った feature ディレクトリ」「採用した推奨回答」「残したマーカー（選択肢と推奨）」を一覧で出力してください。
+
+  - id: check_branch
+    type: shell
+    run: |
+      branch=$(git branch --show-current)
+      if [ "$branch" = "{{ inputs.base_branch }}" ]; then
+        echo "feature ブランチが作られていません（before_specify フックを確認してください）" >&2; exit 1
+      fi
+      echo "feature ブランチ: $branch"
 
   # ── 2. 仕様の明確化（skip のときは行わない） ─────────────────────────
   # clarify は feature の spec.md しか読まないため、関係する specs/product/ の領域との矛盾と影響範囲も質問の候補にさせる
@@ -256,6 +283,7 @@ steps:
       ── converge の結果 ──
       {{ steps.converge.output.stdout }}
 
+      feature ブランチを {{ inputs.base_branch }} へマージするかは、確認してから手で行ってください。
       確認したら approve で終了します。
     options: [approve]
     on_reject: skip
