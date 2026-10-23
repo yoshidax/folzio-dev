@@ -1,6 +1,7 @@
 import AVFoundation
 import AVKit
 import AppKit
+import MediaViewerCore
 import os
 
 @MainActor
@@ -10,9 +11,8 @@ final class VideoPreviewView: NSView {
         subsystem: "local.my-img-viewer.MediaViewer",
         category: "Performance"
     )
-    private var player: AVQueuePlayer?
-    private var looper: AVPlayerLooper?
-    private var endObserver: NSObjectProtocol?
+    private var playback: VideoPlayback?
+    private var player: AVPlayer? { playback?.player }
     private var timeControlObservation: NSKeyValueObservation?
     private var playbackIntervalState: OSSignpostIntervalState?
     private var playbackIntervalStarted = false
@@ -42,25 +42,9 @@ final class VideoPreviewView: NSView {
     func configure(asset: AVAsset, autoplay: Bool, loop: Bool, fileName: String) {
         stop()
 
-        let player = AVQueuePlayer()
-        let item = AVPlayerItem(asset: asset)
-
-        if loop {
-            looper = AVPlayerLooper(player: player, templateItem: item)
-        } else {
-            player.insert(item, after: nil)
-            endObserver = NotificationCenter.default.addObserver(
-                forName: AVPlayerItem.didPlayToEndTimeNotification,
-                object: item,
-                queue: .main
-            ) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    self?.player?.pause()
-                }
-            }
-        }
-
-        self.player = player
+        let playback = VideoPlayback(asset: asset, loop: loop)
+        let player = playback.player
+        self.playback = playback
         playerView.player = player
         setAccessibilityLabel(fileName)
 
@@ -88,18 +72,9 @@ final class VideoPreviewView: NSView {
         timeControlObservation?.invalidate()
         timeControlObservation = nil
 
-        player?.pause()
-        looper?.disableLooping()
-        looper = nil
-
-        if let endObserver {
-            NotificationCenter.default.removeObserver(endObserver)
-            self.endObserver = nil
-        }
-
-        player?.removeAllItems()
+        playback?.invalidate()
         playerView.player = nil
-        player = nil
+        playback = nil
         setAccessibilityLabel("")
     }
 
@@ -116,14 +91,11 @@ final class VideoPreviewView: NSView {
     func seek(by seconds: Double) {
         guard let player,
               let duration = player.currentItem?.duration.seconds,
-              duration.isFinite,
-              duration > 0 else {
+              let target = VideoPlayback.seekTarget(
+                  from: player.currentTime().seconds, by: seconds, duration: duration
+              ) else {
             return
         }
-
-        let current = player.currentTime().seconds
-        guard current.isFinite else { return }
-        let target = min(max(0, current + seconds), duration)
         player.seek(
             to: CMTime(seconds: target, preferredTimescale: 600),
             toleranceBefore: .zero,

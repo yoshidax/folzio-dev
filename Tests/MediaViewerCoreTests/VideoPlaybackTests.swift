@@ -1,0 +1,109 @@
+import AVFoundation
+import Foundation
+import Testing
+@testable import FixtureKit
+@testable import MediaViewerCore
+
+@Suite("VideoPlayback.seekTarget")
+struct VideoPlaybackSeekTargetTests {
+    @Test("5 秒の動画で ±15 秒・+5 秒は [0, duration] に丸める")
+    func clampsToDuration() {
+        #expect(VideoPlayback.seekTarget(from: 2, by: 15, duration: 5) == 5)
+        #expect(VideoPlayback.seekTarget(from: 2, by: -15, duration: 5) == 0)
+        #expect(VideoPlayback.seekTarget(from: 2, by: 5, duration: 5) == 5)
+        #expect(VideoPlayback.seekTarget(from: 2, by: 1.5, duration: 5) == 3.5)
+    }
+
+    @Test("位置か長さが定まらなければ nil")
+    func undefined() {
+        #expect(VideoPlayback.seekTarget(from: .nan, by: 5, duration: 5) == nil)
+        #expect(VideoPlayback.seekTarget(from: 0, by: 5, duration: .nan) == nil)
+        #expect(VideoPlayback.seekTarget(from: 0, by: 5, duration: 0) == nil)
+    }
+}
+
+/// `VideoFixtures` は書き出しの間スレッドをブロックする。並列に走らせると協調スレッドを使い切って止まるため、直列にする
+@Suite("VideoPlayback", .serialized)
+@MainActor
+struct VideoPlaybackTests {
+    private func makeVideo(seconds: Double) throws -> (directory: URL, video: URL) {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("VideoPlaybackTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let video = directory.appendingPathComponent("clip.mp4")
+        try VideoFixtures.mp4(at: video, seconds: seconds)
+        return (directory, video)
+    }
+
+    private func waitUntilReady(_ player: AVPlayer) async throws {
+        for _ in 0..<100 where player.currentItem?.status != .readyToPlay {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(player.currentItem?.status == .readyToPlay)
+    }
+
+    /// bug: preview-skip-forward-frame-freeze。終端を越えるシークで別のアイテムへ切り替わらず、
+    /// 同じアイテムの先頭から再生を続ける
+    @Test("ループ再生で終端を越えてシークすると、同じアイテムの先頭から再生を続ける")
+    func loopSeekPastEndKeepsItem() async throws {
+        let (directory, video) = try makeVideo(seconds: 2)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let playback = VideoPlayback(asset: AVURLAsset(url: video), loop: true)
+        defer { playback.invalidate() }
+        let player = playback.player
+        let item = try #require(player.currentItem)
+        try await waitUntilReady(player)
+
+        player.play()
+        try await Task.sleep(for: .milliseconds(300))
+        // AVPlayerView の「15 秒進む」と同じく、丸めずに長さを越えた位置へシークする
+        await player.seek(to: CMTime(seconds: 17, preferredTimescale: 600))
+        try await Task.sleep(for: .milliseconds(700))
+
+        #expect(player.currentItem === item)
+        #expect(player.rate != 0)
+        let current = player.currentTime().seconds
+        #expect(current > 0 && current < 2)
+    }
+
+    @Test("ループ再生で先頭より前へシークしても、同じアイテムで再生を続ける")
+    func loopSeekBeforeStartKeepsItem() async throws {
+        let (directory, video) = try makeVideo(seconds: 2)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let playback = VideoPlayback(asset: AVURLAsset(url: video), loop: true)
+        defer { playback.invalidate() }
+        let player = playback.player
+        let item = try #require(player.currentItem)
+        try await waitUntilReady(player)
+
+        player.play()
+        try await Task.sleep(for: .milliseconds(300))
+        await player.seek(to: CMTime(seconds: -15, preferredTimescale: 600))
+        try await Task.sleep(for: .milliseconds(500))
+
+        #expect(player.currentItem === item)
+        #expect(player.rate != 0)
+        #expect(player.currentTime().seconds > 0)
+    }
+
+    @Test("ループしない再生は、終端を越えてシークすると終端で止まる")
+    func noLoopStopsAtEnd() async throws {
+        let (directory, video) = try makeVideo(seconds: 2)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let playback = VideoPlayback(asset: AVURLAsset(url: video), loop: false)
+        defer { playback.invalidate() }
+        let player = playback.player
+        try await waitUntilReady(player)
+
+        player.play()
+        try await Task.sleep(for: .milliseconds(300))
+        await player.seek(to: CMTime(seconds: 17, preferredTimescale: 600))
+        try await Task.sleep(for: .milliseconds(500))
+
+        #expect(player.rate == 0)
+        #expect(player.currentTime().seconds > 1.9)
+    }
+}
