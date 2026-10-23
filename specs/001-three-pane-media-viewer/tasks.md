@@ -2895,7 +2895,7 @@ zip ファイルの表示のケースが通り、既存のテストがすべて�
 
 ### Tests for User Story 3
 
-- [ ] T286 [P] [US3] `Tests/MediaViewerCoreTests/ZipFileVisibilityTests.swift`（新規、`@Suite("ZipFileVisibility")`）を先に書く
+- [X] T286 [P] [US3] `Tests/MediaViewerCoreTests/ZipFileVisibilityTests.swift`（新規、`@Suite("ZipFileVisibility")`）を先に書く
   （T292 の前にビルドエラーになることを確認する。R46、data-model.md の `ZipFileVisibility`、contracts/core-api.md「zip ファイルの表示」）。
   `MediaFile` は既存の `MediaTypeFilterTests` の `file(_:in:)` と同じ形のヘルパーをこのファイル内に `private` で置いて作る
   （`kind` を指定でき、`.media(.jpeg)`・`.archive`・`.folder`・`.directory`・`.parent` を作れるようにする）:
@@ -2906,14 +2906,14 @@ zip ファイルの表示のケースが通り、既存のテストがすべて�
   - true: `.archive` を含む入力で入力と完全に一致する（件数・並び順・URL）。`apply(to:)` を呼んでも元の配列が変わらない
   - 種類フィルタの結果に通しても壊れないこと: `MediaTypeFilter(imagesOnly: true).apply(to:)` の結果に
     `ZipFileVisibility(showsZipFiles: false).apply(to:)` を通すと、画像の行だけが残り `.archive` も消える（順序は T137 の `apply(to:)` と同じ）
-- [ ] T287 [P] [US3] `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` に `view.showsZipFiles` のケースを先に追加する（T293 の前にビルドエラーに
+- [X] T287 [P] [US3] `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` に `view.showsZipFiles` のケースを先に追加する（T293 の前にビルドエラーに
   なることを確認する。data-model.md「保存する設定」・contracts/settings.md。既存の `withDefaults` を使う）:
   - キーがないとき `store.viewSettings.showsZipFiles == false`（初回起動相当）
   - `defaults.set("yes", forKey: "view.showsZipFiles")` のような Bool でない値でも `false`（既存の `storedBool` と同じ扱い）
   - `viewSettings.showsZipFiles = true` を書き戻して読み直すと `true`、続けて `false` を書くと `false`
   - 書き戻しても `displayMode`・`thumbnailSize`・`sortOrder`・`lastFolder`・`showsToolbar` が変わらない
   - `ViewSettings()` の既定が `showsZipFiles == false` で、`ViewSettings(showsZipFiles: true)` を渡すと `true`
-- [ ] T288 [P] [US3] `Tests/MediaViewerCoreTests/BrowserModelTests.swift` に zip ファイルの表示のケースを先に追加する（T294 の前にビルドエラーに
+- [X] T288 [P] [US3] `Tests/MediaViewerCoreTests/BrowserModelTests.swift` に zip ファイルの表示のケースを先に追加する（T294 の前にビルドエラーに
   なることを確認する。R46、FR-095・097）。既存の `makeModel(lister:decoder:)`・`file(_:in:)`・`waitUntil`・`FakeLister`（T134 の `setResponse`）を使う:
   - 既定: 新しい `BrowserModel` の `showsZipFiles == false`。`zip/` に `a.jpg`・`b.zip`・`c.png`・サブフォルダ `sub` を用意して `selectFolder` すると
     `listing.files.map(\.name) == ["..", "a.jpg", "c.png", "sub"]`（`..` は先頭のまま）
@@ -2928,19 +2928,19 @@ zip ファイルの表示のケースが通り、既存のテストがすべて�
     `listing.files` はツリーのルートでなければ `..` だけ、ルートなら空
   - 同じ値の再設定: 同じ `showsZipFiles` を `setShowsZipFiles` しても `listing` と `selection` が変わらない
   - 復元: `setShowsZipFiles(true)` の後に同じ `defaults` で新しい `BrowserModel` を作ると `showsZipFiles == true` で始まる
-- [ ] T289 [P] [US3] `Tests/MediaViewerCoreTests/BrowserModelArchiveTests.swift` に zip の中の一覧での切り替えを先に追加する（T294 の前にビルドエラーに
+- [X] T289 [P] [US3] `Tests/MediaViewerCoreTests/BrowserModelArchiveTests.swift` に zip の中の一覧での切り替えを先に追加する（T294 の前にビルドエラーに
   なることを確認する。FR-098、R46）。既存の zip のフィクスチャと zip を開くヘルパーを使う:
   - zip の中の一覧を表示中に `setShowsZipFiles(false)` → `listing.folder`・`listing.archive`・`listing.files`・`selection`・`preview` が変わらず、
     `defaults` の `view.showsZipFiles` が false になっている（設定だけを保存する）
   - 続けて ⌘↑ 相当の戻る操作（既存の「上の階層へ」のテストと同じ入口）→ zip ファイルの行が一覧になく、`selection.selected` は空、`focused == nil`、
     `preview == .empty`（戻り先で zip の行を選ばず、スクロールもしない）
   - zip の中の一覧には `.archive` の行がないため、オンに戻しても中で表示していた一覧は変わらない
-- [ ] T290 [P] [US3] `Tests/MediaViewerCoreTests/BrowserModelSearchTests.swift` に検索結果の表示中の切り替えを追加する（T294 の前にビルドエラーに
+- [X] T290 [P] [US3] `Tests/MediaViewerCoreTests/BrowserModelSearchTests.swift` に検索結果の表示中の切り替えを追加する（T294 の前にビルドエラーに
   なることを確認する。FR-098）:
   - 検索結果を表示中に `setShowsZipFiles(true)` → `listing.files`・`listing.search`・`selection`・`preview` が変わらず、設定だけが保存される。
     `setShowsZipFiles(false)` も同様
   - 検索結果に zip ファイルの行が含まれないこと（既存の検索のテストの期待結果）を、切り替えの前後で確かめる
-- [ ] T291 [P] [US3] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に2つを先に追加する（T292・T294 の前にビルドエラーになることを
+- [X] T291 [P] [US3] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に2つを先に追加する（T292・T294 の前にビルドエラーになることを
   確認し、実装した後に通ることを確認する。SC-017、quickstart.md「性能の検証」）:
   - `@Test("10,000 件（zip ファイルを混ぜる）への zip ファイルの表示の適用が 0.05 秒以内")`: 既存の種類フィルタの性能テストと同じく
     `FixtureSets.huge(in:count: 10_000)` を列挙・並べ替えした配列の10件に1件を `.archive` に置き換えた配列（`MediaFile` の複製で `name` を
@@ -2953,19 +2953,19 @@ zip ファイルの表示のケースが通り、既存のテストがすべて�
 
 ### Implementation for User Story 3
 
-- [ ] T292 [P] [US3] `Sources/MediaViewerCore/Model/ZipFileVisibility.swift`（新規）に、contracts/core-api.md の
+- [X] T292 [P] [US3] `Sources/MediaViewerCore/Model/ZipFileVisibility.swift`（新規）に、contracts/core-api.md の
   `public struct ZipFileVisibility: Sendable, Equatable` を実装する（T286 を通す。FR-095・097、R46）: `public init(showsZipFiles: Bool = false)`、
   `public var showsZipFiles: Bool`、`public func apply(to files: [MediaFile]) -> [MediaFile]`。true は入力をそのまま返し、false は
   `files.filter { $0.kind != .archive }` で `.archive` の行だけを除く（並び順を保ち、`.media`・`.folder`・`.directory`・`.parent` は残す）。
   AppKit を import しない。ドキュメントコメントに FR-095・097 と「適用は `BrowserModel.rebuildListing()` の1か所だけ」「保存しない値型で、永続化は
   `ViewSettings.showsZipFiles` が持つ」を書く
-- [ ] T293 [P] [US3] 設定に「zipファイルを表示」を足す（T287 を通す。data-model.md の `ZipFileVisibility` と「保存する設定」、contracts/settings.md）:
+- [X] T293 [P] [US3] 設定に「zipファイルを表示」を足す（T287 を通す。data-model.md の `ZipFileVisibility` と「保存する設定」、contracts/settings.md）:
   - `Sources/MediaViewerCore/Model/Settings.swift`: `ViewSettings` に `public var showsZipFiles: Bool` を足し、`init` の引数
     （`showsZipFiles: Bool = false`）と Equatable の自動合成に含める。既存のフィールド・`thumbnailSize` の検証は変えない
   - `Sources/MediaViewerCore/Settings/SettingsStore.swift`: `Keys.showsZipFiles = "view.showsZipFiles"` を足し、`viewSettings` の読み出しで
     `storedBool(forKey:) ?? false`、書き戻しで `defaults.set(newValue.showsZipFiles, forKey:)` を足す。`showsToolbar` と同じ経路にする
   - `swift test --filter SettingsStoreTests` が通ることを確認する
-- [ ] T294 [US3] `Sources/MediaViewerCore/Browser/BrowserModel.swift` に zip ファイルの表示を組み込む（T288〜T290・T292・T293 に依存。FR-095〜098、R46、
+- [X] T294 [US3] `Sources/MediaViewerCore/Browser/BrowserModel.swift` に zip ファイルの表示を組み込む（T288〜T290・T292・T293 に依存。FR-095〜098、R46、
   plan の「変更点（2026-10-23: zip ファイルの表示制御）」）:
   - `public private(set) var showsZipFiles: Bool` を足し、`init` で `settings.viewSettings.showsZipFiles` から読む（保存の正は `SettingsStore` だけ）
   - `public func setShowsZipFiles(_ shows: Bool)`: 同じ値なら何もしない。`settings` の `viewSettings.showsZipFiles` を書く（既存の `sortOrder` の `didSet` と
@@ -2980,10 +2980,10 @@ zip ファイルの表示のケースが通り、既存のテストがすべて�
   - `allFiles`・`reloadCurrentFolder()`・`sortOrder` の `didSet`・`returnToFolder(selecting:)`・検索結果の経路は変えない（表示だけを絞る）
   - `swift test --filter BrowserModelTests`・`--filter BrowserModelArchiveTests`・`--filter BrowserModelSearchTests`・`--filter BrowserModelVideoTests`・
     `--filter BrowserModelFolderTests` が通ることを確認する
-- [ ] T295 [P] [US3] `README.md` の「主な機能」と「使い方（主なショートカット）」に、zip ファイルの表示（既定は非表示。ツールバーの種類フィルタの右・
+- [X] T295 [P] [US3] `README.md` の「主な機能」と「使い方（主なショートカット）」に、zip ファイルの表示（既定は非表示。ツールバーの種類フィルタの右・
   表示形式の左の「zipファイルを表示」ボタン、「表示」メニューの「zipファイルを表示」、⌃⌘Z。設定は保存し、再起動で復元する。オフの間は一覧・選択・
   ファイル操作・フルスクリーンの移動の対象にならない。zip の中を表示中の切り替えでは中の一覧は変わらない）を追記する
-- [ ] T296 [P] [US3] 一覧のスクロール位置を保つための入口を足す（SC-017）:
+- [X] T296 [P] [US3] 一覧のスクロール位置を保つための入口を足す（SC-017）:
   - `Sources/MediaViewerApp/FileList/ListModeView.swift`: `var visibleOrigin: CGPoint { scrollView.contentView.bounds.origin }` と
     `func restoreVisibleOrigin(_ origin: CGPoint)`（`scrollView.contentView.scroll(to:)` の後に `scrollView.reflectScrolledClipView(scrollView.contentView)`。
     行が減って原点が文書の範囲を超える場合は `scrollView.contentView.constrainBoundsRect` に合わせた値にする）を足す。選択・行の高さ・
