@@ -224,6 +224,20 @@ final class ListModeView: NSView {
         tableView.scrollRowToVisible(row)
     }
 
+    /// 一覧の表示範囲の原点（スクロール位置の保持に使う。SC-017）
+    var visibleOrigin: CGPoint {
+        scrollView.contentView.bounds.origin
+    }
+
+    /// 控えておいたスクロール位置へ戻す。行が減って文書の範囲を超える場合は、範囲内に収める
+    func restoreVisibleOrigin(_ origin: CGPoint) {
+        let clipView = scrollView.contentView
+        let proposed = NSRect(origin: origin, size: clipView.bounds.size)
+        let constrained = clipView.constrainBoundsRect(proposed).origin
+        clipView.scroll(to: constrained)
+        scrollView.reflectScrolledClipView(clipView)
+    }
+
     private func addColumn(identifier: String, title: String, width: CGFloat) {
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(identifier))
         column.title = title
