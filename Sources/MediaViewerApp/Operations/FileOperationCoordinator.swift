@@ -26,10 +26,9 @@ final class FileOperationCoordinator {
         await transfer(urls, to: destination, kind: .move)
     }
 
+    /// 複製は元のファイルを変えず、同じフォルダへ「両方残す」で作るため確認しない（FR-018・024）
     func duplicate(_ urls: [URL]) async {
         guard !urls.isEmpty else { return }
-        let operation = FileOperation(kind: .copy, sources: urls)
-        guard await confirmation.confirm(operation, includesFolders: await containsFolder(urls)) else { return }
 
         var result = FileOperationResult()
         for source in urls {
