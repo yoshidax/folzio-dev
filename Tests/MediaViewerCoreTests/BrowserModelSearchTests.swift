@@ -302,6 +302,7 @@ struct BrowserModelSearchTests {
             [ZipFixtureEntry(name: "01.jpg", content: .bytes(Data(count: 16)), method: .stored)],
             to: env.url("photos.zip")
         )
+        env.model.setShowsZipFiles(true)
         await env.model.selectFolder(env.root)
         let zip = try #require(env.model.listing.files.first { $0.name == "photos.zip" })
         await env.model.openItem(zip.url)
@@ -311,6 +312,41 @@ struct BrowserModelSearchTests {
 
         #expect(!env.model.isBrowsingArchive)
         #expect(path(env.model.listing.folder) == path(env.root))
+    }
+
+    // MARK: - zip ファイルの表示の切り替え（FR-098）
+
+    @Test("検索結果の表示中に zip ファイルの表示を切り替えても、結果・選択・プレビューは変わらず設定だけを保存する")
+    func togglingZipVisibilityDuringSearchChangesNothing() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let x = try env.makeResult("b/a.jpg")
+        let y = try env.makeResult("a/z.jpg")
+        env.model.startSearch(pattern(), root: env.root)
+        await send([x, y], env, expecting: 2)
+        env.model.select([x.url], focused: x.url)
+        #expect(await waitUntil { isImagePreview(env.model.preview) })
+
+        let files = env.model.listing.files.map(\.url)
+        let state = env.model.listing.state
+        let totalCount = env.model.listing.search?.totalCount
+        let keyword = env.model.listing.search?.keyword
+        #expect(!env.model.listing.files.contains { $0.kind == .archive })
+
+        for shows in [true, false] {
+            env.model.setShowsZipFiles(shows)
+
+            #expect(env.defaults.object(forKey: "view.showsZipFiles") as? Bool == shows)
+            #expect(env.model.isShowingSearchResults)
+            #expect(env.model.listing.files.map(\.url) == files)
+            #expect(env.model.listing.state == state)
+            #expect(env.model.listing.search?.totalCount == totalCount)
+            #expect(env.model.listing.search?.keyword == keyword)
+            #expect(!env.model.listing.files.contains { $0.kind == .archive })
+            #expect(env.model.selection.selected == [x.url])
+            #expect(env.model.selection.focused == x.url)
+            #expect(isImagePreview(env.model.preview))
+        }
     }
 
     // MARK: - 並べ替え

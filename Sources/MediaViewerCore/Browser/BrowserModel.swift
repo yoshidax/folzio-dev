@@ -9,6 +9,8 @@ public final class BrowserModel {
     public private(set) var preview: PreviewContent
     public private(set) var stopPlaybackSignal = 0
     public private(set) var mediaTypeFilter = MediaTypeFilter()
+    /// zip ファイルの行を一覧に出すか（FR-095）。保存の正は `SettingsStore` の `view.showsZipFiles`
+    public private(set) var showsZipFiles: Bool
     public var screenMaxPixel: Int
     public var playbackRequest: PlaybackOptions { settings.playback }
     /// zip の中を表示中か（FR-069）
@@ -108,6 +110,7 @@ public final class BrowserModel {
         self.archiveReader = archiveReader
         self.searcher = searcher
         self.sortOrder = settings.viewSettings.sortOrder
+        self.showsZipFiles = settings.viewSettings.showsZipFiles
         self.screenMaxPixel = 4096
 
         let folder = settings.viewSettings.lastFolder
@@ -311,6 +314,35 @@ public final class BrowserModel {
         }
     }
 
+    /// zip ファイルの表示を切り替えて保存する（FR-095〜098）。同じ値なら何もしない。
+    /// zip の中を表示中は設定を保存するだけで、一覧・選択・プレビューを変えない（FR-098）。
+    /// それ以外は一覧を作り直し（ディスクは読み直さない）、選択を表示中の行に整理する（FR-097）
+    public func setShowsZipFiles(_ shows: Bool) {
+        guard shows != showsZipFiles else { return }
+        showsZipFiles = shows
+        var viewSettings = settings.viewSettings
+        viewSettings.showsZipFiles = shows
+        settings.viewSettings = viewSettings
+
+        guard listing.archive == nil else { return }
+        switch listing.state {
+        case .loaded, .empty, .noMatches:
+            rebuildListing()
+        case .loading, .denied, .failed:
+            break
+        }
+
+        // 選択がなければ整理するものがない。10,000 件の URL を集合にする費用を省く（SC-017）
+        guard !selection.selected.isEmpty || selection.focused != nil else { return }
+        let restricted = selection.restricted(toVisible: listing.files.map(\.url))
+        if restricted.focused == selection.focused {
+            selection = restricted
+            schedulePrefetch(around: restricted.focused)
+        } else {
+            select(restricted.selected, focused: restricted.focused)
+        }
+    }
+
     public func reloadCurrentFolder() async {
         // 検索結果の表示中はディスクを列挙し直さず、存在しなくなった結果を外すだけにする（FR-087、R38）
         if isShowingSearchResults {
@@ -420,7 +452,9 @@ public final class BrowserModel {
     /// `allFiles`（`..` を含まない）から表示する行と状態を作る。`..` は zip の中では常に、通常のフォルダでは
     /// 戻る先があるときだけ、ここで1回加える（FR-070・077）。検索結果では加えず、検索中で結果がまだなければ `.loading`
     private func rebuildListing() {
-        let filtered = mediaTypeFilter.apply(to: allFiles)
+        // 種類フィルタのあとに zip ファイルの表示を1回だけ通す。`allFiles` は変えない（FR-095、R46）
+        let filtered = ZipFileVisibility(showsZipFiles: showsZipFiles)
+            .apply(to: mediaTypeFilter.apply(to: allFiles))
         if let location = listing.archive {
             listing.files = [Self.parentRow(for: location)] + filtered
         } else {
@@ -432,9 +466,10 @@ public final class BrowserModel {
             return
         }
 
-        // zip ファイル・フォルダ・ディレクトリ・`..` は「メディアがない」の判定で数えない（FR-060）
+        // zip ファイル・フォルダ・ディレクトリ・`..` は「メディアがない」の判定で数えない（FR-060）。
+        // メディアは zip の表示設定に影響されないため `allFiles`、それ以外の行は表示する行から求める（FR-097）
         let hasMedia = allFiles.contains { $0.kind.isMedia }
-        let hasOtherRows = allFiles.contains { !$0.kind.isMedia }
+        let hasOtherRows = filtered.contains { !$0.kind.isMedia }
         if !hasMedia && !hasOtherRows {
             listing.state = .empty
         } else if hasMedia && !filtered.contains(where: { $0.kind.isMedia }) {
