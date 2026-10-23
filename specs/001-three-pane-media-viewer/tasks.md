@@ -340,7 +340,8 @@ quickstart.md の手動シナリオで検証する。
 ## Phase 6: User Story 4 - Finder と同じ感覚でファイルを整理する (Priority: P3)
 
 **Goal**: コピー・名前の変更・ゴミ箱・移動を、右クリックメニュー・ショートカット・ドラッグ&ドロップで実行できる。
-確認は設定で4操作まとめて省略でき、同名の衝突は常に確認する
+確認は設定でコピー・ゴミ箱・お気に入りの削除だけ省略でき、名前の変更と移動は常に確認する。同名の衝突はコピー・移動で常に確認する
+（2026-10-23 の analyze で FR-024・025 を改訂）
 
 **Independent Test**: quickstart.md「US4」の手順を `ops/` で行う
 
@@ -378,6 +379,10 @@ quickstart.md の手動シナリオで検証する。
   - 既定ボタンは「実行」とし、Esc で「キャンセル」にする
   - `suppressionButton`（「今後この確認を表示しない」）がオンなら設定を false に保存する
   - キャンセルした場合は何も実行しない
+  - 注記（2026-10-23 の analyze）: FR-024 の改訂により、確認を省略できるのはコピー・削除・お気に入りの削除だけになり、
+    名前の変更と移動は設定に関わらず常に確認する。このタスクの実装は改訂前の「4操作すべてを省略」に従っているため、
+    別途、名前の変更と移動では設定を無視して確認し、「今後この確認を表示しない」も出さないよう修正が必要。
+    Phase 28 の T300 で実装を追いつかせる（このタスクの記述は履歴として残す）
 - [X] T060 [US4] `Sources/MediaViewerApp/Operations/ConflictPrompt.swift` を作成する:
   - 設定に関わらず、衝突があれば `NSAlert` で「置き換える / 両方残す / 中止」を出す
   - 「残りすべてに適用」のチェックボックスを置く
@@ -386,6 +391,10 @@ quickstart.md の手動シナリオで検証する。
     `NSAlert`）とする
   - 完了後は、対象のフォルダが表示中なら `BrowserModel` に一覧を読み直させる（FR-027）
   - 名前の変更は `validateNewName` の結果に応じて、エラー表示か拡張子変更の確認を挟む
+  - 注記（2026-10-23 の analyze）: FR-024・025 の改訂により、名前の変更と移動は設定に関わらず確認モーダルを出し、
+    名前の変更で既存の名前を指定した場合は衝突ダイアログではなく `validateNewName` のエラーにする。このタスクの
+    実装は改訂前の流れ（全操作で確認を省略し、確認後に衝突判定）のため、別途修正が必要。
+    Phase 28 の T300 で実装を追いつかせる。複製の確認なしは T301（このタスクの記述は履歴として残す）
 - [X] T062 [US4] `Sources/MediaViewerApp/FileList/FileContextMenu.swift` を作成する:
   - contracts の「右クリックメニュー（ファイルリスト）」の11項目を、その順序と名前で作る
     （「開く」は `NSWorkspace.open`、「Finder に表示」は `activateFileViewerSelecting`）
@@ -396,6 +405,9 @@ quickstart.md の手動シナリオで検証する。
   - ⌘D: 同じフォルダへの複製（`.copy` + `.keepBoth`）
   - ⌘Delete: ゴミ箱へ入れる
   - 処理は T061 経由で実行する。編集メニューとファイルメニューに項目を追加する
+  - 注記（2026-10-23 の analyze）: FR-018・024 により、複製は確認モーダルの対象外で、設定にも影響されない。
+    このタスクの実装は `.copy` として T061 の確認を通るため、Phase 28 の T301 で確認を通さない経路に直す
+    （このタスクの記述は履歴として残す）
 - [X] T064 [US4] 名前の変更をその場で編集できるようにする:
   - `Sources/MediaViewerApp/FileList/ListModeView.swift` の名前セルと、`ThumbnailModeView.swift` のセルの名前ラベルを
     Return で編集可能にする
@@ -409,6 +421,10 @@ quickstart.md の手動シナリオで検証する。
 - [X] T066 [US4] `Sources/MediaViewerApp/Settings/SettingsWindowController.swift` に「ファイル操作」区分を追加する。
   チェックボックス「コピー・移動・名前の変更・ゴミ箱に入れる前に確認する」（`fileOps.confirmBeforeExecuting`）を置く。
   T046 がない場合はここで設定ウインドウを新規作成する
+  - 注記（2026-10-23 の analyze）: FR-024 の改訂により、チェックボックスの文言と対象は
+    「コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する（名前の変更と移動は常に確認する）」に変わる。
+    このタスクの実装は改訂前の文言のため、Phase 28 の T300 で修正する（T155 の注記も参照。
+    このタスクの記述は履歴として残す）
 
 **Checkpoint**: US1〜US4。quickstart.md の US4（確認オン・オフの両方）が通る
 
@@ -480,6 +496,8 @@ quickstart.md の手動シナリオで検証する。
   - `huge(count: 10_000)` の `mediaFiles(in:)` と並べ替えが 1 秒以内
   - 1億画素の PNG のデコードが完了し、`DecodedImage.byteCost` がスクリーンサイズ相当であること
   - 連続 100 回のフォーカス移動の後も `DecodedImageCache.totalCost` が 256MB 以下であること
+  - 注記（2026-10-23 の analyze）: SC-001 はこの性能テストで計測する。SC-005（横スクロールなし）・SC-006（キャンセル時に
+    変更が残らない）・SC-007（異常終了 0 回）の手動確認は T080 に含める。完了済みのタスク本文は履歴として変えない
 - [X] T077 起動から前回フォルダの一覧表示までの時間（SC-002: 2 秒以内）と、動画の再生開始までの時間
   （SC-010: 1 秒以内）を、`os_signpost` で計測できるようにする:
   - signpost は `Sources/MediaViewerApp/App/AppDelegate.swift` と `Sources/MediaViewerApp/Preview/VideoPreviewView.swift` に入れる
@@ -491,8 +509,12 @@ quickstart.md の手動シナリオで検証する。
 - [ ] T080 `scripts/make-app.sh` で `.app` を作り、quickstart.md の手動シナリオ（US1〜US6、キーボードだけの操作、異常系）を
   すべて実施して、結果を `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
   （ファイルがなければ作成する）
+  - SC-001・SC-005・SC-006・SC-007: quickstart.md「SC-001〜SC-008 の検証経路」の該当手順を実施する
   - SC-004: ペイン幅とサムネイルサイズをそれぞれ 3 秒以上ドラッグし、画面収録または Instruments で
     100ms 以上の表示停止が 0 回であることを確認する
+  - SC-008: Finder の操作に慣れたユーザー（初見の協力者を含む）が、説明なしでコピー・リネーム・削除・移動の
+    4操作を初回で完了できることを確認する。手順は quickstart.md のファイル操作のシナリオを使い、口頭・文書で
+    操作方法を説明しない。結果（完了／つまずいた箇所）を validation.md に記録する
 
 ---
 
@@ -1466,6 +1488,9 @@ quickstart.md の手動シナリオで検証する。
 - [X] T155 [P] [US1] `Sources/MediaViewerApp/Settings/SettingsWindowController.swift` の確認のチェックボックスの文言を
   「コピー・移動・名前の変更・ゴミ箱に入れる・お気に入りから削除する前に確認する」に変える（contracts/settings.md）。
   保存先のキーと動作は変えない
+  - 注記（2026-10-23 の analyze）: FR-024 の改訂により、文言は「コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する」
+    に変わり、名前の変更と移動は常に確認する（チェックボックスの対象外）。このタスクの実装は改訂前の文言のため、
+    Phase 28 の T300 で修正する（このタスクの記述は履歴として残す）
 - [X] T156 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` に「お気に入り」の見出しと項目を表示する
   （T149・T150・T152・T153・T154 に依存）:
   - コンストラクタに `settings: SettingsStore` と `confirmation: ConfirmationPresenter` を追加する。
@@ -2357,8 +2382,8 @@ zip の中の動画の再生と代表フレームは Phase 21 で行う。Phase 
 ## Phase 25: ファイル名の検索（FR-080〜087・SC-016 追加、US1）
 
 **Purpose**: ⌘F（「ファイル」メニューの「検索…」）で検索のモーダル（シート）を開き、検索キーワード（`*`・`?` のワイルドカード対応）と検索起点ディレクトリで
-ファイル名を検索できるようにする。結果は起点以下のすべての階層の対応メディアファイルを、ファイルリストにフラットな1つの一覧として、見つかった順に
-現在の並べ替えで加える。リスト形式には「場所」列を出し、一覧の上部に検索バーを置く。ツリーでフォルダを選ぶ（選択中の行のクリックを含む）と検索結果の
+ファイル名を検索できるようにする。結果は起点以下のすべての階層の対応メディアファイルを、ファイルリストにフラットな1つの一覧として
+検索の進行に合わせたバッチで加え、表示は現在の並べ替えに従う。リスト形式には「場所」列を出し、一覧の上部に検索バーを置く。ツリーでフォルダを選ぶ（選択中の行のクリックを含む）と検索結果の
 表示を終える（ファイルリストにフォーカスがあるときの Esc でも同じ）。検索結果ではペーストと ⌘↑ を不可にし、ほかのファイル操作は通常のフォルダと同じに行える。
 消えた結果は外し、名前を変更した結果は残す。
 検索の条件・結果・「場所」の並べ替えは保存しない
@@ -2665,7 +2690,7 @@ Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](.
 
 ### Tests for User Story 6
 
-- [ ] T272 [P] [US6] `Tests/MediaViewerCoreTests/PaneLayoutTests.swift` を新規に作る（T274 の前にビルドエラーになることを確認する。R40〜R42・R44、data-model の `PaneLayout`・
+- [X] T272 [P] [US6] `Tests/MediaViewerCoreTests/PaneLayoutTests.swift` を新規に作る（T274 の前にビルドエラーになることを確認する。R40〜R42・R44、data-model の `PaneLayout`・
   `PanePresentation`・`PaneCommands`・`PaneWidths` の表の全行）:
   - `PaneLayout`: `init(soloPane:)` が `nil` → `.all`、`.fileList` → `.fileListOnly`、`.preview` → `.previewOnly`。`soloPane` がその逆（`.all` は `nil`）。
     `toggling(_:)` の 3 × 2 の全組み合わせが data-model の「状態遷移」の表と一致する（例: `.previewOnly.toggling(.fileList) == .fileListOnly`、`.previewOnly.toggling(.preview) == .all`）
@@ -2689,7 +2714,7 @@ Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](.
     全体 1182 → `[220, 581]`（切り替え前と同じ）。1382 → `[220, 581]`（広がった 200 はプレビューが受け取る）。850 → `[220, 529]`（プレビューを 320 にするため、ファイルリストを 308 に詰める）。
     730 → `[168, 409]`（ファイルリストを最小の 240、残りをツリーから詰めて 168）。700（最小幅の合計 722 に届かない）→ `[160, 401]`（両方とも最小幅）。
     保存した幅が `[]`・2要素・`.nan` を含む・`.infinity` を含むときは、全体 1182 で既定の `[220, 581]`
-- [ ] T273 [P] [US6] `Tests/MediaViewerCoreTests/FocusNavigatorTests.swift` に `entryIndex(currentIndex:fileCount:isNavigable:)` のケースを追加する（T275 の前にビルドエラーになることを確認する。
+- [X] T273 [P] [US6] `Tests/MediaViewerCoreTests/FocusNavigatorTests.swift` に `entryIndex(currentIndex:fileCount:isNavigable:)` のケースを追加する（T275 の前にビルドエラーになることを確認する。
   R43、data-model の `entryIndex` の表）。既存の `isNavigable` 付きのケースと同じく `[ListItemKind]` と `kinds[$0].isMedia` で書く:
   - メディアにフォーカス: `[.media(.jpeg), .media(.png)]` で `currentIndex` 0 → 0、1 → 1（選択を変えない）
   - 後ろの最初のメディア: `[.parent, .folder, .media(.jpeg), .archive, .media(.png)]` で 0（先頭の行）→ 2、1 → 2、3 → 4
@@ -2702,7 +2727,7 @@ Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](.
 
 ### Implementation for User Story 6
 
-- [ ] T274 [P] [US6] `Sources/MediaViewerCore/Model/PaneLayout.swift` を新規に作る（R40〜R42・R44、contracts/core-api.md「ペインの表示切り替え」のシグネチャのとおり。T272 を通す）。`AppKit` を import しない:
+- [X] T274 [P] [US6] `Sources/MediaViewerCore/Model/PaneLayout.swift` を新規に作る（R40〜R42・R44、contracts/core-api.md「ペインの表示切り替え」のシグネチャのとおり。T272 を通す）。`AppKit` を import しない:
   - `public enum Pane: Sendable, Equatable, CaseIterable { case tree, fileList, preview }`、`public enum SoloPane: Sendable, Equatable { case fileList, preview }`
   - `public enum PaneLayout: Sendable, Equatable { case all, fileListOnly, previewOnly }` と `init(soloPane:)`・`soloPane`・`toggling(_:)`・`isVisible(_:)`・`focusTarget(afterSwitchingFrom:)`。
     `applyingToolbarSelection(fileListSelected:previewSelected:)` は `(false, false)` → `.all`、`(true, false)` → `.fileListOnly`、`(false, true)` → `.previewOnly`、`(true, true)` は
@@ -2717,15 +2742,15 @@ Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](.
     プレビューの幅 `totalWidth - tree - list - 2 × dividerThickness` が `minimumWidths[2]` に足りなければ、足りない分をファイルリスト（`minimumWidths[1]` まで）、次にツリー
     （`minimumWidths[0]` まで）から引く。`[tree, tree + dividerThickness + list]` を返す
   - 各型のドキュメントコメントに FR 番号（FR-088〜094）と「保存しない。状態の持ち主は `MainSplitViewController` だけ」を書く
-- [ ] T275 [P] [US6] `Sources/MediaViewerCore/Layout/FocusNavigator.swift` に `public static func entryIndex(currentIndex: Int?, fileCount: Int, isNavigable: (Int) -> Bool) -> Int?` を追加する
+- [X] T275 [P] [US6] `Sources/MediaViewerCore/Layout/FocusNavigator.swift` に `public static func entryIndex(currentIndex: Int?, fileCount: Int, isNavigable: (Int) -> Bool) -> Int?` を追加する
   （R43、contracts/core-api.md のドキュメントコメントのとおり。T273 を通す）: `fileCount` が 0 なら nil。`currentIndex` が範囲内なら、その行が `isNavigable` ならそのまま、
   そうでなければ `currentIndex + 1 ..< fileCount` の最初の行、なければ `currentIndex - 1` から先頭へ向かって最初の行。`currentIndex` が nil（範囲外も同じ扱い）なら先頭から最初の行。
   見つからなければ nil。既存の `targetIndex` は変えない
-- [ ] T276 [P] [US6] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` に、隠れたファイルリストの列数の計算に使う2つを公開する（R43、plan の「変更点」）:
+- [X] T276 [P] [US6] `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift` に、隠れたファイルリストの列数の計算に使う2つを公開する（R43、plan の「変更点」）:
   - `var navigationWidth: Double`: 現在の `collectionView.bounds.width` から `sectionInset` の左右を引いた幅（0 未満なら 0）
   - `func columnCount(forWidth width: Double) -> Int`: 現在の `storedThumbnailSize` と `spacing` で `ThumbnailGridLayout.columns(availableWidth: width, …).count` を求め、1 未満なら 1
   - 既存の `private func columnCount()` は `columnCount(forWidth: navigationWidth)` を返すようにし、`currentColumnCount` と通常表示の矢印キーの移動の結果を変えない
-- [ ] T277 [US6] `Sources/MediaViewerApp/FileList/FileListViewController.swift` の隠れたファイルリストの移動を書き換える（R43・R44、data-model の `HiddenListNavigation`。T275・T276 の後）:
+- [X] T277 [US6] `Sources/MediaViewerApp/FileList/FileListViewController.swift` の隠れたファイルリストの移動を書き換える（R43・R44、data-model の `HiddenListNavigation`。T275・T276 の後）:
   - `fullScreenNavigationLayout: FocusLayout?` を `private var hiddenListNavigation: HiddenListNavigation?`（`private struct HiddenListNavigation { let width: Double }`。永続化しない）に置き換える
   - `beginFullScreenNavigation()` → `func beginHiddenListNavigation(selectingEntry: Bool)`: すでに始まっていれば何もしない（プレビューのみ表示からフルスクリーンに入るときに幅を取り直さない）。
     `thumbnailModeView.navigationWidth` を保持する。`selectingEntry` が true なら、フォーカス中の行の添字を `FocusNavigator.entryIndex(currentIndex:fileCount:isNavigable: { files[$0].kind.isMedia })`
@@ -2737,15 +2762,19 @@ Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](.
   - `leaveSearchResults()` の `guard` を `hiddenListNavigation == nil` にする
   - ビルドを保つため、`Sources/MediaViewerApp/App/MainSplitViewController.swift` の3か所の呼び出しを新しい名前にだけ置き換える（`beginHiddenListNavigation(selectingEntry: false)`）。
     `swift build` が通り、フルスクリーンの矢印キーの移動が従来どおり動くことを確かめる
-- [ ] T278 [P] [US6] `Sources/MediaViewerApp/Preview/ImagePreviewView.swift` に `func showMessage(_ text: String)` を追加する（R43）: `showUnavailable(name:reason:)` と同じく
+  - 注記（2026-10-23 の analyze）: FR-093・Edge Cases の改訂により、`beginHiddenListNavigation(selectingEntry: true)` は
+    一覧の状態が `.loading`（検索中を含む）のとき `FocusNavigator.entryIndex` を呼ばず、読み込み完了後も自動選択しない。
+    このタスクの実装は読み込み中でも `entryIndex` を呼ぶため、Phase 28 の T302 で修正する
+    （T273・T275 の `entryIndex` 自体の規則は変更しない。このタスクの記述は履歴として残す）
+- [X] T278 [P] [US6] `Sources/MediaViewerApp/Preview/ImagePreviewView.swift` に `func showMessage(_ text: String)` を追加する（R43）: `showUnavailable(name:reason:)` と同じく
   アニメーションを止めて表示中の画像を消し、スピナーを止めて隠し、`nameLabel` に `text`、`detailLabel` に空文字を入れてメッセージ欄を出す。`setAccessibilityLabel(text)` で読み上げられるようにする
-- [ ] T279 [US6] `Sources/MediaViewerApp/Preview/PreviewViewController.swift` を変える（FR-088・093、spec Edge Cases の「メディアはあるが未選択」、R43・R45。T274・T278 の後）:
+- [X] T279 [US6] `Sources/MediaViewerApp/Preview/PreviewViewController.swift` を変える（FR-088・093、spec Edge Cases の「メディアはあるが未選択」、R43・R45。T274・T278 の後）:
   - `var paneLayout: PaneLayout = .all` と `var isPaneVisible = true` を持ち、どちらも値が変わったときだけ `updateFromModel()` を呼ぶ（保存しない）
   - `observePreview()` の監視に `model.listing` を加える
   - `updateFromModel()` の `.empty`: `paneLayout.showsNoMediaMessage(in: model.listing)` なら `imageView.showMessage("表示するメディアファイルがありません")`、それ以外は従来どおり `showEmpty()`
   - `.video(url)`: `isPaneVisible` が false の間は `VideoPreviewView` を構成せず（`stopVideo()`・`showImageView()`・`imageView.showEmpty()`）、隠れたペインから音声を流さない。
     true に戻ると `updateFromModel()` で従来どおり構成し、自動再生の設定に従う。画像のデコードと先読みは変えない。`togglePlayback()` は動画のビューが隠れている間は何もしないまま
-- [ ] T280 [US6] `Sources/MediaViewerApp/App/MainSplitViewController.swift` に表示状態とその反映を実装する（R41・R43・R44、plan の「変更点」の `MainSplitViewController`。T274・T277・T279 の後）:
+- [X] T280 [US6] `Sources/MediaViewerApp/App/MainSplitViewController.swift` に表示状態とその反映を実装する（R41・R43・R44、plan の「変更点」の `MainSplitViewController`。T274・T277・T279 の後）:
   - プロパティ: `private(set) var paneLayout: PaneLayout = .all`（保存しない）、`private var isFullScreenPresentation = false`（`panesCollapsedForFullScreen` を置き換える。
     `showSearch(_:)` と `validateMenuItem` の参照もこれに置き換える）、`private var appliedPresentation = PanePresentation(layout: .all, isFullScreen: false)`、
     `private var savedPaneWidths: [Double]?`、`private var focusBeforeFullScreen: Pane?`、`var onPaneLayoutChange: ((PaneLayout) -> Void)?`、
@@ -2791,7 +2820,7 @@ Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](.
   - `viewDidAppear` の初回（`applyInitialPositionsIfNeeded()` の前）に、3つの項目がすべて `isCollapsed = false`・`canCollapse = false` であることを確かめ、違えば直す（以前の版で保存された状態への備え）
   - `swift build` が通り、3ペインからのフルスクリーン（⌃⌘F・ダブルクリック・緑のボタン）と解除後のペイン幅が従来どおりであることを確かめる。
     1つのペインの表示中に端の仕切りをドラッグ・ダブルクリックしても、隠したペインが残らず表示状態とずれないことを確かめる（quickstart.md「ペインの表示切り替え」3）
-- [ ] T281 [US6] `Sources/MediaViewerApp/App/MainSplitViewController.swift` に「表示」メニューの項目と、隠したペインに関わる操作の無効化を足す（R40・R42、contracts/keyboard-and-menus.md「ペインの表示切り替え」
+- [X] T281 [US6] `Sources/MediaViewerApp/App/MainSplitViewController.swift` に「表示」メニューの項目と、隠したペインに関わる操作の無効化を足す（R40・R42、contracts/keyboard-and-menus.md「ペインの表示切り替え」
   「メニューバー」。T280 の後）:
   - `installFocusMenuItems()`: 既存の区切り線の直後、「ディレクトリツリーへフォーカス」の前に「ファイルリストのみ表示」（`keyEquivalent: "2"`、`keyEquivalentModifierMask = [.command, .control]`、
     アクション `toggleFileListOnly(_:)`）と「プレビューのみ表示」（`"3"`、同じ修飾キー、`togglePreviewOnly(_:)`）を `target = self` で足す。`@objc func toggleFileListOnly(_:)` は
@@ -2801,20 +2830,21 @@ Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](.
   - `validateMenuItem`: 2つの項目は `paneCommands.canChangeLayout` を返し、`state` を `paneLayout.soloPane` がその側なら `.on`、それ以外は `.off` にする。⌥⌘1〜3 は `canFocus`、
     `focusFavorites` は `canGoToFavorites`、`showSearch` は `canSearch`、`addSelectedFolderToFavorites` は `allowsAddingFavorite && treeViewController.canAddSelectedFolderToFavorites`
   - ⌘↓・⌘↑・ファイル操作の項目は変えない（プレビューのみ表示ではファイルリストがレスポンダーチェーンから外れ、既存の検証で淡色になることを `.app` で確かめる。R42）
-- [ ] T282 [P] [US6] `Sources/MediaViewerApp/App/MainToolbarController.swift` と `Sources/MediaViewerApp/App/MainWindowController.swift` にペインの表示ボタンを足す（R40・R42、
+- [X] T282 [P] [US6] `Sources/MediaViewerApp/App/MainToolbarController.swift` と `Sources/MediaViewerApp/App/MainWindowController.swift` にペインの表示ボタンを足す（R40・R42、
   contracts/keyboard-and-menus.md「ツールバー」。T280 の後。T281 とファイルが重ならない）:
   - `MainToolbarController` の init を `init(fileList:panes: MainSplitViewController, settings:)` にし、`MainWindowController` から `splitViewController` を渡す
-  - 識別子 `paneLayout` の `NSToolbarItemGroup(selectionMode: .selectAny)` を作る。画像は SF Symbols の `list.bullet.rectangle`（アクセシビリティの説明「ファイルリストのみ表示」）と
-    `photo.artframe`（「プレビューのみ表示」）、`labels` とサブ項目の `toolTip` もその2つの項目名、グループの `label`・`toolTip` は「ペイン」。`toolbarDefaultItemIdentifiers` と
-    `toolbarAllowedItemIdentifiers` の先頭（種類フィルタの左）に置く
-  - `func apply(paneLayout: PaneLayout)`: `setSelected(paneLayout.soloPane == .fileList, at: 0)` と `setSelected(paneLayout.soloPane == .preview, at: 1)`。項目を作ったときに `panes.paneLayout` で呼び、
+  - 識別子 `paneLayout` の `NSSegmentedControl`（`selectAny`、セグメント幅 36pt、`segmentStyle = .texturedRounded`）を `NSToolbarItem.view` に置く。画像は SF Symbols の
+    `list.bullet.rectangle`（アクセシビリティの説明「ファイルリストのみ表示」）と `sidebar.right`（「プレビューのみ表示」）、セグメントの `toolTip` とアクセシビリティラベルも
+    その2つの項目名、項目の `label`・`toolTip` は「ペイン」。`toolbarDefaultItemIdentifiers` と `toolbarAllowedItemIdentifiers` の先頭（種類フィルタの左）に置く。
+    種類フィルタ・表示形式も同じ `NSSegmentedControl`（同じ幅・同じ見た目）にそろえる
+  - `func apply(paneLayout: PaneLayout)`: `setSelected(paneLayout.soloPane == .fileList, forSegment: 0)` と `setSelected(paneLayout.soloPane == .preview, forSegment: 1)`。項目を作ったときに `panes.paneLayout` で呼び、
     init で `panes.onPaneLayoutChange = { [weak self] in self?.apply(paneLayout: $0) }` を設定する
-  - アクション: `panes.applyToolbarSelection(fileListSelected: sender.isSelected(at: 0), previewSelected: sender.isSelected(at: 1))`（無効なときと同じ状態のときも `onPaneLayoutChange` で書き戻される）
-  - `NSToolbarItemValidation` に準拠し、`validateToolbarItem(_:)` は項目がペインの表示のグループ自身かその `subitems` のどれかなら `panes.paneCommands.canChangeLayout`、それ以外は true を返す
+  - アクション: `panes.applyToolbarSelection(fileListSelected: sender.isSelected(forSegment: 0), previewSelected: sender.isSelected(forSegment: 1))`（無効なときと同じ状態のときも `onPaneLayoutChange` で書き戻される）
+  - `NSToolbarItemValidation` に準拠し、`validateToolbarItem(_:)` は項目の識別子が `paneLayout` なら `panes.paneCommands.canChangeLayout`、それ以外は true を返す
     （種類フィルタ・表示形式・サイズの有効・無効を変えない）
-- [ ] T283 [P] [US6] `README.md` の「主な機能」と「使い方（主なショートカット）」に、ペインの表示切り替え（ツールバー左端の2つのボタン・⌃⌘2 / ⌃⌘3 と「表示」メニュー、
+- [X] T283 [P] [US6] `README.md` の「主な機能」と「使い方（主なショートカット）」に、ペインの表示切り替え（ツールバー左端の2つのボタン・⌃⌘2 / ⌃⌘3 と「表示」メニュー、
   ツリーは単独で隠せない、プレビューのみ表示の矢印キーと `<` / `>`、メディアがないときのメッセージ、隠したペインへのキーが無効になること、フルスクリーンとの組み合わせ、表示状態は保存しない）を追記する
-- [ ] T284 [P] [US6] `AGENTS.md` の「AppKit UI の不変条件」の `canCollapse` の項を、plan の「変更点」のとおり「通常時は `canCollapse = false`。フルスクリーンとペインの表示切り替えで隠すペインだけ
+- [X] T284 [P] [US6] `AGENTS.md` の「AppKit UI の不変条件」の `canCollapse` の項を、plan の「変更点」のとおり「通常時は `canCollapse = false`。フルスクリーンとペインの表示切り替えで隠すペインだけ
   `canCollapse = true` にしてから `isCollapsed` を設定する」に更新する（R41）。ほかの項目は変えない。
   ファイルは重ならないが、T280 より前か T280 と同じコミットで行う（AGENTS.md の現行の不変条件と実装が食い違う状態をコミットに残さない）
 
@@ -2836,6 +2866,236 @@ Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](.
 
 **Checkpoint**: ツールバーのボタン・「表示」メニュー・⌃⌘2 / ⌃⌘3 で、ファイルリストだけ・プレビューだけの表示に切り替えられ、3つの入口の状態が常に一致する。
 プレビューのみ表示でも矢印キーでファイルを辿れ、隠したペインへの操作は淡色で何もしない。フルスクリーンの解除と3ペインへの復帰で表示状態とペイン幅が元に戻り、表示状態は保存されない
+
+---
+
+## Phase 27: zip ファイルの表示の切り替え（FR-095〜098・SC-017 追加、US3）
+
+**Purpose**: ファイルリストに zip ファイルの行を出すかどうかを、ツールバーの「zipファイルを表示」ボタン・「表示」メニューの項目・⌃⌘Z で
+切り替えられるようにする。既定は非表示で、値は保存し、再起動で復元する（保存された値がない初回起動だけ非表示）。
+状態は `BrowserModel.showsZipFiles` 1つが持ち、`rebuildListing()` が種類フィルタのあとに `ZipFileVisibility` を1回だけ通す。切り替えは
+ディスクを読み直さず（SC-017）、選択は `SelectionState.restricted(toVisible:)` で整理し、zip ファイルだけのフォルダは既存の空のメッセージにする。
+zip の中を表示中の切り替えは設定の保存だけを行い、一覧・選択・プレビュー・表示形式・フルスクリーンを変えない。3つの入口の押下・チェックは
+常に一致し、名前の変更中は無効にする（[spec.md](./spec.md) FR-003・095〜098・SC-017・US3 の受け入れシナリオ 19〜22・Edge Cases、
+[plan.md](./plan.md) の「変更点（2026-10-23: zip ファイルの表示制御）」、[research.md](./research.md) R46・R47、
+[data-model.md](./data-model.md) の `ZipFileVisibility` と「保存する設定」、[contracts/core-api.md](./contracts/core-api.md)「zip ファイルの表示」、
+[contracts/keyboard-and-menus.md](./contracts/keyboard-and-menus.md)「zip ファイルの表示切り替え」・「ツールバー」・「メニューバー」、
+[contracts/settings.md](./contracts/settings.md)）。
+
+**検証ゲート（2026-10-23 の analyze）**: この Phase の実装と検証（T286〜T299）と Phase 28 の修正（T300〜T302）を終えた後、未完了の検証タスク
+T079（Accessibility Inspector）・T080（全体の手動シナリオ）・T085（アイコンの GUI）・T088（プレビューのフィット）・
+T093（サムネイルの追従スクロール）・T285（ペインの表示切り替え）を全体ゲートとして完了し、結果を
+`checklists/validation.md` に記録するまでは、機能全体を完了扱いにしない
+（憲章 原則 III の a11y MUST と AGENTS.md の起動スモークを含む）。
+
+**Independent Test**: `swift test` で `ZipFileVisibilityTests`（新規）・`SettingsStoreTests` の `view.showsZipFiles`・`BrowserModel` の
+zip ファイルの表示のケースが通り、既存のテストがすべて通ること。`.app` で quickstart.md「zip ファイルの表示の切り替え（FR-095〜098）」の 1〜11 を
+確認し、ボタン・メニュー・⌃⌘Z の同期、選択の整理とメディアなしのメッセージ、zip の中を表示中の切り替え、種類フィルタとの組み合わせ、
+再起動での復元、名前の変更中の無効化、一覧のスクロール位置と 0.2 秒以内の反映、ボタンのアクセシビリティラベルが期待どおりであること。
+
+### Tests for User Story 3
+
+- [ ] T286 [P] [US3] `Tests/MediaViewerCoreTests/ZipFileVisibilityTests.swift`（新規、`@Suite("ZipFileVisibility")`）を先に書く
+  （T292 の前にビルドエラーになることを確認する。R46、data-model.md の `ZipFileVisibility`、contracts/core-api.md「zip ファイルの表示」）。
+  `MediaFile` は既存の `MediaTypeFilterTests` の `file(_:in:)` と同じ形のヘルパーをこのファイル内に `private` で置いて作る
+  （`kind` を指定でき、`.media(.jpeg)`・`.archive`・`.folder`・`.directory`・`.parent` を作れるようにする）:
+  - 既定値: `ZipFileVisibility()` の `showsZipFiles == false`、`ZipFileVisibility(showsZipFiles: true)` の `showsZipFiles == true`
+  - false: `[b.zip(.archive), a.jpg(.media(.jpeg)), sub(.folder), inner(.directory), parent(.parent)]` の並びで、`.archive` の行だけが除かれ、
+    残りの並び順が入力と同じ（`[a.jpg, sub, inner, parent]`）
+  - false で `.archive` だけの入力 → 空配列。`.archive` を含まない入力 → 入力と同じ並び（URL で確かめる）。空配列 → 空配列
+  - true: `.archive` を含む入力で入力と完全に一致する（件数・並び順・URL）。`apply(to:)` を呼んでも元の配列が変わらない
+  - 種類フィルタの結果に通しても壊れないこと: `MediaTypeFilter(imagesOnly: true).apply(to:)` の結果に
+    `ZipFileVisibility(showsZipFiles: false).apply(to:)` を通すと、画像の行だけが残り `.archive` も消える（順序は T137 の `apply(to:)` と同じ）
+- [ ] T287 [P] [US3] `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` に `view.showsZipFiles` のケースを先に追加する（T293 の前にビルドエラーに
+  なることを確認する。data-model.md「保存する設定」・contracts/settings.md。既存の `withDefaults` を使う）:
+  - キーがないとき `store.viewSettings.showsZipFiles == false`（初回起動相当）
+  - `defaults.set("yes", forKey: "view.showsZipFiles")` のような Bool でない値でも `false`（既存の `storedBool` と同じ扱い）
+  - `viewSettings.showsZipFiles = true` を書き戻して読み直すと `true`、続けて `false` を書くと `false`
+  - 書き戻しても `displayMode`・`thumbnailSize`・`sortOrder`・`lastFolder`・`showsToolbar` が変わらない
+  - `ViewSettings()` の既定が `showsZipFiles == false` で、`ViewSettings(showsZipFiles: true)` を渡すと `true`
+- [ ] T288 [P] [US3] `Tests/MediaViewerCoreTests/BrowserModelTests.swift` に zip ファイルの表示のケースを先に追加する（T294 の前にビルドエラーに
+  なることを確認する。R46、FR-095・097）。既存の `makeModel(lister:decoder:)`・`file(_:in:)`・`waitUntil`・`FakeLister`（T134 の `setResponse`）を使う:
+  - 既定: 新しい `BrowserModel` の `showsZipFiles == false`。`zip/` に `a.jpg`・`b.zip`・`c.png`・サブフォルダ `sub` を用意して `selectFolder` すると
+    `listing.files.map(\.name) == ["..", "a.jpg", "c.png", "sub"]`（`..` は先頭のまま）
+  - オン: `setShowsZipFiles(true)` で `["..", "a.jpg", "b.zip", "c.png", "sub"]`（現在の並べ替えの位置に戻る）。`FakeLister` の呼び出し回数が増えない
+    （列挙し直さない。SC-017）ことと、`listing.state == .loaded` のままであることを確かめる
+  - オフ: `setShowsZipFiles(false)` で zip の行が `listing.files` から消え、オンに戻すと `setResponse` を呼ばずに同じ並びで戻る
+  - 種類フィルタとの組み合わせ: `MediaTypeFilter(imagesOnly: true)` の状態でオンにすると `["..", "a.jpg", "b.zip", "c.png"]`、オフで `["..", "a.jpg", "c.png"]`
+  - 選択の整理（FR-097。T134 の選択の整理のケースと同じ書き方）: `b.zip` と `a.jpg` を選び `focused = b.zip` でオフ → `selection.selected == [a.jpg]`、
+    `focused == a.jpg`、`waitUntil` で `preview` が `.image` になる。`focused = a.jpg` でオフ → 選択とフォーカスは変わらず、`preview` が `.loading` に戻らない
+  - 選択が残らない: `b.zip` だけを選んでオフ → `selection.selected` は空、`focused == nil`、`preview == .empty`。オンに戻しても選択は空のまま
+  - zip ファイルだけのフォルダ: `..` を除いて zip だけのフォルダでオフ → `listing.state == .empty` で、専用のメッセージの状態（`.noMatches`）にしない。
+    `listing.files` はツリーのルートでなければ `..` だけ、ルートなら空
+  - 同じ値の再設定: 同じ `showsZipFiles` を `setShowsZipFiles` しても `listing` と `selection` が変わらない
+  - 復元: `setShowsZipFiles(true)` の後に同じ `defaults` で新しい `BrowserModel` を作ると `showsZipFiles == true` で始まる
+- [ ] T289 [P] [US3] `Tests/MediaViewerCoreTests/BrowserModelArchiveTests.swift` に zip の中の一覧での切り替えを先に追加する（T294 の前にビルドエラーに
+  なることを確認する。FR-098、R46）。既存の zip のフィクスチャと zip を開くヘルパーを使う:
+  - zip の中の一覧を表示中に `setShowsZipFiles(false)` → `listing.folder`・`listing.archive`・`listing.files`・`selection`・`preview` が変わらず、
+    `defaults` の `view.showsZipFiles` が false になっている（設定だけを保存する）
+  - 続けて ⌘↑ 相当の戻る操作（既存の「上の階層へ」のテストと同じ入口）→ zip ファイルの行が一覧になく、`selection.selected` は空、`focused == nil`、
+    `preview == .empty`（戻り先で zip の行を選ばず、スクロールもしない）
+  - zip の中の一覧には `.archive` の行がないため、オンに戻しても中で表示していた一覧は変わらない
+- [ ] T290 [P] [US3] `Tests/MediaViewerCoreTests/BrowserModelSearchTests.swift` に検索結果の表示中の切り替えを追加する（T294 の前にビルドエラーに
+  なることを確認する。FR-098）:
+  - 検索結果を表示中に `setShowsZipFiles(true)` → `listing.files`・`listing.search`・`selection`・`preview` が変わらず、設定だけが保存される。
+    `setShowsZipFiles(false)` も同様
+  - 検索結果に zip ファイルの行が含まれないこと（既存の検索のテストの期待結果）を、切り替えの前後で確かめる
+- [ ] T291 [P] [US3] `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` に2つを先に追加する（T292・T294 の前にビルドエラーになることを
+  確認し、実装した後に通ることを確認する。SC-017、quickstart.md「性能の検証」）:
+  - `@Test("10,000 件（zip ファイルを混ぜる）への zip ファイルの表示の適用が 0.05 秒以内")`: 既存の種類フィルタの性能テストと同じく
+    `FixtureSets.huge(in:count: 10_000)` を列挙・並べ替えした配列の10件に1件を `.archive` に置き換えた配列（`MediaFile` の複製で `name` を
+    `img_00001.zip` などにしたもの。準備は計測に含めない）を作る。`ZipFileVisibility(showsZipFiles: false).apply(to:)` と
+    `ZipFileVisibility(showsZipFiles: true).apply(to:)` の合計時間を `ContinuousClock` で測り、件数が 9,000・10,000 であることと 0.05 秒以内であることを確かめる
+  - `@Test("10,000 ファイルのフォルダでの zip ファイルの表示の切り替えが 0.2 秒以内")`: 一時フォルダに `FixtureSets.huge` で 10,000 ファイルを作ったあと、
+    10件に1件を zip ファイルに置き換える（`ZipFixtureWriter.write([], to:)` で小さな zip を1つ作り、`FileManager` でコピーする）。実際の
+    `DirectoryLister` と一時の `UserDefaults` スイートの `SettingsStore` で `BrowserModel` を作り、`selectFolder` で一覧が出るまで待つ（準備は計測に含めない）。
+    `setShowsZipFiles(true)` → `setShowsZipFiles(false)` の2回を `ContinuousClock` で測り、1回あたり 0.2 秒以内であることを確かめる（一覧の作り直しと選択の整理を含む）
+
+### Implementation for User Story 3
+
+- [ ] T292 [P] [US3] `Sources/MediaViewerCore/Model/ZipFileVisibility.swift`（新規）に、contracts/core-api.md の
+  `public struct ZipFileVisibility: Sendable, Equatable` を実装する（T286 を通す。FR-095・097、R46）: `public init(showsZipFiles: Bool = false)`、
+  `public var showsZipFiles: Bool`、`public func apply(to files: [MediaFile]) -> [MediaFile]`。true は入力をそのまま返し、false は
+  `files.filter { $0.kind != .archive }` で `.archive` の行だけを除く（並び順を保ち、`.media`・`.folder`・`.directory`・`.parent` は残す）。
+  AppKit を import しない。ドキュメントコメントに FR-095・097 と「適用は `BrowserModel.rebuildListing()` の1か所だけ」「保存しない値型で、永続化は
+  `ViewSettings.showsZipFiles` が持つ」を書く
+- [ ] T293 [P] [US3] 設定に「zipファイルを表示」を足す（T287 を通す。data-model.md の `ZipFileVisibility` と「保存する設定」、contracts/settings.md）:
+  - `Sources/MediaViewerCore/Model/Settings.swift`: `ViewSettings` に `public var showsZipFiles: Bool` を足し、`init` の引数
+    （`showsZipFiles: Bool = false`）と Equatable の自動合成に含める。既存のフィールド・`thumbnailSize` の検証は変えない
+  - `Sources/MediaViewerCore/Settings/SettingsStore.swift`: `Keys.showsZipFiles = "view.showsZipFiles"` を足し、`viewSettings` の読み出しで
+    `storedBool(forKey:) ?? false`、書き戻しで `defaults.set(newValue.showsZipFiles, forKey:)` を足す。`showsToolbar` と同じ経路にする
+  - `swift test --filter SettingsStoreTests` が通ることを確認する
+- [ ] T294 [US3] `Sources/MediaViewerCore/Browser/BrowserModel.swift` に zip ファイルの表示を組み込む（T288〜T290・T292・T293 に依存。FR-095〜098、R46、
+  plan の「変更点（2026-10-23: zip ファイルの表示制御）」）:
+  - `public private(set) var showsZipFiles: Bool` を足し、`init` で `settings.viewSettings.showsZipFiles` から読む（保存の正は `SettingsStore` だけ）
+  - `public func setShowsZipFiles(_ shows: Bool)`: 同じ値なら何もしない。`settings` の `viewSettings.showsZipFiles` を書く（既存の `sortOrder` の `didSet` と
+    同じ書き方）。`listing.archive != nil`（zip の中を表示中）なら設定を書くだけで一覧・選択・プレビューを変えない（FR-098）。それ以外は
+    `setMediaTypeFilter(_:)` と同じく `switch listing.state` の `.loaded`・`.empty`・`.noMatches` で `rebuildListing()` を呼び、
+    `selection.restricted(toVisible: listing.files.map(\.url))` を求める。`focused` が変わらなければ `selection` だけを差し替えて
+    `schedulePrefetch(around:)`、変わるなら `select(_:focused:)`（停止の合図・プレビューの読み直し・先読みは既存の経路。FR-097）
+  - `rebuildListing()`: `mediaTypeFilter.apply(to: allFiles)` の結果に `ZipFileVisibility(showsZipFiles: showsZipFiles).apply(to:)` を通した行を
+    「表示する行」とし、`..` を加える前の表示行を `listing.files` の元にする。状態の判定は `hasMedia` を `allFiles`（列挙済みの全件。メディアは zip の
+    表示設定に影響されない）、`hasOtherRows` を表示する行から求める（zip ファイルだけのフォルダでオフにすると `hasMedia` false・`hasOtherRows` false で
+    `.empty`）。`.noMatches` の条件（`hasMedia` があって表示行にメディアが1件もない）と検索中の `.loading` は変えない
+  - `allFiles`・`reloadCurrentFolder()`・`sortOrder` の `didSet`・`returnToFolder(selecting:)`・検索結果の経路は変えない（表示だけを絞る）
+  - `swift test --filter BrowserModelTests`・`--filter BrowserModelArchiveTests`・`--filter BrowserModelSearchTests`・`--filter BrowserModelVideoTests`・
+    `--filter BrowserModelFolderTests` が通ることを確認する
+- [ ] T295 [P] [US3] `README.md` の「主な機能」と「使い方（主なショートカット）」に、zip ファイルの表示（既定は非表示。ツールバーの種類フィルタの右・
+  表示形式の左の「zipファイルを表示」ボタン、「表示」メニューの「zipファイルを表示」、⌃⌘Z。設定は保存し、再起動で復元する。オフの間は一覧・選択・
+  ファイル操作・フルスクリーンの移動の対象にならない。zip の中を表示中の切り替えでは中の一覧は変わらない）を追記する
+- [ ] T296 [P] [US3] 一覧のスクロール位置を保つための入口を足す（SC-017）:
+  - `Sources/MediaViewerApp/FileList/ListModeView.swift`: `var visibleOrigin: CGPoint { scrollView.contentView.bounds.origin }` と
+    `func restoreVisibleOrigin(_ origin: CGPoint)`（`scrollView.contentView.scroll(to:)` の後に `scrollView.reflectScrolledClipView(scrollView.contentView)`。
+    行が減って原点が文書の範囲を超える場合は `scrollView.contentView.constrainBoundsRect` に合わせた値にする）を足す。選択・行の高さ・
+    `scrollToFocused()` の挙動は変えない
+  - `Sources/MediaViewerApp/FileList/ThumbnailModeView.swift`: 同じ2つを `scrollView` に対して足す。既存の `scrollToFocused()` の
+    `contentView.scroll` と `reflectScrolledClipView` の書き方にそろえる。`navigationWidth`・`columnCount(forWidth:)`（T276）は変えない
+- [ ] T297 [US3] `Sources/MediaViewerApp/FileList/FileListViewController.swift` に zip ファイルの表示の切り替えとスクロール位置の保持を足す
+  （T294・T296 に依存。R47、contracts/keyboard-and-menus.md「zip ファイルの表示切り替え」・「メニューバー」、FR-095〜098）:
+  - `var currentShowsZipFiles: Bool { model.showsZipFiles }`・`var onShowsZipFilesChange: ((Bool) -> Void)?`・`func applyShowsZipFiles(_ shows: Bool)` を足す。
+    `applyMediaTypeFilter(_:)` と同じく `isEditingText` の間は変更せず `onShowsZipFilesChange?(model.showsZipFiles)` で呼び出し元の表示を戻し、
+    それ以外は `model.setShowsZipFiles(shows)` を呼ぶ
+  - `installViewMenuItems()`: 「動画のみ表示」の直後に `NSMenuItem(title: "zipファイルを表示", action: #selector(toggleShowsZipFiles(_:)), keyEquivalent: "z")` を足し、
+    `keyEquivalentModifierMask = [.command, .control]`（⌃⌘Z。⇧⌘Z の「やり直す」と衝突しない）と `target = self` を設定して保持する。
+    `@objc private func toggleShowsZipFiles(_:)` は `applyShowsZipFiles(!model.showsZipFiles)` を呼ぶ
+  - `updateViewMenuState()` に `zipVisibilityMenuItem?.state = model.showsZipFiles ? .on : .off` を足す
+  - `private func observeShowsZipFiles()` を `observeMediaTypeFilter()` と同じ `withObservationTracking` の形で足し（`model.showsZipFiles` を監視）、
+    変わったら `updateViewMenuState()` と `onShowsZipFilesChange?(model.showsZipFiles)` を呼んで監視し直す。メニューのチェックとツールバーの押下は
+    `model.showsZipFiles` から描く（R47）。`viewDidLoad` から開始する
+  - `validateMenuItem(_:)`: `zipVisibilityMenuItem` は `!isEditingText` を返す（ほかの表示メニューの項目の条件は変えない）
+  - スクロール位置の保持（SC-017）: `refresh()` の先頭で、リスト形式なら `listModeView.visibleOrigin`、サムネイル形式なら
+    `thumbnailModeView.visibleOrigin` を控え、一覧を再描画した後に原点が変わっていた場合だけ `restoreVisibleOrigin(_:)` で戻す（T296）。
+    行が消えて原点が文書の範囲を超える場合は末尾に寄せる。既存の種類フィルタ・検索結果・読み込み完了の再描画も同じ経路を通る
+  - `swift build` が通り、quickstart.md「zip ファイルの表示の切り替え」の 3・9（ツールバーが非表示でも ⌃⌘Z が効くこと、名前の変更中の淡色と
+    何も起きないこと）を確認する
+- [ ] T298 [US3] `Sources/MediaViewerApp/App/MainToolbarController.swift` に「zipファイルを表示」のボタンを足す（T297 に依存。R47、
+  contracts/keyboard-and-menus.md「ツールバー」、FR-096）:
+  - `private static let zipVisibilityIdentifier = NSToolbarItem.Identifier("zipVisibility")` を足し、`toolbarDefaultItemIdentifiers` と
+    `toolbarAllowedItemIdentifiers` を `[paneLayout, mediaTypeFilter, zipVisibility, viewMode, thumbnailSize, .flexibleSpace]` の順にする
+    （種類フィルタの右・表示形式の左）
+  - 既存の `makeSegmentedControl(items: [(symbol: "doc.zipper", label: "zipファイルを表示")], trackingMode: .selectAny, action: #selector(zipVisibilitySelected(_:)))`
+    で1セグメントの `NSSegmentedControl`（幅 36pt、`.texturedRounded`）を作り、`makeGroupItem` で `NSToolbarItem` にして `label`・`paletteLabel`・
+    `toolTip` を「zipファイルを表示」にする。`zipVisibilityControl` として保持する。3つのボタングループの見た目・幅・余白はそろえたままにする
+  - `func apply(showsZipFiles: Bool)`: `zipVisibilityControl?.setSelected(showsZipFiles, forSegment: 0)` と `isEnabled = !fileList.isEditingText`。
+    init で `fileList.onShowsZipFilesChange = { [weak self] in self?.apply(showsZipFiles: $0) }` を設定し、項目を作ったときに
+    `fileList.currentShowsZipFiles` で初期表示する
+  - `@objc private func zipVisibilitySelected(_ sender: NSSegmentedControl)`: `fileList.applyShowsZipFiles(sender.isSelected(forSegment: 0))`
+  - `validateToolbarItem(_:)`: `paneLayout` に加えて `zipVisibility` も `!fileList.isEditingText` を返し、`zipVisibilityControl?.isEnabled` をそろえる。
+    ほかの項目の有効・無効は変えない
+
+### Verification for User Story 3
+
+- [ ] T299 [US3] 自動テストと手動確認を行う（T286〜T298 に依存）:
+  - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す。T291 の計測値を記録する（憲章 原則 II・SC-017）
+  - `scripts/make-app.sh` で `.build/MediaViewer.app` を作る。起動しない場合は AGENTS.md「起動しないときの初動」の lldb の手順をユーザーに依頼して例外を
+    止め、ウインドウが表示されてから GUI 確認を依頼する。依頼時は `scripts/make-fixtures.sh ~/MediaViewerFixtures` と quickstart.md
+    「zip ファイルの表示の切り替え（FR-095〜098）」の準備のコマンド（`zip-only/` の作成と確認後の削除）、確認ポイント 1〜11、
+    US3 の受け入れシナリオ 19〜22 を具体的に示す
+  - アクセシビリティ（憲章 原則 III。quickstart.md 11）: Accessibility Inspector で、ツールバーの「zipファイルを表示」ボタンのラベルと押下の状態、
+    「表示」メニューのチェックを確かめ、VoiceOver で読み上げられることを確かめる（既存の画面のラベルの確認は未完了の T079 で行う）
+  - 回帰確認: 種類フィルタ（⇧⌘I / ⇧⌘M・ツールバー・両方オンの挙動）、表示形式（⌘1 / ⌘2）とサムネイルサイズ（⌘+ / ⌘-）、ツールバーの表示（⇧⌘T）、
+    zip の中の閲覧（⌘↓ / ⌘↑・`..`・読み取り専用。旧「zip ファイル（FR-068〜075）」の節は zip ファイルの表示をオンにしてから行う
+    前提も確認する）、検索結果（⌘F）と解除、フルスクリーン中の矢印移動とプレビューのみ表示（`HiddenListNavigation`）、
+    ペインの表示切り替え（⌃⌘2 / ⌃⌘3）、ファイル操作（コピー・名前の変更・ゴミ箱）、外部の変更の反映（FSEvents）が従来どおり動く
+  - 再起動の復元: zip ファイルの表示をオン・オフにして終了し、`defaults read local.my-img-viewer.MediaViewer view.showsZipFiles` と起動後の一覧が
+    一致すること。`defaults delete local.my-img-viewer.MediaViewer view.showsZipFiles` の後の初回起動が非表示であること（FR-003・095・SC-017）
+  - 結果（実行日、OS、確認項目、合否、T291 の計測値、quickstart.md 10 の最大停止時間）を
+    `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+
+**Checkpoint**: ツールバーの「zipファイルを表示」ボタン・「表示」メニュー・⌃⌘Z で zip ファイルの行を出し入れでき、3つの入口の状態が常に一致する。
+既定は非表示で、値を保存して再起動後に復元する。切り替えは一覧を読み直さずに選択を整理し、zip ファイルだけのフォルダは既存の空のメッセージになる。
+zip の中を表示中の切り替えでは中の一覧・選択・プレビューが変わらない
+
+---
+
+## Phase 28: Analyze の指摘の修正（FR-018・024・093）
+
+**Purpose**: 2026-10-23 の analyze で見つかった、実装が改訂後の仕様に追いついていない箇所を直す。完了済みの
+タスクは書き換えず、この Phase で実装と回帰確認を補う（T300〜T302。アプリのコードはこの Phase で変更する）
+
+**Independent Test**: `swift build`・`swift test`・`scripts/check-no-network.sh` が通り、quickstart の US4 と
+「ペインの表示切り替え」10 を確認する
+
+- [ ] T300 [US4] FR-024（CRITICAL）に合わせて確認モーダルを修正する（T059・T061・T066・T155 の注記に対応。
+  T300 は T301 より先に行う）:
+  - `Sources/MediaViewerApp/Operations/ConfirmationPresenter.swift`: `confirm(_:)` に `suppressible: Bool` を足すか、
+    `FileOperation.isRename` / `.isMove` から判断する。名前の変更と移動では `settings.confirmation.confirmBeforeFileOperations`
+    を参照せず常に `NSAlert` を出し、`suppressionButton` を付けない（オンにしても設定を書き換えない）。
+    コピー・ゴミ箱・お気に入りの削除だけが設定で省略でき、そのときだけ「今後この確認を表示しない」を出す
+  - `Sources/MediaViewerApp/Operations/FileOperationCoordinator.swift`: 確認の要否を操作の種類で決める。
+    rename・move は設定が false でも確認し、copy・trash は設定に従う。確認の後に衝突判定を行う現在の順序は変えない
+  - `Sources/MediaViewerApp/Settings/SettingsWindowController.swift`: チェックボックスの文言を
+    「コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する（名前の変更と移動は常に確認する）」にする。
+    保存キーと既定値は変えない
+  - 回帰確認: 設定をオフにして quickstart「US4」の 1〜7 を行い、コピー・削除は確認なし、名前の変更・移動は確認あり、
+    その確認に「今後この確認を表示しない」が出ないこと。設定をオンに戻して 1〜7 が従来どおり通ること
+  - `swift build` と `swift test --filter SettingsStoreTests` を通す。quickstart の結果は T299 と同じく
+    `specs/001-three-pane-media-viewer/checklists/validation.md` に記録する
+- [ ] T301 [US4] FR-018・024（HIGH）に合わせて複製の確認を外す（T063 の注記に対応。T300 の後）:
+  - `Sources/MediaViewerApp/FileList/FileListViewController.swift` の ⌘D の経路を、`FileOperationCoordinator` の
+    確認を通さずに `.copy` + `.keepBoth` の `execute` へ渡す（または `duplicate` 用の確認なしの入口を coordinator に足す）。
+    確認の設定がオン・オフのどちらでも、複製では `NSAlert` を出さない
+  - 同じフォルダへの複製で「名前 2」が作られ、既存のファイルが変わらないこと。連番と衝突の扱いは FR-018 のまま
+  - 回帰確認: quickstart「US4」の 10 を確認オン・オフの両方で行い、どちらも確認モーダルなしで複製されること。
+    コピー・移動の衝突ダイアログ（FR-025）が複製に影響しないこと
+  - `swift build` と `swift test --filter FileOperationServiceTests` を通す
+- [ ] T302 [US6] FR-093（HIGH）に合わせて、読み込み中の自動選択を止める（T277 の注記に対応）:
+  - `Sources/MediaViewerCore/Model/PaneLayout.swift` に `static func shouldAutoSelectEntry(in listing: FolderListing) -> Bool` を足す。
+    `listing.state != .loading` のときだけ true とし、通常の読み込み中と検索中の `.loading` は false にする（data-model の `PaneLayout`）
+  - `Sources/MediaViewerApp/FileList/FileListViewController.swift` の `beginHiddenListNavigation(selectingEntry:)` で、
+    `selectingEntry && PaneLayout.shouldAutoSelectEntry(in: model.listing)` のときだけ `FocusNavigator.entryIndex` を呼ぶ。
+    `.loading` の間は `entryIndex` を呼ばず、`model.select` もしない。読み込み完了後に `entryIndex` をやり直さず、選択は空のままにする
+  - 通常のフォルダの読み込み中と検索中の両方で、プレビューのみ表示に切り替えてから読み込みが終わっても自動選択されず、
+    プレビューが空のままであること。その状態で修飾キーなしの矢印キーを押すと、既存の `targetIndex` の規則で
+    先頭から最初のメディアへ移ること（spec FR-093・Edge Cases）
+  - `Tests/MediaViewerCoreTests/PaneLayoutTests.swift` に `shouldAutoSelectEntry(in:)` のテストを追加する（`.loading` の通常の読み込みと
+    検索中は false、`.loaded`・`.empty`・`.noMatches` は true、`.denied`・`.failed` も true）
+  - `swift test --filter PaneLayoutTests`・`swift test --filter FocusNavigatorTests`・`swift test --filter BrowserModelSearchTests` を通し、
+    quickstart「ペインの表示切り替え」10 の `huge/` の読み込み中と検索中のケースを確認する
+  - `swift build` を通す
+
+**Checkpoint**: FR-024 の確認の範囲・複製の確認なし・FR-093 の読み込み中の自動選択なしが、実装と仕様で一致する。
+完了済みタスクの履歴は変えず、T300〜T302 の結果を `checklists/validation.md` に記録する
 
 ---
 
@@ -2914,8 +3174,19 @@ Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](.
   Phase 18 の種類フィルタのボタングループ、Phase 19 の ⇧⌘F・⌃⌘T、Phase 25 の ⌘F（`showSearch`）と Esc の解除（`leaveSearchResults`）に依存する。Phase 25 の T271 とコミットを済ませ、
   未コミットの仕様文書の変更（2026-10-23 のペインの表示切り替えの追加）もコミットしてから着手する。T272・T273（テスト）→ T274（`PaneLayout`）・T275（`FocusNavigator`）→
   T276（`ThumbnailModeView`）→ T277（`FileListViewController`）→ T278（`ImagePreviewView`）→ T279（`PreviewViewController`）→ T280 → T281（同じ `MainSplitViewController.swift`）・
-  T282（ツールバー）の順に進め、T285 は最後に行う。T283（README）はいつでも並行できる。T284（AGENTS.md）は T280 より前か、T280 と同じコミットで行う
+  T282（ツールバー）の順に進める。T285 は Phase 27 の後に全体の検証ゲートとして行う（2026-10-23 の analyze）。T283（README）はいつでも並行できる。T284（AGENTS.md）は T280 より前か、T280 と同じコミットで行う
   （T280 の折りたたみが AGENTS.md の現行の `canCollapse` の不変条件と食い違う状態をコミットに残さない）
+- **zip ファイルの表示の切り替え (Phase 27)**: FR-095〜098・SC-017 の追加作業。Phase 18 の `MediaTypeFilter`・`rebuildListing()`・`.noMatches`、
+  Phase 20 の `.archive` の行と zip の中の一覧、Phase 25 の検索結果、Phase 16 の `SettingsStore` と `MainToolbarController` のボタングループ、
+  Phase 26 のツールバーの `paneLayout` の項目に依存する。Phase 26 の実装（T272〜T284）とコミットを済ませ、未コミットの仕様文書の変更（2026-10-23 の zip ファイルの
+  表示の追加）もコミットしてから着手する（T285 は待たない。T285 とほかの未完了の検証は T286〜T299 の後の全体ゲートで行う）。T286〜T291（テスト）→ T292（`ZipFileVisibility`）・T293（設定）→ T294（`BrowserModel`）→ T296（一覧の原点）→
+  T297（`FileListViewController`）→ T298（`MainToolbarController`）の順に進め、T299 は最後に行う。T286 は T292 の前、T287 は T293 の前、T288〜T290 は
+  T294 の前、T291 は T292・T294 の後に通す。T295（README）はいつでも並行できる
+- **Analyze の指摘の修正 (Phase 28)**: FR-018・024・093 の実装を仕様に合わせる追加作業。US4 の `ConfirmationPresenter`・
+  `FileOperationCoordinator`・`FileListViewController`、US6 の `beginHiddenListNavigation` に依存する。Phase 27 の実装と
+  コミットを済ませてから着手する。T300（確認の範囲）→ T301（複製の確認なし）→ T302（`.loading` のガード）の順に進める。
+  T301 は T300 の `FileOperationCoordinator` の入口を使い、T302 は T301 と同じ `FileListViewController.swift` を
+  編集するため直列にする。T300〜T302 の後の全体ゲートで T285・T299 とともに手動確認する
 
 ### User Story Dependencies
 
@@ -2994,6 +3265,13 @@ Complexity Tracking、[research.md](./research.md) R34〜R39、[data-model.md](.
   呼び出しの名前の置き換えを含む）、T279 は T274・T278 の後、T280 は T277・T279 の後に行う。T281 と T280 は同じ `MainSplitViewController.swift` を編集するため直列にする。
   T282（`MainToolbarController.swift`・`MainWindowController.swift`）は T280 の後に T281 と並行できる。T283（`README.md`）・T284（`AGENTS.md`）は他とファイルが重ならないが、T284 は T280 より前か同じコミットにする。
   worktree で並列化する場合も、`MainSplitViewController.swift` を編集する T277（呼び出しの置き換え）・T280・T281 は直列にする
+- zip ファイルの表示の切り替え: T286（`ZipFileVisibilityTests.swift`）・T287（`SettingsStoreTests.swift`）・T288（`BrowserModelTests.swift`）・
+  T289（`BrowserModelArchiveTests.swift`）・T290（`BrowserModelSearchTests.swift`）・T291（`PerformanceBaselineTests.swift`）はファイルが重ならないため並行できる
+  （いずれも実装より先に書けるが、`ZipFileVisibility`・`ViewSettings.showsZipFiles`・`BrowserModel.showsZipFiles` を参照するため、T292〜T294 まではビルドできない）。
+  T292（`ZipFileVisibility.swift`）と T293（`Settings.swift`・`SettingsStore.swift`）は並行できる。T294 は T288〜T293 の後に行う。
+  T296（`ListModeView.swift`・`ThumbnailModeView.swift`）は Core のタスクと並行できる。T297（`FileListViewController.swift`）は T294・T296 の後、
+  T298（`MainToolbarController.swift`）は T297 の後に行う（`applyShowsZipFiles(_:)`・`currentShowsZipFiles`・`onShowsZipFilesChange` を呼ぶため、
+  T297 と T298 は並行しない）。T295（`README.md`）は他とファイルが重ならないため、いつでも並行できる
 - US1 の完了後、US2・US3・US4 はファイルが重ならない範囲で並行できる。ただし `ListModeView.swift` と
   `FileListViewController.swift` は US2・US3・US4 が共有するので、同時に編集しない
 
@@ -3051,11 +3329,17 @@ Task: "T033 FitCalculatorTests"
 21. ツリーのフォルダのゴミ箱 → ツリーの通常のフォルダを ⌘⌫ と右クリックメニューからゴミ箱に入れられ、表示中なら親フォルダへ移る（FR-079）
 22. ファイル名の検索 → ⌘F のモーダルでキーワード（`*`・`?`）と起点を入れて検索し、結果をファイルリストにフラットに見て操作できる。ツリーでフォルダを選ぶと戻る（FR-080〜087、SC-016）
 23. ペインの表示切り替え → ツールバー・「表示」メニュー・⌃⌘2 / ⌃⌘3 でファイルリストだけ・プレビューだけの表示に切り替え、プレビューのみ表示でも矢印キーでファイルを辿れる（FR-088〜094）
+24. zip ファイルの表示 → ツールバー・「表示」メニュー・⌃⌘Z で zip ファイルの行を出し入れでき、既定は非表示で再起動後も復元される（FR-095〜098、SC-017）
+25. Analyze の指摘の修正 → 名前の変更・移動は常に確認し、複製は確認なし、プレビューのみ表示の読み込み中は自動選択しない（FR-018・024・093）
 
 ---
 
 ## Notes
 
+- 未完了の検証タスク T079・T080・T085・T088・T093・T285 は、Phase 27 の T286〜T299 と Phase 28 の T300〜T302 の後に
+  まとめて完了し、`checklists/validation.md` に記録するまで完了扱いにしない（2026-10-23 の analyze。憲章 原則 III・AGENTS.md の起動スモーク）
+- 2026-10-23 の analyze の CRITICAL・HIGH は Phase 28 の T300〜T302 で解消する。完了済みの T059・T061・T063・T066・T155・T277 は
+  書き換えず、注記から T300〜T302 を参照する（履歴を残す）
 - [P] tasks = different files, no dependencies
 - [Story] label maps task to specific user story for traceability
 - 性能に影響する変更の PR には、T076・T077 の計測結果を記載する（憲章 原則 II）
@@ -3117,4 +3401,11 @@ Task: "T033 FitCalculatorTests"
   1つのペインの表示中は分割ビューの自動保存を止め、3ペインに戻すときは `PaneWidths` で仕切りの位置を決める。フルスクリーンの矢印キーの移動（Phase 13 の T097・T098）は
   「列数のスナップショット」から「幅のスナップショット」（`HiddenListNavigation`）に置き換え、プレビューのみ表示と共有する。ファイルリストのみ表示の間は隠れたプレビューで動画を再生しない。
   表示状態は保存せず、`BrowserModel`・保存キーは変えない（research.md R40〜R45）
+- FR-095〜098（2026-10-23）により、zip ファイルの行を出すかどうかは `ViewSettings.showsZipFiles`（キー `view.showsZipFiles`、既定 false）に保存し、
+  一覧への適用は `ZipFileVisibility` 1か所で行う。`BrowserModel.rebuildListing()` が `mediaTypeFilter.apply(to:)` の結果に通し、`allFiles` は変えないため、
+  切り替えは再列挙・デコード・キャッシュの破棄を伴わない（SC-017）。選択は `SelectionState.restricted(toVisible:)` で整理し、フォーカスが移るときだけ
+  `select` を通してプレビューの読み直しと動画の停止（FR-034）を既存の経路で起こす。zip の中を表示中の切り替えは設定の保存だけを行い、一覧・選択・
+  プレビューを変えない（FR-098）。状態の判定は表示する行で行い（`hasMedia` は列挙済みの全件、`hasOtherRows` は表示する行）、zip ファイルだけのフォルダは
+  既存の空のメッセージにする。専用のメッセージは設けない。3つの入口（ツールバー・メニュー・⌃⌘Z）は `BrowserModel.showsZipFiles` を共有し、名前の変更中は
+  無効にする（research.md R46・R47）
 - Commit after each task or logical group

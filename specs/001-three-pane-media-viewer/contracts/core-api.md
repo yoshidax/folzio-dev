@@ -453,7 +453,7 @@ public struct FocusNavigator {
 
     /// プレビューのみ表示に切り替えたときの最初のファイル（FR-093）。currentIndex の行が isNavigable ならそのまま。
     /// そうでなければ後ろの最初の isNavigable な行、後ろになければ前の最も近い行。currentIndex が nil なら先頭から最初の行。
-    /// isNavigable な行がなければ nil
+    /// 一覧が .loading のときは呼ばない（読み込み完了後も自動選択しない。FR-093・Edge Cases）。isNavigable な行がなければ nil
     public static func entryIndex(
         currentIndex: Int?,
         fileCount: Int,
@@ -471,7 +471,8 @@ public struct FocusNavigator {
 - フルスクリーンとプレビューのみ表示（`FileListViewController` の隠れたファイルリストの移動）は `isNavigable` に `files[i].kind.isMedia` を渡す。
   通常表示は `isNavigable` なしの関数を使い、メディア以外の行にも止まる
 - `entryIndex` は、プレビューのみ表示に切り替えたときだけ `FileListViewController` が呼び、結果がフォーカス中の行と違えば
-  `BrowserModel.select([url], focused: url)` に渡す。nil なら選択を変えない
+  `BrowserModel.select([url], focused: url)` に渡す。nil なら選択を変えない。一覧の状態が `.loading` のときは呼ばず、
+  読み込みが終わっても自動選択しない（FR-093・Edge Cases）
 
 ## ペインの表示切り替え（FR-088〜094、research.md R40〜R44）
 
@@ -503,6 +504,8 @@ public enum PaneLayout: Sendable, Equatable {
     public func focusTarget(afterSwitchingFrom focused: Pane?) -> Pane?
     /// プレビューのみ表示で、読み込み中でなく、表示中の一覧にメディアが1件もないとき true（FR-093）
     public func showsNoMediaMessage(in listing: FolderListing) -> Bool
+    /// プレビューのみ表示へ切り替えたときに最初のファイルを選んでよいか。.loading（通常の読み込み中・検索中）は false（FR-093）
+    public static func shouldAutoSelectEntry(in listing: FolderListing) -> Bool
 }
 
 public struct PanePresentation: Sendable, Equatable {
@@ -540,6 +543,30 @@ public enum PaneWidths {
 - 状態の持ち主は `MainSplitViewController`（`paneLayout`）だけ。`BrowserModel` には持たせない（一覧・選択・プレビューの状態はペインの表示に関わらず同じ）
 - 保存しない（`SettingsStore` に書かない）。起動のたびに `.all` で始まる
 - UI はこれらの値をメニューの検証・ツールバーの選択・`NSSplitViewItem` の折りたたみ・Tab の巡回・キーのモニタの有無に写すだけにする
+
+## zip ファイルの表示（FR-095〜098、research.md R46・R47）
+
+```swift
+public struct ZipFileVisibility: Sendable, Equatable {
+    public init(showsZipFiles: Bool = false)
+    public var showsZipFiles: Bool
+    /// false のとき kind == .archive の行だけを除く（並び順を保ち、メディア・フォルダ・zip の中のディレクトリ・`..` は残す）。
+    /// true は入力をそのまま返す
+    public func apply(to files: [MediaFile]) -> [MediaFile]
+}
+
+// BrowserModel
+public private(set) var showsZipFiles: Bool    // 起動時に ViewSettings.showsZipFiles から読む
+public func setShowsZipFiles(_ shows: Bool)    // 値を保存 → 一覧の作り直し → restricted(toVisible:) で選択を整理
+
+// ViewSettings
+public var showsZipFiles: Bool                 // 既定 false。キーは view.showsZipFiles
+```
+
+- 適用は `BrowserModel.rebuildListing()` の1か所だけ。`mediaTypeFilter.apply(to:)` のあとに通し、`allFiles`（列挙済みの全件）は変えない
+- zip の中を表示中の `setShowsZipFiles` は設定を保存するだけで、一覧・選択・プレビューを変えない（FR-098）。検索結果の表示中は zip ファイルの行がないため結果は変わらない
+- 一覧の状態（`.empty` など）は表示する行で判定する。zip ファイルだけのフォルダを非表示にすると `.empty`
+- UI はツールバーの押下・メニューのチェック・`NSTextView` 中の無効化を写すだけで、絞り込みの判断を持たない
 
 ## zip（FR-068〜075、research.md R22〜R27）
 
@@ -630,11 +657,14 @@ public struct ListItemCommands: Sendable {
 ## ファイル操作
 
 ```swift
+// 確認モーダルの省略は copy・trash とお気に入りの削除だけ。rename・move は設定に関わらず常に確認する（FR-024）。
+// duplicate（同じフォルダへの複製）は確認モーダルの対象外で、設定にも影響されない（FR-018・024）
 public protocol FileOperating: Sendable {
-    func conflicts(for operation: FileOperation) -> [URL]       // 操作先に同名がある元ファイル
+    func conflicts(for operation: FileOperation) -> [URL]       // copy・move の操作先に同名がある元ファイル（rename は validateNewName で拒否する）
     func execute(_ operation: FileOperation, resolution: ConflictResolution) async -> FileOperationResult
 }
 
+/// copy・move の衝突だけに使う。rename の既存名は NameValidation.invalid として扱う（FR-025）
 public enum ConflictResolution: Sendable { case replace, keepBoth, abort }
 
 public enum NameValidation { case ok, needsExtensionChangeConfirmation, invalid(reason: String) }
@@ -656,6 +686,7 @@ public struct SettingsStore {
     public var favorites: FavoriteFolders { get nonmutating set }   // キー favorites.paths（FR-066）
 }
 // ViewSettings.showsToolbar: Bool（既定 false）。キーは view.showsToolbar
+// ViewSettings.showsZipFiles: Bool（既定 false）。キーは view.showsZipFiles。値がない・Bool でない場合は false（FR-095）
 // favorites: 値がない・配列でない場合は空。文字列でない要素・空文字・相対パスは捨て、重複は先勝ちで除く
 ```
 

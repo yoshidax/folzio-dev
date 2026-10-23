@@ -1,6 +1,6 @@
 # Data Model: 3ペイン型メディアビューア
 
-**Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Date**: 2026-10-19（zip 対応・ファイルリストのフォルダ・ツリーのフォルダのゴミ箱: 2026-10-21）
+**Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Date**: 2026-10-19（zip ファイルの表示制御: 2026-10-23、zip 対応・ファイルリストのフォルダ・ツリーのフォルダのゴミ箱: 2026-10-21）
 
 型はすべて `MediaViewerCore` に置き、AppKit に依存しない。永続化するのは表示設定と動作オプションだけで
 （[contracts/settings.md](./contracts/settings.md)）、それ以外はファイルシステムから都度読み出す。
@@ -317,6 +317,28 @@
 - `apply(to:)` は `kind` が `.media` 以外の行（zip ファイル・ディレクトリ・`..`）を常に残す（FR-056）
 - ツールバーのセグメントの押された状態とメニューのチェックは、各フィールドの値をそのまま映す
   （両方オンでもボタンは両方押された見た目のまま）
+- zip ファイルの表示（`ZipFileVisibility`）とは独立した設定で、`BrowserModel.rebuildListing()` が種類フィルタを通したあとに zip の表示を適用する（R46）
+
+## ZipFileVisibility（zip ファイルの表示設定・`ViewSettings` で永続化）
+
+ファイルリストに zip ファイル（`.archive` の行）を出すかどうか（FR-095、research.md R46）。
+`ViewSettings.showsZipFiles` として保存し、`BrowserModel` が1つだけ持つ。ツールバーのボタン・「表示」メニュー・⌃⌘Z は
+この値を共有する（research.md R47）。
+
+| フィールド | 型 | 既定値 | 説明 |
+|------------|----|--------|------|
+| `showsZipFiles` | Bool | false | 「zipファイルを表示」。オンのときだけ zip ファイルの行を出す。保存する |
+
+- `apply(to:)` は `showsZipFiles` が true なら入力をそのまま返し、false なら `kind == .archive` の行だけを除く。並び順を保ち、
+  `.media`・`.folder`・`.directory`・`.parent` の行は残す
+- 適用するのは通常のフォルダの一覧だけ。zip の中の一覧と検索結果には `.archive` の行がないため結果は変わらない（FR-095・098）
+- 切り替えで非表示になった選択は `SelectionState.restricted(toVisible:)` で整理する（FR-097。種類フィルタと同じ表）
+- zip の中を表示中の切り替えは値を保存するだけで、一覧・選択・プレビュー・表示形式・フルスクリーンを変えない。`..` / ⌘↑ で戻った先では
+  zip ファイルの行が表示されないため、行の選択もスクロールも行わない（FR-098）
+- 一覧の状態は表示する行で判定する。`hasMedia` は列挙済みの全件（メディアは zip の表示設定に影響されない）、`hasOtherRows` は表示する行から求める。
+  zip ファイルだけのフォルダ（`..` を除く）を非表示にすると `.empty` になり、既存の空のメッセージを出す
+- 値は `SettingsStore` のキー `view.showsZipFiles` に保存し、キーがない・Bool でない場合は false（初回起動は非表示）。値を戻しても
+  外した選択は選択に戻らない（種類フィルタと同じ）
 
 ## SortOrder
 
@@ -409,11 +431,12 @@
 |------------|------|
 | `currentIndex` の行がメディア | `currentIndex`（選択を変えない） |
 | `currentIndex` の行がメディア以外（フォルダ・zip ファイル・zip の中のディレクトリ・`..`） | その行より後ろの最初のメディア。後ろになければ、前にある最も近いメディア |
-| `currentIndex` が `nil`（未選択） | 先頭から最初のメディア |
+| 一覧が読み込み済みで `currentIndex` が `nil`（未選択） | 先頭から最初のメディア |
 | メディアが1件もない・空リスト | `nil`（選択を変えず、プレビューにメッセージを出す） |
 
-- プレビューのみ表示に切り替えたときにだけ使う。その後に選択がなくなっても（読み込み中に切り替えた、種類フィルタで非表示になった、外部で削除された）
-  選び直さない。メディアがあれば `showsNoMediaMessage` は false でプレビューは空のまま。次の矢印キーは `targetIndex(…isNavigable:)` の
+- プレビューのみ表示に切り替えたときにだけ使う。一覧の状態が `.loading` のときは `entryIndex` を呼ばず、読み込みが終わっても
+  自動選択しない（spec FR-093・Edge Cases）。その後に選択がなくなっても（種類フィルタで非表示になった、外部で削除された）選び直さない。
+  メディアがあれば `showsNoMediaMessage` は false でプレビューは空のまま。次の矢印キーは `targetIndex(…isNavigable:)` の
   `currentIndex` が `nil` の規則で先頭から最初のメディアへ移る（spec Edge Cases、research.md R43）
 
 ## HiddenListNavigation（ファイルリストを隠している間の矢印キーの移動・永続化しない）
@@ -481,6 +504,11 @@
 
 `showsNoMediaMessage(in listing: FolderListing) -> Bool`（FR-093）: `self == .previewOnly` かつ `listing.state != .loading` かつ
 `listing.files` にメディアの行（`kind.isMedia`）が1件もないとき true。プレビューに「表示するメディアファイルがありません」を出す
+
+`static func shouldAutoSelectEntry(in listing: FolderListing) -> Bool`（FR-093）: `listing.state != .loading` のとき true。`.loading`（通常の読み込み中と
+検索中を含む）のとき false とし、プレビューのみ表示へ切り替えたときに `FocusNavigator.entryIndex` を呼ばず、読み込み完了後も自動選択しない。
+`FileListViewController.beginHiddenListNavigation(selectingEntry:)` は `selectingEntry && PaneLayout.shouldAutoSelectEntry(in: model.listing)`
+のときだけ最初のファイルを選ぶ（`PaneLayoutTests` で検証する）
 
 ## PanePresentation（実際に表示するペイン・永続化しない）
 
@@ -561,6 +589,7 @@ empty ──(focused 設定)──→ loading ──→ image(DecodedImage) / an
 | `sortOrder` | SortOrder | 名前の昇順 | FR-012 |
 | `lastFolder` | URL? | ホーム | 存在しない場合はホームに戻す（FR-003） |
 | `showsToolbar` | Bool | false | 値がない・不正な型の場合は false（FR-003・049） |
+| `showsZipFiles` | Bool | false | 値がない・不正な型の場合は false（FR-003・095）。zip ファイルの行を出すかどうか。`ZipFileVisibility` に対応する |
 | ペイン幅 | （分割ビューの自動保存） | 220 / 360 / 残り | 最小幅 160 / 240 / 320 pt（FR-002）。1つのペインだけを表示している間は自動保存を止め、3ペインの幅だけを保存する（R41） |
 
 ## FileListChrome（下部バーとツールバーのスライダー・永続化しない）
@@ -585,7 +614,7 @@ empty ──(focused 設定)──→ loading ──→ image(DecodedImage) / an
 |------------|----|--------|------|
 | `autoplay` | Bool | true | FR-031・032 |
 | `loop` | Bool | true | FR-031・032 |
-| `confirmBeforeFileOperations` | Bool | true | FR-022〜024・064（false の場合は4操作すべてとお気に入りの削除で確認を省略する） |
+| `confirmBeforeFileOperations` | Bool | true | FR-022〜024・064（false の場合はコピー・削除・お気に入りの削除で確認を省略する。名前の変更と移動は常に確認する） |
 
 ## FileOperation（ファイル操作）
 
@@ -598,9 +627,14 @@ empty ──(focused 設定)──→ loading ──→ image(DecodedImage) / an
 **検証規則**:
 - move: 移動先が元のフォルダと同じ場合は何もしない。フォルダを自分自身やその配下へ移動しようとした場合は拒否する
 - rename: 空の名前、`/` または `:` を含む名前、先頭が `.` の名前、既存の名前（大文字小文字の違いのみも含む）は拒否する。
-  拡張子が変わる場合は確認を求める（[research.md](./research.md) R10）
+  既存の名前は衝突ダイアログ（FR-025）の対象にせず、名前の検証エラーとして扱う。拡張子が変わる場合は確認を求める
+  （[research.md](./research.md) R10）
+- copy・move: 操作先に同名がある場合は、確認モーダル設定に関わらず衝突ダイアログ（FR-025）を出す。rename では出さない
 
-**実行の流れ**:
+**実行の流れ**: 確認モーダルは名前の変更と移動では設定に関わらず表示し、コピーと削除では設定で省略できる
+（FR-024）。複製は確認モーダルを通さず、`FileOperationCoordinator` から直接 `execute` に渡す（同じフォルダへの
+`.copy` + `.keepBoth` でも、確認の設定を参照しない）。衝突判定は copy・move だけを行い、rename は
+`validateNewName` で既存名を拒否する（FR-025）。
 
 ```text
 requested ─(確認 ON)→ awaitingConfirmation ─(キャンセル)→ cancelled（ファイルシステムは変更しない: FR-022）
