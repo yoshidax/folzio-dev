@@ -25,7 +25,7 @@ final class SettingsWindowController: NSWindowController {
             action: nil
         )
         let confirmFileOperationsCheckbox = NSButton(
-            checkboxWithTitle: "コピー・移動・名前の変更・ゴミ箱に入れる・お気に入りから削除する前に確認する",
+            checkboxWithTitle: "コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する（名前の変更と移動は常に確認する）",
             target: nil,
             action: nil
         )
