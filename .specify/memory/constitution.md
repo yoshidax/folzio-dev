@@ -1,3 +1,14 @@
+<!--
+Sync Impact Report
+- Version: 1.1.0 → 1.2.0（MINOR: 「仕様の管理」の節を追加）
+- 変更理由: 追加要件を 001 の spec.md へ積み増した結果、spec.md が肥大化し読めなくなったため、
+  仕様の持ち方を「領域別の Living spec + 変更ごとの feature ディレクトリ」に改めた
+- 影響を受ける文書:
+  - specs/001-three-pane-media-viewer/: 凍結済み（spec.md と contracts の冒頭に移行済みの注記）
+  - specs/product/: 新設。現在の仕様の正本
+  - AGENTS.md・README.md: 正本の場所を specs/product/ に更新
+  - .specify/workflow-src/sdd-increment*.yml: 001 への clarify を前提にしているため、要追従（未対応）
+-->
 # my_img_viewer Constitution
 
 ## Core Principles
@@ -96,6 +107,18 @@
   - 新しい操作にキーボード手段があること（原則 III）
   - 外部通信が追加されていないこと（原則 I）
 
+## 仕様の管理
+
+- 現在の仕様の正本は `specs/product/` の領域別のファイル（Living spec）とする。
+  横断の契約は `specs/product/contracts/` に置く。
+- 新しい要件・変更は、`/speckit-specify` で新しい feature ディレクトリ（`specs/NNN-xxx/`）を作って扱う。
+  完了した feature ディレクトリの spec.md へ要件を追加してはならない（MUST NOT）。
+- feature の spec.md には変更点だけを書き、既存の要件は `specs/product/` の ID で参照する。
+  plan・tasks・analyze・converge は、feature の spec.md と、参照している `specs/product/` の領域をあわせて入力とする。
+- feature の実装と検証が終わったら、変更点を `specs/product/` の該当する領域へ反映し、その feature ディレクトリは
+  凍結する（以後は実装の経緯の記録として扱い、更新しない）（MUST）。
+- FR・SC などの ID は全領域で一意とし、振り直しも再利用もしない。ID の付け方は `specs/product/README.md` に従う。
+
 ## Governance
 
 - 本憲章は、プロジェクトの他のすべての慣行・ガイドラインに優先する。
@@ -110,4 +133,4 @@
   憲章と実態が乖離した場合は、実装を直すか憲章を改定するかのいずれかを選び、
   放置してはならない（MUST NOT）。
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-19 | **Last Amended**: 2026-10-19
+**Version**: 1.2.0 | **Ratified**: 2026-10-19 | **Last Amended**: 2026-10-24

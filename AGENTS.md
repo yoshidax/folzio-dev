@@ -1,7 +1,8 @@
 # MediaViewer — Agent Notes
 
 このリポジトリ固有のルールです。全体の原則はグローバルの `AGENTS.md` に従います。
-仕様・設計の正本は `.specify/memory/constitution.md` と `specs/001-three-pane-media-viewer/` です。
+仕様の正本は `specs/product/`（領域別の Living spec）、仕様の運用ルールは `.specify/memory/constitution.md` の「仕様の管理」です。
+`specs/001-three-pane-media-viewer/` は凍結した実装の記録です。
 
 ## プロジェクト概要
 
@@ -9,8 +10,10 @@
 - `MediaViewerCore` は AppKit を import しない。判断ロジックは Core、描画と入力は `MediaViewerApp` に置く
 - デコード・ディレクトリ列挙・ファイル操作を UI スレッドで行わない
 - `URLSession` / `Network` / `NWConnection` などのネットワーク API を使わない
-- 仕様文書は承認済み。`tasks.md` のチェック更新と、タスクで明示された追記（例: T077 の quickstart）以外は変更しない
-- 進捗は `specs/001-three-pane-media-viewer/tasks.md` を正とする
+- 新しい要件は新しい feature ディレクトリ（`specs/NNN-xxx/`）で扱い、実装と検証が終わってから変更点を `specs/product/` へ反映する
+  （手順と ID の付け方は `specs/product/README.md`）
+- 実装中に更新する仕様文書は、作業中の feature の `tasks.md` のチェックと、タスクで明示された追記（例: T077 の quickstart）だけにする
+- 進捗は作業中の feature の `tasks.md` を正とする
 
 ## Phase の検証ゲート
 
