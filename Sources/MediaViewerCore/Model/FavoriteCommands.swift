@@ -14,7 +14,17 @@ public enum TreeContextMenuItem: Sendable, Equatable {
     case moveToTrash
     /// お気に入りの項目の「名前を変更」（FR-099）
     case renameFavorite
+    /// ツリーの通常のフォルダの「名前を変更」（FR-103）
+    case renameFolder
     case separator
+}
+
+/// ツリーの「名前を変更」の対象（research.md R59）
+public enum TreeRenameTarget: Sendable, Equatable {
+    /// お気に入りの表示名の変更。実際のフォルダは変えない（FR-099）
+    case favorite(URL)
+    /// ツリーの通常のフォルダの名前の変更。ルートは含まない（FR-103）
+    case folder(URL)
 }
 
 public enum FavoriteCommands {
@@ -30,11 +40,17 @@ public enum FavoriteCommands {
         return url
     }
 
-    /// Return・「編集 > 名前を変更」・右クリックの「名前を変更」の対象。.favorite のときだけ URL を返す。
-    /// .favoritesHeader・.folder・nil は nil（FR-099、R52）
-    public static func renameTarget(_ role: TreeItemRole?) -> URL? {
-        guard case .favorite(let url) = role else { return nil }
-        return url
+    /// Return・「編集 > 名前を変更」・右クリックの「名前を変更」の対象。.favorite は表示名の変更、ルート以外の .folder は
+    /// 実際のフォルダの名前の変更（`trashTarget` と同じ範囲）。ルート・.favoritesHeader・nil は nil（FR-099・FR-103、R59）
+    public static func renameTarget(_ role: TreeItemRole?, roots: [URL]) -> TreeRenameTarget? {
+        switch role {
+        case .favorite(let url):
+            return .favorite(url)
+        case .folder:
+            return trashTarget(role, roots: roots).map(TreeRenameTarget.folder)
+        case .favoritesHeader, nil:
+            return nil
+        }
     }
 
     /// ⌘⌫ と右クリックメニューの「ゴミ箱に入れる」の対象（FR-079）。.folder で、かつルート
@@ -46,13 +62,16 @@ public enum FavoriteCommands {
     }
 
     /// 右クリックメニューの項目と並び。.favoritesHeader は空（メニューを出さない）。
-    /// `trashTarget` が URL を返す行では先頭に .moveToTrash と区切り線を置く。`roots` の既定値は空（このとき .moveToTrash を出さない）
+    /// `trashTarget` が URL を返す行では先頭に .moveToTrash・.renameFolder とそれぞれの区切り線を置く（A-37）。
+    /// `roots` の既定値は空（このとき .moveToTrash・.renameFolder を出さない）
     public static func contextMenu(for role: TreeItemRole, roots: [URL] = []) -> [TreeContextMenuItem] {
         switch role {
         case .folder:
             let items: [TreeContextMenuItem] =
                 [.pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder]
-            return trashTarget(role, roots: roots) != nil ? [.moveToTrash, .separator] + items : items
+            return trashTarget(role, roots: roots) != nil
+                ? [.moveToTrash, .separator, .renameFolder, .separator] + items
+                : items
         case .favorite:
             return [.renameFavorite, .removeFromFavorites]
         case .favoritesHeader:

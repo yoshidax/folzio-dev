@@ -39,14 +39,17 @@ struct FavoriteCommandsTests {
 
     // MARK: お気に入りの名前の変更（FR-099）
 
-    @Test("renameTarget は .favorite のときだけ URL を返す")
-    func renameTargetOnlyForFavorite() {
+    @Test("renameTarget はお気に入りとルート以外のフォルダを返し、ルート・見出し・選択なしは nil（FR-099・FR-103）")
+    func renameTargetForFavoriteAndFolder() {
         let a = URL(fileURLWithPath: "/Users/me/a")
-        #expect(FavoriteCommands.renameTarget(.favorite(a)) == a)
-        #expect(FavoriteCommands.renameTarget(.favoritesHeader) == nil)
-        #expect(FavoriteCommands.renameTarget(.folder(a)) == nil)
-        #expect(FavoriteCommands.renameTarget(.folder(URL(fileURLWithPath: "/Users/me"))) == nil)
-        #expect(FavoriteCommands.renameTarget(nil) == nil)
+        #expect(FavoriteCommands.renameTarget(.favorite(a), roots: roots) == .favorite(a))
+        #expect(FavoriteCommands.renameTarget(.folder(a), roots: roots) == .folder(a))
+        #expect(FavoriteCommands.renameTarget(.folder(URL(fileURLWithPath: "/Users/me")), roots: roots) == nil)
+        #expect(FavoriteCommands.renameTarget(.folder(URL(fileURLWithPath: "/")), roots: roots) == nil)
+        #expect(FavoriteCommands.renameTarget(.favoritesHeader, roots: roots) == nil)
+        #expect(FavoriteCommands.renameTarget(nil, roots: roots) == nil)
+        #expect(FavoriteCommands.renameTarget(.folder(a), roots: []) == nil)
+        #expect(FavoriteCommands.renameTarget(.favorite(a), roots: []) == .favorite(a))
     }
 
     @Test("「名前を変更」は .folder（ルートを含む）と見出しのメニューに含まれない")
@@ -97,12 +100,15 @@ struct FavoriteCommandsTests {
         #expect(FavoriteCommands.trashTarget(.folder(a), roots: []) == nil)
     }
 
-    @Test("通常のフォルダの右クリックメニューは先頭に「ゴミ箱に入れる」と区切り線を置く")
-    func contextMenuForOrdinaryFolderHasTrash() {
+    @Test("通常のフォルダの右クリックメニューは「ゴミ箱に入れる」「名前を変更」をそれぞれ区切り線の前に置く（A-37）")
+    func contextMenuForOrdinaryFolderHasTrashAndRename() {
         let a = URL(fileURLWithPath: "/Users/me/a")
         #expect(
             FavoriteCommands.contextMenu(for: .folder(a), roots: roots)
-                == [.moveToTrash, .separator, .pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder]
+                == [
+                    .moveToTrash, .separator, .renameFolder, .separator,
+                    .pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder,
+                ]
         )
     }
 

@@ -10,6 +10,9 @@ final class FileOperationCoordinator {
 
     /// 操作が終わったときに、影響したフォルダ（対象の親フォルダと操作先）を渡す。ツリーが FSEvents を待たずに反映する（FR-027、R32）
     var onFoldersChanged: ((Set<URL>) -> Void)?
+    /// フォルダの名前の変更に成功したときに、元の場所と新しい場所を渡す。`BrowserModel` の付け替えより先に呼び、
+    /// ツリーがノードを作り直さずに付け替えられるようにする（R62・R64）
+    var onFolderRenamed: ((URL, URL) -> Void)?
 
     init(model: BrowserModel, service: any FileOperating, settings: SettingsStore) {
         self.model = model
@@ -45,10 +48,16 @@ final class FileOperationCoordinator {
         notifyFoldersChanged(sources: urls, destination: nil)
     }
 
-    func trash(_ urls: [URL]) async {
+    /// ツリーから（`origin: .tree`）は、確認の省略設定に関わらず対象の絶対パスを添えて確認する（FR-079、R66）
+    func trash(_ urls: [URL], origin: OperationOrigin = .fileList) async {
         guard !urls.isEmpty else { return }
         let operation = FileOperation(kind: .trash, sources: urls)
-        guard await confirmation.confirm(operation, includesFolders: await containsFolder(urls)) else { return }
+        guard await confirmation.confirm(
+            operation,
+            includesFolders: await containsFolder(urls),
+            origin: origin,
+            location: origin == .tree ? urls.first?.path : nil
+        ) else { return }
 
         let result = await service.execute(operation, resolution: .abort)
         await presentFailures(result)
@@ -75,7 +84,8 @@ final class FileOperationCoordinator {
         }
     }
 
-    func rename(_ file: URL, to newName: String) async {
+    /// ツリーから（`origin: .tree`）は、確認モーダルに対象の絶対パスを添える（FR-103、R58）
+    func rename(_ file: URL, to newName: String, origin: OperationOrigin = .fileList) async {
         let parent = file.deletingLastPathComponent()
         let existingNames = await siblingNames(in: parent).subtracting([file.lastPathComponent])
 
@@ -91,14 +101,25 @@ final class FileOperationCoordinator {
         }
 
         let operation = FileOperation(kind: .rename(newName: newName), sources: [file])
-        guard await confirmation.confirm(operation, includesFolders: isDirectory) else { return }
+        guard await confirmation.confirm(
+            operation,
+            includesFolders: isDirectory,
+            origin: origin,
+            location: origin == .tree ? file.path : nil
+        ) else { return }
 
         let result = await service.execute(operation, resolution: .abort)
         await presentFailures(result)
-        // 検索結果では元の URL が消えて外れてしまうため、読み直しの前に行を差し替える（FR-087、R38）。
-        // 通常のフォルダでは didRenameItem は何もせず、従来どおり読み直しで反映される
         if let renamed = result.succeeded.first {
-            model.didRenameItem(at: file, to: renamed)
+            if isDirectory {
+                // 読み直しと FSEvents より先に、ツリー・一覧・検索結果を新しい場所に付け替える（FR-104・105、R62・R64）
+                onFolderRenamed?(file, renamed)
+                model.didRenameFolder(from: file, to: renamed)
+            } else {
+                // 検索結果では元の URL が消えて外れてしまうため、読み直しの前に行を差し替える（FR-087、R38）。
+                // 通常のフォルダでは didRenameItem は何もせず、従来どおり読み直しで反映される
+                model.didRenameItem(at: file, to: renamed)
+            }
         }
         await model.reloadCurrentFolder()
         notifyFoldersChanged(sources: [file], destination: nil)

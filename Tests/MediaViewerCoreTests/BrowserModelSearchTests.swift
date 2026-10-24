@@ -544,6 +544,137 @@ struct BrowserModelSearchTests {
         #expect(!env.model.isShowingSearchResults)
         #expect(path(env.model.listing.folder) == path(env.root))
     }
+
+    // MARK: - フォルダの名前の変更（FR-105、EC-52、R63）
+
+    private func renameFolder(_ env: Env, _ from: String, to newName: String) throws -> (URL, URL) {
+        let old = env.folder(from)
+        let new = old.deletingLastPathComponent().appendingPathComponent(newName, isDirectory: true)
+        try FileManager.default.moveItem(at: old, to: new)
+        return (old, new)
+    }
+
+    @Test("検索結果の表示中にフォルダの名前を変えると、結果は残って場所・選択が新しい名前になり、プレビューは変わらない")
+    func renamingFolderRebasesResults() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        env.model.startSearch(pattern(), root: env.root)
+        let photo = env.url("trip/day1/1.jpg")
+        await send([Env.result(photo), Env.result(env.url("cover.jpg"))], env, expecting: 2)
+        await finish(env)
+        env.model.select([photo], focused: photo)
+        #expect(await waitUntil { isImagePreview(env.model.preview) })
+        let signal = env.model.stopPlaybackSignal
+
+        let (old, new) = try renameFolder(env, "trip", to: "trip2")
+        env.model.didRenameFolder(from: old, to: new)
+
+        let moved = env.url("trip2/day1/1.jpg")
+        let search = try #require(env.model.listing.search)
+        #expect(search.totalCount == 2)
+        #expect(env.model.listing.files.contains { path($0.url) == path(moved) })
+        #expect(search.location(of: moved) == "\(env.root.lastPathComponent)/trip2/day1")
+        #expect(path(env.model.selection.focused) == path(moved))
+        #expect(isImagePreview(env.model.preview))
+        #expect(env.model.stopPlaybackSignal == signal)
+        #expect(env.searcher.requests.count == 1)
+
+        // 外部の変更の確かめ直しでも、新しい場所の結果は外れない
+        await env.model.reloadCurrentFolder()
+        #expect(env.model.listing.search?.totalCount == 2)
+    }
+
+    @Test("「場所」で並べ替え中は、名前を変えた後の場所で並べ直す")
+    func renamingFolderResortsByLocation() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let other = try env.makeResult("m/a.jpg")
+        env.model.startSearch(pattern(), root: env.root)
+        await send([Env.result(env.url("trip/day1/1.jpg")), other], env, expecting: 2)
+        await finish(env)
+        env.model.sortOrder = SortOrder(column: .location, ascending: true)
+        #expect(names(env.model) == ["a.jpg", "1.jpg"])
+
+        let (old, new) = try renameFolder(env, "trip", to: "a-trip")
+        env.model.didRenameFolder(from: old, to: new)
+
+        #expect(names(env.model) == ["1.jpg", "a.jpg"])
+    }
+
+    @Test("検索起点そのものの名前を変えると、起点が新しい場所になり、結果は外れない")
+    func renamingSearchRoot() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        env.model.startSearch(pattern(), root: env.folder("trip"))
+        await send([Env.result(env.url("trip/day1/1.jpg"))], env, expecting: 1)
+        await finish(env)
+
+        let (old, new) = try renameFolder(env, "trip", to: "trip2")
+        env.model.didRenameFolder(from: old, to: new)
+
+        let search = try #require(env.model.listing.search)
+        #expect(path(search.root) == path(env.folder("trip2")))
+        #expect(search.totalCount == 1)
+        #expect(search.location(of: env.url("trip2/day1/1.jpg")) == "trip2/day1")
+        #expect(env.searcher.requests.count == 1)
+    }
+
+    @Test("検索中に名前を変えると、後から届く古い場所の結果も付け替え、新しい場所を追加で列挙して重複を除く（EC-52）")
+    func renamingFolderWhileSearching() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        env.model.startSearch(pattern(), root: env.root)
+        await send([Env.result(env.url("cover.jpg"))], env, expecting: 1)
+
+        let (old, new) = try renameFolder(env, "trip", to: "trip2")
+        env.model.didRenameFolder(from: old, to: new)
+
+        #expect(env.searcher.requests.count == 2)
+        #expect(path(env.searcher.requests.last?.root) == path(new))
+
+        env.searcher.send([Env.result(env.url("trip/day1/1.jpg"))], to: 0)
+        #expect(await waitUntil { env.model.listing.search?.totalCount == 2 })
+        #expect(env.model.listing.files.contains { path($0.url) == path(env.url("trip2/day1/1.jpg")) })
+
+        // 追加の列挙が同じファイルを返しても1行だけ
+        env.searcher.send([Env.result(env.url("trip2/day1/1.jpg"))], to: 1)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(env.model.listing.search?.totalCount == 2)
+        #expect(env.model.listing.files.filter { $0.name == "1.jpg" }.count == 1)
+
+        env.searcher.finish(at: 0)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(env.model.listing.search?.phase == .searching)
+        env.searcher.finish(at: 1)
+        #expect(await waitUntil { env.model.listing.search?.phase == .finished })
+    }
+
+    @Test("検索中に検索起点そのものの名前を変えると、新しい起点を追加で列挙する")
+    func renamingSearchRootWhileSearching() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        env.model.startSearch(pattern(), root: env.folder("trip"))
+
+        let (old, new) = try renameFolder(env, "trip", to: "trip2")
+        env.model.didRenameFolder(from: old, to: new)
+
+        #expect(env.searcher.requests.count == 2)
+        #expect(path(env.searcher.requests.last?.root) == path(new))
+        #expect(path(env.model.listing.search?.root) == path(new))
+    }
+
+    @Test("検索中でも、検索起点の外のフォルダの名前を変えたときは追加で列挙しない")
+    func renamingFolderOutsideSearchRoot() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        env.model.startSearch(pattern(), root: env.folder("trip"))
+
+        let (old, new) = try renameFolder(env, "empty", to: "empty2")
+        env.model.didRenameFolder(from: old, to: new)
+
+        #expect(env.searcher.requests.count == 1)
+        #expect(path(env.model.listing.search?.root) == path(env.folder("trip")))
+    }
 }
 
 /// 結果をテストから任意の順・時点で流す検索器。取り消された回数を記録する
@@ -583,5 +714,16 @@ private final class FakeSearcher: FileNameSearching, @unchecked Sendable {
     func finish() {
         let continuation = lock.withLock { continuations.last }
         continuation?.finish()
+    }
+
+    /// `index` 番目に始めた検索のストリームへバッチを流す
+    func send(_ batch: [MediaFile], to index: Int) {
+        let continuation = lock.withLock { continuations[index] }
+        continuation.yield(batch)
+    }
+
+    func finish(at index: Int) {
+        let continuation = lock.withLock { continuations[index] }
+        continuation.finish()
     }
 }

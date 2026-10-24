@@ -9,17 +9,26 @@ final class ConfirmationPresenter {
         self.settings = settings
     }
 
-    /// `includesFolders` が true なら、フォルダは中身ごと操作する旨を添える（R32）
-    /// 名前の変更と移動は設定に関わらず常に確認し、「今後表示しない」も出さない（FR-024）。
-    /// 設定で省略できるのはコピー・ゴミ箱・お気に入りの削除だけ
-    func confirm(_ operation: FileOperation, includesFolders: Bool = false) async -> Bool {
-        let isSkippable = Self.isSkippable(operation.kind)
+    /// `includesFolders` が true なら、フォルダは中身ごと操作する旨を添える（R32）。`location` があれば対象の絶対パスを添える（R58）。
+    /// 省略できるかは `ConfirmationPolicy` で決める。省略できない確認（名前の変更・移動・ツリーのゴミ箱）は設定に関わらず
+    /// 常に表示し、「今後表示しない」も出さない（FR-024・FR-079）
+    func confirm(
+        _ operation: FileOperation,
+        includesFolders: Bool = false,
+        origin: OperationOrigin = .fileList,
+        location: String? = nil
+    ) async -> Bool {
+        let isSkippable = ConfirmationPolicy.isSkippable(operation.kind, origin: origin)
         if isSkippable, !settings.confirmation.confirmBeforeFileOperations {
             return true
         }
+        var informativeText = informativeText(for: operation, includesFolders: includesFolders)
+        if let location {
+            informativeText += "\n場所: \(location)"
+        }
         return await present(
             messageText: messageText(for: operation.kind),
-            informativeText: informativeText(for: operation, includesFolders: includesFolders),
+            informativeText: informativeText,
             confirmTitle: "実行",
             allowsSuppression: isSkippable
         )
@@ -35,16 +44,6 @@ final class ConfirmationPresenter {
             confirmTitle: "削除",
             allowsSuppression: true
         )
-    }
-
-    /// 設定で確認を省略できる操作か（FR-024）
-    private static func isSkippable(_ kind: FileOperation.Kind) -> Bool {
-        switch kind {
-        case .copy, .trash:
-            return true
-        case .move, .rename:
-            return false
-        }
     }
 
     private func present(
