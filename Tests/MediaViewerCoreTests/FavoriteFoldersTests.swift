@@ -143,12 +143,15 @@ struct FavoriteFoldersTests {
     @Test("同じ表示名を複数の項目に付けられ、/ と : も受け付ける（EC-41）")
     func commitAllowsDuplicatesAndSpecialCharacters() {
         var favorites = FavoriteFolders(urls: [a, b])
-        #expect(favorites.commitDisplayName("same", for: a, defaultName: "a"))
-        #expect(favorites.commitDisplayName("same", for: b, defaultName: "b"))
+        let changedA = favorites.commitDisplayName("same", for: a, defaultName: "a")
+        let changedB = favorites.commitDisplayName("same", for: b, defaultName: "b")
+        #expect(changedA)
+        #expect(changedB)
         #expect(favorites.customName(for: a) == "same")
         #expect(favorites.customName(for: b) == "same")
 
-        #expect(favorites.commitDisplayName("a/b:c", for: a, defaultName: "a"))
+        let changedSpecial = favorites.commitDisplayName("a/b:c", for: a, defaultName: "a")
+        #expect(changedSpecial)
         #expect(favorites.customName(for: a) == "a/b:c")
     }
 
@@ -176,8 +179,8 @@ struct FavoriteFoldersTests {
     func displayNameMatchesAliases() {
         var favorites = FavoriteFolders(urls: [a])
         for alias in aliasesOfA {
-            favorites.commitDisplayName("", for: alias, defaultName: "a")
-            #expect(favorites.commitDisplayName("one", for: alias, defaultName: "a"), "\(alias.path)")
+            let changed = favorites.commitDisplayName("one", for: alias, defaultName: "a")
+            #expect(changed, "\(alias.path)")
             #expect(favorites.customName(for: alias) == "one", "\(alias.path)")
             #expect(favorites.displayName(for: alias, defaultName: "a") == "one", "\(alias.path)")
             favorites.commitDisplayName("", for: a, defaultName: "a")
