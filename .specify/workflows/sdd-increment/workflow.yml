@@ -51,6 +51,10 @@ steps:
       if [ -n "$(git status --porcelain)" ]; then
         echo "未コミットの変更があります。コミットするか stash してから実行してください" >&2; exit 1
       fi
+      case "${SPECKIT_INTEGRATION_CLAUDE_EXTRA_ARGS:-}" in
+        *sdd-workflow-settings.json*) ;;
+        *) echo "scripts/sdd-run.sh から実行してください（claude -p に .claude/sdd-workflow-settings.json が渡りません）" >&2; exit 1 ;;
+      esac
 
   # ── 1. 新しい feature の仕様 ─────────────────────────────────────
   # 現在の仕様の正本は specs/product/。新しい feature の spec.md には変更点だけを書く（書き方は specs/product/README.md）。
