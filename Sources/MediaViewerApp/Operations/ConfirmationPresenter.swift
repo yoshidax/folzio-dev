@@ -25,13 +25,13 @@ final class ConfirmationPresenter {
         )
     }
 
-    func confirmRemovingFavorite(named name: String) async -> Bool {
+    func confirmRemovingFavorite(named name: String, path: String) async -> Bool {
         guard settings.confirmation.confirmBeforeFileOperations else {
             return true
         }
         return await present(
             messageText: "お気に入りから削除しますか？",
-            informativeText: "対象: \(name)\n実際のフォルダは変更されません",
+            informativeText: "対象: \(name)\n場所: \(path)\n実際のフォルダは変更されません",
             confirmTitle: "削除",
             allowsSuppression: true
         )

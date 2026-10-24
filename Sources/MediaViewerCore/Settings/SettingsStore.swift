@@ -13,6 +13,7 @@ public struct SettingsStore {
         static let loop = "playback.loop"
         static let confirmBeforeExecuting = "fileOps.confirmBeforeExecuting"
         static let favoritePaths = "favorites.paths"
+        static let favoriteDisplayNames = "favorites.displayNames"
     }
 
     private let defaults: UserDefaults
@@ -90,7 +91,9 @@ public struct SettingsStore {
         }
     }
 
-    /// 絶対パスの配列で保存する。配列でなければ空、文字列でない要素・空文字・相対パスは捨てる（FR-066）
+    /// 絶対パスの配列で保存する。配列でなければ空、文字列でない要素・空文字・相対パスは捨てる（FR-066）。
+    /// 表示名は `favorites.displayNames`（標準化した絶対パス → 表示名）に、付けた分だけ保存する。
+    /// 旧形式（`favorites.paths` だけ）は全件表示名なしとして読む。移行処理は持たない（R49）
     public var favorites: FavoriteFolders {
         get {
             guard let stored = defaults.object(forKey: Keys.favoritePaths) as? [Any] else {
@@ -100,10 +103,18 @@ public struct SettingsStore {
                 .compactMap { $0 as? String }
                 .filter { !$0.isEmpty && $0.hasPrefix("/") }
                 .map { URL(fileURLWithPath: $0, isDirectory: true) }
-            return FavoriteFolders(urls: urls)
+            // 辞書でなければ表示名なし。未登録のパス・空になる値の破棄、正規化、255 文字への丸めは init が行う
+            let names = (defaults.object(forKey: Keys.favoriteDisplayNames) as? [String: Any])?
+                .compactMapValues { $0 as? String } ?? [:]
+            return FavoriteFolders(urls: urls, customNames: names)
         }
         nonmutating set {
             defaults.set(newValue.urls.map(\.path), forKey: Keys.favoritePaths)
+            if newValue.customNamesByPath.isEmpty {
+                defaults.removeObject(forKey: Keys.favoriteDisplayNames)
+            } else {
+                defaults.set(newValue.customNamesByPath, forKey: Keys.favoriteDisplayNames)
+            }
         }
     }
 

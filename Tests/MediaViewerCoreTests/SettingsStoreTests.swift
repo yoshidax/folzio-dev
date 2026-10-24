@@ -153,6 +153,119 @@ struct SettingsStoreTests {
         }
     }
 
+    @Test("お気に入りの表示名が往復し、favorites.displayNames に書かれる（R49）")
+    func favoriteDisplayNamesRoundTrip() {
+        withDefaults { defaults in
+            let a = URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)
+            let b = URL(fileURLWithPath: "/tmp/fav/b", isDirectory: true)
+            let favorites = FavoriteFolders(urls: [a, b], customNames: [b.path: "2025（バックアップ）"])
+            SettingsStore(defaults: defaults).favorites = favorites
+
+            #expect(SettingsStore(defaults: defaults).favorites == favorites)
+            #expect(
+                defaults.dictionary(forKey: "favorites.displayNames") as? [String: String]
+                    == [b.path: "2025（バックアップ）"]
+            )
+        }
+    }
+
+    @Test("旧形式（favorites.paths だけ）は登録順のまま全件表示名なしで読む（EC-45）")
+    func favoritesLegacyFormatHasNoDisplayNames() {
+        withDefaults { defaults in
+            defaults.set(["/tmp/fav/b", "/tmp/fav/a"], forKey: "favorites.paths")
+            let favorites = SettingsStore(defaults: defaults).favorites
+            let b = URL(fileURLWithPath: "/tmp/fav/b", isDirectory: true)
+            let a = URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)
+            #expect(favorites.urls == [b, a])
+            #expect(favorites.customName(for: a) == nil)
+            #expect(favorites.customName(for: b) == nil)
+            #expect(favorites.customNamesByPath.isEmpty)
+        }
+    }
+
+    @Test("favorites.displayNames が辞書でなければ表示名なしで、登録は失われない")
+    func favoriteDisplayNamesIgnoredWhenNotDictionary() {
+        withDefaults { defaults in
+            let a = URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)
+            defaults.set(["/tmp/fav/a"], forKey: "favorites.paths")
+
+            defaults.set("one", forKey: "favorites.displayNames")
+            #expect(SettingsStore(defaults: defaults).favorites.urls == [a])
+            #expect(SettingsStore(defaults: defaults).favorites.customNamesByPath.isEmpty)
+
+            defaults.set(["one"], forKey: "favorites.displayNames")
+            #expect(SettingsStore(defaults: defaults).favorites.urls == [a])
+            #expect(SettingsStore(defaults: defaults).favorites.customNamesByPath.isEmpty)
+        }
+    }
+
+    @Test("表示名の不正な項目（文字列でない値・未登録のパス・空白だけ）を捨て、改行は除く")
+    func favoriteDisplayNamesDropInvalidEntries() {
+        withDefaults { defaults in
+            defaults.set(["/tmp/fav/a", "/tmp/fav/b", "/tmp/fav/c", "/tmp/fav/d"], forKey: "favorites.paths")
+            defaults.set(
+                [
+                    "/tmp/fav/a": 3,
+                    "/tmp/fav/b": "  ",
+                    "/tmp/fav/c": "o\nne",
+                    "/tmp/fav/x": "unregistered",
+                    "/tmp/fav/d": "ok",
+                ] as [String: Any],
+                forKey: "favorites.displayNames"
+            )
+            #expect(
+                SettingsStore(defaults: defaults).favorites.customNamesByPath
+                    == ["/tmp/fav/c": "one", "/tmp/fav/d": "ok"]
+            )
+        }
+    }
+
+    @Test("300 文字の保存値は 255 文字に丸めて読む")
+    func favoriteDisplayNamesAreTruncatedOnRead() {
+        withDefaults { defaults in
+            defaults.set(["/tmp/fav/a"], forKey: "favorites.paths")
+            defaults.set(
+                ["/tmp/fav/a": String(repeating: "x", count: 300)],
+                forKey: "favorites.displayNames"
+            )
+            #expect(
+                SettingsStore(defaults: defaults).favorites.customNamesByPath
+                    == ["/tmp/fav/a": String(repeating: "x", count: 255)]
+            )
+        }
+    }
+
+    @Test("表示名が1つもなければ favorites.displayNames のキーを消す")
+    func favoriteDisplayNamesKeyRemovedWhenEmpty() {
+        withDefaults { defaults in
+            let a = URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)
+            let store = SettingsStore(defaults: defaults)
+            store.favorites = FavoriteFolders(urls: [a], customNames: [a.path: "one"])
+            #expect(defaults.object(forKey: "favorites.displayNames") != nil)
+
+            store.favorites = FavoriteFolders(urls: [a])
+            #expect(defaults.object(forKey: "favorites.displayNames") == nil)
+        }
+    }
+
+    @Test("削除した登録の表示名は書き込まれない")
+    func removedFavoriteDisplayNameIsNotWritten() {
+        withDefaults { defaults in
+            let a = URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)
+            let b = URL(fileURLWithPath: "/tmp/fav/b", isDirectory: true)
+            var favorites = FavoriteFolders(urls: [a, b], customNames: [a.path: "one", b.path: "two"])
+            favorites.remove(b)
+            let store = SettingsStore(defaults: defaults)
+            store.favorites = favorites
+
+            #expect(
+                defaults.dictionary(forKey: "favorites.displayNames") as? [String: String]
+                    == [a.path: "one"]
+            )
+            #expect(defaults.array(forKey: "favorites.paths") as? [String] == ["/tmp/fav/a"])
+        }
+    }
+
     @Test("お気に入りを保存してもほかの設定は変わらない")
     func savingFavoritesKeepsOtherSettings() {
         withDefaults { defaults in
