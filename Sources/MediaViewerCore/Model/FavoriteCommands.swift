@@ -12,6 +12,8 @@ public enum TreeContextMenuItem: Sendable, Equatable {
     case pasteHere, movePasteHere, addToFavorites, revealInFinder, removeFromFavorites
     /// ツリーのフォルダをゴミ箱に入れる（FR-079）
     case moveToTrash
+    /// お気に入りの項目の「名前を変更」（FR-099）
+    case renameFavorite
     case separator
 }
 
@@ -24,6 +26,13 @@ public enum FavoriteCommands {
 
     /// ⌘⌫ と「お気に入りから削除」の対象。.favorite のときだけ URL を返す
     public static func removalTarget(_ role: TreeItemRole?) -> URL? {
+        guard case .favorite(let url) = role else { return nil }
+        return url
+    }
+
+    /// Return・「編集 > 名前を変更」・右クリックの「名前を変更」の対象。.favorite のときだけ URL を返す。
+    /// .favoritesHeader・.folder・nil は nil（FR-099、R52）
+    public static func renameTarget(_ role: TreeItemRole?) -> URL? {
         guard case .favorite(let url) = role else { return nil }
         return url
     }
@@ -45,7 +54,7 @@ public enum FavoriteCommands {
                 [.pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder]
             return trashTarget(role, roots: roots) != nil ? [.moveToTrash, .separator] + items : items
         case .favorite:
-            return [.removeFromFavorites]
+            return [.renameFavorite, .removeFromFavorites]
         case .favoritesHeader:
             return []
         }

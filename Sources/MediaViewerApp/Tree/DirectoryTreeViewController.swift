@@ -212,6 +212,9 @@ final class DirectoryTreeViewController: NSViewController {
                 keyEquivalent: String(UnicodeScalar(NSBackspaceCharacter)!)
             )
             menuItem.keyEquivalentModifierMask = [.command]
+        case .renameFavorite:
+            // 仮の項目（アクションなしで淡色）。T012 で本来のアクションとキー等価に置き換える（R52）
+            menuItem = NSMenuItem(title: "名前を変更", action: nil, keyEquivalent: "")
         case .separator:
             return .separator()
         }
