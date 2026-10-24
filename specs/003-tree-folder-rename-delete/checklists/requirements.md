@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,7 +31,7 @@
 
 ## Notes
 
-- 残っているマーカーは EC-53 の1件（パッケージ（`.app` など）になる名前への変更の扱い）。ファイルリストの既存の検証（EC-14）にも
-  影響するため、推奨（A: 検証エラーとして拒否）を自動では採用せず、`/speckit-clarify` で決める
-- 002（お気に入りの名前の変更）が `specs/product/` へ未反映のため、002 の項目は `ID（002）` で参照している（A-40）
-- 既存の振る舞いを変える項目: FR-079・FR-024（ツリーのフォルダのゴミ箱は確認の省略設定を適用しない）、FR-076・FR-099・FR-102・A-30
+- EC-53（パッケージ（`.app` など）になる名前への変更の扱い）は、ユーザーの承認により推奨の A（検証エラーとして拒否）に決めた（2026-10-25）
+- 002（お気に入りの名前の変更）は `specs/product/` へ反映済み。由来が分かるように 002 の項目は `ID（002）` で参照している（A-40）
+- 既存の振る舞いを変える項目: FR-079・FR-024（ツリーのフォルダのゴミ箱は確認の省略設定を適用しない）、EC-14（ファイルリストのフォルダも
+  パッケージになる名前を拒否する）、FR-076・FR-099・FR-102・A-30
