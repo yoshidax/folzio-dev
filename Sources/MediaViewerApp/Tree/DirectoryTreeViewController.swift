@@ -21,13 +21,17 @@ final class DirectoryTreeViewController: NSViewController {
     /// 見出しの下の各項目。開閉の三角を持たない（FR-063）
     final class FavoriteEntry {
         let url: URL
+        /// 表示名。変更していなければ `defaultName`（FR-101）
         var name: String
+        /// 登録したフォルダの名前（ルートならボリューム名）。空の名前で確定したときの戻り先（FR-100）
+        var defaultName: String
         var kind: FolderNode.Kind
         var availability: FavoriteAvailability = .unknown
 
-        init(url: URL, name: String, kind: FolderNode.Kind) {
+        init(url: URL, name: String, defaultName: String, kind: FolderNode.Kind) {
             self.url = url
             self.name = name
+            self.defaultName = defaultName
             self.kind = kind
         }
     }
@@ -56,6 +60,13 @@ final class DirectoryTreeViewController: NSViewController {
     private var activationObserver: NSObjectProtocol?
     private var didReveal = false
     private var isRestoringSelection = false
+
+    /// 名前の変更中の項目。nil 以外の間は「名前の変更中」（FR-102）
+    private var editingFavorite: FavoriteEntry?
+    private var editingOriginalName: String?
+    private var isFinishingEdit = false
+    private var needsReloadAfterEdit = false
+    private let favoriteNameFormatter = FavoriteNameFormatter()
 
     private enum ProbeKey: Hashable {
         case roots
@@ -131,14 +142,16 @@ final class DirectoryTreeViewController: NSViewController {
         favoriteEntries = favorites.urls.map { url in
             let key = url.standardizedFileURL.path
             let root = roots.first { $0.url.standardizedFileURL.path == key }
-            let name = root?.folder.name ?? url.lastPathComponent
+            let defaultName = root?.folder.name ?? url.lastPathComponent
+            let name = favorites.displayName(for: url, defaultName: defaultName)
             let kind = root?.folder.kind ?? .folder
             if let entry = existing[key] {
                 entry.name = name
+                entry.defaultName = defaultName
                 entry.kind = kind
                 return entry
             }
-            return FavoriteEntry(url: url, name: name, kind: kind)
+            return FavoriteEntry(url: url, name: name, defaultName: defaultName, kind: kind)
         }
     }
 
@@ -213,8 +226,12 @@ final class DirectoryTreeViewController: NSViewController {
             )
             menuItem.keyEquivalentModifierMask = [.command]
         case .renameFavorite:
-            // 仮の項目（アクションなしで淡色）。T012 で本来のアクションとキー等価に置き換える（R52）
-            menuItem = NSMenuItem(title: "名前を変更", action: nil, keyEquivalent: "")
+            menuItem = NSMenuItem(
+                title: "名前を変更",
+                action: #selector(renameFavoriteFromMenu(_:)),
+                keyEquivalent: "\r"
+            )
+            menuItem.keyEquivalentModifierMask = []
         case .separator:
             return .separator()
         }
@@ -298,6 +315,168 @@ final class DirectoryTreeViewController: NSViewController {
         view.window?.makeFirstResponder(outlineView)
     }
 
+    /// ツリーにフォーカスがあるときの Return・「編集 > 名前を変更」。お気に入りの項目だけ表示名の編集を始める（FR-099）。
+    /// zip の中・検索結果の表示中も `BrowserModel` の状態は見ない（EC-46）
+    @objc func rename(_ sender: Any?) {
+        guard let entry = selectedItem as? FavoriteEntry,
+              FavoriteCommands.renameTarget(role(for: selectedItem)) != nil else {
+            return
+        }
+        beginEditingFavorite(entry)
+    }
+
+    /// 右クリックした行の「名前を変更」。ツリーの選択は変えない（A-21、FR-099）
+    @objc private func renameFavoriteFromMenu(_ sender: Any?) {
+        let item = (sender as? NSMenuItem)?.representedObject
+        guard let entry = item as? FavoriteEntry,
+              FavoriteCommands.renameTarget(role(for: item)) != nil else {
+            return
+        }
+        if !beginEditingFavorite(entry) {
+            // メニューの追跡中は makeFirstResponder に失敗することがあるため、次のターンに回す（R52）
+            Task { @MainActor [weak self] in
+                self?.beginEditingFavorite(entry)
+            }
+        }
+    }
+
+    @discardableResult
+    private func beginEditingFavorite(_ entry: FavoriteEntry) -> Bool {
+        guard editingFavorite == nil else { return false }
+        guard let window = outlineView.window else { return false }
+        let row = outlineView.row(forItem: entry)
+        guard row >= 0 else { return false }
+
+        outlineView.scrollRowToVisible(row)
+        outlineView.layoutSubtreeIfNeeded()
+        guard let cell = outlineView.view(
+            atColumn: 0,
+            row: row,
+            makeIfNecessary: true
+        ) as? NSTableCellView,
+            let field = cell.textField else {
+            return false
+        }
+
+        editingFavorite = entry
+        editingOriginalName = entry.name
+        needsReloadAfterEdit = false
+        field.stringValue = entry.name
+        field.formatter = favoriteNameFormatter
+        field.delegate = self
+        field.setAccessibilityLabel("お気に入りの名前")
+        setEditingAppearance(field, editing: true)
+
+        guard window.makeFirstResponder(field) else {
+            editingFavorite = nil
+            editingOriginalName = nil
+            resetEditingState(of: cell)
+            field.stringValue = entry.name
+            return false
+        }
+        if let editor = field.currentEditor() as? NSTextView {
+            editor.selectedRange = NSRange(location: 0, length: (field.stringValue as NSString).length)
+        }
+        return true
+    }
+
+    /// 行内編集を終える。`restoresFocus` のときはキーボードフォーカスをツリーに戻す（R51）
+    private func finishEditingFavorite(commit: Bool, restoresFocus: Bool) {
+        guard !isFinishingEdit, let entry = editingFavorite else { return }
+        isFinishingEdit = true
+        defer { isFinishingEdit = false }
+
+        let originalName = editingOriginalName ?? entry.name
+        editingFavorite = nil
+        editingOriginalName = nil
+
+        let row = outlineView.row(forItem: entry)
+        var field: NSTextField?
+        var input = originalName
+        if row >= 0,
+           let cell = outlineView.view(
+               atColumn: 0,
+               row: row,
+               makeIfNecessary: false
+           ) as? NSTableCellView,
+           let textField = cell.textField {
+            field = textField
+            input = textField.stringValue
+            resetEditingState(of: cell)
+            textField.stringValue = originalName
+        }
+
+        if let window = outlineView.window {
+            if restoresFocus {
+                window.makeFirstResponder(outlineView)
+            } else if let field, field.currentEditor() != nil {
+                // クリック先のフォーカスは変えない（A-31）
+                window.endEditing(for: field)
+            }
+        }
+
+        if commit,
+           favorites.commitDisplayName(input, for: entry.url, defaultName: entry.defaultName) {
+            settings.favorites = favorites
+            rebuildFavoriteEntries()
+        }
+
+        if row >= 0 {
+            outlineView.reloadItem(entry)
+        }
+        needsReloadAfterEdit = false
+    }
+
+    /// ツリーの側から編集を確定するとき、編集欄にフォーカスがあったかを確かめる（R51）
+    private var editingFieldHasFocus: Bool {
+        guard let entry = editingFavorite else { return false }
+        let row = outlineView.row(forItem: entry)
+        guard row >= 0,
+              let cell = outlineView.view(
+                  atColumn: 0,
+                  row: row,
+                  makeIfNecessary: false
+              ) as? NSTableCellView,
+              let field = cell.textField else {
+            return false
+        }
+        return field.currentEditor() != nil
+    }
+
+    private func setEditingAppearance(_ field: NSTextField, editing: Bool) {
+        field.isEditable = editing
+        field.isSelectable = editing
+        field.isBordered = false
+        field.isBezeled = false
+        field.drawsBackground = editing
+        field.backgroundColor = editing ? .textBackgroundColor : .clear
+        field.focusRingType = editing ? .default : .none
+    }
+
+    private func resetEditingState(of cell: NSTableCellView) {
+        guard let field = cell.textField else { return }
+        setEditingAppearance(field, editing: false)
+        field.formatter = nil
+        field.delegate = nil
+        field.setAccessibilityLabel(nil)
+    }
+
+    /// セルは行の間で共有されるため、表示のたびに編集の状態を戻す（R51・R54）。
+    /// 編集中の行だけは入力中の値を保つ
+    private func prepareCell(_ cell: NSTableCellView, for item: Any) {
+        guard let field = cell.textField else { return }
+        if let entry = item as? FavoriteEntry,
+           entry === editingFavorite,
+           field.currentEditor() != nil {
+            field.formatter = favoriteNameFormatter
+            field.delegate = self
+            field.setAccessibilityLabel("お気に入りの名前")
+            setEditingAppearance(field, editing: true)
+            return
+        }
+        resetEditingState(of: cell)
+    }
+
     private func addFavorite(for item: Any?) {
         let role = role(for: item)
         guard FavoriteCommands.canAdd(role, favorites: favorites),
@@ -315,7 +494,7 @@ final class DirectoryTreeViewController: NSViewController {
 
     /// 登録だけを取り除き、実際のフォルダには触れない（FR-064）
     private func removeFavorite(_ entry: FavoriteEntry) async {
-        guard await confirmation.confirmRemovingFavorite(named: entry.name) else { return }
+        guard await confirmation.confirmRemovingFavorite(named: entry.name, path: entry.url.path) else { return }
         guard favorites.contains(entry.url) else { return }
 
         // 消えた行の位置で別の項目が選ばれて一覧が切り替わらないよう、先に見出しを選ぶ
@@ -500,6 +679,10 @@ final class DirectoryTreeViewController: NSViewController {
     }
 
     private func applyRoots(_ newRoots: [FolderNode]) {
+        // reloadData で全行のセルを作り直すため、その前に編集中の名前を確定する（R51、EC-43・quickstart 24）
+        if editingFavorite != nil {
+            finishEditingFavorite(commit: true, restoresFocus: editingFieldHasFocus)
+        }
         let existing = Dictionary(
             roots.map { ($0.url.standardizedFileURL, $0) },
             uniquingKeysWith: { first, _ in first }
@@ -559,7 +742,10 @@ final class DirectoryTreeViewController: NSViewController {
         for entry in favoriteEntries
         where entry.url.standardizedFileURL.path == key && entry.availability != availability {
             entry.availability = availability
-            if outlineView.row(forItem: entry) >= 0 {
+            if entry === editingFavorite {
+                // 編集中の行は描き直さず、終了時の reloadItem で淡色を反映する（R51、EC-43）
+                needsReloadAfterEdit = true
+            } else if outlineView.row(forItem: entry) >= 0 {
                 outlineView.reloadItem(entry)
             }
         }
@@ -1003,6 +1189,7 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
         switch item {
         case let node as Node:
             let cell = makeFolderCell(in: outlineView)
+            prepareCell(cell, for: item)
             cell.imageView?.image = IconCatalog.treeIcon(for: node.folder.kind)
             cell.textField?.stringValue = node.folder.name
             if node.folder.accessState == .denied || node.folder.accessState == .unavailable {
@@ -1015,6 +1202,7 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
             return cell
         case is FavoritesHeader:
             let cell = makeFolderCell(in: outlineView)
+            prepareCell(cell, for: item)
             cell.imageView?.image = IconCatalog.favoritesIcon()
             cell.textField?.stringValue = "お気に入り"
             cell.textField?.textColor = .labelColor
@@ -1022,8 +1210,11 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
             return cell
         case let entry as FavoriteEntry:
             let cell = makeFolderCell(in: outlineView)
+            prepareCell(cell, for: item)
             cell.imageView?.image = IconCatalog.treeIcon(for: entry.kind)
-            cell.textField?.stringValue = entry.name
+            if entry !== editingFavorite {
+                cell.textField?.stringValue = entry.name
+            }
             if entry.availability == .missing {
                 cell.textField?.textColor = .disabledControlTextColor
                 cell.toolTip = "見つかりません"
@@ -1105,14 +1296,73 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
         updateWatchSet()
     }
 
+    func outlineViewItemWillCollapse(_ notification: Notification) {
+        // 開閉ボタンのクリックでは first responder が変わらないことがある。行が消える前に確定する（R51）
+        guard editingFavorite != nil,
+              notification.userInfo?["NSObject"] is FavoritesHeader else {
+            return
+        }
+        finishEditingFavorite(commit: true, restoresFocus: true)
+    }
+
     func outlineViewItemDidCollapse(_ notification: Notification) {
         updateWatchSet()
     }
 }
 
+extension DirectoryTreeViewController: NSTextFieldDelegate {
+    func control(
+        _ control: NSControl,
+        textView: NSTextView,
+        doCommandBy commandSelector: Selector
+    ) -> Bool {
+        guard editingFavorite != nil else { return false }
+        if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+            finishEditingFavorite(commit: true, restoresFocus: true)
+            return true
+        }
+        if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+            // Esc は編集前の表示名に戻す（US1-AS32）
+            finishEditingFavorite(commit: false, restoresFocus: true)
+            return true
+        }
+        return false
+    }
+
+    func controlTextDidEndEditing(_ obj: Notification) {
+        // ほかの場所のクリックなどで確定する。クリック先のフォーカスは変えない（A-31）
+        guard editingFavorite != nil, !isFinishingEdit else { return }
+        finishEditingFavorite(commit: true, restoresFocus: false)
+    }
+}
+
 extension DirectoryTreeViewController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        // Return と ⌘⌫ はメニューのキー等価がフィールドエディタより先に処理される。無効にしないと編集中の Return が
+        // 確定にならず、⌘⌫ でお気に入りが削除される（R53、FR-102）
+        if editingFavorite != nil {
+            switch menuItem.action {
+            case #selector(rename(_:)),
+                 #selector(renameFavoriteFromMenu(_:)),
+                 #selector(moveToTrash(_:)),
+                 #selector(trashFolderFromMenu(_:)),
+                 #selector(paste(_:)),
+                 #selector(movePaste(_:)),
+                 #selector(revealInFinder(_:)),
+                 #selector(addToFavorites(_:)),
+                 #selector(removeFavoriteFromMenu(_:)):
+                return false
+            default:
+                break
+            }
+        }
+
         switch menuItem.action {
+        case #selector(rename(_:)):
+            // お気に入りの項目以外・未選択では無効（US1-AS35、FR-099）
+            return FavoriteCommands.renameTarget(role(for: selectedItem)) != nil
+        case #selector(renameFavoriteFromMenu(_:)):
+            return FavoriteCommands.renameTarget(role(for: menuItem.representedObject)) != nil
         case #selector(paste(_:)), #selector(movePaste(_:)):
             return fileTargetNode(for: menuItem) != nil
                 && FileContextMenu.pasteboardHasFileURLs()
@@ -1141,6 +1391,10 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
 extension DirectoryTreeViewController: NSMenuDelegate {
     /// 右クリックした行の役割で項目を作り直す。キーボードで開いたときなどは選択中の行を使う
     func menuNeedsUpdate(_ menu: NSMenu) {
+        // メニューを開く前に編集中の名前を確定する。右クリック先はツリーなのでフォーカスを戻す（R51）
+        if editingFavorite != nil {
+            finishEditingFavorite(commit: true, restoresFocus: editingFieldHasFocus)
+        }
         menu.removeAllItems()
         let row = outlineView.clickedRow >= 0 ? outlineView.clickedRow : outlineView.selectedRow
         guard row >= 0,

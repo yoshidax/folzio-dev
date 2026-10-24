@@ -37,7 +37,7 @@ description: "Task list for お気に入りの名前の変更"
 
 **Purpose**: 変更前の状態が健全であることを確かめる。新しいターゲットや依存は追加しない
 
-- [ ] T001 ブランチ `002-favorite-folder-rename` で、変更前に `swift build` と `swift test` が通ることを確かめる。失敗があれば
+- [X] T001 ブランチ `002-favorite-folder-rename` で、変更前に `swift build` と `swift test` が通ることを確かめる。失敗があれば
   この feature の変更に入る前にユーザーへ報告する（既存の失敗をこの feature で直さない）
 
 ---
@@ -61,14 +61,14 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
 
 > **NOTE: 先に書き、ビルドエラーまたは失敗になることを確かめてから T006〜T009 を実装する**
 
-- [ ] T002 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteNameTests.swift` を新規作成する（`@Suite("FavoriteName")`、Swift Testing）。T006 の前にビルドエラーになることを確かめる:
+- [X] T002 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteNameTests.swift` を新規作成する（`@Suite("FavoriteName")`、Swift Testing）。T006 の前にビルドエラーになることを確かめる:
   - `normalized`: `"  2025 "` → `"2025"`、`"\n2025\n"` → `"2025"`、`""`・`"   "`・`" \n\t "` → nil
   - `normalized` と `sanitizedForEditing` が、中の改行 `"\n"`・`"\r\n"`・U+2028（`"\u{2028}"`）を取り除く（`"a\nb"` → `"ab"`）
   - `sanitizedForEditing` は前後の空白を残す（`" a "` → `" a "`）
   - `maximumLength == 255`。255 文字ちょうどの入力はそのまま、256 文字・300 文字の入力は先頭 255 文字に切れる
   - 長さは `String.count`（書記素クラスタ）で数える: 絵文字（`"👨‍👩‍👧"`）や結合文字（`"e\u{301}"`）を 255 個並べた入力は切れず、256 個で 255 個に切れる。切った結果の末尾が書記素の途中で切れていない
   - `/`・`:` を含む名前（`"a/b:c"`）をそのまま受け付ける
-- [ ] T003 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteFoldersTests.swift` にケースを追加する（T007 の前にビルドエラーになることを確かめる）。URL は既存のケースと同じく `/tmp/fav/...` を使う:
+- [X] T003 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteFoldersTests.swift` にケースを追加する（T007 の前にビルドエラーになることを確かめる）。URL は既存のケースと同じく `/tmp/fav/...` を使う:
   - `commitDisplayName("2025（バックアップ）", for: b, defaultName: "2025")` → true、`customName(for: b) == "2025（バックアップ）"`、`displayName(for: b, defaultName: "2025")` が同じ値
   - 別の名前へ変更 → true。空・空白だけで確定 → true で `customName(for:) == nil`、`displayName` が `defaultName`
   - 現在の表示名と同じ名前（前後の空白だけ違うものを含む）で確定 → false で変わらない。表示名なしの項目で `defaultName` と同じ名前を確定 → false（Return を2回押しても表示名が付かない。R50）
@@ -81,12 +81,12 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
   - `customNamesByPath` のキーが `standardizedFileURL.path` であること
   - 等価比較が表示名を含む（`urls` が同じで表示名だけ違えば `!=`）
   - 既存のケース（`init(urls:)` の重複除去など）は変えずに通す
-- [ ] T004 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteCommandsTests.swift` を変える（T008 の前にビルドエラーになることを確かめる）:
+- [X] T004 [P] [US1] `Tests/MediaViewerCoreTests/FavoriteCommandsTests.swift` を変える（T008 の前にビルドエラーになることを確かめる）:
   - `renameTarget(.favorite(a))` → `a`。`renameTarget(.favoritesHeader)`・`renameTarget(.folder(a))`・`renameTarget(.folder(/Users/me))`（ルート）・`renameTarget(nil)` → nil（US1-AS35）
   - 既存の34行目と92行目の `contextMenu(for: .favorite(...)) == [.removeFromFavorites]` を `[.renameFavorite, .removeFromFavorites]` に改める（`roots` を渡す場合も同じ）
   - `.folder`（ルートとルート以外）・`.favoritesHeader` のメニューに `.renameFavorite` が含まれない
   - ほかの既存のケースは変えずに通す
-- [ ] T005 [P] [US1] `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` の `// MARK: - favorites` にケースを追加する（T009 の前に失敗することを確かめる）。既存のケースと同じ一時ドメインの `UserDefaults` を使う:
+- [X] T005 [P] [US1] `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` の `// MARK: - favorites` にケースを追加する（T009 の前に失敗することを確かめる）。既存のケースと同じ一時ドメインの `UserDefaults` を使う:
   - 表示名の往復: `FavoriteFolders(urls: [a, b], customNames: [b.path: "2025（バックアップ）"])` を書いて読むと等しい。`defaults.dictionary(forKey: "favorites.displayNames")` が `[b.path: "2025（バックアップ）"]`
   - 旧形式: `favorites.paths` だけを書いた状態で読むと、登録順のまま全件 `customName(for:) == nil`（EC-45）
   - `favorites.displayNames` が辞書でない（文字列・配列）→ 表示名なしで、登録は失われない
@@ -98,13 +98,13 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
 
 ### Implementation for User Story 1（Core）
 
-- [ ] T006 [P] [US1] `Sources/MediaViewerCore/Model/FavoriteName.swift` を新規作成する（R50、data-model の「FavoriteName」、contracts/core-api.md。T002 を通す）:
+- [X] T006 [P] [US1] `Sources/MediaViewerCore/Model/FavoriteName.swift` を新規作成する（R50、data-model の「FavoriteName」、contracts/core-api.md。T002 を通す）:
   - `public enum FavoriteName`。`public static let maximumLength = 255`（「`String.count`（書記素クラスタ）で数える」）
   - `public static func sanitizedForEditing(_ text: String) -> String`: 「改行（`CharacterSet.newlines` に含まれる文字）を取り除き、先頭から 255 文字で打ち切る。
     前後の空白は残す（入力中のため）」。改行の判定は Unicode scalar 単位で行い、`\r\n` のような1書記素の改行も除く。打ち切りは `String(text.prefix(maximumLength))`
   - `public static func normalized(_ text: String) -> String?`: 「`sanitizedForEditing` の後に前後の空白と改行を取り除く。空なら nil」
   - `/`・`:` を拒否せず、重複の検査もしない（EC-41）。各メンバーのドキュメントコメントに FR-100 を書く
-- [ ] T007 [US1] `Sources/MediaViewerCore/Model/FavoriteFolders.swift` を変える（R48、data-model の「FavoriteFolders」。T006 の後。T003 を通す）:
+- [X] T007 [US1] `Sources/MediaViewerCore/Model/FavoriteFolders.swift` を変える（R48、data-model の「FavoriteFolders」。T006 の後。T003 を通す）:
   - `private var customNames: [String: String]`（キーは既存の `key(_:)` ＝ `standardizedFileURL.path`）を足す。不変条件をコメントに書く:
     「キーは、すべて `urls` に登録されている場所のキー」「値は `FavoriteName.normalized(_:)` を通した値で、1〜255 文字・改行なし・前後に空白なし」
   - `init(urls:)` を `public init(urls: [URL] = [], customNames: [String: String] = [:])` にする。重複除去は既存どおり。`customNames` は各キーを
@@ -117,7 +117,7 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
   - `public var customNamesByPath: [String: String] { customNames }`（保存用）
   - `Equatable` は合成のまま（`urls` と `customNames` の両方で比べる）。ファイルシステムには触れない
   - 既存の呼び出し側（`FavoriteFolders(urls:)`・`FavoriteFolders()`）がそのままビルドできることを確かめる
-- [ ] T008 [P] [US1] `Sources/MediaViewerCore/Model/FavoriteCommands.swift` を変える（R52、data-model の「FavoriteCommands・TreeContextMenuItem」。T004 を通す）:
+- [X] T008 [P] [US1] `Sources/MediaViewerCore/Model/FavoriteCommands.swift` を変える（R52、data-model の「FavoriteCommands・TreeContextMenuItem」。T004 を通す）:
   - `TreeContextMenuItem` に `case renameFavorite` を足す（コメント「お気に入りの項目の「名前を変更」（FR-099）」）
   - `public static func renameTarget(_ role: TreeItemRole?) -> URL?`: `.favorite(url)` のときだけ url、`.favoritesHeader`・`.folder`・nil は nil（FR-099、US1-AS35）。
     ドキュメントコメント「Return・「編集 > 名前を変更」・右クリックの「名前を変更」の対象」
@@ -126,7 +126,7 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
     ケースを足すと必ずビルドエラーになる。このタスクで `.renameFavorite` の分岐を必ず足す。この時点ではタイトル「名前を変更」・アクションなし
     （`action: nil`。メニューでは淡色）の仮の項目にし、T012 で本来のアクションとキー等価に置き換える。`swift build` が通ることを確かめる
   - App のファイルを触るため、T011〜T016（同じ `DirectoryTreeViewController.swift`）より前に終える。[P] は T006・T007・T009・T010 との並行を指す
-- [ ] T009 [US1] `Sources/MediaViewerCore/Settings/SettingsStore.swift` の `favorites` を変える（R49、contracts/settings.md。T007 の後。T005 を通す）:
+- [X] T009 [US1] `Sources/MediaViewerCore/Settings/SettingsStore.swift` の `favorites` を変える（R49、contracts/settings.md。T007 の後。T005 を通す）:
   - `Keys` に `static let favoriteDisplayNames = "favorites.displayNames"` を足す
   - get: `favorites.paths` の読み方は変えない。`defaults.object(forKey: Keys.favoriteDisplayNames) as? [String: Any]` が取れなければ表示名なし。取れたら
     `compactMapValues { $0 as? String }` で文字列でない値を捨て、`FavoriteFolders(urls: urls, customNames: names)` に渡す（未登録のパス・空になる値の破棄と
@@ -139,7 +139,7 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
 
 ### Implementation for User Story 1（App）
 
-- [ ] T010 [P] [US1] `Sources/MediaViewerApp/Tree/FavoriteNameFormatter.swift` を新規作成する（R50。T006 の後）:
+- [X] T010 [P] [US1] `Sources/MediaViewerApp/Tree/FavoriteNameFormatter.swift` を新規作成する（R50。T006 の後）:
   - `final class FavoriteNameFormatter: Formatter`。判定は `FavoriteName` に任せ、このクラスに規則を書かない
   - `string(for obj: Any?) -> String?` は `obj as? String`、`getObjectValue(_:for:errorDescription:)` は文字列をそのまま `obj` に入れて true（`stringValue` の読み書きを変えない）
   - `isPartialStringValid(_ partialStringPtr: AutoreleasingUnsafeMutablePointer<NSString>, proposedSelectedRange:originalString:originalSelectedRange:errorDescription:) -> Bool`:
@@ -149,11 +149,11 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
     クラスを `@MainActor` にすると Swift 6 で override の分離が合わずビルドエラーになる。判定は純粋関数の `FavoriteName` に任せ、
     状態を持たないため分離は要らない
   - `override init()`（`super.init()` を呼ぶ）と `required init?(coder: NSCoder)`（`super.init(coder:)` を呼ぶ）を置く
-- [ ] T011 [US1] `Sources/MediaViewerApp/Operations/ConfirmationPresenter.swift` の `confirmRemovingFavorite(named:)` を `confirmRemovingFavorite(named name: String, path: String)` に置き換える（R55、FR-064 の変更）:
+- [X] T011 [US1] `Sources/MediaViewerApp/Operations/ConfirmationPresenter.swift` の `confirmRemovingFavorite(named:)` を `confirmRemovingFavorite(named name: String, path: String)` に置き換える（R55、FR-064 の変更）:
   - `informativeText` を `"対象: \(name)\n場所: \(path)\n実際のフォルダは変更されません"` にする。メッセージ・ボタン・省略設定（FR-023）の扱いは変えない
   - 唯一の呼び出し側 `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` の `removeFavorite(_:)` を `confirmRemovingFavorite(named: entry.name, path: entry.url.path)` に直す
   - `swift build` が通ることを確かめる（T012〜T016 と同じファイルを触るため、それらより先に行う）
-- [ ] T012 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` で表示名を表示に使う（R48・R52・R54、data-model の「App 側の状態」。T007・T008・T011 の後）:
+- [X] T012 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` で表示名を表示に使う（R48・R52・R54、data-model の「App 側の状態」。T007・T008・T011 の後）:
   - `FavoriteEntry` に `var defaultName: String` を足す（登録したフォルダの名前。ルートならボリューム名）。`name` の意味を「表示名」に変え、コメントを直す
   - `rebuildFavoriteEntries()`: `defaultName = root?.folder.name ?? url.lastPathComponent`（既存の名前の決め方）、`name = favorites.displayName(for: url, defaultName: defaultName)`。
     既存の項目を使い回すときも `name`・`defaultName`・`kind` を更新する
@@ -161,7 +161,7 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
   - `makeContextMenuItem` の `.renameFavorite`（T008 で足した仮の分岐）を本来の項目に置き換える: タイトル「名前を変更」、アクション `renameFavoriteFromMenu(_:)`（T014）、`keyEquivalent` は `"\r"`、修飾キーなし（Return を表示）。
     `target`・`representedObject` は既存の項目と同じく設定する
   - `swift build` が通ることを確かめる（`renameFavoriteFromMenu(_:)` は T014 までは何もしない空の実装を置いてよい）
-- [ ] T013 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` に行内編集の開始・終了を実装する（R51・R54。T010・T012 の後。`ListModeView.beginRenaming` / `finishRenaming` と同じ型にする）:
+- [X] T013 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` に行内編集の開始・終了を実装する（R51・R54。T010・T012 の後。`ListModeView.beginRenaming` / `finishRenaming` と同じ型にする）:
   - 状態: `private var editingFavorite: FavoriteEntry?`（nil 以外の間は「名前の変更中」）、`private var editingOriginalName: String?`、`private var isFinishingEdit = false`、
     `private var needsReloadAfterEdit = false`、`private let favoriteNameFormatter = FavoriteNameFormatter()`
   - `private func beginEditingFavorite(_ entry: FavoriteEntry) -> Bool`: 編集中なら false。`outlineView.row(forItem: entry)` の行を `scrollRowToVisible` し、
@@ -188,7 +188,7 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
     `controlTextDidEndEditing(_:)` → `finishEditingFavorite(commit: true, restoresFocus: false)`（ほかの場所のクリックで確定し、クリック先のフォーカスを変えない。A-31）
   - `outlineView(_:viewFor:item:)` で、どの行（`Node`・見出し・`FavoriteEntry`）のセルも毎回非編集の見た目・`formatter = nil`・`delegate = nil`・
     `setAccessibilityLabel(nil)` に戻す（セルは共有のため。R51・R54）。見た目を戻す処理は `beginEditingFavorite` と共有の `setEditingAppearance(_:editing:)` にまとめる
-- [ ] T014 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` に開始の経路を実装する（R52、FR-099。T013 の後）:
+- [X] T014 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` に開始の経路を実装する（R52、FR-099。T013 の後）:
   - `@objc func rename(_ sender: Any?)`: 「編集 > 名前を変更」と Return（既存のメニュー項目 `#selector(FileListViewController.rename(_:))`、`target = nil`）を応答チェーンで受ける。
     `FavoriteCommands.renameTarget(role(for: selectedItem))` が URL を返し、`selectedItem` が `FavoriteEntry` のときだけ `beginEditingFavorite` を呼ぶ。
     ドキュメントコメント「ツリーにフォーカスがあるときの Return・「編集 > 名前を変更」。お気に入りの項目だけ表示名の編集を始める（FR-099）。
@@ -197,7 +197,7 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
     `FavoriteEntry` なら `beginEditingFavorite`。ツリーの選択は変えない。メニューの追跡中で `makeFirstResponder` に失敗する場合は、
     `Task { @MainActor in ... }` で次のターンに回して始める
   - `MainMenu.swift` は変えない（R52）
-- [ ] T015 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` の `validateMenuItem(_:)` を変える（R52・R53、FR-099・102。T014 の後）:
+- [X] T015 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` の `validateMenuItem(_:)` を変える（R52・R53、FR-099・102。T014 の後）:
   - 先頭で `editingFavorite != nil` なら、自分のアクション（`rename(_:)`・`renameFavoriteFromMenu(_:)`・`moveToTrash(_:)`・`trashFolderFromMenu(_:)`・`paste(_:)`・
     `movePaste(_:)`・`revealInFinder(_:)`・`addToFavorites(_:)`・`removeFavoriteFromMenu(_:)`）にはすべて false を返す（並びは契約 keyboard-and-menus.md の 2・R53 と同じ）。コメントに「Return と ⌘⌫ はメニューの
     キー等価がフィールドエディタより先に処理されるため、無効にしないと編集中の Return が確定にならず、⌘⌫ でお気に入りが削除される（R53）」と書く。
@@ -206,7 +206,7 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
   - 編集中でないとき: `rename(_:)` は `FavoriteCommands.renameTarget(role(for: selectedItem)) != nil`（お気に入りの項目以外・未選択では無効。US1-AS35）、
     `renameFavoriteFromMenu(_:)` は `renameTarget(role(for: menuItem.representedObject)) != nil`
   - ほかの項目の既存の判定は変えない。`PaneCommands`・ツールバー・`FileListViewController` の無効化は、既存の `isEditingText`（first responder が `NSTextView`）で効くため変えない（R53）
-- [ ] T016 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` で、編集中に起こるツリーの再読み込みを扱う（R51「編集中に起こるツリーの再読み込み」、EC-42・43。T013 の後）:
+- [X] T016 [US1] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` で、編集中に起こるツリーの再読み込みを扱う（R51「編集中に起こるツリーの再読み込み」、EC-42・43。T013 の後）:
   - `applyFavoriteProbe(_:)`: 対象が `editingFavorite` と同じ項目なら `availability` だけ更新し、`reloadItem` せずに `needsReloadAfterEdit = true` にする（編集を続けられる。EC-43）
   - フォーカスの扱い（R51「フォーカス」）: 下の `applyRoots`・`menuNeedsUpdate` では、確定の直前にツリーにフォーカスがあったか
     （編集中のフィールドにフィールドエディタがまだ付いているか。`field.currentEditor() != nil`）を見て、その値を `restoresFocus` に渡す。
@@ -220,13 +220,13 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
     行が消えると編集中のフィールドが切り離されたまま残るため。クリック先はツリーなのでフォーカスはツリーに戻す。R51）。
     既存の `outlineViewItemDidCollapse(_:)` は変えない
   - `applyListing` の `reloadItem(node, reloadChildren:)` は編集を止めないため変えない。`reloadFavorites()` は編集中はメニューの検証で起こらない（T015）
-- [ ] T017 [P] [US1] `README.md` のお気に入りの説明（15行目付近）とショートカットの表（153〜156行目付近）に、お気に入りの項目の名前を Return・右クリックの「名前を変更」・
+- [X] T017 [P] [US1] `README.md` のお気に入りの説明（15行目付近）とショートカットの表（153〜156行目付近）に、お気に入りの項目の名前を Return・右クリックの「名前を変更」・
   「編集 > 名前を変更」で変えられること（行の中で編集、Return で確定・Esc で取り消し、空にすると元のフォルダ名に戻る、実際のフォルダの名前は変わらない、
   確認モーダルなし）と、お気に入りの削除の確認に表示名と絶対パスが出ることを追記する
 
 ### Verification for User Story 1
 
-- [ ] T018 [US1] 「Phase の検証ゲート」の 1〜4 を行う（T002〜T017 に依存）:
+- [X] T018 [US1] 「Phase の検証ゲート」の 1〜4 を行う（T002〜T017 に依存）:
   - `swift build`、`swift test`、`scripts/check-no-network.sh` を通す。新しいテストが data-model.md の「テスト」の表の項目を含むことを確かめる
   - quickstart.md「2. 準備」のコマンドは `.app` のドメイン（`local.my-img-viewer.MediaViewer`）にあるユーザーの実際のお気に入りを上書きする。
     **実行する前に、上書きすることと退避先（`~/MediaViewer-defaults-backup.plist`）をユーザーに伝えて了承を得る**。了承がなければ準備のコマンドを実行せず、
@@ -240,6 +240,7 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
   - GUI で確かめていない項目があれば、このタスクの下にその番号と理由を追記する（quickstart.md「5. 完了の条件」）
   - GUI 確認の結果を受け取ったら、アプリが終了していることを `pgrep -fl MediaViewer` で確かめ、ユーザーに確認してから quickstart.md「2. 準備」の
     「元に戻すとき」の手順で元のお気に入りに戻す。戻した後の `defaults read … favorites.paths` の結果をユーザーに示す
+  - 2026-10-24 GUI 確認 1〜24 を実施し、すべて期待どおり（未確認の項目なし）。確認後にテスト用のお気に入りを元へ戻した
 
 **Checkpoint**: お気に入りの項目の名前を3つの手段で変えられ、再起動後も残り、実際のフォルダは変わらない。名前の変更中は契約の操作が無効になり、
 ファイルリストの名前の変更・お気に入りの削除・ツリーのゴミ箱は従来どおり
@@ -250,12 +251,12 @@ Finder で実際のフォルダの名前が変わっておらず、再起動後�
 
 **Purpose**: 変更範囲の確認とコミット
 
-- [ ] T019 変更範囲を確かめる（T018 の後）:
+- [X] T019 変更範囲を確かめる（T018 の後）:
   - `grep -rn "import AppKit" Sources/MediaViewerCore` が何も返さない
   - `git diff --stat` で、plan.md の「変更しない」ファイル（`Sources/MediaViewerApp/App/MainMenu.swift`・`FileListViewController`・`PaneCommands`・`MainToolbarController`）と
     `specs/product/` に変更がない（`specs/product/` への反映は実装と検証の後に、sdd-increment の反映の手順で別に行う）
   - 実装中に変えた仕様文書が、この tasks.md のチェックと T018 の追記だけであること（AGENTS.md）
-- [ ] T020 ソースの変更・テスト・`README.md`・`specs/002-favorite-folder-rename/` を1つのコミットにする（例: `feat: rename favorite display names (002-favorite-folder-rename)`）。
+- [X] T020 ソースの変更・テスト・`README.md`・`specs/002-favorite-folder-rename/` を1つのコミットにする（例: `feat: rename favorite display names (002-favorite-folder-rename)`）。
   コミット前に `swift build` と `swift test` が通っていることを確かめる
 
 ---
