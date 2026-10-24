@@ -31,8 +31,32 @@ struct FavoriteCommandsTests {
             FavoriteCommands.contextMenu(for: .folder(folder))
                 == [.pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder]
         )
-        #expect(FavoriteCommands.contextMenu(for: .favorite(registered)) == [.removeFromFavorites])
+        #expect(
+            FavoriteCommands.contextMenu(for: .favorite(registered)) == [.renameFavorite, .removeFromFavorites]
+        )
         #expect(FavoriteCommands.contextMenu(for: .favoritesHeader).isEmpty)
+    }
+
+    // MARK: お気に入りの名前の変更（FR-099）
+
+    @Test("renameTarget は .favorite のときだけ URL を返す")
+    func renameTargetOnlyForFavorite() {
+        let a = URL(fileURLWithPath: "/Users/me/a")
+        #expect(FavoriteCommands.renameTarget(.favorite(a)) == a)
+        #expect(FavoriteCommands.renameTarget(.favoritesHeader) == nil)
+        #expect(FavoriteCommands.renameTarget(.folder(a)) == nil)
+        #expect(FavoriteCommands.renameTarget(.folder(URL(fileURLWithPath: "/Users/me"))) == nil)
+        #expect(FavoriteCommands.renameTarget(nil) == nil)
+    }
+
+    @Test("「名前を変更」は .folder（ルートを含む）と見出しのメニューに含まれない")
+    func renameFavoriteIsOnlyInFavoriteMenu() {
+        let a = URL(fileURLWithPath: "/Users/me/a")
+        let root = URL(fileURLWithPath: "/Users/me")
+        #expect(!FavoriteCommands.contextMenu(for: .folder(a), roots: roots).contains(.renameFavorite))
+        #expect(!FavoriteCommands.contextMenu(for: .folder(root), roots: roots).contains(.renameFavorite))
+        #expect(!FavoriteCommands.contextMenu(for: .folder(a)).contains(.renameFavorite))
+        #expect(!FavoriteCommands.contextMenu(for: .favoritesHeader, roots: roots).contains(.renameFavorite))
     }
 
     @Test("選択したときに表示するフォルダ。見出しは nil")
@@ -89,7 +113,7 @@ struct FavoriteCommandsTests {
         let a = URL(fileURLWithPath: "/Users/me/a")
         #expect(FavoriteCommands.contextMenu(for: .folder(URL(fileURLWithPath: "/Users/me")), roots: roots) == plain)
         #expect(FavoriteCommands.contextMenu(for: .folder(a)) == plain)
-        #expect(FavoriteCommands.contextMenu(for: .favorite(a), roots: roots) == [.removeFromFavorites])
+        #expect(FavoriteCommands.contextMenu(for: .favorite(a), roots: roots) == [.renameFavorite, .removeFromFavorites])
         #expect(FavoriteCommands.contextMenu(for: .favoritesHeader, roots: roots).isEmpty)
     }
 }
