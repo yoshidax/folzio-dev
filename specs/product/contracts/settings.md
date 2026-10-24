@@ -16,6 +16,7 @@
 | `playback.loop` | Bool | true | FR-031・032 |
 | `fileOps.confirmBeforeExecuting` | Bool | true | FR-022・023・024・064（お気に入りの削除の確認にも使う） |
 | `favorites.paths` | [String]（絶対パス、登録順） | `[]` | FR-062・066 |
+| `favorites.displayNames` | [String: String]（キーは登録したフォルダの絶対パス、値は表示名） | （未設定 = どの項目も表示名なし） | FR-099〜101 |
 
 - ペイン幅は `NSSplitView` の自動保存名 `MainSplit` で別途保存する（FR-002・003）
 - 読み込み時に型や値の範囲が不正なものは既定値に戻す（例: `thumbnailSize` を 48〜512 に丸める）
@@ -28,9 +29,24 @@
 - zip ファイルの表示は `view.showsZipFiles` に保存し、初回起動（値がない）だけ非表示で始まる。以後は保存した値を復元し、
   キーが Bool でない場合も非表示として読む（FR-003・095）。ツールバーのボタン・「表示」メニュー・⌃⌘Z は同じ値を使う。
   zip の中の位置・選択・検索条件とは独立し、zip の中を表示中の切り替えもこの値だけを変える
-- お気に入りはパスだけを保存し、ブックマークデータは保存しない。登録したフォルダが移動・名前変更されても追従せず、
+- お気に入りの場所はパスで保存し、ブックマークデータは保存しない。登録したフォルダが移動・名前変更されても追従せず、
   見つからない項目として残す（FR-067）。見つかるかどうか（`FavoriteAvailability`）と「お気に入り」の見出しの
   開閉状態は保存しない。起動時の見出しは折りたたんだ状態で始まる
+- お気に入りの表示名は `favorites.displayNames` に、表示名を付けた登録の分だけ保存する。キーは `favorites.paths` の各パスを
+  標準化した絶対パス（`standardizedFileURL.path`）とする。表示名を付けていない登録はキーに載せず、表示名が1つもなければ
+  `favorites.displayNames` 自体を消す。お気に入りから削除した登録の表示名は残さない（FR-101、EC-44）
+- 読み込み時は、`favorites.displayNames` が辞書でなければ無視する。値が文字列でない項目、`favorites.paths` にないパスの項目、
+  前後の空白と改行を除くと空になる項目は捨てる。値の中の改行は取り除き、255 文字（書記素クラスタ）を超える分は切り捨てる（FR-100）
+- 表示名を保存する前のバージョンの保存内容（`favorites.paths` だけ）は、そのまま登録順に、全件を表示名なしとして読む。
+  保存形式の移行処理は持たない。古いバージョンは `favorites.displayNames` を読まないため、戻しても登録は失われない（FR-101、EC-45）
+- 表示名は登録したフォルダの名前と独立に保存する。フォルダが見つからない間（FR-067）も消さない。保存の例:
+
+  ```text
+  favorites.paths        = ["/Users/me/Photos/2025", "/Volumes/Backup/Photos/2025"]
+  favorites.displayNames = { "/Volumes/Backup/Photos/2025": "2025（バックアップ）" }
+  ```
+
+  ツリーの表示は「2025」「2025（バックアップ）」（登録順）
 - zip の中の位置（開いている zip と階層）は保存しない。zip の中へ入っても `view.lastFolderPath` は変えず、次回は zip を含む
   フォルダの一覧から始まる（FR-003）。保存キーは追加しない
 - ツールバーの構成は保存しない（`NSToolbar.autosavesConfiguration = false`）。表示状態だけを
