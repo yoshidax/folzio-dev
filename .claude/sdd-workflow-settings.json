@@ -2,7 +2,7 @@
   "permissions": {
     "allow": [
       "Bash(.specify/extensions/git/scripts/bash/*)",
-      "Edit(/.specify/feature.json)"
+      "Edit(.specify/feature.json)"
     ]
   },
   "hooks": {

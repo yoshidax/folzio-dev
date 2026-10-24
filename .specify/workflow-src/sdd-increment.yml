@@ -2,7 +2,7 @@ schema_version: "1.0"
 workflow:
   id: "sdd-increment"
   name: "SDD increment"
-  version: "0.5.0"
+  version: "0.6.0"
   author: "igachan"
   # command / prompt の手順で使う integration の既定値。指定しないと prompt の手順が integration なしで失敗する
   integration: "claude"
@@ -82,6 +82,16 @@ steps:
       fi
       echo "feature ブランチ: $branch"
 
+  # 後の手順のスクリプトは .specify/feature.json で feature を選ぶ。claude -p の書き込みが権限で拒否されると
+  # 前の feature を指したまま進むため、ブランチから決めて shell で書く
+  - id: set_feature
+    type: shell
+    run: |
+      dir="specs/$(git branch --show-current)"
+      [ -f "$dir/spec.md" ] || { echo "$dir/spec.md がありません（specify の結果を確認してください）" >&2; exit 1; }
+      printf '{\n  "feature_directory": "%s"\n}\n' "$dir" > .specify/feature.json
+      echo "feature: $dir"
+
   # ── 2. 仕様の明確化（skip のときは行わない） ─────────────────────────
   # clarify は feature の spec.md しか読まないため、関係する specs/product/ の領域との矛盾と影響範囲も質問の候補にさせる
   - id: clarify
@@ -116,12 +126,34 @@ steps:
         options: [approve, reject]
         on_reject: abort
 
+  # plan は未決のマーカーがあると止まるため、残っていれば先に止める（Claude Code で決めて spec.md に反映してから resume）
+  - id: check_clarified
+    type: shell
+    run: |
+      dir=$(python3 -c 'import json; print(json.load(open(".specify/feature.json"))["feature_directory"])')
+      if grep -n 'NEEDS CLARIFICATION' "$dir/spec.md" >&2; then
+        echo "$dir/spec.md に未決の項目があります。Claude Code で決めて反映してから resume してください" >&2; exit 1
+      fi
+
   # ── 3. 設計とタスク（間にゲートを置かない。レビューは 4. でまとめて行う） ──
+  # prompt の手順は「止めた」と出力しても成功扱いになるため、成果物ができたかを shell で確かめる
   - id: plan
     command: speckit.plan
 
+  - id: check_plan
+    type: shell
+    run: |
+      dir=$(python3 -c 'import json; print(json.load(open(".specify/feature.json"))["feature_directory"])')
+      [ -f "$dir/plan.md" ] || { echo "$dir/plan.md が作られていません。plan の出力を確認してから resume してください" >&2; exit 1; }
+
   - id: tasks
     command: speckit.tasks
+
+  - id: check_tasks
+    type: shell
+    run: |
+      dir=$(python3 -c 'import json; print(json.load(open(".specify/feature.json"))["feature_directory"])')
+      [ -f "$dir/tasks.md" ] || { echo "$dir/tasks.md が作られていません。tasks の出力を確認してから resume してください" >&2; exit 1; }
 
   # ── 4. 分析と修正のループ（analyze は tasks.md ができてから実行する） ──
   - id: review_loop
