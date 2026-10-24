@@ -363,6 +363,57 @@ struct FileSystemWatcherTests {
         await stopCollector(privateCollector)
     }
 
+    // MARK: - ディスクリプタの使用量（bug: fsevents-watchroot-fd-exhaustion）
+
+    /// プロセスが開いているファイルディスクリプタの数
+    private func openDescriptorCount() -> Int {
+        (try? FileManager.default.contentsOfDirectory(atPath: "/dev/fd").count) ?? 0
+    }
+
+    @Test("folders を多く監視して作り直しても、開いているディスクリプタは監視の数に比例して増えない")
+    func watchingManyFoldersDoesNotExhaustDescriptors() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folders = try (0..<100).map { index -> URL in
+            let folder = root.appendingPathComponent("f\(index)", isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            return folder
+        }
+
+        let watcher = FileSystemWatcher()
+        let before = openDescriptorCount()
+        // ツリーの選択・展開のたびの作り直しと同じく、集合を変えながら作り直す
+        for round in 0..<4 {
+            watcher.watch(Set(folders.dropLast(round)), subtrees: [])
+        }
+        let increase = openDescriptorCount() - before
+        watcher.watch([], subtrees: [])
+
+        // GUI アプリの上限は 256。WatchRoot を付けると 100 フォルダで 1,000 を超える。ほかのテストが同時に開く分の余裕を見る
+        #expect(increase < 100, "100 フォルダの監視で開いたディスクリプタ: +\(increase)")
+    }
+
+    @Test("subtrees（WatchRoot）を足しても、増えるのは起点の分だけ")
+    func subtreeWatchRootCostsOnlyForTheRoot() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folders = try (0..<100).map { index -> URL in
+            let folder = root.appendingPathComponent("f\(index)", isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            return folder
+        }
+
+        let watcher = FileSystemWatcher()
+        let before = openDescriptorCount()
+        watcher.watch(Set(folders), subtrees: [root])
+        // folders だけを変えても、subtrees 側のストリームは作り直さない
+        watcher.watch(Set(folders.dropLast()), subtrees: [root])
+        let increase = openDescriptorCount() - before
+        watcher.watch([], subtrees: [])
+
+        #expect(increase < 150, "100 フォルダと起点1つの監視で開いたディスクリプタ: +\(increase)")
+    }
+
     @Test("起点自身・親フォルダの削除と移動は、起点の URL として流す。folders だけなら自身は流さない")
     func subtreeReportsRootChanges() async throws {
         let base = try makeTemporaryDirectory()

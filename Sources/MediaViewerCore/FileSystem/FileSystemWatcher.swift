@@ -39,7 +39,10 @@ public final class FileSystemWatcher: FileSystemWatching, @unchecked Sendable {
     private var pendingFolders: Set<URL> = []
     private var pendingSince: DispatchTime?
     private var debounceWorkItem: DispatchWorkItem?
-    private var stream: FSEventStreamRef?
+    /// `folders` 用のストリーム。WatchRoot を付けない（bug: fsevents-watchroot-fd-exhaustion）
+    private var folderStream: FSEventStreamRef?
+    /// `subtrees` 用のストリーム。起点自身と祖先の移動・削除を受け取るため WatchRoot を付ける（R38）
+    private var subtreeStream: FSEventStreamRef?
 
     public init() {
         let (eventStream, continuation) = AsyncStream.makeStream(
@@ -111,10 +114,12 @@ public final class FileSystemWatcher: FileSystemWatching, @unchecked Sendable {
         let newSubtrees = subtrees
             .sorted { $0.path < $1.path }
             .map { Subtree(url: $0, realComponents: Self.realComponents(of: $0)) }
-        guard mapping != watchedFolders || newSubtrees != watchedSubtrees else { return }
+        let foldersChanged = mapping != watchedFolders
+        let subtreesChanged = newSubtrees != watchedSubtrees
+        guard foldersChanged || subtreesChanged else { return }
 
         watchedFolders = mapping
-        if newSubtrees != watchedSubtrees {
+        if subtreesChanged {
             hiddenFolderCache.removeAll()
         }
         watchedSubtrees = newSubtrees
@@ -122,12 +127,37 @@ public final class FileSystemWatcher: FileSystemWatching, @unchecked Sendable {
         pendingSince = nil
         debounceWorkItem?.cancel()
         debounceWorkItem = nil
-        rebuildStream()
+        // 変わった側だけを作り直す。ツリーの操作のたびに起点のストリームを作り直さない
+        if foldersChanged {
+            rebuildFolderStream()
+        }
+        if subtreesChanged {
+            rebuildSubtreeStream()
+        }
     }
 
-    private func rebuildStream() {
-        stopStream()
-        guard !watchedFolders.isEmpty || !watchedSubtrees.isEmpty else { return }
+    /// WatchRoot は監視するパスの祖先ごとにディスクリプタを開く（1パスあたりパスの深さの分）。ツリーで見えている行を
+    /// すべて監視する `folders` に付けると、GUI アプリの上限（256）を使い切るため付けない。`folders` の変更は親フォルダの
+    /// 変更として届く（bug: fsevents-watchroot-fd-exhaustion）
+    private func rebuildFolderStream() {
+        Self.stop(&folderStream)
+        let paths = Set(watchedFolders.values.map(\.path))
+        folderStream = makeStream(paths: paths, watchesRoot: false)
+    }
+
+    private func rebuildSubtreeStream() {
+        Self.stop(&subtreeStream)
+        var paths: Set<String> = []
+        for subtree in watchedSubtrees {
+            paths.insert(subtree.url.path)
+            paths.insert(NSString.path(withComponents: subtree.realComponents))
+        }
+        // WatchRoot: 起点自身とその祖先の移動・削除も受け取る（R38）
+        subtreeStream = makeStream(paths: paths, watchesRoot: true)
+    }
+
+    private func makeStream(paths pathSet: Set<String>, watchesRoot: Bool) -> FSEventStreamRef? {
+        guard !pathSet.isEmpty else { return nil }
 
         var context = FSEventStreamContext(
             version: 0,
@@ -136,17 +166,11 @@ public final class FileSystemWatcher: FileSystemWatching, @unchecked Sendable {
             release: nil,
             copyDescription: nil
         )
-        var pathSet = Set(watchedFolders.values.map(\.path))
-        for subtree in watchedSubtrees {
-            pathSet.insert(subtree.url.path)
-            pathSet.insert(NSString.path(withComponents: subtree.realComponents))
-        }
         let paths = Array(pathSet) as CFArray
-        // WatchRoot: 起点自身とその祖先の移動・削除も受け取る（R38）
-        let flags = FSEventStreamCreateFlags(
-            kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagUseCFTypes
-                | kFSEventStreamCreateFlagWatchRoot
-        )
+        var flags = kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagUseCFTypes
+        if watchesRoot {
+            flags |= kFSEventStreamCreateFlagWatchRoot
+        }
         guard let newStream = FSEventStreamCreate(
             kCFAllocatorDefault,
             fileSystemWatcherCallback,
@@ -154,21 +178,26 @@ public final class FileSystemWatcher: FileSystemWatching, @unchecked Sendable {
             paths,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
             Self.debounceInterval,
-            flags
+            FSEventStreamCreateFlags(flags)
         ) else {
-            return
+            return nil
         }
 
         FSEventStreamSetDispatchQueue(newStream, queue)
         guard FSEventStreamStart(newStream) else {
             FSEventStreamInvalidate(newStream)
             FSEventStreamRelease(newStream)
-            return
+            return nil
         }
-        stream = newStream
+        return newStream
     }
 
     private func stopStream() {
+        Self.stop(&folderStream)
+        Self.stop(&subtreeStream)
+    }
+
+    private static func stop(_ stream: inout FSEventStreamRef?) {
         guard let current = stream else { return }
         FSEventStreamStop(current)
         FSEventStreamInvalidate(current)
