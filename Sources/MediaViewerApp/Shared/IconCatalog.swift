@@ -20,6 +20,10 @@ enum IconCatalog {
         symbol(named: "star.fill", pointSize: 13)
     }
 
+    static func slideshowIcon(pointSize: CGFloat = 16) -> NSImage? {
+        symbol(named: "play.rectangle", pointSize: pointSize)
+    }
+
     static func fallbackIcon(for kind: MediaKind) -> NSImage? {
         listItemIcon(for: .media(kind), pointSize: 16)
     }

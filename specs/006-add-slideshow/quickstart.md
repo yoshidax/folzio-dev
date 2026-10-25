@@ -116,6 +116,43 @@ open .build/MediaViewer.app
 
 記録には環境（macOS、機種、build 種別）、SC-033〜037 の結果、20区間の最小・最大・範囲外件数、矢印操作中の送り件数、Stop 後件数、既存性能結果を含める。結果欄は tasks が明示する本書への追記タスクで追加し、未実施を PASS にしない。
 
+## Phase 検証記録
+
+### 2026-10-26 自動ゲート（GUI 前）
+
+環境: macOS 26.6.2 (25G83)、arm64、Swift 6、debug test／release bundle。
+
+| 対象 | 実行 | 結果 |
+|---|---|---|
+| Phase 1〜5 回帰 | `swift build` | 成功 |
+| 機能テスト | `swift test --filter MediaViewerCoreTests` | 643 tests / 59 suites 成功（アイドル時 33.189 秒） |
+| 性能テスト | `swift test --filter MediaViewerPerformanceTests` | アイドル時 22 tests / 2 suites 成功（39.640 秒）。10,000／50,000／200,000 件の追加ケースは直列スイート内で 0.010／0.052／0.127 秒で成功 |
+| ネットワーク | `scripts/check-no-network.sh` | `Sources` にネットワーク API 参照なし |
+| アプリ | `scripts/make-app.sh` | `.build/MediaViewer.app` を作成 |
+| フィクスチャ | `scripts/make-fixtures.sh .build/SlideshowFixtures` | mixed／single／empty／search／slides.zip を生成 |
+
+`swift test` を単一プロセスで実行すると Swift Testing が機能テストと性能テストの target を並列に走らせ、
+性能テストの閾値に無関係な CPU 競合が乗る。プロジェクトの README にある「他の負荷」の注意と同じため、
+最終判定は上記の `--filter` 2 回で行う。重いアプリを起動した状態では性能テストが閾値を超えることがあり、
+その場合は GUI／Instruments の実時間計測（T054）と分けて記録する。
+
+GUI（T005・T012・T031・T040・T049・T054）と最終結果（T055）は未実施。未チェックのままにする。
+
+## 入力調停検証記録
+
+- 自動（T007〜T008）: `SlideshowInputPolicyTests` で active／restoring／対象ウィンドウ／sheet／
+  アプリモーダル／編集／メニュー所有の真理値表（64＋メニュー）と、開始可否の
+  candidate／loading／fullscreen／active／restoring／editing／sheet／modal（256 通り）を確認した。
+  `PaneCommands` の active／restoring 中の layout・history 禁止も確認した。
+- 自動（T015・T033）: 期限前0回、期限で pending→commit 1回、due→矢印→commit と矢印→due→commit、
+  timeout→stop→commit 0回、idle 0回、再開始の世代更新を任意 now で確認した。
+- App 接続（T028・T037・T038・T045）: 対象ウィンドウの key monitor と `cancelOperation` fallback を同じ
+  受理条件に接続し、受理した Esc だけを停止、受理した矢印だけを期限再設定と隠れた一覧の移動に使う。
+  `<`／`>` と `/` は期限不変、close／quit は復帰を待たず資源を破棄する。Gen 不一致の commit は適用しない。
+- 未実施（T031・T040・T049・T054）: 実際のシート／アプリモーダル／3種の名前編集／別ウィンドウへの
+  Esc・矢印、モーダル中の周期継続、同じ Esc の再適用なし、通常／全画面の実機確認。GUI 未実施のため
+  PASS とはしない。
+
 ## 完了の扱い
 
 build・全自動テスト・no-network・bundle 作成・ユーザーの3ペイン起動スモークと該当 GUI シナリオ・性能記録が必要。GUI 未確認は該当 tasks を未チェックに保ち、検証済みとは報告しない。問題がない実装 Phase をコミットし、最後にのみ feature spec の反映先表に従って product の Living spec へ反映する。

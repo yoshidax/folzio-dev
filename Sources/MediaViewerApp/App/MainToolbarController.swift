@@ -6,6 +6,7 @@ import Observation
 final class MainToolbarController: NSObject {
     private static let historyIdentifier = NSToolbarItem.Identifier("history")
     private static let paneLayoutIdentifier = NSToolbarItem.Identifier("paneLayout")
+    private static let slideshowIdentifier = NSToolbarItem.Identifier("slideshow")
     private static let mediaTypeFilterIdentifier = NSToolbarItem.Identifier("mediaTypeFilter")
     private static let zipVisibilityIdentifier = NSToolbarItem.Identifier("zipVisibility")
     private static let viewModeIdentifier = NSToolbarItem.Identifier("viewMode")
@@ -23,7 +24,9 @@ final class MainToolbarController: NSObject {
     private var zipVisibilityControl: NSSegmentedControl?
     private var viewModeControl: NSSegmentedControl?
     private var sizeItem: NSToolbarItem?
+    private var slideshowButton: NSButton?
     private var visibilityObservation: NSKeyValueObservation?
+    private var editingObservers: [NSObjectProtocol] = []
 
     init(fileList: FileListViewController, panes: MainSplitViewController, settings: SettingsStore) {
         self.fileList = fileList
@@ -70,7 +73,34 @@ final class MainToolbarController: NSObject {
         panes.onPaneLayoutChange = { [weak self] layout in
             self?.apply(paneLayout: layout)
         }
+        panes.onSlideshowAvailabilityChange = { [weak self] in
+            self?.updateSlideshowAvailability()
+        }
+        observeEditingAvailability()
         observeHistoryAvailability()
+    }
+
+    private func updateSlideshowAvailability() {
+        slideshowButton?.isEnabled = panes.canStartSlideshow
+        applyHistoryAvailability()
+        toolbar.validateVisibleItems()
+    }
+
+    private func observeEditingAvailability() {
+        for name in [NSControl.textDidBeginEditingNotification, NSControl.textDidEndEditingNotification] {
+            let token = NotificationCenter.default.addObserver(
+                forName: name,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated {
+                        self?.updateSlideshowAvailability()
+                    }
+                }
+            }
+            editingObservers.append(token)
+        }
     }
 
     /// 戻る・進むを、履歴とペインの状態から有効・無効にする（FR-112）
@@ -97,6 +127,7 @@ final class MainToolbarController: NSObject {
         paneLayoutControl?.setSelected(paneLayout.soloPane == .fileList, forSegment: 0)
         paneLayoutControl?.setSelected(paneLayout.soloPane == .preview, forSegment: 1)
         paneLayoutControl?.isEnabled = panes.paneCommands.canChangeLayout
+        applyHistoryAvailability()
     }
 
     func apply(displayMode: DisplayMode, thumbnailSize: Double) {
@@ -224,11 +255,11 @@ final class MainToolbarController: NSObject {
 
 extension MainToolbarController: NSToolbarDelegate {
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.historyIdentifier, Self.paneLayoutIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
+        [Self.historyIdentifier, Self.paneLayoutIdentifier, Self.slideshowIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.historyIdentifier, Self.paneLayoutIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
+        [Self.historyIdentifier, Self.paneLayoutIdentifier, Self.slideshowIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
     }
 
     func toolbar(
@@ -274,6 +305,31 @@ extension MainToolbarController: NSToolbarDelegate {
                 control: control
             )
             apply(paneLayout: panes.paneLayout)
+            return item
+        case Self.slideshowIdentifier:
+            let image = IconCatalog.slideshowIcon() ?? NSImage()
+            let button = NSButton(
+                image: image,
+                target: panes,
+                action: #selector(MainSplitViewController.startSlideshow(_:))
+            )
+            button.bezelStyle = .texturedRounded
+            button.controlSize = .regular
+            button.isBordered = true
+            button.imagePosition = .imageOnly
+            button.toolTip = "スライドショーを開始（⇧⌘S）"
+            button.setAccessibilityLabel("スライドショーを開始")
+            slideshowButton = button
+
+            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+            item.label = "スライドショーを開始"
+            item.paletteLabel = "スライドショーを開始"
+            item.toolTip = "スライドショーを開始（⇧⌘S）"
+            item.view = button
+            item.target = panes
+            item.action = #selector(MainSplitViewController.startSlideshow(_:))
+            item.autovalidates = true
+            updateSlideshowAvailability()
             return item
         case Self.mediaTypeFilterIdentifier:
             guard let control = makeSegmentedControl(
@@ -356,6 +412,10 @@ extension MainToolbarController: NSToolbarItemValidation {
         case Self.paneLayoutIdentifier:
             let enabled = panes.paneCommands.canChangeLayout
             paneLayoutControl?.isEnabled = enabled
+            return enabled
+        case Self.slideshowIdentifier:
+            let enabled = panes.canStartSlideshow
+            slideshowButton?.isEnabled = enabled
             return enabled
         case Self.zipVisibilityIdentifier:
             let enabled = !fileList.isEditingText

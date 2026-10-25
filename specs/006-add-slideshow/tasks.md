@@ -35,21 +35,21 @@ description: "スライドショー実装タスク"
 ## 解析後の文書修正（2026-10-25）
 
 - U1: FR-118/120/121/123 の入力受理条件とモーダル中の固定周期を、下記の未着手タスクへ反映した。今回の編集では実装・テスト実行・完了チェックを行っていない。完了済みタスクは0件。
-- I1: 実行中の並べ替え操作を追加するか、順序変更への追従だけを保証するかは人の判断待ち。A-51 と並べ替え操作の契約は未変更。実装開始前に判断し、関連文書・タスクを揃える必要がある。
+- I1: 実行中の並べ替えは既存の「表示 > 並べ替え」メニューを使い、スライドショー専用の新しい操作は追加しない方針で確定した。並べ替えを含む表示変更は FR-125 に従って最新の一覧へ追従し、予定時刻を変えない。T014・T016・T031・T054 で追従と期限不変を確認する。
 
 ## Phase 1: Setup — 検証データと既存構成の確認
 
 **Purpose**: 既存 Package を利用し、全 Story で再現可能な検証入力を用意する。
 
-- [ ] T001 新規 `Tests/MediaViewerCoreTests/SlideshowFixtureTests.swift` に、slideshow セットの mixed・single・empty・同名別場所・zip の階層と短長動画を検査する Swift Testing を追加する。`FixtureKit` の一時ディレクトリに生成し defer で削除する
+- [x] T001 新規 `Tests/MediaViewerCoreTests/SlideshowFixtureTests.swift` に、slideshow セットの mixed・single・empty・同名別場所・zip の階層と短長動画を検査する Swift Testing を追加する。`FixtureKit` の一時ディレクトリに生成し defer で削除する
 
-- [ ] T002 `Sources/FixtureKit/FixtureSets.swift` に `slideshow(in:)` を追加して `makeAll` から呼び、`slideshow/mixed/`（画像3件・GIF・1秒 MP4・10秒 MOV・subfolder・zip・text）、single/、empty/、search/left/same.jpg・right/same.jpg、mixed と sub を含む slides.zip を生成する。既存 ImageFixtures・VideoFixtures・ZipFixtureWriter を再利用する
+- [x] T002 `Sources/FixtureKit/FixtureSets.swift` に `slideshow(in:)` を追加して `makeAll` から呼び、`slideshow/mixed/`（画像3件・GIF・1秒 MP4・10秒 MOV・subfolder・zip・text）、single/、empty/、search/left/same.jpg・right/same.jpg、mixed と sub を含む slides.zip を生成する。既存 ImageFixtures・VideoFixtures・ZipFixtureWriter を再利用する
 
-- [ ] T003 `Package.swift` の既存 target と `Sources/make-fixtures/main.swift` の makeAll 経路で追加セットを生成できることを確認し、`scripts/make-fixtures.sh .build/SlideshowFixtures` を実行する。既存同梱 WebP を利用し、外部ツール導入が必要ならユーザーへ確認する
+- [x] T003 `Package.swift` の既存 target と `Sources/make-fixtures/main.swift` の makeAll 経路で追加セットを生成できることを確認し、`scripts/make-fixtures.sh .build/SlideshowFixtures` を実行する。既存同梱 WebP を利用し、外部ツール導入が必要ならユーザーへ確認する
 
-- [ ] T004 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
+- [x] T004 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
 
-- [ ] T005 ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示と既存のフォルダ／zip プレビューが維持されることを確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
+- [ ] T005 [MANUAL] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示と既存のフォルダ／zip プレビューが維持されることを確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
 
 - [ ] T006 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
 
@@ -61,17 +61,17 @@ description: "スライドショー実装タスク"
 
 **Blocking**: T007〜T013 完了後に Story 実装へ進む。
 
-- [ ] T007 `Tests/MediaViewerCoreTests/PaneLayoutTests.swift` に、active／restoring 中の canChangeLayout・canNavigateHistory が false、非実行時は既存条件のままというテストと、開始可否の候補数・全3種編集・モーダル・読み込み中・全画面の真理値表テストを追加する。FR-123 の入力受理条件について、active／restoring、対象ウィンドウへの入力か、シート・アプリモーダル・編集欄・メニュー等による入力所有の各真偽を組み合わせた純粋な可否判断の試験も追加する（U1）
+- [x] T007 `Tests/MediaViewerCoreTests/PaneLayoutTests.swift` に、active／restoring 中の canChangeLayout・canNavigateHistory が false、非実行時は既存条件のままというテストと、開始可否の候補数・全3種編集・モーダル・読み込み中・全画面の真理値表テストを追加する。FR-123 の入力受理条件について、active／restoring、対象ウィンドウへの入力か、シート・アプリモーダル・編集欄・メニュー等による入力所有の各真偽を組み合わせた純粋な可否判断の試験も追加する（U1）
 
-- [ ] T008 `Sources/MediaViewerCore/Model/PaneLayout.swift` の PaneCommands に active／restoring を入力する条件と共通の開始可否判断を追加する。候補あり AND 非実行／非復帰 AND 非編集 AND 非モーダルを守り、既存呼び出しを壊さず隠れたペインの focus／検索制限を維持する。Esc／矢印の共通入力受理判断も追加し、active AND 対象ウィンドウがキー入力先 AND 対象のシートなし AND アプリモーダルなし AND 編集欄・メニュー等がキーを処理していない場合だけ true とする。AppKit の状態は App から真偽値で渡す（U1）
+- [x] T008 `Sources/MediaViewerCore/Model/PaneLayout.swift` の PaneCommands に active／restoring を入力する条件と共通の開始可否判断を追加する。候補あり AND 非実行／非復帰 AND 非編集 AND 非モーダルを守り、既存呼び出しを壊さず隠れたペインの focus／検索制限を維持する。Esc／矢印の共通入力受理判断も追加し、active AND 対象ウィンドウがキー入力先 AND 対象のシートなし AND アプリモーダルなし AND 編集欄・メニュー等がキーを処理していない場合だけ true とする。AppKit の状態は App から真偽値で渡す（U1）
 
-- [ ] T009 新規 `Tests/MediaViewerCoreTests/BrowserModelSlideshowTests.swift` に、通常移動・zip 階層・検索置換・履歴復元の通知が一覧変更前に同期発火し、rename では発火しないこと、同じ URL へ戻っても旧 reload が採用されないことを追加する
+- [x] T009 新規 `Tests/MediaViewerCoreTests/BrowserModelSlideshowTests.swift` に、通常移動・zip 階層・検索置換・履歴復元の通知が一覧変更前に同期発火し、rename では発火しないこと、同じ URL へ戻っても旧 reload が採用されないことを追加する
 
-- [ ] T010 `Sources/MediaViewerCore/Browser/BrowserModel.swift` の resetForNavigation 入口へ専用の同期 `onWillReplaceLocation` 通知を追加し、既存 onLocationEvent を維持する。reloadCurrentFolder の結果採用に navigationGeneration を照合し、URL 一致だけで旧処理を採用しない。didRenameFolder 等の場所付け替えは置換扱いにしない
+- [x] T010 `Sources/MediaViewerCore/Browser/BrowserModel.swift` の resetForNavigation 入口へ専用の同期 `onWillReplaceLocation` 通知を追加し、既存 onLocationEvent を維持する。reloadCurrentFolder の結果採用に navigationGeneration を照合し、URL 一致だけで旧処理を採用しない。didRenameFolder 等の場所付け替えは置換扱いにしない
 
-- [ ] T011 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
+- [x] T011 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
 
-- [ ] T012 ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示と通常移動・検索・zip 階層移動・名前変更に回帰がないことを確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
+- [ ] T012 [MANUAL] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示と通常移動・検索・zip 階層移動・名前変更に回帰がないことを確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
 
 - [ ] T013 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
 
@@ -85,43 +85,43 @@ description: "スライドショー実装タスク"
 
 ### Tests for US9
 
-- [ ] T014 [P] [US9] 新規 `Tests/MediaViewerCoreTests/SlideshowSequenceTests.swift` に、空／1件／非メディア混在、画面外を含む現在順序、選択内 focused 優先→選択内先頭→候補先頭、末尾循環、行番号変更、通常 URL と ArchiveURL の同名別場所を検証する。表示不能でも kind.isMedia なら除外しない
+- [x] T014 [P] [US9] 新規 `Tests/MediaViewerCoreTests/SlideshowSequenceTests.swift` に、空／1件／非メディア混在、画面外を含む現在順序、選択内 focused 優先→選択内先頭→候補先頭、末尾循環、行番号変更、通常 URL と ArchiveURL の同名別場所を検証する。表示不能でも kind.isMedia なら除外しない
 
-- [ ] T015 [P] [US9] 新規 `Tests/MediaViewerCoreTests/SlideshowSessionTests.swift` に、任意 now による3秒未満0回・期限で pending→commit 1回・20周期・遅延で最大1回・重複 start 無変化・古い世代拒否・stop と due の両到着順・終了後0回を追加する。decode／動画終端／一覧更新が期限を変えないことも検証する。モーダル開閉や不適格な Esc を App が session へ通知しないイベント列でも元の期限で最大1回だけ送り、閉じた直後に期限を取り直さないことを任意 now で固定する（U1）
+- [x] T015 [P] [US9] 新規 `Tests/MediaViewerCoreTests/SlideshowSessionTests.swift` に、任意 now による3秒未満0回・期限で pending→commit 1回・20周期・遅延で最大1回・重複 start 無変化・古い世代拒否・stop と due の両到着順・終了後0回を追加する。decode／動画終端／一覧更新が期限を変えないことも検証する。モーダル開閉や不適格な Esc を App が session へ通知しないイベント列でも元の期限で最大1回だけ送り、閉じた直後に期限を取り直さないことを任意 now で固定する（U1）
 
-- [ ] T016 [P] [US9] `Tests/MediaViewerCoreTests/BrowserModelSlideshowTests.swift` に、同じ動画の開始・1件 tick で preview 世代／stop signal が変わらないこと、別対象で停止すること、フィルタ／検索追加／削除／rename／zip 変更／消失の選択整理、置換前停止、遅い reload／decode の拒否を追加する
+- [x] T016 [P] [US9] `Tests/MediaViewerCoreTests/BrowserModelSlideshowTests.swift` に、同じ動画の開始・1件 tick で preview 世代／stop signal が変わらないこと、別対象で停止すること、フィルタ／検索追加／削除／rename／zip 変更／消失の選択整理、置換前停止、遅い reload／decode の拒否を追加する
 
-- [ ] T017 [P] [US9] `Tests/MediaViewerCoreTests/HistoryNavigatorTests.swift` に presentation host の復帰 layout 投影を使う試験を追加し、開始／終了／選択で履歴を増やさず、通常閲覧の形式・サイズ・フィルタ変更は復帰 layout で記録、検索中は非記録・後の解除時に現在表示を反映することを検証する
+- [x] T017 [P] [US9] `Tests/MediaViewerCoreTests/HistoryNavigatorTests.swift` に presentation host の復帰 layout 投影を使う試験を追加し、開始／終了／選択で履歴を増やさず、通常閲覧の形式・サイズ・フィルタ変更は復帰 layout で記録、検索中は非記録・後の解除時に現在表示を反映することを検証する
 
 ### Implementation for US9
 
-- [ ] T018 [US9] 新規 `Sources/MediaViewerCore/Slideshow/SlideshowSequence.swift` に対象抽出・startTarget・nextTarget を実装する。visibleFiles は「`BrowserModel.listing.files` 全体。順序を保つ」、candidates は「`kind.isMedia` の項目だけ。都度導出し、開始時の固定列を正本にしない」、selected は「既存 `SelectionState.selected`」、focused は「既存 `SelectionState.focused`。現在位置の正本」を守る。MediaFile.id == url と ArchiveURL を再利用し、独立 index・データ本体を保持しない
+- [x] T018 [US9] 新規 `Sources/MediaViewerCore/Slideshow/SlideshowSequence.swift` に対象抽出・startTarget・nextTarget を実装する。visibleFiles は「`BrowserModel.listing.files` 全体。順序を保つ」、candidates は「`kind.isMedia` の項目だけ。都度導出し、開始時の固定列を正本にしない」、selected は「既存 `SelectionState.selected`」、focused は「既存 `SelectionState.focused`。現在位置の正本」を守る。MediaFile.id == url と ArchiveURL を再利用し、独立 index・データ本体を保持しない
 
-- [ ] T019 [US9] 新規 `Sources/MediaViewerCore/Slideshow/SlideshowSession.swift` に外部 now 入力の値型を実装する。phase は idle / running / waitingAfterArrow とし、「waiting は最後の矢印からの3秒待ち。専用一時停止機能ではない」、interval は「常に3秒。変更・永続化しない」、deadline は「active のとき1つ。idle は nil」、generation は「開始・再設定・終了で古い待機と pending due を無効化」、pendingDue は「timeout 到来後、選択確定前の保留。最大1つ」を守る。sleep せず timeout と commit を分け、stop > arrow > due、commit 時刻から次の3秒、遅延の追い付きなしとする（矢印の App 接続は Phase 4）
+- [x] T019 [US9] 新規 `Sources/MediaViewerCore/Slideshow/SlideshowSession.swift` に外部 now 入力の値型を実装する。phase は idle / running / waitingAfterArrow とし、「waiting は最後の矢印からの3秒待ち。専用一時停止機能ではない」、interval は「常に3秒。変更・永続化しない」、deadline は「active のとき1つ。idle は nil」、generation は「開始・再設定・終了で古い待機と pending due を無効化」、pendingDue は「timeout 到来後、選択確定前の保留。最大1つ」を守る。sleep せず timeout と commit を分け、stop > arrow > due、commit 時刻から次の3秒、遅延の追い付きなしとする（矢印の App 接続は Phase 4）
 
-- [ ] T020 [US9] `Sources/MediaViewerCore/Browser/BrowserModel.swift` にスライドショー用の単一選択整理経路を追加する。最新 listing 内の URL だけを採用し、同じ有効対象なら selection だけ整理して loadPreview／先読み／stopPlaybackSignal を再発行しない。別対象は既存 select 経路へ渡し、消去済み選択は復帰時に補完しない
+- [x] T020 [US9] `Sources/MediaViewerCore/Browser/BrowserModel.swift` にスライドショー用の単一選択整理経路を追加する。最新 listing 内の URL だけを採用し、同じ有効対象なら selection だけ整理して loadPreview／先読み／stopPlaybackSignal を再発行しない。別対象は既存 select 経路へ渡し、消去済み選択は復帰時に補完しない
 
-- [ ] T021 [US9] 新規 `Sources/MediaViewerApp/Slideshow/SlideshowCoordinator.swift` に MainActor の開始・単発 ContinuousClock.sleep(until:tolerance: .zero)・due 保留・commit・停止を実装する。待機 Task と commit 再予約は各最大1件。research.md R3 の順序付き RunLoop.perform と default／eventTracking／modalPanel mode、期限が過去の nextEvent(.keyDown, dequeue: false) で通常 dispatch を優先し、世代を直前照合する。キーの独自 dequeue／再送信・手動 run loop・Task.yield のみの調停は使わない。モーダル表示中も元の deadline で送り、開閉で session の停止・再作成・期限再設定をしない。modalPanel mode の commit 接続を確認し、モーダル／編集の未処理キーをスライドショー優先入力として待ち続けない。遅延時は最大1回だけ送る（U1）
+- [x] T021 [US9] 新規 `Sources/MediaViewerApp/Slideshow/SlideshowCoordinator.swift` に MainActor の開始・単発 ContinuousClock.sleep(until:tolerance: .zero)・due 保留・commit・停止を実装する。待機 Task と commit 再予約は各最大1件。research.md R3 の順序付き RunLoop.perform と default／eventTracking／modalPanel mode、期限が過去の nextEvent(.keyDown, dequeue: false) で通常 dispatch を優先し、世代を直前照合する。キーの独自 dequeue／再送信・手動 run loop・Task.yield のみの調停は使わない。モーダル表示中も元の deadline で送り、開閉で session の停止・再作成・期限再設定をしない。modalPanel mode の commit 接続を確認し、モーダル／編集の未処理キーをスライドショー優先入力として待ち続けない。遅延時は最大1回だけ送る（U1）
 
-- [ ] T022 [US9] `Sources/MediaViewerApp/App/MainSplitViewController.swift` と `Sources/MediaViewerApp/Slideshow/SlideshowCoordinator.swift` に SlideshowRestoreState と通常ウィンドウの開始／終了を接続する。normalPaneLayout は「開始前の通常ウィンドウの表示。全画面からなら全画面化前」、normalFocusedPane は「復帰後に表示される開始前ペインへフォーカスを戻す」、threePaneWidths は「tree / list / preview。既存 saved widths を継承し、有限・正値を検証」、presentationGeneration は「遅れて届く復帰 callback が新しい表示を上書きしないための照合」を守る。3要素の幅だけ保持し、window frame・選択・閲覧先・表示設定をコピーしない。内部 presentation は選択補完と履歴記録をせず、開始対象の確定後に preview を表示し focus を移す
+- [x] T022 [US9] `Sources/MediaViewerApp/App/MainSplitViewController.swift` と `Sources/MediaViewerApp/Slideshow/SlideshowCoordinator.swift` に SlideshowRestoreState と通常ウィンドウの開始／終了を接続する。normalPaneLayout は「開始前の通常ウィンドウの表示。全画面からなら全画面化前」、normalFocusedPane は「復帰後に表示される開始前ペインへフォーカスを戻す」、threePaneWidths は「tree / list / preview。既存 saved widths を継承し、有限・正値を検証」、presentationGeneration は「遅れて届く復帰 callback が新しい表示を上書きしないための照合」を守る。3要素の幅だけ保持し、window frame・選択・閲覧先・表示設定をコピーしない。内部 presentation は選択補完と履歴記録をせず、開始対象の確定後に preview を表示し focus を移す
 
-- [ ] T023 [US9] `Sources/MediaViewerApp/App/MainSplitViewController.swift` で一覧の選択整理完了後に coordinator へ最新候補を渡し、候補0件で自動終了・残りありなら期限不変とする。onWillReplaceLocation では session を同期停止して復帰先 layout を確定してから返す。rename・検索バッチ・一時 loading を置換と誤判定せず、外部削除／zip 変更／ボリューム消失時の既存移動先・空 preview を保つ
+- [x] T023 [US9] `Sources/MediaViewerApp/App/MainSplitViewController.swift` で一覧の選択整理完了後に coordinator へ最新候補を渡し、候補0件で自動終了・残りありなら期限不変とする。onWillReplaceLocation では session を同期停止して復帰先 layout を確定してから返す。rename・検索バッチ・一時 loading を置換と誤判定せず、外部削除／zip 変更／ボリューム消失時の既存移動先・空 preview を保つ
 
-- [ ] T024 [US9] `Sources/MediaViewerApp/App/MainSplitViewController.swift` の historyPresentation を active／restoring 中は復帰先 layout＋現在の形式／サイズ等として返す。`Sources/MediaViewerCore/History/HistoryNavigator.swift` の既存 recordViewChange 経路と検索中の抑止を維持し、開始／終了・一時的 layout に履歴記録を発行しない
+- [x] T024 [US9] `Sources/MediaViewerApp/App/MainSplitViewController.swift` の historyPresentation を active／restoring 中は復帰先 layout＋現在の形式／サイズ等として返す。`Sources/MediaViewerCore/History/HistoryNavigator.swift` の既存 recordViewChange 経路と検索中の抑止を維持し、開始／終了・一時的 layout に履歴記録を発行しない
 
-- [ ] T025 [P] [US9] `Sources/MediaViewerApp/Shared/IconCatalog.swift` に既存の自前描画方式の開始アイコンを追加する（外部画像・新依存は追加しない）
+- [x] T025 [P] [US9] `Sources/MediaViewerApp/Shared/IconCatalog.swift` に既存の自前描画方式の開始アイコンを追加する（外部画像・新依存は追加しない）
 
-- [ ] T026 [US9] `Sources/MediaViewerApp/App/MainToolbarController.swift` の pane group 右隣へ開始ボタンを追加し、T022 の開始経路を共通 action として公開して可否更新へ接続する。label は「スライドショーを開始」、tooltip は「スライドショーを開始（⇧⌘S）」とし、実行中は無効な開始ボタンのままにする
+- [x] T026 [US9] `Sources/MediaViewerApp/App/MainToolbarController.swift` の pane group 右隣へ開始ボタンを追加し、T022 の開始経路を共通 action として公開して可否更新へ接続する。label は「スライドショーを開始」、tooltip は「スライドショーを開始（⇧⌘S）」とし、実行中は無効な開始ボタンのままにする
 
-- [ ] T027 [US9] `Sources/MediaViewerApp/App/MainMenu.swift`・`Sources/MediaViewerApp/App/AppDelegate.swift`・`Sources/MediaViewerApp/App/MainSplitViewController.swift` に「表示 > スライドショーを開始」と ⇧⌘S、共通 start action／validation／内部 guard を接続する。全3種の名前編集と sheet／アプリモーダルを判定し、toolbar 非表示・検索／読み込み中・全画面でも候補があれば許可する。active／restoring 中のペイン・履歴操作は全入口で抑止する
+- [x] T027 [US9] `Sources/MediaViewerApp/App/MainMenu.swift`・`Sources/MediaViewerApp/App/AppDelegate.swift`・`Sources/MediaViewerApp/App/MainSplitViewController.swift` に「表示 > スライドショーを開始」と ⇧⌘S、共通 start action／validation／内部 guard を接続する。全3種の名前編集と sheet／アプリモーダルを判定し、toolbar 非表示・検索／読み込み中・全画面でも候補があれば許可する。active／restoring 中のペイン・履歴操作は全入口で抑止する
 
-- [ ] T028 [US9] `Sources/MediaViewerApp/App/MainSplitViewController.swift` の対象ウィンドウ用キー monitor と `Sources/MediaViewerApp/App/MainWindowController.swift` の cancelOperation fallback に、T008 の FR-123 共通受理条件を満たす場合だけ Esc 優先消費を接続する。stop は冪等にして pending／Task／callback を世代で破棄し、検索解除へ伝播させない。close／quit は `Sources/MediaViewerApp/App/AppDelegate.swift` も含め資源を破棄し、Settings・HistoryEntry に新状態を保存しない。条件外ではキーを既存の入力先へ渡し、スライドショーによる終了・全画面解除・検索解除・期限変更を行わない。モーダル／編集を閉じた同じ Esc を fallback で再適用しない。既存のシート／アプリモーダルの提示経路を使った接続確認で、Esc 取消と期限不変を検証し、方法・結果・未実施項目を `specs/006-add-slideshow/quickstart.md` の「入力調停検証記録」へ追記する（U1）
+- [x] T028 [US9] `Sources/MediaViewerApp/App/MainSplitViewController.swift` の対象ウィンドウ用キー monitor と `Sources/MediaViewerApp/App/MainWindowController.swift` の cancelOperation fallback に、T008 の FR-123 共通受理条件を満たす場合だけ Esc 優先消費を接続する。stop は冪等にして pending／Task／callback を世代で破棄し、検索解除へ伝播させない。close／quit は `Sources/MediaViewerApp/App/AppDelegate.swift` も含め資源を破棄し、Settings・HistoryEntry に新状態を保存しない。条件外ではキーを既存の入力先へ渡し、スライドショーによる終了・全画面解除・検索解除・期限変更を行わない。モーダル／編集を閉じた同じ Esc を fallback で再適用しない。既存のシート／アプリモーダルの提示経路を使った接続確認で、Esc 取消と期限不変を検証し、方法・結果・未実施項目を `specs/006-add-slideshow/quickstart.md` の「入力調停検証記録」へ追記する（U1）
 
-- [ ] T029 [US9] `Sources/MediaViewerApp/Slideshow/SlideshowCoordinator.swift` に既存 `Sources/MediaViewerApp/App/AppDelegate.swift` の OSSignposter 方式を合わせ、local.my-img-viewer.MediaViewer / Performance の SlideshowStart・SlideshowAdvance（実選択 commit）・SlideshowStop を追加する。名前・パス・メディア情報を記録せず、同じ1件維持を実選択移動と混同しない
+- [x] T029 [US9] `Sources/MediaViewerApp/Slideshow/SlideshowCoordinator.swift` に既存 `Sources/MediaViewerApp/App/AppDelegate.swift` の OSSignposter 方式を合わせ、local.my-img-viewer.MediaViewer / Performance の SlideshowStart・SlideshowAdvance（実選択 commit）・SlideshowStop を追加する。名前・パス・メディア情報を記録せず、同じ1件維持を実選択移動と混同しない
 
-- [ ] T030 [US9] `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
+- [x] T030 [US9] `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
 
-- [ ] T031 [US9] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示とUS9-AS1〜16 の通常ウィンドウでの対象・循環・開始不可・動画維持・更新・検索／履歴・空選択復帰・Esc 後6秒間0回を確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ。US9-AS16 は実行中のシート／アプリモーダル・編集欄への Esc を確認し、モーダル表示中の送り継続・開閉で期限不変・同じ Esc で終了しないこと、入力先が戻ってからの別の Esc で終了することを記録する（U1）
+- [ ] T031 [MANUAL] [US9] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示とUS9-AS1〜16 の通常ウィンドウでの対象・循環・開始不可・動画維持・更新・検索／履歴・空選択復帰・Esc 後6秒間0回を確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ。US9-AS16 は実行中のシート／アプリモーダル・編集欄への Esc を確認し、モーダル表示中の送り継続・開閉で期限不変・同じ Esc で終了しないこと、入力先が戻ってからの別の Esc で終了することを記録する（U1）
 
 - [ ] T032 [US9] 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
 
@@ -135,23 +135,23 @@ description: "スライドショー実装タスク"
 
 ### Tests for US10
 
-- [ ] T033 [P] [US10] `Tests/MediaViewerCoreTests/SlideshowSessionTests.swift` に due→arrow→commit と arrow→due→commit、due と Esc の両順序、反復・端・リスト左右で世代無効化と now+3秒、修飾付き矢印／Space／シーク／全画面／形式変更で期限不変という試験を追加する。最後の矢印から3秒未満0回・期限で1回を任意 now で検証する。不適格な矢印を session へ通知しない列では期限・世代が不変で、due の前後でも手動移動・3秒再設定がないことを追加する。再び受理可能になった後の矢印は now+3秒とする（U1）
+- [x] T033 [P] [US10] `Tests/MediaViewerCoreTests/SlideshowSessionTests.swift` に due→arrow→commit と arrow→due→commit、due と Esc の両順序、反復・端・リスト左右で世代無効化と now+3秒、修飾付き矢印／Space／シーク／全画面／形式変更で期限不変という試験を追加する。最後の矢印から3秒未満0回・期限で1回を任意 now で検証する。不適格な矢印を session へ通知しない列では期限・世代が不変で、due の前後でも手動移動・3秒再設定がないことを追加する。再び受理可能になった後の矢印は now+3秒とする（U1）
 
-- [ ] T034 [P] [US10] `Tests/MediaViewerCoreTests/FocusNavigatorTests.swift` に全表示行上の非メディア読み飛ばし・端停止・空選択時先頭、隠す前の幅と現在サムネイルサイズからの列数による移動を検証する。候補だけに圧縮した列や preview 幅を使わない規則を固定する
+- [x] T034 [P] [US10] `Tests/MediaViewerCoreTests/FocusNavigatorTests.swift` に全表示行上の非メディア読み飛ばし・端停止・空選択時先頭、隠す前の幅と現在サムネイルサイズからの列数による移動を検証する。候補だけに圧縮した列や preview 幅を使わない規則を固定する
 
 ### Implementation for US10
 
-- [ ] T035 [US10] `Sources/MediaViewerCore/Slideshow/SlideshowSession.swift` の矢印受理を仕上げ、移動成否と無関係に古い待機／pending を無効化し waitingAfterArrow と now+3秒へ移す。現世代 commit だけを1回許可し、最新 focused の次または候補先頭から通常周期へ戻す
+- [x] T035 [US10] `Sources/MediaViewerCore/Slideshow/SlideshowSession.swift` の矢印受理を仕上げ、移動成否と無関係に古い待機／pending を無効化し waitingAfterArrow と now+3秒へ移す。現世代 commit だけを1回許可し、最新 focused の次または候補先頭から通常周期へ戻す
 
-- [ ] T036 [US10] `Sources/MediaViewerApp/FileList/FileListViewController.swift` の HiddenListNavigation を再利用し、隠す直前の width を保持、すでに preview-only／全画面なら既存値を継承する。現在の形式・サイズと全表示行に FocusNavigator を適用して非メディアを飛ばす。開始／復帰の選択補完禁止を維持し、手動は非循環とする
+- [x] T036 [US10] `Sources/MediaViewerApp/FileList/FileListViewController.swift` の HiddenListNavigation を再利用し、隠す直前の width を保持、すでに preview-only／全画面なら既存値を継承する。現在の形式・サイズと全表示行に FocusNavigator を適用して非メディアを飛ばす。開始／復帰の選択補完禁止を維持し、手動は非循環とする
 
-- [ ] T037 [US10] `Sources/MediaViewerApp/App/MainSplitViewController.swift` の hidden-list キー処理で、対象 window・修飾キーなしの全4矢印を移動より前に coordinator へ通知する。リスト左右も消費して期限を更新し、動画シークへ渡さない。編集／モーダルの処理を横取りせず、Space・<／>・動画 controls は既存操作のまま期限不変とする。T008 と同じ入力受理条件を通知・消費の前に使い、不適格な矢印は選択・期限を変えず既存入力先へ渡す。モーダルを閉じるキーを同じ入力のまま再適用しない（U1）
+- [x] T037 [US10] `Sources/MediaViewerApp/App/MainSplitViewController.swift` の hidden-list キー処理で、対象 window・修飾キーなしの全4矢印を移動より前に coordinator へ通知する。リスト左右も消費して期限を更新し、動画シークへ渡さない。編集／モーダルの処理を横取りせず、Space・<／>・動画 controls は既存操作のまま期限不変とする。T008 と同じ入力受理条件を通知・消費の前に使い、不適格な矢印は選択・期限を変えず既存入力先へ渡す。モーダルを閉じるキーを同じ入力のまま再適用しない（U1）
 
-- [ ] T038 [US10] `Sources/MediaViewerApp/Slideshow/SlideshowCoordinator.swift` に矢印時の Task 再設定と SlideshowArrow signpost を接続する。R3 の commit 境界で未処理キーあり／なし・取消後 callback・両到着順を確認し、再予約は最大1件を維持する。確認結果と AppKit dispatch の手動再現条件を `specs/006-add-slideshow/quickstart.md` の「入力調停検証記録」へ追記する
+- [x] T038 [US10] `Sources/MediaViewerApp/Slideshow/SlideshowCoordinator.swift` に矢印時の Task 再設定と SlideshowArrow signpost を接続する。R3 の commit 境界で未処理キーあり／なし・取消後 callback・両到着順を確認し、再予約は最大1件を維持する。確認結果と AppKit dispatch の手動再現条件を `specs/006-add-slideshow/quickstart.md` の「入力調停検証記録」へ追記する
 
-- [ ] T039 [US10] `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
+- [x] T039 [US10] `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
 
-- [ ] T040 [US10] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示とUS10-AS1〜6（リスト左右・端・反復・隠れた列数・due 直前の二重送りなし・最後の押下から再開）を確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ。US10-AS6 のモーダル／編集欄・別ウィンドウへの矢印が手動移動や期限再設定を起こさず、元の周期が続くこと、対象ウィンドウへ戻った次の矢印で通常の割り込みが行えることも記録する（U1）
+- [ ] T040 [MANUAL] [US10] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示とUS10-AS1〜6（リスト左右・端・反復・隠れた列数・due 直前の二重送りなし・最後の押下から再開）を確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ。US10-AS6 のモーダル／編集欄・別ウィンドウへの矢印が手動移動や期限再設定を起こさず、元の周期が続くこと、対象ウィンドウへ戻った次の矢印で通常の割り込みが行えることも記録する（U1）
 
 - [ ] T041 [US10] 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
 
@@ -165,23 +165,23 @@ description: "スライドショー実装タスク"
 
 ### Tests for US11
 
-- [ ] T042 [P] [US11] `Tests/MediaViewerCoreTests/PaneLayoutTests.swift` に復帰 layout と PaneWidths.dividerPositions の通常幅・狭幅・不正 saved widths を検証する試験を追加し、preview→list→tree の圧縮順と160/240/320pt下限を固定する。空選択を復帰で補完しない App 接続は T049 で確認する
+- [x] T042 [P] [US11] `Tests/MediaViewerCoreTests/PaneLayoutTests.swift` に復帰 layout と PaneWidths.dividerPositions の通常幅・狭幅・不正 saved widths を検証する試験を追加し、preview→list→tree の圧縮順と160/240/320pt下限を固定する。空選択を復帰で補完しない App 接続は T049 で確認する
 
-- [ ] T043 [P] [US11] `Tests/MediaViewerCoreTests/SlideshowSessionTests.swift` に、残り待ち時間を持つ session を再作成せず継続する遷移列と、復帰開始の stop 後は古い pending／timeout／commit が0回、再開始は新世代となる試験を追加する。Core へ AppKit の全画面状態を追加せず、実際の enter／exit 接続と復帰中の開始拒否は T049 で確認する
+- [x] T043 [P] [US11] `Tests/MediaViewerCoreTests/SlideshowSessionTests.swift` に、残り待ち時間を持つ session を再作成せず継続する遷移列と、復帰開始の stop 後は古い pending／timeout／commit が0回、再開始は新世代となる試験を追加する。Core へ AppKit の全画面状態を追加せず、実際の enter／exit 接続と復帰中の開始拒否は T049 で確認する
 
 ### Implementation for US11
 
-- [ ] T044 [US11] `Sources/MediaViewerApp/App/MainSplitViewController.swift` の enterFullScreenPresentation／leaveFullScreenPresentation でスライドショーの復帰 snapshot を上書きせず、非 Esc 解除後も preview-only を維持する。すでに全画面で開始する場合は paneLayout・focusBeforeFullScreen・savedPaneWidths の通常状態を採用し、hidden-list 幅と期限・選択を変えない
+- [x] T044 [US11] `Sources/MediaViewerApp/App/MainSplitViewController.swift` の enterFullScreenPresentation／leaveFullScreenPresentation でスライドショーの復帰 snapshot を上書きせず、非 Esc 解除後も preview-only を維持する。すでに全画面で開始する場合は paneLayout・focusBeforeFullScreen・savedPaneWidths の通常状態を採用し、hidden-list 幅と期限・選択を変えない
 
-- [ ] T045 [US11] `Sources/MediaViewerApp/Slideshow/SlideshowCoordinator.swift` と `Sources/MediaViewerApp/App/MainSplitViewController.swift` に idle→active→restoring→idle を接続する。終了で先に Core を無効化し、全画面解除通知後に幅・focus を最終適用する。presentationGeneration で古い callback を拒否し、復帰完了まで開始を拒否、close／quit はアニメーションを待たず破棄する
+- [x] T045 [US11] `Sources/MediaViewerApp/Slideshow/SlideshowCoordinator.swift` と `Sources/MediaViewerApp/App/MainSplitViewController.swift` に idle→active→restoring→idle を接続する。終了で先に Core を無効化し、全画面解除通知後に幅・focus を最終適用する。presentationGeneration で古い callback を拒否し、復帰完了まで開始を拒否、close／quit はアニメーションを待たず破棄する
 
-- [ ] T046 [US11] `Sources/MediaViewerApp/App/MainWindowController.swift` の全画面 delegate／Esc 経路を復帰処理に接続し、T028 と同じ受理条件を満たす Esc 一回で終了と解除を完了する。window frame は戻さず、既存 PaneWidths と minimumThickness で収め、有効な現在選択だけを最小スクロールで可視にする。消去済み選択・古い閲覧先を復活させない
+- [x] T046 [US11] `Sources/MediaViewerApp/App/MainWindowController.swift` の全画面 delegate／Esc 経路を復帰処理に接続し、T028 と同じ受理条件を満たす Esc 一回で終了と解除を完了する。window frame は戻さず、既存 PaneWidths と minimumThickness で収め、有効な現在選択だけを最小スクロールで可視にする。消去済み選択・古い閲覧先を復活させない
 
-- [ ] T047 [US11] `Sources/MediaViewerApp/Preview/PreviewViewController.swift` と `Sources/MediaViewerApp/App/MainSplitViewController.swift` の visibility 経路を確認・調整し、全画面切替や終了のみで同じ動画を再構成／停止せず、復帰先 file-list-only では停止・消音する。画像ダブルクリック・⌃⌘F・メニューでも同じ再生維持規則を適用する
+- [x] T047 [US11] `Sources/MediaViewerApp/Preview/PreviewViewController.swift` と `Sources/MediaViewerApp/App/MainSplitViewController.swift` の visibility 経路を確認・調整し、全画面切替や終了のみで同じ動画を再構成／停止せず、復帰先 file-list-only では停止・消音する。画像ダブルクリック・⌃⌘F・メニューでも同じ再生維持規則を適用する
 
-- [ ] T048 [US11] `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
+- [x] T048 [US11] `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
 
-- [ ] T049 [US11] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示とUS11-AS1〜4、開始前から全画面の場合、3回の全画面切替、矢印、動画位置／状態と残り時間、狭幅復帰、Esc 後6秒間0回を確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ。全画面中も US9-AS16・US10-AS6 を確認し、モーダルを閉じる Esc だけでは全画面もスライドショーも終了せず、開閉で期限が変わらないことを記録する（U1）
+- [ ] T049 [MANUAL] [US11] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示とUS11-AS1〜4、開始前から全画面の場合、3回の全画面切替、矢印、動画位置／状態と残り時間、狭幅復帰、Esc 後6秒間0回を確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ。全画面中も US9-AS16・US10-AS6 を確認し、モーダルを閉じる Esc だけでは全画面もスライドショーも終了せず、開閉で期限が変わらないことを記録する（U1）
 
 - [ ] T050 [US11] 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
 
@@ -191,15 +191,15 @@ description: "スライドショー実装タスク"
 
 **Purpose**: 大量一覧・実時間・キーボード完結の証拠を揃え、検証後に Living spec へ移す。
 
-- [ ] T051 [P] 新規 `Tests/MediaViewerPerformanceTests/SlideshowPerformanceTests.swift` に10,000件の通常／検索相当一覧の対象抽出・次位置探索を計測する試験を追加する。線形走査・メディア本体の複製なし・全件先読みなしを確認し、既存 `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` の基準と併せて評価する。仮想時刻テストで実機 SC-034/035 合格を代用しない
+- [x] T051 [P] 新規 `Tests/MediaViewerPerformanceTests/SlideshowPerformanceTests.swift` に10,000件の通常／検索相当一覧の対象抽出・次位置探索を計測する試験を追加する。線形走査・メディア本体の複製なし・全件先読みなしを確認し、既存 `Tests/MediaViewerPerformanceTests/PerformanceBaselineTests.swift` の基準と併せて評価する。仮想時刻テストで実機 SC-034/035 合格を代用しない
 
-- [ ] T052 [P] `README.md` の利用方法と手動確認へ、開始ボタン／「表示」メニュー／⇧⌘S、固定3秒・最新一覧対象、矢印で待機再設定、Esc 終了、全画面、実行中の禁止操作と非保存を追記する。間隔設定や専用一時停止など範囲外の機能を案内しない
+- [x] T052 [P] `README.md` の利用方法と手動確認へ、開始ボタン／「表示」メニュー／⇧⌘S、固定3秒・最新一覧対象、矢印で待機再設定、Esc 終了、全画面、実行中の禁止操作と非保存を追記する。間隔設定や専用一時停止など範囲外の機能を案内しない
 
-- [ ] T053 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` の最終ゲートを実行する。`Tests/MediaViewerPerformanceTests/SlideshowPerformanceTests.swift` と既存性能テストの結果を回収し、Core の AppKit 非依存・重処理の UI 非実行・既存キャッシュ上限も確認する。結果を `specs/006-add-slideshow/quickstart.md` へ追記する
+- [x] T053 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` の最終ゲートを実行する。`Tests/MediaViewerPerformanceTests/SlideshowPerformanceTests.swift` と既存性能テストの結果を回収し、Core の AppKit 非依存・重処理の UI 非実行・既存キャッシュ上限も確認する。結果を `specs/006-add-slideshow/quickstart.md` へ追記する
 
-- [ ] T054 `specs/006-add-slideshow/quickstart.md` の全手動シナリオと実時間計測をユーザーへ依頼する。`open .build/MediaViewer.app` の3ペイン起動後、通常／zip／検索で2周、toolbar 非表示のキーボード完結、表示不能1周・全件不能、再起動、3種 layout／全画面3回・狭幅復帰を確認し、Instruments で画像連続20区間と1秒／10秒動画の3.0〜3.2秒、矢印1秒間隔10回中0回／最終入力後3.0〜3.2秒に1回、Stop後6秒以上0回を測る。端・反復・全画面も測り、10,000件／大量検索の UI 応答と既存性能基準を確認する。未実施なら未チェックに保つ
+- [ ] T054 [MANUAL] `specs/006-add-slideshow/quickstart.md` の全手動シナリオと実時間計測をユーザーへ依頼する。`open .build/MediaViewer.app` の3ペイン起動後、通常／zip／検索で2周、toolbar 非表示のキーボード完結、表示不能1周・全件不能、再起動、3種 layout／全画面3回・狭幅復帰を確認し、Instruments で画像連続20区間と1秒／10秒動画の3.0〜3.2秒、矢印1秒間隔10回中0回／最終入力後3.0〜3.2秒に1回、Stop後6秒以上0回を測る。端・反復・全画面も測り、10,000件／大量検索の UI 応答と既存性能基準を確認する。未実施なら未チェックに保つ
 
-- [ ] T055 `specs/006-add-slideshow/quickstart.md` に「最終検証結果」を追記し、環境（macOS・機種・build 種別）、SC-033〜037、20区間の最小／最大／範囲外件数、矢印操作中／停止後の送り件数、既存性能基準と大量一覧測定を記録する。GUI の実施者・未実施項目も明記し、全ゲート合格前に後続の product 反映へ進まない。U1 のシート／アプリモーダル・編集欄・別ウィンドウの入力、同じ Esc の再適用なし、モーダル中の送りと期限不変、通常／全画面の確認結果も含める
+- [ ] T055 [MANUAL] `specs/006-add-slideshow/quickstart.md` に「最終検証結果」を追記し、環境（macOS・機種・build 種別）、SC-033〜037、20区間の最小／最大／範囲外件数、矢印操作中／停止後の送り件数、既存性能基準と大量一覧測定を記録する。GUI の実施者・未実施項目も明記し、全ゲート合格前に後続の product 反映へ進まない。U1 のシート／アプリモーダル・編集欄・別ウィンドウの入力、同じ Esc の再適用なし、モーダル中の送りと期限不変、通常／全画面の確認結果も含める
 
 - [ ] T056 T001〜T055 の実装・検証完了後に限り、`specs/006-add-slideshow/spec.md` の反映先表どおり `specs/product/preview.md`・`specs/product/window-layout.md`・`specs/product/navigation-history.md`・`specs/product/overview.md`・`specs/product/contracts/keyboard-and-menus.md`・`specs/product/contracts/settings.md` へ全追加／変更 ID を移す。契約は参照で記載して ID 本文を重複定義せず、Clarifications は feature に残す。`specs/product/README.md` の領域案内を必要に応じ更新し、feature spec 冒頭へ移行済み・凍結注記を付す
 
