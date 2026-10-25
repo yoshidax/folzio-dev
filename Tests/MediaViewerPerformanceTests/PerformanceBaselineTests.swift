@@ -129,6 +129,62 @@ struct PerformanceBaselineTests {
         )
     }
 
+    @Test("10,000 ファイルのフォルダへ戻ったときの最初の項目の表示が 1 秒以内")
+    @MainActor
+    func historyBackToHugeFolderWithinBudget() async throws {
+        // 10,000 ファイルの作成は MainActor の外で行い、並行して走るほかのテストを止めない
+        let directory = try await Task.detached(priority: .userInitiated) {
+            let directory = try makeTemporaryDirectory()
+            try FixtureSets.huge(in: directory, count: 10_000)
+            let small = directory.appendingPathComponent("small", isDirectory: true)
+            try FileManager.default.createDirectory(at: small, withIntermediateDirectories: true)
+            try ImageFixtures.jpeg(at: small.appendingPathComponent("one.jpg"), width: 64, height: 64)
+            return directory
+        }.value
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let huge = directory.appendingPathComponent("huge", isDirectory: true)
+        let small = directory.appendingPathComponent("small", isDirectory: true)
+
+        let suite = "PerformanceBaselineTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let model = BrowserModel(
+            lister: DirectoryLister(),
+            decoder: ImageDecoder(),
+            cache: DecodedImageCache(),
+            settings: SettingsStore(defaults: defaults)
+        )
+        model.setNavigationRoots([directory])
+        let navigator = HistoryNavigator(model: model)
+        let host = PerformanceHistoryHost()
+        navigator.presentationHost = host
+
+        await model.selectFolder(huge)
+        await model.selectFolder(small)
+        #expect(navigator.canGoBack)
+
+        let start = ContinuousClock.now
+        navigator.goBack()
+        let ready = await waitUntil(timeout: .seconds(10)) {
+            model.listing.folder == huge
+                && model.listing.state == .loaded
+                && !model.listing.files.isEmpty
+        }
+        let elapsed = ContinuousClock.now - start
+
+        #expect(ready, "10,000 ファイルの一覧が表示されること")
+        #expect(
+            model.listing.files.filter { $0.kind != .parent }.count == 10_000,
+            "10,000 件が一覧にあること (実際: \(model.listing.files.filter { $0.kind != .parent }.count))"
+        )
+        #expect(
+            elapsed < .seconds(1),
+            "10,000 ファイルのフォルダへ戻って最初の項目が表示されるまで 1 秒以内 (実測: \(elapsed))"
+        )
+    }
+
     @Test("10,000 件への種類フィルタの適用が 0.05 秒以内")
     func mediaTypeFilterOnHugeFolderWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
@@ -723,5 +779,20 @@ private final class StreamingSearcher: FileNameSearching, @unchecked Sendable {
     func send(_ batch: [MediaFile]) {
         let continuation = lock.withLock { self.continuation }
         continuation?.yield(batch)
+    }
+}
+
+@MainActor
+private final class PerformanceHistoryHost: HistoryPresentationHost {
+    var presentation = HistoryPresentation(
+        displayMode: .list,
+        thumbnailSize: ViewSettings.defaultThumbnailSize,
+        paneLayout: .all
+    )
+
+    var historyPresentation: HistoryPresentation { presentation }
+
+    func applyHistoryPresentation(_ presentation: HistoryPresentation) {
+        self.presentation = presentation
     }
 }

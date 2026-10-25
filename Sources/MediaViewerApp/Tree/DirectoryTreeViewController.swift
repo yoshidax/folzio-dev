@@ -41,6 +41,8 @@ final class DirectoryTreeViewController: NSViewController {
     private let volumes: any VolumeProviding
     private let coordinator: FileOperationCoordinator
     private let watcher: any FileSystemWatching
+    /// 外部の変更で消えた場所を履歴から取り除く（FR-109）
+    weak var historyNavigator: HistoryNavigator?
     private let settings: SettingsStore
     private let confirmation: ConfirmationPresenter
     private let outlineView = NSOutlineView()
@@ -715,6 +717,7 @@ final class DirectoryTreeViewController: NSViewController {
             guard let self else { return }
             for await newRoots in self.volumes.changes {
                 self.applyRoots(newRoots)
+                await self.historyNavigator?.revalidateAll()
                 // 起点を含むボリュームが外されたとき、存在しなくなった検索結果を外す（Edge Cases、R38）
                 if self.model.isShowingSearchResults {
                     await self.model.reloadCurrentFolder()
@@ -726,6 +729,7 @@ final class DirectoryTreeViewController: NSViewController {
             guard let self else { return }
             for await changed in self.watcher.events {
                 await self.model.handleFileSystemEvent(changed)
+                await self.historyNavigator?.handleFileSystemEvent(changed)
                 await self.refreshFolders(changed)
             }
         }

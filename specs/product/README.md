@@ -9,6 +9,7 @@ MediaViewer の現在の仕様（Living spec）を領域ごとに分けたもの
 |---|---|---|
 | [overview.md](overview.md) | 概要と横断要件 | 保存と復元（1）、対応形式（2）、横断要件（3）、アプリアイコン（3） |
 | [window-layout.md](window-layout.md) | ウィンドウの構成 | 画面構成（2）、ツールバー（4）、ペインの表示切り替え（7） |
+| [navigation-history.md](navigation-history.md) | 操作の履歴 | 戻る・進む（7） |
 | [directory-tree.md](directory-tree.md) | ディレクトリツリー | ディレクトリツリー（10）、お気に入り（12） |
 | [file-list.md](file-list.md) | ファイルリスト | ファイルリスト（10）、種類フィルタ（5）、ファイルリストのフォルダ（3） |
 | [zip.md](zip.md) | zip ファイル | zip ファイル（8）、zip ファイルの表示制御（4） |

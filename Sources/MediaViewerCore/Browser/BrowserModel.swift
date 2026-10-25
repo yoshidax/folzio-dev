@@ -1,6 +1,55 @@
 import Foundation
 import Observation
 
+/// `BrowserModel` が場所を変えたときの同期の通知（R70）
+public enum LocationEvent: Sendable, Equatable {
+    case navigated(leavingFocus: URL?)
+    case relocated(vanished: [URL])
+    case notFound(HistoryLocation)
+}
+
+/// 表示を変えずに確かめた場所（R73）。索引や開けなかった理由は表示に使う
+public struct ResolvedHistoryLocation: Sendable {
+    public let location: HistoryLocation
+    private let navigationGeneration: Int
+    private let archiveIndex: ArchiveIndex?
+    private let archiveError: ArchiveError?
+    private let usesArchiveIndex: Bool
+
+    init(
+        location: HistoryLocation,
+        navigationGeneration: Int,
+        archiveIndex: ArchiveIndex?,
+        archiveError: ArchiveError?
+    ) {
+        self.location = location
+        self.navigationGeneration = navigationGeneration
+        self.archiveIndex = archiveIndex
+        self.archiveError = archiveError
+        self.usesArchiveIndex = location.archive != nil
+    }
+
+    func index(for generation: Int) -> ArchiveIndex? {
+        guard self.navigationGeneration == generation, usesArchiveIndex else { return nil }
+        return archiveIndex
+    }
+
+    func error(for generation: Int) -> ArchiveError? {
+        guard self.navigationGeneration == generation, usesArchiveIndex else { return nil }
+        return archiveError
+    }
+
+    func isCurrent(for generation: Int) -> Bool {
+        self.navigationGeneration == generation
+    }
+}
+
+public enum HistoryLocationResolution: Sendable {
+    case available(ResolvedHistoryLocation)
+    case missing
+    case superseded
+}
+
 @MainActor
 @Observable
 public final class BrowserModel {
@@ -13,6 +62,8 @@ public final class BrowserModel {
     public private(set) var showsZipFiles: Bool
     public var screenMaxPixel: Int
     public var playbackRequest: PlaybackOptions { settings.playback }
+    /// 場所を変えたときの同期の通知（R70）。`HistoryNavigator` が設定する。Observation の対象外
+    @ObservationIgnored public var onLocationEvent: ((LocationEvent) -> Void)?
     /// zip の中を表示中か（FR-069）
     public var isBrowsingArchive: Bool { listing.archive != nil }
     /// ⌘↑ で戻る先があるか。zip の中、またはツリーのルート以外の通常のフォルダ（FR-077）。検索結果の表示中はない（FR-087）
@@ -22,6 +73,11 @@ public final class BrowserModel {
     }
     /// 検索結果を表示中か（FR-084〜086）。`listing.folder` は検索前のフォルダのまま
     public var isShowingSearchResults: Bool { listing.search != nil }
+    /// 今の表示の場所（FR-108）。検索結果の表示中と「見つからない」表示では nil（R70）
+    public var historyLocation: HistoryLocation? {
+        guard !isShowingSearchResults, !showsNotFound else { return nil }
+        return HistoryLocation(folder: listing.folder, archive: listing.archive)
+    }
     /// 一覧の並び順の選択から `..` の行を除いたもの。ファイル操作・コピー・ドラッグの対象（R30）
     public var operableSelection: [URL] {
         let selected = selection.selected
@@ -97,6 +153,14 @@ public final class BrowserModel {
     /// 検索結果を、ファイルを含むフォルダ（`standardizedFileURL.path`）ごとに引く。外部の変更で確かめる結果を、
     /// 全件ではなく届いたフォルダ以下だけに絞るのに使う（R38）
     private var searchResultsByFolder: [String: Set<URL>] = [:]
+    /// 通常のフォルダの読み込みが「見つからない」で終わった表示か（EC-62・EC-65）。履歴の場所を nil にする
+    private var showsNotFound = false
+
+    /// 場所の変更の理由（R70）。通知の `leavingFocus` は呼び出しの直前に読む
+    private enum LocationChangeReason {
+        case navigated
+        case relocated(vanished: [URL])
+    }
 
     private enum ArchiveImageResult {
         case image(DecodedImage)
@@ -131,9 +195,15 @@ public final class BrowserModel {
 
     /// フォルダの一覧を表示する。検索結果の表示中なら、検索を止めて表示を終える（FR-086）
     public func selectFolder(_ url: URL) async {
+        await selectFolder(url, reason: .navigated)
+    }
+
+    private func selectFolder(_ url: URL, reason: LocationChangeReason) async {
+        let leavingFocus = selection.focused
         resetForNavigation()
         leaveSearchIfNeeded()
         archiveIndex = nil
+        showsNotFound = false
         listing = FolderListing(folder: url, files: [], state: .loading)
 
         var viewSettings = settings.viewSettings
@@ -142,6 +212,8 @@ public final class BrowserModel {
             settings.viewSettings = viewSettings
         }
 
+        notifyLocationChange(reason, leavingFocus: leavingFocus)
+
         let generation = navigationGeneration
         let task = Task { [weak self] in
             guard let self else { return }
@@ -149,6 +221,15 @@ public final class BrowserModel {
         }
         listingTask = task
         await task.value
+    }
+
+    private func notifyLocationChange(_ reason: LocationChangeReason, leavingFocus: URL?) {
+        switch reason {
+        case .navigated:
+            onLocationEvent?(.navigated(leavingFocus: leavingFocus))
+        case let .relocated(vanished):
+            onLocationEvent?(.relocated(vanished: vanished))
+        }
     }
 
     /// 検索を始め、結果を見つかった順に現在の並べ替えで一覧へ加える（FR-084・085）。列挙の完了を待たずに戻る。
@@ -395,12 +476,14 @@ public final class BrowserModel {
             guard let location = listing.archive,
                   let index = archiveIndex,
                   let parsed = ArchiveURL.parse(file.url) else { return }
+            let leavingFocus = selection.focused
             resetForNavigation()
             showArchiveLevel(ArchiveLocation(archive: location.archive, directory: parsed.path), index: index)
+            onLocationEvent?(.navigated(leavingFocus: leavingFocus))
         case .parent:
             await goToEnclosingLevel()
         case .folder:
-            await navigateToFolder(file.url, selecting: nil)
+            await navigateToFolder(file.url, selecting: nil, reason: .navigated)
         case .media:
             break
         }
@@ -415,7 +498,7 @@ public final class BrowserModel {
             showing: listing.folder,
             roots: navigationRoots
         ) else { return false }
-        await navigateToFolder(parent, selecting: nil)
+        await navigateToFolder(parent, selecting: nil, reason: .relocated(vanished: trashed))
         return true
     }
 
@@ -426,7 +509,7 @@ public final class BrowserModel {
         guard !isShowingSearchResults else { return }
         guard let location = listing.archive else {
             if let parent = enclosingFolder {
-                await navigateToFolder(parent, selecting: listing.folder)
+                await navigateToFolder(parent, selecting: listing.folder, reason: .navigated)
             }
             return
         }
@@ -434,13 +517,15 @@ public final class BrowserModel {
         if let parentLocation = location.parent {
             guard let index = archiveIndex else { return }
             let previous = ArchiveURL.entry(archive: location.archive, path: location.directory)
+            let leavingFocus = selection.focused
             resetForNavigation()
             showArchiveLevel(parentLocation, index: index)
+            onLocationEvent?(.navigated(leavingFocus: leavingFocus))
             if listing.files.contains(where: { $0.url == previous }) {
                 select([previous], focused: previous)
             }
         } else {
-            await returnToFolder(selecting: location.archive)
+            await returnToFolder(selecting: location.archive, reason: .navigated)
         }
     }
 
@@ -515,6 +600,7 @@ public final class BrowserModel {
             let files = try await lister.mediaFiles(in: folder)
             guard listing.folder == folder, listing.archive == nil else { return }
 
+            showsNotFound = false
             allFiles = sorted(files, by: sortOrder)
             rebuildListing()
 
@@ -534,10 +620,14 @@ public final class BrowserModel {
             listing.files = unreadableFolderRows()
             switch error {
             case .accessDenied:
+                showsNotFound = false
                 listing.state = .denied
             case .notFound:
+                showsNotFound = true
                 listing.state = .failed("フォルダが見つかりません")
+                onLocationEvent?(.notFound(HistoryLocation(folder: folder)))
             case let .other(message):
+                showsNotFound = false
                 listing.state = .failed(message)
             }
             previewTask?.cancel()
@@ -565,7 +655,8 @@ public final class BrowserModel {
             isDirectory: &isDirectory
         )
         guard exists, isDirectory.boolValue else {
-            await selectFolder(listing.folder.deletingLastPathComponent())
+            let vanished = listing.folder
+            await selectFolder(vanished.deletingLastPathComponent(), reason: .relocated(vanished: [vanished]))
             return
         }
 
@@ -576,7 +667,8 @@ public final class BrowserModel {
                identity == archiveIndex?.identity {
                 return
             }
-            await returnToFolder(selecting: nil)
+            let vanished = archiveReader.identity(of: location.archive) == nil ? [location.archive] : []
+            await returnToFolder(selecting: nil, reason: .relocated(vanished: vanished))
             return
         }
 
@@ -671,12 +763,16 @@ public final class BrowserModel {
 
     /// ファイルリストの中でフォルダを移る（フォルダの行を開く・`..`・⌘↑）。`selectFolder` と同じく読み込み、
     /// ツリーへ同期の依頼を出す。読み込み後に `target` の行があれば、その行だけを選択する（FR-076〜078）
-    private func navigateToFolder(_ url: URL, selecting target: URL?) async {
+    private func navigateToFolder(
+        _ url: URL,
+        selecting target: URL?,
+        reason: LocationChangeReason
+    ) async {
         treeSyncCounter += 1
         let request = TreeSyncRequest(folder: url, id: treeSyncCounter)
         // 依頼は読み込みの前に出し、ツリーの同期を一覧の完了で待たせない
         treeSyncRequest = request
-        await selectFolder(url)
+        await selectFolder(url, reason: reason)
 
         guard treeSyncRequest == request,
               listing.folder == url,
@@ -692,6 +788,7 @@ public final class BrowserModel {
     /// `selectFolder` と zip の中の移動で共有する
     private func resetForNavigation() {
         navigationGeneration += 1
+        showsNotFound = false
         listingTask?.cancel()
         listingTask = nil
         for task in searchTasks {
@@ -721,6 +818,7 @@ public final class BrowserModel {
 
     /// zip を開いて最上位の一覧を作る。開く間は `.loading`
     private func openArchive(_ url: URL) async {
+        let leavingFocus = selection.focused
         resetForNavigation()
         leaveSearchIfNeeded()
         archiveIndex = nil
@@ -731,6 +829,7 @@ public final class BrowserModel {
             state: .loading,
             archive: ArchiveLocation(archive: url, directory: "")
         )
+        onLocationEvent?(.navigated(leavingFocus: leavingFocus))
 
         let generation = navigationGeneration
         let task = Task { [weak self] in
@@ -786,12 +885,14 @@ public final class BrowserModel {
     }
 
     /// zip を閉じ、zip を含むフォルダの一覧をディスクから読み直す。`lastFolder` は書き換えない
-    private func returnToFolder(selecting target: URL?) async {
+    private func returnToFolder(selecting target: URL?, reason: LocationChangeReason) async {
         let folder = listing.folder
+        let leavingFocus = selection.focused
         resetForNavigation()
         leaveSearchIfNeeded()
         archiveIndex = nil
         listing = FolderListing(folder: folder, files: [], state: .loading)
+        notifyLocationChange(reason, leavingFocus: leavingFocus)
 
         let generation = navigationGeneration
         let task = Task { [weak self] in
@@ -808,11 +909,12 @@ public final class BrowserModel {
         }
     }
 
-    private func loadFolder(_ url: URL, generation: Int) async {
+    private func loadFolder(_ url: URL, generation: Int, notifyNotFound: Bool = true) async {
         do {
             let files = try await lister.mediaFiles(in: url)
             guard !Task.isCancelled, generation == navigationGeneration, listing.folder == url else { return }
 
+            showsNotFound = false
             allFiles = sorted(files, by: sortOrder)
             rebuildListing()
         } catch {
@@ -822,13 +924,161 @@ public final class BrowserModel {
             listing.files = unreadableFolderRows()
             switch error {
             case .accessDenied:
+                showsNotFound = false
                 listing.state = .denied
             case .notFound:
+                showsNotFound = true
                 listing.state = .failed("フォルダが見つかりません")
+                if notifyNotFound {
+                    onLocationEvent?(.notFound(HistoryLocation(folder: url)))
+                }
             case let .other(message):
+                showsNotFound = false
                 listing.state = .failed(message)
             }
         }
+    }
+
+    // MARK: - 履歴
+
+    /// 表示を変えずに場所を確かめる。stat と zip の索引の作成は UI スレッドの外（R73）
+    public func resolveHistoryLocation(_ location: HistoryLocation) async -> HistoryLocationResolution {
+        let generation = navigationGeneration
+
+        guard let archive = location.archive else {
+            let path = location.folder.path
+            let isDirectory = await Task.detached(priority: .userInitiated) {
+                var isDirectory: ObjCBool = false
+                let exists = FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+                return exists && isDirectory.boolValue
+            }.value
+            guard generation == navigationGeneration else { return .superseded }
+            guard isDirectory else { return .missing }
+            return .available(ResolvedHistoryLocation(
+                location: location,
+                navigationGeneration: generation,
+                archiveIndex: nil,
+                archiveError: nil
+            ))
+        }
+
+        let archivePath = archive.archive.path
+        let isRegularFile = await Task.detached(priority: .userInitiated) {
+            var isDirectory: ObjCBool = false
+            let exists = FileManager.default.fileExists(atPath: archivePath, isDirectory: &isDirectory)
+            return exists && !isDirectory.boolValue
+        }.value
+        guard generation == navigationGeneration else { return .superseded }
+        guard isRegularFile else { return .missing }
+
+        if let index = archiveIndex, index.archive.path == archive.archive.path {
+            guard index.containsDirectory(archive.directory) else { return .missing }
+            return .available(ResolvedHistoryLocation(
+                location: location,
+                navigationGeneration: generation,
+                archiveIndex: index,
+                archiveError: nil
+            ))
+        }
+
+        do throws(ArchiveError) {
+            let index = try await archiveReader.open(archive.archive)
+            guard generation == navigationGeneration else { return .superseded }
+            guard index.containsDirectory(archive.directory) else { return .missing }
+            return .available(ResolvedHistoryLocation(
+                location: location,
+                navigationGeneration: generation,
+                archiveIndex: index,
+                archiveError: nil
+            ))
+        } catch {
+            guard generation == navigationGeneration else { return .superseded }
+            return .available(ResolvedHistoryLocation(
+                location: location,
+                navigationGeneration: generation,
+                archiveIndex: nil,
+                archiveError: error
+            ))
+        }
+    }
+
+    /// 確かめた場所を表示する。読み込みの完了を待たずに戻り、読み込みの後に `focusing` の行だけを選択する。
+    /// `treeSyncRequest` を出し、`lastFolder` を保存する。`onLocationEvent` は呼ばない（R74）
+    public func showHistoryLocation(_ resolved: ResolvedHistoryLocation, focusing: URL?) {
+        let resolvedGeneration = navigationGeneration
+        guard resolved.isCurrent(for: resolvedGeneration) else { return }
+        let location = resolved.location
+        let resolvedIndex = resolved.index(for: resolvedGeneration)
+        let resolvedError = resolved.error(for: resolvedGeneration)
+
+        resetForNavigation()
+        leaveSearchIfNeeded()
+        archiveIndex = nil
+        archiveRenames.removeAll()
+
+        treeSyncCounter += 1
+        treeSyncRequest = TreeSyncRequest(folder: location.folder, id: treeSyncCounter)
+
+        var viewSettings = settings.viewSettings
+        if viewSettings.lastFolder?.standardizedFileURL != location.folder.standardizedFileURL {
+            viewSettings.lastFolder = location.folder
+            settings.viewSettings = viewSettings
+        }
+
+        if let archive = location.archive {
+            if let index = resolvedIndex {
+                archiveIndex = index
+                listing = FolderListing(folder: location.folder, files: [], state: .loading)
+                showArchiveLevel(archive, index: index)
+                selectHistoryFocus(focusing)
+            } else {
+                archiveIndex = nil
+                allFiles = []
+                listing = FolderListing(
+                    folder: location.folder,
+                    files: [Self.parentRow(for: archive)],
+                    state: .failed(resolvedError?.message ?? ArchiveError.notAZip.message),
+                    archive: archive
+                )
+            }
+            return
+        }
+
+        showsNotFound = false
+        listing = FolderListing(folder: location.folder, files: [], state: .loading)
+        let generation = navigationGeneration
+        listingTask = Task { [weak self] in
+            guard let self else { return }
+            await self.loadFolder(location.folder, generation: generation, notifyNotFound: false)
+            guard generation == self.navigationGeneration,
+                  self.listing.folder == location.folder,
+                  self.listing.archive == nil else { return }
+            self.selectHistoryFocus(focusing)
+        }
+    }
+
+    private func selectHistoryFocus(_ focusing: URL?) {
+        guard let focusing else {
+            selection = SelectionState()
+            previewTask?.cancel()
+            previewTask = nil
+            previewGeneration += 1
+            preview = .empty
+            return
+        }
+
+        let standardized = focusing.standardizedFileURL
+        guard let row = listing.files.first(where: {
+            $0.kind != .parent && $0.url.standardizedFileURL == standardized
+        }) else {
+            selection = SelectionState()
+            previewTask?.cancel()
+            previewTask = nil
+            previewGeneration += 1
+            preview = .empty
+            return
+        }
+        select([row.url], focused: row.url)
     }
 
     // MARK: - 検索結果

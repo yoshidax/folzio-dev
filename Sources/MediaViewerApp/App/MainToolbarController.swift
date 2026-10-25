@@ -1,8 +1,10 @@
 import AppKit
 import MediaViewerCore
+import Observation
 
 @MainActor
 final class MainToolbarController: NSObject {
+    private static let historyIdentifier = NSToolbarItem.Identifier("history")
     private static let paneLayoutIdentifier = NSToolbarItem.Identifier("paneLayout")
     private static let mediaTypeFilterIdentifier = NSToolbarItem.Identifier("mediaTypeFilter")
     private static let zipVisibilityIdentifier = NSToolbarItem.Identifier("zipVisibility")
@@ -15,6 +17,7 @@ final class MainToolbarController: NSObject {
     private let panes: MainSplitViewController
     private let settings: SettingsStore
     private let sizeSlider = NSSlider()
+    private var historyControl: NSSegmentedControl?
     private var paneLayoutControl: NSSegmentedControl?
     private var mediaTypeFilterControl: NSSegmentedControl?
     private var zipVisibilityControl: NSSegmentedControl?
@@ -67,6 +70,27 @@ final class MainToolbarController: NSObject {
         panes.onPaneLayoutChange = { [weak self] layout in
             self?.apply(paneLayout: layout)
         }
+        observeHistoryAvailability()
+    }
+
+    /// 戻る・進むを、履歴とペインの状態から有効・無効にする（FR-112）
+    func applyHistoryAvailability() {
+        let canNavigate = panes.paneCommands.canNavigateHistory
+        historyControl?.setEnabled(canNavigate && panes.historyNavigator.canGoBack, forSegment: 0)
+        historyControl?.setEnabled(canNavigate && panes.historyNavigator.canGoForward, forSegment: 1)
+    }
+
+    private func observeHistoryAvailability() {
+        withObservationTracking {
+            _ = panes.historyNavigator.canGoBack
+            _ = panes.historyNavigator.canGoForward
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.applyHistoryAvailability()
+                self.observeHistoryAvailability()
+            }
+        }
     }
 
     func apply(paneLayout: PaneLayout) {
@@ -113,6 +137,14 @@ final class MainToolbarController: NSObject {
         guard viewSettings.showsToolbar != isVisible else { return }
         viewSettings.showsToolbar = isVisible
         settings.viewSettings = viewSettings
+    }
+
+    @objc private func historySelected(_ sender: NSSegmentedControl) {
+        if sender.selectedSegment == 0 {
+            panes.goBack(sender)
+        } else {
+            panes.goForward(sender)
+        }
     }
 
     @objc private func paneLayoutSelected(_ sender: NSSegmentedControl) {
@@ -192,11 +224,11 @@ final class MainToolbarController: NSObject {
 
 extension MainToolbarController: NSToolbarDelegate {
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.paneLayoutIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
+        [Self.historyIdentifier, Self.paneLayoutIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.paneLayoutIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
+        [Self.historyIdentifier, Self.paneLayoutIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
     }
 
     func toolbar(
@@ -205,6 +237,25 @@ extension MainToolbarController: NSToolbarDelegate {
         willBeInsertedIntoToolbar flag: Bool
     ) -> NSToolbarItem? {
         switch itemIdentifier {
+        case Self.historyIdentifier:
+            guard let control = makeSegmentedControl(
+                items: [
+                    ("chevron.left", "戻る"),
+                    ("chevron.right", "進む"),
+                ],
+                trackingMode: .momentary,
+                action: #selector(historySelected(_:))
+            ) else {
+                return nil
+            }
+            historyControl = control
+            let item = makeGroupItem(
+                identifier: itemIdentifier,
+                label: "履歴",
+                control: control
+            )
+            applyHistoryAvailability()
+            return item
         case Self.paneLayoutIdentifier:
             guard let control = makeSegmentedControl(
                 items: [
@@ -298,6 +349,10 @@ extension MainToolbarController: NSToolbarDelegate {
 extension MainToolbarController: NSToolbarItemValidation {
     func validateToolbarItem(_ item: NSToolbarItem) -> Bool {
         switch item.itemIdentifier {
+        case Self.historyIdentifier:
+            applyHistoryAvailability()
+            return panes.paneCommands.canNavigateHistory
+                && (panes.historyNavigator.canGoBack || panes.historyNavigator.canGoForward)
         case Self.paneLayoutIdentifier:
             let enabled = panes.paneCommands.canChangeLayout
             paneLayoutControl?.isEnabled = enabled

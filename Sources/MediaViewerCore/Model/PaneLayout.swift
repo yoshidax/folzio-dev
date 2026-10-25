@@ -186,6 +186,12 @@ public struct PaneCommands: Sendable, Equatable {
     public var canSearch: Bool {
         !isFullScreen && !isEditingText && layout.isVisible(.fileList)
     }
+
+    /// ⌘[・⌘]・「移動」メニュー・ツールバーの戻る・進む（FR-112）。
+    /// 履歴の有無は `HistoryNavigator` と AND を取る
+    public var canNavigateHistory: Bool {
+        !isFullScreen && !isEditingText
+    }
 }
 
 /// 3ペインへ戻すときの仕切りの位置（FR-088、research.md R41）。保存しない。状態の持ち主は `MainSplitViewController` だけ。
