@@ -183,6 +183,16 @@ final class MainMenu {
         fullScreenItem.target = nil
         viewMenu.addItem(fullScreenItem)
 
+        // 大文字の S で ⇧⌘S になる
+        let slideshowItem = NSMenuItem(
+            title: "スライドショーを開始",
+            action: #selector(MainSplitViewController.startSlideshow(_:)),
+            keyEquivalent: "S"
+        )
+        slideshowItem.keyEquivalentModifierMask = [.command]
+        slideshowItem.target = nil
+        viewMenu.addItem(slideshowItem)
+
         let navigateMenuItem = NSMenuItem()
         mainMenu.addItem(navigateMenuItem)
         let navigateMenu = NSMenu(title: "移動")

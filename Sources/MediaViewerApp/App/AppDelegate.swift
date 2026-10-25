@@ -39,6 +39,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         true
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        mainWindowController?.stopSlideshowImmediately()
+    }
+
     @objc func showSettings(_ sender: Any?) {
         let controller: SettingsWindowController
         if let existing = settingsWindowController {

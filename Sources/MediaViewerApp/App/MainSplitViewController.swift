@@ -78,14 +78,49 @@ final class MainSplitViewController: NSSplitViewController {
     private var lastSearchKeyword: String?
 
     var onPaneLayoutChange: ((PaneLayout) -> Void)?
+    /// スライドショーを開始できるかが変わったとき（一覧・編集・モーダルの変化）に知らせる。
+    var onSlideshowAvailabilityChange: (() -> Void)?
+
+    /// スライドショーの実行主体。delegate に自分を設定するため lazy で作る。
+    private(set) lazy var slideshowCoordinator: SlideshowCoordinator = {
+        let coordinator = SlideshowCoordinator()
+        coordinator.delegate = self
+        return coordinator
+    }()
+
+    private var slideshowRestoreState: SlideshowRestoreState?
+    private var pendingSlideshowRestore: SlideshowRestoreState?
+    private var pendingSlideshowGeneration = 0
+    private var slideshowPresentationGeneration = 0
+    private var slideshowRestoreCompletion: (@MainActor () -> Void)?
+    /// スライドショー内部の previewOnly 適用中は、隠れた一覧の先頭を自動選択しない。
+    private var isApplyingSlideshowPresentation = false
 
     var paneCommands: PaneCommands {
         PaneCommands(
             layout: paneLayout,
             isFullScreen: isFullScreenPresentation,
-            isEditingText: fileListViewController.isEditingText
+            isEditingText: fileListViewController.isEditingText,
+            isSlideshowActive: slideshowCoordinator.isActive,
+            isRestoring: slideshowCoordinator.isRestoring
         )
     }
+
+    /// メニュー・ツールバー・開始操作の共通条件（FR-114・115）。
+    var canStartSlideshow: Bool {
+        guard let window = view.window else { return false }
+        return SlideshowStartPolicy(
+            hasCandidate: SlideshowSequence.hasMedia(in: model.listing.files),
+            isLoading: model.listing.state == .loading,
+            isFullScreen: isFullScreenPresentation,
+            isSlideshowActive: slideshowCoordinator.isActive,
+            isRestoring: slideshowCoordinator.isRestoring,
+            isEditingText: fileListViewController.isEditingText,
+            hasSheet: window.attachedSheet != nil,
+            hasAppModal: NSApp.modalWindow != nil
+        ).canStart
+    }
+
 
     var onInitialListingDisplayed: (() -> Void)? {
         didSet {
@@ -209,6 +244,10 @@ final class MainSplitViewController: NSSplitViewController {
         previewViewController.onDoubleClick = { [weak self] in
             self?.togglePreviewFullScreen()
         }
+        model.onWillReplaceLocation = { [weak self] in
+            self?.slideshowCoordinator.handleWillReplaceLocation()
+        }
+        observeSlideshowData()
         installFocusMenuItems()
         observeInitialListingState()
     }
@@ -259,6 +298,22 @@ final class MainSplitViewController: NSSplitViewController {
         }
     }
 
+    /// 一覧と選択の変化を、スライドショーの自動終了判定と開始ボタンの可否へつなぐ。
+    /// 対象が0件になったときだけ止め、選択の消失や並べ替えでは期限を変えない。
+    private func observeSlideshowData() {
+        withObservationTracking {
+            _ = model.listing
+            _ = model.selection
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.slideshowCoordinator.listingDidChange()
+                self.onSlideshowAvailabilityChange?()
+                self.observeSlideshowData()
+            }
+        }
+    }
+
     private func handleInitialListingStateChange() {
         didObserveInitialListingChange = true
         deliverInitialListingIfReady()
@@ -290,6 +345,7 @@ final class MainSplitViewController: NSSplitViewController {
         normalizeInitialPaneStateIfNeeded()
         configureKeyViewLoop(for: appliedPresentation.visiblePanes)
         applyInitialPositionsIfNeeded()
+        onSlideshowAvailabilityChange?()
     }
 
     private func normalizeInitialPaneStateIfNeeded() {
@@ -335,6 +391,183 @@ final class MainSplitViewController: NSSplitViewController {
         historyNavigator.recordViewChange(.viewChange)
     }
 
+    /// 「表示 > スライドショーを開始」とツールバーのボタン（FR-114・115）。
+    @objc func startSlideshow(_ sender: Any?) {
+        guard canStartSlideshow else { return }
+        slideshowCoordinator.start()
+    }
+
+    /// 開始時点の通常表示（ペイン・フォーカス・3ペイン幅）を保存して previewOnly へ移る（FR-114・118）。
+    /// 一覧の先頭は選ばない。開始対象は呼び出し元の `SlideshowSequence.startTarget` が決める。
+    private func prepareSlideshowPresentation() -> Bool {
+        guard canStartSlideshow, view.window != nil else { return false }
+
+        let normalFocus = isFullScreenPresentation ? focusBeforeFullScreen : focusedPane()
+        let widths: [Double]?
+        if paneLayout == .all {
+            widths = validWidths(isFullScreenPresentation ? savedPaneWidths : currentPaneWidths())
+        } else {
+            widths = nil
+        }
+        slideshowPresentationGeneration &+= 1
+        slideshowRestoreState = SlideshowRestoreState(
+            normalPaneLayout: paneLayout,
+            normalFocusedPane: normalFocus,
+            threePaneWidths: widths
+        )
+        pendingSlideshowRestore = nil
+        slideshowRestoreCompletion = nil
+
+        isApplyingSlideshowPresentation = true
+        paneLayout = .previewOnly
+        applyPanePresentation()
+        isApplyingSlideshowPresentation = false
+        onPaneLayoutChange?(paneLayout)
+        return true
+    }
+
+    /// 終了時の復帰（FR-118・119）。全画面なら解除通知を待ってから幅とフォーカスを最終適用する。
+    private func restoreSlideshowPresentation(completion: @escaping @MainActor () -> Void) {
+        guard let state = slideshowRestoreState, let window = view.window else {
+            discardSlideshowRestore()
+            completion()
+            return
+        }
+
+        if window.styleMask.contains(.fullScreen) {
+            pendingSlideshowRestore = state
+            pendingSlideshowGeneration = slideshowPresentationGeneration
+            slideshowRestoreCompletion = completion
+            window.toggleFullScreen(nil)
+            return
+        }
+
+        finalizeSlideshowRestore(state)
+        completion()
+    }
+
+    private func finalizeSlideshowRestore(_ state: SlideshowRestoreState) {
+        if let widths = state.threePaneWidths {
+            savedPaneWidths = widths
+        }
+
+        isApplyingSlideshowPresentation = true
+        paneLayout = state.normalPaneLayout
+        applyPanePresentation()
+        isApplyingSlideshowPresentation = false
+        onPaneLayoutChange?(paneLayout)
+
+        if let pane = state.normalFocusedPane,
+           PanePresentation(layout: paneLayout, isFullScreen: isFullScreenPresentation).isVisible(pane) {
+            focusPane(focusView(for: pane))
+        }
+
+        slideshowRestoreState = nil
+        pendingSlideshowRestore = nil
+        pendingSlideshowGeneration = 0
+        slideshowRestoreCompletion = nil
+        onSlideshowAvailabilityChange?()
+    }
+
+    private func discardSlideshowRestore() {
+        slideshowPresentationGeneration &+= 1
+        slideshowRestoreState = nil
+        pendingSlideshowRestore = nil
+        pendingSlideshowGeneration = 0
+        slideshowRestoreCompletion = nil
+    }
+
+    private func validWidths(_ widths: [Double]?) -> [Double]? {
+        guard let widths,
+              widths.count == 3,
+              widths.allSatisfy({ $0.isFinite && $0 > 0 }) else {
+            return nil
+        }
+        return widths
+    }
+
+    private func currentPaneWidths() -> [Double]? {
+        let widths = [
+            treeViewController.view.frame.width,
+            fileListViewController.view.frame.width,
+            previewViewController.view.frame.width
+        ].map(Double.init)
+        guard widths.count == 3, widths.allSatisfy({ $0.isFinite && $0 > 0 }) else {
+            return nil
+        }
+        return widths
+    }
+
+    private var slideshowInputPolicy: SlideshowInputPolicy {
+        SlideshowInputPolicy(
+            isActive: slideshowCoordinator.isActive,
+            isRestoring: slideshowCoordinator.isRestoring,
+            isTargetWindowKey: view.window?.isKeyWindow ?? false,
+            hasSheet: view.window?.attachedSheet != nil,
+            hasAppModal: NSApp.modalWindow != nil,
+            isEditingText: fileListViewController.isEditingText
+        )
+    }
+
+    /// スライドショーが横取りしてよい Esc・修飾なし矢印か（FR-123）。
+    private func evaluateSlideshowKeyEvent(_ event: NSEvent) -> Bool {
+        guard let window = view.window,
+              event.windowNumber == window.windowNumber else {
+            return false
+        }
+        let disallowed: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+        guard event.modifierFlags.intersection(disallowed).isEmpty else { return false }
+
+        let policy = slideshowInputPolicy
+        switch event.specialKey {
+        case .leftArrow, .rightArrow, .upArrow, .downArrow:
+            return policy.accepts(.arrow)
+        default:
+            return event.keyCode == 53 && policy.accepts(.escape)
+        }
+    }
+
+    /// スライドショー中の `/`（再生・一時停止）を受け取れるか。Esc・矢印と同じ入力条件を使う。
+    private func acceptsSlideshowPlaybackKey(_ event: NSEvent) -> Bool {
+        guard let window = view.window,
+              event.windowNumber == window.windowNumber else {
+            return false
+        }
+        let disallowed: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+        guard event.modifierFlags.intersection(disallowed).isEmpty else { return false }
+        return slideshowInputPolicy.acceptsKeys
+    }
+
+    /// 期限とキーが同じ run loop に並んだとき、未処理の受理キーを覗く（dequeue しない）。
+    /// メニュー追跡中の eventTracking は対象にせず、キーを横取りしない。
+    private func peekSlideshowKeyEvent() -> Bool {
+        guard let event = NSApp.nextEvent(
+            matching: .keyDown,
+            until: Date(),
+            inMode: .default,
+            dequeue: false
+        ) else {
+            return false
+        }
+        return evaluateSlideshowKeyEvent(event)
+    }
+
+    /// `cancelOperation` から呼ぶ、ローカルモニタを通らなかった Esc の保険（FR-123）。
+    /// 終了・ウインドウを閉じるときに、復帰表示を待たずスライドショーの資源を捨てる（EC-72）。
+    func stopSlideshowImmediately() {
+        slideshowCoordinator.stopImmediately()
+        discardSlideshowRestore()
+    }
+
+    func handleSlideshowEscapeFallback() -> Bool {
+        // 復帰処理中の再入力で全画面を往復させない。復帰が終わるまで Esc は消費する。
+        if slideshowCoordinator.isRestoring { return true }
+        guard slideshowCoordinator.isActive else { return false }
+        guard slideshowInputPolicy.accepts(.escape) else { return false }
+        slideshowCoordinator.stop()
+        return true
+    }
+
     private func applyPanePresentation() {
         let presentation = PanePresentation(
             layout: paneLayout,
@@ -359,7 +592,9 @@ final class MainSplitViewController: NSSplitViewController {
 
         if !appliedPresentation.navigatesHiddenFileList && presentation.navigatesHiddenFileList {
             fileListViewController.beginHiddenListNavigation(
-                selectingEntry: !isFullScreenPresentation && paneLayout == .previewOnly
+                selectingEntry: !isApplyingSlideshowPresentation
+                    && !isFullScreenPresentation
+                    && paneLayout == .previewOnly
             )
             installHiddenListKeyMonitor()
         }
@@ -502,9 +737,8 @@ final class MainSplitViewController: NSSplitViewController {
     private func installHiddenListKeyMonitor() {
         guard hiddenListKeyMonitor == nil else { return }
         hiddenListKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            let press = HiddenListKeyPress(event: event)
             let handled = MainActor.assumeIsolated {
-                self?.handleHiddenListKey(press) ?? false
+                self?.handleHiddenListKey(event) ?? false
             }
             return handled ? nil : event
         }
@@ -516,7 +750,20 @@ final class MainSplitViewController: NSSplitViewController {
         self.hiddenListKeyMonitor = nil
     }
 
-    private func handleHiddenListKey(_ press: HiddenListKeyPress) -> Bool {
+    private func handleHiddenListKey(_ event: NSEvent) -> Bool {
+        if slideshowCoordinator.handleKeyEvent(event) {
+            return true
+        }
+
+        // `/` はスライドショー中も動画の再生・一時停止に使う（FR-121）。期限は変えない。
+        if slideshowCoordinator.isActive,
+           event.charactersIgnoringModifiers == "/",
+           acceptsSlideshowPlaybackKey(event) {
+            previewViewController.togglePlayback()
+            return true
+        }
+
+        let press = HiddenListKeyPress(event: event)
         guard let window = view.window,
               press.windowNumber == window.windowNumber,
               appliedPresentation.navigatesHiddenFileList else {
@@ -753,7 +1000,8 @@ extension MainSplitViewController: HistoryPresentationHost {
         HistoryPresentation(
             displayMode: fileListViewController.currentDisplayMode,
             thumbnailSize: fileListViewController.currentThumbnailSize,
-            paneLayout: paneLayout
+            // スライドショー中の表示変更は、復帰先の通常 layout で記録する（FR-121）
+            paneLayout: slideshowRestoreState?.normalPaneLayout ?? paneLayout
         )
     }
 
@@ -792,9 +1040,55 @@ extension MainSplitViewController: NSMenuItemValidation {
         case #selector(addSelectedFolderToFavorites(_:)):
             return paneCommands.allowsAddingFavorite
                 && treeViewController.canAddSelectedFolderToFavorites
+        case #selector(startSlideshow(_:)):
+            return canStartSlideshow
         default:
             return true
         }
+    }
+}
+
+extension MainSplitViewController: SlideshowCoordinatorDelegate {
+    var slideshowFiles: [MediaFile] { model.listing.files }
+    var slideshowSelectedURLs: Set<URL> { model.selection.selected }
+    var slideshowFocusedURL: URL? { model.selection.focused }
+    var slideshowListingIsLoading: Bool { model.listing.state == .loading }
+
+    func slideshowPrepareForStart() -> Bool {
+        prepareSlideshowPresentation()
+    }
+
+    func slideshowSynchronizeSelection(to url: URL) -> Bool {
+        model.synchronizeSlideshowSelection(to: url)
+    }
+
+    func slideshowMoveFocus(_ move: FocusMove) {
+        _ = fileListViewController.moveFocusInHiddenList(move)
+    }
+
+    func slideshowFocusPreview() {
+        focusPane(previewViewController.primaryFocusView)
+    }
+
+    func slideshowRestoreAfterStop(completion: @escaping @MainActor () -> Void) {
+        restoreSlideshowPresentation(completion: completion)
+    }
+
+    func slideshowDiscardRestore() {
+        discardSlideshowRestore()
+    }
+
+    func slideshowAcceptsKeyEvent(_ event: NSEvent) -> Bool {
+        evaluateSlideshowKeyEvent(event)
+    }
+
+    func slideshowHasPendingKeyEvent() -> Bool {
+        peekSlideshowKeyEvent()
+    }
+
+    func slideshowAvailabilityDidChange() {
+        onPaneLayoutChange?(paneLayout)
+        onSlideshowAvailabilityChange?()
     }
 }
 
@@ -824,6 +1118,27 @@ extension MainSplitViewController: NSWindowDelegate {
         guard let window = notification.object as? NSWindow, window === view.window else { return }
 
         isAppInitiatedFullScreenTransition = false
+        guard let restore = pendingSlideshowRestore else {
+            leaveFullScreenPresentation()
+            return
+        }
+
+        let completion = slideshowRestoreCompletion
+        pendingSlideshowRestore = nil
+        slideshowRestoreCompletion = nil
+        guard pendingSlideshowGeneration == slideshowPresentationGeneration else {
+            pendingSlideshowGeneration = 0
+            completion?()
+            return
+        }
+        pendingSlideshowGeneration = 0
         leaveFullScreenPresentation()
+        finalizeSlideshowRestore(restore)
+        completion?()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === view.window else { return }
+        stopSlideshowImmediately()
     }
 }

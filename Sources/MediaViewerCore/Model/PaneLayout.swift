@@ -155,16 +155,28 @@ public struct PaneCommands: Sendable, Equatable {
     public let layout: PaneLayout
     public let isFullScreen: Bool
     public let isEditingText: Bool
+    /// スライドショーの実行中。開始・終了の遷移中も含めて、ペイン切り替えと履歴移動を止める。
+    public let isSlideshowActive: Bool
+    /// スライドショー終了後の復帰処理中。開始し直しや切り替えを止める。
+    public let isRestoring: Bool
 
-    public init(layout: PaneLayout, isFullScreen: Bool, isEditingText: Bool) {
+    public init(
+        layout: PaneLayout,
+        isFullScreen: Bool,
+        isEditingText: Bool,
+        isSlideshowActive: Bool = false,
+        isRestoring: Bool = false
+    ) {
         self.layout = layout
         self.isFullScreen = isFullScreen
         self.isEditingText = isEditingText
+        self.isSlideshowActive = isSlideshowActive
+        self.isRestoring = isRestoring
     }
 
     /// ⌃⌘2・⌃⌘3・ツールバーのボタン（FR-090・094）
     public var canChangeLayout: Bool {
-        !isFullScreen && !isEditingText
+        !isFullScreen && !isEditingText && !isSlideshowActive && !isRestoring
     }
 
     /// ⌥⌘1〜3（FR-092）
@@ -190,9 +202,109 @@ public struct PaneCommands: Sendable, Equatable {
     /// ⌘[・⌘]・「移動」メニュー・ツールバーの戻る・進む（FR-112）。
     /// 履歴の有無は `HistoryNavigator` と AND を取る
     public var canNavigateHistory: Bool {
-        !isFullScreen && !isEditingText
+        !isFullScreen && !isEditingText && !isSlideshowActive && !isRestoring
     }
 }
+
+/// スライドショー中に横取りしてよいキーの種類（FR-123）。
+public enum SlideshowKey: Sendable, Equatable {
+    case escape
+    case arrow
+    case other
+}
+
+/// Esc・矢印を受け取る条件。modal・sheet・名前編集・復帰処理中は AppKit の入力先へ任せる（FR-105・123）。
+public struct SlideshowInputPolicy: Sendable, Equatable {
+    public let isActive: Bool
+    public let isRestoring: Bool
+    public let isTargetWindowKey: Bool
+    public let hasSheet: Bool
+    public let hasAppModal: Bool
+    public let isEditingText: Bool
+    /// メニュー追跡など、AppKit がキーを処理している間。App からは通常 false。
+    public let menuOwnsInput: Bool
+
+    public init(
+        isActive: Bool,
+        isRestoring: Bool,
+        isTargetWindowKey: Bool,
+        hasSheet: Bool,
+        hasAppModal: Bool,
+        isEditingText: Bool,
+        menuOwnsInput: Bool = false
+    ) {
+        self.isActive = isActive
+        self.isRestoring = isRestoring
+        self.isTargetWindowKey = isTargetWindowKey
+        self.hasSheet = hasSheet
+        self.hasAppModal = hasAppModal
+        self.isEditingText = isEditingText
+        self.menuOwnsInput = menuOwnsInput
+    }
+
+    public var acceptsKeys: Bool {
+        isActive
+            && !isRestoring
+            && isTargetWindowKey
+            && !hasSheet
+            && !hasAppModal
+            && !isEditingText
+            && !menuOwnsInput
+    }
+
+    public func accepts(_ key: SlideshowKey) -> Bool {
+        guard acceptsKeys else { return false }
+        switch key {
+        case .escape, .arrow:
+            return true
+        case .other:
+            return false
+        }
+    }
+}
+
+/// 開始できるかの共通判断（FR-114・115）。読み込み中でも候補が表示されていれば開始でき、
+/// 全画面からも開始できる。編集中・シート・アプリモーダル・実行中・復帰中は不可。
+public struct SlideshowStartPolicy: Sendable, Equatable {
+    public let hasCandidate: Bool
+    public let isLoading: Bool
+    public let isFullScreen: Bool
+    public let isSlideshowActive: Bool
+    public let isRestoring: Bool
+    public let isEditingText: Bool
+    public let hasSheet: Bool
+    public let hasAppModal: Bool
+
+    public init(
+        hasCandidate: Bool,
+        isLoading: Bool,
+        isFullScreen: Bool,
+        isSlideshowActive: Bool,
+        isRestoring: Bool,
+        isEditingText: Bool,
+        hasSheet: Bool,
+        hasAppModal: Bool
+    ) {
+        self.hasCandidate = hasCandidate
+        self.isLoading = isLoading
+        self.isFullScreen = isFullScreen
+        self.isSlideshowActive = isSlideshowActive
+        self.isRestoring = isRestoring
+        self.isEditingText = isEditingText
+        self.hasSheet = hasSheet
+        self.hasAppModal = hasAppModal
+    }
+
+    public var canStart: Bool {
+        hasCandidate
+            && !isSlideshowActive
+            && !isRestoring
+            && !isEditingText
+            && !hasSheet
+            && !hasAppModal
+    }
+}
+
 
 /// 3ペインへ戻すときの仕切りの位置（FR-088、research.md R41）。保存しない。状態の持ち主は `MainSplitViewController` だけ。
 public enum PaneWidths {

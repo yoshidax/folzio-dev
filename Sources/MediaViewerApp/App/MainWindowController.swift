@@ -50,7 +50,15 @@ final class MainWindowController: NSWindowController {
         fatalError("init(coder:) is not supported")
     }
 
+    /// 終了時にスライドショーの Task・保留・復帰状態を残さない。
+    func stopSlideshowImmediately() {
+        splitViewController.stopSlideshowImmediately()
+    }
+
     override func cancelOperation(_ sender: Any?) {
+        if splitViewController.handleSlideshowEscapeFallback() {
+            return
+        }
         splitViewController.exitPreviewFullScreenIfNeeded()
         super.cancelOperation(sender)
     }

@@ -542,6 +542,23 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.count == noCurrentCount)
     }
 
+    @Test("表示変更は presentationHost が返す復帰 layout で記録する")
+    func recordUsesHostProjection() async throws {
+        let env = try Env()
+        defer { env.cleanup() }
+
+        await env.select("A")
+        let normal = HistoryPresentation(
+            displayMode: .thumbnails,
+            thumbnailSize: 200,
+            paneLayout: .all
+        )
+        env.host.presentation = normal
+        env.navigator.recordViewChange(.viewChange)
+
+        #expect(env.navigator.history.current?.viewState.presentation == normal)
+    }
+
     @Test("presentationHost がないときは表示の変更を記録しない")
     func recordViewChangeNeedsHost() async throws {
         let env = try Env()

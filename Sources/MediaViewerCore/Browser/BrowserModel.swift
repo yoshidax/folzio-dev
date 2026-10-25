@@ -64,6 +64,9 @@ public final class BrowserModel {
     public var playbackRequest: PlaybackOptions { settings.playback }
     /// 場所を変えたときの同期の通知（R70）。`HistoryNavigator` が設定する。Observation の対象外
     @ObservationIgnored public var onLocationEvent: ((LocationEvent) -> Void)?
+    /// 閲覧先を置き換える直前に同期で呼ぶ（FR-126）。スライドショーはここで送りを止め、復帰先を確定する。
+    /// `listing`・`selection` を変える前に呼ぶ。Observation の対象外
+    @ObservationIgnored public var onWillReplaceLocation: (() -> Void)?
     /// zip の中を表示中か（FR-069）
     public var isBrowsingArchive: Bool { listing.archive != nil }
     /// ⌘↑ で戻る先があるか。zip の中、またはツリーのルート以外の通常のフォルダ（FR-077）。検索結果の表示中はない（FR-087）
@@ -539,6 +542,22 @@ public final class BrowserModel {
         schedulePrefetch(around: focused)
     }
 
+    /// スライドショーの対象を選択に反映する（FR-127）。同じ URL のフォーカスが既に選ばれているなら
+    /// プレビューを読み直さず、選択を1件に整理するだけにする。動画の再生位置も保つ。
+    /// 実際にフォーカスが変わったときだけ true を返す。
+    @discardableResult
+    public func synchronizeSlideshowSelection(to url: URL) -> Bool {
+        if selection.focused == url {
+            if selection.selected != [url] {
+                selection = SelectionState(selected: [url], focused: url)
+                return true
+            }
+            return false
+        }
+        select([url], focused: url)
+        return true
+    }
+
     public func setMediaTypeFilter(_ filter: MediaTypeFilter) {
         guard filter != mediaTypeFilter else { return }
         mediaTypeFilter = filter
@@ -596,9 +615,12 @@ public final class BrowserModel {
         // zip の中では、フォルダの一覧で zip の中の一覧を上書きしない
         guard listing.archive == nil else { return }
         let folder = listing.folder
+        let generation = navigationGeneration
         do {
             let files = try await lister.mediaFiles(in: folder)
-            guard listing.folder == folder, listing.archive == nil else { return }
+            guard generation == navigationGeneration,
+                  listing.folder == folder,
+                  listing.archive == nil else { return }
 
             showsNotFound = false
             allFiles = sorted(files, by: sortOrder)
@@ -615,7 +637,9 @@ public final class BrowserModel {
                 preview = .empty
             }
         } catch {
-            guard listing.folder == folder, listing.archive == nil else { return }
+            guard generation == navigationGeneration,
+                  listing.folder == folder,
+                  listing.archive == nil else { return }
             allFiles = []
             listing.files = unreadableFolderRows()
             switch error {
@@ -787,6 +811,7 @@ public final class BrowserModel {
     /// 読み込み・プレビュー・先読みの取り消し、動画の停止、選択とプレビューを空にする。
     /// `selectFolder` と zip の中の移動で共有する
     private func resetForNavigation() {
+        onWillReplaceLocation?()
         navigationGeneration += 1
         showsNotFound = false
         listingTask?.cancel()

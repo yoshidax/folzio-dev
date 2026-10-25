@@ -3,6 +3,7 @@ import Foundation
 public enum FixtureSets {
     public static func makeAll(in directory: URL) throws {
         try mixed(in: directory)
+        try slideshow(in: directory)
         try broken(in: directory)
         try huge(in: directory)
         try bigImage(in: directory)
@@ -31,6 +32,108 @@ public enum FixtureSets {
             at: folder.appendingPathComponent("sub", isDirectory: true),
             withIntermediateDirectories: true
         )
+    }
+
+    /// `slideshow/`（quickstart.md「検証用フォルダの準備」の表）を作る。
+    /// mixed には画像3件・GIF・1秒 MP4・10秒 MOV・サブフォルダ・zip・非対応テキストを置く。
+    /// single は動画1件、empty は非メディアだけ、search は同名別場所、slides.zip は mixed 相当と sub 階層。
+    public static func slideshow(in directory: URL, generateVideos: Bool = true) throws {
+        let root = try prepare(directory.appendingPathComponent("slideshow", isDirectory: true))
+        let fileManager = FileManager.default
+
+        let mixed = try prepare(root.appendingPathComponent("mixed", isDirectory: true))
+        try ImageFixtures.jpeg(at: mixed.appendingPathComponent("01-image.jpg"), width: 800, height: 600)
+        try ImageFixtures.png(at: mixed.appendingPathComponent("02-image.png"), width: 400, height: 300)
+        try ImageFixtures.jpeg(at: mixed.appendingPathComponent("03-image.jpg"), width: 640, height: 480)
+        try ImageFixtures.animatedGIF(
+            at: mixed.appendingPathComponent("04-animation.gif"),
+            frames: 6
+        )
+        if generateVideos {
+            try VideoFixtures.mp4(
+                at: mixed.appendingPathComponent("05-video-1s.mp4"),
+                seconds: 1,
+                fastStart: true
+            )
+            try VideoFixtures.mov(
+                at: mixed.appendingPathComponent("06-video-10s.mov"),
+                seconds: 10,
+                fastStart: true
+            )
+            removeWriteTemporaries(in: mixed)
+        } else {
+            try writePlaceholderVideo(at: mixed.appendingPathComponent("05-video-1s.mp4"))
+            try writePlaceholderVideo(at: mixed.appendingPathComponent("06-video-10s.mov"))
+        }
+        try writeText(
+            "This file is not a supported media file.\n",
+            to: mixed.appendingPathComponent("notes.txt")
+        )
+
+        let sub = mixed.appendingPathComponent("sub", isDirectory: true)
+        try fileManager.createDirectory(at: sub, withIntermediateDirectories: true)
+        try ImageFixtures.jpeg(at: sub.appendingPathComponent("inside.jpg"), width: 400, height: 300)
+
+        let scratch = try makeScratchDirectory()
+        defer { try? fileManager.removeItem(at: scratch) }
+        let jpeg = try imageData(scratch, "slideshow-a.jpg") {
+            try ImageFixtures.jpeg(at: $0, width: 400, height: 300)
+        }
+        let png = try imageData(scratch, "slideshow-b.png") {
+            try ImageFixtures.png(at: $0, width: 320, height: 240)
+        }
+        let gif = try imageData(scratch, "slideshow-c.gif") {
+            try ImageFixtures.animatedGIF(at: $0, frames: 6)
+        }
+        let mp4: Data
+        if generateVideos {
+            mp4 = try imageData(scratch, "slideshow-d.mp4") {
+                try VideoFixtures.mp4(at: $0, seconds: 1, fastStart: true)
+            }
+        } else {
+            mp4 = Data("placeholder video\n".utf8)
+        }
+        let text = Data("This file is not a supported media file.\n".utf8)
+
+        try ZipFixtureWriter.write([
+            ZipFixtureEntry(name: "01.jpg", content: .bytes(jpeg), method: .deflated),
+            ZipFixtureEntry(name: "02.png", content: .bytes(png), method: .deflated),
+            ZipFixtureEntry(name: "notes.txt", content: .bytes(text), method: .deflated),
+        ], to: mixed.appendingPathComponent("photos.zip"))
+
+        let single = try prepare(root.appendingPathComponent("single", isDirectory: true))
+        if generateVideos {
+            try VideoFixtures.mp4(
+                at: single.appendingPathComponent("only.mp4"),
+                seconds: 1,
+                fastStart: true
+            )
+            removeWriteTemporaries(in: single)
+        } else {
+            try writePlaceholderVideo(at: single.appendingPathComponent("only.mp4"))
+        }
+
+        let empty = try prepare(root.appendingPathComponent("empty", isDirectory: true))
+        try writeText(
+            "This folder has no media files.\n",
+            to: empty.appendingPathComponent("notes.txt")
+        )
+
+        let search = try prepare(root.appendingPathComponent("search", isDirectory: true))
+        for side in ["left", "right"] {
+            let sideFolder = try prepare(search.appendingPathComponent(side, isDirectory: true))
+            try ImageFixtures.jpeg(at: sideFolder.appendingPathComponent("same.jpg"), width: 320, height: 240)
+        }
+
+        try ZipFixtureWriter.write([
+            ZipFixtureEntry(name: "01.jpg", content: .bytes(jpeg), method: .deflated),
+            ZipFixtureEntry(name: "02.png", content: .bytes(png), method: .deflated),
+            ZipFixtureEntry(name: "03-animation.gif", content: .bytes(gif), method: .deflated),
+            ZipFixtureEntry(name: "04-video.mp4", content: .bytes(mp4), method: .stored),
+            ZipFixtureEntry(name: "notes.txt", content: .bytes(text), method: .deflated),
+            ZipFixtureEntry(name: "sub/10.jpg", content: .bytes(jpeg), method: .deflated),
+            ZipFixtureEntry(name: "sub/11.png", content: .bytes(png), method: .deflated),
+        ], to: root.appendingPathComponent("slides.zip"))
     }
 
     public static func broken(in directory: URL) throws {
@@ -308,6 +411,20 @@ public enum FixtureSets {
         try ZipFixtureWriter.write([
             ZipFixtureEntry(name: "big-video.mp4", content: .bytes(video), method: .deflated),
         ], to: folder.appendingPathComponent("big-video-deflated.zip"))
+    }
+
+    private static func writePlaceholderVideo(at url: URL) throws {
+        try Data("placeholder video\n".utf8).write(to: url, options: .atomic)
+    }
+
+    /// AVAssetWriter の fastStart が残す一時ファイル（.sb-*）を片付ける。
+    private static func removeWriteTemporaries(in folder: URL) {
+        guard let names = try? FileManager.default.contentsOfDirectory(atPath: folder.path) else {
+            return
+        }
+        for name in names where name.contains(".sb-") {
+            try? FileManager.default.removeItem(at: folder.appendingPathComponent(name))
+        }
     }
 
     private static func makeScratchDirectory() throws -> URL {

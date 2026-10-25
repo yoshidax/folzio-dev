@@ -91,6 +91,22 @@ build／test／no-network／make-app → GUI 確認 → converge → specs/produ
 - グローバルな hook や認証設定は変更しない。実行時ファイルは既存の
   `.specify/workflows/runs/` に置き、Git の対象外とする。
 
+## 実装完了の判定と検証ログ
+
+- `$speckit-implement` の最終回答は `scripts/sdd-codex-implementation.schema.json` で検証する。
+  `status` が `ready_for_verification`、`blockers` が空、`tasks.md` の未チェックが
+  すべて `[MANUAL]` のときだけ implement を成功にする。判断待ちは `blocked` として止め、
+  推測で完了扱いにしない。
+- `[MANUAL]` は GUI の起動や目視確認など、ユーザーの報告が必要なタスクだけに付ける。
+  tasks の生成時に分類し、設計レビューで確認する。実装中に追加・変更しない。
+  実装タスクが未チェックで残っている間は implement を失敗させ、resume では実装からやり直す。
+- 旧バージョンで `implement: completed` と保存された run（最終回答が構造化されていない）は
+  resume を停止する。状態ファイルを手で直さず、未決事項を解消して新しい run を開始する。
+- verify は `python3 scripts/sdd-codex.py verify` で実行し、build／test／no-network／make-app の
+  各試行を `.specify/workflows/runs/attempts/<attempt>/verify-<id>/` に
+  stdout／stderr／result.json として残す。再実行しても前回の失敗ログを上書きしない。
+  失敗時は画面に段階とログのパスを表示する。
+
 ## 更新
 
 標準スキルは公式 CLI で更新する。生成スキルを手で編集してプロジェクト規約を追加しない。
