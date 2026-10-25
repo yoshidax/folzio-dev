@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "properties": {
+    "status": { "type": "string", "enum": ["ready_for_verification", "blocked", "failed"] },
+    "completed_task_ids": { "type": "array", "items": { "type": "string" } },
+    "remaining_manual_task_ids": { "type": "array", "items": { "type": "string" } },
+    "blockers": { "type": "array", "items": { "type": "string" } },
+    "summary": { "type": "string" }
+  },
+  "required": ["status", "completed_task_ids", "remaining_manual_task_ids", "blockers", "summary"],
+  "additionalProperties": false
+}
