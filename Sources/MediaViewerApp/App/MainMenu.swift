@@ -183,6 +183,27 @@ final class MainMenu {
         fullScreenItem.target = nil
         viewMenu.addItem(fullScreenItem)
 
+        let navigateMenuItem = NSMenuItem()
+        mainMenu.addItem(navigateMenuItem)
+        let navigateMenu = NSMenu(title: "移動")
+        navigateMenuItem.submenu = navigateMenu
+
+        let backItem = NSMenuItem(
+            title: "戻る",
+            action: #selector(MainSplitViewController.goBack(_:)),
+            keyEquivalent: "["
+        )
+        backItem.target = nil
+        navigateMenu.addItem(backItem)
+
+        let forwardItem = NSMenuItem(
+            title: "進む",
+            action: #selector(MainSplitViewController.goForward(_:)),
+            keyEquivalent: "]"
+        )
+        forwardItem.target = nil
+        navigateMenu.addItem(forwardItem)
+
         NSApp.mainMenu = mainMenu
     }
 }

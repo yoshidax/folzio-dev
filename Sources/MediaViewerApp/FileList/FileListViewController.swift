@@ -44,6 +44,8 @@ final class FileListViewController: NSViewController {
     var onViewStateChange: ((DisplayMode, Double) -> Void)?
     var onMediaTypeFilterChange: ((MediaTypeFilter) -> Void)?
     var onShowsZipFilesChange: ((Bool) -> Void)?
+    /// ユーザーが表示を変えたときに履歴へ知らせる（FR-107 の（3））。復元の setter からは呼ばない（R70）
+    var onViewChange: ((HistoryRecordKind) -> Void)?
 
     var isToolbarShown = false {
         didSet {
@@ -691,6 +693,7 @@ final class FileListViewController: NSViewController {
         }
         captureScrollOrigin()
         model.setMediaTypeFilter(filter)
+        onViewChange?(.viewChange)
         Task { @MainActor in self.restoreScrollOriginIfNeeded() }
     }
 
@@ -701,15 +704,24 @@ final class FileListViewController: NSViewController {
         }
         captureScrollOrigin()
         model.setShowsZipFiles(shows)
+        onViewChange?(.viewChange)
         Task { @MainActor in self.restoreScrollOriginIfNeeded() }
     }
 
     func selectDisplayMode(_ mode: DisplayMode) {
         setDisplayMode(mode)
+        onViewChange?(.viewChange)
     }
 
     func applyThumbnailSize(_ value: Double) {
         setThumbnailSize(value, persist: true)
+        onViewChange?(.thumbnailSize)
+    }
+
+    /// 履歴から表示の状態を戻す。記録の入口は通らない（R70）
+    func restore(displayMode: DisplayMode, thumbnailSize: Double) {
+        setDisplayMode(displayMode)
+        setThumbnailSize(thumbnailSize, persist: true)
     }
 
     private func setDisplayMode(_ mode: DisplayMode) {
@@ -909,18 +921,22 @@ final class FileListViewController: NSViewController {
 
     @objc private func showThumbnails(_ sender: Any?) {
         setDisplayMode(.thumbnails)
+        onViewChange?(.viewChange)
     }
 
     @objc private func showList(_ sender: Any?) {
         setDisplayMode(.list)
+        onViewChange?(.viewChange)
     }
 
     @objc private func increaseThumbnailSize(_ sender: Any?) {
         setThumbnailSize(thumbnailModeView.thumbnailSize + 16, persist: true)
+        onViewChange?(.thumbnailSize)
     }
 
     @objc private func decreaseThumbnailSize(_ sender: Any?) {
         setThumbnailSize(thumbnailModeView.thumbnailSize - 16, persist: true)
+        onViewChange?(.thumbnailSize)
     }
 
     @objc private func toggleImagesOnly(_ sender: Any?) {
@@ -941,6 +957,7 @@ final class FileListViewController: NSViewController {
 
     @objc private func thumbnailSizeSliderChanged(_ sender: NSSlider) {
         setThumbnailSize(sender.doubleValue, persist: true)
+        onViewChange?(.thumbnailSize)
     }
 }
 

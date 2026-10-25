@@ -217,4 +217,26 @@ struct ArchiveIndexTests {
         #expect(index.entry(at: "sub/deep/a.jpg")?.isDirectory == false)
         #expect(index.entry(at: "nothing") == nil)
     }
+
+    @Test("containsDirectory は最上位と存在するディレクトリだけ true")
+    func containsDirectory() throws {
+        let explicit = try makeIndex([
+            file("a/"),
+            file("a/b/"),
+            file("a/b/1.jpg"),
+            file("photo.jpg"),
+        ])
+        #expect(explicit.containsDirectory(""))
+        #expect(explicit.containsDirectory("a/"))
+        #expect(explicit.containsDirectory("a/b/"))
+        #expect(explicit.containsDirectory("c/") == false)
+        #expect(explicit.containsDirectory("a/c/") == false)
+        #expect(explicit.containsDirectory("a/b/1.jpg") == false)
+
+        let implicit = try makeIndex([file("a/b/1.jpg")])
+        #expect(implicit.containsDirectory("a/"))
+        #expect(implicit.containsDirectory("a/b/"))
+        #expect(implicit.containsDirectory("a/b/1.jpg") == false)
+        #expect(implicit.containsDirectory("b/") == false)
+    }
 }

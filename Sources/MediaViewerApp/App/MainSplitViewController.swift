@@ -54,6 +54,7 @@ final class MainSplitViewController: NSSplitViewController {
     let fileListViewController: FileListViewController
     private let previewViewController: PreviewViewController
     private let fileOperationCoordinator: FileOperationCoordinator
+    let historyNavigator: HistoryNavigator
     /// zip の読み込み元。BrowserModel と ThumbnailProvider で同じインスタンスを共有する
     private let archiveReader: ZipArchiveReader
     private var didObserveInitialListingChange = false
@@ -115,7 +116,9 @@ final class MainSplitViewController: NSSplitViewController {
             service: FileOperationService(),
             settings: settings
         )
+        let historyNavigator = HistoryNavigator(model: model)
         self.fileOperationCoordinator = coordinator
+        self.historyNavigator = historyNavigator
         self.archiveReader = archiveReader
         self.model = model
 
@@ -154,6 +157,12 @@ final class MainSplitViewController: NSSplitViewController {
         fileListViewController.onRename = { [weak self] url, newName in
             guard let self else { return }
             await self.fileOperationCoordinator.rename(url, to: newName)
+        }
+        historyNavigator.presentationHost = self
+        coordinator.historyNavigator = historyNavigator
+        treeViewController.historyNavigator = historyNavigator
+        fileListViewController.onViewChange = { [weak historyNavigator] kind in
+            historyNavigator?.recordViewChange(kind)
         }
     }
 
@@ -323,6 +332,7 @@ final class MainSplitViewController: NSSplitViewController {
                 previewSelected: previewSelected
             )
         )
+        historyNavigator.recordViewChange(.viewChange)
     }
 
     private func applyPanePresentation() {
@@ -648,10 +658,24 @@ final class MainSplitViewController: NSSplitViewController {
 
     @objc private func toggleFileListOnly(_ sender: Any?) {
         togglePaneLayout(.fileList)
+        historyNavigator.recordViewChange(.viewChange)
     }
 
     @objc private func togglePreviewOnly(_ sender: Any?) {
         togglePaneLayout(.preview)
+        historyNavigator.recordViewChange(.viewChange)
+    }
+
+    /// ⌘[。履歴を1つ戻る（FR-112）
+    @objc func goBack(_ sender: Any?) {
+        guard paneCommands.canNavigateHistory, historyNavigator.canGoBack else { return }
+        historyNavigator.goBack()
+    }
+
+    /// ⌘]。履歴を1つ進む（FR-112）
+    @objc func goForward(_ sender: Any?) {
+        guard paneCommands.canNavigateHistory, historyNavigator.canGoForward else { return }
+        historyNavigator.goForward()
     }
 
     @objc private func focusTreePane(_ sender: Any?) {
@@ -724,6 +748,24 @@ final class MainSplitViewController: NSSplitViewController {
     }
 }
 
+extension MainSplitViewController: HistoryPresentationHost {
+    var historyPresentation: HistoryPresentation {
+        HistoryPresentation(
+            displayMode: fileListViewController.currentDisplayMode,
+            thumbnailSize: fileListViewController.currentThumbnailSize,
+            paneLayout: paneLayout
+        )
+    }
+
+    func applyHistoryPresentation(_ presentation: HistoryPresentation) {
+        fileListViewController.restore(
+            displayMode: presentation.displayMode,
+            thumbnailSize: presentation.thumbnailSize
+        )
+        setPaneLayout(presentation.paneLayout)
+    }
+}
+
 extension MainSplitViewController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
@@ -743,6 +785,10 @@ extension MainSplitViewController: NSMenuItemValidation {
             return paneCommands.canGoToFavorites
         case #selector(showSearch(_:)):
             return paneCommands.canSearch
+        case #selector(goBack(_:)):
+            return paneCommands.canNavigateHistory && historyNavigator.canGoBack
+        case #selector(goForward(_:)):
+            return paneCommands.canNavigateHistory && historyNavigator.canGoForward
         case #selector(addSelectedFolderToFavorites(_:)):
             return paneCommands.allowsAddingFavorite
                 && treeViewController.canAddSelectedFolderToFavorites

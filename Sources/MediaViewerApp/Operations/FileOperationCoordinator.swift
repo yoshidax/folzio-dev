@@ -13,6 +13,8 @@ final class FileOperationCoordinator {
     /// フォルダの名前の変更に成功したときに、元の場所と新しい場所を渡す。`BrowserModel` の付け替えより先に呼び、
     /// ツリーがノードを作り直さずに付け替えられるようにする（R62・R64）
     var onFolderRenamed: ((URL, URL) -> Void)?
+    /// 履歴から、移動・名前の変更で消えた場所を取り除く（FR-109）
+    weak var historyNavigator: HistoryNavigator?
 
     init(model: BrowserModel, service: any FileOperating, settings: SettingsStore) {
         self.model = model
@@ -66,6 +68,7 @@ final class FileOperationCoordinator {
         // result.succeeded はゴミ箱の中の URL のため使わず、失敗しなかった元の場所を渡す
         let failedPaths = Set(result.failed.map { $0.url.standardizedFileURL.path })
         let trashedSources = urls.filter { !failedPaths.contains($0.standardizedFileURL.path) }
+        historyNavigator?.didRemoveItems(trashedSources)
         // 表示中のフォルダやその祖先を入れたときだけ親へ移る（FR-079）。ファイルリストからのゴミ箱は
         // それらを対象にしないため false になり、従来どおり読み直す。移ったときに読み直すと
         // 消えたフォルダの「フォルダが見つかりません」が一瞬出るため、false のときだけ呼ぶ
@@ -115,10 +118,12 @@ final class FileOperationCoordinator {
                 // 読み直しと FSEvents より先に、ツリー・一覧・検索結果を新しい場所に付け替える（FR-104・105、R62・R64）
                 onFolderRenamed?(file, renamed)
                 model.didRenameFolder(from: file, to: renamed)
+                historyNavigator?.didRenameFolder(from: file, to: renamed)
             } else {
                 // 検索結果では元の URL が消えて外れてしまうため、読み直しの前に行を差し替える（FR-087、R38）。
                 // 通常のフォルダでは didRenameItem は何もせず、従来どおり読み直しで反映される
                 model.didRenameItem(at: file, to: renamed)
+                historyNavigator?.didRenameItem(from: file, to: renamed)
             }
         }
         await model.reloadCurrentFolder()
@@ -132,6 +137,7 @@ final class FileOperationCoordinator {
 
         var result = FileOperationResult()
         var sharedResolution: ConflictResolution?
+        var attemptedSources: [URL] = []
 
         for source in urls {
             let itemOperation = FileOperation(
@@ -161,11 +167,18 @@ final class FileOperationCoordinator {
             if case .abort = resolution {
                 continue
             }
+            attemptedSources.append(source)
             let partial = await service.execute(itemOperation, resolution: resolution)
             result.merge(partial)
         }
 
         await presentFailures(result)
+        if case .move = kind {
+            // result.succeeded は移動先の URL のため、失敗しなかった元の場所で履歴を取り除く（FR-109）
+            let failedPaths = Set(result.failed.map { $0.url.standardizedFileURL.path })
+            let removed = attemptedSources.filter { !failedPaths.contains($0.standardizedFileURL.path) }
+            historyNavigator?.didRemoveItems(removed)
+        }
         await model.reloadCurrentFolder()
         notifyFoldersChanged(sources: urls, destination: destination)
     }

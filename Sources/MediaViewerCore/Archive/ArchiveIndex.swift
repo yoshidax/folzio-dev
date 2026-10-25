@@ -146,6 +146,13 @@ public struct ArchiveIndex: Sendable {
         entries[path]
     }
 
+    /// 最上位（空文字）か、索引にあるディレクトリなら true（R73）
+    public func containsDirectory(_ path: String) -> Bool {
+        if path.isEmpty { return true }
+        if children[path] != nil { return true }
+        return entries[path]?.isDirectory == true
+    }
+
     /// 階層の直下の行（ディレクトリ `.directory` と対応メディア `.media`）。並べ替え前。`..` は含めない
     public func items(in directory: String) -> [MediaFile] {
         rows[directory] ?? []

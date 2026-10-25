@@ -302,11 +302,34 @@ struct PaneLayoutTests {
                         commands.canSearch == (!isFullScreen && !isEditingText && layout.isVisible(.fileList)),
                         "\(label)"
                     )
+                    #expect(
+                        commands.canNavigateHistory == (!isFullScreen && !isEditingText),
+                        "\(label)"
+                    )
                 }
             }
         }
 
         #expect(cases == 12)
+    }
+
+    @Test("canNavigateHistory はフルスクリーン中と名前の変更中だけ false で、ペインの表示に左右されない")
+    func canNavigateHistoryIgnoresLayout() {
+        for layout in layouts {
+            for isFullScreen in [false, true] {
+                for isEditingText in [false, true] {
+                    let commands = PaneCommands(
+                        layout: layout,
+                        isFullScreen: isFullScreen,
+                        isEditingText: isEditingText
+                    )
+                    #expect(
+                        commands.canNavigateHistory == (!isFullScreen && !isEditingText),
+                        "layout=\(layout), isFullScreen=\(isFullScreen), isEditingText=\(isEditingText)"
+                    )
+                }
+            }
+        }
     }
 
     @Test("fileListOnly は検索でき、お気に入りは使えない")
