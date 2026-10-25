@@ -276,6 +276,10 @@ defaults delete MediaViewerApp
 
 ## 仕様・進捗
 
+Codex での Spec Kit 開発環境、対話コマンド、自動実行の手順は
+[Codex で Spec Kit を使う](docs/codex-speckit.md) を参照してください。
+自動実行の入口は `scripts/sdd-run-codex.sh` です。
+
 - 仕様の正本: `specs/product/`（領域別。索引は `specs/product/README.md`）
 - 001 の記録（凍結）: `specs/001-three-pane-media-viewer/`（spec.md・plan.md・tasks.md など）
 - バグ修正の記録: `.specify/bugs/<slug>/`（bug 拡張の assessment・fix・test。手順は AGENTS.md の「バグ修正」）

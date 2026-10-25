@@ -9,3 +9,7 @@ DerivedData/
 .specify/workflows/.cache/
 .specify/workflows/runs/
 *.code-workspace
+
+# Python の開発ツール検証
+__pycache__/
+*.pyc

@@ -1,0 +1,6 @@
+# モデルは個人設定を継承する。対話では必要な操作をその都度承認する。
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+[sandbox_workspace_write]
+network_access = false

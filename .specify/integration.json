@@ -1,9 +1,10 @@
 {
-  "version": "1.1.1.dev0",
+  "version": "1.2.2",
   "integration_state_schema": 1,
   "installed_integrations": [
     "claude",
-    "kilocode"
+    "kilocode",
+    "codex"
   ],
   "integration_settings": {
     "claude": {
@@ -13,6 +14,10 @@
     "kilocode": {
       "script": "sh",
       "invoke_separator": "."
+    },
+    "codex": {
+      "script": "sh",
+      "invoke_separator": "-"
     }
   },
   "integration": "claude",

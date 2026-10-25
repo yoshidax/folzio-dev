@@ -1,0 +1,19 @@
+# Claude／Kilo と同じ禁止操作。これは OS のアクセス制御の代替ではない。
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "forbidden",
+    justification = "SDD の実行中に push しない。結果を確認してからユーザーが実行する。",
+    match = ["git push", "git push origin master"],
+)
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "変更を破棄しない。git status と git diff で状況を確認する。",
+    match = ["git reset --hard", "git reset --hard HEAD"],
+)
+prefix_rule(
+    pattern = ["git", "clean"],
+    decision = "forbidden",
+    justification = "未追跡ファイルを一括削除しない。対象を個別に確認する。",
+    match = ["git clean -fd"],
+)
