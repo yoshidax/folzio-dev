@@ -21,6 +21,8 @@ SPECIFY = shutil.which("specify") or str(Path.home() / ".local/bin/specify")
 FAKE_CODEX = '''#!/usr/bin/env python3
 import json, os, pathlib, sys
 pathlib.Path(os.environ["FAKE_ARGV"]).write_text(json.dumps(sys.argv[1:]))
+if "FAKE_TASKS_TEXT" in os.environ:
+    pathlib.Path("specs/test/tasks.md").write_text(os.environ["FAKE_TASKS_TEXT"])
 for event in json.loads(os.environ["FAKE_EVENTS"]):
     print(json.dumps(event), flush=True)
 sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
@@ -29,6 +31,19 @@ sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
 
 def message(text):
     return {"type": "item.completed", "item": {"type": "agent_message", "text": text}}
+
+
+def delivery_result(status="ready_for_verification", completed=None, manual=None, blockers=None):
+    return json.dumps({"status": status, "completed_task_ids": completed or [],
+                       "remaining_manual_task_ids": manual or [], "blockers": blockers or [],
+                       "summary": "implementation result"})
+
+
+def make_tasks(root, text="- [ ] T001 Implement\n- [ ] T002 [MANUAL] GUI check\n"):
+    (root / ".specify").mkdir(exist_ok=True)
+    (root / ".specify/feature.json").write_text(json.dumps({"feature_directory": "specs/test"}))
+    (root / "specs/test").mkdir(parents=True, exist_ok=True)
+    (root / "specs/test/tasks.md").write_text(text)
 
 
 class CodexBridgeTests(unittest.TestCase):
@@ -45,6 +60,43 @@ class CodexBridgeTests(unittest.TestCase):
             "FAKE_ARGV": str(self.root / "argv.json"),
             "SDD_PROGRESS_LOG": str(self.root / "progress.log"),
         }
+
+    def implementation(self, report, tasks_after=None):
+        make_tasks(self.root)
+        scripts = self.root / "scripts"
+        scripts.mkdir(exist_ok=True)
+        shutil.copy2(BRIDGE, scripts / BRIDGE.name)
+        schema = BRIDGE.with_name("sdd-codex-implementation.schema.json")
+        if schema.exists():
+            shutil.copy2(schema, scripts / schema.name)
+        env = {**self.env, "FAKE_EVENTS": json.dumps([message(report), {"type": "turn.completed"}])}
+        if tasks_after is not None:
+            env["FAKE_TASKS_TEXT"] = tasks_after
+        return subprocess.run([sys.executable, str(scripts / BRIDGE.name), "exec", "$speckit-implement"],
+                              cwd=self.root, env=env, text=True, capture_output=True, timeout=10)
+
+    def test_blocked_implementation_is_not_success(self):
+        result = self.implementation(delivery_result("blocked", blockers=["I1 unresolved"]))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+
+    def test_plain_text_completion_is_not_success_for_implement(self):
+        self.assertNotEqual(self.implementation("判断待ち。全タスク未完了").returncode, 0)
+
+    def test_ready_result_with_unfinished_code_task_is_rejected(self):
+        result = self.implementation(delivery_result(manual=["T002"]))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+
+    def test_only_predeclared_manual_tasks_may_remain(self):
+        result = self.implementation(delivery_result(completed=["T001"], manual=["T002"]),
+                                     "- [X] T001 Implement\n- [ ] T002 [MANUAL] GUI check\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "ready_for_verification")
+        self.assertIn("--output-schema", json.loads((self.root / "argv.json").read_text()))
+
+    def test_implementation_cannot_reclassify_code_as_manual(self):
+        result = self.implementation(delivery_result(manual=["T001", "T002"]),
+                                     "- [ ] T001 [MANUAL] Implement\n- [ ] T002 [MANUAL] GUI check\n")
+        self.assertNotEqual(result.returncode, 0)
 
     def execute(self, events, code=0, args=None):
         self.env.update(FAKE_EVENTS=json.dumps(events), FAKE_EXIT=str(code))
@@ -102,6 +154,9 @@ class WorkflowTests(unittest.TestCase):
         scripts = self.root / "scripts"
         scripts.mkdir()
         shutil.copy2(BRIDGE, scripts / BRIDGE.name)
+        schema = BRIDGE.with_name("sdd-codex-implementation.schema.json")
+        if schema.exists():
+            shutil.copy2(schema, scripts / schema.name)
         (self.root / ".specify").mkdir()
         (self.root / ".specify/integration.json").write_text(json.dumps({
             "installed_integrations": ["codex"], "default_integration": "codex", "integration": "codex",
@@ -232,6 +287,68 @@ steps:
         runs.mkdir()
         (runs / "state.json").write_text(json.dumps({"run_id": "foreign", "workflow_id": "sdd-increment", "status": "completed"}))
         self.assertEqual(sdd.find_new_state(self.root, set())["workflow_id"], sdd.WORKFLOW)
+
+    def test_blocked_implement_retries_on_resume_before_verification(self):
+        make_tasks(self.root)
+        self.install_workflow('''  - id: delivery
+    type: do-while
+    condition: false
+    max_iterations: 1
+    steps:
+      - id: implement
+        command: speckit.implement
+        capture: true
+      - id: verify
+        type: shell
+        run: "touch verification-ran"
+      - id: gui_smoke
+        type: gate
+        message: GUI review
+        options: [approve, reject]
+        on_reject: retry
+''')
+        self.env["FAKE_EVENTS"] = json.dumps([message(delivery_result("blocked", blockers=["I1"])), {"type": "turn.completed"}])
+        result = self.run_runner("run", "blocked implementation")
+        before = self.state()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(before["step_results"]["implement"]["status"], "failed")
+        self.assertFalse((self.root / "verification-ran").exists())
+        self.env["FAKE_TASKS_TEXT"] = "- [X] T001 Implement\n- [ ] T002 [MANUAL] GUI check\n"
+        self.env["FAKE_EVENTS"] = json.dumps([message(delivery_result(completed=["T001"], manual=["T002"])), {"type": "turn.completed"}])
+        self.run_runner("resume", before["run_id"])
+        after = self.state()
+        self.assertEqual(after["current_step_id"], "gui_smoke")
+        self.assertTrue((self.root / "verification-ran").exists())
+        log = self.root / ".specify/workflows/runs" / before["run_id"] / "log.jsonl"
+        starts = [json.loads(line).get("step_id") for line in log.read_text().splitlines()
+                  if json.loads(line).get("event") == "step_started"]
+        self.assertEqual(starts.count("implement"), 2)
+
+    def test_legacy_completed_implementation_cannot_resume_to_gui(self):
+        run = self.root / ".specify/workflows/runs/legacy"
+        run.mkdir(parents=True)
+        state = {"run_id": "legacy", "workflow_id": sdd.WORKFLOW, "status": "paused",
+                 "current_step_id": "gui_smoke", "step_results": {
+                     "implement": {"status": "completed", "output": {"exit_code": 0, "stdout": ""}}}}
+        path = run / "state.json"
+        path.write_text(json.dumps(state))
+        original = path.read_bytes()
+        result = self.run_runner("resume", "legacy")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("旧", result.stderr)
+        self.assertEqual(path.read_bytes(), original)
+
+
+class VerificationLogTests(unittest.TestCase):
+    def test_failed_output_survives_a_successful_retry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            commands = [("build", [sys.executable, "-c", "import sys; print('original failure',file=sys.stderr); sys.exit(7)"])]
+            self.assertEqual(sdd.verify_workspace(root, commands), 7)
+            self.assertEqual(sdd.verify_workspace(root, [("build", [sys.executable, "-c", "print('retry success')"])]), 0)
+            outputs = list((root / ".specify/workflows/runs/attempts").rglob("build.stderr.log"))
+            self.assertEqual(len(outputs), 2)
+            self.assertEqual(sum("original failure" in p.read_text() for p in outputs), 1)
 
 
 if __name__ == "__main__":

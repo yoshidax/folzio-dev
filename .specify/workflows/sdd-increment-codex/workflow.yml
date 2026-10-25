@@ -2,7 +2,7 @@ schema_version: "1.0"
 workflow:
   id: "sdd-increment-codex"
   name: "SDD increment (Codex)"
-  version: "0.1.0"
+  version: "0.2.0"
   author: "igachan"
   # command / prompt の手順で使う integration の既定値。指定しないと prompt の手順が integration なしで失敗する
   integration: "codex"
@@ -143,6 +143,12 @@ steps:
 
   - id: tasks
     command: speckit.tasks
+    input:
+      args: >-
+        GUI の起動・目視確認などユーザーの報告が必要な作業は独立したタスクに分け、
+        そのタスク ID の直後に [MANUAL] を付けてください。
+        実装・自動テスト・文書作成と手動確認を同じタスクに混ぜないでください。
+        [MANUAL] の分類は設計レビューで確認し、実装中は変更しません
 
   - id: check_tasks
     type: shell
@@ -216,9 +222,12 @@ steps:
     max_iterations: 3
     condition: "{{ steps.converge_check.output.stdout }}"
     steps:
-      # 実行ブリッジが進捗を stderr と progress.log に出す
+      # ブリッジ内で構造化結果と tasks.md を照合してから成功にする。
+      # blocked の場合、この工程自体が failed になり、resume で再実行される。
       - id: implement
         command: speckit.implement
+        capture: true
+        timeout: 21600
         input:
           args: >-
             tasks.md の依存順に、このセッションで順次実装してください。
@@ -226,13 +235,14 @@ steps:
             GUI の起動確認が必要なタスクは実施せず、未チェックのまま残してください。
             GUI は起動しないでください。Phase の完了コミットはユーザーの GUI 確認後に行います。
             必須チェックリストが未完了、権限が不足、または人の判断が必要な場合は、
-            推測で完了扱いにせず、未完了の内容を最終回答に残してください
+            推測で完了扱いにせず、構造化結果の status を blocked にして blockers に理由を残してください。
+            [MANUAL] は事前にレビューした手動確認タスクだけに使い、実装中に追加・変更しないでください
 
       # AGENTS.md の Phase の検証ゲート 1〜3 と、起動スモーク用の .app の作成
       - id: verify
         type: shell
         timeout: 3600
-        run: swift build && swift test && scripts/check-no-network.sh && scripts/make-app.sh
+        run: python3 scripts/sdd-codex.py verify
 
       - id: notify_gui
         type: shell
