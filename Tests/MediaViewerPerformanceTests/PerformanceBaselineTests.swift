@@ -239,6 +239,51 @@ struct PerformanceBaselineTests {
         #expect(hideElapsed < .milliseconds(200), "非表示への切り替えは 0.2 秒以内 (実測: \(hideElapsed))")
     }
 
+    @Test("10,000 件の検索結果での didRenameFolder が 0.1 秒以内")
+    @MainActor
+    func renameFolderWithHugeSearchResultsWithinBudget() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        try FixtureSets.huge(in: directory, count: 10_000)
+        let folder = directory.appendingPathComponent("huge", isDirectory: true)
+
+        let suite = "PerformanceBaselineTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let model = BrowserModel(
+            lister: DirectoryLister(),
+            decoder: ImageDecoder(),
+            cache: DecodedImageCache(),
+            settings: SettingsStore(defaults: defaults)
+        )
+
+        // 検索を終えるまでと、ディスク上の名前の変更は計測に含めない
+        model.startSearch(try #require(SearchPattern(keyword: "img")), root: directory)
+        let finished = await waitUntil(timeout: .seconds(30)) { model.listing.search?.phase == .finished }
+        #expect(finished, "検索が終わること")
+        #expect(model.listing.search?.totalCount == 10_000, "10,000 件 (実際: \(model.listing.search?.totalCount ?? -1))")
+        // 負荷の高いマシンでの外れ値で落ちないよう、名前を行き来して3回測り、中央値で判定する
+        let names = ["huge2", "huge", "huge2"]
+        var current = folder
+        var samples: [Duration] = []
+        for name in names {
+            let next = directory.appendingPathComponent(name, isDirectory: true)
+            try FileManager.default.moveItem(at: current, to: next)
+
+            let start = ContinuousClock.now
+            model.didRenameFolder(from: current, to: next)
+            samples.append(ContinuousClock.now - start)
+
+            let moved = model.listing.files.allSatisfy { $0.url.deletingLastPathComponent().lastPathComponent == name }
+            #expect(moved, "すべての結果が新しい場所（\(name)）になること")
+            current = next
+        }
+        let median = samples.sorted()[1]
+        print("[perf] didRenameFolder 10,000 search results: \(samples), median \(median)")
+        #expect(median < .milliseconds(100), "名前の変更の付け替えは 0.1 秒以内 (中央値: \(median)、実測: \(samples))")
+    }
+
     @Test("サブフォルダのない 10,000 ファイルのフォルダの hasSubfolders が 0.2 秒以内")
     func hasSubfoldersInLargeFolderWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()

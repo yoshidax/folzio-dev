@@ -65,6 +65,44 @@ struct NameValidationTests {
         }
     }
 
+    // MARK: パッケージになる名前（EC-53・EC-14）
+
+    @Test("フォルダをパッケージになる名前に変えようとすると拒否する")
+    func folderRejectsPackageName() {
+        let folder = URL(fileURLWithPath: "/tmp/a/Photos", isDirectory: true)
+        #expect(
+            validateNewName("Photos.app", for: folder, existingNames: [], isDirectory: true)
+                == .invalid(reason: "この名前にするとフォルダがパッケージとして扱われ、表示されなくなります")
+        )
+        #expect(validateNewName("2025.01", for: folder, existingNames: [], isDirectory: true) == .ok)
+    }
+
+    @Test("ファイルにはパッケージの検査を適用しない")
+    func fileIgnoresPackageName() {
+        let png = URL(fileURLWithPath: "/tmp/a/Photos.png")
+        #expect(
+            validateNewName("Photos.app", for: png, existingNames: [], isDirectory: false)
+                == .needsExtensionChangeConfirmation
+        )
+    }
+
+    @Test("パッケージの検査より既存の検査が先に当たる")
+    func existingChecksComeFirst() {
+        let folder = URL(fileURLWithPath: "/tmp/a/Photos", isDirectory: true)
+        #expect(
+            validateNewName(".app", for: folder, existingNames: [], isDirectory: true)
+                == .invalid(reason: "名前の先頭に「.」は使用できません")
+        )
+        #expect(
+            validateNewName("a/b.app", for: folder, existingNames: [], isDirectory: true)
+                == .invalid(reason: "名前に「/」または「:」は使用できません")
+        )
+        #expect(
+            validateNewName("photos.app", for: folder, existingNames: ["Photos.app"], isDirectory: true)
+                == .invalid(reason: "同じ名前の項目がすでに存在します")
+        )
+    }
+
     @Test("uniqueName は 2 から連番を振る")
     func numbersUniqueNames() {
         #expect(uniqueName(for: "a.jpg", existingNames: []) == "a 2.jpg")

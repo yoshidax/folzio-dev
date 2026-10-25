@@ -147,6 +147,10 @@ final class MainSplitViewController: NSSplitViewController {
                 await treeViewController?.refreshFolders(folders)
             }
         }
+        // 一覧の付け替えより先に、同期でツリーのノードを付け替える（R64）
+        fileOperationCoordinator.onFolderRenamed = { [weak treeViewController] oldURL, newURL in
+            treeViewController?.didRenameFolder(from: oldURL, to: newURL)
+        }
         fileListViewController.onRename = { [weak self] url, newName in
             guard let self else { return }
             await self.fileOperationCoordinator.rename(url, to: newName)

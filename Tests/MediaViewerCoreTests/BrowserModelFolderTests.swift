@@ -479,4 +479,141 @@ struct BrowserModelFolderTests {
         #expect(env.model.isBrowsingArchive == false)
         #expect(path(env.model.listing.folder) == path(env.root))
     }
+
+    // MARK: - フォルダの名前の変更（FR-104、R62）
+
+    private func isImagePreview(_ preview: PreviewContent) -> Bool {
+        if case .image = preview { return true }
+        return false
+    }
+
+    private func waitUntil(timeout: Duration = .seconds(3), _ condition: () -> Bool) async -> Bool {
+        let deadline = ContinuousClock.now + timeout
+        while ContinuousClock.now < deadline {
+            if condition() { return true }
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return condition()
+    }
+
+    /// `trip/day1` を表示して `1.jpg` をプレビューした状態にする
+    private func showDay1Photo(_ env: Env) async throws -> URL {
+        await env.model.selectFolder(env.url("trip/day1"))
+        let photo = try #require(env.row("trip/day1/1.jpg")).url
+        env.model.select([photo], focused: photo)
+        #expect(await waitUntil { isImagePreview(env.model.preview) })
+        return photo
+    }
+
+    private func rename(_ env: Env, _ from: String, to newName: String) throws -> (URL, URL) {
+        let old = env.url(from)
+        let new = old.deletingLastPathComponent().appendingPathComponent(newName, isDirectory: true)
+        try FileManager.default.moveItem(at: old, to: new)
+        return (old, new)
+    }
+
+    @Test("表示中のフォルダの祖先の名前を変えると、一覧・選択・lastFolder が新しい場所になり、プレビューは変わらない")
+    func renamingAncestorRebasesListing() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        _ = try await showDay1Photo(env)
+        let signal = env.model.stopPlaybackSignal
+
+        let (old, new) = try rename(env, "trip", to: "trip2")
+        env.model.didRenameFolder(from: old, to: new)
+
+        #expect(path(env.model.listing.folder) == path(env.url("trip2/day1")))
+        #expect(path(env.model.selection.focused) == path(env.url("trip2/day1/1.jpg")))
+        #expect(env.model.selection.selected.map { path($0) } == [path(env.url("trip2/day1/1.jpg"))])
+        #expect(env.row("trip2/day1/1.jpg") != nil)
+        #expect(env.model.listing.files.first?.url == ParentLink.url(for: env.url("trip2/day1")))
+        #expect(isImagePreview(env.model.preview))
+        #expect(env.model.stopPlaybackSignal == signal)
+        #expect(path(env.lastFolder) == path(env.url("trip2/day1")))
+
+        // ⌘↑ は新しい名前のフォルダへ戻る（US1-AS40）
+        await env.model.goToEnclosingLevel()
+        #expect(path(env.model.listing.folder) == path(env.url("trip2")))
+    }
+
+    @Test("表示中のフォルダ自身の名前を変えた後、古い場所のイベントが届いても親へ移らない")
+    func renamingDisplayedFolderIgnoresOldEvents() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        _ = try await showDay1Photo(env)
+
+        let (old, new) = try rename(env, "trip/day1", to: "day1x")
+        env.model.didRenameFolder(from: old, to: new)
+        await env.model.handleFileSystemEvent([old, env.url("trip")])
+
+        #expect(path(env.model.listing.folder) == path(env.url("trip/day1x")))
+        #expect(path(env.model.selection.focused) == path(env.url("trip/day1x/1.jpg")))
+        #expect(env.row("trip/day1x/1.jpg") != nil)
+        #expect(isImagePreview(env.model.preview))
+    }
+
+    @Test("親の一覧を表示中にフォルダの名前を変えると、行の名前が変わって並び順の位置へ移り、選択は残る")
+    func renamingFolderRowInParentListing() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.root)
+        let trip = try #require(env.row("trip")).url
+        env.model.select([trip], focused: trip)
+
+        let (old, new) = try rename(env, "trip", to: "a-trip")
+        env.model.didRenameFolder(from: old, to: new)
+
+        #expect(env.model.listing.files.map(\.name) == ["a-trip", "cover.jpg", "empty", "only"])
+        #expect(env.row("a-trip")?.kind == .folder)
+        #expect(path(env.model.selection.focused) == path(env.url("a-trip")))
+    }
+
+    @Test("zip の中を表示中に zip を含むフォルダの名前を変えても、一覧はそのままで、別の項目を新しい場所から読める（EC-50）")
+    func renamingFolderContainingOpenArchive() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let jpeg = try Data(contentsOf: env.root.appendingPathComponent("cover.jpg"))
+        try ZipFixtureWriter.write(
+            [
+                ZipFixtureEntry(name: "a.jpg", content: .bytes(jpeg), method: .deflated),
+                ZipFixtureEntry(name: "b.jpg", content: .bytes(jpeg), method: .deflated),
+            ],
+            to: env.url("trip").appendingPathComponent("photos.zip")
+        )
+        env.model.setShowsZipFiles(true)
+        await env.model.selectFolder(env.url("trip"))
+        await env.model.openItem(try #require(env.row("trip/photos.zip")).url)
+        let names = env.model.listing.files.map(\.name)
+
+        let (old, new) = try rename(env, "trip", to: "trip2")
+        env.model.didRenameFolder(from: old, to: new)
+
+        let newZip = env.url("trip2").appendingPathComponent("photos.zip")
+        #expect(path(env.model.listing.archive?.archive) == path(newZip))
+        #expect(env.model.listing.files.map(\.name) == names)
+        let b = try #require(env.model.listing.files.first { $0.name == "b.jpg" })
+        #expect(ArchiveURL.parse(b.url).map { path($0.archive) } == path(newZip))
+        env.model.select([b.url], focused: b.url)
+        #expect(await waitUntil { isImagePreview(env.model.preview) })
+
+        await env.model.goToEnclosingLevel()
+        #expect(env.model.isBrowsingArchive == false)
+        #expect(path(env.model.listing.folder) == path(env.url("trip2")))
+        #expect(env.model.selection.focused.map { path($0) } == path(newZip))
+    }
+
+    @Test("関係のないフォルダの名前を変えても、一覧・選択・lastFolder は変わらない")
+    func renamingUnrelatedFolderChangesNothing() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let photo = try await showDay1Photo(env)
+        let files = env.model.listing.files.map(\.url)
+
+        let (old, new) = try rename(env, "empty", to: "empty2")
+        env.model.didRenameFolder(from: old, to: new)
+
+        #expect(env.model.listing.files.map(\.url) == files)
+        #expect(env.model.selection.focused == photo)
+        #expect(path(env.lastFolder) == path(env.url("trip/day1")))
+    }
 }

@@ -83,8 +83,17 @@ public final class BrowserModel {
     private var prefetchTasks: [URL: Task<Void, Never>] = [:]
     private var isRevertingSortOrder = false
 
-    /// 実行中の検索。新しい検索・フォルダの移動（`resetForNavigation`）で取り消す
-    private var searchTask: Task<Void, Never>?
+    /// 実行中の検索の列挙（元の列挙と、名前の変更で足した列挙）。新しい検索・フォルダの移動（`resetForNavigation`）で取り消す
+    private var searchTasks: [Task<Void, Never>] = []
+    /// 今の検索の条件。名前の変更で新しい場所を追加で列挙するのに使う（R63）
+    private var searchPattern: SearchPattern?
+    /// 今の検索の間に行われたフォルダの名前の変更。後から届いた結果の URL を順に付け替える（R63）
+    private var searchRenames: [RenamedFolder] = []
+    /// 今の検索で終わっていない列挙の数。0 になったら検索を終える（R63）
+    private var activeSearchStreams = 0
+    /// 開いている zip（開いている途中を含む）を開いた後のフォルダの名前の変更。索引の行は開いたときの zip の場所で
+    /// 作られているため、階層を移るたびに付け替える（R62、EC-50）
+    private var archiveRenames: [RenamedFolder] = []
     /// 検索結果を、ファイルを含むフォルダ（`standardizedFileURL.path`）ごとに引く。外部の変更で確かめる結果を、
     /// 全件ではなく届いたフォルダ以下だけに絞るのに使う（R38）
     private var searchResultsByFolder: [String: Set<URL>] = [:]
@@ -154,17 +163,27 @@ public final class BrowserModel {
             search: SearchListing(keyword: pattern.keyword, root: root, phase: .searching, totalCount: 0)
         )
 
+        searchPattern = pattern
+        startSearchStream(in: root, matching: pattern)
+    }
+
+    /// 列挙を1つ始める。すべての列挙が終わったときに検索を終える（R63）
+    private func startSearchStream(in root: URL, matching pattern: SearchPattern) {
         let generation = navigationGeneration
         let stream = searcher.search(in: root, matching: pattern)
-        searchTask = Task { [weak self] in
+        activeSearchStreams += 1
+        let task = Task { [weak self] in
             for await batch in stream {
                 guard let self, generation == self.navigationGeneration else { return }
                 self.appendSearchResults(batch)
             }
             guard let self, !Task.isCancelled, generation == self.navigationGeneration else { return }
+            self.activeSearchStreams -= 1
+            guard self.activeSearchStreams == 0 else { return }
             self.listing.search?.phase = .finished
             self.rebuildListing()
         }
+        searchTasks.append(task)
     }
 
     /// 検索結果で名前を変更したときに、その行の URL・名前を差し替えて並べ直す。キーワードに一致しなくなっても残し、
@@ -200,6 +219,146 @@ public final class BrowserModel {
         } else {
             selection = SelectionState(selected: selected, focused: selection.focused)
         }
+    }
+
+    /// フォルダの名前を変えた後に、表示中の一覧・選択・検索結果・zip の中の位置・最後に選択していたフォルダの場所を付け替える。
+    /// ディスクは読まず、プレビューと再生中の動画は変えない（`select` を呼ばない）。検索中なら、後から届く結果も付け替え、
+    /// 検索起点の配下の名前の変更では新しい場所を追加で列挙する。関係がなければ何もしない（FR-104・105、R62・R63）
+    public func didRenameFolder(from oldURL: URL, to newURL: URL) {
+        let renamed = RenamedFolder(from: oldURL, to: newURL)
+        let oldName = oldURL.standardizedFileURL.path
+
+        var updated = listing
+        var changed = false
+        if let folder = renamed.rebase(updated.folder) {
+            updated.folder = folder
+            changed = true
+        }
+        if let location = updated.archive, let archive = renamed.rebase(location.archive) {
+            updated.archive = ArchiveLocation(archive: archive, directory: location.directory)
+            changed = true
+        }
+        let previousRoot = updated.search?.root
+        if let root = previousRoot, let rebasedRoot = renamed.rebase(root) {
+            updated.search?.root = rebasedRoot
+            changed = true
+        }
+
+        var filesChanged = false
+        var namesChanged = false
+        // 検索結果の索引の付け替えで、同じ URL をもう一度付け替えないよう、元の URL と新しい URL を残す（R67）
+        let collectsMoves = isShowingSearchResults
+        var moves: [(URL, URL)] = []
+        let files = allFiles.map { file -> MediaFile in
+            guard let url = renamed.rebase(file.url) else { return file }
+            filesChanged = true
+            if collectsMoves {
+                moves.append((file.url, url))
+            }
+            var moved = file
+            moved.url = url
+            if file.kind == .folder, file.url.standardizedFileURL.path == oldName {
+                moved.name = newURL.lastPathComponent
+                namesChanged = true
+            }
+            return moved
+        }
+
+        var selected = selection.selected
+        var selectionChanged = false
+        for url in selection.selected {
+            guard let rebased = renamed.rebase(url) else { continue }
+            selected.remove(url)
+            selected.insert(rebased)
+            selectionChanged = true
+        }
+        let focused = selection.focused.map { url -> URL in
+            guard let rebased = renamed.rebase(url) else { return url }
+            selectionChanged = true
+            return rebased
+        }
+
+        var viewSettings = settings.viewSettings
+        if let lastFolder = viewSettings.lastFolder, let rebased = renamed.rebase(lastFolder) {
+            viewSettings.lastFolder = rebased
+            settings.viewSettings = viewSettings
+        }
+
+        // 検索中は、表示中の行に関係がなくても、起点の配下の名前の変更なら後から届く結果に関わる
+        var additionalSearchRoot: URL?
+        if listing.search?.phase == .searching, let previousRoot {
+            if let rebasedRoot = renamed.rebase(previousRoot) {
+                // 起点そのものか祖先の名前を変えた。新しい起点を列挙し直す
+                additionalSearchRoot = rebasedRoot
+            } else if RenamedFolder(from: previousRoot, to: previousRoot).rebase(oldURL) != nil {
+                // 起点の配下のフォルダ。そのフォルダの新しい場所だけを列挙する
+                additionalSearchRoot = newURL
+            }
+        }
+
+        guard changed || filesChanged || selectionChanged || additionalSearchRoot != nil else { return }
+
+        let folderChanged = updated.folder != listing.folder
+        // 開いている途中を含め、zip の中を表示中なら索引の行の付け替えに使う
+        if listing.archive != nil {
+            archiveRenames.append(renamed)
+        }
+        listing = updated
+        if selectionChanged {
+            selection = SelectionState(selected: selected, focused: focused)
+        }
+        if filesChanged {
+            // 配下のファイルの名前は変わらないため、並び順が変わるのは行の名前が変わったときと「場所」で並べ替え中だけ
+            allFiles = namesChanged || sortOrder.column == .location ? sorted(files, by: sortOrder) : files
+        }
+        if isShowingSearchResults, filesChanged {
+            rebaseSearchIndex(renamed, moved: Dictionary(moves, uniquingKeysWith: { first, _ in first }))
+        }
+
+        switch listing.state {
+        case .loaded, .empty, .noMatches:
+            rebuildListing()
+        case .denied, .failed:
+            listing.files = unreadableFolderRows()
+        case .loading:
+            if isShowingSearchResults {
+                rebuildListing()
+            } else if folderChanged, listing.archive == nil {
+                // 読み込み中の一覧は古い場所の結果を捨てるため、新しい場所で読み直す（世代は変えない）
+                listingTask?.cancel()
+                let generation = navigationGeneration
+                let folder = listing.folder
+                listingTask = Task { [weak self] in
+                    await self?.loadFolder(folder, generation: generation)
+                }
+            }
+        }
+
+        if let additionalSearchRoot, let pattern = searchPattern {
+            searchRenames.append(renamed)
+            startSearchStream(in: additionalSearchRoot, matching: pattern)
+        }
+    }
+
+    /// 検索結果の索引のキー（ファイルを含むフォルダ）を付け替える。10,000 件の URL からキーを作り直さないよう、
+    /// キーごとに付け替える（R67）。キーは `searchFolderKey` と同じ標準化した形で比べるため、名前を変えた後の場所
+    /// （存在する）を標準化し、元の場所はその親に元の名前を足して作る
+    private func rebaseSearchIndex(_ renamed: RenamedFolder, moved: [URL: URL]) {
+        let newKeyFolder = renamed.to.standardizedFileURL
+        let keyRenamed = RenamedFolder(
+            from: newKeyFolder.deletingLastPathComponent().appendingPathComponent(renamed.from.lastPathComponent),
+            to: newKeyFolder
+        )
+        var index: [String: Set<URL>] = [:]
+        index.reserveCapacity(searchResultsByFolder.count)
+        for (key, urls) in searchResultsByFolder {
+            if let newKey = keyRenamed.rebase(URL(fileURLWithPath: key, isDirectory: true))?.path {
+                index[newKey, default: []].formUnion(urls.map { moved[$0] ?? renamed.rebaseOrSelf($0) })
+            } else {
+                index[key, default: []].formUnion(urls)
+            }
+        }
+        searchResultsByFolder = index
     }
 
     /// ツリーのルートを受け取る。変わったら、読み込み済みの通常のフォルダの一覧の `..` を作り直す（ディスクは読まない）
@@ -535,8 +694,13 @@ public final class BrowserModel {
         navigationGeneration += 1
         listingTask?.cancel()
         listingTask = nil
-        searchTask?.cancel()
-        searchTask = nil
+        for task in searchTasks {
+            task.cancel()
+        }
+        searchTasks.removeAll()
+        searchPattern = nil
+        searchRenames.removeAll()
+        activeSearchStreams = 0
         searchResultsByFolder.removeAll()
         previewGeneration += 1
         previewTask?.cancel()
@@ -560,6 +724,7 @@ public final class BrowserModel {
         resetForNavigation()
         leaveSearchIfNeeded()
         archiveIndex = nil
+        archiveRenames.removeAll()
         listing = FolderListing(
             folder: listing.folder,
             files: [],
@@ -588,7 +753,8 @@ public final class BrowserModel {
         switch result {
         case let .success(index):
             archiveIndex = index
-            showArchiveLevel(ArchiveLocation(archive: url, directory: ""), index: index)
+            // 開いている途中に zip を含むフォルダの名前が変わっていれば、新しい場所で表示する（R62）
+            showArchiveLevel(ArchiveLocation(archive: rebasedForArchive(url), directory: ""), index: index)
         case let .failure(error):
             archiveIndex = nil
             allFiles = []
@@ -602,8 +768,21 @@ public final class BrowserModel {
     /// 開いている索引から、zip の中の1つの階層の一覧を作る（zip は読み直さない）
     private func showArchiveLevel(_ location: ArchiveLocation, index: ArchiveIndex) {
         listing = FolderListing(folder: listing.folder, files: [], state: .loading, archive: location)
-        allFiles = sorted(index.items(in: location.directory), by: sortOrder)
+        var items = index.items(in: location.directory)
+        if !archiveRenames.isEmpty {
+            items = items.map { item in
+                var moved = item
+                moved.url = rebasedForArchive(item.url)
+                return moved
+            }
+        }
+        allFiles = sorted(items, by: sortOrder)
         rebuildListing()
+    }
+
+    /// zip を開いた後の名前の変更を順に当てる
+    private func rebasedForArchive(_ url: URL) -> URL {
+        archiveRenames.reduce(url) { $1.rebaseOrSelf($0) }
     }
 
     /// zip を閉じ、zip を含むフォルダの一覧をディスクから読み直す。`lastFolder` は書き換えない
@@ -664,8 +843,23 @@ public final class BrowserModel {
     }
 
     /// 届いたバッチを現在の並べ替えで並べてから、並べ替え済みの全件にマージする（R36）
-    private func appendSearchResults(_ batch: [MediaFile]) {
-        guard isShowingSearchResults, !batch.isEmpty else { return }
+    private func appendSearchResults(_ incoming: [MediaFile]) {
+        guard isShowingSearchResults, !incoming.isEmpty else { return }
+        var batch = incoming
+        if !searchRenames.isEmpty {
+            // 名前の変更より前に列挙した結果を新しい場所にし、追加の列挙と重なる結果を捨てる（R63）
+            var seen = Set<String>()
+            batch = incoming.compactMap { file in
+                var moved = file
+                moved.url = searchRenames.reduce(file.url) { $1.rebaseOrSelf($0) }
+                let path = moved.url.standardizedFileURL.path
+                let listed = searchResultsByFolder[Self.searchFolderKey(moved.url)]?
+                    .contains { $0.standardizedFileURL.path == path } == true
+                guard !listed, seen.insert(path).inserted else { return nil }
+                return moved
+            }
+            guard !batch.isEmpty else { return }
+        }
         allFiles = sortedMerge(allFiles, sorted(batch, by: sortOrder), by: sortOrder)
         for file in batch {
             addToSearchIndex(file.url)

@@ -7,7 +7,8 @@ public enum NameValidation: Sendable, Equatable {
 }
 
 /// `isDirectory` が true（フォルダの名前の変更）のときは、名前の `.` 以降を拡張子として扱わず、
-/// 拡張子の変更の確認（`needsExtensionChangeConfirmation`）を返さない（research.md R32）
+/// 拡張子の変更の確認（`needsExtensionChangeConfirmation`）を返さない（research.md R32）。
+/// パッケージになる名前（`.app` など）は、フォルダが見えなくなるため拒否する（EC-53、R57）
 public func validateNewName(
     _ name: String,
     for file: URL,
@@ -25,6 +26,9 @@ public func validateNewName(
     }
     guard !existingNames.contains(where: { $0.caseInsensitiveCompare(name) == .orderedSame }) else {
         return .invalid(reason: "同じ名前の項目がすでに存在します")
+    }
+    guard !(isDirectory && PackageName.isPackage(name)) else {
+        return .invalid(reason: "この名前にするとフォルダがパッケージとして扱われ、表示されなくなります")
     }
 
     guard !isDirectory else { return .ok }
