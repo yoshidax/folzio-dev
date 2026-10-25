@@ -32,7 +32,7 @@
 
 ## バグ修正
 
-bug 拡張の `/speckit-bug-assess` → `/speckit-bug-fix` → `/speckit-bug-test` で直す（Kilo では `/speckit.bug.*`）。
+bug 拡張の `/speckit-bug-assess` → `/speckit-bug-fix` → `/speckit-bug-test` で直す（Kilo では `/speckit.bug.*`、Codex CLI では `$speckit-bug-*`）。
 記録は `.specify/bugs/<slug>/` に残る。
 
 1. クリーンな master から `bugfix/<slug>` ブランチを切る
@@ -91,6 +91,19 @@ lldb -b \
 - UI の起動スモークは同時に複数 worktree で行わない。統合後に1つずつ確認する
 - 内部の `task` サブエージェントは調査・レビュー向け。実装の並列化には使わない
 - マージ後に `git worktree remove` と作業ブランチの削除を行う
+
+## Codex / Spec Kit
+
+- Codex の Spec Kit スキルは `.agents/skills/`。CLI では `$speckit-specify`、`$speckit-plan`、
+  `$speckit-tasks`、`$speckit-analyze`、`$speckit-implement`、`$speckit-converge` などで呼び出す
+- 標準・git・bug スキルは Spec Kit が生成する。共通のプロジェクト規約はこのファイルで管理する
+- Codex の自動実行は `scripts/sdd-run-codex.sh` を使う。run／resume／status と更新手順は
+  `docs/codex-speckit.md` を参照する。既定の integration は Claude のままとする
+- `.codex/config.toml` と `.codex/rules/` は Codex 用。Claude／Kilo の permissions 設定は Codex に適用されない
+- `git push`、`git reset --hard`、`git clean` は行わない。sandbox・承認・ルールを無効化して作業を継続しない
+- GUI の起動はユーザーに依頼する。非対話実行中は GUI タスクを未チェックのまま残す
+- Codex の初期ワークフローは順次実装する。内部 subagent による同じ作業ディレクトリでの並列編集は行わない。
+  並列実装を明示的に行う場合も、上の worktree 規約に従って独立したセッションを使う
 
 ## テスト
 
