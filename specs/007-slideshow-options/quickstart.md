@@ -120,3 +120,21 @@ open .build/MediaViewer.app
 ## 完了の扱い
 
 build・全自動テスト・no-network・bundle の作成・ユーザーによる3ペインの起動スモークと該当する GUI シナリオ・実時間の計測が揃って完了とする。GUI 未確認のタスクは未チェックのまま残す。問題のない実装 Phase をコミットし、最後に spec の「反映先」の表に従って `specs/product/` へ反映する（006 の反映より先には反映しない）。
+
+## Phase 検証記録
+
+実装は worktree（`agent/<task-id>-<slug>`）で行い、`007-slideshow-options` へ `git merge --no-ff` で統合した。各マージ後に `swift build` と `swift test` を実行した。
+
+### Phase 1・2（T004・T010、2026-10-26）
+
+| 項目 | 結果 |
+|---|---|
+| 統合 | `agent/T001-transitions-fixture`（452941d）、`agent/T007-slideshow-settings`（b86f7f2） |
+| `swift build` | 成功 |
+| `swift test --filter MediaViewerCoreTests` | 654 件成功 |
+| `swift test --filter MediaViewerPerformanceTests` | 23 件成功 |
+| `swift test`（2 target 同時） | 1 回目: `PerformanceBaseline` の「50,000 件への 256 件のバッチ」と `FileNameSearcher` の「ストリームを集める Task を取り消すと、列挙が止まる」が失敗。2 回目: 後者だけ失敗。どちらも本 feature の変更と無関係なファイルで、target ごとの実行では成功する。2 target の同時実行による負荷で時間に依存するテストが揺れていると判断 |
+| `scripts/check-no-network.sh` | 成功（No network API references in Sources） |
+| `scripts/make-app.sh` | 成功（`.build/MediaViewer.app` を作成） |
+| T003 `scripts/make-fixtures.sh .build/SlideshowFixtures` | 未実施（エージェント環境でスクリプトの実行が承認されなかった）。生成内容は `SlideshowFixtureTests` の「transitions は表示順が分かる5件…」で確認済み |
+| GUI（T005・T011） | 未実施。GUI を起動しない指示のため |

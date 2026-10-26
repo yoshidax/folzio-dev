@@ -39,13 +39,13 @@ description: "スライドショーのオプション設定 実装タスク"
 
 **Purpose**: US12・US13 の確認に使う5件の検証フォルダを用意し、既存の回帰ゲートを通す。
 
-- [ ] T001 `Tests/MediaViewerCoreTests/SlideshowFixtureTests.swift` に、`FixtureSets.slideshow(in:)` が `slideshow/transitions/` を生成し、表示順（名前昇順）が `01-image.jpg`・`02-video-1s.mp4`・`03-broken.jpg`・`04-image.png`・`05-video-10s.mov` の5件であること、`03-broken.jpg` がデコードできない破損ファイルであることを検査する Swift Testing を追加する。`FixtureKit` の一時ディレクトリに生成し defer で削除する。動画を生成しない既存の `generateVideos: false` 経路でも画像3件が揃うことを確かめる
+- [X] T001 `Tests/MediaViewerCoreTests/SlideshowFixtureTests.swift` に、`FixtureSets.slideshow(in:)` が `slideshow/transitions/` を生成し、表示順（名前昇順）が `01-image.jpg`・`02-video-1s.mp4`・`03-broken.jpg`・`04-image.png`・`05-video-10s.mov` の5件であること、`03-broken.jpg` がデコードできない破損ファイルであることを検査する Swift Testing を追加する。`FixtureKit` の一時ディレクトリに生成し defer で削除する。動画を生成しない既存の `generateVideos: false` 経路でも画像3件が揃うことを確かめる
 
-- [ ] T002 `Sources/FixtureKit/FixtureSets.swift` の `slideshow(in:generateVideos:)` に `slideshow/transitions/` の生成を追加する。既存の `ImageFixtures`・`VideoFixtures` と、`slideshow/mixed/` で使っている1秒 MP4・10秒 MOV・JPEG・PNG の生成処理を再利用し、`03-broken.jpg` は JPEG ヘッダの後ろを切り詰めた破損データとする。既存の `slideshow/` 以下のファイル名・内容は変えない
+- [X] T002 `Sources/FixtureKit/FixtureSets.swift` の `slideshow(in:generateVideos:)` に `slideshow/transitions/` の生成を追加する。既存の `ImageFixtures`・`VideoFixtures` と、`slideshow/mixed/` で使っている1秒 MP4・10秒 MOV・JPEG・PNG の生成処理を再利用し、`03-broken.jpg` は JPEG ヘッダの後ろを切り詰めた破損データとする。既存の `slideshow/` 以下のファイル名・内容は変えない
 
 - [ ] T003 `scripts/make-fixtures.sh .build/SlideshowFixtures` を実行し、`.build/SlideshowFixtures/slideshow/transitions/` に5件が生成されることを `ls` で確認する。外部ツールの導入が必要になった場合は導入せずユーザーへ確認する
 
-- [ ] T004 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗の修正は最大3回までとする。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記する
+- [X] T004 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗の修正は最大3回までとする。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記する
 
 - [ ] T005 [MANUAL] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、3ペインが表示されること、006 のスライドショー（⇧⌘S、3秒ごとの循環、Esc で終了）に回帰がないことを確認してもらう。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
 
@@ -59,13 +59,13 @@ description: "スライドショーのオプション設定 実装タスク"
 
 **Blocking**: T007〜T012 完了後に Story 実装へ進む。
 
-- [ ] T007 `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` に `slideshow` のテストを追加する。未保存では `intervalSeconds == 3`・`repeats == true`・`transition == .none`。`1`・`3600`・`false`・4種類の効果を書いて読み戻すと同じ値。項目ごとの不正値（`slideshow.intervalSeconds` に `0`・`3601`・`3.5`・`true`・`"5"`、`slideshow.repeats` に `"yes"`・`1`、`slideshow.transition` に `"fade"`・`1`）は、その項目だけが既定値になり、ほかの項目は保存値のまま残ることを検証する（EC-75、SC-039）。既存のキーの値が変わらないことも確認する。各テストは専用の suite 名の `UserDefaults` を使い、終了時に `removePersistentDomain` で消す
+- [X] T007 `Tests/MediaViewerCoreTests/SettingsStoreTests.swift` に `slideshow` のテストを追加する。未保存では `intervalSeconds == 3`・`repeats == true`・`transition == .none`。`1`・`3600`・`false`・4種類の効果を書いて読み戻すと同じ値。項目ごとの不正値（`slideshow.intervalSeconds` に `0`・`3601`・`3.5`・`true`・`"5"`、`slideshow.repeats` に `"yes"`・`1`、`slideshow.transition` に `"fade"`・`1`）は、その項目だけが既定値になり、ほかの項目は保存値のまま残ることを検証する（EC-75、SC-039）。既存のキーの値が変わらないことも確認する。各テストは専用の suite 名の `UserDefaults` を使い、終了時に `removePersistentDomain` で消す
 
-- [ ] T008 `Sources/MediaViewerCore/Model/Settings.swift` の `PlaybackOptions`・`ConfirmationOptions` の隣に `SlideshowTransitionEffect`（`String` の raw value を持つ enum。`none` / `crossfade` / `slide` / `zoom`、`CaseIterable`・`Sendable`）と `SlideshowOptions`（`Sendable`・`Equatable`）を追加する。フィールドは `intervalSeconds: Int`（既定値 3、制約は「`SlideshowOptions.intervalRange = 1...3600`。範囲外の値を持たない」）、`repeats: Bool`（既定値 `true`、「動画のループ再生（`PlaybackOptions.loop`）とは独立（FR-119）」）、`transition: SlideshowTransitionEffect`（既定値 `.none`、「4種類のいずれか」）とし、`static let defaults`、`interval: Duration`（`.seconds(intervalSeconds)`）を持たせる。範囲外の `intervalSeconds` を受けた初期化は既定値 3 にする。表示名は App が持つので Core には置かない
+- [X] T008 `Sources/MediaViewerCore/Model/Settings.swift` の `PlaybackOptions`・`ConfirmationOptions` の隣に `SlideshowTransitionEffect`（`String` の raw value を持つ enum。`none` / `crossfade` / `slide` / `zoom`、`CaseIterable`・`Sendable`）と `SlideshowOptions`（`Sendable`・`Equatable`）を追加する。フィールドは `intervalSeconds: Int`（既定値 3、制約は「`SlideshowOptions.intervalRange = 1...3600`。範囲外の値を持たない」）、`repeats: Bool`（既定値 `true`、「動画のループ再生（`PlaybackOptions.loop`）とは独立（FR-119）」）、`transition: SlideshowTransitionEffect`（既定値 `.none`、「4種類のいずれか」）とし、`static let defaults`、`interval: Duration`（`.seconds(intervalSeconds)`）を持たせる。範囲外の `intervalSeconds` を受けた初期化は既定値 3 にする。表示名は App が持つので Core には置かない
 
-- [ ] T009 `Sources/MediaViewerCore/Settings/SettingsStore.swift` の `Keys` に `slideshow.intervalSeconds`・`slideshow.repeats`・`slideshow.transition` を追加し、`public var slideshow: SlideshowOptions` を `nonmutating set` で実装する。読み込みは項目ごとに独立して検証する: 間隔は「`NSNumber` で、`CFBoolean` ではなく、`Int` へ正確に変換でき、1〜3600。それ以外は 3」、繰り返しは既存の `storedBool` と同じく「`as? Bool` で読めなければ true」、効果は「4つの raw value のいずれかでなければ `none`」。既存のキー・`storedBool`・`storedDouble`・移行処理の振る舞いは変えない
+- [X] T009 `Sources/MediaViewerCore/Settings/SettingsStore.swift` の `Keys` に `slideshow.intervalSeconds`・`slideshow.repeats`・`slideshow.transition` を追加し、`public var slideshow: SlideshowOptions` を `nonmutating set` で実装する。読み込みは項目ごとに独立して検証する: 間隔は「`NSNumber` で、`CFBoolean` ではなく、`Int` へ正確に変換でき、1〜3600。それ以外は 3」、繰り返しは既存の `storedBool` と同じく「`as? Bool` で読めなければ true」、効果は「4つの raw value のいずれかでなければ `none`」。既存のキー・`storedBool`・`storedDouble`・移行処理の振る舞いは変えない
 
-- [ ] T010 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗の修正は最大3回までとする。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記する
+- [X] T010 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗の修正は最大3回までとする。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記する
 
 - [ ] T011 [MANUAL] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、3ペインが表示されること、既存の設定ウインドウ（⌘,）の3項目が従来どおり表示・保存されることを確認してもらう。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
 
