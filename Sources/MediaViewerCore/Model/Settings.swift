@@ -73,6 +73,37 @@ public struct PlaybackOptions: Sendable, Equatable {
     }
 }
 
+public enum SlideshowTransitionEffect: String, Sendable, CaseIterable {
+    case none
+    case crossfade
+    case slide
+    case zoom
+}
+
+public struct SlideshowOptions: Sendable, Equatable {
+    public static let intervalRange = 1...3600
+    public static let defaultIntervalSeconds = 3
+    public static let defaults = SlideshowOptions()
+
+    public var intervalSeconds: Int
+    public var repeats: Bool
+    public var transition: SlideshowTransitionEffect
+
+    public var interval: Duration { .seconds(intervalSeconds) }
+
+    /// 範囲外の `intervalSeconds` は 3 秒にする
+    public init(
+        intervalSeconds: Int = 3,
+        repeats: Bool = true,
+        transition: SlideshowTransitionEffect = .none
+    ) {
+        self.intervalSeconds = Self.intervalRange.contains(intervalSeconds)
+            ? intervalSeconds : Self.defaultIntervalSeconds
+        self.repeats = repeats
+        self.transition = transition
+    }
+}
+
 public struct ConfirmationOptions: Sendable, Equatable {
     public var confirmBeforeFileOperations: Bool
 
