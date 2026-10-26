@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import Testing
 @testable import FixtureKit
 import MediaViewerCore
@@ -67,6 +68,34 @@ struct SlideshowFixtureTests {
             "sub",
         ])
         #expect(index.items(in: "sub/").map(\.name).sorted() == ["10.jpg", "11.png"])
+    }
+
+    @Test("transitions は表示順が分かる5件を名前昇順で持ち、3件目だけデコードできない")
+    func transitionsSet() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FixtureSets.slideshow(in: directory, generateVideos: false)
+
+        let folder = directory.appendingPathComponent("slideshow/transitions", isDirectory: true)
+        let names = try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted()
+        #expect(names == [
+            "01-image.jpg",
+            "02-video-1s.mp4",
+            "03-broken.jpg",
+            "04-image.png",
+            "05-video-10s.mov",
+        ])
+
+        for name in ["01-image.jpg", "04-image.png"] {
+            let source = CGImageSourceCreateWithURL(folder.appendingPathComponent(name) as CFURL, nil)
+            let image = source.flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }
+            #expect(image != nil, "\(name) はデコードできる")
+        }
+        let brokenSource = CGImageSourceCreateWithURL(
+            folder.appendingPathComponent("03-broken.jpg") as CFURL, nil
+        )
+        let brokenImage = brokenSource.flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }
+        #expect(brokenImage == nil, "03-broken.jpg はデコードできない")
     }
 
     private func makeDirectory() throws -> URL {
