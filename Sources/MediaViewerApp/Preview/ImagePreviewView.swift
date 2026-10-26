@@ -217,6 +217,27 @@ final class ImagePreviewView: NSView {
         messageStack.isHidden = false
     }
 
+    func transitionSnapshot() -> (image: CGImage?, frame: CGRect, gravity: CALayerContentsGravity) {
+        layoutSubtreeIfNeeded()
+        if let displayedImage {
+            // contentLayer.contents と同じ画像を共有し、再デコード・再描画しない。
+            return (displayedImage, contentLayer.frame, contentLayer.contentsGravity)
+        }
+        guard !messageStack.isHidden, let layer else { return (nil, .zero, .resize) }
+        displayIfNeeded()
+        // 文字・spinner の範囲だけを描き、大きなプレビュー全面の bitmap を作らない。
+        let rect = messageStack.frame.integral
+        let scale = backingScale
+        guard rect.width > 0, rect.height > 0,
+              let context = CGContext(data: nil, width: Int(rect.width * scale), height: Int(rect.height * scale),
+                bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return (nil, .zero, .resize) }
+        context.scaleBy(x: scale, y: scale)
+        context.translateBy(x: -rect.minX, y: -rect.minY)
+        layer.render(in: context)
+        return (context.makeImage(), rect, .resize)
+    }
+
     fileprivate func isCurrentAnimation(_ state: AnimationState) -> Bool {
         animationState === state
     }

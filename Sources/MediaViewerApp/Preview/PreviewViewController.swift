@@ -1,5 +1,7 @@
 import AppKit
 import MediaViewerCore
+import QuartzCore
+import os
 
 @MainActor
 final class PreviewViewController: NSViewController {
@@ -9,6 +11,13 @@ final class PreviewViewController: NSViewController {
     private let imageView = ImagePreviewView()
     private let videoView = VideoPreviewView()
     private let containerView = NSView()
+    private let contentHostView = NSView()
+    private let transitionOverlay = SlideshowTransitionOverlayView()
+    private var transitionState = SlideshowTransitionState()
+    private var lastContainerSize: CGSize?
+    private let transitionSignposter = OSSignposter(
+        subsystem: "local.my-img-viewer.MediaViewer", category: "Performance"
+    )
     private var animatedTask: Task<Void, Never>?
     private var configuredVideoURL: URL?
 
@@ -67,20 +76,32 @@ final class PreviewViewController: NSViewController {
         videoView.translatesAutoresizingMaskIntoConstraints = false
         videoView.isHidden = true
 
-        containerView.addSubview(imageView)
-        containerView.addSubview(videoView)
+        containerView.wantsLayer = true
+        containerView.layer?.masksToBounds = true
+        contentHostView.wantsLayer = true
+        contentHostView.translatesAutoresizingMaskIntoConstraints = false
+        transitionOverlay.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(contentHostView)
+        containerView.addSubview(transitionOverlay)
+        contentHostView.addSubview(imageView)
+        contentHostView.addSubview(videoView)
 
-        NSLayoutConstraint.activate([
-            imageView.topAnchor.constraint(equalTo: containerView.topAnchor),
-            imageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            imageView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-            imageView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-
-            videoView.topAnchor.constraint(equalTo: containerView.topAnchor),
-            videoView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            videoView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-            videoView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-        ])
+        for child in [contentHostView, transitionOverlay] {
+            NSLayoutConstraint.activate([
+                child.topAnchor.constraint(equalTo: containerView.topAnchor),
+                child.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+                child.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+                child.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            ])
+        }
+        for child in [imageView, videoView] {
+            NSLayoutConstraint.activate([
+                child.topAnchor.constraint(equalTo: contentHostView.topAnchor),
+                child.leadingAnchor.constraint(equalTo: contentHostView.leadingAnchor),
+                child.trailingAnchor.constraint(equalTo: contentHostView.trailingAnchor),
+                child.bottomAnchor.constraint(equalTo: contentHostView.bottomAnchor),
+            ])
+        }
 
         view = containerView
     }
@@ -158,6 +179,7 @@ final class PreviewViewController: NSViewController {
                 stopVideo()
                 showImageView()
                 imageView.showEmpty()
+                cancelTransition()
                 return
             }
             imageView.showEmpty()
@@ -170,12 +192,17 @@ final class PreviewViewController: NSViewController {
             showImageView()
             imageView.showUnavailable(name: name, reason: reason)
         }
+        applyTransitionAction(transitionState.reduce(.displayed(content: model.preview, focused: model.selection.focused)))
     }
 
     /// 動画 URL を再生に渡す。同じ URL の再設定は無視する。
     private func showVideo(_ url: URL) {
         guard configuredVideoURL != url else { return }
         configuredVideoURL = url
+        let generation = transitionState.generation
+        videoView.onReadyForTransition = { [weak self] in
+            self?.transitionReady(url: url, generation: generation)
+        }
         let playback = model.playbackRequest
         if ArchiveURL.parse(url) != nil {
             // zip の中の動画は ArchiveAssetFactory 経由の AVURLAsset で再生する
@@ -216,6 +243,7 @@ final class PreviewViewController: NSViewController {
         imageView.showLoading(fileName: url.lastPathComponent)
 
         let maxPixelSize = max(1, model.screenMaxPixel)
+        let generation = transitionState.generation
         animatedTask = Task { [weak self] in
             guard let self else { return }
 
@@ -235,6 +263,7 @@ final class PreviewViewController: NSViewController {
                 fileName: url.lastPathComponent,
                 fallback: fallback
             )
+            self.transitionReady(url: url, generation: generation)
         }
     }
 
@@ -243,6 +272,7 @@ final class PreviewViewController: NSViewController {
         imageView.showLoading(fileName: url.lastPathComponent)
 
         let maxPixelSize = max(1, model.screenMaxPixel)
+        let generation = transitionState.generation
         animatedTask = Task { [weak self] in
             guard let self else { return }
 
@@ -262,7 +292,110 @@ final class PreviewViewController: NSViewController {
                 fileName: url.lastPathComponent,
                 fallback: fallback
             )
+            self.transitionReady(url: url, generation: generation)
         }
+    }
+
+    func beginTransition(to url: URL, current: URL?, effect: SlideshowTransitionEffect) {
+        view.layoutSubtreeIfNeeded()
+        applyTransitionAction(transitionState.reduce(.arm(target: url, current: current, effect: effect)))
+    }
+
+    func cancelTransition() {
+        applyTransitionAction(transitionState.reduce(.cancel))
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        let size = containerView.bounds.size
+        if let lastContainerSize, lastContainerSize != size {
+            applyTransitionAction(transitionState.reduce(.containerResized))
+        }
+        lastContainerSize = size
+    }
+
+    private func transitionReady(url: URL, generation: Int) {
+        applyTransitionAction(transitionState.reduce(.ready(url: url, generation: generation)))
+    }
+
+    private func clearTransitionLayers() {
+        transitionOverlay.layer?.removeAllAnimations()
+        contentHostView.layer?.removeAllAnimations()
+        transitionOverlay.clear()
+    }
+
+    private func applyTransitionAction(_ action: SlideshowTransitionState.Action) {
+        switch action {
+        case .none:
+            break
+        case .hold(let replacing):
+            if replacing {
+                clearTransitionLayers()
+                transitionSignposter.emitEvent("SlideshowTransitionCancel")
+            }
+            if !videoView.isHidden {
+                let snapshot = videoView.freezeForTransition()
+                transitionOverlay.show(image: snapshot.image,
+                    frame: videoView.convert(snapshot.videoRect, to: containerView), gravity: .resizeAspect)
+            } else {
+                let snapshot = imageView.transitionSnapshot()
+                transitionOverlay.show(image: snapshot.image,
+                    frame: imageView.convert(snapshot.frame, to: containerView), gravity: snapshot.gravity)
+            }
+        case let .animate(effect, generation):
+            startTransitionAnimation(effect: effect, generation: generation)
+        case .remove(let completed):
+            clearTransitionLayers()
+            if completed {
+                transitionSignposter.emitEvent("SlideshowTransitionEnd")
+            } else {
+                transitionSignposter.emitEvent("SlideshowTransitionCancel")
+            }
+        }
+    }
+
+    private func startTransitionAnimation(effect: SlideshowTransitionEffect, generation: Int) {
+        guard let previous = transitionOverlay.layer, let next = contentHostView.layer else {
+            cancelTransition()
+            return
+        }
+        transitionSignposter.emitEvent("SlideshowTransitionStart")
+        CATransaction.begin()
+        CATransaction.setCompletionBlock { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.applyTransitionAction(self.transitionState.reduce(.completed(generation: generation)))
+            }
+        }
+        func add(_ layer: CALayer, _ keyPath: String, from: Any, to: Any) {
+            let animation = CABasicAnimation(keyPath: keyPath)
+            animation.fromValue = from
+            animation.toValue = to
+            animation.duration = 0.5
+            animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            animation.fillMode = .forwards
+            animation.isRemovedOnCompletion = false
+            layer.add(animation, forKey: "slideshow." + keyPath)
+        }
+        switch effect {
+        case .none:
+            break
+        case .crossfade:
+            add(previous, "opacity", from: 1, to: 0)
+            add(next, "opacity", from: 0, to: 1)
+        case .slide:
+            add(previous, "transform.translation.x", from: 0, to: -containerView.bounds.width)
+            add(next, "transform.translation.x", from: containerView.bounds.width, to: 0)
+        case .zoom:
+            add(previous, "opacity", from: 1, to: 0)
+            add(next, "opacity", from: 0, to: 1)
+            let center = CGPoint(x: next.bounds.midX, y: next.bounds.midY)
+            var transform = CATransform3DMakeTranslation(center.x, center.y, 0)
+            transform = CATransform3DScale(transform, 0.6, 0.6, 1)
+            transform = CATransform3DTranslate(transform, -center.x, -center.y, 0)
+            add(next, "transform", from: NSValue(caTransform3D: transform), to: NSValue(caTransform3D: CATransform3DIdentity))
+        }
+        CATransaction.commit()
     }
 
     private func updateScreenMaxPixel() {

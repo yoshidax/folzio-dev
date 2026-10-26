@@ -1051,6 +1051,14 @@ extension MainSplitViewController: NSMenuItemValidation {
 }
 
 extension MainSplitViewController: SlideshowCoordinatorDelegate {
+    func slideshowBeginTransition(to url: URL, current: URL?, effect: SlideshowTransitionEffect) {
+        previewViewController.beginTransition(to: url, current: current, effect: effect)
+    }
+
+    func slideshowCancelTransition() {
+        previewViewController.cancelTransition()
+    }
+
     var slideshowFiles: [MediaFile] { model.listing.files }
     var slideshowSelectedURLs: Set<URL> { model.selection.selected }
     var slideshowFocusedURL: URL? { model.selection.focused }

@@ -188,3 +188,31 @@ Phase 2 の `SlideshowOptions.intervalSeconds` が初期化後の代入で範囲
 ### Phase 3 GUI 確認（T023・T024、2026-10-26）
 
 ユーザーから Phase 3 の確認完了・問題なしとの報告を受けた。設定ウインドウ1・2・4〜7（効果を除く）、間隔と繰り返し1〜9のゲートを合格とし、Phase 3 をコミットして Phase 4 へ進む。
+
+### Phase 4 自動検証（T025〜T035・T045・T046、2026-10-26）
+
+設定画面に「なし／クロスフェード／スライド／ズーム」を追加し、自動送りでだけ効果を arm する経路を実装した。Core の `SlideshowTransitionState` が holding／animating、打ち切り、対象と世代の照合を判断する。非同期の準備完了にも世代を渡し、同じ URL を再び準備した場合の古い通知も無視する。App は action に応じて snapshot の表示と0.5秒の layer animation を実行し、完了・打ち切りで animation と snapshot を外す。矢印・Esc は選択中の次の対象を基準に処理し、効果の完了で Session の期限を延ばさない。対象1件の同じ URL には arm しない。
+
+macOS SDK の `AVPlayerView.h` にある `readyForDisplay`（Swift では `isReadyForDisplay`、説明は current item の最初のフレームが表示可能であること）を確認し、KVO で監視した。動画は `.readyToPlay` だけでは開始せず、表示可能・失敗・映像トラックなしの場合の準備完了を通知する。`AVPlayer` は1つを使い回し、`AVPlayerItemVideoOutput` はアイテムの載せ替えと unload で外す。画像は表示済みの CGImage を共有し、メッセージの写しは文字・spinner の範囲だけを描画する。
+
+| 項目 | 結果 |
+|---|---|
+| テスト先行 | 効果・状態遷移・動画 output のテストを先に追加し、`effective(reduceMotion:)` 未実装による失敗を確認 |
+| `swift test --filter 'SlideshowTransition\|VideoPlayback'` | 関連17テスト成功。状態表、全 PreviewContent の準備完了、古い通知の無視、動画 output の取り付けと取り外しを検証 |
+| `swift build` | 成功 |
+| `swift test --filter MediaViewerPerformanceTests` | 24件成功。video output 付きのプレーヤーから最初の CGImage が得られるまで0.176599秒（基準1秒未満）。これは描画前のフレーム出力の計測であり、実画面の表示や効果の時間の確認は含まない |
+| `swift test`（初回） | 性能24件成功。Core 672件中、既存の検索キャンセルテストだけ失敗（`countAtCancel == 10_000`）。Phase 1〜3 と同じテストの失敗 |
+| `swift test`（再実行） | コードを変えず再実行し、Core 672件・性能24件（計696件）が成功。最初の動画フレーム出力は0.183689959秒 |
+| `scripts/check-no-network.sh` | 成功（no network API references in Sources） |
+| Core の AppKit 依存 | `import AppKit` は0件 |
+| `scripts/make-app.sh` | 成功。最新の `.build/MediaViewer.app` を作成 |
+| GUI（T036） | 未実施。設定ウインドウ1〜3・8、切り替え効果1〜13をユーザーへ依頼する。動画の黒い表示の有無、前の動画の静止・無音、各効果の見た目、入力、VoiceOver、視差効果を減らす設定は未確認 |
+| Phase 4 コミット（T037） | GUI 確認待ちのため未実施 |
+
+GUI 検証は `.build/SlideshowFixtures/slideshow/transitions` を間隔3秒・繰り返しオンで開始し、4種類を順に確認する。対象1件の確認には `slideshow/single` を使う。アプリを終了してから `open .build/MediaViewer.app` で最新の bundle を起動する。Instruments による SC-038・SC-041 の実時間の計測は最終 Phase の T040・T041 で行う。
+
+### Phase 4 GUI 確認（T036・T037、2026-10-26）
+
+ユーザーから「問題なかった」と報告を受け、Phase 4 のコミットと master へのマージの指示を受けた。設定画面の効果選択・Tab 操作・VoiceOver と「切り替え効果」1〜13の確認を合格とし、T036・T037 を完了する。上記の GUI 確認待ちの記録は本確認で解消した。
+
+Instruments による SC-038・SC-041 の実時間計測と結果の記録、README 更新、006 を前提とする product への仕様反映は未完了であり、Phase 5 の T038〜T044 は未チェックのまま保持する。今回の master への統合は Phase 4 までの実装と検証済みの変更を対象とし、feature 全体の完了・凍結とは扱わない。

@@ -78,6 +78,11 @@ public enum SlideshowTransitionEffect: String, Sendable, CaseIterable {
     case crossfade
     case slide
     case zoom
+
+    public func effective(reduceMotion: Bool) -> SlideshowTransitionEffect {
+        if reduceMotion, self == .slide || self == .zoom { return .crossfade }
+        return self
+    }
 }
 
 public struct SlideshowOptions: Sendable, Equatable {

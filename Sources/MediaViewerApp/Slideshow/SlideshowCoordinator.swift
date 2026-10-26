@@ -24,6 +24,8 @@ protocol SlideshowCoordinatorDelegate: AnyObject {
     func slideshowAcceptsKeyEvent(_ event: NSEvent) -> Bool
     func slideshowHasPendingKeyEvent() -> Bool
     func slideshowAvailabilityDidChange()
+    func slideshowBeginTransition(to url: URL, current: URL?, effect: SlideshowTransitionEffect)
+    func slideshowCancelTransition()
 }
 
 /// 設定した間隔の期限、矢印・Esc の入力、保留中の自動送りを調停する App 側の実行主体。
@@ -89,6 +91,7 @@ final class SlideshowCoordinator {
     /// 実行中なら止めて復帰する。復帰が全画面解除を待つ間は `isRestoring` を立てる。
     func stop() {
         guard isActive else { return }
+        delegate?.slideshowCancelTransition()
         isActive = false
         isRestoring = true
         cancelDeadline()
@@ -111,6 +114,7 @@ final class SlideshowCoordinator {
     /// ウインドウを閉じる・終了するときに、復帰表示を待たずに資源だけ捨てる。
     func stopImmediately() {
         guard isActive || isRestoring else { return }
+        delegate?.slideshowCancelTransition()
         isActive = false
         isRestoring = false
         cancelDeadline()
@@ -142,6 +146,7 @@ final class SlideshowCoordinator {
         }
 
         guard let move = Self.focusMove(for: event) else { return false }
+        delegate.slideshowCancelTransition()
         guard session.arrow(now: clock.now, interval: settings.slideshow.interval) else { return false }
         signposter.emitEvent("SlideshowArrow")
         delegate.slideshowMoveFocus(move)
@@ -217,9 +222,19 @@ final class SlideshowCoordinator {
             repeats: options.repeats
         ) {
         case .target(let target):
+            let current = delegate.slideshowFocusedURL
+            let effect = options.transition.effective(reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+            if target != current, effect != .none {
+                delegate.slideshowBeginTransition(to: target, current: current, effect: effect)
+                signposter.emitEvent("SlideshowTransitionBegin")
+            } else {
+                delegate.slideshowCancelTransition()
+            }
             let changed = delegate.slideshowSynchronizeSelection(to: target)
             if changed {
                 signposter.emitEvent("SlideshowAdvance")
+            } else {
+                delegate.slideshowCancelTransition()
             }
             schedule()
         case .finish, .empty:

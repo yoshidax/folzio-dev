@@ -6,6 +6,10 @@ private final class KeyViewCheckbox: NSButton {
     override var canBecomeKeyView: Bool { true }
 }
 
+private final class KeyViewPopUpButton: NSPopUpButton {
+    override var canBecomeKeyView: Bool { true }
+}
+
 @MainActor
 final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, NSWindowDelegate {
     private let store: SettingsStore
@@ -14,6 +18,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
     private let loopCheckbox: NSButton
     private let confirmFileOperationsCheckbox: NSButton
     private let intervalField = NSTextField(string: "3")
+    private let transitionPopup = KeyViewPopUpButton(frame: .zero, pullsDown: false)
     private let repeatsCheckbox = KeyViewCheckbox(
         checkboxWithTitle: "最後まで表示したら先頭から繰り返す",
         target: nil,
@@ -61,7 +66,8 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         loopCheckbox.nextKeyView = confirmFileOperationsCheckbox
         confirmFileOperationsCheckbox.nextKeyView = intervalField
         intervalField.nextKeyView = repeatsCheckbox
-        repeatsCheckbox.nextKeyView = autoplayCheckbox
+        repeatsCheckbox.nextKeyView = transitionPopup
+        transitionPopup.nextKeyView = autoplayCheckbox
         window.initialFirstResponder = autoplayCheckbox
 
         autoplayCheckbox.target = self
@@ -75,6 +81,14 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         intervalField.delegate = self
         intervalField.setAccessibilityLabel("切り替え間隔（秒）")
         repeatsCheckbox.setAccessibilityLabel("最後まで表示したら先頭から繰り返す")
+        for (effect, title) in [(SlideshowTransitionEffect.none, "なし"), (.crossfade, "クロスフェード"),
+                                (.slide, "スライド"), (.zoom, "ズーム")] {
+            transitionPopup.addItem(withTitle: title)
+            transitionPopup.lastItem?.representedObject = effect.rawValue
+        }
+        transitionPopup.target = self
+        transitionPopup.action = #selector(selectTransition(_:))
+        transitionPopup.setAccessibilityLabel("切り替え効果")
 
         syncFromStore()
     }
@@ -116,6 +130,11 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         intervalRow.alignment = .firstBaseline
         intervalRow.spacing = 8
 
+        let transitionRow = NSStackView(views: [NSTextField(labelWithString: "切り替え効果"), transitionPopup])
+        transitionRow.orientation = .horizontal
+        transitionRow.alignment = .firstBaseline
+        transitionRow.spacing = 8
+
         confirmFileOperationsCheckbox.cell?.wraps = true
         confirmFileOperationsCheckbox.cell?.isScrollable = false
         confirmFileOperationsCheckbox.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -129,6 +148,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
             slideshowHeader,
             intervalRow,
             repeatsCheckbox,
+            transitionRow,
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -158,6 +178,19 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         let slideshow = store.slideshow
         intervalField.stringValue = String(slideshow.intervalSeconds)
         repeatsCheckbox.state = slideshow.repeats ? .on : .off
+        if let item = transitionPopup.itemArray.first(where: {
+            $0.representedObject as? String == slideshow.transition.rawValue
+        }) {
+            transitionPopup.select(item)
+        }
+    }
+
+    @objc private func selectTransition(_ sender: NSPopUpButton) {
+        guard let raw = sender.selectedItem?.representedObject as? String,
+              let effect = SlideshowTransitionEffect(rawValue: raw) else { return }
+        var options = store.slideshow
+        options.transition = effect
+        store.slideshow = options
     }
 
     func controlTextDidEndEditing(_ notification: Notification) {

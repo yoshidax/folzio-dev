@@ -1,4 +1,7 @@
 import AVFoundation
+import CoreGraphics
+import CoreVideo
+import VideoToolbox
 
 /// プレビューの動画を再生する `AVPlayer` とループの扱い（FR-031・FR-033）。
 /// `AVPlayer` は1つだけ作り、動画の切り替えはアイテムの載せ替えで行う。
@@ -11,6 +14,7 @@ import AVFoundation
 public final class VideoPlayback {
     public let player = AVPlayer()
     private var endObserver: NSObjectProtocol?
+    private var videoOutput: AVPlayerItemVideoOutput?
 
     public init() {}
 
@@ -18,6 +22,11 @@ public final class VideoPlayback {
     public func load(asset: AVAsset, loop: Bool) {
         unload()
         let item = AVPlayerItem(asset: asset)
+        let output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+        ])
+        item.add(output)
+        videoOutput = output
         player.replaceCurrentItem(with: item)
 
         guard loop else {
@@ -44,7 +53,21 @@ public final class VideoPlayback {
             self.endObserver = nil
         }
         player.pause()
+        if let videoOutput, let item = player.currentItem {
+            item.remove(videoOutput)
+        }
+        videoOutput = nil
         player.replaceCurrentItem(with: nil)
+    }
+
+    /// 新しいフレームの有無によらず、現在の位置のフレーム1枚を写す。
+    public func currentFrame() -> CGImage? {
+        guard let videoOutput,
+              let buffer = videoOutput.copyPixelBuffer(forItemTime: player.currentTime(), itemTimeForDisplay: nil)
+        else { return nil }
+        var image: CGImage?
+        guard VTCreateCGImageFromCVPixelBuffer(buffer, options: nil, imageOut: &image) == 0 else { return nil }
+        return image
     }
 
     /// 現在位置から `seconds` 秒動かした位置を `[0, duration]` に丸めて返す。位置か長さが定まらなければ nil

@@ -175,4 +175,26 @@ struct VideoPlaybackTests {
         #expect(player.rate == 0)
         #expect(player.currentItem == nil)
     }
+    @Test("フレーム出力はアイテムごとに1つ付き、載せ替えと unload で外れる")
+    func transitionOutputLifecycle() throws {
+        let (directory, video) = try makeVideo(seconds: 1)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let playback = VideoPlayback()
+        defer { playback.unload() }
+        let player = playback.player
+        #expect(playback.currentFrame() == nil)
+        playback.load(asset: AVURLAsset(url: video), loop: false)
+        let first = try #require(player.currentItem)
+        #expect(first.outputs.count == 1)
+        #expect(first.outputs.first is AVPlayerItemVideoOutput)
+        playback.load(asset: AVURLAsset(url: video), loop: true)
+        let second = try #require(player.currentItem)
+        #expect(first.outputs.isEmpty)
+        #expect(second.outputs.count == 1)
+        #expect(second.outputs.first is AVPlayerItemVideoOutput)
+        #expect(playback.player === player)
+        playback.unload()
+        #expect(second.outputs.isEmpty)
+        #expect(playback.currentFrame() == nil)
+    }
 }
