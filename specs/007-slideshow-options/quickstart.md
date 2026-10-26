@@ -166,3 +166,25 @@ Phase 2 の `SlideshowOptions.intervalSeconds` が初期化後の代入で範囲
 ### Phase 2 GUI 確認（T011・T012、2026-10-26）
 
 同じユーザー報告で、3ペインの表示と既存の設定ウインドウ（⌘,）の3項目の表示・変更の保存に問題がないことを確認した。範囲外の間隔の代入を補完した実装と回帰テスト、T010 の再検証結果に対して GUI ゲートも合格とし、Phase 2 の変更をコミットして Phase 3 へ進む。上の引き継ぎ時点の「確認待ち」「未完了」の記録は本確認で解消した。
+
+### Phase 3 自動検証（T013〜T022、2026-10-26）
+
+中断した `agent/T016-interval-input` の worktree の間隔解析とテストを読み、テストから順に現在のブランチへ取り込んだ。元の worktree のファイルは保持している。可変間隔の Session、最新一覧での繰り返し／末尾終了判定、設定の都度読み取り、間隔と繰り返しの設定 UI を実装した。設定画面では Tab 順を明示し、Return・フォーカス移動・ウインドウを閉じる操作で確定、編集中の Esc で取り消す。切り替え効果は Phase 4 で追加する。
+
+| 項目 | 結果 |
+|---|---|
+| テスト先行 | 間隔解析のテストは `SlideshowIntervalInput` 未定義で失敗し、取り込み後は Session の新引数・Sequence の `advance` の未実装で失敗することを確認した |
+| `swift test --filter Slideshow` | 成功。関連40テスト。新しいテストの Swift Testing の mutating 呼び出しの記法と Duration の負値の記法を修正した後に成功 |
+| `swift build` | 成功。設定 UI と Coordinator の接続を含む |
+| `swift test`（初回） | 性能23件成功。Core 663件中、既存の検索キャンセルテスト（`FileNameSearcherTests.cancellationStopsEnumeration`）のみ失敗。`countAtCancel` が10,000となり `< 10_000` の期待を満たさなかった。Phase 1・2 の最初の記録にも同じテストの失敗がある |
+| `swift test`（再実行） | ソースを変更せず同じ全テストを再実行し、Core 663件・性能23件（計686件）が成功 |
+| `scripts/check-no-network.sh` | 成功（no network API references in Sources） |
+| `scripts/make-app.sh` | 成功。最新の `.build/MediaViewer.app` を作成 |
+| GUI（T023） | 未実施。3ペイン、設定ウインドウ1・2・4〜7（効果を除く）、間隔と繰り返し1〜9をユーザーに依頼する |
+| Phase 3 コミット（T024） | GUI 確認待ちのため未実施。Phase 4 へはまだ進まない |
+
+検証データは引き継ぎ時に生成した `.build/SlideshowFixtures/slideshow/` をそのまま利用できる。GUI 確認では、アプリを一度終了してから `open .build/MediaViewer.app` で最新の bundle を起動する。
+
+### Phase 3 GUI 確認（T023・T024、2026-10-26）
+
+ユーザーから Phase 3 の確認完了・問題なしとの報告を受けた。設定ウインドウ1・2・4〜7（効果を除く）、間隔と繰り返し1〜9のゲートを合格とし、Phase 3 をコミットして Phase 4 へ進む。

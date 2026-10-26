@@ -26,7 +26,7 @@ protocol SlideshowCoordinatorDelegate: AnyObject {
     func slideshowAvailabilityDidChange()
 }
 
-/// 3秒の期限、矢印・Esc の入力、保留中の自動送りを調停する App 側の実行主体。
+/// 設定した間隔の期限、矢印・Esc の入力、保留中の自動送りを調停する App 側の実行主体。
 /// playlist は持たず、送るたびに Core の `SlideshowSequence` と最新の一覧から対象を決める。
 @MainActor
 final class SlideshowCoordinator {
@@ -35,6 +35,7 @@ final class SlideshowCoordinator {
     private(set) var isActive = false
     private(set) var isRestoring = false
 
+    private let settings: SettingsStore
     private var session = SlideshowSession()
     private var deadlineTask: Task<Void, Never>?
     private let clock = ContinuousClock()
@@ -43,6 +44,10 @@ final class SlideshowCoordinator {
         category: "Performance"
     )
     private var startInterval: OSSignpostIntervalState?
+
+    init(settings: SettingsStore) {
+        self.settings = settings
+    }
 
     var canStart: Bool {
         !isActive && !isRestoring && delegate != nil
@@ -64,7 +69,7 @@ final class SlideshowCoordinator {
         _ = delegate.slideshowSynchronizeSelection(to: target)
         delegate.slideshowFocusPreview()
 
-        let started = session.start(now: clock.now)
+        let started = session.start(now: clock.now, interval: settings.slideshow.interval)
         assert(started, "idle のときだけ start する")
         guard started else {
             isActive = false
@@ -137,7 +142,7 @@ final class SlideshowCoordinator {
         }
 
         guard let move = Self.focusMove(for: event) else { return false }
-        guard session.arrow(now: clock.now) else { return false }
+        guard session.arrow(now: clock.now, interval: settings.slideshow.interval) else { return false }
         signposter.emitEvent("SlideshowArrow")
         delegate.slideshowMoveFocus(move)
         schedule()
@@ -204,20 +209,22 @@ final class SlideshowCoordinator {
             return
         }
 
-        guard session.commit(now: clock.now) else { return }
-        guard let target = SlideshowSequence.nextTarget(
+        let options = settings.slideshow
+        guard session.commit(now: clock.now, interval: options.interval) else { return }
+        switch SlideshowSequence.advance(
             in: delegate.slideshowFiles,
-            focused: delegate.slideshowFocusedURL
-        ) else {
+            focused: delegate.slideshowFocusedURL,
+            repeats: options.repeats
+        ) {
+        case .target(let target):
+            let changed = delegate.slideshowSynchronizeSelection(to: target)
+            if changed {
+                signposter.emitEvent("SlideshowAdvance")
+            }
+            schedule()
+        case .finish, .empty:
             stop()
-            return
         }
-
-        let changed = delegate.slideshowSynchronizeSelection(to: target)
-        if changed {
-            signposter.emitEvent("SlideshowAdvance")
-        }
-        schedule()
     }
 
     private func endStartInterval() {

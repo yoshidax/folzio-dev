@@ -49,6 +49,7 @@ private struct HiddenListKeyPress: Sendable {
 
 @MainActor
 final class MainSplitViewController: NSSplitViewController {
+    private let settings: SettingsStore
     private let model: BrowserModel
     private let treeViewController: DirectoryTreeViewController
     let fileListViewController: FileListViewController
@@ -83,7 +84,7 @@ final class MainSplitViewController: NSSplitViewController {
 
     /// スライドショーの実行主体。delegate に自分を設定するため lazy で作る。
     private(set) lazy var slideshowCoordinator: SlideshowCoordinator = {
-        let coordinator = SlideshowCoordinator()
+        let coordinator = SlideshowCoordinator(settings: settings)
         coordinator.delegate = self
         return coordinator
     }()
@@ -130,6 +131,7 @@ final class MainSplitViewController: NSSplitViewController {
 
     init() {
         let settings = SettingsStore(defaults: .standard)
+        self.settings = settings
         let lister = DirectoryLister()
         let decoder = ImageDecoder()
         let cache = DecodedImageCache()

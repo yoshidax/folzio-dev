@@ -128,6 +128,72 @@ struct SlideshowSequenceTests {
         #expect(SlideshowSequence.nextTarget(in: files, focused: url("a.jpg")) == url("c.mp4"))
     }
 
+    @Test("繰り返しの設定で途中・末尾・消えた選択・対象なしを判断する", arguments: [true, false])
+    func advanceBranches(repeats: Bool) {
+        let files = [media("a.jpg", .jpeg), media("b.png", .png), media("c.mp4", .mp4),
+                     row("album", .folder), row("photos.zip", .archive)]
+        #expect(SlideshowSequence.advance(in: files, focused: url("a.jpg"), repeats: repeats)
+                == .target(url("b.png")))
+        #expect(SlideshowSequence.advance(in: files, focused: url("b.png"), repeats: repeats)
+                == .target(url("c.mp4")))
+        #expect(SlideshowSequence.advance(in: files, focused: url("c.mp4"), repeats: repeats)
+                == (repeats ? .target(url("a.jpg")) : .finish))
+        for focused in [nil, url("missing.jpg"), url("album")] {
+            #expect(SlideshowSequence.advance(in: files, focused: focused, repeats: repeats)
+                    == .target(url("a.jpg")))
+        }
+        for empty in [[], [row("album", .folder), row("photos.zip", .archive)]] {
+            #expect(SlideshowSequence.advance(in: empty, focused: url("a.jpg"), repeats: repeats) == .empty)
+        }
+        let single = [media("only.jpg", .jpeg)]
+        let focused = url("only.jpg")
+        let result = SlideshowSequence.advance(in: single, focused: focused, repeats: repeats)
+        if repeats {
+            #expect(result == .target(focused))
+            if case .target(let target) = result {
+                #expect(target == focused)
+            } else {
+                Issue.record("1件で繰り返す場合は同じ対象を維持する")
+            }
+        } else {
+            #expect(result == .finish)
+        }
+        #expect(SlideshowSequence.advance(in: single, focused: nil, repeats: repeats) == .target(focused))
+    }
+
+    @Test("末尾は最新の一覧・並び順・繰り返し設定で判定する")
+    func advanceUsesCurrentListingAndOptions() {
+        let a = media("a.jpg", .jpeg)
+        let b = media("b.png", .png)
+        let c = media("c.mp4", .mp4)
+        #expect(SlideshowSequence.advance(in: [a, b, c], focused: b.url, repeats: false) == .target(c.url))
+        #expect(SlideshowSequence.advance(in: [a, b], focused: b.url, repeats: false) == .finish)
+        #expect(SlideshowSequence.advance(in: [a, b, c], focused: b.url, repeats: false) == .target(c.url))
+        #expect(SlideshowSequence.advance(in: [c, b, a], focused: b.url, repeats: false) == .target(a.url))
+        #expect(SlideshowSequence.advance(in: [a, c], focused: b.url, repeats: false) == .target(a.url))
+        #expect(SlideshowSequence.advance(in: [a, b], focused: b.url, repeats: true) == .target(a.url))
+        #expect(SlideshowSequence.advance(in: [a, b], focused: b.url, repeats: false) == .finish)
+    }
+
+    @Test("通常・zip 内・別フォルダ混在でも途中から末尾へ進み、繰り返さなければ終了する")
+    func advanceAcrossLocations() {
+        let archive = folder.appendingPathComponent("photos.zip")
+        let ordinary = [media("a.jpg", .jpeg), media("b.png", .png), media("c.mp4", .mp4)]
+        let archived = ["a.jpg", "b.jpg", "c.jpg"].map {
+            mediaAt(ArchiveURL.entry(archive: archive, path: $0))
+        }
+        let searchResults = ["left/same.jpg", "right/same.jpg", "third/same.jpg"].map {
+            mediaAt(folder.appendingPathComponent($0))
+        }
+        for files in [ordinary, archived, searchResults] {
+            #expect(SlideshowSequence.advance(in: files, focused: files[1].url, repeats: false)
+                    == .target(files[2].url))
+            #expect(SlideshowSequence.advance(in: files, focused: files[2].url, repeats: false) == .finish)
+            #expect(SlideshowSequence.advance(in: files, focused: files[2].url, repeats: true)
+                    == .target(files[0].url))
+        }
+    }
+
     private func url(_ name: String) -> URL {
         folder.appendingPathComponent(name)
     }

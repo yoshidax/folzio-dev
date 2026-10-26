@@ -70,16 +70,16 @@ extension PerformanceBaselineTests {
     @Test("任意 now の20周期で期限のずれが蓄積しない")
     func slideshowTwentyCyclesDoNotDrift() {
         let interval = Duration.seconds(3)
-        var session = SlideshowSession(interval: interval)
+        var session = SlideshowSession()
         var now = ContinuousClock.now
-        session.start(now: now)
+        session.start(now: now, interval: interval)
         let started = now
 
         for _ in 0..<20 {
             now = now.advanced(by: interval)
             let due = session.timeout(now: now)
             #expect(due)
-            let committed = session.commit(now: now)
+            let committed = session.commit(now: now, interval: interval)
             #expect(committed)
         }
 
