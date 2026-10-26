@@ -11,6 +11,7 @@ public enum FixtureSets {
         try zip(in: directory)
         try folders(in: directory)
         try search(in: directory)
+        try zoom(in: directory)
     }
 
     public static func mixed(in directory: URL) throws {
@@ -195,6 +196,16 @@ public enum FixtureSets {
             width: 10_000,
             height: 10_000
         )
+    }
+
+    /// `zoom/`（008 quickstart.md「検証データ」の表）を作る。
+    /// フィットで大きく拡大される 16×16・1×1、24MP の横長 JPEG、縦長の PNG を置く。
+    public static func zoom(in directory: URL) throws {
+        let folder = try prepare(directory.appendingPathComponent("zoom", isDirectory: true))
+        try ImageFixtures.png(at: folder.appendingPathComponent("01-small-16.png"), width: 16, height: 16)
+        try ImageFixtures.png(at: folder.appendingPathComponent("02-tiny-1.png"), width: 1, height: 1)
+        try ImageFixtures.jpeg(at: folder.appendingPathComponent("03-landscape-24mp.jpg"), width: 6000, height: 4000)
+        try ImageFixtures.png(at: folder.appendingPathComponent("04-portrait.png"), width: 1200, height: 2400)
     }
 
     public static func ops(in directory: URL) throws {
