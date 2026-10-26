@@ -1,30 +1,46 @@
 import AppKit
 import MediaViewerCore
 
+/// システムのキーボードナビゲーションの設定にかかわらず Tab で止まる。
+private final class KeyViewCheckbox: NSButton {
+    override var canBecomeKeyView: Bool { true }
+}
+
+private final class KeyViewPopUpButton: NSPopUpButton {
+    override var canBecomeKeyView: Bool { true }
+}
+
 @MainActor
-final class SettingsWindowController: NSWindowController {
+final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, NSWindowDelegate {
     private let store: SettingsStore
 
     private let autoplayCheckbox: NSButton
     private let loopCheckbox: NSButton
     private let confirmFileOperationsCheckbox: NSButton
+    private let intervalField = NSTextField(string: "3")
+    private let transitionPopup = KeyViewPopUpButton(frame: .zero, pullsDown: false)
+    private let repeatsCheckbox = KeyViewCheckbox(
+        checkboxWithTitle: "最後まで表示したら先頭から繰り返す",
+        target: nil,
+        action: nil
+    )
 
     private var hasShownOnce = false
 
     init(store: SettingsStore = SettingsStore(defaults: .standard)) {
         self.store = store
 
-        let autoplayCheckbox = NSButton(
+        let autoplayCheckbox = KeyViewCheckbox(
             checkboxWithTitle: "動画を自動再生する",
             target: nil,
             action: nil
         )
-        let loopCheckbox = NSButton(
+        let loopCheckbox = KeyViewCheckbox(
             checkboxWithTitle: "動画をループ再生する",
             target: nil,
             action: nil
         )
-        let confirmFileOperationsCheckbox = NSButton(
+        let confirmFileOperationsCheckbox = KeyViewCheckbox(
             checkboxWithTitle: "コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する（名前の変更・移動・ツリーのフォルダのゴミ箱は常に確認する）",
             target: nil,
             action: nil
@@ -34,7 +50,7 @@ final class SettingsWindowController: NSWindowController {
         self.confirmFileOperationsCheckbox = confirmFileOperationsCheckbox
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 200),
+            contentRect: NSRect(x: 0, y: 0, width: 620, height: 340),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -43,7 +59,16 @@ final class SettingsWindowController: NSWindowController {
 
         window.title = "設定"
         window.isReleasedWhenClosed = false
+        window.delegate = self
         window.contentView = makeContentView()
+        window.autorecalculatesKeyViewLoop = false
+        autoplayCheckbox.nextKeyView = loopCheckbox
+        loopCheckbox.nextKeyView = confirmFileOperationsCheckbox
+        confirmFileOperationsCheckbox.nextKeyView = intervalField
+        intervalField.nextKeyView = repeatsCheckbox
+        repeatsCheckbox.nextKeyView = transitionPopup
+        transitionPopup.nextKeyView = autoplayCheckbox
+        window.initialFirstResponder = autoplayCheckbox
 
         autoplayCheckbox.target = self
         autoplayCheckbox.action = #selector(toggleAutoplay(_:))
@@ -51,6 +76,19 @@ final class SettingsWindowController: NSWindowController {
         loopCheckbox.action = #selector(toggleLoop(_:))
         confirmFileOperationsCheckbox.target = self
         confirmFileOperationsCheckbox.action = #selector(toggleConfirmFileOperations(_:))
+        repeatsCheckbox.target = self
+        repeatsCheckbox.action = #selector(toggleRepeats(_:))
+        intervalField.delegate = self
+        intervalField.setAccessibilityLabel("切り替え間隔（秒）")
+        repeatsCheckbox.setAccessibilityLabel("最後まで表示したら先頭から繰り返す")
+        for (effect, title) in [(SlideshowTransitionEffect.none, "なし"), (.crossfade, "クロスフェード"),
+                                (.slide, "スライド"), (.zoom, "ズーム")] {
+            transitionPopup.addItem(withTitle: title)
+            transitionPopup.lastItem?.representedObject = effect.rawValue
+        }
+        transitionPopup.target = self
+        transitionPopup.action = #selector(selectTransition(_:))
+        transitionPopup.setAccessibilityLabel("切り替え効果")
 
         syncFromStore()
     }
@@ -71,7 +109,7 @@ final class SettingsWindowController: NSWindowController {
 
     private func makeContentView() -> NSView {
         let contentView = NSView(
-            frame: NSRect(x: 0, y: 0, width: 400, height: 200)
+            frame: NSRect(x: 0, y: 0, width: 620, height: 340)
         )
 
         let videoHeader = NSTextField(labelWithString: "動画")
@@ -80,12 +118,37 @@ final class SettingsWindowController: NSWindowController {
         let fileOperationsHeader = NSTextField(labelWithString: "ファイル操作")
         fileOperationsHeader.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
 
+        let slideshowHeader = NSTextField(labelWithString: "スライドショー")
+        slideshowHeader.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
+
+        let intervalRow = NSStackView(views: [
+            NSTextField(labelWithString: "切り替え間隔"),
+            intervalField,
+            NSTextField(labelWithString: "秒"),
+        ])
+        intervalRow.orientation = .horizontal
+        intervalRow.alignment = .firstBaseline
+        intervalRow.spacing = 8
+
+        let transitionRow = NSStackView(views: [NSTextField(labelWithString: "切り替え効果"), transitionPopup])
+        transitionRow.orientation = .horizontal
+        transitionRow.alignment = .firstBaseline
+        transitionRow.spacing = 8
+
+        confirmFileOperationsCheckbox.cell?.wraps = true
+        confirmFileOperationsCheckbox.cell?.isScrollable = false
+        confirmFileOperationsCheckbox.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
         let stack = NSStackView(views: [
             videoHeader,
             autoplayCheckbox,
             loopCheckbox,
             fileOperationsHeader,
             confirmFileOperationsCheckbox,
+            slideshowHeader,
+            intervalRow,
+            repeatsCheckbox,
+            transitionRow,
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -96,8 +159,11 @@ final class SettingsWindowController: NSWindowController {
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
             stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -20),
+            stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -20),
+            confirmFileOperationsCheckbox.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            confirmFileOperationsCheckbox.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            intervalField.widthAnchor.constraint(equalToConstant: 80),
         ])
 
         return contentView
@@ -109,6 +175,51 @@ final class SettingsWindowController: NSWindowController {
         loopCheckbox.state = playback.loop ? .on : .off
         confirmFileOperationsCheckbox.state =
             store.confirmation.confirmBeforeFileOperations ? .on : .off
+        let slideshow = store.slideshow
+        intervalField.stringValue = String(slideshow.intervalSeconds)
+        repeatsCheckbox.state = slideshow.repeats ? .on : .off
+        if let item = transitionPopup.itemArray.first(where: {
+            $0.representedObject as? String == slideshow.transition.rawValue
+        }) {
+            transitionPopup.select(item)
+        }
+    }
+
+    @objc private func selectTransition(_ sender: NSPopUpButton) {
+        guard let raw = sender.selectedItem?.representedObject as? String,
+              let effect = SlideshowTransitionEffect(rawValue: raw) else { return }
+        var options = store.slideshow
+        options.transition = effect
+        store.slideshow = options
+    }
+
+    func controlTextDidEndEditing(_ notification: Notification) {
+        guard let field = notification.object as? NSTextField, field === intervalField else { return }
+        if let seconds = SlideshowIntervalInput.parse(intervalField.stringValue) {
+            var options = store.slideshow
+            options.intervalSeconds = seconds
+            store.slideshow = options
+        }
+        intervalField.stringValue = String(store.slideshow.intervalSeconds)
+    }
+
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        guard control === intervalField,
+              commandSelector == #selector(NSResponder.cancelOperation(_:)) else { return false }
+        let saved = String(store.slideshow.intervalSeconds)
+        intervalField.stringValue = saved
+        textView.string = saved
+        return true
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        window?.makeFirstResponder(nil)
+    }
+
+    @objc private func toggleRepeats(_ sender: NSButton) {
+        var options = store.slideshow
+        options.repeats = sender.state == .on
+        store.slideshow = options
     }
 
     @objc private func toggleAutoplay(_ sender: NSButton) {

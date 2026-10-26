@@ -73,6 +73,51 @@ public struct PlaybackOptions: Sendable, Equatable {
     }
 }
 
+public enum SlideshowTransitionEffect: String, Sendable, CaseIterable {
+    case none
+    case crossfade
+    case slide
+    case zoom
+
+    public func effective(reduceMotion: Bool) -> SlideshowTransitionEffect {
+        if reduceMotion, self == .slide || self == .zoom { return .crossfade }
+        return self
+    }
+}
+
+public struct SlideshowOptions: Sendable, Equatable {
+    public static let intervalRange = 1...3600
+    public static let defaultIntervalSeconds = 3
+    public static let defaults = SlideshowOptions()
+
+    private var storedIntervalSeconds: Int
+
+    public var intervalSeconds: Int {
+        get { storedIntervalSeconds }
+        set {
+            storedIntervalSeconds = Self.intervalRange.contains(newValue)
+                ? newValue : Self.defaultIntervalSeconds
+        }
+    }
+    /// 動画のループ再生（PlaybackOptions.loop）とは独立した設定。
+    public var repeats: Bool
+    public var transition: SlideshowTransitionEffect
+
+    public var interval: Duration { .seconds(intervalSeconds) }
+
+    /// 範囲外の `intervalSeconds` は 3 秒にする
+    public init(
+        intervalSeconds: Int = 3,
+        repeats: Bool = true,
+        transition: SlideshowTransitionEffect = .none
+    ) {
+        self.storedIntervalSeconds = Self.intervalRange.contains(intervalSeconds)
+            ? intervalSeconds : Self.defaultIntervalSeconds
+        self.repeats = repeats
+        self.transition = transition
+    }
+}
+
 public struct ConfirmationOptions: Sendable, Equatable {
     public var confirmBeforeFileOperations: Bool
 

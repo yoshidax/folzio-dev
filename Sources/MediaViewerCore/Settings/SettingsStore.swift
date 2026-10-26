@@ -14,6 +14,9 @@ public struct SettingsStore {
         static let confirmBeforeExecuting = "fileOps.confirmBeforeExecuting"
         static let favoritePaths = "favorites.paths"
         static let favoriteDisplayNames = "favorites.displayNames"
+        static let slideshowIntervalSeconds = "slideshow.intervalSeconds"
+        static let slideshowRepeats = "slideshow.repeats"
+        static let slideshowTransition = "slideshow.transition"
     }
 
     private let defaults: UserDefaults
@@ -91,6 +94,25 @@ public struct SettingsStore {
         }
     }
 
+    /// 項目ごとに独立して検証する。不正な項目だけ既定値になり、ほかの項目は保存値のまま
+    public var slideshow: SlideshowOptions {
+        get {
+            let transition = (defaults.object(forKey: Keys.slideshowTransition) as? String)
+                .flatMap(SlideshowTransitionEffect.init(rawValue:)) ?? .none
+            return SlideshowOptions(
+                intervalSeconds: storedInterval(forKey: Keys.slideshowIntervalSeconds)
+                    ?? SlideshowOptions.defaultIntervalSeconds,
+                repeats: storedBool(forKey: Keys.slideshowRepeats) ?? true,
+                transition: transition
+            )
+        }
+        nonmutating set {
+            defaults.set(newValue.intervalSeconds, forKey: Keys.slideshowIntervalSeconds)
+            defaults.set(newValue.repeats, forKey: Keys.slideshowRepeats)
+            defaults.set(newValue.transition.rawValue, forKey: Keys.slideshowTransition)
+        }
+    }
+
     /// 絶対パスの配列で保存する。配列でなければ空、文字列でない要素・空文字・相対パスは捨てる（FR-066）。
     /// 表示名は `favorites.displayNames`（標準化した絶対パス → 表示名）に、付けた分だけ保存する。
     /// 旧形式（`favorites.paths` だけ）は全件表示名なしとして読む。移行処理は持たない（R49）
@@ -120,6 +142,16 @@ public struct SettingsStore {
 
     private func storedBool(forKey key: String) -> Bool? {
         defaults.object(forKey: key) as? Bool
+    }
+
+    /// 真偽値でない数値で、Int へ正確に変換でき、1〜3600 の範囲にあるときだけ返す
+    private func storedInterval(forKey key: String) -> Int? {
+        guard let number = defaults.object(forKey: key) as? NSNumber,
+              CFGetTypeID(number) != CFBooleanGetTypeID(),
+              let value = Int(exactly: number),
+              SlideshowOptions.intervalRange.contains(value)
+        else { return nil }
+        return value
     }
 
     private func storedDouble(forKey key: String) -> Double? {

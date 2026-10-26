@@ -1,4 +1,7 @@
 import Foundation
+import CoreGraphics
+import AVFoundation
+import FixtureKit
 import Testing
 @testable import MediaViewerCore
 
@@ -6,6 +9,34 @@ import Testing
 // 別スイートにすると Swift Testing が既存の性能試験と並列実行し、
 // 一時的な CPU 競合で 10〜20 万件の閾値を超えることがあるため。
 extension PerformanceBaselineTests {
+    @Test("video output 付きのプレーヤーが1秒以内に最初のフレームを返す")
+    @MainActor
+    func slideshowVideoOutputFirstFrameWithinBudget() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SlideshowVideoPerformance-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("clip.mp4")
+        try await Task.detached {
+            try VideoFixtures.mp4(at: url, seconds: 1, fastStart: true)
+        }.value
+        let playback = VideoPlayback()
+        defer { playback.unload() }
+        let start = ContinuousClock.now
+        playback.load(asset: AVURLAsset(url: url), loop: false)
+        playback.player.play()
+        var firstFrame: CGImage?
+        while ContinuousClock.now - start < .seconds(2) {
+            firstFrame = playback.currentFrame()
+            if firstFrame != nil { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let elapsed = ContinuousClock.now - start
+        #expect(firstFrame != nil)
+        #expect(elapsed < .seconds(1), "video output の先頭フレーム (実測: \(elapsed))")
+        print("[perf] slideshow video output first frame: \(elapsed)")
+    }
+
     @Test("10,000 件の通常／検索相当一覧で対象抽出と次位置探索が 50ms 未満")
     func slideshowTenThousandWithinBudget() {
         let files = slideshowSyntheticResults(count: 10_000, folders: 100)
@@ -70,16 +101,16 @@ extension PerformanceBaselineTests {
     @Test("任意 now の20周期で期限のずれが蓄積しない")
     func slideshowTwentyCyclesDoNotDrift() {
         let interval = Duration.seconds(3)
-        var session = SlideshowSession(interval: interval)
+        var session = SlideshowSession()
         var now = ContinuousClock.now
-        session.start(now: now)
+        session.start(now: now, interval: interval)
         let started = now
 
         for _ in 0..<20 {
             now = now.advanced(by: interval)
             let due = session.timeout(now: now)
             #expect(due)
-            let committed = session.commit(now: now)
+            let committed = session.commit(now: now, interval: interval)
             #expect(committed)
         }
 

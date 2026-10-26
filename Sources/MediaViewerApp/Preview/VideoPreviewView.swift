@@ -18,6 +18,12 @@ final class VideoPreviewView: NSView {
     private var playbackIntervalState: OSSignpostIntervalState?
     private var playbackIntervalStarted = false
     private var playbackGeneration = 0
+    var onReadyForTransition: (() -> Void)?
+    private var displayObservation: NSKeyValueObservation?
+    private var itemStatusObservation: NSKeyValueObservation?
+    private var tracksTask: Task<Void, Never>?
+    private var hasVideoTrack: Bool?
+    private var didNotifyTransitionReady = false
 
     init() {
         super.init(frame: .zero)
@@ -48,6 +54,18 @@ final class VideoPreviewView: NSView {
         setAccessibilityLabel(fileName)
 
         let generation = playbackGeneration
+        displayObservation = playerView.observe(\.isReadyForDisplay, options: [.initial, .new]) { [weak self] _, _ in
+            Task { @MainActor in self?.notifyTransitionReady(generation: generation) }
+        }
+        itemStatusObservation = player.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] _, _ in
+            Task { @MainActor in self?.notifyTransitionReady(generation: generation) }
+        }
+        tracksTask = Task { [weak self] in
+            let tracks = try? await asset.loadTracks(withMediaType: .video)
+            guard !Task.isCancelled, let self, self.playbackGeneration == generation else { return }
+            self.hasVideoTrack = tracks.map { !$0.isEmpty }
+            self.notifyTransitionReady(generation: generation)
+        }
         timeControlObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] _, _ in
             Task { @MainActor in
                 self?.handleTimeControlStatusChange(generation: generation)
@@ -65,6 +83,14 @@ final class VideoPreviewView: NSView {
 
     func stop() {
         playbackGeneration &+= 1
+        displayObservation?.invalidate()
+        displayObservation = nil
+        itemStatusObservation?.invalidate()
+        itemStatusObservation = nil
+        tracksTask?.cancel()
+        tracksTask = nil
+        hasVideoTrack = nil
+        didNotifyTransitionReady = false
         endPlaybackInterval()
         playbackIntervalStarted = false
 
@@ -74,6 +100,25 @@ final class VideoPreviewView: NSView {
         // AVPlayer は捨てずにアイテムだけ外す（bug: slideshow-video-routing-context-crash）
         playback.unload()
         setAccessibilityLabel("")
+    }
+
+    func freezeForTransition() -> (image: CGImage?, videoRect: CGRect) {
+        player?.pause()
+        let image = playback.currentFrame()
+        let rect = image.map {
+            AVMakeRect(aspectRatio: CGSize(width: $0.width, height: $0.height), insideRect: playerView.bounds)
+        } ?? .zero
+        return (image, playerView.convert(rect, to: self))
+    }
+
+    private func notifyTransitionReady(generation: Int) {
+        guard generation == playbackGeneration, !didNotifyTransitionReady,
+              let item = player?.currentItem else { return }
+        let ready = item.status == .failed || (item.status == .readyToPlay &&
+            (playerView.isReadyForDisplay || hasVideoTrack == false))
+        guard ready else { return }
+        didNotifyTransitionReady = true
+        onReadyForTransition?()
     }
 
     func togglePlayPause() {
