@@ -7,6 +7,7 @@ final class MainToolbarController: NSObject {
     private static let historyIdentifier = NSToolbarItem.Identifier("history")
     private static let paneLayoutIdentifier = NSToolbarItem.Identifier("paneLayout")
     private static let slideshowIdentifier = NSToolbarItem.Identifier("slideshow")
+    private static let previewZoomIdentifier = NSToolbarItem.Identifier("previewZoom")
     private static let mediaTypeFilterIdentifier = NSToolbarItem.Identifier("mediaTypeFilter")
     private static let zipVisibilityIdentifier = NSToolbarItem.Identifier("zipVisibility")
     private static let viewModeIdentifier = NSToolbarItem.Identifier("viewMode")
@@ -25,6 +26,8 @@ final class MainToolbarController: NSObject {
     private var viewModeControl: NSSegmentedControl?
     private var sizeItem: NSToolbarItem?
     private var slideshowButton: NSButton?
+    private var previewZoomControl: NSSegmentedControl?
+    private var previewZoomItem: NSToolbarItem?
     private var visibilityObservation: NSKeyValueObservation?
     private var editingObservers: [NSObjectProtocol] = []
 
@@ -46,8 +49,8 @@ final class MainToolbarController: NSObject {
         sizeSlider.controlSize = .small
         sizeSlider.target = self
         sizeSlider.action = #selector(thumbnailSizeChanged(_:))
-        sizeSlider.toolTip = "サムネイルのサイズ"
-        sizeSlider.setAccessibilityLabel("サムネイルのサイズ")
+        sizeSlider.toolTip = "サムネイルのサイズ（⌃⌘. / ⌃⌘,）"
+        sizeSlider.setAccessibilityLabel("サムネイルのサイズ（⌃⌘. / ⌃⌘,）")
         sizeSlider.translatesAutoresizingMaskIntoConstraints = false
         sizeSlider.widthAnchor.constraint(equalToConstant: 120).isActive = true
 
@@ -76,6 +79,9 @@ final class MainToolbarController: NSObject {
         panes.onSlideshowAvailabilityChange = { [weak self] in
             self?.updateSlideshowAvailability()
         }
+        panes.onZoomAvailabilityChange = { [weak self] in
+            self?.applyZoomAvailability()
+        }
         observeEditingAvailability()
         observeHistoryAvailability()
     }
@@ -84,6 +90,16 @@ final class MainToolbarController: NSObject {
         slideshowButton?.isEnabled = panes.canStartSlideshow
         applyHistoryAvailability()
         toolbar.validateVisibleItems()
+    }
+
+    /// 拡大・縮小・表示領域に合わせるを、画像の表示・ペイン・上下限から有効・無効にする（FR-134・FR-136）
+    private func applyZoomAvailability() {
+        let availability = panes.zoomAvailability
+        previewZoomItem?.isEnabled = availability.isAvailable
+        previewZoomControl?.isEnabled = availability.isAvailable
+        previewZoomControl?.setEnabled(availability.canZoomIn, forSegment: 0)
+        previewZoomControl?.setEnabled(availability.canFit, forSegment: 1)
+        previewZoomControl?.setEnabled(availability.canZoomOut, forSegment: 2)
     }
 
     private func observeEditingAvailability() {
@@ -185,6 +201,19 @@ final class MainToolbarController: NSObject {
         )
     }
 
+    @objc private func previewZoomSelected(_ sender: NSSegmentedControl) {
+        switch sender.selectedSegment {
+        case 0:
+            panes.zoomIn()
+        case 1:
+            panes.zoomToFit()
+        case 2:
+            panes.zoomOut()
+        default:
+            break
+        }
+    }
+
     @objc private func mediaTypeFilterSelected(_ sender: NSSegmentedControl) {
         fileList.applyMediaTypeFilter(
             MediaTypeFilter(
@@ -255,11 +284,11 @@ final class MainToolbarController: NSObject {
 
 extension MainToolbarController: NSToolbarDelegate {
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.historyIdentifier, Self.paneLayoutIdentifier, Self.slideshowIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
+        [Self.historyIdentifier, Self.paneLayoutIdentifier, Self.slideshowIdentifier, Self.previewZoomIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.historyIdentifier, Self.paneLayoutIdentifier, Self.slideshowIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
+        [Self.historyIdentifier, Self.paneLayoutIdentifier, Self.slideshowIdentifier, Self.previewZoomIdentifier, Self.mediaTypeFilterIdentifier, Self.zipVisibilityIdentifier, Self.viewModeIdentifier, Self.thumbnailSizeIdentifier, .flexibleSpace]
     }
 
     func toolbar(
@@ -331,6 +360,31 @@ extension MainToolbarController: NSToolbarDelegate {
             item.autovalidates = true
             updateSlideshowAvailability()
             return item
+        case Self.previewZoomIdentifier:
+            // 押した状態を保たない一時的な操作。100%でも中ボタンを押された見た目にしない（A-61）
+            guard let control = makeSegmentedControl(
+                items: [
+                    ("plus.magnifyingglass", "拡大"),
+                    ("arrow.up.left.and.down.right.magnifyingglass", "表示領域に合わせる"),
+                    ("minus.magnifyingglass", "縮小"),
+                ],
+                trackingMode: .momentary,
+                action: #selector(previewZoomSelected(_:))
+            ) else {
+                return nil
+            }
+            control.setToolTip("拡大（⌘+）", forSegment: 0)
+            control.setToolTip("表示領域に合わせる（⌘0）", forSegment: 1)
+            control.setToolTip("縮小（⌘-）", forSegment: 2)
+            previewZoomControl = control
+            let item = makeGroupItem(
+                identifier: itemIdentifier,
+                label: "拡大・縮小",
+                control: control
+            )
+            previewZoomItem = item
+            applyZoomAvailability()
+            return item
         case Self.mediaTypeFilterIdentifier:
             guard let control = makeSegmentedControl(
                 items: [
@@ -390,7 +444,7 @@ extension MainToolbarController: NSToolbarDelegate {
         case Self.thumbnailSizeIdentifier:
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
             item.label = "サイズ"
-            item.toolTip = "サムネイルのサイズ"
+            item.toolTip = "サムネイルのサイズ（⌃⌘. / ⌃⌘,）"
             item.view = sizeSlider
             item.autovalidates = false
             sizeItem = item
@@ -417,6 +471,9 @@ extension MainToolbarController: NSToolbarItemValidation {
             let enabled = panes.canStartSlideshow
             slideshowButton?.isEnabled = enabled
             return enabled
+        case Self.previewZoomIdentifier:
+            applyZoomAvailability()
+            return panes.zoomAvailability.isAvailable
         case Self.zipVisibilityIdentifier:
             let enabled = !fileList.isEditingText
             zipVisibilityControl?.isEnabled = enabled

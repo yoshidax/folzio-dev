@@ -81,6 +81,8 @@ final class MainSplitViewController: NSSplitViewController {
     var onPaneLayoutChange: ((PaneLayout) -> Void)?
     /// スライドショーを開始できるかが変わったとき（一覧・編集・モーダルの変化）に知らせる。
     var onSlideshowAvailabilityChange: (() -> Void)?
+    /// プレビューの拡大・縮小・表示領域に合わせるの可否が変わったとき（FR-134・FR-136）
+    var onZoomAvailabilityChange: (() -> Void)?
 
     /// スライドショーの実行主体。delegate に自分を設定するため lazy で作る。
     private(set) lazy var slideshowCoordinator: SlideshowCoordinator = {
@@ -245,6 +247,10 @@ final class MainSplitViewController: NSSplitViewController {
         }
         previewViewController.onDoubleClick = { [weak self] in
             self?.togglePreviewFullScreen()
+        }
+        // ペイン表示の変更も PreviewViewController.isPaneVisible を通ってここへ届く
+        previewViewController.onZoomAvailabilityChange = { [weak self] in
+            self?.onZoomAvailabilityChange?()
         }
         model.onWillReplaceLocation = { [weak self] in
             self?.slideshowCoordinator.handleWillReplaceLocation()
@@ -1013,6 +1019,36 @@ extension MainSplitViewController: HistoryPresentationHost {
             thumbnailSize: presentation.thumbnailSize
         )
         setPaneLayout(presentation.paneLayout)
+        // 履歴の移動が成立したときだけ呼ばれる。同じ画像に戻る場合も100%にする（FR-137、EC-88）
+        previewViewController.resetZoom()
+    }
+}
+
+// MARK: - プレビューの表示倍率（FR-133〜FR-137）
+
+extension MainSplitViewController {
+    var zoomAvailability: PreviewZoomAvailability {
+        previewViewController.zoomAvailability
+    }
+
+    /// 倍率の変更は履歴に記録しない（FR-137）
+    @discardableResult
+    func zoomIn() -> Bool {
+        previewViewController.zoomIn()
+    }
+
+    @discardableResult
+    func zoomOut() -> Bool {
+        previewViewController.zoomOut()
+    }
+
+    @discardableResult
+    func zoomToFit() -> Bool {
+        previewViewController.zoomToFit()
+    }
+
+    func resetZoom() {
+        previewViewController.resetZoom()
     }
 }
 

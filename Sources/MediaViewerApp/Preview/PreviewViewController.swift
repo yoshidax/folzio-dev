@@ -20,6 +20,9 @@ final class PreviewViewController: NSViewController {
     )
     private var animatedTask: Task<Void, Never>?
     private var configuredVideoURL: URL?
+    /// 表示倍率と表示中の画像の対応（FR-137）。保存せず、履歴にも記録しない
+    private var zoomTracker = PreviewZoomTracker()
+    private var lastZoomAvailability: PreviewZoomAvailability?
 
     var paneLayout: PaneLayout = .all {
         didSet {
@@ -32,7 +35,19 @@ final class PreviewViewController: NSViewController {
         didSet {
             guard oldValue != isPaneVisible else { return }
             updateFromModel()
+            notifyZoomAvailabilityIfChanged()
         }
+    }
+
+    /// 拡大・縮小・表示領域に合わせるの可否が変わったとき（FR-134・FR-136）
+    var onZoomAvailabilityChange: (() -> Void)?
+
+    var zoomAvailability: PreviewZoomAvailability {
+        PreviewZoomAvailability(
+            isImageDisplayed: imageView.isShowingImage,
+            isPreviewVisible: isPaneVisible,
+            level: zoomTracker.level
+        )
     }
 
     init(model: BrowserModel, decoder: any ImageDecoding, archiveReader: any ArchiveReading) {
@@ -71,8 +86,70 @@ final class PreviewViewController: NSViewController {
         return true
     }
 
+    // MARK: - 表示倍率（FR-133〜FR-138）
+
+    @discardableResult
+    func zoomIn() -> Bool {
+        guard zoomAvailability.canZoomIn else { return false }
+        return applyZoomChange(zoomTracker.zoomIn())
+    }
+
+    @discardableResult
+    func zoomOut() -> Bool {
+        guard zoomAvailability.canZoomOut else { return false }
+        return applyZoomChange(zoomTracker.zoomOut())
+    }
+
+    @discardableResult
+    func zoomToFit() -> Bool {
+        guard zoomAvailability.canFit else { return false }
+        return applyZoomChange(zoomTracker.fit())
+    }
+
+    /// 履歴の移動後に、同じ画像でも100%に戻す（FR-137）。読み上げはしない
+    func resetZoom() {
+        guard zoomTracker.reset() else { return }
+        applyCurrentZoom(announce: false)
+        notifyZoomAvailabilityIfChanged()
+    }
+
+    private func applyZoomChange(_ changed: Bool) -> Bool {
+        guard changed else { return false }
+        applyCurrentZoom(announce: true)
+        notifyZoomAvailabilityIfChanged()
+        return true
+    }
+
+    private func applyCurrentZoom(announce: Bool) {
+        let state = transitionSignposter.beginInterval("PreviewZoomApply")
+        imageView.applyZoom(zoomTracker.level, announce: announce)
+        transitionSignposter.endInterval("PreviewZoomApply", state)
+    }
+
+    private func notifyZoomAvailabilityIfChanged() {
+        let availability = zoomAvailability
+        guard availability != lastZoomAvailability else { return }
+        lastZoomAvailability = availability
+        onZoomAvailabilityChange?()
+    }
+
+    /// 表示対象の同一性。`.image` は URL を持たないため選択中の URL を使う
+    private func zoomIdentity(for content: PreviewContent) -> URL? {
+        switch content {
+        case .image:
+            model.selection.focused
+        case let .loading(url), let .animatedImage(url), let .animatedImageData(url, _):
+            url
+        case .empty, .video, .unavailable:
+            nil
+        }
+    }
+
     override func loadView() {
         imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.onDisplayedImageChange = { [weak self] in
+            self?.notifyZoomAvailabilityIfChanged()
+        }
         videoView.translatesAutoresizingMaskIntoConstraints = false
         videoView.isHidden = true
 
@@ -138,6 +215,12 @@ final class PreviewViewController: NSViewController {
     }
 
     private func updateFromModel() {
+        // 別の画像へ切り替わったときだけ100%に戻す。表示より先に適用し、前の倍率で一瞬描かない
+        if zoomTracker.present(zoomIdentity(for: model.preview)) {
+            applyCurrentZoom(announce: false)
+        }
+        defer { notifyZoomAvailabilityIfChanged() }
+
         switch model.preview {
         case .empty:
             animatedTask?.cancel()

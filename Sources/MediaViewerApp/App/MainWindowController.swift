@@ -63,6 +63,27 @@ final class MainWindowController: NSWindowController {
         super.cancelOperation(sender)
     }
 
+    // MARK: - プレビューの表示倍率（AppDelegate のメニュー操作と検証のための入口）
+
+    var zoomAvailability: PreviewZoomAvailability {
+        splitViewController.zoomAvailability
+    }
+
+    @discardableResult
+    func zoomIn() -> Bool {
+        splitViewController.zoomIn()
+    }
+
+    @discardableResult
+    func zoomOut() -> Bool {
+        splitViewController.zoomOut()
+    }
+
+    @discardableResult
+    func zoomToFit() -> Bool {
+        splitViewController.zoomToFit()
+    }
+
     @objc func toggleMainToolbar(_ sender: Any?) {
         guard let toolbar = window?.toolbar else { return }
         toolbar.isVisible.toggle()
