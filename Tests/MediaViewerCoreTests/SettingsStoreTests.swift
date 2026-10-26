@@ -431,6 +431,23 @@ struct SettingsStoreTests {
         #expect(SlideshowOptions.intervalRange == 1...3600)
     }
 
+    @Test("初期化後に間隔を変更しても範囲外の値を持たない")
+    func slideshowOptionsMutationValidatesInterval() {
+        var options = SlideshowOptions(intervalSeconds: 10, repeats: false, transition: .zoom)
+        for value in [0, -1, 3601, Int.min, Int.max] {
+            options.intervalSeconds = value
+            #expect(options.intervalSeconds == 3)
+            #expect(options.interval == .seconds(3))
+            #expect(!options.repeats)
+            #expect(options.transition == .zoom)
+        }
+        for value in [1, 10, 3600] {
+            options.intervalSeconds = value
+            #expect(options.intervalSeconds == value)
+            #expect(options.interval == .seconds(value))
+        }
+    }
+
     @Test("スライドショーの間隔の不正値は 3 秒に戻り、他の項目は保存値のまま")
     func slideshowInvalidIntervalFallsBackOnly() {
         withDefaults { defaults in
@@ -458,12 +475,13 @@ struct SettingsStoreTests {
             let store = SettingsStore(defaults: defaults)
             defaults.set(20, forKey: "slideshow.intervalSeconds")
             defaults.set("slide", forKey: "slideshow.transition")
-            defaults.set("no", forKey: "slideshow.repeats")
-
-            let options = store.slideshow
-            #expect(options.repeats)
-            #expect(options.intervalSeconds == 20)
-            #expect(options.transition == .slide)
+            for value in ["no", "yes", 1] as [Any] {
+                defaults.set(value, forKey: "slideshow.repeats")
+                let options = store.slideshow
+                #expect(options.repeats)
+                #expect(options.intervalSeconds == 20)
+                #expect(options.transition == .slide)
+            }
         }
     }
 

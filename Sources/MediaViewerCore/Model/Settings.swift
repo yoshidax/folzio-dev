@@ -85,7 +85,16 @@ public struct SlideshowOptions: Sendable, Equatable {
     public static let defaultIntervalSeconds = 3
     public static let defaults = SlideshowOptions()
 
-    public var intervalSeconds: Int
+    private var storedIntervalSeconds: Int
+
+    public var intervalSeconds: Int {
+        get { storedIntervalSeconds }
+        set {
+            storedIntervalSeconds = Self.intervalRange.contains(newValue)
+                ? newValue : Self.defaultIntervalSeconds
+        }
+    }
+    /// 動画のループ再生（PlaybackOptions.loop）とは独立した設定。
     public var repeats: Bool
     public var transition: SlideshowTransitionEffect
 
@@ -97,7 +106,7 @@ public struct SlideshowOptions: Sendable, Equatable {
         repeats: Bool = true,
         transition: SlideshowTransitionEffect = .none
     ) {
-        self.intervalSeconds = Self.intervalRange.contains(intervalSeconds)
+        self.storedIntervalSeconds = Self.intervalRange.contains(intervalSeconds)
             ? intervalSeconds : Self.defaultIntervalSeconds
         self.repeats = repeats
         self.transition = transition

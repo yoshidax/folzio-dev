@@ -67,9 +67,9 @@ description: "スライドショーのオプション設定 実装タスク"
 
 - [X] T010 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗の修正は最大3回までとする。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記する
 
-- [ ] T011 [MANUAL] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、3ペインが表示されること、既存の設定ウインドウ（⌘,）の3項目が従来どおり表示・保存されることを確認してもらう。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
+- [X] T011 [MANUAL] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、3ペインが表示されること、既存の設定ウインドウ（⌘,）の3項目が従来どおり表示・保存されることを確認してもらう。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
 
-- [ ] T012 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/007-slideshow-options/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
+- [X] T012 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/007-slideshow-options/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
 
 **Checkpoint**: `SettingsStore.slideshow` を Story から読み書きできる。
 
