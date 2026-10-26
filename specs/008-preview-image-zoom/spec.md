@@ -1,5 +1,8 @@
 # Feature Specification: プレビュー画像の拡大・縮小
 
+> **移行済み（2026-10-27）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは 008 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `008-preview-image-zoom`
 
 **Created**: 2026-10-27
