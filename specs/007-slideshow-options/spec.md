@@ -1,5 +1,8 @@
 # Feature Specification: スライドショーのオプション設定
 
+> **移行済み（2026-10-26）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは 007 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `007-slideshow-options`
 
 **Created**: 2026-10-26

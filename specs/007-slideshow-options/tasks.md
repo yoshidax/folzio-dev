@@ -155,19 +155,19 @@ description: "スライドショーのオプション設定 実装タスク"
 
 **Purpose**: 実時間の証拠を揃え、利用者向けの文書を更新し、006 の反映の後に Living spec へ移す。
 
-- [ ] T038 [P] `README.md` のスライドショーの説明と手動確認に、設定ウインドウ（⌘,）の「スライドショー」区分（切り替え間隔 1〜3600 秒・既定3、「最後まで表示したら先頭から繰り返す」・既定オン、切り替え効果 なし／クロスフェード／スライド／ズーム・既定なし）、繰り返しオフでの末尾での終了、効果は自動送りだけに付くこと、「視差効果を減らす」での置き換えを追記する。固定3秒の記述を設定の間隔に改める。効果の長さの設定や一時停止など範囲外の機能を案内しない
+- [X] T038 [P] `README.md` のスライドショーの説明と手動確認に、設定ウインドウ（⌘,）の「スライドショー」区分（切り替え間隔 1〜3600 秒・既定3、「最後まで表示したら先頭から繰り返す」・既定オン、切り替え効果 なし／クロスフェード／スライド／ズーム・既定なし）、繰り返しオフでの末尾での終了、効果は自動送りだけに付くこと、「視差効果を減らす」での置き換えを追記する。固定3秒の記述を設定の間隔に改める。効果の長さの設定や一時停止など範囲外の機能を案内しない
 
-- [ ] T039 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` の最終ゲートを実行する。`Tests/MediaViewerPerformanceTests/` の結果を回収し、`Sources/MediaViewerCore/` が AppKit を import していないこと（`grep -rn "import AppKit" Sources/MediaViewerCore` が0件）を確認する。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記する
+- [X] T039 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` の最終ゲートを実行する。`Tests/MediaViewerPerformanceTests/` の結果を回収し、`Sources/MediaViewerCore/` が AppKit を import していないこと（`grep -rn "import AppKit" Sources/MediaViewerCore` が0件）を確認する。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記する
 
-- [ ] T040 [MANUAL] quickstart.md の全手動シナリオと「実時間の計測」をユーザーへ依頼する。`open .build/MediaViewer.app` で3ペインの起動を確かめた後、Instruments（OS Signposts／Points of Interest）で、間隔 1／3／10 秒 × 4種類の効果で連続10回の `SlideshowAdvance` 間隔が設定値〜設定値＋0.2秒、最後の `SlideshowArrow` から次の `SlideshowAdvance` までが同じ時間枠、「なし」以外の各効果20回の `SlideshowTransitionStart`→`SlideshowTransitionEnd` が0.7秒以内であることを測る（SC-038・SC-041）。既定値（3秒・オン・なし）で 006 の quickstart の回帰シナリオも確認する（A-54）。未実施なら未チェックに保つ
+- [X] T040 [MANUAL] quickstart.md の全手動シナリオと「実時間の計測」をユーザーへ依頼する。`open .build/MediaViewer.app` で3ペインの起動を確かめた後、Instruments（OS Signposts／Points of Interest）で、間隔 1／3／10 秒 × 4種類の効果で連続10回の `SlideshowAdvance` 間隔が設定値〜設定値＋0.2秒、最後の `SlideshowArrow` から次の `SlideshowAdvance` までが同じ時間枠、「なし」以外の各効果20回の `SlideshowTransitionStart`→`SlideshowTransitionEnd` が0.7秒以内であることを測る（SC-038・SC-041）。既定値（3秒・オン・なし）で 006 の quickstart の回帰シナリオも確認する（A-54）。未実施なら未チェックに保つ
 
-- [ ] T041 [MANUAL] `specs/007-slideshow-options/quickstart.md` に「最終検証結果」を追記し、環境（macOS・機種・build 種別）、SC-038〜SC-042 の結果、間隔ごとの最小・最大・範囲外の件数、効果の所要時間の最大、video output 追加後の既存性能基準、GUI の実施者と未実施項目を記録する。未実施の項目を PASS としない。全ゲート合格前に T042 へ進まない
+- [X] T041 [MANUAL] `specs/007-slideshow-options/quickstart.md` に「最終検証結果」を追記し、環境（macOS・機種・build 種別）、SC-038〜SC-042 の結果、間隔ごとの最小・最大・範囲外の件数、効果の所要時間の最大、video output 追加後の既存性能基準、GUI の実施者と未実施項目を記録する。未実施の項目を PASS としない。全ゲート合格前に T042 へ進まない
 
-- [ ] T042 T001〜T041 と T045・T046 の実装・検証が完了し、**かつ** 006 の product 反映（`specs/006-add-slideshow/tasks.md` の T056〜T058）が完了している場合に限り、`specs/007-slideshow-options/spec.md` の「反映先」の表どおり、`specs/product/preview.md`・`specs/product/overview.md`（動作オプション）・`specs/product/contracts/settings.md`・`specs/product/contracts/keyboard-and-menus.md` へ全追加／変更 ID を移す。006 の項目（FR-118・FR-119・FR-121、EC-66・EC-67、A-49・A-52・A-53、実行状態）は本書の変更後の本文で置き換える。契約は参照で記載して ID 本文を重複定義せず、Clarifications は feature に残す。手順と ID の付け方は `specs/product/README.md` に従い、feature spec の冒頭へ移行済み・凍結の注記を付す。006 の反映が未完了なら本タスクを未チェックのまま止めてユーザーへ報告する
+- [X] T042 T001〜T041 と T045・T046 の実装・検証が完了し、**かつ** 006 の product 反映（`specs/006-add-slideshow/tasks.md` の T056〜T058）が完了している場合に限り、`specs/007-slideshow-options/spec.md` の「反映先」の表どおり、`specs/product/preview.md`・`specs/product/overview.md`（動作オプション）・`specs/product/contracts/settings.md`・`specs/product/contracts/keyboard-and-menus.md` へ全追加／変更 ID を移す。006 の項目（FR-118・FR-119・FR-121、EC-66・EC-67、A-49・A-52・A-53、実行状態）は本書の変更後の本文で置き換える。契約は参照で記載して ID 本文を重複定義せず、Clarifications は feature に残す。手順と ID の付け方は `specs/product/README.md` に従い、feature spec の冒頭へ移行済み・凍結の注記を付す。006 の反映が未完了なら本タスクを未チェックのまま止めてユーザーへ報告する
 
-- [ ] T043 `specs/007-slideshow-options/spec.md` の「反映先」の表と `specs/product/` の ID・リンク・契約を照合し、FR-118・119・121・127〜132、US12-AS1〜AS9、US13-AS1〜AS8、EC-66・67・73〜80、SC-038〜042、A-49・52・53・54〜60、動作オプションの反映漏れ・重複がないことを確認する。`specs/001-three-pane-media-viewer/` が未変更であることも確認する
+- [X] T043 `specs/007-slideshow-options/spec.md` の「反映先」の表と `specs/product/` の ID・リンク・契約を照合し、FR-118・119・121・127〜132、US12-AS1〜AS9、US13-AS1〜AS8、EC-66・67・73〜80、SC-038〜042、A-49・52・53・54〜60、動作オプションの反映漏れ・重複がないことを確認する。`specs/001-three-pane-media-viewer/` が未変更であることも確認する
 
-- [ ] T044 T039 の自動ゲート・T040 の GUI／計測・T043 の文書照合の合格後、最終 Phase のソース・テスト・`README.md`・`specs/product/`・`specs/007-slideshow-options/` の差分を確認し、本書の完了チェックとともにコミットする（push は行わない）
+- [X] T044 T039 の自動ゲート・T040 の GUI／計測・T043 の文書照合の合格後、最終 Phase のソース・テスト・`README.md`・`specs/product/`・`specs/007-slideshow-options/` の差分を確認し、本書の完了チェックとともにコミットする（push は行わない）
 
 ## Dependencies & Execution Order
 
@@ -277,3 +277,13 @@ T033（PreviewViewController）と T034（Coordinator・MainSplitViewController�
 - テスト失敗の修正が3回で解決しない場合は止めて状況を報告する。
 - 起動不良では推測で直さず、AGENTS.md の lldb による Objective-C 例外の停止コマンドをユーザーに依頼する。
 - `.app` の設定は `local.my-img-viewer.MediaViewer` のドメインに保存される。初回状態の確認で3キーを消す場合は、quickstart.md の `defaults delete` をユーザーの了承を得てから使う。
+
+## Phase 6: Convergence
+
+- [X] T047 006 の T054〜T058（最終検証と `specs/product/` への反映）を完了させたうえで、`specs/007-slideshow-options/spec.md` の「反映先」の表どおりに FR-118・119・121・127〜132、US12-AS1〜AS9、US13-AS1〜AS8、EC-66・67・73〜80、SC-038〜042、A-49・52・53・54〜60、動作オプションを `specs/product/preview.md`・`overview.md`・`contracts/settings.md`・`contracts/keyboard-and-menus.md` へ反映し、`overview.md` の A-14 にある「スライドショーは範囲外」を解消してから feature spec を凍結する。006 の検証が未完了なら T042 と同じく止めてユーザーへ報告する。反映漏れ・重複の照合（T043）もこのタスクで完了させる (missing)
+
+- [X] T048 [MANUAL] quickstart.md の「実時間の計測」をユーザーへ依頼し、Instruments（OS Signposts／Points of Interest）で、間隔 1／3／10 秒 × 4種類の効果の連続10回の `SlideshowAdvance` が設定値〜設定値＋0.2秒、最後の `SlideshowArrow` から次の `SlideshowAdvance` までが同じ時間枠、「なし」以外の各効果20回の `SlideshowTransitionStart`→`SlideshowTransitionEnd` が0.7秒以内であることを測る。結果を quickstart.md の「最終検証結果」へ、環境（macOS・機種・build 種別）、SC-038・SC-041 の最小／最大／範囲外件数、効果の所要時間の最大、実施者と未実施項目を記録する。未実施の項目を PASS としない (missing)
+
+- [X] T049 `README.md` のスライドショーの説明と手動確認を、設定ウインドウ（⌘,）の「スライドショー」区分（切り替え間隔 1〜3600 秒・既定3、「最後まで表示したら先頭から繰り返す」・既定オン、切り替え効果 なし／クロスフェード／スライド／ズーム・既定なし）、繰り返しオフの末尾での終了、効果は自動送りだけに付くこと、「視差効果を減らす」での置き換えに合わせて更新する。34・158・210 行目付近の固定3秒の記述を設定の間隔に改め、範囲外の機能を案内しない (partial)
+
+- [X] T050 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` の最終ゲートを実行し、`Sources/MediaViewerCore/` の `import AppKit` が0件であることを確認して、結果を quickstart.md の「Phase 検証記録」へ追記する。`FileNameSearcherTests` のキャンセルテストが全体実行でだけ失敗する既知の揺れを再確認した場合は、単独実行の結果とあわせて記録し、本 feature の変更に起因しないことを明記する。合格後、T038〜T049 の完了を確認して最終 Phase をコミットする（push は行わない） (partial)

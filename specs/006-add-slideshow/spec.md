@@ -1,5 +1,9 @@
 # Feature Specification: スライドショー
 
+> **移行済み（2026-10-26）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは 006 時点の記録として凍結しており、更新しない。FR-118・119・121、EC-66・67、A-49・52・53
+> と実行状態は 007 の変更後の本文を product に反映している。
+
 **Feature Branch**: `006-add-slideshow`
 
 **Created**: 2026-10-25

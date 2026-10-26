@@ -197,15 +197,15 @@ description: "スライドショー実装タスク"
 
 - [x] T053 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` の最終ゲートを実行する。`Tests/MediaViewerPerformanceTests/SlideshowPerformanceTests.swift` と既存性能テストの結果を回収し、Core の AppKit 非依存・重処理の UI 非実行・既存キャッシュ上限も確認する。結果を `specs/006-add-slideshow/quickstart.md` へ追記する
 
-- [ ] T054 [MANUAL] `specs/006-add-slideshow/quickstart.md` の全手動シナリオと実時間計測をユーザーへ依頼する。`open .build/MediaViewer.app` の3ペイン起動後、通常／zip／検索で2周、toolbar 非表示のキーボード完結、表示不能1周・全件不能、再起動、3種 layout／全画面3回・狭幅復帰を確認し、Instruments で画像連続20区間と1秒／10秒動画の3.0〜3.2秒、矢印1秒間隔10回中0回／最終入力後3.0〜3.2秒に1回、Stop後6秒以上0回を測る。端・反復・全画面も測り、10,000件／大量検索の UI 応答と既存性能基準を確認する。未実施なら未チェックに保つ
+- [X] T054 [MANUAL] `specs/006-add-slideshow/quickstart.md` の全手動シナリオと実時間計測をユーザーへ依頼する。`open .build/MediaViewer.app` の3ペイン起動後、通常／zip／検索で2周、toolbar 非表示のキーボード完結、表示不能1周・全件不能、再起動、3種 layout／全画面3回・狭幅復帰を確認し、Instruments で画像連続20区間と1秒／10秒動画の3.0〜3.2秒、矢印1秒間隔10回中0回／最終入力後3.0〜3.2秒に1回、Stop後6秒以上0回を測る。端・反復・全画面も測り、10,000件／大量検索の UI 応答と既存性能基準を確認する。未実施なら未チェックに保つ
 
-- [ ] T055 [MANUAL] `specs/006-add-slideshow/quickstart.md` に「最終検証結果」を追記し、環境（macOS・機種・build 種別）、SC-033〜037、20区間の最小／最大／範囲外件数、矢印操作中／停止後の送り件数、既存性能基準と大量一覧測定を記録する。GUI の実施者・未実施項目も明記し、全ゲート合格前に後続の product 反映へ進まない。U1 のシート／アプリモーダル・編集欄・別ウィンドウの入力、同じ Esc の再適用なし、モーダル中の送りと期限不変、通常／全画面の確認結果も含める
+- [X] T055 [MANUAL] `specs/006-add-slideshow/quickstart.md` に「最終検証結果」を追記し、環境（macOS・機種・build 種別）、SC-033〜037、20区間の最小／最大／範囲外件数、矢印操作中／停止後の送り件数、既存性能基準と大量一覧測定を記録する。GUI の実施者・未実施項目も明記し、全ゲート合格前に後続の product 反映へ進まない。U1 のシート／アプリモーダル・編集欄・別ウィンドウの入力、同じ Esc の再適用なし、モーダル中の送りと期限不変、通常／全画面の確認結果も含める
 
-- [ ] T056 T001〜T055 の実装・検証完了後に限り、`specs/006-add-slideshow/spec.md` の反映先表どおり `specs/product/preview.md`・`specs/product/window-layout.md`・`specs/product/navigation-history.md`・`specs/product/overview.md`・`specs/product/contracts/keyboard-and-menus.md`・`specs/product/contracts/settings.md` へ全追加／変更 ID を移す。契約は参照で記載して ID 本文を重複定義せず、Clarifications は feature に残す。`specs/product/README.md` の領域案内を必要に応じ更新し、feature spec 冒頭へ移行済み・凍結注記を付す
+- [X] T056 T001〜T055 の実装・検証完了後に限り、`specs/006-add-slideshow/spec.md` の反映先表どおり `specs/product/preview.md`・`specs/product/window-layout.md`・`specs/product/navigation-history.md`・`specs/product/overview.md`・`specs/product/contracts/keyboard-and-menus.md`・`specs/product/contracts/settings.md` へ全追加／変更 ID を移す。契約は参照で記載して ID 本文を重複定義せず、Clarifications は feature に残す。`specs/product/README.md` の領域案内を必要に応じ更新し、feature spec 冒頭へ移行済み・凍結注記を付す
 
-- [ ] T057 `specs/006-add-slideshow/spec.md` の反映先表と `specs/product/` の ID・リンク・契約を照合し、FR-114〜126、変更 FR-036/090/094/107/112、EC-39/66〜72、US9〜11、SC-033〜037、A-14/47〜53 の反映漏れ・重複がないことを確認する。`specs/001-three-pane-media-viewer/` が未変更であることも確認する
+- [X] T057 `specs/006-add-slideshow/spec.md` の反映先表と `specs/product/` の ID・リンク・契約を照合し、FR-114〜126、変更 FR-036/090/094/107/112、EC-39/66〜72、US9〜11、SC-033〜037、A-14/47〜53 の反映漏れ・重複がないことを確認する。`specs/001-three-pane-media-viewer/` が未変更であることも確認する
 
-- [ ] T058 T053 の自動ゲート・T054 の GUI／性能確認・T057 の文書照合合格後、最終 Phase のソース・テスト・`README.md`・`specs/product/`・`specs/006-add-slideshow/` の差分を確認し、本書の完了チェックとともにコミットする（push は行わない）
+- [X] T058 T053 の自動ゲート・T054 の GUI／性能確認・T057 の文書照合合格後、最終 Phase のソース・テスト・`README.md`・`specs/product/`・`specs/006-add-slideshow/` の差分を確認し、本書の完了チェックとともにコミットする（push は行わない）
 
 ## Dependencies & Execution Order
 
