@@ -8,7 +8,7 @@
 
 プレビューに表示中の画像を、ツールバーの3ボタン（拡大・表示領域に合わせる・縮小）、「表示」メニューの3項目、⌘+・⌘-・⌘0（拡大は ⌘= でも可）で25%刻みに拡大・縮小する。フィット表示を100%とし、25%以上800%以下で頭打ちにする。画像は縦横比を保って中央に置き、ビューポートからはみ出した部分は表示しない。動画・空・表示不能・ファイルリストのみ表示では無効。別の画像へ切り替わったときと履歴の移動後は100%に戻し、フルスクリーン・サイズ変更・同じ画像を表示したままのペイン復帰では保つ。倍率は保存せず、履歴の表示の状態にも記録しない。
 
-判断は Core の値型（`PreviewZoom`・`PreviewZoomTracker`・`PreviewZoomAvailability`）に置き、`PreviewViewController` が表示との対応を取る。描画は既存の `ImagePreviewView` の `CALayer` の frame を変えるだけで、再デコードも画像の作り直しもしない。既存のサムネイルサイズ変更は ⌃⌘+ / ⌃⌘- へ移す。根拠は [research.md](research.md)、型と遷移は [data-model.md](data-model.md)、UI とキーの差分契約は [contracts/preview-zoom.md](contracts/preview-zoom.md) を参照。
+判断は Core の値型（`PreviewZoom`・`PreviewZoomTracker`・`PreviewZoomAvailability`）に置き、`PreviewViewController` が表示との対応を取る。描画は既存の `ImagePreviewView` の `CALayer` の frame を変えるだけで、再デコードも画像の作り直しもしない。既存のサムネイルサイズ変更は ⌃⌘. / ⌃⌘, へ移す。根拠は [research.md](research.md)、型と遷移は [data-model.md](data-model.md)、UI とキーの差分契約は [contracts/preview-zoom.md](contracts/preview-zoom.md) を参照。
 
 ## Technical Context
 
@@ -83,7 +83,7 @@ Sources/MediaViewerApp/
 ├── Preview/
 │   ├── ImagePreviewView.swift       # 倍率を適用した frame・クリップ・アクセシビリティ値/読み上げ
 │   └── PreviewViewController.swift  # 倍率の状態・画像同一性・表示との対応・signpost
-└── FileList/FileListViewController.swift # サムネイルの拡大・縮小を ⌃⌘+ / ⌃⌘- へ移す
+└── FileList/FileListViewController.swift # サムネイルの拡大・縮小を ⌃⌘. / ⌃⌘, へ移す
 Sources/FixtureKit/FixtureSets.swift  # zoom/ を追加（小さい画像・縦横・24MP）
 Tests/MediaViewerCoreTests/
 ├── PreviewZoomTests.swift            # 新規: 倍率・トラッカー・有効条件
@@ -101,7 +101,7 @@ spec・product の領域・既存コード（プレビュー、フィット計�
 - 倍率は加算25ポイントの `PreviewZoom`、画像の同一性による戻しは `PreviewZoomTracker` に置く（R1・R3）。
 - フィットの矩形を中心基準で拡大し、`ImagePreviewView` の `contentLayer.frame` に反映する。クリップ以外は変えない（R2・R4）。
 - メニューは明示的な `AppDelegate` target とし、⌘= は非表示の重複項目で受ける。これでシート・設定ウインドウがキーのときも届く（R7）。
-- サムネイルサイズ変更の ⌃⌘+ / ⌃⌘- への移行は、メニューの修飾キーとスライダーの説明だけに閉じる（R7）。
+- サムネイルサイズ変更の ⌃⌘. / ⌃⌘, への移行は、メニューの修飾キーとスライダーの説明だけに閉じる（R7）。
 - 有効条件は Core の `PreviewZoomAvailability` に集約し、ツールバーはセグメント単位、メニューは `validateMenuItem` で同じ条件を使う（R5）。
 - 描画中のアニメーションは止めず、`contents` を差し替える既存経路を変えない（R4・R9）。
 
@@ -138,12 +138,12 @@ spec・product の領域・既存コード（プレビュー、フィット計�
 
 - `MainMenu` の「表示」で「フルスクリーン」の下に区切り線を置き、「拡大」「縮小」「表示領域に合わせる」をこの順で追加する。キーは ⌘+・⌘-・⌘0。3項目の target は `AppDelegate` にし、`NSMenuItemValidation` で `PreviewZoomAvailability` を返す。
 - ⌘= と ⇧⌘= の拡大は、同じ action を持つ非表示の `NSMenuItem`（keyEquivalent `=`、⌘、`isHidden = true`、`allowsKeyEquivalentWhenHidden = true`）で受ける。表示は ⌘+ のまま変えない。非表示の項目は `allowsKeyEquivalentWhenHidden`（既定は false）を true にしたときだけキー等価の照合に参加するため、この設定を必須とし、実キーでの到達は手動シナリオで確かめる（R7）。
-- 既存の「サムネイルを拡大」「サムネイルを縮小」の修飾キーを ⌃⌘ に変え、ツールバーのサイズのスライダーと下部バーの説明に ⌃⌘+ / ⌃⌘- を反映する。⌘+ / ⌘- はプレビューの倍率だけを変え、画像がないときは何もしない。
+- 既存の「サムネイルを拡大」「サムネイルを縮小」の修飾キーを ⌃⌘ に変え、ツールバーのサイズのスライダーと下部バーの説明に ⌃⌘. / ⌃⌘, を反映する。⌘+ / ⌘- はプレビューの倍率だけを変え、画像がないときは何もしない。
 - シート・モーダル・名前の変更中・設定ウインドウがキーのときも、FR-136 の条件だけを適用する。追加の入力制限は設けない。
 
 ### 6. Validation and handoff
 
-要件との対応は [quickstart.md](quickstart.md) を参照。実装 Phase の検証は `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` の順に行う。その後、ユーザーへ `open .build/MediaViewer.app` と確認点（3ペイン、ツールバーの3ボタン、メニュー、⌘+・⌘-・⌘0・⌘=、上限・下限、画像切替・履歴・全画面・ペイン復帰、⌃⌘+ / ⌃⌘-、VoiceOver）を依頼する。GUI・VoiceOver・実時間が未確認なら該当タスクを未チェックに保つ。問題のない Phase をコミットし、実装・検証の後にだけ spec の反映先の表に従って `specs/product/` へ反映する。
+要件との対応は [quickstart.md](quickstart.md) を参照。実装 Phase の検証は `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` の順に行う。その後、ユーザーへ `open .build/MediaViewer.app` と確認点（3ペイン、ツールバーの3ボタン、メニュー、⌘+・⌘-・⌘0・⌘=、上限・下限、画像切替・履歴・全画面・ペイン復帰、⌃⌘. / ⌃⌘,、VoiceOver）を依頼する。GUI・VoiceOver・実時間が未確認なら該当タスクを未チェックに保つ。問題のない Phase をコミットし、実装・検証の後にだけ spec の反映先の表に従って `specs/product/` へ反映する。
 
 本コマンドは Phase 1 の設計で終わる。tasks の生成・ソースの実装・GUI の起動は次の工程で行う。
 

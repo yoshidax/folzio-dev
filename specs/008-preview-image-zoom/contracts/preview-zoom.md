@@ -77,7 +77,7 @@ extension FitCalculator {
 | `MainWindowController` | `zoomAvailability` と3操作を `AppDelegate` へ公開 |
 | `AppDelegate` | `@objc previewZoomIn(_:)` / `previewZoomOut(_:)` / `previewZoomToFit(_:)`。`NSMenuItemValidation` で `zoomAvailability` を返す |
 | `MainToolbarController` | `previewZoom` の `NSToolbarItem`。3セグメント。項目全体とセグメント単位の有効化 |
-| `FileListViewController` | サムネイルの拡大・縮小の keyEquivalentModifierMask を `[.command, .control]` にする |
+| `FileListViewController` | サムネイルの拡大・縮小の keyEquivalent を `.` / `,`、keyEquivalentModifierMask を `[.command, .control]` にする（⌃⌘. / ⌃⌘,） |
 
 ## ツールバー
 
@@ -116,8 +116,8 @@ extension FitCalculator {
   スライドショーを開始              ⇧⌘S
   サムネイル                        ⌘1
   リスト                            ⌘2
-  サムネイルを拡大                  ⌃⌘+
-  サムネイルを縮小                  ⌃⌘-
+  サムネイルを拡大                  ⌃⌘.
+  サムネイルを縮小                  ⌃⌘,
   ...
 ```
 
@@ -138,13 +138,13 @@ extension FitCalculator {
 
 | 既存 | 変更後 | 対象 |
 |---|---|---|
-| サムネイルを拡大 ⌘+ | ⌃⌘+ | 表示メニュー、ファイルリストのキー一覧、プレビューのみ表示・zip の中・検索結果のキー一覧、ツールバーのサイズのスライダー、下部バーの説明 |
-| サムネイルを縮小 ⌘- | ⌃⌘- | 同上 |
+| サムネイルを拡大 ⌘+ | ⌃⌘. | 表示メニュー、ファイルリストのキー一覧、プレビューのみ表示・zip の中・検索結果のキー一覧、ツールバーのサイズのスライダー、下部バーの説明 |
+| サムネイルを縮小 ⌘- | ⌃⌘, | 同上 |
 
-- プレビューのみ表示では、画像を表示していれば ⌘+ / ⌘- がプレビューの倍率を変え、⌃⌘+ / ⌃⌘- が隠れたファイルリストのサムネイルサイズを変える（US14-AS14、EC-89）。
+- プレビューのみ表示では、画像を表示していれば ⌘+ / ⌘- がプレビューの倍率を変え、⌃⌘. / ⌃⌘, が隠れたファイルリストのサムネイルサイズを変える（US14-AS14、EC-89）。
 - プレビューに画像がないときの ⌘+ / ⌘- は何もしない。サムネイルサイズは変えない。
 - キーボードだけで両方を操作できる状態を保つ（FR-040、憲章 原則 III）。
-- `navigation-history.md` の FR-107（3）・US8-AS7 の ⌘+ / ⌘- は ⌃⌘+ / ⌃⌘- に読み替える。
+- `navigation-history.md` の FR-107（3）・US8-AS7 の ⌘+ / ⌘- は ⌃⌘. / ⌃⌘, に読み替える。
 
 対応: FR-014・FR-135、US14-AS9・AS14、A-63・A-69。
 

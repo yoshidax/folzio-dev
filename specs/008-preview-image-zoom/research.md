@@ -101,7 +101,7 @@ origin = ((container.width - scaled.width) / 2,
 
 ⌘= と ⇧⌘= の拡大は、同じ action・target を持つ非表示の `NSMenuItem`（keyEquivalent `=`、修飾キー ⌘、`isHidden = true`、`allowsKeyEquivalentWhenHidden = true`）で受ける。表示メニューとツールチップの表示は ⌘+ のまま変えない。target を `AppDelegate` にするのは、キー入力先がシート・設定ウインドウ・名前の変更中のテキストフィールドでも、メインウインドウのプレビューを操作するため。`AppDelegate` は `NSMenuItemValidation` で `PreviewZoomAvailability` を返す。
 
-既存の「サムネイルを拡大」「サムネイルを縮小」は `keyEquivalentModifierMask = [.command, .control]` にして ⌃⌘+ / ⌃⌘- に移す。ツールバーのサイズのスライダーと下部バーの説明にも ⌃⌘+ / ⌃⌘- を反映する。プレビューのみ表示でファイルリストが隠れていても、メニュー項目の target は `FileListViewController` なので ⌃⌘+ / ⌃⌘- は届く。
+既存の「サムネイルを拡大」「サムネイルを縮小」は keyEquivalent を `.`（拡大）・`,`（縮小）、`keyEquivalentModifierMask = [.command, .control]` にして ⌃⌘. / ⌃⌘, に移す。`+` は Shift を要し、⌃⌘+ では拡大だけ4キーになるため使わない（A-74）。ツールバーのサイズのスライダーと下部バーの説明にも ⌃⌘. / ⌃⌘, を反映する。プレビューのみ表示でファイルリストが隠れていても、メニュー項目の target は `FileListViewController` なので ⌃⌘. / ⌃⌘, は届く。
 
 **Rationale**: メニューのキー等価は、明示的な target があればキーウィンドウの responder chain に依存せず、シート・設定ウインドウがキーのときも実行できる。`target = nil` のままでは、シートや設定ウインドウの responder chain に `MainSplitViewController` がいないため届かない。非表示の `NSMenuItem` はメニューに表示されず、既定ではキー等価の照合にも参加しない。`allowsKeyEquivalentWhenHidden`（macOS 10.13 以降、既定は false）を true にしたときだけ照合に参加するため、この設定を必須とする。ローカルの `NSEvent` モニタを足すより、既存のメニュー検証・キー等価の仕組みに乗る方が状態の二重管理を避けられる。⌘+ / ⌘- をプレビューに割り当てるため、サムネイルの操作を ⌃⌘ に移すのは Clarifications と FR-135 のとおり。
 

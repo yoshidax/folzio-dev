@@ -13,7 +13,7 @@
 
 ## 検証データ
 
-`FixtureSets.makeAll` に `zoom/` を追加する予定。
+`FixtureSets.zoom(in:)` が `zoom/` の4件を作り、`FixtureSets.makeAll`（`scripts/make-fixtures.sh`）からも呼ばれる。
 
 | 生成先以下 | 内容／用途 |
 |---|---|
@@ -99,15 +99,15 @@ open .build/MediaViewer.app
 2. 画像のない空のプレビュー、破損画像（`broken/`）、ファイルリストのみ表示でも同じ。
 3. 25%で縮小、800%で拡大を、ツールバー・メニュー・ショートカットのそれぞれで実行する。表示は変わらず、反対端へ循環しない。
 4. 動画の状態で ⌘+ / ⌘- を押す。サムネイルサイズが変わらないことも確かめる。
-5. プレビューのみ表示で画像を表示していない・動画のとき、⌘+ / ⌘- は何もせず、⌃⌘+ / ⌃⌘- だけが隠れたファイルリストのサムネイルサイズを変える。
+5. プレビューのみ表示で画像を表示していない・動画のとき、⌘+ / ⌘- は何もせず、⌃⌘. / ⌃⌘, だけが隠れたファイルリストのサムネイルサイズを変える。
 
 ### 5. サムネイルサイズの移行（US14-AS9・AS14、SC-045・SC-051）
 
-1. 3ペイン表示・サムネイル形式で ⌃⌘+ / ⌃⌘- を押す。サムネイルの大きさが従来どおり16ポイントずつ変わり、プレビューの倍率は変わらない。
+1. 3ペイン表示・サムネイル形式で ⌃⌘. / ⌃⌘, を押す。サムネイルの大きさが従来どおり16ポイントずつ変わり、プレビューの倍率は変わらない。
 2. ⌘+ / ⌘- を押す。プレビューの倍率だけが変わり、サムネイルサイズは変わらない。
-3. プレビューのみ表示にして ⌘+ を押し、続けて ⌃⌘+ を押す。⌘+ で倍率が125%になり、⌃⌘+ で隠れたファイルリストのサムネイルサイズが大きくなる。3ペインへ戻すと両方が反映されている。
-4. 表示メニューの「サムネイルを拡大」「サムネイルを縮小」の表示が ⌃⌘+ / ⌃⌘- になり、キーボードだけで操作できる。ツールバーのサイズのスライダーと下部バーの説明も同じキーを示す。
-5. 履歴の US8-AS7 相当（サムネイルサイズの変更）が ⌃⌘+ / ⌃⌘- で記録される。⌘+ / ⌘- では履歴の件数が変わらない。
+3. プレビューのみ表示にして ⌘+ を押し、続けて ⌃⌘. を押す。⌘+ で倍率が125%になり、⌃⌘. で隠れたファイルリストのサムネイルサイズが大きくなる。3ペインへ戻すと両方が反映されている。
+4. 表示メニューの「サムネイルを拡大」「サムネイルを縮小」の表示が ⌃⌘. / ⌃⌘, になり、キーボードだけで操作できる。ツールバーのサイズのスライダーと下部バーの説明も同じキーを示す。
+5. 履歴の US8-AS7 相当（サムネイルサイズの変更）が ⌃⌘. / ⌃⌘, で記録される。⌘+ / ⌘- では履歴の件数が変わらない。
 
 ### 6. 極端な画像・アニメーション・性能（EC-82〜EC-84、SC-043・SC-048）
 
@@ -139,3 +139,59 @@ open .build/MediaViewer.app
 - 3ペインの起動スモークと、上の手動シナリオのうち GUI が必要なものをユーザーが確認する。
 - GUI・VoiceOver・実時間のいずれかが未確認なら、該当タスクを未チェックのまま残し、判定を `partial` にする。
 - 実装と検証が終わった後にだけ、spec の「反映先」の表に従って `specs/product/` を更新する。本 feature の spec・plan・research・data-model・contracts・quickstart は実装の記録として凍結する。
+
+## Phase 検証記録
+
+### Phase 1（2026-10-27）
+
+- `scripts/make-fixtures.sh .build/PreviewZoomFixtures`: 成功。`zoom/` の4件を `sips` で確認（16×16・1×1・6000×4000・1200×2400）
+- `swift build`: 成功
+- `swift test`: 成功（MediaViewerCoreTests 673件 / 63 suites、MediaViewerPerformanceTests 24件）
+- `scripts/check-no-network.sh`: 成功（no network API references in Sources）
+- `scripts/make-app.sh`: 成功（`.build/MediaViewer.app`）
+- GUI の起動スモーク（T005）: 未実施。ユーザーによる確認待ち
+
+### Phase 2（2026-10-27）
+
+- テストを先に追加し、実装前に `PreviewZoom` 未定義・`FitCalculator.frame` 未定義でビルドが失敗することを確認した
+- `swift build`: 成功
+- `swift test`: 成功（MediaViewerCoreTests 697件 / 66 suites、MediaViewerPerformanceTests 25件。32段×1000回の倍率の矩形計算を含む）
+- `scripts/check-no-network.sh`: 成功
+- `scripts/make-app.sh`: 成功
+- `Sources/MediaViewerCore` の `import AppKit` / `import QuartzCore`: 0件
+- GUI の起動スモーク（T016）: 未実施。ユーザーによる確認待ち
+
+### Phase 3（2026-10-27）
+
+- `swift build`: 成功
+- `swift test`: 1回目と2回目は、変更していない性能試験（24MP デコード・10,000件の列挙・200,000件の抽出）と、検索の時間依存のテスト（`BrowserModelSearchTests`・`FileNameSearcherTests`）が、毎回別のものとして失敗した。このときマシンの load average は 12〜17 だった。失敗したスイートを単独で実行すると通った。コードの修正はしていない
+- `swift test`（load average 8 前後で再実行）: 成功（MediaViewerCoreTests 697件 / 66 suites、MediaViewerPerformanceTests 25件）
+- `scripts/check-no-network.sh`: 成功
+- `scripts/make-app.sh`: 成功
+- GUI の手動シナリオ 1〜8（T027）: 未実施。ユーザーによる確認待ち
+
+### 最終の自動ゲート（T030、2026-10-27）
+
+- `swift build`: 成功
+- `swift test`: 成功（MediaViewerCoreTests 697件 / 66 suites、MediaViewerPerformanceTests 25件）
+- `swift test --filter MediaViewerPerformanceTests`: 成功（25件）
+- `scripts/check-no-network.sh`: 成功
+- `scripts/make-app.sh`: 成功
+- `grep -rn "import AppKit" Sources/MediaViewerCore`: 0件。`PreviewZoom.swift` の import は CoreGraphics と Foundation だけ
+
+### サムネイルのショートカットの変更後（2026-10-27）
+
+- サムネイルサイズのショートカットを ⌃⌘+ / ⌃⌘- から ⌃⌘. / ⌃⌘, に変更（A-74）。ショートカットは US 配列を基準とする（A-75）
+- `swift build`: 成功
+- `swift test`: 成功（MediaViewerCoreTests 697件 / 66 suites、MediaViewerPerformanceTests 25件）
+- `scripts/check-no-network.sh`: 成功
+- `scripts/make-app.sh`: 成功
+- GUI の確認: 未実施。ユーザーによる確認待ち
+
+## 最終検証結果（2026-10-27）
+
+- 環境: macOS 26.6.2（25G83）/ MacBook Air（Apple M3、Mac15,12）/ `scripts/make-app.sh` の release ビルド
+- GUI: 起動スモークと手動シナリオ 1〜8 をユーザーが確認し、合格（T005・T016・T027）
+- VoiceOver: 倍率の値と読み上げ、3ボタンのラベル、無効状態の読み上げをユーザーが確認し、合格（T031）
+- Instruments（OS Signposts）: 24MP の JPEG で `PreviewZoomApply` の区間が0.5秒以内、UI が応答しない回数0回をユーザーが確認し、合格（T032、SC-048）。個々の計測値は報告に含まれていない
+- 結果の一覧: [checklists/validation.md](checklists/validation.md)

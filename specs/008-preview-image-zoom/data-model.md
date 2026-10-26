@@ -148,7 +148,7 @@ public struct FitCalculator {
 | `MainWindowController` | `zoomAvailability` と3操作を `AppDelegate` へ公開する |
 | `AppDelegate` | 表示メニューの3項目と ⌘= の target。`NSMenuItemValidation`。キー入力先のウィンドウに依存しない入口 |
 | `MainToolbarController` | `previewZoom` の3セグメント。項目全体とセグメント単位の有効化。ツールチップ・ラベル |
-| `FileListViewController` | サムネイルの拡大・縮小のメニューを ⌃⌘+ / ⌃⌘- にする。プレビューの倍率には触れない |
+| `FileListViewController` | サムネイルの拡大・縮小のメニューを ⌃⌘. / ⌃⌘, にする。プレビューの倍率には触れない |
 
 ### 5.1 倍率のリセットと保持
 
@@ -186,7 +186,7 @@ public struct FitCalculator {
 | 表示メニュー「縮小」⌘- | 縮小 | `canZoomOut` |
 | 表示メニュー「表示領域に合わせる」⌘0 | 100% | `canFit` |
 | 非表示の「拡大」項目 ⌘=／⇧⌘= | 拡大 | `canZoomIn` |
-| サムネイルを拡大／縮小 ⌃⌘+ / ⌃⌘- | ファイルリストのサムネイルサイズ | 既存の条件（プレビュー倍率とは独立） |
+| サムネイルを拡大／縮小 ⌃⌘. / ⌃⌘, | ファイルリストのサムネイルサイズ | 既存の条件（プレビュー倍率とは独立） |
 
 **不変条件**:
 
