@@ -138,3 +138,27 @@ build・全自動テスト・no-network・bundle の作成・ユーザーによ�
 | `scripts/make-app.sh` | 成功（`.build/MediaViewer.app` を作成） |
 | T003 `scripts/make-fixtures.sh .build/SlideshowFixtures` | 未実施（エージェント環境でスクリプトの実行が承認されなかった）。生成内容は `SlideshowFixtureTests` の「transitions は表示順が分かる5件…」で確認済み |
 | GUI（T005・T011） | 未実施。GUI を起動しない指示のため |
+
+### Phase 1・2 引き継ぎ後の再検証（T003・T004・T010、2026-10-26）
+
+Claude Code の利用上限による中断後、Codex の対話セッションで再開した。
+Phase 1・2 のソースは統合済み。`agent/T016-interval-input` の worktree にある間隔入力の未コミットのソース・テストは保持し、まだ統合していない。
+
+Phase 2 の `SlideshowOptions.intervalSeconds` が初期化後の代入で範囲外の値を持てたため、代入時も範囲外なら既定値3にするよう補完した。
+回帰テストが修正前に失敗することを確認し、修正後は全テストが成功した。
+繰り返し設定の不正値の検証にも `"yes"` と整数 `1` を追加した。
+
+| 項目 | 結果 |
+|---|---|
+| T003 `scripts/make-fixtures.sh .build/SlideshowFixtures` | 成功。`ls -lh .build/SlideshowFixtures/slideshow/transitions` で指定の5件を確認。外部ツールの追加導入なし |
+| `swift build` | 成功 |
+| `swift test` | 成功。Core 655件・性能23件（計678件）。前回の記録で失敗したテストも今回は成功 |
+| `scripts/check-no-network.sh` | 成功（no network API references in Sources） |
+| `scripts/make-app.sh` | 成功。最新の `.build/MediaViewer.app` を作成 |
+| 実行環境 | 通常の sandbox 内では Swift の module cache への書き込みと manifest の sandbox 起動が拒否されたため、承認付き実行で検証した |
+| GUI（T005・T011） | ユーザー確認待ち。3ペイン、既存の3秒循環・Esc、既存の設定3項目の表示と保存を確認する |
+| Phase 完了・コミット（T006・T012） | GUI 未確認のため未完了。Phase 3 は未着手のまま保持 |
+
+### Phase 1 GUI 確認（T005・T006、2026-10-26）
+
+ユーザーから「確認し問題はありませんでした」と報告を受けた。最新の `.build/MediaViewer.app` で3ペインの表示、`slideshow/mixed` の ⇧⌘S による3秒ごとの循環、Esc による終了を確認済み。T003・T004 と合わせて Phase 1 のゲート合格とし、引き継ぎ後のフィクスチャ生成と確認記録をコミットする。

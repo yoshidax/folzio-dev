@@ -43,13 +43,13 @@ description: "スライドショーのオプション設定 実装タスク"
 
 - [X] T002 `Sources/FixtureKit/FixtureSets.swift` の `slideshow(in:generateVideos:)` に `slideshow/transitions/` の生成を追加する。既存の `ImageFixtures`・`VideoFixtures` と、`slideshow/mixed/` で使っている1秒 MP4・10秒 MOV・JPEG・PNG の生成処理を再利用し、`03-broken.jpg` は JPEG ヘッダの後ろを切り詰めた破損データとする。既存の `slideshow/` 以下のファイル名・内容は変えない
 
-- [ ] T003 `scripts/make-fixtures.sh .build/SlideshowFixtures` を実行し、`.build/SlideshowFixtures/slideshow/transitions/` に5件が生成されることを `ls` で確認する。外部ツールの導入が必要になった場合は導入せずユーザーへ確認する
+- [X] T003 `scripts/make-fixtures.sh .build/SlideshowFixtures` を実行し、`.build/SlideshowFixtures/slideshow/transitions/` に5件が生成されることを `ls` で確認する。外部ツールの導入が必要になった場合は導入せずユーザーへ確認する
 
 - [X] T004 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗の修正は最大3回までとする。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記する
 
-- [ ] T005 [MANUAL] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、3ペインが表示されること、006 のスライドショー（⇧⌘S、3秒ごとの循環、Esc で終了）に回帰がないことを確認してもらう。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
+- [X] T005 [MANUAL] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、3ペインが表示されること、006 のスライドショー（⇧⌘S、3秒ごとの循環、Esc で終了）に回帰がないことを確認してもらう。結果を `specs/007-slideshow-options/quickstart.md` の「Phase 検証記録」へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
 
-- [ ] T006 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/007-slideshow-options/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
+- [X] T006 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/007-slideshow-options/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
 
 **Checkpoint**: 検証フォルダと既存回帰ゲートが揃う。
 
