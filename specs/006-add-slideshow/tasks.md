@@ -49,9 +49,9 @@ description: "スライドショー実装タスク"
 
 - [x] T004 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
 
-- [ ] T005 [MANUAL] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示と既存のフォルダ／zip プレビューが維持されることを確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
+- [x] T005 [MANUAL] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示と既存のフォルダ／zip プレビューが維持されることを確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
 
-- [ ] T006 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
+- [x] T006 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
 
 **Checkpoint**: 共通フィクスチャ・既存回帰ゲートが揃う。
 
@@ -71,9 +71,9 @@ description: "スライドショー実装タスク"
 
 - [x] T011 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
 
-- [ ] T012 [MANUAL] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示と通常移動・検索・zip 階層移動・名前変更に回帰がないことを確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
+- [x] T012 [MANUAL] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示と通常移動・検索・zip 階層移動・名前変更に回帰がないことを確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
 
-- [ ] T013 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
+- [x] T013 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
 
 **Checkpoint**: コマンド可否と置換前通知を Story から利用できる。
 
@@ -121,9 +121,9 @@ description: "スライドショー実装タスク"
 
 - [x] T030 [US9] `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
 
-- [ ] T031 [MANUAL] [US9] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示とUS9-AS1〜16 の通常ウィンドウでの対象・循環・開始不可・動画維持・更新・検索／履歴・空選択復帰・Esc 後6秒間0回を確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ。US9-AS16 は実行中のシート／アプリモーダル・編集欄への Esc を確認し、モーダル表示中の送り継続・開閉で期限不変・同じ Esc で終了しないこと、入力先が戻ってからの別の Esc で終了することを記録する（U1）
+- [x] T031 [MANUAL] [US9] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示とUS9-AS1〜16 の通常ウィンドウでの対象・循環・開始不可・動画維持・更新・検索／履歴・空選択復帰・Esc 後6秒間0回を確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ。US9-AS16 は実行中のシート／アプリモーダル・編集欄への Esc を確認し、モーダル表示中の送り継続・開閉で期限不変・同じ Esc で終了しないこと、入力先が戻ってからの別の Esc で終了することを記録する（U1）
 
-- [ ] T032 [US9] 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
+- [x] T032 [US9] 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
 
 **Checkpoint**: US9 の通常ウィンドウ増分が検証済み。要件全体の P1 MVP は US10 まで含む。
 
@@ -151,9 +151,9 @@ description: "スライドショー実装タスク"
 
 - [x] T039 [US10] `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
 
-- [ ] T040 [MANUAL] [US10] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示とUS10-AS1〜6（リスト左右・端・反復・隠れた列数・due 直前の二重送りなし・最後の押下から再開）を確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ。US10-AS6 のモーダル／編集欄・別ウィンドウへの矢印が手動移動や期限再設定を起こさず、元の周期が続くこと、対象ウィンドウへ戻った次の矢印で通常の割り込みが行えることも記録する（U1）
+- [x] T040 [MANUAL] [US10] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示とUS10-AS1〜6（リスト左右・端・反復・隠れた列数・due 直前の二重送りなし・最後の押下から再開）を確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ。US10-AS6 のモーダル／編集欄・別ウィンドウへの矢印が手動移動や期限再設定を起こさず、元の周期が続くこと、対象ウィンドウへ戻った次の矢印で通常の割り込みが行えることも記録する（U1）
 
-- [ ] T041 [US10] 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
+- [x] T041 [US10] 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
 
 **Checkpoint**: US9＋US10 の P1 MVP が揃う。SC-035 の実時間合否は最終 Phase で記録する。
 
@@ -181,9 +181,9 @@ description: "スライドショー実装タスク"
 
 - [x] T048 [US11] `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗は最大3回の修正までとする。結果を `specs/006-add-slideshow/quickstart.md` の「Phase 検証記録」へ追記する
 
-- [ ] T049 [MANUAL] [US11] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示とUS11-AS1〜4、開始前から全画面の場合、3回の全画面切替、矢印、動画位置／状態と残り時間、狭幅復帰、Esc 後6秒間0回を確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ。全画面中も US9-AS16・US10-AS6 を確認し、モーダルを閉じる Esc だけでは全画面もスライドショーも終了せず、開閉で期限が変わらないことを記録する（U1）
+- [x] T049 [MANUAL] [US11] ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、通常起動の3ペイン表示とUS11-AS1〜4、開始前から全画面の場合、3回の全画面切替、矢印、動画位置／状態と残り時間、狭幅復帰、Esc 後6秒間0回を確認してもらう。結果を `specs/006-add-slideshow/quickstart.md` へ追記し、GUI 未実施ならこのタスクを未チェックに保つ。全画面中も US9-AS16・US10-AS6 を確認し、モーダルを閉じる Esc だけでは全画面もスライドショーも終了せず、開閉で期限が変わらないことを記録する（U1）
 
-- [ ] T050 [US11] 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
+- [x] T050 [US11] 直前の自動・GUI ゲート合格後、当該 Phase のソース・テスト・`specs/006-add-slideshow/tasks.md`・明示された quickstart 追記だけを確認して Phase 単位でコミットする（push は行わない）
 
 **Checkpoint**: 全 Story の機能ゲートが揃う。最終計測と仕様反映へ進める。
 

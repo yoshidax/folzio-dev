@@ -2,7 +2,7 @@
 
 **Date**: 2026-10-25 | **Branch**: `006-add-slideshow`
 
-本書は実装後の検証ガイド。計画時点では機能・追加フィクスチャ・計測イベントは未実装であり、以下の結果は未確認。操作の正本は [contracts/slideshow.md](contracts/slideshow.md)、状態遷移は [data-model.md](data-model.md)、受け入れ条件は [spec.md](spec.md) を参照。
+本書は実装後の検証ガイド。機能・追加フィクスチャ・計測イベントは実装済み。GUI の機能確認はユーザー報告で完了。Instruments の数値記録と最終結果は未実施で、下の「Phase 検証記録」を参照。操作の正本は [contracts/slideshow.md](contracts/slideshow.md)、状態遷移は [data-model.md](data-model.md)、受け入れ条件は [spec.md](spec.md) を参照。
 
 ## 前提
 
@@ -28,7 +28,7 @@
 
 ```bash
 cd /Users/igachan/projects/my_img_viewer
-scripts/make-fixtures.sh .build/SlideshowFixtures
+scripts/make-fixtures.sh ~/MediaViewerFixtures
 ```
 
 WebP は既存の同梱フィクスチャを利用する。`cwebp` / `img2webp` が新たに必要になった場合は、導入前にユーザーへ確認する。
@@ -52,7 +52,7 @@ cd /Users/igachan/projects/my_img_viewer
 open .build/MediaViewer.app
 ```
 
-その後、ツリーで `.build/SlideshowFixtures` 以下の検証フォルダを選ぶ。zip 混在を確認する際は既定で非表示の「zipファイルを表示」をオンにし、確認後に元へ戻す。起動しない場合は推測で修正せず、AGENTS.md の lldb による Objective-C 例外停止手順をユーザーへ依頼する。
+その後、ツリーまたは `⌘O` で `~/MediaViewerFixtures/slideshow/mixed` などの検証フォルダを開く（`.build` は隠しフォルダなので GUI 検証には使わない）。zip 混在を確認する際は既定で非表示の「zipファイルを表示」をオンにし、確認後に元へ戻す。起動しない場合は推測で修正せず、AGENTS.md の lldb による Objective-C 例外停止手順をユーザーへ依頼する。
 
 自動テストに含める証拠:
 
@@ -129,14 +129,21 @@ open .build/MediaViewer.app
 | 性能テスト | `swift test --filter MediaViewerPerformanceTests` | アイドル時 22 tests / 2 suites 成功（39.640 秒）。10,000／50,000／200,000 件の追加ケースは直列スイート内で 0.010／0.052／0.127 秒で成功 |
 | ネットワーク | `scripts/check-no-network.sh` | `Sources` にネットワーク API 参照なし |
 | アプリ | `scripts/make-app.sh` | `.build/MediaViewer.app` を作成 |
-| フィクスチャ | `scripts/make-fixtures.sh .build/SlideshowFixtures` | mixed／single／empty／search／slides.zip を生成 |
+| フィクスチャ | `scripts/make-fixtures.sh ~/MediaViewerFixtures` | mixed／single／empty／search／slides.zip を生成 |
 
 `swift test` を単一プロセスで実行すると Swift Testing が機能テストと性能テストの target を並列に走らせ、
 性能テストの閾値に無関係な CPU 競合が乗る。プロジェクトの README にある「他の負荷」の注意と同じため、
 最終判定は上記の `--filter` 2 回で行う。重いアプリを起動した状態では性能テストが閾値を超えることがあり、
 その場合は GUI／Instruments の実時間計測（T054）と分けて記録する。
 
-GUI（T005・T012・T031・T040・T049・T054）と最終結果（T055）は未実施。未チェックのままにする。
+GUI の機能確認（T005・T012・T031・T040・T049）はユーザー報告で問題なし。Instruments の数値記録（T054）と最終結果（T055）は未実施のため未チェックのままにする。Phase コミット（T006・T013・T032・T041・T050）は実装全体を `0c41263` にまとめ、master の `1fbaf0c` でマージ済み。
+
+### 2026-10-26 GUI 確認（ユーザー報告）
+
+- 実施: 通常起動と3ペイン、開始3経路、3秒周期、動画の維持、single、empty、矢印、Esc 復帰、全画面、編集／シート、zip／検索
+- 結果: 問題なし
+- 未記録: Instruments による数値（T054）と最終検証結果（T055）。数値記録が揃うまで product 反映へ進まない。
+- Phase コミット: 実装全体を `0c41263`、master マージを `1fbaf0c` として実施済み。
 
 ## 入力調停検証記録
 
