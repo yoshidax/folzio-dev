@@ -113,6 +113,31 @@ public enum FixtureSets {
             try writePlaceholderVideo(at: single.appendingPathComponent("only.mp4"))
         }
 
+        // 切り替え効果の検証用: 表示順が分かる5件（3件目は破損）
+        let transitions = try prepare(root.appendingPathComponent("transitions", isDirectory: true))
+        try ImageFixtures.jpeg(at: transitions.appendingPathComponent("01-image.jpg"), width: 800, height: 600)
+        try ImageFixtures.png(at: transitions.appendingPathComponent("04-image.png"), width: 400, height: 300)
+        let brokenSource = try imageData(scratch, "transitions-source.jpg") {
+            try ImageFixtures.jpeg(at: $0, width: 320, height: 240)
+        }
+        try Data(brokenSource.prefix(100)).write(to: transitions.appendingPathComponent("03-broken.jpg"))
+        if generateVideos {
+            try VideoFixtures.mp4(
+                at: transitions.appendingPathComponent("02-video-1s.mp4"),
+                seconds: 1,
+                fastStart: true
+            )
+            try VideoFixtures.mov(
+                at: transitions.appendingPathComponent("05-video-10s.mov"),
+                seconds: 10,
+                fastStart: true
+            )
+            removeWriteTemporaries(in: transitions)
+        } else {
+            try writePlaceholderVideo(at: transitions.appendingPathComponent("02-video-1s.mp4"))
+            try writePlaceholderVideo(at: transitions.appendingPathComponent("05-video-10s.mov"))
+        }
+
         let empty = try prepare(root.appendingPathComponent("empty", isDirectory: true))
         try writeText(
             "This folder has no media files.\n",
