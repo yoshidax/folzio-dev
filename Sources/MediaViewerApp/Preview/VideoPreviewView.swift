@@ -11,8 +11,9 @@ final class VideoPreviewView: NSView {
         subsystem: "local.my-img-viewer.MediaViewer",
         category: "Performance"
     )
-    private var playback: VideoPlayback?
-    private var player: AVPlayer? { playback?.player }
+    private let playback = VideoPlayback()
+    /// 動画を載せている間だけプレーヤーを返す
+    private var player: AVPlayer? { playback.player.currentItem == nil ? nil : playback.player }
     private var timeControlObservation: NSKeyValueObservation?
     private var playbackIntervalState: OSSignpostIntervalState?
     private var playbackIntervalStarted = false
@@ -42,10 +43,8 @@ final class VideoPreviewView: NSView {
     func configure(asset: AVAsset, autoplay: Bool, loop: Bool, fileName: String) {
         stop()
 
-        let playback = VideoPlayback(asset: asset, loop: loop)
+        playback.load(asset: asset, loop: loop)
         let player = playback.player
-        self.playback = playback
-        playerView.player = player
         setAccessibilityLabel(fileName)
 
         let generation = playbackGeneration
@@ -72,9 +71,8 @@ final class VideoPreviewView: NSView {
         timeControlObservation?.invalidate()
         timeControlObservation = nil
 
-        playback?.invalidate()
-        playerView.player = nil
-        playback = nil
+        // AVPlayer は捨てずにアイテムだけ外す（bug: slideshow-video-routing-context-crash）
+        playback.unload()
         setAccessibilityLabel("")
     }
 
@@ -128,6 +126,7 @@ final class VideoPreviewView: NSView {
         playerView.translatesAutoresizingMaskIntoConstraints = false
         playerView.controlsStyle = .inline
         playerView.showsFullScreenToggleButton = false
+        playerView.player = playback.player
         addSubview(playerView)
 
         NSLayoutConstraint.activate([

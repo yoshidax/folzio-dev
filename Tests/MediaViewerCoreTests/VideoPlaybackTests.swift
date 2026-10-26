@@ -49,8 +49,9 @@ struct VideoPlaybackTests {
         let (directory, video) = try makeVideo(seconds: 2)
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        let playback = VideoPlayback(asset: AVURLAsset(url: video), loop: true)
-        defer { playback.invalidate() }
+        let playback = VideoPlayback()
+        playback.load(asset: AVURLAsset(url: video), loop: true)
+        defer { playback.unload() }
         let player = playback.player
         let item = try #require(player.currentItem)
         try await waitUntilReady(player)
@@ -72,8 +73,9 @@ struct VideoPlaybackTests {
         let (directory, video) = try makeVideo(seconds: 2)
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        let playback = VideoPlayback(asset: AVURLAsset(url: video), loop: true)
-        defer { playback.invalidate() }
+        let playback = VideoPlayback()
+        playback.load(asset: AVURLAsset(url: video), loop: true)
+        defer { playback.unload() }
         let player = playback.player
         let item = try #require(player.currentItem)
         try await waitUntilReady(player)
@@ -93,8 +95,9 @@ struct VideoPlaybackTests {
         let (directory, video) = try makeVideo(seconds: 2)
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        let playback = VideoPlayback(asset: AVURLAsset(url: video), loop: false)
-        defer { playback.invalidate() }
+        let playback = VideoPlayback()
+        playback.load(asset: AVURLAsset(url: video), loop: false)
+        defer { playback.unload() }
         let player = playback.player
         try await waitUntilReady(player)
 
@@ -105,5 +108,71 @@ struct VideoPlaybackTests {
 
         #expect(player.rate == 0)
         #expect(player.currentTime().seconds > 1.9)
+    }
+
+    /// bug: slideshow-video-routing-context-crash。動画を切り替えるたびに AVPlayer を作り直すと、
+    /// スライドショーで routing context の生成と破棄が繰り返され、CoreMedia 内部の競合で落ちる
+    @Test("動画を載せ替えても AVPlayer は同じインスタンスを使い続ける")
+    func reusesPlayerAcrossLoads() async throws {
+        let (directory, video) = try makeVideo(seconds: 2)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let playback = VideoPlayback()
+        defer { playback.unload() }
+        let player = playback.player
+
+        playback.load(asset: AVURLAsset(url: video), loop: true)
+        let first = try #require(player.currentItem)
+        playback.unload()
+        #expect(player.currentItem == nil)
+        playback.load(asset: AVURLAsset(url: video), loop: false)
+        let second = try #require(player.currentItem)
+
+        #expect(playback.player === player)
+        #expect(second !== first)
+    }
+
+    @Test("載せ替えたアイテムはその時のループ設定に従い、前のアイテムの終端通知で巻き戻らない")
+    func reloadFollowsNewLoopSetting() async throws {
+        let (directory, video) = try makeVideo(seconds: 2)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let playback = VideoPlayback()
+        defer { playback.unload() }
+        let player = playback.player
+
+        playback.load(asset: AVURLAsset(url: video), loop: true)
+        #expect(player.actionAtItemEnd == .none)
+        let first = try #require(player.currentItem)
+
+        playback.load(asset: AVURLAsset(url: video), loop: false)
+        #expect(player.actionAtItemEnd == .pause)
+        try await waitUntilReady(player)
+        await player.seek(to: CMTime(seconds: 1, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+
+        // 前のアイテムのループ監視が残っていれば、ここで新しいアイテムが先頭へ戻る
+        NotificationCenter.default.post(name: AVPlayerItem.didPlayToEndTimeNotification, object: first)
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(player.currentTime().seconds > 0.9)
+
+        playback.load(asset: AVURLAsset(url: video), loop: true)
+        #expect(player.actionAtItemEnd == .none)
+    }
+
+    @Test("unload で再生を止めてアイテムを外す")
+    func unloadStopsAndClearsItem() async throws {
+        let (directory, video) = try makeVideo(seconds: 2)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let playback = VideoPlayback()
+        let player = playback.player
+        playback.load(asset: AVURLAsset(url: video), loop: true)
+        try await waitUntilReady(player)
+        player.play()
+
+        playback.unload()
+
+        #expect(player.rate == 0)
+        #expect(player.currentItem == nil)
     }
 }
