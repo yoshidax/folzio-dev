@@ -16,7 +16,9 @@ final class MainMenu {
     /// NSMenu.delegate は weak のため保持する
     private static let trashTitleReset = TrashMenuTitleReset()
 
-    static func install() {
+    /// `zoomTarget` は表示メニューの「拡大」「縮小」「表示領域に合わせる」の target。
+    /// キー入力先のウインドウに依存せずメインウインドウのプレビューを操作するため、明示的に渡す（FR-135、A-73）
+    static func install(zoomTarget: AppDelegate) {
         let mainMenu = NSMenu()
 
         let appMenuItem = NSMenuItem()
@@ -182,6 +184,48 @@ final class MainMenu {
         fullScreenItem.keyEquivalentModifierMask = [.command, .control]
         fullScreenItem.target = nil
         viewMenu.addItem(fullScreenItem)
+        viewMenu.addItem(.separator())
+
+        // プレビューの表示倍率（FR-135）。⌘+ は `+` の入力に Shift を含む
+        let zoomInItem = NSMenuItem(
+            title: "拡大",
+            action: #selector(AppDelegate.previewZoomIn(_:)),
+            keyEquivalent: "+"
+        )
+        zoomInItem.keyEquivalentModifierMask = [.command]
+        zoomInItem.target = zoomTarget
+        viewMenu.addItem(zoomInItem)
+
+        // Shift なしの ⌘= でも拡大する（A-72）。表示は ⌘+ のままにするため非表示にする。
+        // 非表示の項目は allowsKeyEquivalentWhenHidden を true にしないとキー等価に反応しない
+        let zoomInAlternateItem = NSMenuItem(
+            title: "拡大",
+            action: #selector(AppDelegate.previewZoomIn(_:)),
+            keyEquivalent: "="
+        )
+        zoomInAlternateItem.keyEquivalentModifierMask = [.command]
+        zoomInAlternateItem.target = zoomTarget
+        zoomInAlternateItem.isHidden = true
+        zoomInAlternateItem.allowsKeyEquivalentWhenHidden = true
+        viewMenu.addItem(zoomInAlternateItem)
+
+        let zoomOutItem = NSMenuItem(
+            title: "縮小",
+            action: #selector(AppDelegate.previewZoomOut(_:)),
+            keyEquivalent: "-"
+        )
+        zoomOutItem.keyEquivalentModifierMask = [.command]
+        zoomOutItem.target = zoomTarget
+        viewMenu.addItem(zoomOutItem)
+
+        let zoomToFitItem = NSMenuItem(
+            title: "表示領域に合わせる",
+            action: #selector(AppDelegate.previewZoomToFit(_:)),
+            keyEquivalent: "0"
+        )
+        zoomToFitItem.keyEquivalentModifierMask = [.command]
+        zoomToFitItem.target = zoomTarget
+        viewMenu.addItem(zoomToFitItem)
 
         // 大文字の S で ⇧⌘S になる
         let slideshowItem = NSMenuItem(

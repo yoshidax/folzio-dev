@@ -15,7 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launchToListState = performanceSignposter.beginInterval("LaunchToList")
 
         NSWindow.allowsAutomaticWindowTabbing = false
-        MainMenu.install()
+        MainMenu.install(zoomTarget: self)
 
         let controller = MainWindowController()
         if let splitViewController = controller.window?.contentViewController as? MainSplitViewController {
@@ -55,5 +55,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.showWindow(nil)
         controller.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    // MARK: - プレビューの表示倍率（FR-135）
+    // target を明示し、シート・設定ウインドウ・名前の変更中がキーでも届くようにする（A-73）
+
+    @objc func previewZoomIn(_ sender: Any?) {
+        mainWindowController?.zoomIn()
+    }
+
+    @objc func previewZoomOut(_ sender: Any?) {
+        mainWindowController?.zoomOut()
+    }
+
+    @objc func previewZoomToFit(_ sender: Any?) {
+        mainWindowController?.zoomToFit()
+    }
+}
+
+extension AppDelegate: NSMenuItemValidation {
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        switch menuItem.action {
+        case #selector(previewZoomIn(_:)):
+            return mainWindowController?.zoomAvailability.canZoomIn ?? false
+        case #selector(previewZoomOut(_:)):
+            return mainWindowController?.zoomAvailability.canZoomOut ?? false
+        case #selector(previewZoomToFit(_:)):
+            return mainWindowController?.zoomAvailability.canFit ?? false
+        default:
+            return true
+        }
     }
 }

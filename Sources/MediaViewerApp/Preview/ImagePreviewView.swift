@@ -41,8 +41,20 @@ final class ImagePreviewView: NSView {
     private let doubleClickRecognizer = NSClickGestureRecognizer()
 
     var onDoubleClick: (() -> Void)?
+    /// 画像を表示している／していないが入れ替わったとき（最初のフレーム・画像のクリア）
+    var onDisplayedImageChange: (() -> Void)?
 
-    private var displayedImage: CGImage?
+    private var displayedImage: CGImage? {
+        didSet {
+            guard (oldValue == nil) != (displayedImage == nil) else { return }
+            updateAccessibilityValue()
+            onDisplayedImageChange?()
+        }
+    }
+    /// 表示倍率（FR-133）。frame だけに反映し、contents やアニメーションには触れない
+    private var zoom = PreviewZoom.fit
+
+    var isShowingImage: Bool { displayedImage != nil }
     private var fallbackImage: CGImage?
     private var animatedSource: AnimatedSource?
     private var animationState: AnimationState?
@@ -63,6 +75,8 @@ final class ImagePreviewView: NSView {
     private func setup() {
         wantsLayer = true
         layer = CALayer()
+        // 拡大してビューポートからはみ出した部分を表示しない（FR-133）
+        layer?.masksToBounds = true
 
         contentLayer.contentsGravity = .resize
         contentLayer.magnificationFilter = .trilinear
@@ -125,6 +139,35 @@ final class ImagePreviewView: NSView {
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         needsLayout = true
+    }
+
+    /// 倍率を適用する。`announce` は明示的な操作による変更のときだけ true にし、新しい倍率を読み上げる（FR-138）
+    func applyZoom(_ zoom: PreviewZoom, announce: Bool) {
+        let changed = zoom != self.zoom
+        self.zoom = zoom
+        updateAccessibilityValue()
+        if changed {
+            needsLayout = true
+            layoutSubtreeIfNeeded()
+        }
+        guard announce, changed, isShowingImage else { return }
+        NSAccessibility.post(
+            element: self,
+            notification: .announcementRequested,
+            userInfo: [
+                .announcement: Self.percentText(zoom),
+                .priority: NSAccessibilityPriorityLevel.medium.rawValue,
+            ]
+        )
+    }
+
+    private func updateAccessibilityValue() {
+        // 画像がない状態では倍率を公開しない（FR-138）
+        setAccessibilityValue(isShowingImage ? Self.percentText(zoom) : nil)
+    }
+
+    private static func percentText(_ zoom: PreviewZoom) -> String {
+        "\(zoom.percentage)%"
     }
 
     func showImage(_ image: DecodedImage, fileName: String) {
@@ -300,9 +343,10 @@ final class ImagePreviewView: NSView {
 
         let scale = backingScale
         let pixelContainer = CGSize(width: bounds.width * scale, height: bounds.height * scale)
-        let fitted = FitCalculator.fit(
+        let fitted = FitCalculator.frame(
             imageSize: CGSize(width: image.width, height: image.height),
-            in: pixelContainer
+            in: pixelContainer,
+            zoom: zoom
         )
 
         return CGRect(

@@ -414,7 +414,10 @@ final class FileListViewController: NSViewController {
         let label = NSTextField(labelWithString: "サイズ")
         label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         label.textColor = .secondaryLabelColor
+        label.toolTip = "サムネイルのサイズ（⌃⌘. / ⌃⌘,）"
 
+        sizeSlider.toolTip = "サムネイルのサイズ（⌃⌘. / ⌃⌘,）"
+        sizeSlider.setAccessibilityLabel("サムネイルのサイズ（⌃⌘. / ⌃⌘,）")
         sizeSlider.minValue = ViewSettings.minimumThumbnailSize
         sizeSlider.maxValue = ViewSettings.maximumThumbnailSize
         sizeSlider.doubleValue = initialThumbnailSize
@@ -632,16 +635,19 @@ final class FileListViewController: NSViewController {
         let zoomInItem = NSMenuItem(
             title: "サムネイルを拡大",
             action: #selector(increaseThumbnailSize(_:)),
-            keyEquivalent: "+"
+            keyEquivalent: "."
         )
+        // ⌘+ / ⌘- はプレビューの倍率に使うため、Shift なしで押せる ⌃⌘. / ⌃⌘, にする（FR-135、A-74）
+        zoomInItem.keyEquivalentModifierMask = [.command, .control]
         zoomInItem.target = self
         viewMenu.addItem(zoomInItem)
 
         let zoomOutItem = NSMenuItem(
             title: "サムネイルを縮小",
             action: #selector(decreaseThumbnailSize(_:)),
-            keyEquivalent: "-"
+            keyEquivalent: ","
         )
+        zoomOutItem.keyEquivalentModifierMask = [.command, .control]
         zoomOutItem.target = self
         viewMenu.addItem(zoomOutItem)
 
