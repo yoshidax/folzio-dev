@@ -388,6 +388,124 @@ struct SettingsStoreTests {
         #expect(ViewSettings(showsZipFiles: true).showsZipFiles == true)
     }
 
+    // MARK: - スライドショー（slideshow.*）
+
+    @Test("スライドショーは未設定なら既定値（3 秒・繰り返す・効果なし）")
+    func slideshowDefaults() {
+        withDefaults { defaults in
+            let options = SettingsStore(defaults: defaults).slideshow
+            #expect(options == SlideshowOptions.defaults)
+            #expect(options.intervalSeconds == 3)
+            #expect(options.repeats)
+            #expect(options.transition == .none)
+            #expect(options.interval == .seconds(3))
+        }
+    }
+
+    @Test("スライドショーの設定が往復し、専用キーに書かれる")
+    func slideshowRoundTrips() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+            let options = SlideshowOptions(intervalSeconds: 10, repeats: false, transition: .crossfade)
+            store.slideshow = options
+
+            #expect(SettingsStore(defaults: defaults).slideshow == options)
+            #expect(defaults.object(forKey: "slideshow.intervalSeconds") as? Int == 10)
+            #expect(defaults.object(forKey: "slideshow.repeats") as? Bool == false)
+            #expect(defaults.string(forKey: "slideshow.transition") == "crossfade")
+
+            for effect in SlideshowTransitionEffect.allCases {
+                store.slideshow = SlideshowOptions(intervalSeconds: 1, repeats: true, transition: effect)
+                #expect(store.slideshow.transition == effect)
+            }
+            store.slideshow = SlideshowOptions(intervalSeconds: 3600)
+            #expect(store.slideshow.intervalSeconds == 3600)
+        }
+    }
+
+    @Test("範囲外の間隔で初期化すると 3 秒になる")
+    func slideshowOptionsInitializerRejectsOutOfRangeInterval() {
+        #expect(SlideshowOptions(intervalSeconds: 0).intervalSeconds == 3)
+        #expect(SlideshowOptions(intervalSeconds: 3601).intervalSeconds == 3)
+        #expect(SlideshowOptions(intervalSeconds: -5).intervalSeconds == 3)
+        #expect(SlideshowOptions.intervalRange == 1...3600)
+    }
+
+    @Test("スライドショーの間隔の不正値は 3 秒に戻り、他の項目は保存値のまま")
+    func slideshowInvalidIntervalFallsBackOnly() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+            defaults.set(false, forKey: "slideshow.repeats")
+            defaults.set("zoom", forKey: "slideshow.transition")
+
+            let invalid: [Any] = [0, 3601, -1, 3.5, "10", true, Double.nan, 1e300]
+            for value in invalid {
+                defaults.set(value, forKey: "slideshow.intervalSeconds")
+                let options = store.slideshow
+                #expect(options.intervalSeconds == 3, "value: \(value)")
+                #expect(!options.repeats)
+                #expect(options.transition == .zoom)
+            }
+
+            defaults.set(5.0, forKey: "slideshow.intervalSeconds")
+            #expect(store.slideshow.intervalSeconds == 5)
+        }
+    }
+
+    @Test("スライドショーの繰り返しの不正値は true に戻り、他の項目は保存値のまま")
+    func slideshowInvalidRepeatsFallsBackOnly() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+            defaults.set(20, forKey: "slideshow.intervalSeconds")
+            defaults.set("slide", forKey: "slideshow.transition")
+            defaults.set("no", forKey: "slideshow.repeats")
+
+            let options = store.slideshow
+            #expect(options.repeats)
+            #expect(options.intervalSeconds == 20)
+            #expect(options.transition == .slide)
+        }
+    }
+
+    @Test("スライドショーの効果の不正値は none に戻り、他の項目は保存値のまま")
+    func slideshowInvalidTransitionFallsBackOnly() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+            defaults.set(20, forKey: "slideshow.intervalSeconds")
+            defaults.set(false, forKey: "slideshow.repeats")
+
+            for value in ["fade", "", "Crossfade", 3] as [Any] {
+                defaults.set(value, forKey: "slideshow.transition")
+                let options = store.slideshow
+                #expect(options.transition == .none, "value: \(value)")
+                #expect(options.intervalSeconds == 20)
+                #expect(!options.repeats)
+            }
+        }
+    }
+
+    @Test("スライドショーを保存しても既存のキーは変わらない")
+    func savingSlideshowKeepsOtherSettings() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+            store.viewSettings = ViewSettings(displayMode: .thumbnails, thumbnailSize: 200, showsToolbar: true)
+            store.playback = PlaybackOptions(autoplay: false, loop: false)
+            store.confirmation = ConfirmationOptions(confirmBeforeFileOperations: false)
+            let a = URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)
+            store.favorites = FavoriteFolders(urls: [a], customNames: [a.path: "one"])
+
+            store.slideshow = SlideshowOptions(intervalSeconds: 7, repeats: false, transition: .slide)
+
+            #expect(store.viewSettings.displayMode == .thumbnails)
+            #expect(store.viewSettings.thumbnailSize == 200)
+            #expect(store.viewSettings.showsToolbar)
+            #expect(store.playback == PlaybackOptions(autoplay: false, loop: false))
+            #expect(!store.confirmation.confirmBeforeFileOperations)
+            #expect(store.favorites.urls == [a])
+            #expect(store.favorites.customName(for: a) == "one")
+        }
+    }
+
     private func withDefaults(_ body: (UserDefaults) -> Void) {
         let suiteName = "SettingsStoreTests.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
