@@ -21,6 +21,32 @@ SPECIFY = shutil.which("specify") or str(Path.home() / ".local/bin/specify")
 FAKE_CODEX = '''#!/usr/bin/env python3
 import json, os, pathlib, sys
 pathlib.Path(os.environ["FAKE_ARGV"]).write_text(json.dumps(sys.argv[1:]))
+if os.environ.get("FAKE_PHASED") and sys.argv[2].startswith("$speckit-implement"):
+    import re
+    path = pathlib.Path("specs/test/tasks.md")
+    rows = path.read_text().splitlines()
+    request = []
+    for i, line in enumerate(rows):
+        match = re.match(r"- \\[ \\] (T\\d+) (.*)", line)
+        if not match:
+            continue
+        task_id, description = match.groups()
+        if "[MANUAL]" in description:
+            kind = "design_review" if "design review" in description else "gui"
+            request = [{"task_id": task_id, "kind": kind,
+                        "instructions": "Review task classification" if kind == "design_review" else
+                        "open .build/MediaViewer.app; check 3 panes; report build, OS and device"}]
+            break
+        rows[i] = line.replace("[ ]", "[X]", 1)
+    path.write_text("\\n".join(rows) + "\\n")
+    completed = re.findall(r"^- \\[X\\] (T\\d+)", path.read_text(), re.M)
+    manual = re.findall(r"^- \\[ \\] (T\\d+) \\[MANUAL\\]", path.read_text(), re.M)
+    report = {"status": "waiting_for_manual" if request else "ready_for_verification",
+              "completed_task_ids": completed, "remaining_manual_task_ids": manual,
+              "blockers": [], "summary": "phase result", "manual_requests": request}
+    print(json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": json.dumps(report)}}))
+    print(json.dumps({"type": "turn.completed"}))
+    sys.exit(0)
 if "FAKE_TASKS_TEXT" in os.environ:
     pathlib.Path("specs/test/tasks.md").write_text(os.environ["FAKE_TASKS_TEXT"])
 for event in json.loads(os.environ["FAKE_EVENTS"]):
@@ -33,10 +59,17 @@ def message(text):
     return {"type": "item.completed", "item": {"type": "agent_message", "text": text}}
 
 
-def delivery_result(status="ready_for_verification", completed=None, manual=None, blockers=None):
-    return json.dumps({"status": status, "completed_task_ids": completed or [],
+def delivery_result(status="ready_for_verification", completed=None, manual=None, blockers=None, requests=None):
+    result = {"status": status, "completed_task_ids": completed or [],
                        "remaining_manual_task_ids": manual or [], "blockers": blockers or [],
-                       "summary": "implementation result"})
+                       "summary": "implementation result"}
+    if requests is not None:
+        result["manual_requests"] = requests
+    return json.dumps(result)
+
+
+def manual_request(task_id="T002", kind="gui"):
+    return {"task_id": task_id, "kind": kind, "instructions": "open .build/MediaViewer.app; check 3 panes"}
 
 
 def make_tasks(root, text="- [ ] T001 Implement\n- [ ] T002 [MANUAL] GUI check\n"):
@@ -97,6 +130,31 @@ class CodexBridgeTests(unittest.TestCase):
         result = self.implementation(delivery_result(manual=["T001", "T002"]),
                                      "- [ ] T001 [MANUAL] Implement\n- [ ] T002 [MANUAL] GUI check\n")
         self.assertNotEqual(result.returncode, 0)
+
+    def test_manual_wait_may_leave_dependent_code_unfinished(self):
+        result = self.implementation(delivery_result("waiting_for_manual", manual=["T002"],
+                                                   requests=[manual_request()]))
+        self.assertEqual(result.returncode, sdd.MANUAL_WAIT, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "waiting_for_manual")
+
+    def test_invalid_manual_requests_are_rejected(self):
+        for requests in ([], [manual_request("T001")], [manual_request("T999")],
+                         [manual_request(), manual_request()],
+                         [{**manual_request(), "instructions": ""}],
+                         [{**manual_request(), "kind": "invented"}]):
+            with self.subTest(requests=requests):
+                result = self.implementation(delivery_result("waiting_for_manual", manual=["T002"], requests=requests))
+                self.assertEqual(result.returncode, 1, result.stderr)
+
+    def test_wait_does_not_allow_self_confirming_manual_tasks(self):
+        result = self.implementation(delivery_result("ready_for_verification", completed=["T001", "T002"]),
+                                     "- [X] T001 Implement\n- [X] T002 [MANUAL] GUI check\n")
+        self.assertEqual(result.returncode, 1)
+
+    def test_wait_does_not_hide_real_blockers(self):
+        result = self.implementation(delivery_result("waiting_for_manual", manual=["T002"],
+                                                   blockers=["build failed"], requests=[manual_request()]))
+        self.assertEqual(result.returncode, 1)
 
     def execute(self, events, code=0, args=None):
         self.env.update(FAKE_EVENTS=json.dumps(events), FAKE_EXIT=str(code))
@@ -216,6 +274,150 @@ steps:
         paths = list((self.root / ".specify/workflows/runs").glob("*/state.json"))
         self.assertEqual(len(paths), 1)
         return json.loads(paths[0].read_text())
+
+    def resume_tty(self, run_id, approve_manual=True):
+        """Exercise the same terminal input path as a user, without editing saved state."""
+        import pty
+        import select
+        import time
+        master, slave = pty.openpty()
+        proc = subprocess.Popen(
+            [sys.executable, str(self.root / "scripts/sdd-codex.py"), "resume", run_id],
+            cwd=self.root, env=self.env, stdin=slave, stdout=slave, stderr=slave)
+        os.close(slave)
+        output = b""
+        consumed = 0
+        deadline = time.monotonic() + 25
+        try:
+            while time.monotonic() < deadline:
+                if select.select([master], [], [], 0.1)[0]:
+                    try:
+                        output += os.read(master, 65536)
+                    except OSError:
+                        break
+                    fresh = output[consumed:]
+                    for marker, answer in (
+                        (b"Choose", b"1\n"),
+                        ("確認結果: ".encode(), b"build=test; macOS=test; device=test; all checks pass\n" if approve_manual else b"\n"),
+                        (b"[approve /", b"approve\n"),
+                    ):
+                        if marker in fresh:
+                            os.write(master, answer)
+                            consumed = len(output)
+                            break
+                if proc.poll() is not None:
+                    break
+            return proc.wait(timeout=2), output.decode(errors="replace")
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            os.close(master)
+
+    def install_phased_workflow(self, tasks, review=False):
+        make_tasks(self.root, tasks)
+        self.env["FAKE_PHASED"] = "1"
+        self.install_workflow(('''  - id: review_gate
+    type: gate
+    message: Review design and manual task classification
+    options: [approve, reject]
+    on_reject: retry
+''' if review else '') + '''  - id: delivery
+    type: do-while
+    condition: false
+    max_iterations: 1
+    steps:
+      - id: implement
+        command: speckit.implement
+        capture: true
+      - id: verify
+        type: shell
+        run: "touch verification-ran"
+''')
+
+    def test_manual_pause_status_and_two_phase_resume(self):
+        self.install_phased_workflow("- [ ] T001 Implement\n- [ ] T002 [MANUAL] GUI first\n"
+                                    "- [ ] T003 Record and commit\n- [ ] T004 [MANUAL] GUI second\n- [ ] T005 Finish\n")
+        result = self.run_runner("run", "phased implementation")
+        state = self.state()
+        self.assertEqual(result.returncode, sdd.MANUAL_WAIT, result.stderr + result.stdout)
+        self.assertIn("手動確認待ち", result.stdout)
+        self.assertFalse((self.root / "verification-ran").exists())
+        status = self.run_runner("status", state["run_id"])
+        self.assertIn("Status: waiting_for_manual", status.stdout)
+        self.assertIn("T002", status.stdout)
+        self.assertNotIn("T004", status.stdout)
+        code, output = self.resume_tty(state["run_id"])
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.state()["status"], "completed")
+        self.assertTrue(all(task["checked"] for task in sdd.read_tasks(self.root).values()))
+        self.assertTrue((self.root / "verification-ran").exists())
+        receipts = (self.root / ".specify/workflows/runs" / state["run_id"] / "manual-receipts.jsonl").read_text().splitlines()
+        self.assertEqual([json.loads(line)["manual_requests"][0]["task_id"] for line in receipts], ["T002", "T004"])
+        self.assertIn("manual-receipts.jsonl", json.loads((self.root / "argv.json").read_text())[1])
+
+    def test_review_approval_is_reused_but_gui_still_requires_report(self):
+        self.install_phased_workflow("- [ ] T001 [MANUAL] design review\n- [ ] T002 Implement\n"
+                                    "- [ ] T003 [MANUAL] GUI smoke\n- [ ] T004 Record\n", review=True)
+        self.run_runner("run", "review transfer")
+        state = self.state()
+        code, output = self.resume_tty(state["run_id"], approve_manual=False)
+        self.assertEqual(code, sdd.MANUAL_WAIT, output)
+        tasks = sdd.read_tasks(self.root)
+        self.assertTrue(tasks["T001"]["checked"])
+        self.assertTrue(tasks["T002"]["checked"])
+        self.assertFalse(tasks["T003"]["checked"])
+        self.assertFalse(tasks["T004"]["checked"])
+        self.assertIn("保存済み review_gate", output)
+        self.assertIn("approve 済み", json.loads((self.root / "argv.json").read_text())[1])
+        receipts = (self.root / ".specify/workflows/runs" / state["run_id"] / "manual-receipts.jsonl").read_text().splitlines()
+        self.assertEqual(len(receipts), 1)
+        self.assertEqual(json.loads(receipts[0])["source"], "review_gate")
+
+    def test_changed_tasks_cannot_consume_old_manual_confirmation(self):
+        self.install_phased_workflow("- [ ] T001 Implement\n- [ ] T002 [MANUAL] GUI smoke\n- [ ] T003 Record\n")
+        self.run_runner("run", "stale manual request")
+        path = self.root / "specs/test/tasks.md"
+        path.write_text(path.read_text().replace("GUI smoke", "GUI changed"))
+        original = path.read_bytes()
+        result = self.run_runner("resume", self.state()["run_id"])
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("tasks.md が変更", result.stdout)
+        self.assertEqual(path.read_bytes(), original)
+        refreshed = self.run_runner("resume", self.state()["run_id"], "--refresh-manual")
+        self.assertEqual(refreshed.returncode, sdd.MANUAL_WAIT, refreshed.stderr + refreshed.stdout)
+        self.assertEqual(path.read_bytes(), original)
+        self.assertEqual(len(list((self.root / ".specify/workflows/runs/attempts").rglob("manual-pending-before-refresh.json"))), 1)
+
+    def test_changed_app_cannot_consume_old_manual_confirmation(self):
+        self.install_phased_workflow("- [ ] T001 Implement\n- [ ] T002 [MANUAL] GUI smoke\n- [ ] T003 Record\n")
+        self.run_runner("run", "changed build")
+        binary = self.root / ".build/MediaViewer.app/Contents/MacOS/MediaViewer"
+        binary.parent.mkdir(parents=True)
+        binary.write_bytes(b"new build")
+        result = self.run_runner("resume", self.state()["run_id"])
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("対象アプリが変更", result.stdout)
+        self.assertFalse(sdd.read_tasks(self.root)["T002"]["checked"])
+
+    def test_review_approval_cannot_confirm_gui_disguised_as_design_review(self):
+        self.install_phased_workflow("- [ ] T001 [MANUAL] design review open .build/MediaViewer.app\n- [ ] T002 Record\n", review=True)
+        self.run_runner("run", "GUI cannot use review approval")
+        state = self.state()
+        code, output = self.resume_tty(state["run_id"], approve_manual=False)
+        self.assertEqual(code, sdd.MANUAL_WAIT, output)
+        self.assertFalse(sdd.read_tasks(self.root)["T001"]["checked"])
+
+    def test_a_wait_cannot_mask_a_failed_codex_process(self):
+        self.install_phased_workflow("- [ ] T001 Implement\n- [ ] T002 [MANUAL] GUI smoke\n- [ ] T003 Record\n")
+        self.env.pop("FAKE_PHASED")
+        self.env["FAKE_EVENTS"] = json.dumps([message(delivery_result("waiting_for_manual", manual=["T002"],
+                                                                    requests=[manual_request()])), {"type": "turn.completed"}])
+        self.env["FAKE_EXIT"] = "9"
+        result = self.run_runner("run", "failed child")
+        self.assertNotEqual(result.returncode, sdd.MANUAL_WAIT)
+        self.assertNotIn("手動確認待ち", result.stdout)
+        self.assertFalse(sdd.manual_path(self.root, self.state()).exists())
 
     def test_run_pauses_at_gate_and_status_reports_own_run(self):
         result = self.run_runner("run", "test change")

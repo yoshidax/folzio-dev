@@ -1,12 +1,25 @@
 {
   "type": "object",
   "properties": {
-    "status": { "type": "string", "enum": ["ready_for_verification", "blocked", "failed"] },
+    "status": { "type": "string", "enum": ["ready_for_verification", "waiting_for_manual", "blocked", "failed"] },
     "completed_task_ids": { "type": "array", "items": { "type": "string" } },
     "remaining_manual_task_ids": { "type": "array", "items": { "type": "string" } },
     "blockers": { "type": "array", "items": { "type": "string" } },
-    "summary": { "type": "string" }
+    "summary": { "type": "string" },
+    "manual_requests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task_id": { "type": "string" },
+          "kind": { "type": "string", "enum": ["design_review", "gui", "other"] },
+          "instructions": { "type": "string" }
+        },
+        "required": ["task_id", "kind", "instructions"],
+        "additionalProperties": false
+      }
+    }
   },
-  "required": ["status", "completed_task_ids", "remaining_manual_task_ids", "blockers", "summary"],
+  "required": ["status", "completed_task_ids", "remaining_manual_task_ids", "blockers", "summary", "manual_requests"],
   "additionalProperties": false
 }

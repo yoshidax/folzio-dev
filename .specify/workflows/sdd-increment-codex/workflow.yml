@@ -2,7 +2,7 @@ schema_version: "1.0"
 workflow:
   id: "sdd-increment-codex"
   name: "SDD increment (Codex)"
-  version: "0.2.0"
+  version: "0.3.0"
   author: "igachan"
   # command / prompt の手順で使う integration の既定値。指定しないと prompt の手順が integration なしで失敗する
   integration: "codex"
@@ -184,6 +184,8 @@ steps:
           {{ steps.analyze.output.stdout }}
 
           spec / plan / tasks の差分（git diff）も確認してください。
+          [MANUAL] の独立性・ID直後の分類・文書作成との分離・依存順・実装中の分類固定も確認してください。
+          approve はこの設計レビューを求める手動タスクの確認報告として記録します。GUI確認の代わりにはしません。
             approve: 実装へ進む
             fix:     レポートの推奨どおりに直して、もう一度 analyze する
             reject:  一時停止（直してから resume すると、このレビューからやり直す）
@@ -223,7 +225,8 @@ steps:
     condition: "{{ steps.converge_check.output.stdout }}"
     steps:
       # ブリッジ内で構造化結果と tasks.md を照合してから成功にする。
-      # blocked の場合、この工程自体が failed になり、resume で再実行される。
+      # waiting_for_manual はランナーが報告を受領し、同じ工程を resume する。
+      # Spec Kit 内では非0の中断として保存するが、実失敗の blocked/failed とは区別する。
       - id: implement
         command: speckit.implement
         capture: true
@@ -234,8 +237,10 @@ steps:
             AGENTS.md の規約に従い、作業中の feature の tasks.md で進捗を管理してください。
             GUI の起動確認が必要なタスクは実施せず、未チェックのまま残してください。
             GUI は起動しないでください。Phase の完了コミットはユーザーの GUI 確認後に行います。
-            必須チェックリストが未完了、権限が不足、または人の判断が必要な場合は、
-            推測で完了扱いにせず、構造化結果の status を blocked にして blockers に理由を残してください。
+            依存順で次に実施できる [MANUAL] の確認が必要なら waiting_for_manual とし、
+            manual_requests に対象ID・種別・実行コマンド・確認点・必要な報告情報を返してください。
+            後続の記録・コミット等が残っていても、その確認を飛ばさないでください。
+            必須チェックリスト未完了、権限不足、未決の判断は blocked とし blockers に理由を残してください。
             [MANUAL] は事前にレビューした手動確認タスクだけに使い、実装中に追加・変更しないでください
 
       # AGENTS.md の Phase の検証ゲート 1〜3 と、起動スモーク用の .app の作成
@@ -244,28 +249,21 @@ steps:
         timeout: 3600
         run: python3 scripts/sdd-codex.py verify
 
+      # 各 Phase の GUI/VoiceOver/性能確認は implement の中断時にランナーが受領する。
+      # 一括の approve で未実施の手動タスクをまとめて完了にしない。
       - id: notify_gui
         type: shell
-        run: scripts/sdd-notify.sh "GUI の起動確認待ち"
+        run: scripts/sdd-notify.sh "最終ビルドの起動確認待ち"
 
       - id: gui_smoke
         type: gate
         message: |
-          古い MediaViewer を終了してから `open .build/MediaViewer.app` で起動し、tasks.md の未チェックの
-          検証タスクが指す quickstart.md のシナリオを確認してください。問題がなければ approve してください。
-          問題があれば reject で一時停止し、直して `scripts/make-app.sh` を実行してから resume してください（この確認からやり直します）。
+          最終の自動検証で作成したアプリを確認します。古い MediaViewer を終了してから
+          `open .build/MediaViewer.app` を実行し、3ペインが表示されることを確認して approve してください。
+          Phase途中の手動タスクはランナーが個別に報告を受領します。この承認で未実施タスクを完了にしません。
+          問題があれば reject で停止し、修正と自動検証後に resume してください。
         options: [approve, reject]
         on_reject: retry
-
-      - id: record
-        type: prompt
-        timeout: 1200
-        prompt: |
-          ユーザーが GUI の起動確認を終え、問題がないと報告しました。作業中の feature の tasks.md の未チェックの検証タスク（GUI 確認を含むもの）
-          について、その feature ディレクトリの checklists/validation.md（なければ specs/001-three-pane-media-viewer/checklists/validation.md の
-          形式に倣って作る）に結果（実行日、OS、確認項目、合否）を記録し、そのタスクを [X] にして、tasks.md と validation.md をコミットしてください。
-          以前の Phase から残っている、今回の対象ではない未チェックのタスクには触れないでください。
-          GUI 確認前に残した実装の変更も含め、対象ファイルを明示して Phase 単位でコミットしてください。
 
       - id: converge
         command: speckit.converge
