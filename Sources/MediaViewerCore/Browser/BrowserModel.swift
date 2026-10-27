@@ -4,6 +4,9 @@ import Observation
 /// `BrowserModel` が場所を変えたときの同期の通知（R70）
 public enum LocationEvent: Sendable, Equatable {
     case navigated(leavingFocus: URL?)
+    /// 検索結果のフォルダの行を開き、検索結果の表示を終えた（FR-113・140、EC-99・EC-100）。
+    /// `HistoryNavigator` は表示の状態を現在の履歴へ反映してから、記録の要否を判定する
+    case openedSearchResultFolder(leavingFocus: URL?)
     case relocated(vanished: [URL])
     case notFound(HistoryLocation)
 }
@@ -129,6 +132,9 @@ public final class BrowserModel {
     /// ツリーのルート（ホーム・ボリューム）。通常のフォルダの `..` と ⌘↑ の戻る先を決める（R30）
     private var navigationRoots: [URL] = []
     private var treeSyncCounter = 0
+    /// 検索結果のフォルダを開いたときのツリー同期の依頼の ID。同期が完了したときに、選択できた場所を
+    /// 最後に選択していたフォルダとして保存する（EC-102・R10）。次のナビゲーションで消す
+    private var pendingSearchTreeSyncID: Int?
 
     /// 表示中の zip の索引。zip の外、または開いている途中・開けなかったときは nil
     private var archiveIndex: ArchiveIndex?
@@ -147,7 +153,7 @@ public final class BrowserModel {
     /// 今の検索の条件。名前の変更で新しい場所を追加で列挙するのに使う（R63）
     private var searchPattern: SearchPattern?
     /// 今の検索の間に行われたフォルダの名前の変更。後から届いた結果の URL を順に付け替える（R63）
-    private var searchRenames: [RenamedFolder] = []
+    private var searchLedger = SearchRenameLedger()
     /// 今の検索で終わっていない列挙の数。0 になったら検索を終える（R63）
     private var activeSearchStreams = 0
     /// 開いている zip（開いている途中を含む）を開いた後のフォルダの名前の変更。索引の行は開いたときの zip の場所で
@@ -162,6 +168,7 @@ public final class BrowserModel {
     /// 場所の変更の理由（R70）。通知の `leavingFocus` は呼び出しの直前に読む
     private enum LocationChangeReason {
         case navigated
+        case openedSearchResultFolder
         case relocated(vanished: [URL])
     }
 
@@ -203,8 +210,18 @@ public final class BrowserModel {
 
     private func selectFolder(_ url: URL, reason: LocationChangeReason) async {
         let leavingFocus = selection.focused
+        let openedFromSearchResults: Bool
+        if case .openedSearchResultFolder = reason {
+            openedFromSearchResults = true
+        } else {
+            openedFromSearchResults = false
+        }
         resetForNavigation()
         leaveSearchIfNeeded()
+        if openedFromSearchResults {
+            // 検索結果から開いた依頼だけ、同期の完了で保存先の更新を受け付ける（EC-102）
+            pendingSearchTreeSyncID = treeSyncRequest?.id
+        }
         archiveIndex = nil
         showsNotFound = false
         listing = FolderListing(folder: url, files: [], state: .loading)
@@ -230,6 +247,8 @@ public final class BrowserModel {
         switch reason {
         case .navigated:
             onLocationEvent?(.navigated(leavingFocus: leavingFocus))
+        case .openedSearchResultFolder:
+            onLocationEvent?(.openedSearchResultFolder(leavingFocus: leavingFocus))
         case let .relocated(vanished):
             onLocationEvent?(.relocated(vanished: vanished))
         }
@@ -251,15 +270,20 @@ public final class BrowserModel {
         startSearchStream(in: root, matching: pattern)
     }
 
-    /// 列挙を1つ始める。すべての列挙が終わったときに検索を終える（R63）
-    private func startSearchStream(in root: URL, matching pattern: SearchPattern) {
+    /// 列挙を1つ始める。すべての列挙が終わったときに検索を終える（R63）。照合の記録は列挙ごとに作って台帳に登録し、
+    /// 検索を止めたら台帳ごと捨てる（R2・R3）
+    private func startSearchStream(in root: URL, matching pattern: SearchPattern, matchesRoot: Bool = false) {
         let generation = navigationGeneration
-        let stream = searcher.search(in: root, matching: pattern)
+        let visits = SearchVisitLog()
+        let streamIndex = searchLedger.addStream(visits: visits)
+        let stream = searcher.search(
+            SearchRequest(root: root, pattern: pattern, matchesRoot: matchesRoot, visits: visits)
+        )
         activeSearchStreams += 1
         let task = Task { [weak self] in
             for await batch in stream {
                 guard let self, generation == self.navigationGeneration else { return }
-                self.appendSearchResults(batch)
+                self.appendSearchResults(batch, fromStream: streamIndex)
             }
             guard let self, !Task.isCancelled, generation == self.navigationGeneration else { return }
             self.activeSearchStreams -= 1
@@ -368,15 +392,21 @@ public final class BrowserModel {
             settings.viewSettings = viewSettings
         }
 
-        // 検索中は、表示中の行に関係がなくても、起点の配下の名前の変更なら後から届く結果に関わる
+        // 検索中は、表示中の行に関係がなくても、起点の配下の名前の変更なら後から届く結果に関わる。
+        // 照合済みだったかで、新しい場所を起点そのものとして照合するかを決める（EC-94、R2・R3）
         var additionalSearchRoot: URL?
+        var additionalMatchesRoot = false
         if listing.search?.phase == .searching, let previousRoot {
             if let rebasedRoot = renamed.rebase(previousRoot) {
-                // 起点そのものか祖先の名前を変えた。新しい起点を列挙し直す
+                // 起点そのものか祖先の名前を変えた。起点は行にしないため、新しい起点を列挙し直す
+                searchLedger.recordRename(renamed, visited: true)
                 additionalSearchRoot = rebasedRoot
             } else if RenamedFolder(from: previousRoot, to: previousRoot).rebase(oldURL) != nil {
                 // 起点の配下のフォルダ。そのフォルダの新しい場所だけを列挙する
+                let visited = searchLedger.hasVisited(oldURL)
+                searchLedger.recordRename(renamed, visited: visited)
                 additionalSearchRoot = newURL
+                additionalMatchesRoot = !visited
             }
         }
 
@@ -419,8 +449,7 @@ public final class BrowserModel {
         }
 
         if let additionalSearchRoot, let pattern = searchPattern {
-            searchRenames.append(renamed)
-            startSearchStream(in: additionalSearchRoot, matching: pattern)
+            startSearchStream(in: additionalSearchRoot, matching: pattern, matchesRoot: additionalMatchesRoot)
         }
     }
 
@@ -439,7 +468,8 @@ public final class BrowserModel {
             if let newKey = keyRenamed.rebase(URL(fileURLWithPath: key, isDirectory: true))?.path {
                 index[newKey, default: []].formUnion(urls.map { moved[$0] ?? renamed.rebaseOrSelf($0) })
             } else {
-                index[key, default: []].formUnion(urls)
+                // キーが変わらない行でも、名前を変えたフォルダ自身の行は URL が変わる（R4）
+                index[key, default: []].formUnion(urls.map { moved[$0] ?? $0 })
             }
         }
         searchResultsByFolder = index
@@ -486,16 +516,26 @@ public final class BrowserModel {
         case .parent:
             await goToEnclosingLevel()
         case .folder:
-            await navigateToFolder(file.url, selecting: nil, reason: .navigated)
+            // 検索結果から開いたときは、履歴の記録の前に表示の状態を現在の履歴へ反映する（FR-113・EC-99）
+            await navigateToFolder(
+                file.url,
+                selecting: nil,
+                reason: isShowingSearchResults ? .openedSearchResultFolder : .navigated
+            )
         case .media:
             break
         }
     }
 
     /// 表示中のフォルダ（zip の中なら zip を含むフォルダ）自身か祖先をゴミ箱に入れたときに、親へ移る。
-    /// `treeSyncRequest` を出す（FR-079）。移ったら true、該当しなければ何もせず false
+    /// `treeSyncRequest` を出す（FR-079）。移ったら true、該当しなければ何もせず false。
+    ///
+    /// 検索結果の一覧から（`origin: .fileList`）のゴミ箱では、選択した行が検索前のフォルダの祖先になることがある。
+    /// そのときも検索結果の表示を続け、検索前のフォルダが消えたことは表示を終えたときに知らせる（EC-101）。
+    /// ツリーから（`origin: .tree`）は従来どおり親へ移る
     @discardableResult
-    public func leaveTrashedFolders(_ trashed: [URL]) async -> Bool {
+    public func leaveTrashedFolders(_ trashed: [URL], origin: OperationOrigin = .tree) async -> Bool {
+        if origin == .fileList, isShowingSearchResults { return false }
         guard let parent = FolderNavigation.folderToShow(
             afterTrashing: trashed,
             showing: listing.folder,
@@ -503,6 +543,31 @@ public final class BrowserModel {
         ) else { return false }
         await navigateToFolder(parent, selecting: nil, reason: .relocated(vanished: trashed))
         return true
+    }
+
+    /// 検索結果から開いたフォルダのツリー同期の完了を受け取る（FR-140、EC-102、research.md R10）。
+    /// 検索結果から開いた依頼のまま、一覧がそのフォルダを表示していて、選択できた場所がそのフォルダ自身か
+    /// 祖先（標準化した pathComponents で比較）であるときだけ、最後に選択していたフォルダを選択先にする。
+    /// 一覧・履歴・フォーカスは変えず、ディスクも読まない。古い依頼・重複・通常の一覧や履歴からの同期は受け付けない
+    public func completeSearchResultTreeSync(_ request: TreeSyncRequest, selectedFolder: URL) {
+        guard let pending = pendingSearchTreeSyncID,
+              pending == request.id,
+              treeSyncRequest == request,
+              listing.folder.standardizedFileURL == request.folder.standardizedFileURL,
+              !isShowingSearchResults,
+              listing.archive == nil,
+              !showsNotFound else { return }
+        let selectedComponents = selectedFolder.standardizedFileURL.pathComponents
+        let targetComponents = request.folder.standardizedFileURL.pathComponents
+        guard selectedComponents.count <= targetComponents.count,
+              Array(targetComponents.prefix(selectedComponents.count)) == selectedComponents else { return }
+
+        pendingSearchTreeSyncID = nil
+        var viewSettings = settings.viewSettings
+        if viewSettings.lastFolder?.standardizedFileURL != selectedFolder.standardizedFileURL {
+            viewSettings.lastFolder = selectedFolder
+            settings.viewSettings = viewSettings
+        }
     }
 
     /// 1つ上の階層へ。zip の最上位からはフォルダの一覧へ戻る（FR-070）。zip の外では親フォルダへ戻り、
@@ -821,7 +886,8 @@ public final class BrowserModel {
         }
         searchTasks.removeAll()
         searchPattern = nil
-        searchRenames.removeAll()
+        searchLedger = SearchRenameLedger()
+        pendingSearchTreeSyncID = nil
         activeSearchStreams = 0
         searchResultsByFolder.removeAll()
         previewGeneration += 1
@@ -1117,16 +1183,15 @@ public final class BrowserModel {
         }
     }
 
-    /// 届いたバッチを現在の並べ替えで並べてから、並べ替え済みの全件にマージする（R36）
-    private func appendSearchResults(_ incoming: [MediaFile]) {
+    /// 届いたバッチを現在の並べ替えで並べてから、並べ替え済みの全件にマージする（R36）。
+    /// 名前の変更の後は、その列挙を始めた後の変更を順に当てて新しい場所にし、追加の列挙と重なる結果を捨てる（R63）
+    private func appendSearchResults(_ incoming: [MediaFile], fromStream index: Int) {
         guard isShowingSearchResults, !incoming.isEmpty else { return }
         var batch = incoming
-        if !searchRenames.isEmpty {
-            // 名前の変更より前に列挙した結果を新しい場所にし、追加の列挙と重なる結果を捨てる（R63）
+        if !searchLedger.isEmpty {
             var seen = Set<String>()
             batch = incoming.compactMap { file in
-                var moved = file
-                moved.url = searchRenames.reduce(file.url) { $1.rebaseOrSelf($0) }
+                guard let moved = searchLedger.place(file, fromStream: index) else { return nil }
                 let path = moved.url.standardizedFileURL.path
                 let listed = searchResultsByFolder[Self.searchFolderKey(moved.url)]?
                     .contains { $0.standardizedFileURL.path == path } == true

@@ -186,6 +186,31 @@ struct DirectoryListerTests {
         #expect(folderURLs == subfolders)
     }
 
+    @Test("folderRow は mediaFiles のフォルダの行と同じ値を作る（FR-139）")
+    func folderRowMatchesListedFolder() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let sub = root.appendingPathComponent("sub", isDirectory: true)
+        try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
+        try ImageFixtures.jpeg(at: root.appendingPathComponent("a.jpg"), width: 8, height: 8)
+
+        let listed = try #require(try await DirectoryLister().mediaFiles(in: root).first { $0.name == "sub" })
+        let creationDate = try #require(listed.creationDate)
+        let row = DirectoryLister.folderRow(at: sub, creationDate: creationDate)
+
+        // contentsOfDirectory は起点の /var を /private/var に解決するため、標準化したパスで比べる
+        #expect(row.url.standardizedFileURL == listed.url.standardizedFileURL)
+        #expect(row.name == listed.name)
+        #expect(row.kind == .folder)
+        #expect(row.kind == listed.kind)
+        #expect(row.typeDescription == "フォルダ")
+        #expect(row.typeDescription == listed.typeDescription)
+        #expect(row.creationDate == listed.creationDate)
+        #expect(row.fileSize == 0)
+        #expect(row.fileSize == listed.fileSize)
+    }
+
     @Test("subfolders と hasSubfolders は zip ファイルを数えない")
     func subfolderQueriesIgnoreZipFiles() async throws {
         let root = try makeTemporaryDirectory()

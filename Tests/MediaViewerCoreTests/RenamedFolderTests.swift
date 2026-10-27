@@ -25,6 +25,20 @@ struct RenamedFolderTests {
         )
     }
 
+    @Test("reversed は新しい場所から元の場所へ付け替える")
+    func reversedRebasesBack() {
+        let reversed = renamed.reversed
+        #expect(reversed.from.path == "/tmp/r/Album/2025b")
+        #expect(reversed.to.path == "/tmp/r/Album/2025")
+        #expect(reversed.rebase(URL(fileURLWithPath: "/tmp/r/Album/2025b"))?.path == "/tmp/r/Album/2025")
+        #expect(
+            reversed.rebase(URL(fileURLWithPath: "/tmp/r/Album/2025b/Trip/a.jpg"))?.path
+                == "/tmp/r/Album/2025/Trip/a.jpg"
+        )
+        #expect(reversed.rebase(URL(fileURLWithPath: "/tmp/r/Album/2025")) == nil)
+        #expect(renamed.reversed.reversed.from.path == renamed.from.path)
+    }
+
     @Test("名前の前方が同じ兄弟のフォルダは付け替えない", arguments: [
         "/tmp/r/Album/20250/a.jpg",
         "/tmp/r/Album/2025b/a.jpg",

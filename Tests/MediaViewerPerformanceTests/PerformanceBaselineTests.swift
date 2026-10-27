@@ -295,14 +295,24 @@ struct PerformanceBaselineTests {
         #expect(hideElapsed < .milliseconds(200), "非表示への切り替えは 0.2 秒以内 (実測: \(hideElapsed))")
     }
 
-    @Test("10,000 件の検索結果での didRenameFolder が 0.1 秒以内")
+    @Test("10,000 件の検索結果での didRenameFolder が 0.1 秒以内（フォルダの行を含む）")
     @MainActor
     func renameFolderWithHugeSearchResultsWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
 
         try FixtureSets.huge(in: directory, count: 10_000)
-        let folder = directory.appendingPathComponent("huge", isDirectory: true)
+        // 名前を変えるフォルダ自身の行と、ほかのフォルダの行（100 件）を結果に含める（R4・R9）
+        let seeded = directory.appendingPathComponent("huge", isDirectory: true)
+        for index in 0 ..< 100 {
+            try FileManager.default.createDirectory(
+                at: seeded.appendingPathComponent(String(format: "img-folder-%03d", index), isDirectory: true),
+                withIntermediateDirectories: true
+            )
+        }
+        let folder = directory.appendingPathComponent("img-huge", isDirectory: true)
+        try FileManager.default.moveItem(at: seeded, to: folder)
+        let expectedCount = 10_000 + 1 + 100
 
         let suite = "PerformanceBaselineTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -318,9 +328,13 @@ struct PerformanceBaselineTests {
         model.startSearch(try #require(SearchPattern(keyword: "img")), root: directory)
         let finished = await waitUntil(timeout: .seconds(30)) { model.listing.search?.phase == .finished }
         #expect(finished, "検索が終わること")
-        #expect(model.listing.search?.totalCount == 10_000, "10,000 件 (実際: \(model.listing.search?.totalCount ?? -1))")
+        #expect(
+            model.listing.search?.totalCount == expectedCount,
+            "10,101 件 (実際: \(model.listing.search?.totalCount ?? -1))"
+        )
+        #expect(model.listing.files.filter { $0.kind == .folder }.count == 101, "フォルダの行は 101 件")
         // 負荷の高いマシンでの外れ値で落ちないよう、名前を行き来して3回測り、中央値で判定する
-        let names = ["huge2", "huge", "huge2"]
+        let names = ["img-huge2", "img-huge", "img-huge2"]
         var current = folder
         var samples: [Duration] = []
         for name in names {
@@ -331,12 +345,21 @@ struct PerformanceBaselineTests {
             model.didRenameFolder(from: current, to: next)
             samples.append(ContinuousClock.now - start)
 
-            let moved = model.listing.files.allSatisfy { $0.url.deletingLastPathComponent().lastPathComponent == name }
-            #expect(moved, "すべての結果が新しい場所（\(name)）になること")
+            let mediaMoved = model.listing.files
+                .filter(\.kind.isMedia)
+                .allSatisfy { $0.url.deletingLastPathComponent().lastPathComponent == name }
+            #expect(mediaMoved, "すべてのメディアの行が新しい場所（\(name)）になること")
+            // 名前を変えたフォルダ自身の行は、新しい URL と名前になる
+            let renamedRow = model.listing.files.first {
+                $0.kind == .folder && $0.url.deletingLastPathComponent().standardizedFileURL == directory.standardizedFileURL
+            }
+            #expect(renamedRow?.name == name, "フォルダの行の名前が \(name) になること")
+            #expect(renamedRow?.url.standardizedFileURL.path == next.standardizedFileURL.path)
+            #expect(model.listing.files.filter { $0.kind == .folder }.count == 101, "ほかのフォルダの行は残ること")
             current = next
         }
         let median = samples.sorted()[1]
-        print("[perf] didRenameFolder 10,000 search results: \(samples), median \(median)")
+        print("[perf] didRenameFolder 10,000 search results with folders: \(samples), median \(median)")
         #expect(median < .milliseconds(100), "名前の変更の付け替えは 0.1 秒以内 (中央値: \(median)、実測: \(samples))")
     }
 
@@ -635,6 +658,56 @@ struct PerformanceBaselineTests {
         print("[perf] search 10,000 files: \(elapsed)")
     }
 
+    @Test("フォルダ名も照合する 10,000 ファイルの階層の検索が 3 秒以内（SC-054）")
+    func searchingFoldersAndFilesWithinBudget() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let templateURL = directory.appendingPathComponent("template.jpg")
+        try ImageFixtures.jpeg(at: templateURL, width: 8, height: 8)
+        let template = try Data(contentsOf: templateURL)
+        try FileManager.default.removeItem(at: templateURL)
+        // SC-016 と同じ 100 フォルダ × 100 ファイル。フォルダ名の半数（50 個）がキーワードを含む
+        let root = directory.appendingPathComponent("tree", isDirectory: true)
+        for folderIndex in 0 ..< 100 {
+            let folderName = folderIndex.isMultiple(of: 2)
+                ? String(format: "cat-folder-%03d", folderIndex)
+                : String(format: "folder-%03d", folderIndex)
+            let folder = root.appendingPathComponent(folderName, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            for fileIndex in 0 ..< 100 {
+                let fileName = fileIndex.isMultiple(of: 2)
+                    ? String(format: "cat_%03d.jpg", fileIndex)
+                    : String(format: "dog_%03d.jpg", fileIndex)
+                try template.write(to: folder.appendingPathComponent(fileName))
+            }
+        }
+
+        let pattern = try #require(SearchPattern(keyword: "cat"))
+        let start = ContinuousClock.now
+        var folderCount = 0
+        var fileCount = 0
+        var matchingFolderNames: [String] = []
+        for await batch in FileNameSearcher().search(in: root, matching: pattern) {
+            for file in batch {
+                if file.kind == .folder {
+                    folderCount += 1
+                    matchingFolderNames.append(file.name)
+                } else if file.kind.isMedia {
+                    fileCount += 1
+                }
+            }
+        }
+        let elapsed = ContinuousClock.now - start
+
+        #expect(folderCount == 50, "一致するフォルダは 50 件 (実際: \(folderCount))")
+        #expect(fileCount == 5_000, "一致するファイルは 5,000 件 (実際: \(fileCount))")
+        // folder-%03d は cat を含まないため、SC-016 の検索（ファイルだけの 5,000 件）は変わらない
+        #expect(!matchingFolderNames.contains { $0.hasPrefix("folder-") })
+        #expect(elapsed < .seconds(3), "フォルダも照合する 10,000 ファイルの検索は 3 秒以内 (実測: \(elapsed))")
+        print("[perf] search 10,000 files with folders: \(elapsed), folders \(folderCount), files \(fileCount)")
+    }
+
     @Test("10,000 件への 256 件のマージが 0.05 秒以内（FR-085）")
     @MainActor
     func mergingBatchIntoTenThousandWithinBudget() async throws {
@@ -770,7 +843,7 @@ private final class StreamingSearcher: FileNameSearching, @unchecked Sendable {
     private let lock = NSLock()
     private var continuation: AsyncStream<[MediaFile]>.Continuation?
 
-    func search(in root: URL, matching pattern: SearchPattern) -> AsyncStream<[MediaFile]> {
+    func search(_ request: SearchRequest) -> AsyncStream<[MediaFile]> {
         let (stream, continuation) = AsyncStream.makeStream(of: [MediaFile].self)
         lock.withLock { self.continuation = continuation }
         return stream

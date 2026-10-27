@@ -656,8 +656,6 @@ struct HistoryNavigatorTests {
         let pattern = try #require(SearchPattern(keyword: "photo"))
         env.model.startSearch(pattern, root: env.root)
         env.host.presentation = HistoryPresentation(displayMode: .thumbnails, thumbnailSize: 192, paneLayout: .all)
-        env.navigator.recordViewChange(.viewChange)
-        #expect(env.navigator.history.current?.viewState.presentation.displayMode == .list)
 
         await env.goBack()
         #expect(env.navigator.history.current?.viewState.presentation.displayMode == .thumbnails)
@@ -696,6 +694,170 @@ struct HistoryNavigatorTests {
 
         await env.goBack()
         #expect(name(env.navigator) == "B")
+    }
+
+    // MARK: - 検索結果からフォルダを開く（FR-113・140、EC-99・EC-100）
+
+    /// 検索結果にフォルダの行が現れるまで待ち、その URL を返す
+    private func waitForSearchRow(_ env: Env, name: String) async -> URL? {
+        let deadline = ContinuousClock.now + .seconds(5)
+        while ContinuousClock.now < deadline {
+            if let row = env.model.listing.files.first(where: { $0.name == name && $0.kind == .folder }) {
+                return row.url
+            }
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        return env.model.listing.files.first(where: { $0.name == name && $0.kind == .folder })?.url
+    }
+
+    @Test("検索結果からフォルダを開くと、検索前の場所の表示の状態を反映してから記録し、戻ると検索前の場所へ戻る")
+    func openingFolderFromSearchRecordsNavigation() async throws {
+        let env = try Env()
+        defer { env.cleanup() }
+
+        await env.select("A")
+        let pattern = try #require(SearchPattern(keyword: "B"))
+        env.model.startSearch(pattern, root: env.root)
+        env.host.presentation = HistoryPresentation(displayMode: .thumbnails, thumbnailSize: 192, paneLayout: .all)
+
+        let row = try #require(await waitForSearchRow(env, name: "B"))
+        await env.model.openItem(row)
+        await env.waitForListing()
+
+        #expect(!env.model.isShowingSearchResults)
+        #expect(name(env.navigator) == "B")
+        #expect(env.navigator.history.count == 2)
+        #expect(env.navigator.history.current?.viewState.presentation.displayMode == .thumbnails)
+        // 検索前の場所にも、検索を終えた時点の表示の状態が入る
+        #expect(env.navigator.history.backEntries.last?.viewState.presentation.displayMode == .thumbnails)
+        #expect(env.navigator.canGoForward == false)
+
+        await env.goBack()
+        #expect(path(env.model.listing.folder) == path(env.url("A")))
+        #expect(!env.model.isShowingSearchResults)
+        #expect(env.navigator.history.current?.viewState.presentation.displayMode == .thumbnails)
+    }
+
+    @Test("検索前の場所の行を開くと新しい履歴を記録せず、表示の状態だけを反映する（EC-99）")
+    func openingSameFolderFromSearchDoesNotRecord() async throws {
+        let env = try Env()
+        defer { env.cleanup() }
+
+        await env.select("A")
+        let pattern = try #require(SearchPattern(keyword: "A"))
+        env.model.startSearch(pattern, root: env.root)
+        env.host.presentation = HistoryPresentation(displayMode: .thumbnails, thumbnailSize: 192, paneLayout: .all)
+        let row = try #require(await waitForSearchRow(env, name: "A"))
+        await env.model.openItem(row)
+        await env.waitForListing()
+
+        #expect(!env.model.isShowingSearchResults)
+        #expect(env.navigator.history.count == 1)
+        #expect(name(env.navigator) == "A")
+        #expect(env.navigator.history.current?.viewState.presentation.displayMode == .thumbnails)
+        #expect(env.navigator.canGoBack == false)
+
+        // 前に履歴がある場合は、戻ると検索前の場所より前へ移る
+        await env.select("B")
+        await env.select("A")
+        env.model.startSearch(pattern, root: env.root)
+        let again = try #require(await waitForSearchRow(env, name: "A"))
+        await env.model.openItem(again)
+        await env.waitForListing()
+
+        // A・B・A の3件から変えず、検索結果から開いた A は同じ場所として記録しない
+        #expect(env.navigator.history.count == 3)
+        #expect(env.navigator.history.current?.location.folder.lastPathComponent == "A")
+        await env.goBack()
+        #expect(name(env.navigator) == "B")
+    }
+
+    @Test("zip の中で始めた検索の結果から開くと、zip の中の履歴の次に記録し、zip を含むフォルダは記録しない（EC-100）")
+    func openingFolderFromSearchInsideArchive() async throws {
+        let env = try Env()
+        defer { env.cleanup() }
+
+        await env.select("A")
+        await env.openZip("z1.zip")
+        await env.openArchiveDirectory("sub")
+        // A・zip の最上位・zip の中の sub
+        #expect(env.navigator.history.count == 3)
+        #expect(env.navigator.history.current?.location.archive?.directory == "sub/")
+
+        let pattern = try #require(SearchPattern(keyword: "B"))
+        env.model.startSearch(pattern, root: env.root)
+        let row = try #require(await waitForSearchRow(env, name: "B"))
+        await env.model.openItem(row)
+        await env.waitForListing()
+
+        // zip の中の履歴の次に記録し、zip を含むフォルダ A を重複して挟まない
+        #expect(env.navigator.history.count == 4)
+        #expect(name(env.navigator) == "B")
+        #expect(env.navigator.history.backEntries.last?.location.archive?.directory == "sub/")
+        let plainA = env.navigator.history.allEntries.filter {
+            $0.location.folder.standardizedFileURL == env.url("A").standardizedFileURL && $0.location.archive == nil
+        }
+        #expect(plainA.count == 1)
+
+        await env.goBack()
+        #expect(env.model.listing.archive?.directory == "sub/")
+        #expect(env.navigator.history.current?.location.archive?.directory == "sub/")
+    }
+
+    @Test("開いたフォルダが開く直前に消えていれば記録を取り消し、検索前の場所の表示の状態は残る")
+    func openingMissingFolderFromSearchRollsBack() async throws {
+        let env = try Env()
+        defer { env.cleanup() }
+
+        await env.select("A")
+        let pattern = try #require(SearchPattern(keyword: "B"))
+        env.model.startSearch(pattern, root: env.root)
+        env.host.presentation = HistoryPresentation(displayMode: .thumbnails, thumbnailSize: 192, paneLayout: .all)
+        let row = try #require(await waitForSearchRow(env, name: "B"))
+        try FileManager.default.removeItem(at: row)
+        await env.model.openItem(row)
+        await env.waitForListing()
+
+        #expect(!env.model.isShowingSearchResults)
+        #expect(env.navigator.history.count == 1)
+        #expect(env.navigator.history.current == nil)
+        #expect(path(env.navigator.history.backEntries.last?.location.folder) == path(env.url("A")))
+        #expect(env.navigator.history.backEntries.last?.viewState.presentation.displayMode == .thumbnails)
+    }
+
+    @Test("検索結果の一覧から検索前のフォルダの祖先をゴミ箱に入れても検索を続け、戻ると見つからない（EC-101）")
+    func trashingAncestorFromFileListDuringSearch() async throws {
+        let env = try Env()
+        defer { env.cleanup() }
+
+        let parent = env.url("Outer/P")
+        let a = parent.appendingPathComponent("A", isDirectory: true)
+        try FileManager.default.createDirectory(at: a, withIntermediateDirectories: true)
+        try ImageFixtures.jpeg(at: a.appendingPathComponent("a.jpg"), width: 16, height: 12)
+        await env.model.selectFolder(a)
+        #expect(env.navigator.history.count == 1)
+
+        // A の祖先 P が行になるよう、P の親を起点にする
+        let pattern = try #require(SearchPattern(keyword: "P"))
+        env.model.startSearch(pattern, root: env.url("Outer"))
+        let row = try #require(await waitForSearchRow(env, name: "P"))
+        try await Task.sleep(for: .milliseconds(100))
+
+        // `FileOperationCoordinator.trash` と同じ順に呼ぶ
+        try FileManager.default.removeItem(at: parent)
+        env.navigator.didRemoveItems([parent])
+        #expect(await env.model.leaveTrashedFolders([parent], origin: .fileList) == false)
+        #expect(env.model.isShowingSearchResults)
+        await env.model.reloadCurrentFolder()
+        #expect(env.model.listing.files.isEmpty)
+        #expect(path(row) == path(parent))
+
+        // ⌘[ で検索結果の表示を終える。検索前のフォルダはもうないため、現在の履歴を残さない
+        await env.goBack()
+        #expect(!env.model.isShowingSearchResults)
+        #expect(env.navigator.history.current == nil)
+        #expect(env.navigator.history.allEntries.allSatisfy { !$0.location.isWithin(parent) })
+        #expect(env.navigator.history.count == 0)
     }
 
     @Test("検索結果の表示中にフォルダを選ぶと新しい履歴になる（FR-113）")
