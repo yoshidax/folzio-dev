@@ -14,7 +14,7 @@ MediaViewer の現在の仕様（Living spec）を領域ごとに分けたもの
 | [file-list.md](file-list.md) | ファイルリスト | ファイルリスト（10）、種類フィルタ（5）、ファイルリストのフォルダ（3） |
 | [zip.md](zip.md) | zip ファイル | zip ファイル（8）、zip ファイルの表示制御（4） |
 | [file-operations.md](file-operations.md) | ファイル操作 | ファイル操作（11） |
-| [search.md](search.md) | 検索 | 検索（9） |
+| [search.md](search.md) | 検索 | 検索（13） |
 | [preview.md](preview.md) | プレビュー | プレビュー（8）、フルスクリーン（4） |
 
 ## 横断の契約
