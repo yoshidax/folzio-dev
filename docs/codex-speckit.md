@@ -129,7 +129,7 @@ run_id を省略した `status` は従来どおり Spec Kit の一覧表示に�
   更新後のブリッジで Phase 途中の確認を仲介するため、保存済み workflow の移行は不要。
   旧 workflow 末尾の GUI gate は残るので、そこに達した場合は表示された起動確認も行う。
   新 workflow も最終ビルドの起動 gate は維持するが、その承認で手動タスクをまとめてチェックしない。
-- verify は `python3 scripts/sdd-codex.py verify` で実行し、build／test／no-network／make-app の
+- verify は `python3 scripts/sdd-codex.py verify` で実行し、build／test／no-network／readme-sync／make-app の
   各試行を `.specify/workflows/runs/attempts/<attempt>/verify-<id>/` に
   stdout／stderr／result.json として残す。再実行しても前回の失敗ログを上書きしない。
   失敗時は画面に段階とログのパスを表示する。
@@ -159,6 +159,7 @@ codex execpolicy check --rules .codex/rules/sdd.rules -- git push origin master
 swift build
 swift test
 scripts/check-no-network.sh
+scripts/check-readme-sync.sh master
 scripts/make-app.sh
 # ユーザーが起動して確認する
 open .build/MediaViewer.app

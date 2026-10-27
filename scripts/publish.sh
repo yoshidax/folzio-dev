@@ -15,6 +15,9 @@ if [[ -n "$(git status --porcelain)" ]]; then
     exit 1
 fi
 
+# README の英語版と日本語版の構造がそろっているか確かめる
+scripts/check-readme-sync.sh
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 

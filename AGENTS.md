@@ -21,7 +21,7 @@
 
 1. `swift build`
 2. `swift test`
-3. `scripts/check-no-network.sh`
+3. `scripts/check-no-network.sh` と `scripts/check-readme-sync.sh master`
 4. 起動スモーク（3ペインが表示されること）
    - `scripts/make-app.sh`
    - `open .build/MediaViewer.app`
@@ -121,6 +121,7 @@ swift test
 swift test --filter MediaViewerCoreTests
 swift test --filter MediaViewerPerformanceTests
 scripts/check-no-network.sh
+scripts/check-readme-sync.sh master
 scripts/make-fixtures.sh ~/MediaViewerFixtures
 scripts/make-app.sh
 open .build/MediaViewer.app
@@ -140,9 +141,20 @@ open .build/MediaViewer.app
 - 公開用リポジトリへのコミットと push はユーザーが行う
 - 構成と公開の手順の詳細: `docs/repository-and-release.md`
 
+## README の英語版と日本語版
+
+- `README.md`（英語）と `README.ja.md`（日本語）は同じ内容の2言語版。片方だけを更新しない
+  - 一方を変えたら、同じコミットでもう一方にも同じ変更を入れる。タスクや指示が `README.md` だけを挙げていても両方を直す
+  - 見出し・箇条書き（入れ子の深さを含む）・表の行・コードブロックを1対1で対応させる。コードブロックは `#` 以降のコメントだけを訳す
+  - 英語版では、アプリの UI の文言を英訳し、探しやすくするために必要なところへ日本語の表示名を括弧で添える
+- `scripts/check-readme-sync.sh [base]` で確かめる（Phase の検証ゲート 3）。base（既定は HEAD）との merge-base 以降の変更（未コミット・未追跡を含む）で
+  片方だけが変わっていないかと、2つの構造（見出し・箇条書き・表の行・コードブロック）が一致するかを調べる
+  - 訳の中身が一致しているかまでは調べない。差分を読み、両方に同じ内容が入っていることを確かめる
+- `scripts/publish.sh` も書き出しの前に同じ確認を行う
+
 ## 参照
 
 - 起動不具合の詳細な振り返り: `docs/retrospective/2026-10-19-startup-debugging.md`
 - リポジトリの構成と公開の手順: `docs/repository-and-release.md`
-- 使い方・手動確認: `README.md`
+- 使い方・手動確認: `README.md`（日本語版は `README.ja.md`）
 - 検証手順: `specs/001-three-pane-media-viewer/quickstart.md`

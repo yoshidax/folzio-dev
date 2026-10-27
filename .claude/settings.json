@@ -12,6 +12,7 @@
       "Edit(/.claude/worktrees/**)",
       "Edit(/.specify/workflows/runs/**)",
       "Bash(swift build)",
+      "Edit(/README.ja.md)",
       "Bash(swift build *)",
       "Bash(swift test)",
       "Bash(swift test *)",
@@ -37,6 +38,7 @@
       "Bash(log show *)",
       "Bash(xcrun xctrace list *)",
       "Bash(unzip -l *)",
+      "Bash(scripts/check-readme-sync.sh *)",
       "mcp__Claude_Preview__preview_screenshot",
       "mcp__claude-in-chrome__tabs_context_mcp"
     ],
