@@ -57,6 +57,8 @@ scripts/sdd-run-codex.sh run "追加したい要件" -i clarify_mode=manual
 scripts/sdd-run-codex.sh status
 scripts/sdd-run-codex.sh status <run_id>
 scripts/sdd-run-codex.sh resume <run_id>
+# 確認待ちの後に tasks.md や対象アプリを変更した場合、古い要求を退避して再生成する
+scripts/sdd-run-codex.sh resume <run_id> --refresh-manual
 ```
 
 別のターミナルで進捗を確認できる。
@@ -65,14 +67,33 @@ scripts/sdd-run-codex.sh resume <run_id>
 tail -f .specify/workflows/runs/progress.log
 ```
 
-specify → clarify → plan → tasks → analyze／修正 → 設計レビュー → 実装 →
-build／test／no-network／make-app → GUI 確認 → converge → specs/product/ への反映確認
-の順で進む。GUI はユーザーが `open .build/MediaViewer.app` で起動し、3 ペインと
-作業中の quickstart のシナリオを確認する。確認報告前に GUI タスクは完了にしない。
+specify → clarify → plan → tasks → analyze／修正 → 設計レビュー →
+（Phase の実装・自動検証 → 手動確認・報告 → 記録・コミット）→ 最終の自動検証・起動確認 → converge → specs/product/ への反映確認
+の順で進む。Phase は tasks.md の依存順で繰り返す。GUI はユーザーが表示されたコマンドで
+起動し、3 ペインと作業中の quickstart のシナリオを確認する。確認報告前に GUI タスクは完了にしない。
 最後の master へのマージと push はユーザーが判断する。
 
 非 TTY ではゲートで一時停止する。通常のターミナルから `resume` して回答する。
 一時停止も終了コードは非 0 として報告するため、完了と取り違えない。
+
+Phase 途中の `[MANUAL]` に達すると、ランナーが対象 ID とコマンド・確認点を表示する。
+成功を確認してから対象ビルド・OS・端末・確認結果等の報告を入力し、`approve` で確定する。
+未実施・失敗・保留の場合は空行または `approve` 以外で停止する。一部だけ成功した場合も
+まとめて承認せず、必要な確認を揃える。報告を保存して対象タスクだけをチェックした後、
+同じ run の implement を自動的に再開する。依存する記録・コミットは次の実装ターンが行う。
+
+非 TTY の手動確認待ちは終了コード **75**。`status <run_id>` で対象と手順を再表示し、
+通常のターミナルから `resume <run_id>` すると Codex を再実行する前に報告を受領する。
+`manual-pending.json` に要求、`manual-receipts.jsonl` に受領日時・タスク・報告・アプリの
+SHA-256 を run 別に残す。これは Spec Kit の `state.json` とは別のランナー用記録で、
+Spec Kit 内部では implement の非 0 中断を failed と保存するが、ランナーは確認待ちと区別する。
+run_id を省略した `status` は従来どおり Spec Kit の一覧表示になる。
+
+設計レビュー gate の `approve` は実装に引き継ぐ。同じ設計レビューだけを求める既定の
+手動タスクには保存済みの承認を使い、受領記録を残す。GUI・VoiceOver・性能計測は代替しない。
+確認待ちの後に tasks.md またはアプリの実行ファイルが変わった場合は報告を適用せず停止する。
+`--refresh-manual` は古い要求を今回の attempt に退避して再生成し、設計レビューの承認も
+自動再利用しなくなる。Spec Kit の workflow/state を手で書き換える必要はない。
 
 ## モデル・権限・ログ
 
@@ -95,13 +116,19 @@ build／test／no-network／make-app → GUI 確認 → converge → specs/produ
 
 - `$speckit-implement` の最終回答は `scripts/sdd-codex-implementation.schema.json` で検証する。
   `status` が `ready_for_verification`、`blockers` が空、`tasks.md` の未チェックが
-  すべて `[MANUAL]` のときだけ implement を成功にする。判断待ちは `blocked` として止め、
-  推測で完了扱いにしない。
+  すべて `[MANUAL]` のときだけ implement を成功にする。現在実施可能な手動確認は
+  `waiting_for_manual` と `manual_requests`（task_id / kind / instructions）で返す。
+  後続の非手動タスクが残っていても確認待ちとして中断できるが、成功にはしない。
+  権限不足・未決判断・実失敗は `blocked` / `failed` で止め、確認待ちへ置き換えない。
 - `[MANUAL]` は GUI の起動や目視確認など、ユーザーの報告が必要なタスクだけに付ける。
   tasks の生成時に分類し、設計レビューで確認する。実装中に追加・変更しない。
   実装タスクが未チェックで残っている間は implement を失敗させ、resume では実装からやり直す。
 - 旧バージョンで `implement: completed` と保存された run（最終回答が構造化されていない）は
   resume を停止する。状態ファイルを手で直さず、未決事項を解消して新しい run を開始する。
+- 構造化結果のある `implement: failed` の既存 run は、そのまま resume できる。
+  更新後のブリッジで Phase 途中の確認を仲介するため、保存済み workflow の移行は不要。
+  旧 workflow 末尾の GUI gate は残るので、そこに達した場合は表示された起動確認も行う。
+  新 workflow も最終ビルドの起動 gate は維持するが、その承認で手動タスクをまとめてチェックしない。
 - verify は `python3 scripts/sdd-codex.py verify` で実行し、build／test／no-network／make-app の
   各試行を `.specify/workflows/runs/attempts/<attempt>/verify-<id>/` に
   stdout／stderr／result.json として残す。再実行しても前回の失敗ログを上書きしない。

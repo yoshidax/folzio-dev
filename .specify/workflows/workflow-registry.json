@@ -27,11 +27,11 @@
     },
     "sdd-increment-codex": {
       "name": "SDD increment (Codex)",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "\u65e2\u5b58\u306e\u30d7\u30ed\u30c0\u30af\u30c8\u3078\u306e\u8ffd\u52a0\u8981\u4ef6\u3092\u65b0\u3057\u3044 feature \u3068\u3057\u3066\u3001specify \u2192 clarify \u2192 plan \u2192 tasks \u2192 analyze \u3068\u4fee\u6b63\u306e\u30eb\u30fc\u30d7 \u2192 \u5b9f\u88c5\u30fb\u691c\u8a3c\u30fbconverge \u306e\u30eb\u30fc\u30d7 \u2192 specs/product/ \u3078\u306e\u53cd\u6620\u3067\u9032\u3081\u308b\u3002 \u4eba\u304c\u5224\u65ad\u3059\u308b\u306e\u306f\u3001clarify\uff08manual \u306e\u3068\u304d\uff09\u3001\u8a2d\u8a08\u306e\u30ec\u30d3\u30e5\u30fc\u3001GUI \u306e\u8d77\u52d5\u78ba\u8a8d\u3001specs/product/ \u3078\u306e\u53cd\u6620\u306e\u78ba\u8a8d\u306e4\u304b\u6240\u3060\u3051",
       "source": ".specify/workflow-src/sdd-increment-codex.yml",
       "installed_at": "2026-10-25T13:10:53.992427+00:00",
-      "updated_at": "2026-10-25T15:42:16.705745+00:00"
+      "updated_at": "2026-10-27T08:38:52.699305+00:00"
     }
   }
 }

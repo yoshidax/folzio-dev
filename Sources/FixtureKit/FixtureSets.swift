@@ -12,7 +12,60 @@ public enum FixtureSets {
         try folders(in: directory)
         try search(in: directory)
         try folderSearch(in: directory)
+        try searchFolderPicker(in: directory)
         try zoom(in: directory)
+    }
+
+    /// `010-search-folder-picker/quickstart.md` の検証データ。
+    /// 権限変更・削除用フォルダは通常の読取可能な状態で用意する。
+    public static func searchFolderPicker(in directory: URL) throws {
+        let root = try prepare(directory.appendingPathComponent("search-folder-picker", isDirectory: true))
+        let fileManager = FileManager.default
+        func makeFolder(_ path: String) throws -> URL {
+            let url = root.appendingPathComponent(path, isDirectory: true)
+            try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
+            return url
+        }
+
+        let folders = [
+            "default", "other/child", "日本語", "Space Folder",
+            "Photos/plain-child", "Photos /space-child", "empty",
+            ".hidden/inside", "flag-hidden/inside", "Picker.app/Contents/inside",
+            "locked", "vanishing", "many-folders",
+        ]
+        for path in folders { _ = try makeFolder(path) }
+
+        var hidden = root.appendingPathComponent("flag-hidden", isDirectory: true)
+        var hiddenValues = URLResourceValues()
+        hiddenValues.isHidden = true
+        try hidden.setResourceValues(hiddenValues)
+        for name in ["locked", "vanishing"] {
+            try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.appendingPathComponent(name).path)
+        }
+
+        let imageURL = root.appendingPathComponent("file.jpg")
+        try ImageFixtures.jpeg(at: imageURL, width: 8, height: 8)
+        let jpeg = try Data(contentsOf: imageURL)
+        for path in ["default/default-hit.jpg", "other/other-hit.jpg", "other/child/child-hit.jpg",
+                     "日本語/hit.jpg", "Space Folder/hit.jpg", "Photos/plain-hit.jpg", "Photos /space-hit.jpg"] {
+            try jpeg.write(to: root.appendingPathComponent(path))
+        }
+        for (name, target) in [("visible-link", "other"), ("hidden-link", ".hidden/inside"),
+                               ("package-link", "Picker.app/Contents/inside")] {
+            try fileManager.createSymbolicLink(
+                at: root.appendingPathComponent(name),
+                withDestinationURL: root.appendingPathComponent(target, isDirectory: true)
+            )
+        }
+        try ZipFixtureWriter.write([
+            ZipFixtureEntry(name: "hit.jpg", content: .bytes(jpeg), method: .deflated),
+        ], to: root.appendingPathComponent("archive.zip"))
+
+        // JPEG は一度だけ生成し、各フォルダに小さな画像を1件ずつ置く。
+        for index in 1...10_000 {
+            let folder = try makeFolder(String(format: "many-folders/folder-%05d", index))
+            try jpeg.write(to: folder.appendingPathComponent("hit.jpg"))
+        }
     }
 
     public static func mixed(in directory: URL) throws {

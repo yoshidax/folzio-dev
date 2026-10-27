@@ -577,10 +577,11 @@ final class ThumbnailModeView: NSView {
             needsLayout = true
         }
 
-        let selectedPaths = Set(model.selection.selected.compactMap { url -> IndexPath? in
-            guard let index = urls.firstIndex(of: url) else { return nil }
-            return IndexPath(item: index, section: 0)
-        })
+        let selectedPaths = Set(
+            SelectionIndex.indexes(of: model.selection.selected, in: urls).map {
+                IndexPath(item: $0, section: 0)
+            }
+        )
 
         isApplyingSelection = true
         if collectionView.selectionIndexPaths != selectedPaths {

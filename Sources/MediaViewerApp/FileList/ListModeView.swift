@@ -277,9 +277,7 @@ final class ListModeView: NSView {
             return
         }
         let urls = model.listing.files.map(\.url)
-        let selected = IndexSet(model.selection.selected.compactMap { url in
-            urls.firstIndex(of: url)
-        })
+        let selected = SelectionIndex.indexes(of: model.selection.selected, in: urls)
 
         isApplyingSelection = true
         if urls != lastURLs {
