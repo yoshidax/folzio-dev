@@ -138,9 +138,11 @@ open .build/MediaViewer.app
   開発専用のファイルやディレクトリを足したら、`.gitattributes` にも追加する
 - 公開版の README・ソースのコメントから `specs/`・`.specify/`・`AGENTS.md` へのリンクを張らない
 - 公開用リポジトリへのコミットと push はユーザーが行う
+- 構成と公開の手順の詳細: `docs/repository-and-release.md`
 
 ## 参照
 
 - 起動不具合の詳細な振り返り: `docs/retrospective/2026-10-19-startup-debugging.md`
+- リポジトリの構成と公開の手順: `docs/repository-and-release.md`
 - 使い方・手動確認: `README.md`
 - 検証手順: `specs/001-three-pane-media-viewer/quickstart.md`
