@@ -216,3 +216,8 @@ open .build/MediaViewer.app
 
 - `Sources/MediaViewerApp/FileList/FileContextMenu.swift` は「中を表示」を常にメニューへ加え、`autoenablesItems` と `validateMenuItem` で可否を決める。そのためメディアの行でも項目が淡色で出る。`specs/product/contracts/keyboard-and-menus.md`（右クリックメニュー（ファイルリスト））と FR-140 は「フォルダ・zip ファイルの行にだけ加える」と定める。
 - 本 feature では実装を変えていない（plan.md・T059 の指示どおり）。扱いの判断待ちとして、bug 拡張の候補を次に記録する。slug 案: `context-menu-open-container-for-media-rows`、症状: メディアの行の右クリックメニューに「中を表示」が淡色で出る、該当 ID: FR-140、`specs/product/contracts/keyboard-and-menus.md` の「右クリックメニュー（ファイルリスト）」。契約の文言を実装に合わせる場合は、sdd-increment の候補とする。
+
+### コミットの記録（T007・T018・T031・T038・T052）
+
+- ブランチ `009-folder-search` に4つのコミットを作った。`f9b224b`（spec・plan・tasks）、`b05eab4`（Phase 1 のフィクスチャとテスト、T007）、`4cd940a`（Phase 2〜5 の実装とテスト。T018・T031・T038・T052）、`31043ac`（README）。
+- Phase 2 と 3 をまとめて実装・検証したため（上の Phase 2・3 の記録）、T018・T031・T038・T052 は1つのコミット `4cd940a` にまとめた。Phase ごとの分割はしていない。`git push` は行っていない。

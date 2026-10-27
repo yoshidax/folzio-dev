@@ -47,7 +47,7 @@ description: "検索でフォルダも検索対象にする 実装タスク"
 - [X] T004 `scripts/make-fixtures.sh .build/FolderSearchFixtures` を実行し、`.build/FolderSearchFixtures/folder-search/Kyoto/` の構成を `ls -la`（隠しフォルダ・リンクを含む）で確認する。外部ツール（`cwebp` / `img2webp`）の導入が必要になった場合は導入せずユーザーへ確認する。quickstart.md の「検証データ」と食い違いがあれば、`specs/009-folder-search/quickstart.md` の「検証データ」の表を実装に合わせて直す
 - [X] T005 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗の修正は最大3回までとする。結果を `specs/009-folder-search/quickstart.md` の「Phase 検証記録」へ追記する
 - [X] T006 手動: ユーザーに `cd /Users/igachan/projects/my_img_viewer` と `open .build/MediaViewer.app` の実行を依頼し、3ペインが表示されること、既存の検索（⌘F、`search/` で `cat`）の結果・検索バー・Esc での終了に回帰がないことを確認してもらう。結果を `specs/009-folder-search/quickstart.md` の「Phase 検証記録」へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
-- [ ] T007 直前の自動・GUI ゲート合格後、`Sources/FixtureKit/`・`Tests/MediaViewerCoreTests/FolderSearchFixtureTests.swift`・`specs/009-folder-search/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
+- [X] T007 直前の自動・GUI ゲート合格後、`Sources/FixtureKit/`・`Tests/MediaViewerCoreTests/FolderSearchFixtureTests.swift`・`specs/009-folder-search/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
 
 **Checkpoint**: EC-101 の採否が確定し、`folder-search/` の検証データと既存の回帰ゲートが揃う。
 
@@ -67,7 +67,7 @@ description: "検索でフォルダも検索対象にする 実装タスク"
 - [X] T015 `Sources/MediaViewerCore/Browser/BrowserModel.swift` の `startSearchStream(in:matching:)` で `searcher.search(SearchRequest(root: root, pattern: pattern))` を呼ぶ形に変える（台帳との接続は T045 で行う）。`grep -rn "FileNameSearching\|search(in:" Sources Tests` で他の実装・呼び出しが残っていないことを確かめる
 - [X] T016 `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗の修正は最大3回までとする。結果を `specs/009-folder-search/quickstart.md` の「Phase 検証記録」へ追記する
 - [X] T017 手動: ユーザーに `open .build/MediaViewer.app` の実行を依頼し、3ペインが表示されること、既存の検索（`search/` で `cat`・`*.png`）の結果と件数、通常のフォルダの一覧のフォルダの行に回帰がないことを確認してもらう（この時点ではフォルダは検索結果に出ない）。結果を「Phase 検証記録」へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
-- [ ] T018 直前の自動・GUI ゲート合格後、`Sources/MediaViewerCore/Search/`・`Sources/MediaViewerCore/FileSystem/DirectoryLister.swift`・`Sources/MediaViewerCore/Browser/BrowserModel.swift`・`Tests/`・`specs/009-folder-search/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
+- [X] T018 直前の自動・GUI ゲート合格後、`Sources/MediaViewerCore/Search/`・`Sources/MediaViewerCore/FileSystem/DirectoryLister.swift`・`Sources/MediaViewerCore/Browser/BrowserModel.swift`・`Tests/`・`specs/009-folder-search/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
 
 **Checkpoint**: `SearchRequest`・`SearchVisitLog`・`DirectoryLister.folderRow` が単体テストで固定され、検索器と `BrowserModel` が要求の形で接続されている。
 
@@ -94,7 +94,7 @@ description: "検索でフォルダも検索対象にする 実装タスク"
 - [X] T028 [US15] `README.md` の検索の節（「ファイル名の検索」の箇条）は Phase 6 の T053 でまとめて更新するため、この Phase では変更しない。代わりに `grep -rn "該当するファイルはありません" Sources Tests` を実行し、検索結果の `.empty` 以外の箇所（`MediaTypeFilter` の絞り込み中のメッセージ）だけが残っていることを確かめる
 - [X] T029 [US15] `swift build` → `swift test` → `swift test --filter MediaViewerPerformanceTests` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗の修正は最大3回までとする。結果を `specs/009-folder-search/quickstart.md` の「Phase 検証記録」へ追記する
 - [X] T030 [US15] 手動: ユーザーに `scripts/make-fixtures.sh ~/MediaViewerFixtures` と `open .build/MediaViewer.app` の実行を依頼する。3ペインの表示を確認した後、`specs/009-folder-search/quickstart.md` の手動シナリオ 1（フォルダとファイルの一致: 出る行・出ない行、汎用アイコン・種類・作成日・「場所」列、2つの `kyoto_day1` の見分け、サムネイル形式のツールチップ、件数、並べ替え、`*_Kyoto`・`2024.10`・`*.jpg`、0件と「フォルダだけ」のメッセージ）と手動シナリオ 4（プレビューが空・動画の停止、フルスクリーンの移動、スライドショー、種類フィルタ）を確認してもらう。結果を「Phase 検証記録」へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
-- [ ] T031 [US15] 直前の自動・GUI ゲート合格後、`Sources/MediaViewerCore/Search/`・`Sources/MediaViewerApp/FileList/FileListViewController.swift`・`Tests/`・`specs/009-folder-search/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
+- [X] T031 [US15] 直前の自動・GUI ゲート合格後、`Sources/MediaViewerCore/Search/`・`Sources/MediaViewerApp/FileList/FileListViewController.swift`・`Tests/`・`specs/009-folder-search/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
 
 **Checkpoint**: フォルダが検索結果に通常のフォルダの行として出て、件数・メッセージ・種類フィルタ・プレビュー・フルスクリーン・スライドショーが FR-139 のとおりに振る舞う。
 
@@ -118,7 +118,7 @@ description: "検索でフォルダも検索対象にする 実装タスク"
 - [X] T063 [US15] `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` の `syncSelection(to:)` で、既存の `expandAncestors` が返したノードを選択できた後に、`model.completeSearchResultTreeSync(request, selectedFolder: node.url)` を呼ぶ。既存の取り消し・現在の依頼 ID と一覧の場所の検査、`isRestoringSelection`、スクロール・フォーカスの規則を保つ。App で保存の判断や `selectFolder` による祖先への移動を行わない。通常の同期の保存先は Core が変更せず、検索結果から開いたフォルダの同期にだけ適用する（FR-140、EC-102、R10）。
 - [X] T036 [US15] `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗の修正は最大3回までとする。結果を `specs/009-folder-search/quickstart.md` の「Phase 検証記録」へ追記する
 - [X] T037 [US15] 手動: ユーザーに `open .build/MediaViewer.app` の実行を依頼し、3ペインの表示を確認した後、`specs/009-folder-search/quickstart.md` の手動シナリオ 2（ダブルクリック・⌘↓・右クリックメニューの「中を表示」で開く、検索バーが消え `..` が出る、ツリーの選択、フォーカスがファイルリストに残る、⌘[ / ⌘] の行き先、フォルダの行の右クリックメニューの「中を表示（⌘↓）」と区切り線・「上の階層へ」が出ない、メディアの行で ⌘↓ が何もしない、検索中に開いたときに結果が混ざらない、`lastFolder` の保存、手動シナリオ 2-8 の非表示のフォルダに対する祖先の選択と保存・履歴・フォーカス）と手動シナリオ 3（EC-99・EC-100）を確認してもらう。確認点は FR-140 と product の contracts/keyboard-and-menus.md（右クリックメニュー（ファイルリスト））に合わせ、メディアの行の右クリックメニューに「中を表示」が出るかどうかは合否の条件にしない（既存の契約と実装の食い違い。research.md R6 の注記）。見えた状態だけを「Phase 検証記録」に書く。手動シナリオ 2-7 の20回（SC-055）は T055 で記録してもよい。結果を「Phase 検証記録」へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
-- [ ] T038 [US15] 直前の自動・GUI ゲート合格後、`Sources/MediaViewerCore/Browser/BrowserModel.swift`・`Sources/MediaViewerCore/History/HistoryNavigator.swift`・`Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift`・`Tests/`・`specs/009-folder-search/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
+- [X] T038 [US15] 直前の自動・GUI ゲート合格後、`Sources/MediaViewerCore/Browser/BrowserModel.swift`・`Sources/MediaViewerCore/History/HistoryNavigator.swift`・`Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift`・`Tests/`・`specs/009-folder-search/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
 
 **Checkpoint**: US15 の Independent Test（探して開き、⌘[ で検索前に戻る）が単独で成り立つ。
 
@@ -147,7 +147,7 @@ description: "検索でフォルダも検索対象にする 実装タスク"
 - [X] T050 [US15] `swift build` → `swift test` → `swift test --filter MediaViewerPerformanceTests` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、失敗の修正は最大3回までとする。結果を `specs/009-folder-search/quickstart.md` の「Phase 検証記録」へ追記する
 - [X] T051 [US15] 手動: ユーザーに `scripts/make-fixtures.sh ~/MediaViewerFixtures` と `open .build/MediaViewer.app` の実行を依頼し、3ペインの表示を確認した後、`specs/009-folder-search/quickstart.md` の手動シナリオ 5（フォルダの行の名前の変更・ゴミ箱・Finder での移動と新規作成・⌘C と ⌘V / ⌥⌘V の淡色・⌘D・ドラッグでの移動・EC-101 の検索前のフォルダのゴミ箱と移動、ツリーからのゴミ箱との違い）と手動シナリオ 6（`chmod 000` の権限なしのフォルダ・検索中の名前の変更）を確認してもらう。手動シナリオ 5-5（ゴミ箱）と 5-6（移動）では、ツリーが読み直されて検索前のフォルダの行が消えた後も、ツリーで別のフォルダが選ばれた状態にならず、検索バーが残って検索結果の表示が続くことを、数秒待ってから確認点に含める（Core のテスト T040 の (8)・(9) は `treeSyncRequest` しか見ないため、`DirectoryTreeViewController.outlineViewSelectionDidChange` から `model.selectFolder` が呼ばれる経路を検出できない）。崩れた場合は不合格として記録し、T060 へ進む。権限を変えた `locked_kyoto` は確認の後に `chmod 755` で戻してもらう。結果を「Phase 検証記録」へ追記し、GUI 未実施ならこのタスクを未チェックに保つ
 - [ ] T060 [US15] T051 の手動シナリオ 5-5・5-6 で、ツリーの読み直しの後に選択が別のフォルダへ移り、検索結果の表示が終わった場合に限り行う（崩れなければ「不要」と「Phase 検証記録」に書いてチェックする）。推測で直さず、まずツリーの読み直し（`FileOperationCoordinator.notifyFoldersChanged` → `onFoldersChanged`）で選択中のノードが消えたときに `Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift` の `outlineViewSelectionDidChange` が呼ばれ、`model.selectFolder` に至っていることを、ログまたは lldb のブレークポイントで確かめる（GUI の起動はユーザーに依頼する）。確かめられたら、ユーザーの操作でない選択の変化（読み直しによるもの）で `model.selectFolder` を呼ばないよう、読み直しの経路を既存の `isRestoringSelection` で囲むなど、ツリーの読み直しの範囲で直す。ツリーからのゴミ箱（FR-079）・ツリーでのクリックやキー操作による選択・EC-36 の起点の消失の挙動は変えない。直した後に T050 の自動ゲートを再実行し、T051 の手動シナリオ 5-5・5-6 と、ツリーからのゴミ箱の比較の手順をユーザーに再確認してもらう。原因がツリーの読み直しでない、または直すには Core の判断（`BrowserModel` の EC-101 の扱い）を変える必要がある場合は、作業を止めて状況を報告し、plan.md・research.md R8 に戻って設計を見直す（EC-101、FR-079、AGENTS.md の AppKit UI の不変条件）
-- [ ] T052 [US15] 直前の自動・GUI ゲート合格後、`Sources/MediaViewerCore/`・`Sources/MediaViewerApp/Operations/FileOperationCoordinator.swift`・（T060 を行った場合）`Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift`・`Tests/`・`specs/009-folder-search/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
+- [X] T052 [US15] 直前の自動・GUI ゲート合格後、`Sources/MediaViewerCore/`・`Sources/MediaViewerApp/Operations/FileOperationCoordinator.swift`・（T060 を行った場合）`Sources/MediaViewerApp/Tree/DirectoryTreeViewController.swift`・`Tests/`・`specs/009-folder-search/` の差分だけを確認して Phase 単位でコミットする（push は行わない）
 
 **Checkpoint**: US15 の全受け入れシナリオ（AS1〜AS10）と EC-32〜EC-102 の本 feature の項目が自動テストと GUI で確かめられている。
 
