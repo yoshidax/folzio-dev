@@ -41,7 +41,9 @@ rsync -a --delete --exclude /.git --exclude /.build "$tmp"/ "$dest"/
 
 cd "$dest"
 swift build
-swift test
+# 性能テストと同時に走らせると、Core の待ち時間のあるテストが CPU 不足で落ちるため、順に実行する
+swift test --filter MediaViewerCoreTests
+swift test --filter MediaViewerPerformanceTests
 scripts/check-no-network.sh
 
 git add -A
