@@ -25,12 +25,12 @@
 
 **Purpose**: 手動分類を実装前に確定し、既存アプリの基準状態と記録先を整える。新たな Package・target・依存は作らない。
 
-- [ ] T001 `specs/010-search-folder-picker/quickstart.md` の末尾に「実装・検証記録」欄を追記する。Phase 別自動コマンドの結果、ユーザー報告の受領日・OS・端末・対象ビルド、シナリオ別の回数・起点・結果、権限や外部ボリュームを含む未実施理由、性能値の記録枠を用意し、未実施を成功で埋めない。
-- [ ] T002 [MANUAL] `specs/010-search-folder-picker/tasks.md` 全件の設計レビューをユーザーに依頼し、GUI・目視・VoiceOver・性能計測等の独立性、ID 直後の `[MANUAL]`、文書作成との分離、依存順と実装中の分類固定について確認報告を受ける。実装タスク T007 以降はこの確認後に開始する。
-- [ ] T003 リポジトリルートで `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、既存基準の成否と失敗内容を収集する（対象: `Package.swift`、`.build/MediaViewer.app`）。GUI は起動しない。
-- [ ] T004 [MANUAL] T003 成功後、ユーザーへ `cd /Users/igachan/projects/my_img_viewer` の後に `open .build/MediaViewer.app` を実行するよう依頼する。ツリー・ファイルリスト・プレビューの3ペイン、⌘F の既存検索シート、取消で元の画面へ戻ることについて報告を受ける（手順: `specs/010-search-folder-picker/quickstart.md`）。
-- [ ] T005 T002・T003・T004 の確認済み結果と未実施事項を `specs/010-search-folder-picker/quickstart.md` の記録欄へ追記する。設計レビューを受けていない分類や GUI 未報告を合格として記録しない。
-- [ ] T006 T001〜T005 完了後、今回の設計・タスク文書を差分確認し、`specs/010-search-folder-picker/` の対象ファイルだけを Phase 1 のコミットにする。既存の未追跡設計文書も内容を確認し、無関係なファイルを含めず、push は行わない。
+- [X] T001 `specs/010-search-folder-picker/quickstart.md` の末尾に「実装・検証記録」欄を追記する。Phase 別自動コマンドの結果、ユーザー報告の受領日・OS・端末・対象ビルド、シナリオ別の回数・起点・結果、権限や外部ボリュームを含む未実施理由、性能値の記録枠を用意し、未実施を成功で埋めない。
+- [X] T002 [MANUAL] `specs/010-search-folder-picker/tasks.md` 全件の設計レビューをユーザーに依頼し、GUI・目視・VoiceOver・性能計測等の独立性、ID 直後の `[MANUAL]`、文書作成との分離、依存順と実装中の分類固定について確認報告を受ける。実装タスク T007 以降はこの確認後に開始する。
+- [X] T003 リポジトリルートで `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行し、既存基準の成否と失敗内容を収集する（対象: `Package.swift`、`.build/MediaViewer.app`）。GUI は起動しない。
+- [X] T004 [MANUAL] T003 成功後、ユーザーへ `cd /Users/igachan/projects/my_img_viewer` の後に `open .build/MediaViewer.app` を実行するよう依頼する。ツリー・ファイルリスト・プレビューの3ペイン、⌘F の既存検索シート、取消で元の画面へ戻ることについて報告を受ける（手順: `specs/010-search-folder-picker/quickstart.md`）。
+- [X] T005 T002・T003・T004 の確認済み結果と未実施事項を `specs/010-search-folder-picker/quickstart.md` の記録欄へ追記する。設計レビューを受けていない分類や GUI 未報告を合格として記録しない。
+- [X] T006 T001〜T005 完了後、今回の設計・タスク文書を差分確認し、`specs/010-search-folder-picker/` の対象ファイルだけを Phase 1 のコミットにする。既存の未追跡設計文書も内容を確認し、無関係なファイルを含めず、push は行わない。
 
 **Checkpoint**: 手動分類を確認済み、既存アプリの自動・起動ゲートを通過。文書を作成しただけでは確認済みにしない。
 
