@@ -136,6 +136,31 @@ public final class HistoryNavigator {
                 clearSnapshot()
             }
 
+        case let .openedSearchResultFolder(leavingFocus):
+            // 検索結果の表示を終えた時点の表示の状態を現在の履歴（検索前の場所）へ反映してから、
+            // 記録の要否を判定する（FR-113・EC-99・EC-100）
+            guard let location = model.historyLocation,
+                  let viewState = currentViewState() else { return }
+            history.updateCurrentViewState(viewState)
+            if history.current?.location == location {
+                clearSnapshot()
+                return
+            }
+
+            snapshot = history
+            snapshotLocation = location
+            let recorded = history.record(
+                location: location,
+                viewState: viewState,
+                kind: .navigation,
+                leavingFocus: leavingFocus
+            )
+            if recorded {
+                snapshotVersion = history.version
+            } else {
+                clearSnapshot()
+            }
+
         case let .relocated(vanished):
             clearSnapshot()
             if let location = model.historyLocation {

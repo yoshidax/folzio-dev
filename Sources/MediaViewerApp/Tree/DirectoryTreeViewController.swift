@@ -971,6 +971,8 @@ final class DirectoryTreeViewController: NSViewController {
             self.isRestoringSelection = false
             self.outlineView.scrollRowToVisible(row)
             self.updateWatchSet()
+            // 検索結果から開いたフォルダがツリーに出ない場合は、選択できた最も近い祖先を Core が保存する（EC-102）
+            self.model.completeSearchResultTreeSync(request, selectedFolder: node.url)
         }
     }
 

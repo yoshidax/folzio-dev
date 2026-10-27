@@ -513,7 +513,7 @@ final class FileListViewController: NSViewController {
             message = isSearch ? "検索中…" : "読み込み中…"
         case .empty:
             // FR-060 の「対応するメディアファイルがありません」と区別する
-            message = isSearch ? "該当するファイルはありません" : "対応するメディアファイルがありません"
+            message = isSearch ? "該当する項目はありません" : "対応するメディアファイルがありません"
         case .noMatches:
             message = model.mediaTypeFilter.noMatchesMessage ?? ""
         case .denied:

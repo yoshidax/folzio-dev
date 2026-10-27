@@ -11,6 +11,7 @@ public enum FixtureSets {
         try zip(in: directory)
         try folders(in: directory)
         try search(in: directory)
+        try folderSearch(in: directory)
         try zoom(in: directory)
     }
 
@@ -324,6 +325,118 @@ public enum FixtureSets {
             at: folder.appendingPathComponent("linked.jpg"),
             withDestinationURL: folder.appendingPathComponent("Cat01.jpg")
         )
+    }
+
+    /// `folder-search/`（009 quickstart.md「検証データ」の表）を作る。検索でフォルダも対象にする検証用（US15）。
+    /// 起点は `folder-search/Kyoto`。名前に kyoto を含むフォルダとファイル、含まない項目、除外対象（隠し・パッケージ・
+    /// フォルダへのリンク・zip）、同じ名前の別の場所のフォルダ、権限を変えるフォルダを持つ
+    public static func folderSearch(in directory: URL) throws {
+        let root = try prepare(directory.appendingPathComponent("folder-search", isDirectory: true))
+        let fileManager = FileManager.default
+        let kyoto = try prepare(root.appendingPathComponent("Kyoto", isDirectory: true))
+
+        func makeFolder(_ base: URL, _ path: String) throws -> URL {
+            let url = base.appendingPathComponent(path, isDirectory: true)
+            try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
+            return url
+        }
+
+        let kyoto2024 = try makeFolder(kyoto, "2024_Kyoto")
+        try ImageFixtures.jpeg(at: kyoto2024.appendingPathComponent("IMG_0001.jpg"), width: 64, height: 48)
+        _ = try makeFolder(kyoto, "2024_Kyoto_old")
+        try ImageFixtures.png(at: kyoto.appendingPathComponent("kyoto_map.png"), width: 64, height: 48)
+
+        let inner = try makeFolder(kyoto, "kyoto")
+        try ImageFixtures.jpeg(at: inner.appendingPathComponent("kyoto_01.jpg"), width: 64, height: 48)
+        _ = try makeFolder(inner, "kyoto_day2")
+        try ImageFixtures.jpeg(at: inner.appendingPathComponent("IMG_0002.jpg"), width: 64, height: 48)
+
+        _ = try makeFolder(kyoto, ".kyoto")
+        _ = try makeFolder(kyoto, "Kyoto.app/Contents")
+        try fileManager.createSymbolicLink(
+            at: kyoto.appendingPathComponent("kyoto_link"),
+            withDestinationURL: kyoto2024
+        )
+
+        let scratch = try makeScratchDirectory()
+        defer { try? fileManager.removeItem(at: scratch) }
+        let smallJPEG = try imageData(scratch, "kyoto.jpg") {
+            try ImageFixtures.jpeg(at: $0, width: 64, height: 48)
+        }
+        try ZipFixtureWriter.write([
+            ZipFixtureEntry(name: "01.jpg", content: .bytes(smallJPEG), method: .deflated),
+        ], to: kyoto.appendingPathComponent("kyoto.zip"))
+
+        _ = try makeFolder(kyoto, "2024.10_trip")
+        _ = try makeFolder(kyoto, "photos.jpg")
+        _ = try makeFolder(kyoto, "east/kyoto_day1")
+        _ = try makeFolder(kyoto, "west/kyoto_day1")
+        let clips = try makeFolder(kyoto, "clips")
+        try VideoFixtures.mov(at: clips.appendingPathComponent("kyoto_clip.mov"))
+        let locked = try makeFolder(kyoto, "locked_kyoto")
+        try ImageFixtures.jpeg(at: locked.appendingPathComponent("secret_kyoto.jpg"), width: 64, height: 48)
+
+        // 隠しの祖先の中を検索起点として直接指定し、結果のフォルダを開く（EC-102）
+        let open = try makeFolder(root, ".hidden-parent/search-root/kyoto_open")
+        try ImageFixtures.jpeg(at: open.appendingPathComponent("IMG_0003.jpg"), width: 64, height: 48)
+    }
+
+    /// SC-053 の件数の階層を作り、起点（`folder-search-scale/kyoto_root/`）の URL を返す。`makeAll` からは呼ばない。
+    /// 名前に kyoto を含むフォルダ・対応メディアファイル・含まないフォルダと、除外対象（隠しフォルダ・パッケージ・
+    /// フォルダへのシンボリックリンク・zip ファイル）を引数の件数だけ作る
+    @discardableResult
+    public static func folderSearchScale(
+        in directory: URL,
+        matchingFolders: Int = 50,
+        matchingFiles: Int = 50,
+        otherFolders: Int = 50,
+        excludedEach: Int = 5
+    ) throws -> URL {
+        let base = try prepare(directory.appendingPathComponent("folder-search-scale", isDirectory: true))
+        let root = try prepare(base.appendingPathComponent("kyoto_root", isDirectory: true))
+        let fileManager = FileManager.default
+
+        let scratch = try makeScratchDirectory()
+        defer { try? fileManager.removeItem(at: scratch) }
+        let jpeg = try imageData(scratch, "scale.jpg") {
+            try ImageFixtures.jpeg(at: $0, width: 8, height: 8)
+        }
+
+        for index in 0..<max(0, matchingFolders) {
+            try fileManager.createDirectory(
+                at: root.appendingPathComponent(String(format: "kyoto-folder-%03d", index), isDirectory: true),
+                withIntermediateDirectories: true
+            )
+        }
+        for index in 0..<max(0, matchingFiles) {
+            try jpeg.write(to: root.appendingPathComponent(String(format: "kyoto_%03d.jpg", index)))
+        }
+        for index in 0..<max(0, otherFolders) {
+            try fileManager.createDirectory(
+                at: root.appendingPathComponent(String(format: "other-%03d", index), isDirectory: true),
+                withIntermediateDirectories: true
+            )
+        }
+
+        let linkTarget = root.appendingPathComponent("kyoto-folder-000", isDirectory: true)
+        for index in 0..<max(0, excludedEach) {
+            try fileManager.createDirectory(
+                at: root.appendingPathComponent(String(format: ".kyoto-hidden-%03d", index), isDirectory: true),
+                withIntermediateDirectories: true
+            )
+            try fileManager.createDirectory(
+                at: root.appendingPathComponent(String(format: "kyoto-package-%03d.app/Contents", index), isDirectory: true),
+                withIntermediateDirectories: true
+            )
+            try fileManager.createSymbolicLink(
+                at: root.appendingPathComponent(String(format: "kyoto-link-%03d", index)),
+                withDestinationURL: linkTarget
+            )
+            try ZipFixtureWriter.write([
+                ZipFixtureEntry(name: "01.jpg", content: .bytes(jpeg), method: .stored),
+            ], to: root.appendingPathComponent(String(format: "kyoto-%03d.zip", index)))
+        }
+        return root
     }
 
     // MARK: - zip

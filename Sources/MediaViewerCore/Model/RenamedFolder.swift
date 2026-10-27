@@ -36,6 +36,11 @@ public struct RenamedFolder: Sendable, Equatable {
         rebase(url) ?? url
     }
 
+    /// 逆向きの付け替え（新しい場所から元の場所へ）。検索の記録を、名前の変更の前の時点の場所に戻すのに使う（R2）
+    public var reversed: RenamedFolder {
+        RenamedFolder(from: to, to: from)
+    }
+
     /// 区切りの `/` まで比べ、名前の前方が同じ兄弟（`Photo` と `Photos`）を取り違えない。
     /// 区切りは ASCII の `/` のため、UTF-8 のバイトで比べても文字の途中で切れない（10,000 件の付け替え。R67）
     private func rebaseFileURL(_ url: URL) -> URL? {

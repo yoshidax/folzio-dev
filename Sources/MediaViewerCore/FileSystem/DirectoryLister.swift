@@ -75,14 +75,7 @@ public struct DirectoryLister: DirectoryListing {
                     // ツリーと同じく、パッケージ（.app など）はフォルダとして出さない（R29）。
                     // isPackage の判定は重いため、ディレクトリだけに問い合わせる
                     guard (try? url.resourceValues(forKeys: [.isPackageKey]))?.isPackage != true else { return nil }
-                    return MediaFile(
-                        url: url,
-                        name: url.lastPathComponent,
-                        kind: .folder,
-                        typeDescription: "フォルダ",
-                        creationDate: values?.creationDate,
-                        fileSize: 0
-                    )
+                    return Self.folderRow(at: url, creationDate: values?.creationDate)
                 }
 
                 if url.pathExtension.lowercased() == Self.archiveExtension {
@@ -99,6 +92,18 @@ public struct DirectoryLister: DirectoryListing {
                 return Self.mediaFile(at: url, kind: kind, values: values)
             }
         }
+    }
+
+    /// フォルダの行を作る。`FileNameSearcher` と共有し、通常の一覧と検索結果で同じ値にする（FR-139、R1）
+    static func folderRow(at url: URL, creationDate: Date?) -> MediaFile {
+        MediaFile(
+            url: url,
+            name: url.lastPathComponent,
+            kind: .folder,
+            typeDescription: "フォルダ",
+            creationDate: creationDate,
+            fileSize: 0
+        )
     }
 
     /// メディアファイルの行を作る。`FileNameSearcher` と共有し、通常の一覧と検索結果で同じ値にする（R36）

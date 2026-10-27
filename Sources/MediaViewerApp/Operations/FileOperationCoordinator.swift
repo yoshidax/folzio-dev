@@ -69,10 +69,11 @@ final class FileOperationCoordinator {
         let failedPaths = Set(result.failed.map { $0.url.standardizedFileURL.path })
         let trashedSources = urls.filter { !failedPaths.contains($0.standardizedFileURL.path) }
         historyNavigator?.didRemoveItems(trashedSources)
-        // 表示中のフォルダやその祖先を入れたときだけ親へ移る（FR-079）。ファイルリストからのゴミ箱は
-        // それらを対象にしないため false になり、従来どおり読み直す。移ったときに読み直すと
-        // 消えたフォルダの「フォルダが見つかりません」が一瞬出るため、false のときだけ呼ぶ
-        if await !model.leaveTrashedFolders(trashedSources) {
+        // 表示中のフォルダやその祖先を入れたときだけ親へ移る（FR-079）。検索結果の一覧では検索前のフォルダの
+        // 祖先を選べるため、ツリーからの操作とファイルリストからの操作で扱いが変わる。判断は `BrowserModel` に任せ、
+        // ここでは経路を渡すだけにする（EC-101）。移ったときに読み直すと消えたフォルダの
+        // 「フォルダが見つかりません」が一瞬出るため、false のときだけ呼ぶ
+        if await !model.leaveTrashedFolders(trashedSources, origin: origin) {
             await model.reloadCurrentFolder()
         }
     }
