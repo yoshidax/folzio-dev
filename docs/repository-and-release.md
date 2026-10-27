@@ -9,7 +9,7 @@ Spec Kit・AI エージェントの設定・仕様書・開発記録は公開し
 |---|---|---|
 | 場所 | `~/projects/my_img_viewer` | `~/projects/my_img_viewer-oss` |
 | remote | なし | GitHub（push はユーザーが行う） |
-| 管理対象 | すべてのファイル | アプリのソース・テスト・ビルド用スクリプト・README・LICENSE |
+| 管理対象 | すべてのファイル | アプリのソース・テスト・ビルド用スクリプト・README（英語の `README.md` と日本語の `README.ja.md`）・LICENSE |
 | 履歴 | 開発の履歴をそのまま残す | 1回の公開を1コミットにする |
 | ブランチ | master と feature・bugfix などの作業ブランチ | main |
 
@@ -51,14 +51,15 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
 
    `scripts/publish.sh` は次の順に行い、どれかが失敗するとそこで止まる。
 
-   1. `git archive HEAD` で、`export-ignore` を除いたファイルを一時ディレクトリへ取り出す
-   2. 外したはずのファイルが混ざっていないか確かめる
-   3. `$HOME` のパスとユーザー名が含まれていないか確かめる
-   4. `../my_img_viewer-oss` へ同期する（`.git` と `.build` 以外を置き換え、消えたファイルは消す）。
+   1. `scripts/check-readme-sync.sh` で、`README.md` と `README.ja.md` の構造がそろっているか確かめる
+   2. `git archive HEAD` で、`export-ignore` を除いたファイルを一時ディレクトリへ取り出す
+   3. 外したはずのファイルが混ざっていないか確かめる
+   4. `$HOME` のパスとユーザー名が含まれていないか確かめる
+   5. `../my_img_viewer-oss` へ同期する（`.git` と `.build` 以外を置き換え、消えたファイルは消す）。
       書き出し先がなければ `git init -b main` で作る
-   5. 書き出し先で `swift build`、Core のテスト、性能テスト、`scripts/check-no-network.sh` を行う。
+   6. 書き出し先で `swift build`、Core のテスト、性能テスト、`scripts/check-no-network.sh` を行う。
       テストは2つを順に流す（同時に流すと、Core の待ち時間のあるテストが CPU 不足で落ちることがある）
-   6. `git add -A` で変更をステージし、`git status` を表示する
+   7. `git add -A` で変更をステージし、`git status` を表示する
 
 3. 書き出し先で起動スモークを行う（3ペインが表示されること）
 

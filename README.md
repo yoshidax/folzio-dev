@@ -1,303 +1,309 @@
 # MediaViewer
 
-macOS ネイティブの 3 ペイン型メディアビューア。左のディレクトリツリー、中央のファイル一覧（リスト／サムネイル）、
-右のプレビューで、画像・アニメーション GIF/WebP・動画を閲覧し、Finder に近い操作でファイルを整理できます。
+English | [日本語](README.ja.md)
 
-- **技術構成**: Swift 6 + AppKit のみ。外部パッケージ依存なし。Swift Package で構成（Xcode プロジェクトなし）
-- **対応 OS**: macOS 15 以降
-- **ネットワーク**: 不使用（`URLSession` / `Network` / `NWConnection` を参照しない）
+A native three-pane media viewer for macOS. Browse images, animated GIF/WebP, and videos with a directory tree on the left,
+a file list (list / thumbnails) in the center, and a preview on the right, and organize files with Finder-like operations.
 
-## 主な機能
+The app's user interface is currently in Japanese only. Menu and button names in this README are English translations,
+with the Japanese label shown in the app given in parentheses where it helps you find it.
 
-- ディレクトリツリーからのフォルダ移動（ホームとマウント中のボリューム）。フォルダの行のダブルクリックで開閉でき、
-  開閉の三角はサブフォルダ（隠しフォルダ・パッケージを除く）があるフォルダにだけ表示される
-- ツリー最上部の「お気に入り」によく使うフォルダを登録（ツリーの右クリック「お気に入りに追加」または ⌃⌘T。お気に入りの項目の右クリック「お気に入りから削除」または ⌘Delete で確認の後に削除し（⌘Delete は通常のフォルダでは「ゴミ箱に入れる」になる）、実際のフォルダは変更しない。確認には表示名と絶対パスが出る。
-  項目の名前は Return・右クリックの「名前を変更」・「編集 > 名前を変更」で変えられる（行の中で編集し、Return で確定・Esc で取り消し。空にすると元のフォルダ名に戻る。確認モーダルはなく、実際のフォルダの名前は変わらない）。⇧⌘F で見出しへ移動。登録は保存されて次回起動時に復元され、見つからないフォルダは淡色で残る）
-- JPEG / PNG / GIF / WebP / MP4 / MOV の表示（隠しファイルと非対応形式は一覧に出さない）
-- ファイルリストにサブフォルダも表示（隠しフォルダ・パッケージを除く）。フォルダの行をダブルクリックまたは ⌘↓ でそのフォルダの一覧へ移り、
-  ⌘↑ または先頭行の `..` で親フォルダへ戻る（ホームとボリュームの最上位では `..` は出ない）。一覧の中で移動すると、ツリーの選択も
-  そのフォルダに追従する（キーボードフォーカスはファイルリストのまま）。フォルダもファイルと同じくコピー・名前変更・ゴミ箱・移動ができる
-- 画像の縦横比を保ったフィット表示（ペインより小さい画像は、はみ出さない範囲で最大まで拡大。フルスクリーンも同じ）
-- プレビュー画像の拡大・縮小（ツールバーの虫眼鏡の3ボタン「拡大」「表示領域に合わせる」「縮小」、表示メニュー、⌘+ / ⌘- / ⌘0。
-  拡大は ⌘= でもできる）。フィット表示を100%とし、25%〜800%を25%刻みで変える。画像は中央を基準に拡大し、
-  はみ出した部分は表示しない（スクロール・パン・ピンチ・倍率の数値表示はない）
-  - 3ペイン・プレビューのみ表示・フルスクリーンで使える。動画・空のプレビュー・表示できない画像・ファイルリストのみ表示では無効
-  - 別の画像に切り替える（スライドショーの自動送りを含む）か、履歴を移ると100%に戻る。フルスクリーン・ウインドウやペインのサイズ変更では倍率を保つ
-  - 倍率は保存せず、履歴にも記録しない。VoiceOver では現在の倍率を値として読み上げる
-- アニメーション GIF の再生、アニメーション WebP の再生（OS 標準 API。非対応時は先頭フレーム）
-- 動画の再生・ループ・自動再生設定、Space キーでの再生／一時停止
-- リスト形式とサムネイル形式の切り替え、サムネイルサイズ変更、列ヘッダーでの並べ替え
-- 表示形式の切り替えボタンとサムネイルサイズのスライダーを持つツールバー（既定は非表示。⇧⌘T で切り替え、状態は次回起動時に復元）
-- ペインの表示切り替え（3ペイン／ファイルリストのみ／プレビューのみ）。ツールバー左端の「ファイルリストのみ表示」「プレビューのみ表示」ボタン、
-  ⌃⌘2 / ⌃⌘3、または「表示」メニューの同じ項目で切り替え、3つの入口は同じ状態を共有する（ツールバーが非表示でもメニューとショートカットで切り替えられる）。
-  ツリーは単独では隠せず、表示状態は3ペイン・ファイルリストのみ・プレビューのみの3つ
-  - プレビューのみ表示中は、矢印キーで隠れたファイルリストの選択を移せる（サムネイル形式は上下左右、リスト形式は上下）。動画は `<` / `>` で5秒戻す・送る
-  - 一覧にメディアがないときは、プレビューに「表示するメディアファイルがありません」と出る
-  - 隠したペインへのフォーカス・お気に入り・検索などの操作は無効になる
-  - フルスクリーンはどちらの表示からも使え、解除すると元の表示に戻る
-  - 表示状態は保存されず、起動のたびに3ペイン表示で始まる
-- スライドショー（⇧⌘S、表示メニュー「スライドショーを開始」、ツールバーの再生ボタン）。設定した切り替え間隔で対象メディアを
-  表示順で送る。繰り返しがオンなら末尾から先頭へ戻り、オフなら末尾のメディアから間隔が経った時点で終了する。
-  動画は再生を続け、1件だけなら同じ対象を表示したまま期限だけをやり直す（繰り返しがオフなら間隔の後に終了）。
-  開始時はプレビューのみ表示にし、終了時は元のペイン・フォーカス・幅へ戻る。矢印キーで隠れた一覧を移動して期限をやり直し、
-  Esc で終了する。`/` で動画の再生・一時停止、`<` / `>` で5秒シークでき、これらは期限を変えない
-  - 設定ウインドウ（⌘,）の「スライドショー」で、切り替え間隔（1〜3600 の整数秒・既定3）、
-    「最後まで表示したら先頭から繰り返す」（既定オン）、切り替え効果（なし／クロスフェード／スライド／ズーム・既定なし）を変えられる。
-    確定した変更は次の自動送りから反映し、再起動後も復元する。繰り返しは動画のループ再生とは独立
-  - 切り替え効果は自動送りのときだけ約0.5秒で付き、矢印キー・開始・終了・スライドショー以外の選択変更には付かない。
-    macOS の「視差効果を減らす」がオンの間は「スライド」「ズーム」を「クロスフェード」で表示する（保存値は変えない）
-  - スライドショー中のペイン切り替え・履歴移動は無効。閲覧先の置換、対象0件、ウインドウを閉じる場合は自動で終了する
-  - 開始時の選択とプレビュー切り替えは履歴に記録せず、実行中の表示形式・サイズ・フィルタ・並べ替えの変更だけを通常の表示状態で記録する
-- 画像のみ／動画のみで一覧を絞り込む種類フィルタ（ツールバーの「画像のみ表示」「動画のみ表示」ボタン、表示メニュー、⇧⌘I / ⇧⌘M。片方だけオンでその種類だけを表示し、両方オン・両方オフはすべて表示。状態は保存されず、起動のたびに両方オフで始まり、起動中はフォルダを移っても保たれる）
-- コピー／移動／複製／名前変更／ゴミ箱／ドラッグ＆ドロップ／クリップボード操作（フォルダは中身ごと）
-- 衝突時の「置き換える／両方残す／中止」、操作前の確認ダイアログ（設定で省略可能）
-- プレビューのフルスクリーン（ダブルクリックまたは ⌃⌘F、Esc で復帰）
-- 外部からのファイル追加・削除・名前変更を FSEvents で一覧へ反映
-- zip ファイルの中の表示（一覧の zip の行をダブルクリックまたは ⌘↓ で中を表示し、⌘↑ または先頭行の `..` で元の階層に戻る。
-  zip はツリーには出ない）。zip の中のディレクトリをたどり、画像・動画をプレビューできる。zip の中は読み取り専用で、
-  コピー・名前変更・ゴミ箱などの操作はできない（zip ファイル自体は通常のファイルと同じに操作できる）
-- zip ファイルの表示の切り替え（ツールバーの「zipファイルを表示」ボタン、表示メニューの「zipファイルを表示」、⌃⌘Z）。
-  既定は非表示で、ボタンは種類フィルタの右・表示形式の左に並ぶ。設定は保存され、再起動で復元される
-  - オフの間、zip ファイルの行は一覧・選択・ファイル操作・フルスクリーンの移動の対象にならない。種類フィルタとは独立で、両方の条件を満たす行だけを表示する
-  - zip の中を表示している間に切り替えても、中の一覧は変わらない
-- zip の中の日本語のファイル名は文字コード（UTF-8 / Shift_JIS など）を名前ごとに自動判定して表示する
-- zip の中の動画も、一時ファイルへ展開せずに再生できる（zip から直接読み出す）
-- 名前の検索（⌘F または「ファイル」メニューの「検索…」）。モーダルで「検索キーワード」と「検索起点ディレクトリ」を入力する。
-  起点の既定値はファイルリストに表示中のフォルダの絶対パスで、キーワードは同じ起動中に前回検索したものが全選択で入る。
-  起点は `/` か `~` で始まるパスで、存在しない・フォルダでない（zip ファイルを含む）・読めないときはモーダルに理由が出る
-  - 起点欄の「選択…」は macOS 標準のフォルダ選択パネルを開く。1つのフォルダを選んで「選択」を押すと起点欄だけが変わり、
-    検索は「検索」を押すまで始まらない。キャンセル・検証失敗では元の入力と理由を保ち、選び直せる
-  - 標準パネルではファイル・zip・パッケージをフォルダとして選べず、複数選択・新規作成はない。隠し項目は標準どおり
-    ⌘⇧. で表示でき、隠しフォルダも選べる。直接入力の既存の検証規則は変わらない
-  - キーボードは Tab で キーワード → 起点 → 選択… → キャンセル → 検索、Space で「選択…」を開く。
-    標準パネル内の Return・Esc・階層移動は OS 標準で、パネルを閉じると「選択…」へフォーカスが戻る
-  - GUI で選んだフォルダ名の末尾の空白は、起点欄を編集しない間はそのまま使う。直接編集すると従来どおり前後の空白を除いて解釈する
-  - `*`（0 文字以上）・`?`（1 文字）を含むキーワードは名前全体との一致、含まないキーワードは名前（拡張子を含む）への部分一致
-  - 大文字小文字と、濁点の合成・分解（NFC / NFD）の違いは区別しない。全角・半角、ひらがな・カタカナは区別する
-  - 起点以下のすべての階層の対応メディアファイルとフォルダを対象にする。フォルダ名も名前全体で照合し、「.」を含む名前
-    （`2024.10_trip`・`photos.jpg`）も拡張子として扱わない。隠しファイル・隠しフォルダ・パッケージの中・
-    シンボリックリンクのフォルダ（リンク自身とその中）・zip の中・検索の起点そのものは対象にしない
-    （ファイルへのシンボリックリンクは対象にする）
-  - 結果はファイルリストに1つの一覧として、ファイルとフォルダを混ぜて見つかった順に現在の並べ替えで加わる。検索中も操作できる。
-    リスト形式には「場所」列（起点からのフォルダ）が出て、並べ替えに「場所」を選べる。サムネイル形式では場所をツールチップで示す。
-    一覧の上部の検索バーの件数はファイルとフォルダの合計で、検索中は「検索中…」、一致がなければ「該当する項目はありません」と出る
-  - フォルダの行は通常のフォルダと同じ行で、ダブルクリック・⌘↓・右クリックの「中を表示」で開ける。開くと検索結果の表示を終えて
-    そのフォルダの一覧を表示し、⌘[（戻る）で検索前に表示していたフォルダへ戻る。フォルダの行を選ぶとプレビューは空になる
-  - 検索結果でもプレビュー・コピー・複製・名前の変更・ゴミ箱・移動ができる。ペースト・移動ペースト・⌘↑ はできない。
-    ゴミ箱に入れた・移動した・外部で消えた行は中の結果ごと一覧から外れ、名前を変えた行は新しい名前で残る（中の結果も新しい場所になり、
-    新しく現れたファイル・フォルダは加わらない）。フォルダの行の名前を変えた場合は、照合済みかどうかで中の結果を引き継ぐか列挙し直すかが変わる
-  - 検索結果の一覧から、検索結果のフォルダの祖先をゴミ箱に入れたり移動したりしても、検索結果の表示は続く（行は中の結果ごと外れる）。
-    検索結果の表示を終えたときに検索前のフォルダがなければ「フォルダが見つかりません」と出る。ツリーから祖先をゴミ箱に入れたときは従来どおり親へ移る
-  - ツリーでフォルダを選ぶ（選択中の行のクリックを含む）か、ファイルリストで Esc を押すと検索結果の表示を終える（検索中なら止まる）
-  - 検索の条件・結果・「場所」の並べ替えは保存しない
+- **Stack**: Swift 6 + AppKit only. No external package dependencies. Built as a Swift Package (no Xcode project)
+- **Supported OS**: macOS 15 or later
+- **Network**: Not used (`URLSession` / `Network` / `NWConnection` are never referenced)
 
-## 動作環境
+## Features
 
-- macOS 15 以降
-- Xcode（Swift 6 ツールチェーン）。`swift --version` が 6.0 以上であること
-- `xcode-select -p` が `/Applications/Xcode.app/Contents/Developer` を指していること
-- 検証用フィクスチャの生成に `cwebp` / `img2webp`（Homebrew の `webp`）を使用
-  （アプリ本体の実行には不要）
+- Folder navigation from the directory tree (home and mounted volumes). Double-click a folder row to expand or collapse it.
+  The disclosure triangle appears only on folders that have subfolders (excluding hidden folders and packages)
+- Register frequently used folders under "Favorites" (お気に入り) at the top of the tree (right-click in the tree → "Add to Favorites" (お気に入りに追加), or ⌃⌘T). Remove an entry with right-click → "Remove from Favorites" (お気に入りから削除) or ⌘Delete after a confirmation (on a regular folder, ⌘Delete means "Move to Trash" instead); the actual folder is not changed. The confirmation shows the display name and the absolute path.
+  Rename an entry with Return, right-click → "Rename" (名前を変更), or Edit → "Rename" (edited in place; Return commits, Esc cancels, and clearing the name restores the original folder name. There is no confirmation dialog, and the actual folder is not renamed). ⇧⌘F jumps to the heading. Favorites are saved and restored on the next launch, and folders that cannot be found stay in the list, dimmed
+- Displays JPEG / PNG / GIF / WebP / MP4 / MOV (hidden files and unsupported formats are not listed)
+- The file list also shows subfolders (excluding hidden folders and packages). Double-click a folder row or press ⌘↓ to open that folder's list,
+  and press ⌘↑ or use the `..` row at the top to return to the parent (there is no `..` row at the top level of home or a volume). Navigating within the list keeps the tree selection
+  in sync with that folder (keyboard focus stays on the file list). Folders can be copied, renamed, moved to the Trash, and moved just like files
+- Aspect-preserving fit display (images smaller than the pane are enlarged as far as they fit without overflowing. The same applies in full screen)
+- Zooming the preview image (the three magnifier buttons in the toolbar, "Zoom In" (拡大), "Fit to View" (表示領域に合わせる), and "Zoom Out" (縮小); the View menu; or ⌘+ / ⌘- / ⌘0.
+  ⌘= also zooms in). The fit size counts as 100%, and the zoom ranges from 25% to 800% in 25% steps. Images zoom around their center,
+  and parts that overflow are not shown (there is no scrolling, panning, pinching, or zoom-level readout)
+  - Available in the three-pane layout, the preview-only layout, and full screen. Disabled for videos, an empty preview, images that cannot be displayed, and the file-list-only layout
+  - Switching to another image (including slideshow auto-advance) or moving through history resets the zoom to 100%. Full screen and resizing the window or panes keep the zoom level
+  - The zoom level is neither saved nor recorded in history. VoiceOver reads the current zoom level as the value
+- Animated GIF playback and animated WebP playback (using OS-standard APIs; falls back to the first frame when unsupported)
+- Video playback, looping, an autoplay setting, and play/pause with the Space key
+- Switching between list and thumbnail views, adjustable thumbnail size, and sorting by column header
+- A toolbar with view-mode buttons and a thumbnail-size slider (hidden by default. Toggle it with ⇧⌘T; its state is restored on the next launch)
+- Pane layout switching (three panes / file list only / preview only). Switch with the "File List Only" and "Preview Only" buttons at the left end of the toolbar,
+  ⌃⌘2 / ⌃⌘3, or the matching items in the View menu (表示). All three share the same state (the menu and shortcuts work even while the toolbar is hidden).
+  The tree cannot be hidden on its own, so the layouts are three panes, file list only, and preview only
+  - In the preview-only layout, the arrow keys move the selection in the hidden file list (up/down/left/right in thumbnail view, up/down in list view). For videos, `<` / `>` skip back / forward 5 seconds
+  - When the list has no media, the preview shows "No media files to display" (表示するメディアファイルがありません)
+  - Focusing a hidden pane, favorites, search, and similar actions are disabled
+  - Full screen is available from either layout and returns to it on exit
+  - The layout is not saved; every launch starts in the three-pane layout
+- Slideshow (⇧⌘S, View → "Start Slideshow" (スライドショーを開始), or the play button in the toolbar). Advances through the media
+  in display order at the configured interval. With repeat on, it wraps from the last item back to the first; with repeat off, it ends one interval after the last item is shown.
+  Videos keep playing. With only one item, it keeps showing that item and only restarts the timer (with repeat off, it ends after the interval).
+  Starting switches to the preview-only layout, and ending restores the previous panes, focus, and widths. The arrow keys move through the hidden list and restart the timer,
+  and Esc ends the slideshow. `/` plays or pauses a video and `<` / `>` seek 5 seconds; these do not change the timer
+  - In the Settings window (⌘,), under "Slideshow" (スライドショー), you can change the interval (an integer from 1 to 3600 seconds, default 3),
+    "Repeat from the beginning after the last item" (最後まで表示したら先頭から繰り返す, default on), and the transition effect (None / Crossfade / Slide / Zoom, default None).
+    Committed changes take effect from the next auto-advance and are restored after a relaunch. Repeat is independent of video looping
+  - Transition effects (about 0.5 seconds) apply only to auto-advance, not to the arrow keys, starting, ending, or selection changes outside the slideshow.
+    While macOS "Reduce motion" is on, "Slide" and "Zoom" are shown as "Crossfade" (the saved value is not changed)
+  - Pane switching and history navigation are disabled during a slideshow. It ends automatically when the browsed location is replaced, when there are no items, or when the window is closed
+  - The selection and preview changes made when it starts are not recorded in history; only changes to the view mode, size, filter, and sort made while it runs are recorded, as normal view state
+- A kind filter that shows only images or only videos (the "Images Only" (画像のみ表示) and "Videos Only" (動画のみ表示) toolbar buttons, the View menu, ⇧⌘I / ⇧⌘M. With only one of them on, only that kind is shown; with both on or both off, everything is shown. The state is not saved: each launch starts with both off, and the state persists across folder changes while the app is running)
+- Copy / move / duplicate / rename / move to Trash / drag and drop / clipboard operations (folders include their contents)
+- "Replace / Keep Both / Stop" choices on conflicts, and a confirmation dialog before operations (can be skipped in Settings)
+- Full-screen preview (double-click or ⌃⌘F; Esc to return)
+- Files added, deleted, or renamed outside the app are reflected in the list via FSEvents
+- Browsing inside zip files (double-click a zip row or press ⌘↓ to show its contents; press ⌘↑ or use the `..` row at the top to go back.
+  Zip files do not appear in the tree). You can walk the directories inside a zip and preview its images and videos. The contents of a zip are read-only,
+  so copy, rename, move to Trash, and other operations are not available (the zip file itself can be handled like any other file)
+- Toggling the visibility of zip files (the "Show Zip Files" (zipファイルを表示) toolbar button, View → "Show Zip Files", ⌃⌘Z).
+  Hidden by default. The button sits to the right of the kind filter and to the left of the view-mode buttons. The setting is saved and restored on relaunch
+  - While it is off, zip file rows are excluded from the list, selection, file operations, and full-screen navigation. It is independent of the kind filter; only rows that meet both conditions are shown
+  - Toggling it while viewing the inside of a zip does not change the list inside
+- Japanese file names inside zip files are displayed by auto-detecting the character encoding (UTF-8 / Shift_JIS, etc.) for each name
+- Videos inside zip files play without being extracted to a temporary file (they are read directly from the zip)
+- Name search (⌘F or File → "Search…" (検索…)). A modal asks for a "Search keyword" and a "Search start folder".
+  The start folder defaults to the absolute path of the folder shown in the file list, and the keyword is pre-filled, fully selected, with the previous search from the same session.
+  The start folder must be a path starting with `/` or `~`. If it does not exist, is not a folder (including zip files), or cannot be read, the modal shows the reason
+  - "Choose…" (選択…) next to the start folder opens the standard macOS folder picker. Choosing one folder and pressing "Choose" changes only the start folder field,
+    and the search does not start until you press "Search". Cancelling or a validation failure keeps the previous input and the reason, so you can choose again
+  - The standard panel does not let you choose files, zip files, or packages as folders, and offers no multiple selection or New Folder. Hidden items can be shown with
+    ⌘⇧. as usual, and hidden folders can be chosen. The existing validation rules for typed paths are unchanged
+  - Keyboard: Tab moves keyword → start folder → Choose… → Cancel → Search, and Space opens "Choose…".
+    Return, Esc, and navigation inside the standard panel behave as usual in macOS, and closing the panel returns focus to "Choose…"
+  - Trailing spaces in a folder name chosen in the GUI are kept as long as the start folder field is not edited. If you edit the field directly, leading and trailing spaces are trimmed as before
+  - Keywords containing `*` (zero or more characters) or `?` (one character) must match the whole name; other keywords match any part of the name (including the extension)
+  - Differences in case and in composed/decomposed dakuten (NFC / NFD) are ignored. Full-width/half-width and hiragana/katakana are distinguished
+  - Searches all levels below the start folder for supported media files and folders. Folder names are also matched against the whole name, and names containing "."
+    (`2024.10_trip`, `photos.jpg`) are not treated as having an extension. Hidden files, hidden folders, package contents,
+    symbolic links to folders (the link itself and its contents), zip contents, and the start folder itself are excluded
+    (symbolic links to files are included)
+  - Results appear in the file list as a single list that mixes files and folders, added in the order they are found and sorted by the current sort. You can keep working while it searches.
+    List view gets a "Location" (場所) column (the folder relative to the start folder), which can also be used for sorting. Thumbnail view shows the location as a tooltip.
+    The search bar above the list shows the total number of files and folders, "Searching…" (検索中…) while searching, and "No matching items" (該当する項目はありません) when nothing matches
+  - Folder rows are the same as regular folder rows and open with a double-click, ⌘↓, or right-click → "Show Contents" (中を表示). Opening one closes the search results and
+    shows that folder's list, and ⌘[ (Back) returns to the folder shown before the search. Selecting a folder row clears the preview
+  - Preview, copy, duplicate, rename, move to Trash, and move all work on search results. Paste, move-paste, and ⌘↑ do not.
+    Rows that are moved to the Trash, moved, or deleted outside the app are removed from the list along with the results inside them. Renamed rows stay under their new name (the results inside them move to the new location,
+    and newly appearing files and folders are not added). When a folder row is renamed, whether the results inside it are carried over or enumerated again depends on whether it has already been matched
+  - Moving an ancestor of a result folder to the Trash, or moving it, from the search results keeps the search results shown (the rows and the results inside them are removed).
+    If the folder shown before the search no longer exists when the search results are closed, "Folder not found" (フォルダが見つかりません) is shown. Moving an ancestor to the Trash from the tree goes to its parent as before
+  - Selecting a folder in the tree (including clicking the already-selected row) or pressing Esc in the file list closes the search results (and stops a search in progress)
+  - Search conditions, results, and sorting by "Location" are not saved
+
+## Requirements
+
+- macOS 15 or later
+- Xcode (Swift 6 toolchain). `swift --version` must report 6.0 or later
+- `xcode-select -p` must point to `/Applications/Xcode.app/Contents/Developer`
+- `cwebp` / `img2webp` (the Homebrew `webp` package) are used to generate test fixtures
+  (not needed to run the app)
 
 ```bash
 xcode-select -p
 swift --version
 ```
 
-## ビルドと自動テスト
+## Building and Automated Tests
 
 ```bash
 swift build
 swift test
 ```
 
-- `swift test` は `MediaViewerCoreTests`（Core のロジック・異常系・FSEvents）と
-  `MediaViewerPerformanceTests`（性能基準）を実行します（執筆時点で 69 + 6 件）
-- 個別に実行する場合:
+- `swift test` runs `MediaViewerCoreTests` (Core logic, error cases, FSEvents) and
+  `MediaViewerPerformanceTests` (performance baselines) (69 + 6 tests at the time of writing)
+- To run them individually:
 
 ```bash
 swift test --filter MediaViewerCoreTests
 swift test --filter MediaViewerPerformanceTests
 ```
 
-- ネットワーク非依存の確認:
+- To check that no network APIs are used:
 
 ```bash
 scripts/check-no-network.sh
 ```
 
-## 起動
+## Launching
 
-### 開発中の起動（ターミナル）
+### During development (Terminal)
 
 ```bash
 swift run MediaViewerApp
 ```
 
-ターミナルを占有します。終了は ⌘Q または Ctrl-C。TCC（デスクトップ・書類・ダウンロードへのアクセス許可）は
-ターミナルに紐づきます。
+This occupies the terminal. Quit with ⌘Q or Ctrl-C. TCC permissions (access to Desktop, Documents, and Downloads)
+are tied to the terminal app.
 
-### .app として起動
+### As a .app
 
 ```bash
 scripts/make-app.sh
 open .build/MediaViewer.app
 ```
 
-`scripts/make-app.sh` は release ビルドを行い、`.build/MediaViewer.app` を組み立てて ad-hoc 署名します。
-TCC の許可は MediaViewer アプリに紐づきます。初回に許可ダイアログが出たら「許可」してください。
+`scripts/make-app.sh` makes a release build, assembles `.build/MediaViewer.app`, and signs it ad hoc.
+TCC permissions are tied to the MediaViewer app. When the permission dialog appears for the first time, click "Allow".
 
-## 検証用フォルダの準備
+## Preparing Test Folders
 
 ```bash
 scripts/make-fixtures.sh ~/MediaViewerFixtures
 ```
 
-次のフォルダが生成されます（スクリプトは毎回作り直します）。
+This generates the following folders (the script recreates them every time).
 
-| フォルダ | 内容 |
-|----------|------|
-| `mixed/` | JPEG・PNG・アニメーション GIF・静止/アニメーション WebP・mp4・mov・.txt・.pdf・サブフォルダ・隠しファイル |
-| `slideshow/` | スライドショー用（画像3件・GIF・1秒/10秒動画・非対応 .txt・サブフォルダ・zip。WebP と隠しファイルは `mixed/` で確認） |
-| `broken/` | 破損 JPEG、中身が PNG の `.jpg`、0 バイトの `.mp4` |
-| `huge/` | 10,000 個の小さな JPEG |
-| `bigimage/` | 1 億画素級の PNG |
-| `ops/` | コピー・移動・名前変更などの検証用（`a.jpg`、`b.png`、`c 2.jpg`、`dest/`、`album/`） |
-| `folders/` | ファイルリストのフォルダの検証用（`trip/day1/`・`day2/`、空のフォルダ、隠しフォルダ、パッケージ、名前が `.zip` のフォルダ） |
-| `zoom/` | プレビューの拡大・縮小の検証用（16×16・1×1 の PNG、6000×4000 の JPEG、1200×2400 の縦長 PNG） |
+| Folder | Contents |
+|--------|----------|
+| `mixed/` | JPEG, PNG, animated GIF, still/animated WebP, mp4, mov, .txt, .pdf, a subfolder, hidden files |
+| `slideshow/` | For the slideshow (3 images, a GIF, 1-second/10-second videos, an unsupported .txt, a subfolder, a zip. Check WebP and hidden files in `mixed/`) |
+| `broken/` | A corrupt JPEG, a `.jpg` that is actually a PNG, a 0-byte `.mp4` |
+| `huge/` | 10,000 small JPEGs |
+| `bigimage/` | A PNG of about 100 megapixels |
+| `ops/` | For checking copy, move, rename, and so on (`a.jpg`, `b.png`, `c 2.jpg`, `dest/`, `album/`) |
+| `folders/` | For checking folders in the file list (`trip/day1/` and `day2/`, an empty folder, a hidden folder, a package, a folder named `.zip`) |
+| `zoom/` | For checking preview zoom (16×16 and 1×1 PNGs, a 6000×4000 JPEG, a 1200×2400 portrait PNG) |
 
-WebP フィクスチャは `cwebp` / `img2webp` で生成し、`Sources/FixtureKit/Resources/` に同梱しています。
-生成し直す場合:
+The WebP fixtures are generated with `cwebp` / `img2webp` and bundled in `Sources/FixtureKit/Resources/`.
+To regenerate them:
 
 ```bash
 scripts/make-webp-fixtures.sh
 ```
 
-## 使い方（主なショートカット）
+## Usage (Main Shortcuts)
 
-| 操作 | ショートカット |
-|------|----------------|
-| 設定 | ⌘, |
-| 終了 | ⌘Q |
-| ツリー／リスト／プレビューへフォーカス | ⌥⌘1 / ⌥⌘2 / ⌥⌘3 |
-| ファイルリストのみ表示／プレビューのみ表示（3ペイン表示に戻すのも同じ） | ⌃⌘2 / ⌃⌘3、表示メニュー、ツールバー |
-| スライドショーを開始／終了 | ⇧⌘S（表示メニュー・ツールバー）／Esc |
-| スライドショー中に隠れた一覧を移動（期限も設定した間隔でやり直し） | 矢印キー（サムネイル形式は上下左右、リスト形式は上下。Esc で終了） |
-| スライドショー中の動画の再生／一時停止・5秒シーク | `/`・`<` / `>` |
-| 隠れたファイルリストの選択を移す（プレビューのみ表示） | 矢印キー（サムネイル形式は上下左右、リスト形式は上下） |
-| 動画を5秒戻す／送る（プレビューのみ表示） | `<` / `>` |
-| ツリーのフォルダを展開／折りたたむ | → / ←、フォルダの行のダブルクリック |
-| お気に入りに追加 | ⌃⌘T、ツリーの右クリックメニュー |
-| お気に入りの項目の名前を変更（行の中で編集。Return で確定・Esc で取り消し・空にすると元のフォルダ名に戻る。確認なし。実際のフォルダの名前は変わらない） | Return、お気に入りの項目の右クリックメニュー「名前を変更」、編集メニュー「名前を変更」 |
-| お気に入りから削除（表示名と絶対パスを出す確認あり。実際のフォルダは変更しない） | ⌘Delete、お気に入りの項目の右クリックメニュー |
-| ツリーのフォルダをゴミ箱に入れる（中身ごと。確認あり・設定で省略可。ホーム・ボリュームの最上位は不可。表示中のフォルダを入れたときは親フォルダを表示する） | ⌘Delete、ツリーのフォルダの右クリックメニュー「ゴミ箱に入れる」 |
-| 「お気に入り」の見出しへ移動 | ⇧⌘F |
-| サムネイル形式／リスト形式 | ⌘1 / ⌘2 |
-| サムネイルを拡大／縮小 | ⌃⌘. / ⌃⌘,、表示メニュー |
-| プレビュー画像を拡大／縮小／表示領域に合わせる（25%刻み、25%〜800%） | ⌘+（⌘= でも可）/ ⌘− / ⌘0、表示メニュー、ツールバー |
-| ツールバーを表示／隠す | ⇧⌘T、表示メニュー |
-| 画像のみ表示／動画のみ表示 | ⇧⌘I / ⇧⌘M、表示メニュー、ツールバー |
-| zip ファイルを表示／隠す（既定は非表示。保存され、再起動で復元。オフの間は一覧・選択・ファイル操作・フルスクリーンの移動の対象にならない。zip の中を表示中の切り替えでは中の一覧は変わらない） | ⌃⌘Z、表示メニュー「zipファイルを表示」、ツールバー（種類フィルタの右・表示形式の左） |
-| 動画の再生／一時停止（リスト上） | Space |
-| プレビューのフルスクリーン／復帰 | ⌃⌘F、画像のダブルクリック、Esc |
-| コピー／ペースト／移動ペースト | ⌘C / ⌘V / ⌥⌘V |
-| 複製 | ⌘D |
-| 名前を変更（その場で編集） | Return |
-| ゴミ箱に入れる | ⌘Delete |
-| 選択項目を開く | ⌘O |
-| Finder に表示 | 右クリックメニュー / ファイルメニュー |
-| フォルダ・zip ファイル・zip の中のディレクトリの中を表示 | ダブルクリック、⌘↓、右クリックメニュー「中を表示」 |
-| 1 つ上の階層へ戻る（zip の最上位では zip を含むフォルダの一覧へ。ホーム・ボリュームの最上位では何もしない） | ⌘↑、先頭行 `..` のダブルクリック、右クリックメニュー「上の階層へ」 |
-| 並べ替え | 列ヘッダーのクリック、表示メニュー → 並べ替え |
-| 名前の検索（ファイル名とフォルダ名） | ⌘F、ファイルメニュー「検索…」 |
-| 検索起点フォルダを選ぶ | 検索シートの「選択…」（Tab で移動、Space で開く）。標準パネルの Return・Esc はパネルだけに作用する |
-| 検索結果の表示を終える | ツリーでフォルダを選ぶ（選択中の行のクリックを含む）、ファイルリストで Esc |
-| 検索結果のフォルダの行を開く | ダブルクリック、⌘↓、右クリックの「中を表示」 |
+| Action | Shortcut |
+|--------|----------|
+| Settings | ⌘, |
+| Quit | ⌘Q |
+| Focus the tree / list / preview | ⌥⌘1 / ⌥⌘2 / ⌥⌘3 |
+| File list only / preview only (the same shortcut returns to three panes) | ⌃⌘2 / ⌃⌘3, View menu, toolbar |
+| Start / end a slideshow | ⇧⌘S (View menu, toolbar) / Esc |
+| Move through the hidden list during a slideshow (the timer also restarts at the configured interval) | Arrow keys (up/down/left/right in thumbnail view, up/down in list view. Esc ends) |
+| Play/pause a video or seek 5 seconds during a slideshow | `/`, `<` / `>` |
+| Move the selection in the hidden file list (preview only) | Arrow keys (up/down/left/right in thumbnail view, up/down in list view) |
+| Skip a video back / forward 5 seconds (preview only) | `<` / `>` |
+| Expand / collapse a folder in the tree | → / ←, double-click a folder row |
+| Add to Favorites | ⌃⌘T, tree context menu |
+| Rename a favorite (edited in place. Return commits, Esc cancels, clearing the name restores the original folder name. No confirmation. The actual folder is not renamed) | Return, "Rename" in the favorite's context menu, Edit menu → "Rename" |
+| Remove from Favorites (with a confirmation that shows the display name and the absolute path. The actual folder is not changed) | ⌘Delete, the favorite's context menu |
+| Move a folder in the tree to the Trash (with its contents. Asks for confirmation, which can be skipped in Settings. Not available for home or the top level of a volume. Trashing the folder being shown shows its parent) | ⌘Delete, "Move to Trash" in the tree folder's context menu |
+| Jump to the "Favorites" heading | ⇧⌘F |
+| Thumbnail view / list view | ⌘1 / ⌘2 |
+| Larger / smaller thumbnails | ⌃⌘. / ⌃⌘,, View menu |
+| Zoom the preview image in / out / fit to view (25% steps, 25%–800%) | ⌘+ (⌘= also works) / ⌘− / ⌘0, View menu, toolbar |
+| Show / hide the toolbar | ⇧⌘T, View menu |
+| Images only / videos only | ⇧⌘I / ⇧⌘M, View menu, toolbar |
+| Show / hide zip files (hidden by default. Saved and restored on relaunch. While off, zip files are excluded from the list, selection, file operations, and full-screen navigation. Toggling while viewing the inside of a zip does not change the list inside) | ⌃⌘Z, View menu → "Show Zip Files", toolbar (right of the kind filter, left of the view-mode buttons) |
+| Play / pause a video (from the list) | Space |
+| Full-screen preview / return | ⌃⌘F, double-click the image, Esc |
+| Copy / paste / move-paste | ⌘C / ⌘V / ⌥⌘V |
+| Duplicate | ⌘D |
+| Rename (in place) | Return |
+| Move to Trash | ⌘Delete |
+| Open the selected item | ⌘O |
+| Show in Finder | Context menu / File menu |
+| Show the contents of a folder, a zip file, or a directory inside a zip | Double-click, ⌘↓, "Show Contents" in the context menu |
+| Go up one level (at the top of a zip, to the list of the folder containing it; does nothing at the top level of home or a volume) | ⌘↑, double-click the `..` row at the top, "Enclosing Folder" (上の階層へ) in the context menu |
+| Sort | Click a column header, View menu → Sort |
+| Search by name (file and folder names) | ⌘F, File menu → "Search…" |
+| Choose the search start folder | "Choose…" in the search sheet (move to it with Tab, open it with Space). Return and Esc in the standard panel affect only the panel |
+| Close the search results | Select a folder in the tree (including clicking the selected row), Esc in the file list |
+| Open a folder row in the search results | Double-click, ⌘↓, "Show Contents" in the context menu |
 
-ドラッグ＆ドロップでは、ファイルをツリーのフォルダへドロップすると移動、⌥ を押しながらだとコピーになります。
-同じ名前のファイルがある場合は、設定に関係なく衝突ダイアログが表示されます。
+With drag and drop, dropping files onto a folder in the tree moves them, and holding ⌥ copies them instead.
+If a file with the same name already exists, the conflict dialog appears regardless of the settings.
 
-## 手動での動作確認
+## Manual Verification
 
-`scripts/make-fixtures.sh` で生成したフォルダを使って、次の点を確認します。
+Use the folders generated by `scripts/make-fixtures.sh` to check the following.
 
-1. **US1**: `mixed/` を開き、7 件のメディアだけが並ぶこと。↓ でプレビューが追従し、GIF が動くこと。
-   アニメーション WebP は再生されるか先頭フレームで表示されること。
-2. **US2**: mp4 が自動再生・ループすること。設定で自動再生をオフにすると先頭フレームで止まること。
-   画像へ移ると音声込みで停止すること。
-3. **US3**: ⌘1 / ⌘2 で形式を切り替えても選択が維持されること。サムネイルの折り返しが追従し、
-   横スクロールバーが出ないこと。再起動で表示形式・サイズ・最後のフォルダが復元されること。
-4. **US4**: `ops/` でコピー・移動・複製・名前変更・ゴミ箱・D&D を確認すること。
-   同名衝突で「置き換える／両方残す／中止」が出ること。
-5. **US5**: 画像のダブルクリック／⌃⌘F で全画面になり、Esc で 3 ペインに戻ること。
-6. **US6**: 仕切りを端までドラッグしても各ペインが最小幅（160 / 240 / 320pt）で止まること。
-   仕切りのダブルクリックで折りたたまれないこと。
-7. **キーボードのみ**: Tab でツリー → リスト → プレビュー、矢印で選択、⌃⌘F → Esc を完了できること。
-8. **異常系**: `broken/` でクラッシュしないこと。権限のないフォルダで「アクセスできません」が出ること。
-   外部からファイルを追加・削除して一覧が更新されること。
-9. **スライドショー**: `slideshow/mixed/` を開き、⇧⌘S で開始すること。設定した間隔（既定3秒）ごとに画像・動画・GIF が表示順に進み、
-   動画は再生されたまま切り替わること。設定ウインドウで間隔を 10 秒にすると送りが 10 秒ごとになり、不正な値は直前の有効値に戻ること。
-   繰り返しをオフにすると末尾の表示から間隔の後に終了し、Esc と同じ復帰になること。4種類の効果が自動送りだけに付き、
-   効果の途中の矢印・Esc が待たされないこと。「視差効果を減らす」でスライド・ズームがクロスフェードになること。
-   矢印で移動すると期限が設定した間隔でやり直しになり、Esc で元のペイン・幅・フォーカスへ戻ること。
-   1件だけのフォルダでは同じ対象のまま期限だけがやり直すこと（繰り返しオフなら間隔の後に終了）。開始・終了だけでは動画が止まらないこと
-   （復帰先がファイルリストのみ表示の場合は停止・消音）。フルスクリーンから開始し、Esc で復帰すると元のウインドウ状態に戻ること。
-   検索やフォルダ移動でスライドショーが終了すること。
-10. **アクセシビリティ**: Accessibility Inspector で各ビューのラベルを確認すること。
+1. **US1**: Open `mixed/` and check that only the 7 media files are listed. ↓ updates the preview, and GIFs animate.
+   Animated WebP either plays or is shown as its first frame.
+2. **US2**: An mp4 autoplays and loops. Turning autoplay off in Settings stops it at the first frame.
+   Moving to an image stops the video, including its audio.
+3. **US3**: Switching views with ⌘1 / ⌘2 keeps the selection. Thumbnail wrapping follows the pane width,
+   and no horizontal scroll bar appears. Relaunching restores the view mode, size, and last folder.
+4. **US4**: In `ops/`, check copy, move, duplicate, rename, move to Trash, and drag and drop.
+   A name conflict shows "Replace / Keep Both / Stop".
+5. **US5**: Double-clicking an image or pressing ⌃⌘F enters full screen, and Esc returns to the three panes.
+6. **US6**: Dragging a divider to the edge stops each pane at its minimum width (160 / 240 / 320 pt).
+   Double-clicking a divider does not collapse a pane.
+7. **Keyboard only**: You can move with Tab from the tree → list → preview, select with the arrow keys, and complete ⌃⌘F → Esc.
+8. **Error cases**: `broken/` does not crash the app. A folder without permission shows "Cannot access" (アクセスできません).
+   Adding or deleting files from outside the app updates the list.
+9. **Slideshow**: Open `slideshow/mixed/` and start with ⇧⌘S. Images, videos, and GIFs advance in display order at the configured interval (3 seconds by default),
+   and videos switch while still playing. Setting the interval to 10 seconds in the Settings window makes it advance every 10 seconds, and invalid values revert to the last valid value.
+   With repeat off, it ends one interval after the last item is shown, restoring the same state as Esc. The four effects apply only to auto-advance,
+   and the arrow keys or Esc are not delayed during an effect. With "Reduce motion" on, Slide and Zoom become Crossfade.
+   Moving with the arrow keys restarts the timer at the configured interval, and Esc restores the previous panes, widths, and focus.
+   In a folder with only one item, the same item stays and only the timer restarts (with repeat off, it ends after the interval). Starting and ending alone do not stop a video
+   (it is stopped and muted if the layout being restored is file list only). Starting from full screen and pressing Esc restores the previous window state.
+   Searching or changing folders ends the slideshow.
+10. **Accessibility**: Check the labels of each view with Accessibility Inspector.
 
-## プロジェクト構成
+## Project Structure
 
 ```text
 Package.swift
 Sources/
-  MediaViewerCore/        # AppKit を import しないロジック層
-    Model/                # MediaFile / FolderNode / FileOperation など
-    Browser/              # BrowserModel（状態と非同期処理の調停）
-    FileSystem/           # ディレクトリ列挙、ボリューム、FSEvents 監視
-    Imaging/              # デコード、サムネイル、LRU キャッシュ
-    Layout/               # フィット計算、サムネイル列計算
-    Operations/           # 名前検証、ファイル操作サービス
-    Settings/             # UserDefaults による設定
-  MediaViewerApp/         # AppKit UI（描画と入力）
-    App/                  # 起動、メインウインドウ、メニュー、3 ペイン
-    Tree/                 # ディレクトリツリー
-    FileList/             # リスト／サムネイル／コンテキストメニュー
-    Preview/              # 画像・動画プレビュー
-    Operations/           # 確認・衝突ダイアログ、実行コーディネータ
-    Settings/             # 設定ウインドウ
-  FixtureKit/             # テスト用メディア生成（画像・GIF・WebP・動画）
-  make-fixtures/          # フィクスチャ生成 CLI
+  MediaViewerCore/        # Logic layer that does not import AppKit
+    Model/                # MediaFile / FolderNode / FileOperation, etc.
+    Browser/              # BrowserModel (coordinates state and asynchronous work)
+    FileSystem/           # Directory enumeration, volumes, FSEvents monitoring
+    Imaging/              # Decoding, thumbnails, LRU cache
+    Layout/               # Fit and thumbnail column calculations
+    Operations/           # Name validation, file operation service
+    Settings/             # Settings stored in UserDefaults
+  MediaViewerApp/         # AppKit UI (drawing and input)
+    App/                  # Launch, main window, menus, three panes
+    Tree/                 # Directory tree
+    FileList/             # List / thumbnails / context menus
+    Preview/              # Image and video preview
+    Operations/           # Confirmation and conflict dialogs, execution coordinator
+    Settings/             # Settings window
+  FixtureKit/             # Test media generation (images, GIF, WebP, video)
+  make-fixtures/          # Fixture generation CLI
 Tests/
   MediaViewerCoreTests/         # Swift Testing
-  MediaViewerPerformanceTests/  # 性能基準
+  MediaViewerPerformanceTests/  # Performance baselines
 scripts/
-  make-app.sh              # .app の組み立てと署名
-  make-fixtures.sh         # フィクスチャ生成
-  make-webp-fixtures.sh    # 同梱 WebP の再生成
-  check-no-network.sh      # ネットワーク API 非依存の確認
+  make-app.sh              # Assembles and signs the .app
+  make-fixtures.sh         # Generates fixtures
+  make-webp-fixtures.sh    # Regenerates the bundled WebP files
+  check-no-network.sh      # Checks that no network APIs are used
+  check-readme-sync.sh     # Checks that README.md and README.ja.md are in sync
 ```
 
-設計上のルール:
+Design rules:
 
-- `MediaViewerCore` は AppKit を import しません。判断ロジックは Core、描画と入力は App に置きます
-- デコード・ディレクトリ列挙・ファイル操作は UI スレッドで行いません
-- Core のロジックと異常系には Swift Testing のテストを付けます
+- `MediaViewerCore` does not import AppKit. Decision logic lives in Core, and drawing and input live in App
+- Decoding, directory enumeration, and file operations never run on the UI thread
+- Core logic and error cases are covered by Swift Testing tests
 
-## 設定の保存先
+## Where Settings Are Stored
 
-設定は `UserDefaults` に保存されます。`.app` と `swift run` では保存先が異なります。
+Settings are stored in `UserDefaults`. The `.app` and `swift run` use different domains.
 
 ```bash
-# .app の設定をリセット
+# Reset the settings of the .app
 defaults delete local.my-img-viewer.MediaViewer
 
-# swift run の設定をリセット
+# Reset the settings of swift run
 defaults delete MediaViewerApp
 ```
 
-## トラブルシューティング
+## Troubleshooting
 
-- **ウインドウが出ない／メニューだけ表示される**: 古いプロセスが残っていないか確認し、終了してから再起動します。
+- **No window appears / only the menu bar is shown**: Check for leftover processes, quit them, and launch again.
 
   ```bash
   pgrep -fl MediaViewer
@@ -305,17 +311,17 @@ defaults delete MediaViewerApp
   open .build/MediaViewer.app
   ```
 
-  ターミナルから直接実行すると、起動時のエラーがそのまま表示されます。
+  Running the app directly from the terminal shows startup errors as they happen.
 
   ```bash
   .build/MediaViewer.app/Contents/MacOS/MediaViewer
   ```
 
-- **ファイルが見えない**: システム設定 → プライバシーとセキュリティ → ファイルとフォルダ で、
-  起動方法に応じてターミナルまたは MediaViewer にアクセスを許可してください。
-- **フィクスチャ生成に失敗する**: `cwebp` / `img2webp` が見つからない場合は `brew install webp` を実行してください。
-- **性能テストが失敗する**: `Tests/MediaViewerPerformanceTests` の基準値を確認してください。他の負荷が高い状態では一時的に超えることがあります。
+- **Files are not visible**: In System Settings → Privacy & Security → Files and Folders, allow access
+  for Terminal or MediaViewer, depending on how you launched the app.
+- **Fixture generation fails**: If `cwebp` / `img2webp` cannot be found, run `brew install webp`.
+- **Performance tests fail**: Check the baselines in `Tests/MediaViewerPerformanceTests`. They may be exceeded temporarily while the machine is under other load.
 
-## ライセンス
+## License
 
 [MIT License](LICENSE)
