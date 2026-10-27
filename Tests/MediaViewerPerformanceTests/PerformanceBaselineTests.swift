@@ -785,6 +785,27 @@ struct PerformanceBaselineTests {
     }
 }
 
+@Test("10,000 行から 5,000 件を選んだ行番号変換が 100ms 未満（FR-016・SC-003）")
+func selectionIndexTenThousandRows() {
+    let urls = (0..<10_000).map {
+        URL(fileURLWithPath: "/selection/\($0)", isDirectory: true)
+    }
+    var selected: Set<URL> = []
+    selected.reserveCapacity(5_000)
+    for index in stride(from: 0, to: urls.count, by: 2) {
+        selected.insert(urls[index])
+    }
+
+    let start = ContinuousClock.now
+    let indexes = SelectionIndex.indexes(of: selected, in: urls)
+    let elapsed = ContinuousClock.now - start
+    print("[perf] selection index 10,000 rows / 5,000 selected: \(elapsed)")
+    #expect(indexes.count == 5_000)
+    #expect(indexes.first == 0)
+    #expect(indexes.last == 9_998)
+    #expect(elapsed < .milliseconds(100), "選択同期が 100ms 以上止まらないこと")
+}
+
 /// 現在のプロセスの `phys_footprint`（バイト）。
 private func physicalFootprint() -> UInt64 {
     var info = task_vm_info_data_t()
