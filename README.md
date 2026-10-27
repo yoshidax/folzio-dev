@@ -6,7 +6,6 @@ macOS ネイティブの 3 ペイン型メディアビューア。左のディ�
 - **技術構成**: Swift 6 + AppKit のみ。外部パッケージ依存なし。Swift Package で構成（Xcode プロジェクトなし）
 - **対応 OS**: macOS 15 以降
 - **ネットワーク**: 不使用（`URLSession` / `Network` / `NWConnection` を参照しない）
-- **仕様**: GitHub Spec Kit の文書。現在の仕様は `specs/product/`（領域別）、001 の記録は `specs/001-three-pane-media-viewer/`
 
 ## 主な機能
 
@@ -220,8 +219,7 @@ scripts/make-webp-fixtures.sh
 
 ## 手動での動作確認
 
-詳細な手順と期待結果は
-[quickstart.md](specs/001-three-pane-media-viewer/quickstart.md) を参照してください。要点だけ示します。
+`scripts/make-fixtures.sh` で生成したフォルダを使って、次の点を確認します。
 
 1. **US1**: `mixed/` を開き、7 件のメディアだけが並ぶこと。↓ でプレビューが追従し、GIF が動くこと。
    アニメーション WebP は再生されるか先頭フレームで表示されること。
@@ -246,8 +244,6 @@ scripts/make-webp-fixtures.sh
    （復帰先がファイルリストのみ表示の場合は停止・消音）。フルスクリーンから開始し、Esc で復帰すると元のウインドウ状態に戻ること。
    検索やフォルダ移動でスライドショーが終了すること。
 10. **アクセシビリティ**: Accessibility Inspector で各ビューのラベルを確認すること。
-
-性能の基準値と `os_signpost` の計測手順は quickstart の「性能の検証」に記載しています。
 
 ## プロジェクト構成
 
@@ -279,8 +275,6 @@ scripts/
   make-fixtures.sh         # フィクスチャ生成
   make-webp-fixtures.sh    # 同梱 WebP の再生成
   check-no-network.sh      # ネットワーク API 非依存の確認
-specs/product/                      # 現在の仕様（領域別の Living spec と横断の契約）
-specs/001-three-pane-media-viewer/  # 001 の記録（凍結）: spec / plan / research / data-model / contracts / quickstart / tasks
 ```
 
 設計上のルール:
@@ -320,18 +314,4 @@ defaults delete MediaViewerApp
 - **ファイルが見えない**: システム設定 → プライバシーとセキュリティ → ファイルとフォルダ で、
   起動方法に応じてターミナルまたは MediaViewer にアクセスを許可してください。
 - **フィクスチャ生成に失敗する**: `cwebp` / `img2webp` が見つからない場合は `brew install webp` を実行してください。
-- **性能テストが失敗する**: quickstart の基準値を確認してください。他の負荷が高い状態では一時的に超えることがあります。
-
-## 仕様・進捗
-
-Codex での Spec Kit 開発環境、対話コマンド、自動実行の手順は
-[Codex で Spec Kit を使う](docs/codex-speckit.md) を参照してください。
-自動実行の入口は `scripts/sdd-run-codex.sh` です。
-
-- 仕様の正本: `specs/product/`（領域別。索引は `specs/product/README.md`）
-- 001 の記録（凍結）: `specs/001-three-pane-media-viewer/`（spec.md・plan.md・tasks.md など）
-- バグ修正の記録: `.specify/bugs/<slug>/`（bug 拡張の assessment・fix・test。手順は AGENTS.md の「バグ修正」）
-- 憲章: `.specify/memory/constitution.md`（v1.2.0）
-- 開発の振り返り: `docs/retrospective/2026-10-19-startup-debugging.md`
-- 進捗: 実装タスク T001〜T078 は完了。T079（Accessibility Inspector）と T080（手動シナリオの記録）は
-  手動確認待ちです。
+- **性能テストが失敗する**: `Tests/MediaViewerPerformanceTests` の基準値を確認してください。他の負荷が高い状態では一時的に超えることがあります。

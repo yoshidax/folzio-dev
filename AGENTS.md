@@ -131,6 +131,14 @@ open .build/MediaViewer.app
   - `.app`: `local.my-img-viewer.MediaViewer`
   - `swift run`: `MediaViewerApp`
 
+## 公開用リポジトリ
+
+- このリポジトリは非公開の開発用。公開用は `scripts/publish.sh` で `../my_img_viewer-oss` へ書き出し、1回の公開を1コミットにする
+- Spec Kit・AI エージェント・開発記録のファイルは `.gitattributes` の `export-ignore` で書き出しから外す。
+  開発専用のファイルやディレクトリを足したら、`.gitattributes` にも追加する
+- 公開版の README・ソースのコメントから `specs/`・`.specify/`・`AGENTS.md` へのリンクを張らない
+- 公開用リポジトリへのコミットと push はユーザーが行う
+
 ## 参照
 
 - 起動不具合の詳細な振り返り: `docs/retrospective/2026-10-19-startup-debugging.md`
