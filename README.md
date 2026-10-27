@@ -315,3 +315,7 @@ defaults delete MediaViewerApp
   起動方法に応じてターミナルまたは MediaViewer にアクセスを許可してください。
 - **フィクスチャ生成に失敗する**: `cwebp` / `img2webp` が見つからない場合は `brew install webp` を実行してください。
 - **性能テストが失敗する**: `Tests/MediaViewerPerformanceTests` の基準値を確認してください。他の負荷が高い状態では一時的に超えることがあります。
+
+## ライセンス
+
+[MIT License](LICENSE)
