@@ -272,7 +272,7 @@ VoiceOver・Instruments の測定値を個別に含む報告ではない。以�
 | T038 product 反映 | `specs/product/search.md` に FR-081・US1-AS25 の変更、FR-141〜144、US16-AS1〜13、EC-103〜106、SC-058〜060、A-83〜86 を反映。`contracts/keyboard-and-menus.md` に Tab/Space・標準パネル・フォーカス復帰を反映 | 詳細な手動計測値は feature の記録側に残し、product には要件だけを反映 |
 | T039 feature 凍結 | `specs/010-search-folder-picker/spec.md` 冒頭に product 移行済み・凍結の注記 | 実装経緯は plan/research/tasks に残す |
 | 自動ゲート | `swift build` 成功、`scripts/check-no-network.sh` 成功、`scripts/make-app.sh` 成功。`MediaViewerCoreTests --no-parallel` 776件成功。`MediaViewerPerformanceTests` は 27件成功（別実行）。新規の SelectionIndex 3件・性能1件成功 | 素の `swift test` は高負荷時に既存の時間依存テストがタイムアウトすることがある。今回の変更箇所ではない |
-| コミット | T033・T040 は未実施。ユーザーから明示的な commit 指示がないため | 変更は未コミット。指示後に Phase 3/4 をコミットする |
+| コミット | Phase 2 `497094c`、Phase 3 `c1cfc7b`、バグ修正 `bfcbef4`、Phase 4 `d242442`。T012・T033・T040 完了。push は未実施 | なし |
 
 SC-058・SC-059・SC-060 の数値目標は、ユーザーの総合確認を受領したが、個別の試行回数・環境・測定値は未記録である。
 必要なら T023〜T031 を個別に再実施して本表を更新する。product 反映と feature 凍結は、要件の移行として完了している。

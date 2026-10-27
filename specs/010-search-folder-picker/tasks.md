@@ -44,7 +44,7 @@
 - [X] T009 T007・T008 後、`swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/make-app.sh` を順に実行する（対象: `Tests/MediaViewerCoreTests/SearchFolderPickerFixtureTests.swift`、`.build/MediaViewer.app`）。失敗を3回修正しても解消しなければ止めて報告する。
 - [X] T010 [MANUAL] T009 成功後、ユーザーへ `cd /Users/igachan/projects/my_img_viewer` の後に `open .build/MediaViewer.app` を依頼し、3ペインと既存検索シートに起動上の退行がない報告を受ける（手順: `specs/010-search-folder-picker/quickstart.md`）。
 - [X] T011 T009・T010 の結果を `specs/010-search-folder-picker/quickstart.md` の Phase 2 記録欄へ追記し、GUI の未確認と自動検証の成功を別々に記載する。
-- [ ] T012 T007〜T011 完了後、`Sources/FixtureKit/FixtureSets.swift`、`Tests/MediaViewerCoreTests/SearchFolderPickerFixtureTests.swift`、本 feature の進捗・記録を Phase 2 のコミットにする。
+- [X] T012 T007〜T011 完了後、`Sources/FixtureKit/FixtureSets.swift`、`Tests/MediaViewerCoreTests/SearchFolderPickerFixtureTests.swift`、本 feature の進捗・記録を Phase 2 のコミットにする。
 
 **Checkpoint**: 以後の Core テストで共通入力を使える。GUI 用データのユーザー領域への生成は手動確認の準備として T022 で行う。
 
@@ -89,7 +89,7 @@ T013〜T015 は設計契約に基づいて先に追加し、対応実装がな�
 - [X] T030 [MANUAL] [US16] `specs/010-search-folder-picker/quickstart.md` シナリオ8をユーザーに実施してもらい、検索A中のパネル表示・確定・取消でも途中件数/結果/外部更新が続き、無効なBでAを止めず有効なBだけで置換する報告を受ける。`defaults read local.my-img-viewer.MediaViewer` による最後のフォルダの不変、親を開き直した既定起点、再起動時に選択起点・入力元・結果を保存しないことも確認する（AS13、FR-003・085・086・142）。
 - [X] T031 [MANUAL] [US16] `specs/010-search-folder-picker/quickstart.md` シナリオ9をユーザーに実施してもらい、many-folders を標準パネルで開き、直下10,000フォルダの表示・移動・取消が標準パネルで応答し、既存検索の同時更新が続くことを報告してもらう。Instruments Hangs等で端末・OS・件数・最大停止時間と主スレッド上の列挙/検証/権限確認の有無を測定し、100ms以上のUI停止がないか確認する。検索が速すぎて同時更新を観測できなければ専用データを増やして再試行し、未観測を合格にしない。
 - [X] T032 [US16] T021 の自動結果と T022〜T031 の受領済み報告を `specs/010-search-folder-picker/quickstart.md` の記録欄へ追記する。SC-058の5/5（開始成立・起点・既知の一致結果・走査完了/照合後解除/未確認を各記録）と末尾空白、SC-059の10回/変更0回、SC-060の5/5と指定7ケースを対応付け、性能の環境・値・未実施理由を記載する。T014の注入結果と実操作を区別し、実施の代行や未報告の補完はしない。
-- [ ] T033 [US16] T013〜T032 の全ゲートと受け入れ基準が満たされた後、`Sources/MediaViewerCore/Search/`、`Sources/MediaViewerApp/Search/`、対象の `Tests/` と本 feature の進捗・記録を差分確認して Phase 3 のコミットにする。GUI未確認のまま US16 完了・MVP達成としない。
+- [X] T033 [US16] T013〜T032 の全ゲートと受け入れ基準が満たされた後、`Sources/MediaViewerCore/Search/`、`Sources/MediaViewerApp/Search/`、対象の `Tests/` と本 feature の進捗・記録を差分確認して Phase 3 のコミットにする。GUI未確認のまま US16 完了・MVP達成としない。
 
 **Checkpoint**: US16 が独立に動作し、SC-058〜060 と既存検索の継続・性能を確認済み。MVP はこの Phase まで（Setup・Foundationalを含む）。
 
@@ -103,7 +103,7 @@ T013〜T015 は設計契約に基づいて先に追加し、対応実装がな�
 - [X] T037 T035・T036 の結果と最終ビルド、全受け入れ基準の証拠、性能値、制限・残件の有無を `specs/010-search-folder-picker/quickstart.md` の記録欄へ追記する。T022〜T031を含め未確認が残る場合は未完了を明示し、T038へ進まない。
 - [X] T038 実装・自動検証・手動検証がすべて完了した後、`specs/010-search-folder-picker/spec.md` の「反映先」表に従い `specs/product/search.md` と `specs/product/contracts/keyboard-and-menus.md` に FR-081・US1-AS25の変更、FR-141〜144、US16-AS1〜13、EC-103〜106、SC-058〜060、A-83〜86を反映する。FR-081とUS1-AS25の既定値は一覧基準・EC-102のFへ統一し、キー契約の既定値を維持してsearch.mdの要件・受け入れシナリオのツリー基準を改める。US1-AS25の検索モーダル構成も変更後のFR-081に合わせる。FR-141の標準パネル・隠し項目・パッケージの扱いと、FR-143の検索受理による提示失効、SC-058の開始成立・起点一致（全走査不要）も移す。決定本文だけを移し、009の検索対象・結果・保存の差分を巻き戻さず、IDを再利用せず、`specs/product/contracts/settings.md` の保存キーを追加しない。
 - [X] T039 T038 の反映先・ID・本文整合性を確認し、`specs/010-search-folder-picker/spec.md` 冒頭に product へ移行済み・凍結の注記を付ける。設計内容を実装へ合わせて書き換えず、最終の進捗は `specs/010-search-folder-picker/tasks.md` で確定する。
-- [ ] T040 T034〜T039 完了後、`README.md`、`specs/product/search.md`、`specs/product/contracts/keyboard-and-menus.md`、本 feature の記録と凍結注記を差分確認して Phase 4 のコミットにする。仕様反映後の文書リンク・ID整合性を確認し、pushは行わない。
+- [X] T040 T034〜T039 完了後、`README.md`、`specs/product/search.md`、`specs/product/contracts/keyboard-and-menus.md`、本 feature の記録と凍結注記を差分確認して Phase 4 のコミットにする。仕様反映後の文書リンク・ID整合性を確認し、pushは行わない。
 
 **Checkpoint**: 最終起動を含めた検証が揃い、productが更新され、本 feature は実装の記録として凍結される。
 
