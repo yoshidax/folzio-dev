@@ -13,3 +13,8 @@ integrations/.cache/
 
 # Extension catalog cache fetched by the Specify CLI.
 extensions/.cache/
+
+# spec-kit workflow の実行時ファイル
+.workflow-install.lock
+workflows/.cache/
+workflows/runs/

@@ -1,0 +1,15 @@
+# 公開用リポジトリへ書き出さないファイル（scripts/publish.sh の git archive が参照する）
+/.specify                 export-ignore
+/.claude                  export-ignore
+/.agents                  export-ignore
+/.kilo                    export-ignore
+/.codex                   export-ignore
+/.vscode                  export-ignore
+/specs                    export-ignore
+/docs                     export-ignore
+/AGENTS.md                export-ignore
+/scripts/sdd-*            export-ignore
+/scripts/spec-restructure export-ignore
+/scripts/tests            export-ignore
+/scripts/publish.sh       export-ignore
+/.gitattributes           export-ignore
