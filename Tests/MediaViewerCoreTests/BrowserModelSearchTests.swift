@@ -298,6 +298,24 @@ struct BrowserModelSearchTests {
         #expect(names(env.model) == ["b.jpg"])
     }
 
+    @Test("置き換え前の検索のバッチは、後から届いても結果に加わらない")
+    func replacedSearchDropsOldBatches() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let a = try env.makeResult("s/a.jpg")
+        let b = try env.makeResult("s/b.jpg")
+        env.model.startSearch(pattern("a"), root: env.root)
+        await send([a], env, expecting: 1)
+
+        env.model.startSearch(pattern("b"), root: env.root)
+        #expect(await waitUntil { env.searcher.cancelledCount == 1 })
+        env.searcher.send([b], to: 1)
+        #expect(await waitUntil { names(env.model) == ["b.jpg"] })
+        env.searcher.send([a], to: 0)
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(names(env.model) == ["b.jpg"], "失効したバッチは捨てる (実際: \(names(env.model)))")
+    }
+
     @Test("zip の中で検索を始めると zip の状態を捨て、listing.folder は zip を含むフォルダのまま")
     func startingSearchInsideArchive() async throws {
         let env = try makeEnv()

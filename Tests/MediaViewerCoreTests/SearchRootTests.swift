@@ -71,6 +71,54 @@ struct SearchRootTests {
         }
     }
 
+    @Test("隠し祖先・隠しフォルダは直接入力の検証を拒否せず、パッケージ自身は拒否する")
+    func hiddenAncestorsAreNotRejectedForTypedInput() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SearchRootTests-\(UUID().uuidString)", isDirectory: true)
+        let hidden = root.appendingPathComponent(".hidden", isDirectory: true)
+        let inside = hidden.appendingPathComponent("inside", isDirectory: true)
+        let package = root.appendingPathComponent("Viewer.app", isDirectory: true)
+        try FileManager.default.createDirectory(at: inside, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: package.appendingPathComponent("Contents", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        #expect(try await SearchRoot.validate(hidden).get().path == hidden.resolvingSymlinksInPath().path)
+        #expect(try await SearchRoot.validate(inside).get().path == inside.resolvingSymlinksInPath().path)
+        #expect(await SearchRoot.validate(package) == .failure(.notAFolder))
+    }
+
+    @Test("選択後の消失・非フォルダ化・権限変更を再検証で拒否する")
+    func revalidationCatchesChanges() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SearchRootTests-\(UUID().uuidString)", isDirectory: true)
+        let fileManager = FileManager.default
+        let folder = root.appendingPathComponent("folder", isDirectory: true)
+        let denied = root.appendingPathComponent("denied", isDirectory: true)
+        try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: denied, withIntermediateDirectories: true)
+        defer {
+            try? fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: denied.path)
+            try? fileManager.removeItem(at: root)
+        }
+
+        #expect(await SearchRoot.validate(folder) != .failure(.notFound))
+        try fileManager.removeItem(at: folder)
+        #expect(await SearchRoot.validate(folder) == .failure(.notFound))
+
+        try Data("x".utf8).write(to: folder)
+        #expect(await SearchRoot.validate(folder) == .failure(.notAFolder))
+
+        try fileManager.setAttributes([.posixPermissions: 0o000], ofItemAtPath: denied.path)
+        if let directory = opendir(denied.path) {
+            closedir(directory)
+        } else {
+            #expect(await SearchRoot.validate(denied) == .failure(.accessDenied))
+        }
+    }
+
     @Test("理由の文言")
     func messages() {
         #expect(SearchRootError.empty.message == "検索起点ディレクトリを入力してください")

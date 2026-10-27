@@ -6,25 +6,35 @@ private final class KeyViewButton: NSButton {
     override var canBecomeKeyView: Bool { true }
 }
 
-/// 検索のモーダル（メインウインドウのシート）。検索キーワードと検索起点ディレクトリを受け取り、
-/// 起点を確かめてから `onSearch` を呼ぶ（FR-080〜082、research.md R39）
+/// 検索のモーダル（メインウインドウのシート）。キーワードと検索起点ディレクトリを受け取り、
+/// 起点を確かめてから `onSearch` を呼ぶ（FR-080〜082）。「選択…」は標準の `NSOpenPanel` を
+/// 子シートとして開き、確定後に非同期で再検証する（FR-141〜144）
 @MainActor
-final class SearchPanelController: NSViewController, NSTextFieldDelegate {
+final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
     private let initialKeyword: String?
     private let initialRootPath: String
     private let onSearch: (SearchPattern, URL) -> Void
 
-    private let keywordField = NSTextField()
+    private let keywordField = NSSearchField()
     private let rootField = NSTextField()
     private let reasonLabel = NSTextField(labelWithString: "")
+    private let chooseFolderButton = KeyViewButton()
     private let cancelButton = KeyViewButton()
     private let searchButton = KeyViewButton()
-    private var isValidating = false
+
+    private var inputState: SearchPanelInputState
+    private var initialLocationTask: Task<Void, Never>?
+    private var selectionTask: Task<Void, Never>?
+    private var searchTask: Task<Void, Never>?
+    private var folderPanel: NSOpenPanel?
+    private var panelPresented = false
+    private var initialFocusApplied = false
 
     init(keyword: String?, rootPath: String, onSearch: @escaping (SearchPattern, URL) -> Void) {
-        self.initialKeyword = keyword
-        self.initialRootPath = rootPath
+        initialKeyword = keyword
+        initialRootPath = rootPath
         self.onSearch = onSearch
+        inputState = SearchPanelInputState(rootInput: .typed(rootPath), keyword: keyword ?? "")
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -38,15 +48,26 @@ final class SearchPanelController: NSViewController, NSTextFieldDelegate {
 
         let keywordLabel = NSTextField(labelWithString: "検索キーワード")
         let rootLabel = NSTextField(labelWithString: "検索起点ディレクトリ")
-        configureField(keywordField, label: "検索キーワード")
-        configureField(rootField, label: "検索起点ディレクトリ")
+
+        keywordField.placeholderString = "検索キーワード"
+        keywordField.delegate = self
+        keywordField.setAccessibilityLabel("検索キーワード")
         keywordField.stringValue = initialKeyword ?? ""
-        rootField.stringValue = initialRootPath
+
+        configureRootField()
 
         reasonLabel.textColor = .systemRed
         reasonLabel.lineBreakMode = .byWordWrapping
         reasonLabel.maximumNumberOfLines = 0
         reasonLabel.isHidden = true
+        reasonLabel.setAccessibilityLabel("エラー")
+
+        chooseFolderButton.title = "選択…"
+        chooseFolderButton.bezelStyle = .push
+        chooseFolderButton.target = self
+        chooseFolderButton.action = #selector(chooseFolder(_:))
+        chooseFolderButton.setAccessibilityLabel("選択…")
+        chooseFolderButton.setAccessibilityHelp("標準のフォルダ選択パネルを開きます")
 
         cancelButton.title = "キャンセル"
         cancelButton.bezelStyle = .push
@@ -60,17 +81,29 @@ final class SearchPanelController: NSViewController, NSTextFieldDelegate {
         searchButton.target = self
         searchButton.action = #selector(search(_:))
 
+        keywordField.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        rootField.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        rootField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        chooseFolderButton.setContentHuggingPriority(.required, for: .horizontal)
+
+        let rootRow = NSStackView(views: [rootField, chooseFolderButton])
+        rootRow.orientation = .horizontal
+        rootRow.alignment = .centerY
+        rootRow.spacing = 8
+
         let buttons = NSStackView(views: [cancelButton, searchButton])
         buttons.orientation = .horizontal
         buttons.spacing = 12
 
-        let stack = NSStackView(views: [keywordLabel, keywordField, rootLabel, rootField, reasonLabel, buttons])
+        let stack = NSStackView(views: [
+            keywordLabel, keywordField, rootLabel, rootRow, reasonLabel, buttons,
+        ])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 6
         stack.setCustomSpacing(14, after: keywordField)
         stack.setCustomSpacing(14, after: reasonLabel)
-        stack.setCustomSpacing(14, after: rootField)
+        stack.setCustomSpacing(14, after: rootRow)
         stack.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(stack)
 
@@ -79,24 +112,27 @@ final class SearchPanelController: NSViewController, NSTextFieldDelegate {
             stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
             stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
             stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -20),
-            container.widthAnchor.constraint(equalToConstant: 420),
+            container.widthAnchor.constraint(equalToConstant: 520),
             keywordField.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            rootField.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            rootRow.widthAnchor.constraint(equalTo: stack.widthAnchor),
             reasonLabel.widthAnchor.constraint(equalTo: stack.widthAnchor),
             buttons.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
         ])
 
         keywordField.nextKeyView = rootField
-        rootField.nextKeyView = cancelButton
+        rootField.nextKeyView = chooseFolderButton
+        chooseFolderButton.nextKeyView = cancelButton
         cancelButton.nextKeyView = searchButton
         searchButton.nextKeyView = keywordField
 
         view = container
-        updateSearchButton()
+        refreshControls()
     }
 
     override func viewDidAppear() {
         super.viewDidAppear()
+        guard !initialFocusApplied else { return }
+        initialFocusApplied = true
         view.window?.initialFirstResponder = keywordField
         view.window?.makeFirstResponder(keywordField)
         if initialKeyword != nil {
@@ -104,66 +140,195 @@ final class SearchPanelController: NSViewController, NSTextFieldDelegate {
         }
     }
 
-    private func configureField(_ field: NSTextField, label: String) {
-        field.usesSingleLineMode = true
-        field.cell?.isScrollable = true
-        field.cell?.wraps = false
-        field.lineBreakMode = .byTruncatingHead
-        field.delegate = self
-        field.setAccessibilityLabel(label)
+    override func viewDidDisappear() {
+        super.viewDidDisappear()
+        inputState.close()
+        initialLocationTask?.cancel()
+        selectionTask?.cancel()
+        searchTask?.cancel()
+    }
+
+    private func configureRootField() {
+        rootField.usesSingleLineMode = true
+        rootField.cell?.isScrollable = true
+        rootField.cell?.wraps = false
+        rootField.lineBreakMode = .byTruncatingHead
+        rootField.delegate = self
+        rootField.setAccessibilityLabel("検索起点ディレクトリ")
+        rootField.stringValue = initialRootPath
     }
 
     func controlTextDidChange(_ obj: Notification) {
-        updateSearchButton()
+        guard let field = obj.object as? NSTextField else { return }
+        if field === rootField {
+            inputState.updateRootText(field.stringValue)
+        } else if field === keywordField {
+            inputState.updateKeyword(field.stringValue)
+        }
+        refreshControls()
     }
 
-    /// キーワードが空（前後の空白だけを含む）か確認中なら「検索」を無効にする。既定ボタンのため Return も効かない（FR-082）
-    private func updateSearchButton() {
-        searchButton.isEnabled = !isValidating && SearchPattern(keyword: keywordField.stringValue) != nil
+    /// 検索・選択の可否を決める。初期位置の解決中も検索でき、検索検証中は選択と重複検索を無効にする
+    private func refreshControls() {
+        let pending = inputState.pendingOperation
+        chooseFolderButton.isEnabled = !panelPresented && pending == .idle
+        searchButton.isEnabled = !panelPresented
+            && pending != .validatingSearch
+            && SearchPattern(keyword: keywordField.stringValue) != nil
+        cancelButton.isEnabled = !panelPresented
     }
 
     @objc private func cancel(_ sender: Any?) {
+        guard !panelPresented else { return }
         dismiss(self)
     }
 
     @objc private func search(_ sender: Any?) {
-        guard !isValidating, let pattern = SearchPattern(keyword: keywordField.stringValue) else { return }
-        let parsed = SearchRoot.parse(rootField.stringValue, home: FileManager.default.homeDirectoryForCurrentUser)
-        let url: URL
-        switch parsed {
-        case let .success(value):
-            url = value
-        case let .failure(error):
-            showReason(error)
-            return
-        }
-
-        isValidating = true
-        updateSearchButton()
-        Task { @MainActor [weak self] in
-            let result = await SearchRoot.validate(url)
+        guard !panelPresented else { return }
+        guard let ticket = inputState.beginSearchValidation(panelPresented: panelPresented) else { return }
+        refreshControls()
+        searchTask?.cancel()
+        searchTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            self.isValidating = false
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let url: URL
+            switch ticket.input.resolvedInput(home: home) {
+            case let .success(value):
+                url = value
+            case let .failure(error):
+                guard self.inputState.complete(ticket, succeeded: false) else { return }
+                self.showReason(error.message)
+                self.refreshControls()
+                return
+            }
+
+            let result = await SearchRoot.validate(url)
             switch result {
             case let .success(root):
+                guard self.inputState.complete(ticket, succeeded: true) else { return }
+                guard let pattern = SearchPattern(keyword: ticket.keyword) else { return }
                 self.dismiss(self)
                 self.onSearch(pattern, root)
             case let .failure(error):
-                self.showReason(error)
-                self.updateSearchButton()
+                guard self.inputState.complete(ticket, succeeded: false) else { return }
+                self.showReason(error.message)
+                self.refreshControls()
             }
         }
     }
 
+    @objc private func chooseFolder(_ sender: Any?) {
+        guard !panelPresented else { return }
+        guard let ticket = inputState.beginInitialLocationResolution(panelPresented: panelPresented) else {
+            return
+        }
+        refreshControls()
+        initialLocationTask?.cancel()
+        initialLocationTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let result = await SearchFolderInitialLocation.resolve(
+                input: ticket.input,
+                defaultPath: self.initialRootPath,
+                home: home
+            )
+            switch result {
+            case let .success(directory):
+                guard self.inputState.complete(ticket, succeeded: true) else { return }
+                self.presentFolderPanel(initialDirectory: directory)
+            case let .failure(error):
+                guard self.inputState.complete(ticket, succeeded: false) else { return }
+                self.showReason(error.message)
+                self.refreshControls()
+            }
+        }
+    }
+
+    private func presentFolderPanel(initialDirectory: URL) {
+        guard !panelPresented, let window = view.window else {
+            showReason("フォルダ選択パネルを開けませんでした")
+            refreshControls()
+            return
+        }
+
+        let panel = NSOpenPanel()
+        panel.title = "検索起点フォルダを選択"
+        panel.message = "検索起点にするフォルダを選択してください。"
+        panel.prompt = "選択"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = false
+        panel.resolvesAliases = true
+        panel.treatsFilePackagesAsDirectories = false
+        panel.showsHiddenFiles = false
+        panel.directoryURL = initialDirectory
+
+        folderPanel = panel
+        panelPresented = true
+        refreshControls()
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard let self else { return }
+            self.panelPresented = false
+            self.folderPanel = nil
+            guard response == .OK, let url = panel.url else {
+                self.focusChooseButton()
+                self.refreshControls()
+                return
+            }
+            self.beginSelectionValidation(url)
+        }
+    }
+
+    private func beginSelectionValidation(_ url: URL) {
+        guard let ticket = inputState.beginSelectionValidation(url, panelPresented: panelPresented) else {
+            focusChooseButton()
+            refreshControls()
+            return
+        }
+        refreshControls()
+        selectionTask?.cancel()
+        selectionTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let result = await SearchRoot.validate(url)
+            switch result {
+            case .success:
+                guard self.inputState.complete(ticket, succeeded: true) else { return }
+                self.inputState.applyPickedRoot(url)
+                self.rootField.stringValue = self.inputState.displayText
+                self.hideReason()
+                self.focusChooseButton()
+                self.refreshControls()
+            case let .failure(error):
+                guard self.inputState.complete(ticket, succeeded: false) else { return }
+                self.showReason(error.message)
+                self.focusChooseButton()
+                self.refreshControls()
+            }
+        }
+    }
+
+    private func focusChooseButton() {
+        view.window?.makeFirstResponder(chooseFolderButton)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.view.window?.makeFirstResponder(self.chooseFolderButton)
+        }
+    }
+
+    private func hideReason() {
+        reasonLabel.isHidden = true
+    }
+
     /// 理由を入力欄の下に出し、読み上げる（モーダルは閉じない。FR-081）
-    private func showReason(_ error: SearchRootError) {
-        reasonLabel.stringValue = error.message
+    private func showReason(_ message: String) {
+        reasonLabel.stringValue = message
         reasonLabel.isHidden = false
         NSAccessibility.post(
             element: NSApp.mainWindow ?? reasonLabel,
             notification: .announcementRequested,
             userInfo: [
-                .announcement: error.message,
+                .announcement: message,
                 .priority: NSAccessibilityPriorityLevel.high.rawValue,
             ]
         )
