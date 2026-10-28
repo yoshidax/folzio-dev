@@ -159,6 +159,7 @@ public final class BrowserModel {
     private var searchPattern: SearchPattern?
     /// 今の検索の間に行われたフォルダの名前の変更。後から届いた結果の URL を順に付け替える（R63）
     private var searchLedger = SearchRenameLedger()
+    private var movedSearchPaths: Set<String> = []
     /// 今の検索で終わっていない列挙の数。0 になったら検索を終える（R63）
     private var activeSearchStreams = 0
     /// 開いている zip（開いている途中を含む）を開いた後のフォルダの名前の変更。索引の行は開いたときの zip の場所で
@@ -925,6 +926,7 @@ public final class BrowserModel {
         searchTasks.removeAll()
         searchPattern = nil
         searchLedger = SearchRenameLedger()
+        movedSearchPaths.removeAll()
         pendingSearchTreeSyncID = nil
         activeSearchStreams = 0
         searchResultsByFolder.removeAll()
@@ -1225,11 +1227,12 @@ public final class BrowserModel {
     /// 名前の変更の後は、その列挙を始めた後の変更を順に当てて新しい場所にし、追加の列挙と重なる結果を捨てる（R63）
     private func appendSearchResults(_ incoming: [MediaFile], fromStream index: Int) {
         guard isShowingSearchResults, !incoming.isEmpty else { return }
-        var batch = incoming
+        var batch = incoming.filter { !isMovedSearchPath($0.url) }
+        guard !batch.isEmpty else { return }
         if !searchLedger.isEmpty {
             var seen = Set<String>()
-            batch = incoming.compactMap { file in
-                guard let moved = searchLedger.place(file, fromStream: index) else { return nil }
+            batch = batch.compactMap { file in
+                guard let moved = searchLedger.place(file, fromStream: index), !isMovedSearchPath(moved.url) else { return nil }
                 let path = moved.url.standardizedFileURL.path
                 let listed = searchResultsByFolder[Self.searchFolderKey(moved.url)]?
                     .contains { $0.standardizedFileURL.path == path } == true
@@ -1297,6 +1300,19 @@ public final class BrowserModel {
         }.value
         guard generation == navigationGeneration, !missing.isEmpty else { return }
         removeSearchResults(missing)
+    }
+
+    /// 移動元の結果と、既に列挙中の古い場所から遅れて届く結果を取り除く。
+    public func didMoveSearchItems(_ sources: [URL]) {
+        guard isShowingSearchResults else { return }
+        movedSearchPaths.formUnion(sources.map { $0.standardizedFileURL.path })
+        let removed = Set(allFiles.filter { isMovedSearchPath($0.url) }.map(\.url))
+        if !removed.isEmpty { removeSearchResults(removed) }
+    }
+
+    private func isMovedSearchPath(_ url: URL) -> Bool {
+        let path = url.standardizedFileURL.path
+        return movedSearchPaths.contains { path == $0 || path.hasPrefix($0 == "/" ? "/" : $0 + "/") }
     }
 
     /// 検索結果から行を外し、選択を整理する。フォーカスが外れたらプレビューを空にし、再生中の動画を止める

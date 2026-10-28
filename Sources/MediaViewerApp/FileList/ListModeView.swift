@@ -100,6 +100,7 @@ final class ListModeView: NSView {
     var onTogglePlayback: (() -> Void)?
     var onRename: ((URL, String) async -> Void)?
     var onOpenItem: ((URL) -> Void)?
+    var onInternalDrop: (([URL], URL, Bool) -> Void)?
     /// Esc。処理したら true（検索結果の表示を終える。FR-086）
     var onEscape: (() -> Bool)? {
         get { tableView.onEscape }
@@ -198,6 +199,7 @@ final class ListModeView: NSView {
         tableView.dataSource = self
         tableView.delegate = self
         tableView.registerForDraggedTypes([.fileURL])
+        InternalDrag.register(tableView)
         tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
         tableView.setDraggingSourceOperationMask(.copy, forLocal: false)
         tableView.onSpace = { [weak self] in
@@ -522,6 +524,24 @@ extension ListModeView: NSMenuItemValidation {
 }
 
 extension ListModeView: NSTableViewDataSource {
+    func tableView(_ tableView: NSTableView, validateDrop info: any NSDraggingInfo, proposedRow row: Int, proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
+        guard dropOperation == .on, !model.isBrowsingArchive,
+              model.listing.files.indices.contains(row), model.listing.files[row].kind == .folder else { return [] }
+        let operation = InternalDrag.operation(info, destination: model.listing.files[row].url)
+        if !operation.isEmpty { tableView.setDropRow(row, dropOperation: .on) }
+        return operation
+    }
+
+    func tableView(_ tableView: NSTableView, acceptDrop info: any NSDraggingInfo, row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
+        guard dropOperation == .on, !model.isBrowsingArchive,
+              model.listing.files.indices.contains(row), model.listing.files[row].kind == .folder,
+              let urls = InternalDrag.urls(info) else { return false }
+        let destination = model.listing.files[row].url
+        guard !InternalDrag.operation(info, destination: destination).isEmpty else { return false }
+        onInternalDrop?(urls, destination, NSEvent.modifierFlags.contains(.option))
+        return true
+    }
+
     func numberOfRows(in tableView: NSTableView) -> Int {
         model.listing.files.count
     }

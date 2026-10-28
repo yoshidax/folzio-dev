@@ -339,6 +339,7 @@ final class ThumbnailModeView: NSView {
 
     var onRename: ((URL, String) async -> Void)?
     var onOpenItem: ((URL) -> Void)?
+    var onInternalDrop: (([URL], URL, Bool) -> Void)?
     /// Esc。処理したら true（検索結果の表示を終える。FR-086）
     var onEscape: (() -> Bool)? {
         get { collectionView.onEscape }
@@ -497,6 +498,8 @@ final class ThumbnailModeView: NSView {
             forItemWithIdentifier: Self.itemIdentifier
         )
         collectionView.registerForDraggedTypes([.fileURL])
+        collectionView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
+        InternalDrag.register(collectionView)
         collectionView.onArrowKey = { [weak self] key, modifiers in
             self?.handleArrowKey(key, modifiers: modifiers) ?? false
         }
@@ -891,6 +894,26 @@ final class ThumbnailModeView: NSView {
 }
 
 extension ThumbnailModeView: NSCollectionViewDataSource {
+    func collectionView(_ collectionView: NSCollectionView, validateDrop info: any NSDraggingInfo, proposedIndexPath: AutoreleasingUnsafeMutablePointer<NSIndexPath>, dropOperation: UnsafeMutablePointer<NSCollectionView.DropOperation>) -> NSDragOperation {
+        let index = proposedIndexPath.pointee.item
+        guard dropOperation.pointee == .on, !model.isBrowsingArchive,
+              model.listing.files.indices.contains(index), model.listing.files[index].kind == .folder else { return [] }
+        let operation = InternalDrag.operation(info, destination: model.listing.files[index].url)
+        if !operation.isEmpty { dropOperation.pointee = .on }
+        return operation
+    }
+
+    func collectionView(_ collectionView: NSCollectionView, acceptDrop info: any NSDraggingInfo, indexPath: IndexPath, dropOperation: NSCollectionView.DropOperation) -> Bool {
+        let index = indexPath.item
+        guard dropOperation == .on, !model.isBrowsingArchive,
+              model.listing.files.indices.contains(index), model.listing.files[index].kind == .folder,
+              let urls = InternalDrag.urls(info) else { return false }
+        let destination = model.listing.files[index].url
+        guard !InternalDrag.operation(info, destination: destination).isEmpty else { return false }
+        onInternalDrop?(urls, destination, NSEvent.modifierFlags.contains(.option))
+        return true
+    }
+
     func collectionView(
         _ collectionView: NSCollectionView,
         numberOfItemsInSection section: Int

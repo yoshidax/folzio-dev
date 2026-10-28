@@ -32,6 +32,10 @@ final class FileOperationCoordinator {
         await transfer(urls, to: destination, kind: .move)
     }
 
+    func internalDrop(_ urls: [URL], to destination: URL, copy: Bool) async {
+        await transfer(urls, to: destination, kind: copy ? .copy : .move, validateDrop: true)
+    }
+
     /// 複製は元のファイルを変えず、同じフォルダへ「両方残す」で作るため確認しない（FR-018・024）
     func duplicate(_ urls: [URL]) async {
         guard !urls.isEmpty else { return }
@@ -132,10 +136,12 @@ final class FileOperationCoordinator {
         notifyFoldersChanged(sources: [file], destination: nil)
     }
 
-    private func transfer(_ urls: [URL], to destination: URL, kind: FileOperation.Kind) async {
+    private func transfer(_ urls: [URL], to destination: URL, kind: FileOperation.Kind, validateDrop: Bool = false) async {
         guard !urls.isEmpty else { return }
+        if validateDrop, await !validateInternalDrop(urls, destination: destination, kind: kind) { return }
         let operation = FileOperation(kind: kind, sources: urls, destination: destination)
         guard await confirmation.confirm(operation, includesFolders: await containsFolder(urls)) else { return }
+        if validateDrop, await !validateInternalDrop(urls, destination: destination, kind: kind) { return }
 
         var result = FileOperationResult()
         var sharedResolution: ConflictResolution?
@@ -147,17 +153,27 @@ final class FileOperationCoordinator {
                 sources: [source],
                 destination: destination
             )
+            let target = destination.appendingPathComponent(source.lastPathComponent)
+            let sameCopyItem = if case .copy = kind {
+                await Task.detached(priority: .userInitiated) {
+                    FileOperationService.sameItem(source, target)
+                }.value
+            } else { false }
             let resolution: ConflictResolution
-            if let sharedResolution {
+            if let sharedResolution, !(sameCopyItem && { if case .replace = sharedResolution { true } else { false } }()) {
                 resolution = sharedResolution
             } else {
-                let conflicts = service.conflicts(for: itemOperation)
+                let service = service
+                let conflicts = await Task.detached(priority: .userInitiated) {
+                    service.conflicts(for: itemOperation)
+                }.value
                 if conflicts.isEmpty {
                     resolution = .keepBoth
                 } else {
                     let choice = await conflictPrompt.resolve(
                         conflictingNames: conflicts.map(\.lastPathComponent),
-                        destination: destination
+                        destination: destination,
+                        allowReplace: !sameCopyItem
                     )
                     if choice.applyToAll {
                         sharedResolution = choice.resolution
@@ -169,20 +185,42 @@ final class FileOperationCoordinator {
             if case .abort = resolution {
                 continue
             }
+            if validateDrop, await !validateInternalDrop([source], destination: destination, kind: kind) { continue }
             attemptedSources.append(source)
             let partial = await service.execute(itemOperation, resolution: resolution)
             result.merge(partial)
         }
 
         await presentFailures(result)
+        var removed: [URL] = []
         if case .move = kind {
             // result.succeeded は移動先の URL のため、失敗しなかった元の場所で履歴を取り除く（FR-109）
             let failedPaths = Set(result.failed.map { $0.url.standardizedFileURL.path })
-            let removed = attemptedSources.filter { !failedPaths.contains($0.standardizedFileURL.path) }
+            removed = attemptedSources.filter { !failedPaths.contains($0.standardizedFileURL.path) }
+            model.didMoveSearchItems(removed)
             historyNavigator?.didRemoveItems(removed)
         }
-        await model.reloadCurrentFolder()
+        let relocated = model.isShowingSearchResults ? false : await model.leaveTrashedFolders(removed, origin: .fileList)
+        if !relocated { await model.reloadCurrentFolder() }
         notifyFoldersChanged(sources: urls, destination: destination)
+    }
+
+    private func validateInternalDrop(_ urls: [URL], destination: URL, kind: FileOperation.Kind) async -> Bool {
+        let dropKind: InternalDropValidation.Kind
+        if case .copy = kind { dropKind = .copy } else { dropKind = .move }
+        let validation = await Task.detached(priority: .userInitiated) {
+            InternalDropValidation.validate(sources: urls, destination: destination, kind: dropKind)
+        }.value
+        let reason: OperationFailureReason
+        switch validation {
+        case .valid: return true
+        case .missingSource, .empty: reason = .sourceNotFound
+        case .invalidDestination: reason = .destinationNotFound
+        case .sameParent: reason = .sameNameAtDestination
+        case .intoItself, .overlappingSources: reason = .intoItself
+        }
+        await presentFailures(FileOperationResult(failed: urls.map { (url: $0, reason: reason) }))
+        return false
     }
 
     /// 対象にフォルダが含まれるか。stat は UI スレッドで行わない

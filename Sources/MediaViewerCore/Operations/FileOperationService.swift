@@ -110,8 +110,13 @@ public struct FileOperationService: FileOperating {
         }
 
         let provisionalTarget = destination.appendingPathComponent(source.lastPathComponent)
-        if sourceIsDirectory.boolValue, isDescendant(provisionalTarget, of: source) {
+        if sourceIsDirectory.boolValue, isDescendant(destination, of: source) {
             throw OperationFailure(reason: .intoItself)
+        }
+
+        if case .copy = operation.kind, case .replace = resolution,
+           Self.sameItem(source, provisionalTarget, fileManager: fileManager) {
+            throw OperationFailure(reason: .sameNameAtDestination)
         }
 
         let target = try resolveTarget(
@@ -228,6 +233,18 @@ public struct FileOperationService: FileOperating {
             throw OperationFailure(reason: .trashExistingFailed(systemReason: error.localizedDescription))
         }
         return (resultingURL as URL?) ?? url
+    }
+
+    /// Also protects aliases and hard links to the source before moving a conflict to Trash.
+    public static func sameItem(_ lhs: URL, _ rhs: URL, fileManager: FileManager = .default) -> Bool {
+        if lhs.standardizedFileURL.resolvingSymlinksInPath().path == rhs.standardizedFileURL.resolvingSymlinksInPath().path { return true }
+        guard let left = try? fileManager.attributesOfItem(atPath: lhs.path),
+              let right = try? fileManager.attributesOfItem(atPath: rhs.path),
+              let leftDevice = left[.systemNumber] as? NSNumber,
+              let rightDevice = right[.systemNumber] as? NSNumber,
+              let leftID = left[.systemFileNumber] as? NSNumber,
+              let rightID = right[.systemFileNumber] as? NSNumber else { return false }
+        return leftDevice == rightDevice && leftID == rightID
     }
 
     private static func sameFolder(_ lhs: URL, _ rhs: URL) -> Bool {

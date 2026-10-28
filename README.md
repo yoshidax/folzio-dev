@@ -219,8 +219,8 @@ scripts/make-webp-fixtures.sh
 | Close the search results | Select a folder in the tree (including clicking the selected row), Esc in the file list |
 | Open a folder row in the search results | Double-click, ⌘↓, "Show Contents" in the context menu |
 
-With drag and drop, dropping files onto a folder in the tree moves them, and holding ⌥ copies them instead.
-If a file with the same name already exists, the conflict dialog appears regardless of the settings.
+Inside the app, drag a tree folder or selected files and folders from either list view onto a folder in the tree or list (including search results) to move them; hold ⌥ when dropping to copy instead. Available favorites can be destinations. A selection containing both a folder and an item inside it is rejected, as are moves to the same parent and transfers into the source folder or its descendants.
+A name conflict shows a dialog regardless of the settings. When copying onto the source itself, choose Keep Both or Stop; Replace is unavailable.
 
 ## Manual Verification
 

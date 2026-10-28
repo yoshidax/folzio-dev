@@ -11,7 +11,7 @@ final class ConflictPrompt {
 
     init() {}
 
-    func resolve(conflictingNames: [String], destination: URL?) async -> Choice {
+    func resolve(conflictingNames: [String], destination: URL?, allowReplace: Bool = true) async -> Choice {
         guard let window = NSApp.keyWindow ?? NSApp.mainWindow else {
             return Choice(resolution: .abort, applyToAll: false)
         }
@@ -22,6 +22,7 @@ final class ConflictPrompt {
         alert.addButton(withTitle: l10n.text(.dialogConflictReplace))
         alert.addButton(withTitle: l10n.text(.dialogConflictKeepBoth))
         alert.addButton(withTitle: l10n.text(.dialogConflictStop))
+        alert.buttons[0].isEnabled = allowReplace
         alert.buttons[2].keyEquivalent = "\u{1b}"
         alert.showsSuppressionButton = true
         alert.suppressionButton?.title = l10n.text(.dialogConflictApplyAll)

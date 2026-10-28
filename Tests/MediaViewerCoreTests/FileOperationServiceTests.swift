@@ -7,6 +7,23 @@ import Testing
 struct FileOperationServiceTests {
     private let service = FileOperationService()
 
+    @Test("同じ項目への置き換えは元を消さず拒否する")
+    func refusesReplaceOfSource() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let source = folder.appendingPathComponent("a.jpg")
+        let before = try Data(contentsOf: source)
+        let result = await service.execute(FileOperation(kind: .copy, sources: [source], destination: folder), resolution: .replace)
+        #expect(result.succeeded.isEmpty)
+        #expect(result.failed.count == 1)
+        #expect(try Data(contentsOf: source) == before)
+        let kept = await service.execute(FileOperation(kind: .copy, sources: [source], destination: folder), resolution: .keepBoth)
+        #expect(kept.failed.isEmpty)
+        #expect(kept.succeeded.count == 1)
+        #expect(try Data(contentsOf: source) == before)
+    }
+
     @Test("コピーすると元を残したまま操作先に複製される")
     func copiesFile() async throws {
         let root = try makeTemporaryDirectory()
@@ -343,6 +360,26 @@ struct FileOperationServiceTests {
     private func contents(of folder: URL) -> Set<String> {
         let enumerator = FileManager.default.enumerator(atPath: folder.path)
         return Set((enumerator?.allObjects as? [String]) ?? [])
+    }
+
+    @Test("フォルダを同じ親へ両方残すコピーでは元と中身を保つ")
+    func copiesFolderIntoSameParent() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let album = try makeAlbum(in: folder)
+        let expected = contents(of: album)
+        let operation = FileOperation(kind: .copy, sources: [album], destination: folder)
+        let replaced = await service.execute(operation, resolution: .replace)
+        #expect(replaced.succeeded.isEmpty)
+        #expect(replaced.failed.count == 1)
+        #expect(contents(of: album) == expected)
+        let result = await service.execute(operation, resolution: .keepBoth)
+        #expect(result.failed.isEmpty)
+        let copy = try #require(result.succeeded.first)
+        #expect(copy != album)
+        #expect(contents(of: copy) == expected)
+        #expect(contents(of: album) == expected)
     }
 
     @Test("フォルダをコピーすると中身ごと複製され、元も残る")

@@ -101,6 +101,14 @@ final class FileListViewController: NSViewController {
             listModeView: listModeView,
             thumbnailModeView: thumbnailModeView
         )
+        let handleDrop: ([URL], URL, Bool) -> Void = { [weak self] urls, destination, copy in
+            guard let self else { return }
+            Task { @MainActor in
+                await self.coordinator.internalDrop(urls, to: destination, copy: copy)
+            }
+        }
+        listModeView.onInternalDrop = handleDrop
+        thumbnailModeView.onInternalDrop = handleDrop
         listModeView.onOpenItem = { [weak self] url in
             self?.openItem(url)
         }
