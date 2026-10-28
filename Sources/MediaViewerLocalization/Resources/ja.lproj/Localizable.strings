@@ -580,3 +580,6 @@
 "settings.language" = "言語";
 "settings.language.english" = "English";
 "settings.language.japanese" = "日本語";
+
+"preview.scroll.horizontal" = "画像の横スクロール";
+"preview.scroll.vertical" = "画像の縦スクロール";

@@ -104,11 +104,13 @@ final class PreviewViewController: NSViewController {
     @discardableResult
     func zoomToFit() -> Bool {
         guard zoomAvailability.canFit else { return false }
+        imageView.resetScrollPosition()
         return applyZoomChange(zoomTracker.fit())
     }
 
     /// 履歴の移動後に、同じ画像でも100%に戻す（FR-137）。読み上げはしない
     func resetZoom() {
+        imageView.resetScrollPosition()
         guard zoomTracker.reset() else { return }
         applyCurrentZoom(announce: false)
         notifyZoomAvailabilityIfChanged()
@@ -243,6 +245,7 @@ final class PreviewViewController: NSViewController {
     private func updateFromModel() {
         // 別の画像へ切り替わったときだけ100%に戻す。表示より先に適用し、前の倍率で一瞬描かない
         if zoomTracker.present(zoomIdentity(for: model.preview)) {
+            imageView.resetScrollPosition()
             applyCurrentZoom(announce: false)
         }
         defer { notifyZoomAvailabilityIfChanged() }

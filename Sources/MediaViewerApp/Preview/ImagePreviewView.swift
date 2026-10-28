@@ -40,6 +40,11 @@ final class ImagePreviewView: NSView {
     private let detailLabel = NSTextField(wrappingLabelWithString: "")
     private let spinner = NSProgressIndicator()
     private let doubleClickRecognizer = NSClickGestureRecognizer()
+    // NSScroller は生成時の矩形から方向を決めるため、最初から横長・縦長にする。
+    private let horizontalScroller = NSScroller(frame: NSRect(x: 0, y: 0, width: 100, height: 15))
+    private let verticalScroller = NSScroller(frame: NSRect(x: 0, y: 0, width: 15, height: 100))
+    private var scrollCenter = CGPoint(x: 0.5, y: 0.5)
+    private var scrollLayout = PreviewScrollLayout(imageSize: .zero, viewport: .zero, center: .zero)
 
     var onDoubleClick: (() -> Void)?
     /// 画像を表示している／していないが入れ替わったとき（最初のフレーム・画像のクリア）
@@ -47,6 +52,10 @@ final class ImagePreviewView: NSView {
 
     private var displayedImage: CGImage? {
         didSet {
+            if displayedImage == nil {
+                horizontalScroller.isHidden = true
+                verticalScroller.isHidden = true
+            }
             guard (oldValue == nil) != (displayedImage == nil) else { return }
             updateAccessibilityValue()
             onDisplayedImageChange?()
@@ -76,13 +85,25 @@ final class ImagePreviewView: NSView {
     private func setup() {
         wantsLayer = true
         layer = CALayer()
-        // 拡大してビューポートからはみ出した部分を表示しない（FR-133）
+        // スクロール領域の外側はクリップする。
         layer?.masksToBounds = true
 
         contentLayer.contentsGravity = .resize
         contentLayer.magnificationFilter = .trilinear
         layer?.addSublayer(contentLayer)
 
+        for scroller in [horizontalScroller, verticalScroller] {
+            // 単独の overlay scroller は NSScrollView によるフェード制御がなく、
+            // つまみが表示されない。標準の常時表示スタイルを画像の上に重ねる。
+            scroller.scrollerStyle = .legacy
+            scroller.isEnabled = true
+            scroller.target = self
+            scroller.action = #selector(scrollbarChanged(_:))
+            scroller.isHidden = true
+            addSubview(scroller)
+        }
+
+        refreshLocalizedAccessibility()
         spinner.style = .spinning
         spinner.controlSize = .small
         spinner.isDisplayedWhenStopped = false
@@ -131,10 +152,16 @@ final class ImagePreviewView: NSView {
         super.layout()
         guard displayedImage != nil, !bounds.isEmpty else {
             contentLayer.frame = .zero
+            horizontalScroller.isHidden = true
+            verticalScroller.isHidden = true
             return
         }
-        contentLayer.frame = fittedFrame()
+        let size = fittedFrame().size
+        scrollLayout = PreviewScrollLayout(imageSize: size, viewport: bounds.size, center: scrollCenter)
+        scrollCenter = scrollLayout.center
+        contentLayer.frame = scrollLayout.frame
         contentLayer.contentsScale = backingScale
+        updateScrollbars()
     }
 
     override func viewDidChangeBackingProperties() {
@@ -162,6 +189,87 @@ final class ImagePreviewView: NSView {
         )
     }
 
+    func resetScrollPosition() {
+        scrollCenter = CGPoint(x: 0.5, y: 0.5)
+        needsLayout = true
+    }
+
+    private func updateScrollbars() {
+        let thickness = NSScroller.scrollerWidth(for: .regular, scrollerStyle: .legacy)
+        let horizontal = scrollLayout.horizontal
+        let vertical = scrollLayout.vertical
+        horizontalScroller.isHidden = !horizontal
+        verticalScroller.isHidden = !vertical
+        horizontalScroller.frame = CGRect(x: 0, y: 0, width: max(0, bounds.width - (vertical ? thickness : 0)), height: thickness)
+        verticalScroller.frame = CGRect(x: max(0, bounds.width - thickness), y: horizontal ? thickness : 0, width: thickness, height: max(0, bounds.height - (horizontal ? thickness : 0)))
+        if horizontal {
+            let overflow = scrollLayout.frame.width - bounds.width
+            horizontalScroller.knobProportion = bounds.width / scrollLayout.frame.width
+            horizontalScroller.doubleValue = Double(-scrollLayout.frame.minX / overflow)
+        }
+        if vertical {
+            let overflow = scrollLayout.frame.height - bounds.height
+            verticalScroller.knobProportion = bounds.height / scrollLayout.frame.height
+            verticalScroller.doubleValue = Double(1 + scrollLayout.frame.minY / overflow)
+        }
+    }
+
+    private func moveScroll(x: CGFloat, y: CGFloat) {
+        guard isShowingImage, scrollLayout.frame.width > 0, scrollLayout.frame.height > 0 else { return }
+        scrollCenter.x += x / scrollLayout.frame.width
+        scrollCenter.y += y / scrollLayout.frame.height
+        needsLayout = true
+        layoutSubtreeIfNeeded()
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        guard isShowingImage, scrollLayout.horizontal || scrollLayout.vertical else {
+            super.scrollWheel(with: event)
+            return
+        }
+        // NSEvent の delta には OS のスクロール方向設定が反映済み。
+        // このビューは左下原点なので、横と縦で画像内座標への符号が異なる。
+        moveScroll(x: -event.scrollingDeltaX, y: event.scrollingDeltaY)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection([.option, .command, .control, .shift])
+        if modifiers == .option, isShowingImage {
+            switch event.specialKey {
+            case .leftArrow: moveScroll(x: -40, y: 0); return
+            case .rightArrow: moveScroll(x: 40, y: 0); return
+            case .upArrow: moveScroll(x: 0, y: 40); return
+            case .downArrow: moveScroll(x: 0, y: -40); return
+            default: break
+            }
+        }
+        super.keyDown(with: event)
+    }
+
+    @objc private func scrollbarChanged(_ sender: NSScroller) {
+        let horizontal = sender === horizontalScroller
+        let image = horizontal ? scrollLayout.frame.width : scrollLayout.frame.height
+        let viewport = horizontal ? bounds.width : bounds.height
+        guard image > viewport else { return }
+        let isVertical = !horizontal
+        switch sender.hitPart {
+        case .knob:
+            let value = CGFloat(sender.doubleValue)
+            let offset = (isVertical ? 1 - value : value) * (image - viewport)
+            if horizontal { scrollCenter.x = (offset + viewport / 2) / image }
+            else { scrollCenter.y = (offset + viewport / 2) / image }
+            needsLayout = true
+            layoutSubtreeIfNeeded()
+        case .decrementLine, .decrementPage:
+            let step: CGFloat = sender.hitPart == .decrementPage ? viewport * 0.8 : 40
+            moveScroll(x: horizontal ? -step : 0, y: isVertical ? step : 0)
+        case .incrementLine, .incrementPage:
+            let step: CGFloat = sender.hitPart == .incrementPage ? viewport * 0.8 : 40
+            moveScroll(x: horizontal ? step : 0, y: isVertical ? -step : 0)
+        default: break
+        }
+    }
+
     private func updateAccessibilityValue() {
         // 画像がない状態では倍率を公開しない（FR-138）
         setAccessibilityValue(isShowingImage ? Self.percentText(zoom) : nil)
@@ -169,6 +277,8 @@ final class ImagePreviewView: NSView {
 
     func refreshLocalizedAccessibility() {
         updateAccessibilityValue()
+        horizontalScroller.setAccessibilityLabel(l10n.text(.previewScrollHorizontal))
+        verticalScroller.setAccessibilityLabel(l10n.text(.previewScrollVertical))
     }
 
     private static func percentText(_ zoom: PreviewZoom) -> String {
