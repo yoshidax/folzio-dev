@@ -456,6 +456,7 @@ final class MainSplitViewController: NSSplitViewController {
         pendingSlideshowRestore = nil
         slideshowRestoreCompletion = nil
 
+        previewViewController.setSlideshowBackground(true)
         isApplyingSlideshowPresentation = true
         paneLayout = .previewOnly
         applyPanePresentation()
@@ -485,6 +486,7 @@ final class MainSplitViewController: NSSplitViewController {
     }
 
     private func finalizeSlideshowRestore(_ state: SlideshowRestoreState) {
+        previewViewController.setSlideshowBackground(false)
         if let widths = state.threePaneWidths {
             savedPaneWidths = widths
         }
@@ -508,6 +510,7 @@ final class MainSplitViewController: NSSplitViewController {
     }
 
     private func discardSlideshowRestore() {
+        previewViewController.setSlideshowBackground(false)
         slideshowPresentationGeneration &+= 1
         slideshowRestoreState = nil
         pendingSlideshowRestore = nil

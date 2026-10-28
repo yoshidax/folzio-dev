@@ -23,7 +23,7 @@ final class SlideshowTransitionOverlayView: NSView {
     func show(image: CGImage?, frame: CGRect, gravity: CALayerContentsGravity) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        layer?.backgroundColor = NSColor.black.cgColor
         snapshotLayer.frame = frame
         snapshotLayer.contents = image
         snapshotLayer.contentsGravity = gravity
