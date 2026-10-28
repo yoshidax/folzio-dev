@@ -4,6 +4,24 @@ import Testing
 
 @Suite("地域の書式")
 struct FormattingTests {
+    @Test("表示言語を切り替えても地域の数値と時刻の設定を保つ")
+    func languageChangeKeepsRegionalFormatting() {
+        for current in [Locale(identifier: "de_DE"), Locale(identifier: "ja_DE")] {
+            let english = Localizer.forLanguage("en", currentLocale: current)
+            let japanese = Localizer.forLanguage("ja", currentLocale: current)
+            for localizer in [english, japanese] {
+                #expect(localizer.locale.region?.identifier == "DE")
+                #expect(localizer.locale.hourCycle == current.hourCycle)
+                #expect(localizer.locale.firstDayOfWeek == current.firstDayOfWeek)
+                #expect(localizer.count(1234) == "1.234")
+                #expect(localizer.percent(125).replacingOccurrences(of: "\u{00a0}", with: " ") == "125 %")
+                #expect(localizer.dateTime(nil) == "--")
+            }
+            #expect(english.locale.language.languageCode?.identifier == "en")
+            #expect(japanese.locale.language.languageCode?.identifier == "ja")
+        }
+    }
+
     @Test("表示言語が同じなら現在のロケールをそのまま使う")
     func keepsCurrentLocale() {
         let current = Locale(identifier: "en_JP")

@@ -337,6 +337,7 @@ final class FileListViewController: NSViewController {
         sizeLabel.toolTip = l10n.text(.toolbarThumbnailSize)
         sizeSlider.toolTip = l10n.text(.toolbarThumbnailSize)
         sizeSlider.setAccessibilityLabel(l10n.text(.toolbarThumbnailSize))
+        sizeSlider.setAccessibilityHelp(l10n.text(.toolbarThumbnailSize))
         refresh()
     }
 
@@ -451,6 +452,7 @@ final class FileListViewController: NSViewController {
 
         sizeSlider.toolTip = l10n.text(.toolbarThumbnailSize)
         sizeSlider.setAccessibilityLabel(l10n.text(.toolbarThumbnailSize))
+        sizeSlider.setAccessibilityHelp(l10n.text(.toolbarThumbnailSize))
         sizeSlider.minValue = ViewSettings.minimumThumbnailSize
         sizeSlider.maxValue = ViewSettings.maximumThumbnailSize
         sizeSlider.doubleValue = initialThumbnailSize

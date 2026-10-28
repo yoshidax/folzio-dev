@@ -12,6 +12,7 @@ public enum TextValue: Sendable, Equatable {
 public struct Localizer: @unchecked Sendable {
     public let language: String
     public let locale: Locale
+    private let numericLocale: Locale
 
     private let table: Bundle
     private let fallbackTable: Bundle
@@ -29,14 +30,16 @@ public struct Localizer: @unchecked Sendable {
             bundle: bundle,
             language: resolved,
             development: bundle.developmentLocalization ?? "en",
-            locale: FormattingLocale.resolve(current: currentLocale, displayLanguage: resolved)
+            locale: FormattingLocale.resolve(current: currentLocale, displayLanguage: resolved),
+            numericLocale: FormattingLocale.numeric(current: currentLocale)
         )
     }
 
     /// テスト用にバンドル・表示言語・開発言語・書式のロケールを明示して作る
-    public init(bundle: Bundle, language: String, development: String, locale: Locale) {
+    public init(bundle: Bundle, language: String, development: String, locale: Locale, numericLocale: Locale? = nil) {
         self.language = language
         self.locale = locale
+        self.numericLocale = numericLocale ?? locale
         self.table = LocalizationBundle.table(language: language, in: bundle) ?? bundle
         self.fallbackTable = LocalizationBundle.table(language: development, in: bundle) ?? bundle
     }
@@ -83,11 +86,11 @@ public struct Localizer: @unchecked Sendable {
     // MARK: - 書式
 
     public func count(_ value: Int) -> String {
-        FormattingLocale.count(value, locale: locale)
+        FormattingLocale.count(value, locale: numericLocale)
     }
 
     public func percent(_ percentage: Int) -> String {
-        FormattingLocale.percent(percentage, locale: locale)
+        FormattingLocale.percent(percentage, locale: numericLocale)
     }
 
     public func dateTime(_ date: Date?) -> String {

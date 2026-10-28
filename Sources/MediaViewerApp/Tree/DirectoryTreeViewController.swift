@@ -774,10 +774,17 @@ final class DirectoryTreeViewController: NSViewController {
                 }
             }
         }
-        if let editingTarget, let field = outlineView.window?.firstResponder as? NSTextView {
+        if let editingTarget {
+            let label: String
             switch editingTarget {
-            case .favorite: field.setAccessibilityLabel(l10n.text(.treeA11yFavoriteName))
-            case .folder: field.setAccessibilityLabel(l10n.text(.treeA11yFolderName))
+            case .favorite: label = l10n.text(.treeA11yFavoriteName)
+            case .folder: label = l10n.text(.treeA11yFolderName)
+            }
+            (outlineView.window?.firstResponder as? NSTextView)?.setAccessibilityLabel(label)
+            let editingRow = outlineView.row(forItem: editingTarget.item)
+            if editingRow >= 0,
+               let cell = outlineView.view(atColumn: 0, row: editingRow, makeIfNecessary: false) as? NSTableCellView {
+                cell.textField?.setAccessibilityLabel(label)
             }
         }
     }

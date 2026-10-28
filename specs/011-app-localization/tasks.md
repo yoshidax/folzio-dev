@@ -39,12 +39,12 @@
 
 ## Phase 4: 地域書式とアクセシビリティ（US19・US20）
 
-- [ ] T119 [US19] `Tests/MediaViewerCoreTests/Localization/FormattingTests.swift` と `Sources/MediaViewerLocalization/FormattingLocale.swift`・`Localizer.swift`・`Sources/MediaViewerApp/FileList/ListModeView.swift`・`Preview/ImagePreviewView.swift` で、言語変更後の日時・件数・倍率が地域設定を保ち、語だけ表示言語に従うこと、日付がないと `--` であること、設定の切り替え間隔が従来どおりであることを検証・補完する。
-- [ ] T120 [US20] `Sources/MediaViewerApp/` の accessibility label・help・value・通知を棚卸しし、設定言語変更の前後で画面文言と一致するよう更新する。`specs/011-app-localization/contracts/localization.md` §5 の用語と既存操作を保つ。
-- [ ] T121 `swift build` → `swift test` → no-network → README 同期 → `scripts/make-app.sh` を順に実行し、性能テストを確認する。
-- [ ] T122 [MANUAL] `specs/011-app-localization/quickstart.md` Q7 の地域書式と入力、Q8 の両言語の VoiceOver をユーザーに確認してもらい、項目別に結果を受け取る。
-- [ ] T123 T121・T122 の結果を `specs/011-app-localization/quickstart.md` に記録する。
-- [ ] T124 T119〜T123 完了後、差分を確認し Phase 4 をコミットする。push しない。
+- [X] T119 [US19] `Tests/MediaViewerCoreTests/Localization/FormattingTests.swift` と `Sources/MediaViewerLocalization/FormattingLocale.swift`・`Localizer.swift`・`Sources/MediaViewerApp/FileList/ListModeView.swift`・`Preview/ImagePreviewView.swift` で、言語変更後の日時・件数・倍率が地域設定を保ち、語だけ表示言語に従うこと、日付がないと `--` であること、設定の切り替え間隔が従来どおりであることを検証・補完する。
+- [X] T120 [US20] `Sources/MediaViewerApp/` の accessibility label・help・value・通知を棚卸しし、設定言語変更の前後で画面文言と一致するよう更新する。`specs/011-app-localization/contracts/localization.md` §5 の用語と既存操作を保つ。
+- [X] T121 `swift build` → `swift test` → no-network → README 同期 → `scripts/make-app.sh` を順に実行し、性能テストを確認する。
+- [X] T122 [MANUAL] `specs/011-app-localization/quickstart.md` Q7 の地域書式と入力、Q8 の両言語の VoiceOver をユーザーに確認してもらい、項目別に結果を受け取る。
+- [X] T123 T121・T122 の結果を `specs/011-app-localization/quickstart.md` に記録する。
+- [X] T124 T119〜T123 完了後、差分を確認し Phase 4 をコミットする。push しない。
 
 ## Phase 5: README・最終検証・仕様反映
 

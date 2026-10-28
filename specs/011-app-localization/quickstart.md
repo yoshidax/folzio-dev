@@ -150,6 +150,11 @@ mv .build-away .build
 - 自動検証（2026-10-28、macOS 26.6.2）: `swift build`、`swift test`（813 件・83 suites）、ネットワーク禁止、README 同期、`make-app.sh`、両言語のリソース、Info.plist と署名の確認はすべて成功。性能テストは `swift test` で通過。
 - GUI（2026-10-28、ユーザー報告）: Q3〜Q6・Q9 と `swift run MediaViewerApp` をすべて実施し問題なし。コピーした `.app` の動作と `.build` の復元も確認済み。地域書式と VoiceOver の詳細な Q7・Q8 は Phase 4 で確認する。
 
+### 新方式の Phase 4（T119〜T124）
+
+- 自動検証（2026-10-28、macOS 26.6.2）: `swift build`、`swift test`（814 件・83 suites、性能テストを含む）、ネットワーク禁止、README 同期、`make-app.sh`、署名検証はいずれも成功。ツールバーの `isVisible` に関する Swift の警告が出た。
+- GUI（2026-10-28、ユーザー報告）: 起動時の3ペイン、Q7 の全地域・言語の組み合わせ、入力と日付なし表示、および Q8 の英語・日本語の VoiceOver の全項目を確認し、問題なし。
+
 ### 旧方式の Phase 別記録（参照用）
 
 以下の T029〜T077 は旧タスクの番号であり、新方式の検証結果ではない。
