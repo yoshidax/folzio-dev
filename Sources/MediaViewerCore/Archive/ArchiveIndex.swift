@@ -1,7 +1,7 @@
 import Foundation
 import UniformTypeIdentifiers
 
-/// zip ファイルの同一性（開いたときの値。FSEvents の後に比べて、zip が変わったかを判定する）
+/// Identity of a zip file (the value when opened; compared after FSEvents to detect changes to the zip).
 public struct ArchiveIdentity: Sendable, Hashable {
     public var fileSize: UInt64
     public var modificationDate: Date
@@ -14,7 +14,7 @@ public struct ArchiveIdentity: Sendable, Hashable {
     }
 }
 
-/// zip の中の項目（ディレクトリを含む）。data-model.md の ArchiveEntry
+/// Entry inside a zip, including directories. ArchiveEntry in data-model.md.
 public struct ArchiveEntry: Sendable, Equatable {
     public enum Readability: Sendable, Equatable {
         case readable
@@ -22,18 +22,18 @@ public struct ArchiveEntry: Sendable, Equatable {
         case unsupportedMethod
     }
 
-    /// FR-074 で判定した名前による、zip の中のパス。ディレクトリは末尾が `/`
+    /// Path inside the zip based on the name determined by FR-074. Directories end with `/`.
     public var path: String
-    /// パスの最後の要素
+    /// Last path component
     public var name: String
     public var isDirectory: Bool
-    /// 格納方式（0 = 無圧縮、8 = deflate、それ以外は非対応）
+    /// Compression method (0 = stored, 8 = deflate, anything else is unsupported)
     public var method: UInt16
-    /// 汎用フラグのビット 0
+    /// Bit 0 of the general purpose flags
     public var isEncrypted: Bool
     public var compressedSize: UInt64
     public var uncompressedSize: UInt64
-    /// ローカルヘッダの位置。データの開始位置は初めて読むときに求める
+    /// Local header offset. The data start offset is computed when first read.
     public var localHeaderOffset: UInt64
     public var modificationDate: Date?
 
@@ -44,15 +44,16 @@ public struct ArchiveEntry: Sendable, Equatable {
     }
 }
 
-/// 開いている zip の索引（中央ディレクトリを1回読んで作る。research.md R22・R23）
+/// Index of an open zip (built by reading the central directory once; research.md R22, R23).
 public struct ArchiveIndex: Sendable {
     public let archive: URL
     public let identity: ArchiveIdentity
-    /// 項目のパス → 項目（途中のディレクトリを補ったものを含む）
+    /// Entry path → entry (including implied intermediate directories)
     public private(set) var entries: [String: ArchiveEntry]
-    /// ディレクトリのパス（最上位は ""）→ 直下の項目とディレクトリのパス（中央ディレクトリでの出現順）
+    /// Directory path ("" for the root) → paths of direct entries and directories (in central directory order)
     public private(set) var children: [String: [String]]
-    /// ディレクトリのパス → `items(in:)` の行。開くとき（バックグラウンド）に作り、MainActor で呼ぶ `items(in:)` では作らない（SC-015）
+    /// Directory path → rows returned by `items(in:)`. Built when opening (in the background); `items(in:)` on the
+    /// MainActor does not build them (SC-015).
     private let rows: [String: [MediaFile]]
 
     private static let utf8Flag: UInt16 = 0x0800
@@ -75,7 +76,7 @@ public struct ArchiveIndex: Sendable {
         self.archive = archive
         self.identity = identity
 
-        // 1回目: 名前の判定と正規化。出さない項目を落とし、重複は先のものを使う
+        // First pass: decode and normalize names. Drop entries that are not shown and keep the first duplicate.
         var candidates: [Candidate] = []
         candidates.reserveCapacity(centralEntries.count)
         var seen = Set<String>()
@@ -109,7 +110,7 @@ public struct ArchiveIndex: Sendable {
             ))
         }
 
-        // 2回目: 項目と階層を組み立てる
+        // Second pass: build the entries and hierarchy.
         var entries: [String: ArchiveEntry] = [:]
         var children: [String: [String]] = [:]
         entries.reserveCapacity(candidates.count)
@@ -118,7 +119,7 @@ public struct ArchiveIndex: Sendable {
         calendar.timeZone = TimeZone.current
 
         for candidate in candidates {
-            // 途中のディレクトリを補う
+            // Add implied intermediate directories.
             var parentPath = ""
             for element in candidate.elements.dropLast() {
                 let directoryPath = parentPath + element + "/"
@@ -151,19 +152,20 @@ public struct ArchiveIndex: Sendable {
         entries[path]
     }
 
-    /// 最上位（空文字）か、索引にあるディレクトリなら true（R73）
+    /// True for the root (empty string) or for a directory present in the index (R73).
     public func containsDirectory(_ path: String) -> Bool {
         if path.isEmpty { return true }
         if children[path] != nil { return true }
         return entries[path]?.isDirectory == true
     }
 
-    /// 階層の直下の行（ディレクトリ `.directory` と対応メディア `.media`）。並べ替え前。`..` は含めない
+    /// Rows directly under a directory (`.directory` directories and supported `.media` files). Unsorted.
+    /// Does not include `..`.
     public func items(in directory: String) -> [MediaFile] {
         rows[directory] ?? []
     }
 
-    // MARK: - 補助
+    // MARK: - Helpers
 
     private static func makeRows(
         archive: URL,
@@ -226,7 +228,7 @@ public struct ArchiveIndex: Sendable {
         )
     }
 
-    /// DOS 日時の変換は同じ値が多いため、値ごとに1回だけ行う
+    /// Converts each distinct DOS date and time once because the same values are common.
     private static func modificationDate(
         of central: ZipStructure.CentralEntry,
         calendar: Calendar,

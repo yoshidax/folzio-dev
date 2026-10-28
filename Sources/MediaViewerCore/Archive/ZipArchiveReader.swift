@@ -1,32 +1,34 @@
 import Foundation
 
-/// zip の読み取り器（FR-068〜075、research.md R22・R24）
+/// Zip reader (FR-068–075, research.md R22, R24).
 public protocol ArchiveReading: Sendable {
-    /// 中央ディレクトリを読んで索引を作る。UI スレッドで呼ばない（R22）
+    /// Reads the central directory and builds the index. Do not call on the UI thread (R22).
     func open(_ archive: URL) async throws(ArchiveError) -> ArchiveIndex
-    /// 項目全体を読む（画像用）。展開後のサイズが limit を超えるなら `.tooLarge`
+    /// Reads an entire entry (for images). Throws `.tooLarge` when the inflated size exceeds `limit`.
     func data(for entryURL: URL, limit: Int) async throws(ArchiveError) -> Data
-    /// 項目の範囲読み出し（動画用、R25）。暗号化・非対応方式なら失敗する。UI スレッドで呼ばない
+    /// Streams an entry (for video; R25). Fails for encrypted entries and unsupported methods. Do not call on the UI
+    /// thread.
     func stream(for entryURL: URL) async throws(ArchiveError) -> ArchiveEntryStream
-    /// zip ファイルのいまの同一性。消えていれば nil
+    /// Current identity of the zip file, or nil when it no longer exists.
     func identity(of archive: URL) -> ArchiveIdentity?
 }
 
-/// 自前の zip 読み取り器。ファイル記述子への `pread` だけで読み、zip 全体を読み込まない・メモリマップしない・一時ファイルを作らない。
-/// 最後に開いた 2 つの zip の索引と記述子をパスをキーに覚え、`data(for:)` で項目を引く。
+/// Zip reader implemented in this package. Reads only through `pread` on a file descriptor; does not read the
+/// whole zip, memory-map it, or create temporary files. Caches the indexes and descriptors of the last two zips
+/// opened, keyed by path, and uses them to look up entries in `data(for:)`.
 public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
-    /// 覚えておく zip の数
+    /// Number of zips to cache
     private static let cacheLimit = 2
-    /// 中央ディレクトリとして読み込む大きさの上限。これを超えるものは壊れているとみなす
+    /// Maximum size to read as a central directory. Larger values are treated as damaged.
     private static let maxCentralDirectoryBytes: UInt64 = 256 * 1024 * 1024
     private static let ioChunkSize = 1 << 20
-    /// deflate の最大圧縮率（約 1032 倍）より大きく食い違うサイズは壊れているとみなす
+    /// Sizes that differ by more than the maximum deflate ratio (about 1032:1) are treated as damaged.
     private static let maxInflateRatio: UInt64 = 1100
 
     private final class State {
         let index: ArchiveIndex
         let file: ArchiveFile
-        /// 項目のパス → データの開始位置。初めて読むときに1回だけ求める
+        /// Entry path → data start offset. Computed once when first read.
         var dataOffsets: [String: UInt64] = [:]
 
         init(index: ArchiveIndex, file: ArchiveFile) {
@@ -36,7 +38,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
     }
 
     private let lock = NSLock()
-    /// 新しい順
+    /// Newest first
     private var states: [(key: String, state: State)] = []
     private let kindNames: KindNames
 
@@ -68,9 +70,9 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
         ArchiveFile.currentIdentity(of: archive)
     }
 
-    // MARK: - 実行
+    // MARK: - Execution
 
-    /// 重い処理を UI スレッドの外（デタッチしたタスク）で行う。呼び出し側のキャンセルは処理に伝える
+    /// Performs expensive work off the UI thread in a detached task. Propagates caller cancellation to the work.
     private func runDetached<T: Sendable>(
         _ work: @escaping @Sendable () throws(ArchiveError) -> T
     ) async throws(ArchiveError) -> T {
@@ -89,7 +91,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
         return try result.get()
     }
 
-    // MARK: - 開く
+    // MARK: - Opening
 
     private func openSynchronously(_ archive: URL) throws(ArchiveError) -> State {
         let file = try ArchiveFile.open(archive)
@@ -115,7 +117,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
         return state
     }
 
-    /// ZIP64 なら、ロケータから ZIP64 終端レコードを辿って中央ディレクトリの場所を求める
+    /// For ZIP64, follows the locator to the ZIP64 end of central directory record to find the central directory.
     private func centralDirectoryLocation(
         of end: ZipStructure.EndOfCentralDirectory,
         in file: ArchiveFile
@@ -129,7 +131,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
             do throws(ArchiveError) {
                 zip64Offset = try ZipStructure.zip64Locator(bytes)
             } catch {
-                // ロケータの署名がない: 項目数だけが 0xFFFF の通常の zip かもしれない
+                // No locator signature: this may be a regular zip whose entry count alone is 0xFFFF.
                 if error != .notAZip { throw error }
             }
         }
@@ -154,7 +156,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
         if states.count > Self.cacheLimit { states.removeLast(states.count - Self.cacheLimit) }
     }
 
-    /// 覚えている zip を返す。なければ開き直す
+    /// Returns the cached zip state, reopening the zip when it is not cached.
     private func state(for archive: URL) throws(ArchiveError) -> State {
         let key = archive.path
         lock.lock()
@@ -168,9 +170,9 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
         return try openSynchronously(archive)
     }
 
-    // MARK: - 項目を読む
+    // MARK: - Reading Entries
 
-    /// URL の項目を索引から引く。暗号化・非対応の方式はここで弾く
+    /// Looks up the entry for a URL in the index. Rejects encrypted entries and unsupported methods here.
     private func locateEntry(_ entryURL: URL) throws(ArchiveError) -> (state: State, entry: ArchiveEntry) {
         guard let parsed = ArchiveURL.parse(entryURL), !parsed.isParentLink else {
             throw .corrupted(.invalidLocation)
@@ -188,7 +190,8 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
         return (state, entry)
     }
 
-    /// 範囲読み出し用のストリームを作る。サイズの食い違いは `data(for:limit:)` と同じ基準で壊れているとみなす
+    /// Creates a stream for ranged reads. Size mismatches are treated as damage using the same rule as
+    /// `data(for:limit:)`.
     private func makeStream(_ entryURL: URL) throws(ArchiveError) -> ArchiveEntryStream {
         let (state, entry) = try locateEntry(entryURL)
         try validateSizes(of: entry)
@@ -199,7 +202,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
         )
     }
 
-    /// 格納方式に対して展開後のサイズが食い違っていないか
+    /// Checks whether the inflated size is consistent with the compression method.
     private func validateSizes(of entry: ArchiveEntry) throws(ArchiveError) {
         if entry.method == 0 {
             guard entry.uncompressedSize <= entry.compressedSize else {
@@ -254,7 +257,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
         }
     }
 
-    /// 項目のデータの開始位置。ローカルヘッダを読んで求め、項目ごとに覚える
+    /// Data start offset of an entry. Reads the local header to compute it and caches it per entry.
     private func dataOffset(of entry: ArchiveEntry, in state: State) throws(ArchiveError) -> UInt64 {
         lock.lock()
         let known = state.dataOffsets[entry.path]
@@ -277,7 +280,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
         if Task.isCancelled { throw .corrupted(.readCancelled) }
     }
 
-    /// `count` バイトの領域を用意して `fill` で埋め、`Data` にする（コピーしない）
+    /// Allocates `count` bytes, fills them with `fill`, and returns a `Data` without copying.
     private static func makeData(
         count: Int,
         _ fill: (UnsafeMutableRawBufferPointer) throws(ArchiveError) -> Void
