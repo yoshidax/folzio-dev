@@ -36,6 +36,7 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        MainMenu.refreshTitles(in: menu)
         let urls = host?.selectedFileURLs ?? []
         if urls.count == 1, let name = urls.first?.lastPathComponent {
             copyItem.title = l10n.text(.contextCopySingle, .text(name))
@@ -59,6 +60,7 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
         menu.autoenablesItems = true
 
         openContainerItem.title = l10n.text(.menuFileShowContents)
+        MainMenu.bind(openContainerItem, .menuFileShowContents)
         openContainerItem.action = #selector(FileListViewController.openFocusedItem(_:))
         openContainerItem.keyEquivalent = String(UnicodeScalar(NSDownArrowFunctionKey)!)
         openContainerItem.keyEquivalentModifierMask = [.command]
@@ -66,6 +68,7 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
         menu.addItem(openContainerItem)
 
         goUpItem.title = l10n.text(.menuFileEnclosingFolder)
+        MainMenu.bind(goUpItem, .menuFileEnclosingFolder)
         goUpItem.action = #selector(FileListViewController.goToEnclosingLevel(_:))
         goUpItem.keyEquivalent = String(UnicodeScalar(NSUpArrowFunctionKey)!)
         goUpItem.keyEquivalentModifierMask = [.command]
@@ -75,27 +78,27 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         addItem(
-            title: l10n.text(.menuFileOpen),
+            key: .menuFileOpen,
             action: #selector(FileListViewController.open(_:)),
             keyEquivalent: "",
             modifiers: [.command]
         )
         menu.addItem(.separator())
         addItem(
-            title: l10n.text(.menuFileTrash),
+            key: .menuFileTrash,
             action: #selector(FileListViewController.moveToTrash(_:)),
             keyEquivalent: String(UnicodeScalar(NSBackspaceCharacter)!),
             modifiers: [.command]
         )
         menu.addItem(.separator())
         addItem(
-            title: l10n.text(.menuEditRename),
+            key: .menuEditRename,
             action: #selector(FileListViewController.rename(_:)),
             keyEquivalent: "\r",
             modifiers: []
         )
         addItem(
-            title: l10n.text(.menuEditDuplicate),
+            key: .menuEditDuplicate,
             action: #selector(FileListViewController.duplicate(_:)),
             keyEquivalent: "d",
             modifiers: [.command]
@@ -110,6 +113,7 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
         menu.addItem(copyItem)
 
         pasteItem.title = l10n.text(.menuEditPaste)
+        MainMenu.bind(pasteItem, .menuEditPaste)
         pasteItem.action = #selector(FileListViewController.paste(_:))
         pasteItem.keyEquivalent = "v"
         pasteItem.keyEquivalentModifierMask = [.command]
@@ -117,6 +121,7 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
         menu.addItem(pasteItem)
 
         movePasteItem.title = l10n.text(.menuEditMovePaste)
+        MainMenu.bind(movePasteItem, .menuEditMovePaste)
         movePasteItem.action = #selector(FileListViewController.movePaste(_:))
         movePasteItem.keyEquivalent = "v"
         movePasteItem.keyEquivalentModifierMask = [.command, .option]
@@ -125,7 +130,7 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
         addItem(
-            title: l10n.text(.menuFileRevealInFinder),
+            key: .menuFileRevealInFinder,
             action: #selector(FileListViewController.revealInFinder(_:)),
             keyEquivalent: "",
             modifiers: [.command]
@@ -133,12 +138,13 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
     }
 
     private func addItem(
-        title: String,
+        key: TextKey,
         action: Selector,
         keyEquivalent: String,
         modifiers: NSEvent.ModifierFlags
     ) {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+        let item = NSMenuItem(title: l10n.text(key), action: action, keyEquivalent: keyEquivalent)
+        MainMenu.bind(item, key)
         item.keyEquivalentModifierMask = modifiers
         item.target = host
         menu.addItem(item)

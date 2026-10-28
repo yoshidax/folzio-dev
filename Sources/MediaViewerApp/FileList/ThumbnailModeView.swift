@@ -90,6 +90,9 @@ private final class ThumbnailItemView: NSCollectionViewItem {
         thumbnailImageView.imageScaling = .scaleProportionallyUpOrDown
         thumbnailImageView.imageAlignment = .alignCenter
         thumbnailImageView.setAccessibilityLabel(l10n.text(.a11yThumbnail))
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
+        )
 
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.alignment = .center
@@ -121,6 +124,15 @@ private final class ThumbnailItemView: NSCollectionViewItem {
         self.view = cellView
         imageView = thumbnailImageView
         textField = nameLabel
+    }
+
+    @objc private func displayLanguageDidChange() {
+        thumbnailImageView.setAccessibilityLabel(l10n.text(.a11yThumbnail))
+        if let representedURL, ParentLink.isParentLink(representedURL) {
+            let label = l10n.text(.listParentRow)
+            view.setAccessibilityLabel(label)
+            if !isRenaming { nameLabel.setAccessibilityLabel(label) }
+        }
     }
 
     override var isSelected: Bool {

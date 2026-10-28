@@ -16,6 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         NSWindow.allowsAutomaticWindowTabbing = false
         MainMenu.install(zoomTarget: self)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
+        )
 
         let controller = MainWindowController()
         if let splitViewController = controller.window?.contentViewController as? MainSplitViewController {
@@ -27,6 +30,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mainWindowController = controller
 
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func displayLanguageDidChange() {
+        MainMenu.refreshTitles()
     }
 
     private func endLaunchToListInterval() {

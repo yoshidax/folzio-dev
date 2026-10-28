@@ -707,6 +707,10 @@ final class DirectoryTreeViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
+        )
+
         roots = volumes.rootNodes().map { Node(folder: $0) }
         favorites = settings.favorites
         rebuildFavoriteEntries()
@@ -749,6 +753,33 @@ final class DirectoryTreeViewController: NSViewController {
         observeDisplayedFolder()
         observeTreeSyncRequest()
         updateWatchSet()
+    }
+
+    @objc private func displayLanguageDidChange() {
+        outlineView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier("folder"))?.title = l10n.text(.treeColumn)
+        let row = outlineView.row(forItem: favoritesHeader)
+        if row >= 0,
+           let cell = outlineView.view(atColumn: 0, row: row, makeIfNecessary: false) as? NSTableCellView {
+            cell.textField?.stringValue = l10n.text(.treeFavorites)
+        }
+        let visible = outlineView.rows(in: outlineView.visibleRect)
+        if visible.location != NSNotFound {
+            for index in visible.location..<min(visible.location + visible.length, outlineView.numberOfRows) {
+                guard let cell = outlineView.view(atColumn: 0, row: index, makeIfNecessary: false) as? NSTableCellView else { continue }
+                if let node = outlineView.item(atRow: index) as? Node,
+                   node.folder.accessState == .denied || node.folder.accessState == .unavailable {
+                    cell.toolTip = l10n.text(.treeTooltipNotAccessible)
+                } else if let entry = outlineView.item(atRow: index) as? FavoriteEntry, entry.availability == .missing {
+                    cell.toolTip = l10n.text(.treeTooltipNotFound)
+                }
+            }
+        }
+        if let editingTarget, let field = outlineView.window?.firstResponder as? NSTextView {
+            switch editingTarget {
+            case .favorite: field.setAccessibilityLabel(l10n.text(.treeA11yFavoriteName))
+            case .folder: field.setAccessibilityLabel(l10n.text(.treeA11yFolderName))
+            }
+        }
     }
 
     override func viewDidAppear() {

@@ -17,6 +17,23 @@ final class MainMenu {
     /// NSMenu.delegate は weak のため保持する
     private static let trashTitleReset = TrashMenuTitleReset()
 
+    static func bind(_ item: NSMenuItem, _ key: TextKey) {
+        item.identifier = NSUserInterfaceItemIdentifier("localization.\(key.rawValue)")
+    }
+
+    static func refreshTitles(in menu: NSMenu? = NSApp.mainMenu) {
+        guard let menu else { return }
+        for item in menu.items {
+            if let identifier = item.identifier?.rawValue,
+               identifier.hasPrefix("localization."),
+               let key = TextKey(rawValue: String(identifier.dropFirst("localization.".count))) {
+                item.title = l10n.text(key)
+                item.submenu?.title = item.title
+            }
+            refreshTitles(in: item.submenu)
+        }
+    }
+
     /// `zoomTarget` は表示メニューの「拡大」「縮小」「表示領域に合わせる」の target。
     /// キー入力先のウインドウに依存せずメインウインドウのプレビューを操作するため、明示的に渡す（FR-135、A-73）
     static func install(zoomTarget: AppDelegate) {
@@ -288,6 +305,30 @@ final class MainMenu {
         forwardItem.target = nil
         navigateMenu.addItem(forwardItem)
 
+        let bindings: [(NSMenuItem, TextKey)] = [
+            (settingsItem, .menuAppSettings), (quitItem, .menuAppQuit),
+            (fileMenuItem, .menuFile), (openItem, .menuFileOpen),
+            (openContainerItem, .menuFileShowContents), (goUpItem, .menuFileEnclosingFolder),
+            (revealItem, .menuFileRevealInFinder), (addFavoriteItem, .menuFileAddToFavorites),
+            (searchItem, .menuFileFind), (fileTrashItem, .menuFileTrash),
+            (editMenuItem, .menuEdit), (redoItem, .menuEditRedo),
+            (movePasteItem, .menuEditMovePaste), (duplicateItem, .menuEditDuplicate),
+            (renameItem, .menuEditRename), (editTrashItem, .menuFileTrash),
+            (viewMenuItem, .menuView), (toolbarItem, .menuViewShowToolbar),
+            (fullScreenItem, .menuViewFullScreen), (zoomInItem, .menuViewZoomIn),
+            (zoomInAlternateItem, .menuViewZoomIn), (zoomOutItem, .menuViewZoomOut),
+            (zoomToFitItem, .menuViewZoomToFit), (slideshowItem, .menuViewStartSlideshow),
+            (navigateMenuItem, .menuGo), (backItem, .menuGoBack), (forwardItem, .menuGoForward),
+        ]
+        for (item, key) in bindings { bind(item, key) }
+        let editBindings: [(Selector, TextKey)] = [
+            (Selector(("undo:")), .menuEditUndo), (#selector(NSText.cut(_:)), .menuEditCut),
+            (#selector(NSText.copy(_:)), .menuEditCopy), (#selector(NSText.paste(_:)), .menuEditPaste),
+            (#selector(NSText.selectAll(_:)), .menuEditSelectAll),
+        ]
+        for (action, key) in editBindings {
+            if let item = editMenu.items.first(where: { $0.action == action }) { bind(item, key) }
+        }
         NSApp.mainMenu = mainMenu
     }
 }

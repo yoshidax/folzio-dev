@@ -90,7 +90,8 @@ public struct DirectoryLister: DirectoryListing {
                         kind: .archive,
                         typeDescription: values?.localizedTypeDescription ?? kindNames.zipArchive,
                         creationDate: values?.creationDate,
-                        fileSize: Int64(values?.fileSize ?? 0)
+                        fileSize: Int64(values?.fileSize ?? 0),
+                        kindNameSource: values?.localizedTypeDescription == nil ? .zipArchive : nil
                     )
                 }
                 guard let kind = MediaKind(fileExtension: url.pathExtension) else { return nil }
@@ -107,7 +108,8 @@ public struct DirectoryLister: DirectoryListing {
             kind: .folder,
             typeDescription: kindNames.folder,
             creationDate: creationDate,
-            fileSize: 0
+            fileSize: 0,
+            kindNameSource: .folder
         )
     }
 

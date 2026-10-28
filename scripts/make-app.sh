@@ -23,7 +23,7 @@ cp .build/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 localization_bundle="$bin_dir/my_img_viewer_MediaViewerLocalization.bundle/Contents/Resources"
 for language in ja en; do
     source_dir="$localization_bundle/$language.lproj"
-    if [ ! -f "$source_dir/Localizable.strings" ] && [ ! -f "$source_dir/Localizable.stringsdict" ]; then
+    if [ ! -f "$source_dir/Localizable.strings" ] || [ ! -f "$source_dir/Localizable.stringsdict" ]; then
         echo "翻訳リソースがありません: $source_dir" >&2
         rm -rf "$app"
         exit 1

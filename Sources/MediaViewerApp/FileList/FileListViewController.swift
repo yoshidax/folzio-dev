@@ -18,6 +18,7 @@ final class FileListViewController: NSViewController {
     private let messageBand = NSView()
     private let messageBandLabel = NSTextField(labelWithString: "")
     private let sizeSlider = NSSlider()
+    private let sizeLabel = NSTextField(labelWithString: "")
     /// 検索結果を表示中に一覧の上端に出す帯（R37）
     private let searchBar = NSView()
     private let searchBarLabel = NSTextField(labelWithString: "")
@@ -321,11 +322,22 @@ final class FileListViewController: NSViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
+        )
         installViewMenuItems()
         refresh()
         observeModel()
         observeMediaTypeFilter()
         observeShowsZipFiles()
+    }
+
+    @objc private func displayLanguageDidChange() {
+        sizeLabel.stringValue = l10n.text(.toolbarSize)
+        sizeLabel.toolTip = l10n.text(.toolbarThumbnailSize)
+        sizeSlider.toolTip = l10n.text(.toolbarThumbnailSize)
+        sizeSlider.setAccessibilityLabel(l10n.text(.toolbarThumbnailSize))
+        refresh()
     }
 
     override func viewDidAppear() {
@@ -431,7 +443,8 @@ final class FileListViewController: NSViewController {
     }
 
     private func setupBottomBar() {
-        let label = NSTextField(labelWithString: l10n.text(.toolbarSize))
+        let label = sizeLabel
+        label.stringValue = l10n.text(.toolbarSize)
         label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         label.textColor = .secondaryLabelColor
         label.toolTip = l10n.text(.toolbarThumbnailSize)
@@ -644,6 +657,7 @@ final class FileListViewController: NSViewController {
             keyEquivalent: "1"
         )
         thumbnailsItem.target = self
+        MainMenu.bind(thumbnailsItem, .menuViewAsThumbnails)
         viewMenu.addItem(thumbnailsItem)
         thumbnailMenuItem = thumbnailsItem
 
@@ -653,6 +667,7 @@ final class FileListViewController: NSViewController {
             keyEquivalent: "2"
         )
         listItem.target = self
+        MainMenu.bind(listItem, .menuViewAsList)
         viewMenu.addItem(listItem)
         listMenuItem = listItem
 
@@ -664,6 +679,7 @@ final class FileListViewController: NSViewController {
         // ⌘+ / ⌘- はプレビューの倍率に使うため、Shift なしで押せる ⌃⌘. / ⌃⌘, にする（FR-135、A-74）
         zoomInItem.keyEquivalentModifierMask = [.command, .control]
         zoomInItem.target = self
+        MainMenu.bind(zoomInItem, .menuViewLargerThumbnails)
         viewMenu.addItem(zoomInItem)
 
         let zoomOutItem = NSMenuItem(
@@ -673,6 +689,7 @@ final class FileListViewController: NSViewController {
         )
         zoomOutItem.keyEquivalentModifierMask = [.command, .control]
         zoomOutItem.target = self
+        MainMenu.bind(zoomOutItem, .menuViewSmallerThumbnails)
         viewMenu.addItem(zoomOutItem)
 
         viewMenu.addItem(.separator())
@@ -683,6 +700,7 @@ final class FileListViewController: NSViewController {
             keyEquivalent: "I"
         )
         imagesOnlyItem.target = self
+        MainMenu.bind(imagesOnlyItem, .menuViewShowImagesOnly)
         viewMenu.addItem(imagesOnlyItem)
         imagesOnlyMenuItem = imagesOnlyItem
 
@@ -692,6 +710,7 @@ final class FileListViewController: NSViewController {
             keyEquivalent: "M"
         )
         videosOnlyItem.target = self
+        MainMenu.bind(videosOnlyItem, .menuViewShowVideosOnly)
         viewMenu.addItem(videosOnlyItem)
         videosOnlyMenuItem = videosOnlyItem
 
@@ -702,6 +721,7 @@ final class FileListViewController: NSViewController {
         )
         zipVisibilityItem.keyEquivalentModifierMask = [.command, .control]
         zipVisibilityItem.target = self
+        MainMenu.bind(zipVisibilityItem, .menuViewShowZipFiles)
         viewMenu.addItem(zipVisibilityItem)
         zipVisibilityMenuItem = zipVisibilityItem
 

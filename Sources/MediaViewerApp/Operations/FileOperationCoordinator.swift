@@ -97,7 +97,7 @@ final class FileOperationCoordinator {
         let isDirectory = await containsFolder([file])
         switch validateNewName(newName, for: file, existingNames: existingNames, isDirectory: isDirectory) {
         case .invalid(let reason):
-            await showError(message: l10n.text(.dialogRenameFailed), detail: l10n.text(for: reason))
+            await showError(message: { l10n.text(.dialogRenameFailed) }, detail: { l10n.text(for: reason) })
             return
         case .needsExtensionChangeConfirmation:
             guard await confirmExtensionChange(for: file, to: newName) else { return }
@@ -229,58 +229,66 @@ final class FileOperationCoordinator {
         alert.addButton(withTitle: l10n.text(.dialogCancel))
         alert.buttons[1].keyEquivalent = "\u{1b}"
 
+        let languageObserver = LanguageChangeObserver {
+            alert.messageText = l10n.text(.dialogExtensionTitle)
+            alert.informativeText = l10n.text(.dialogExtensionMessage, .text(file.lastPathComponent), .text((newName as NSString).pathExtension))
+            alert.buttons[0].title = l10n.text(.dialogExtensionConfirm)
+            alert.buttons[1].title = l10n.text(.dialogCancel)
+        }
+
         let response = await withCheckedContinuation { continuation in
             alert.beginSheetModal(for: window) { response in
                 continuation.resume(returning: response)
             }
         }
+        withExtendedLifetime(languageObserver) {}
         return response == .alertFirstButtonReturn
     }
 
     private func presentFailures(_ result: FileOperationResult) async {
         guard !result.failed.isEmpty else { return }
 
-        var lines = result.failed.prefix(10).map { failure in
-            l10n.text(
-                .dialogOperationFailureLine,
-                .text(failure.url.lastPathComponent),
-                .text(l10n.text(for: failure.reason))
-            )
-        }
-        if result.failed.count > 10 {
-            lines.append(l10n.text(.dialogOperationMore, .number(result.failed.count - 10)))
-        }
-
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = l10n.text(.dialogOperationFailed)
-        alert.informativeText = """
-        \(l10n.text(.dialogOperationSummary, .number(result.succeeded.count), .number(result.failed.count)))
-
-        \(lines.joined(separator: "\n"))
-        """
         alert.addButton(withTitle: l10n.text(.dialogOK))
-        _ = await runSheet(alert)
+        _ = await runSheet(alert) {
+            var lines = result.failed.prefix(10).map { failure in
+                l10n.text(.dialogOperationFailureLine, .text(failure.url.lastPathComponent), .text(l10n.text(for: failure.reason)))
+            }
+            if result.failed.count > 10 {
+                lines.append(l10n.text(.dialogOperationMore, .number(result.failed.count - 10)))
+            }
+            alert.messageText = l10n.text(.dialogOperationFailed)
+            alert.informativeText = l10n.text(.dialogOperationSummary, .number(result.succeeded.count), .number(result.failed.count))
+                + "\n\n" + lines.joined(separator: "\n")
+            alert.buttons[0].title = l10n.text(.dialogOK)
+        }
     }
 
-    private func showError(message: String, detail: String) async {
+    private func showError(message: @escaping @MainActor () -> String, detail: @escaping @MainActor () -> String) async {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = message
-        alert.informativeText = detail
         alert.addButton(withTitle: l10n.text(.dialogOK))
-        _ = await runSheet(alert)
+        _ = await runSheet(alert) {
+            alert.messageText = message()
+            alert.informativeText = detail()
+            alert.buttons[0].title = l10n.text(.dialogOK)
+        }
     }
 
-    private func runSheet(_ alert: NSAlert) async -> NSApplication.ModalResponse? {
+    private func runSheet(_ alert: NSAlert, update: @escaping @MainActor () -> Void) async -> NSApplication.ModalResponse? {
         guard let window = NSApp.keyWindow ?? NSApp.mainWindow else {
             return nil
         }
-        return await withCheckedContinuation { continuation in
+        update()
+        let languageObserver = LanguageChangeObserver(update: update)
+        let response = await withCheckedContinuation { continuation in
             alert.beginSheetModal(for: window) { response in
                 continuation.resume(returning: response)
             }
         }
+        withExtendedLifetime(languageObserver) {}
+        return response
     }
 }
 

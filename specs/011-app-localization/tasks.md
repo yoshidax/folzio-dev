@@ -26,16 +26,16 @@
 
 ## Phase 3: 各画面の即時切り替え（US17・US18）
 
-- [ ] T109 [US18] `Sources/MediaViewerCore/Model/MediaFile.swift`・`FileSystem/DirectoryLister.swift`・`Archive/ArchiveIndex.swift`・`Browser/BrowserModel.swift` と関連テストで、OS 由来の種類名とアプリの代替名を区別する。既存一覧・検索結果・zip 内の行と種類順を新しい言語に更新し、OS 由来の名前を変えない。選択を維持し、古い非同期結果の巻き戻しを防ぎ、大量データの変換・並べ替えと列挙は UI スレッド外で行う。
-- [ ] T110 [US17] `Sources/MediaViewerApp/App/MainMenu.swift`・`MainSplitViewController.swift`・`MainToolbarController.swift` のメニュー、状態依存の項目、ツールバー、ツールチップとアクセシビリティを、識別子や操作・ショートカットを維持し言語変更時に更新する。
-- [ ] T111 [US17] `Sources/MediaViewerApp/Tree/`・`FileList/`・`Preview/` の見出し、列、空状態、種類名、プレビューのエラー・倍率とアクセシビリティを更新する。表示中のフォルダ・選択・スクロール・編集中の名前・再生状態を保持する。
-- [ ] T112 [US17] `Sources/MediaViewerApp/Search/`・`Operations/` の検索画面・検索結果・入力値・エラー、確認と衝突ダイアログの文言を更新する。実行中の検索・操作、長い文字列とユーザーの名前を損なわない。
-- [ ] T113 [US17] `Sources/MediaViewerApp/` と `Sources/MediaViewerLocalization/` の翻訳単位・日本語の直書き・アクセシビリティを棚卸しする。`specs/011-app-localization/contracts/localization.md` §5 と日本語既存文言を照合し、訳の欠け・未使用キー・値の不一致を修正する。必要な契約表の追加と結果を quickstart に記録する。
-- [ ] T114 [US18] `Tests/MediaViewerCoreTests/Localization/` と関連 Core テストで、言語変更の両方向、未知の値、非同期結果、フォールバック種類名と OS 由来の種類名、種類の並べ替え、ユーザー文字列の保持を検証する。
-- [ ] T115 `swift build` → `swift test` → no-network → README 同期 → `scripts/make-app.sh` → quickstart Q2 の非 GUI 検証を順に行い、性能テストが既存基準を保つことを確かめる。
-- [ ] T116 [MANUAL] `specs/011-app-localization/quickstart.md` Q3〜Q6・Q9 に従い、両言語と設定での即時切り替え、既存の文言、閲覧・編集・検索状態、保存復元、`.app` の独立性、OS 言語との独立をユーザーに確認してもらう。`swift run MediaViewerApp` でも内部キーが出ずクラッシュしないことを確認してもらう。
-- [ ] T117 T115・T116 の結果を `specs/011-app-localization/quickstart.md` に記録する。
-- [ ] T118 T109〜T117 完了後、差分を確認し Phase 3 をコミットする。push しない。
+- [X] T109 [US18] `Sources/MediaViewerCore/Model/MediaFile.swift`・`FileSystem/DirectoryLister.swift`・`Archive/ArchiveIndex.swift`・`Browser/BrowserModel.swift` と関連テストで、OS 由来の種類名とアプリの代替名を区別する。既存一覧・検索結果・zip 内の行と種類順を新しい言語に更新し、OS 由来の名前を変えない。選択を維持し、古い非同期結果の巻き戻しを防ぎ、大量データの変換・並べ替えと列挙は UI スレッド外で行う。
+- [X] T110 [US17] `Sources/MediaViewerApp/App/MainMenu.swift`・`MainSplitViewController.swift`・`MainToolbarController.swift` のメニュー、状態依存の項目、ツールバー、ツールチップとアクセシビリティを、識別子や操作・ショートカットを維持し言語変更時に更新する。
+- [X] T111 [US17] `Sources/MediaViewerApp/Tree/`・`FileList/`・`Preview/` の見出し、列、空状態、種類名、プレビューのエラー・倍率とアクセシビリティを更新する。表示中のフォルダ・選択・スクロール・編集中の名前・再生状態を保持する。
+- [X] T112 [US17] `Sources/MediaViewerApp/Search/`・`Operations/` の検索画面・検索結果・入力値・エラー、確認と衝突ダイアログの文言を更新する。実行中の検索・操作、長い文字列とユーザーの名前を損なわない。
+- [X] T113 [US17] `Sources/MediaViewerApp/` と `Sources/MediaViewerLocalization/` の翻訳単位・日本語の直書き・アクセシビリティを棚卸しする。`specs/011-app-localization/contracts/localization.md` §5 と日本語既存文言を照合し、訳の欠け・未使用キー・値の不一致を修正する。必要な契約表の追加と結果を quickstart に記録する。
+- [X] T114 [US18] `Tests/MediaViewerCoreTests/Localization/` と関連 Core テストで、言語変更の両方向、未知の値、非同期結果、フォールバック種類名と OS 由来の種類名、種類の並べ替え、ユーザー文字列の保持を検証する。
+- [X] T115 `swift build` → `swift test` → no-network → README 同期 → `scripts/make-app.sh` → quickstart Q2 の非 GUI 検証を順に行い、性能テストが既存基準を保つことを確かめる。
+- [X] T116 [MANUAL] `specs/011-app-localization/quickstart.md` Q3〜Q6・Q9 に従い、両言語と設定での即時切り替え、既存の文言、閲覧・編集・検索状態、保存復元、`.app` の独立性、OS 言語との独立をユーザーに確認してもらう。`swift run MediaViewerApp` でも内部キーが出ずクラッシュしないことを確認してもらう。
+- [X] T117 T115・T116 の結果を `specs/011-app-localization/quickstart.md` に記録する。
+- [X] T118 T109〜T117 完了後、差分を確認し Phase 3 をコミットする。push しない。
 
 ## Phase 4: 地域書式とアクセシビリティ（US19・US20）
 

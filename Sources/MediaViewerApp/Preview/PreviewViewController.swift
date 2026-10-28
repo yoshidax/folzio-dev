@@ -187,6 +187,9 @@ final class PreviewViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         NotificationCenter.default.addObserver(
+            self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
+        )
+        NotificationCenter.default.addObserver(
             self,
             selector: #selector(windowDidChangeScreen(_:)),
             name: NSWindow.didChangeScreenNotification,
@@ -194,6 +197,17 @@ final class PreviewViewController: NSViewController {
         )
         updateFromModel()
         observePreview()
+        observeListingForEmptyPreview()
+    }
+
+    @objc private func displayLanguageDidChange() {
+        imageView.refreshLocalizedAccessibility()
+        switch model.preview {
+        case .empty, .loading, .unavailable:
+            updateFromModel()
+        case .image, .animatedImage, .animatedImageData, .video:
+            break
+        }
     }
 
     override func viewDidAppear() {
@@ -204,13 +218,24 @@ final class PreviewViewController: NSViewController {
     private func observePreview() {
         withObservationTracking {
             _ = model.preview
-            _ = model.listing
             _ = model.selection.focused
             _ = model.stopPlaybackSignal
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.updateFromModel()
                 self?.observePreview()
+            }
+        }
+    }
+
+    private func observeListingForEmptyPreview() {
+        withObservationTracking {
+            _ = model.listing
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                if case .empty = self.model.preview { self.updateFromModel() }
+                self.observeListingForEmptyPreview()
             }
         }
     }

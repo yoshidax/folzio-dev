@@ -183,7 +183,7 @@ public struct ArchiveIndex: Sendable {
                 if entry.isDirectory {
                     result.append(MediaFile(
                         url: url, name: entry.name, kind: .directory, typeDescription: kindNames.folder,
-                        creationDate: entry.modificationDate, fileSize: 0
+                        creationDate: entry.modificationDate, fileSize: 0, kindNameSource: .folder
                     ))
                 } else if let kind = mediaKind(ofName: entry.name) {
                     let fileExtension = fileExtension(ofName: entry.name)

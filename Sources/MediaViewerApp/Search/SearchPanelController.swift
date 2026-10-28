@@ -18,6 +18,8 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
 
     private let keywordField = NSSearchField()
     private let rootField = NSTextField()
+    private let keywordLabel = NSTextField(labelWithString: "")
+    private let rootLabel = NSTextField(labelWithString: "")
     private let reasonLabel = NSTextField(labelWithString: "")
     private let chooseFolderButton = KeyViewButton()
     private let cancelButton = KeyViewButton()
@@ -30,6 +32,7 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
     private var folderPanel: NSOpenPanel?
     private var panelPresented = false
     private var initialFocusApplied = false
+    private var localizedReason: (@MainActor () -> String)?
 
     init(keyword: String?, rootPath: String, onSearch: @escaping (SearchPattern, URL) -> Void) {
         initialKeyword = keyword
@@ -47,8 +50,8 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
     override func loadView() {
         let container = NSView()
 
-        let keywordLabel = NSTextField(labelWithString: l10n.text(.searchKeyword))
-        let rootLabel = NSTextField(labelWithString: l10n.text(.searchRoot))
+        keywordLabel.stringValue = l10n.text(.searchKeyword)
+        rootLabel.stringValue = l10n.text(.searchRoot)
 
         keywordField.placeholderString = l10n.text(.searchKeyword)
         keywordField.delegate = self
@@ -128,7 +131,28 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
         searchButton.nextKeyView = keywordField
 
         view = container
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
+        )
         refreshControls()
+    }
+
+    @objc private func displayLanguageDidChange() {
+        keywordLabel.stringValue = l10n.text(.searchKeyword)
+        rootLabel.stringValue = l10n.text(.searchRoot)
+        keywordField.placeholderString = l10n.text(.searchKeyword)
+        keywordField.setAccessibilityLabel(l10n.text(.searchKeyword))
+        rootField.setAccessibilityLabel(l10n.text(.searchRoot))
+        reasonLabel.setAccessibilityLabel(l10n.text(.searchError))
+        if !reasonLabel.isHidden, let localizedReason { reasonLabel.stringValue = localizedReason() }
+        chooseFolderButton.title = l10n.text(.searchChoose)
+        chooseFolderButton.setAccessibilityLabel(l10n.text(.searchChoose))
+        chooseFolderButton.setAccessibilityHelp(l10n.text(.searchChooseHelp))
+        cancelButton.title = l10n.text(.dialogCancel)
+        searchButton.title = l10n.text(.searchSearch)
+        folderPanel?.title = l10n.text(.searchPanelTitle)
+        folderPanel?.message = l10n.text(.searchPanelMessage)
+        folderPanel?.prompt = l10n.text(.searchPanelPrompt)
     }
 
     override func viewDidAppear() {
@@ -199,7 +223,7 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
                 url = value
             case let .failure(error):
                 guard self.inputState.complete(ticket, succeeded: false) else { return }
-                self.showReason(l10n.text(for: error))
+                self.showReason { l10n.text(for: error) }
                 self.refreshControls()
                 return
             }
@@ -213,7 +237,7 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
                 self.onSearch(pattern, root)
             case let .failure(error):
                 guard self.inputState.complete(ticket, succeeded: false) else { return }
-                self.showReason(l10n.text(for: error))
+                self.showReason { l10n.text(for: error) }
                 self.refreshControls()
             }
         }
@@ -240,7 +264,7 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
                 self.presentFolderPanel(initialDirectory: directory)
             case let .failure(error):
                 guard self.inputState.complete(ticket, succeeded: false) else { return }
-                self.showReason(l10n.text(for: error))
+                self.showReason { l10n.text(for: error) }
                 self.refreshControls()
             }
         }
@@ -248,7 +272,7 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
 
     private func presentFolderPanel(initialDirectory: URL) {
         guard !panelPresented, let window = view.window else {
-            showReason(l10n.text(.searchPanelFailed))
+            showReason { l10n.text(.searchPanelFailed) }
             refreshControls()
             return
         }
@@ -303,7 +327,7 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
                 self.refreshControls()
             case let .failure(error):
                 guard self.inputState.complete(ticket, succeeded: false) else { return }
-                self.showReason(l10n.text(for: error))
+                self.showReason { l10n.text(for: error) }
                 self.focusChooseButton()
                 self.refreshControls()
             }
@@ -320,10 +344,13 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
 
     private func hideReason() {
         reasonLabel.isHidden = true
+        localizedReason = nil
     }
 
     /// 理由を入力欄の下に出し、読み上げる（モーダルは閉じない。FR-081）
-    private func showReason(_ message: String) {
+    private func showReason(_ render: @escaping @MainActor () -> String) {
+        localizedReason = render
+        let message = render()
         reasonLabel.stringValue = message
         reasonLabel.isHidden = false
         NSAccessibility.post(

@@ -6,6 +6,46 @@ import FixtureKit
 
 @Suite("BrowserModel")
 struct BrowserModelTests {
+    @Test("言語切り替え前に始まった列挙も新しい種類名で表示する")
+    @MainActor
+    func languageChangeDuringListing() async {
+        let folder = URL(fileURLWithPath: "/tmp/localization-\(UUID().uuidString)", isDirectory: true)
+        let row = MediaFile(url: folder.appendingPathComponent("child"), name: "child", kind: .folder,
+                            typeDescription: "Folder", creationDate: nil, fileSize: 0, kindNameSource: .folder)
+        let lister = FakeLister(responses: [folder: .init(files: [row], delay: .milliseconds(100))])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let load = Task { await model.selectFolder(folder) }
+        try? await Task.sleep(for: .milliseconds(20))
+        model.setKindNames(KindNames(folder: "フォルダ", zipArchive: "ZIP アーカイブ"))
+        await load.value
+        #expect(model.listing.files.first?.typeDescription == "フォルダ")
+    }
+
+    @Test("種類名を変更すると種類順だけを並べ直し、OS の名前と選択を保持する")
+    @MainActor
+    func changingLanguageResortsKindNames() async {
+        let folder = URL(fileURLWithPath: "/tmp/localization-sort-\(UUID().uuidString)", isDirectory: true)
+        let child = MediaFile(url: folder.appendingPathComponent("child"), name: "child", kind: .folder,
+                              typeDescription: "Folder", creationDate: nil, fileSize: 0, kindNameSource: .folder)
+        let image = MediaFile(url: folder.appendingPathComponent("photo.jpg"), name: "photo.jpg", kind: .media(.jpeg),
+                              typeDescription: "Middle", creationDate: nil, fileSize: 0)
+        let lister = FakeLister(responses: [folder: .init(files: [child, image], delay: .zero)])
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        model.sortOrder = SortOrder(column: .kind, ascending: true)
+        await model.selectFolder(folder)
+        model.select([child.url], focused: child.url)
+        model.setKindNames(KindNames(folder: "Z Folder", zipArchive: "Z Zip"))
+        for _ in 0..<100 where model.listing.files.first?.url != image.url {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(model.listing.files.map(\.url) == [image.url, child.url])
+        #expect(model.listing.files.first?.typeDescription == "Middle")
+        #expect(model.listing.files.last?.typeDescription == "Z Folder")
+        #expect(model.selection.focused == child.url)
+    }
+
     @Test("フォルダを素早く切り替えると最後の一覧だけが残る")
     @MainActor
     func keepsOnlyLastFolder() async {

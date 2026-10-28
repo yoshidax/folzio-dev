@@ -23,14 +23,14 @@ final class ConfirmationPresenter {
         if isSkippable, !settings.confirmation.confirmBeforeFileOperations {
             return true
         }
-        var informativeText = informativeText(for: operation, includesFolders: includesFolders)
-        if let location {
-            informativeText += "\n" + l10n.text(.dialogConfirmLocation, .text(location))
-        }
         return await present(
-            messageText: messageText(for: operation.kind, count: operation.sources.count),
-            informativeText: informativeText,
-            confirmTitle: l10n.text(.dialogConfirmContinue),
+            messageText: { self.messageText(for: operation.kind, count: operation.sources.count) },
+            informativeText: {
+                var text = self.informativeText(for: operation, includesFolders: includesFolders)
+                if let location { text += "\n" + l10n.text(.dialogConfirmLocation, .text(location)) }
+                return text
+            },
+            confirmTitle: { l10n.text(.dialogConfirmContinue) },
             allowsSuppression: isSkippable
         )
     }
@@ -40,32 +40,40 @@ final class ConfirmationPresenter {
             return true
         }
         return await present(
-            messageText: l10n.text(.dialogFavoriteRemoveTitle),
-            informativeText: [
+            messageText: { l10n.text(.dialogFavoriteRemoveTitle) },
+            informativeText: { [
                 l10n.text(.dialogFavoriteRemoveItems, .text(name)),
                 l10n.text(.dialogConfirmLocation, .text(path)),
                 l10n.text(.dialogFavoriteRemoveNote),
-            ].joined(separator: "\n"),
-            confirmTitle: l10n.text(.dialogFavoriteRemoveConfirm),
+            ].joined(separator: "\n") },
+            confirmTitle: { l10n.text(.dialogFavoriteRemoveConfirm) },
             allowsSuppression: true
         )
     }
 
     private func present(
-        messageText: String,
-        informativeText: String,
-        confirmTitle: String,
+        messageText: @escaping @MainActor () -> String,
+        informativeText: @escaping @MainActor () -> String,
+        confirmTitle: @escaping @MainActor () -> String,
         allowsSuppression: Bool
     ) async -> Bool {
 
         let alert = NSAlert()
-        alert.messageText = messageText
-        alert.informativeText = informativeText
-        alert.addButton(withTitle: confirmTitle)
+        alert.messageText = messageText()
+        alert.informativeText = informativeText()
+        alert.addButton(withTitle: confirmTitle())
         alert.addButton(withTitle: l10n.text(.dialogCancel))
         alert.buttons[1].keyEquivalent = "\u{1b}"
         if allowsSuppression {
             alert.showsSuppressionButton = true
+            alert.suppressionButton?.title = l10n.text(.dialogConfirmDontAsk)
+        }
+
+        let languageObserver = LanguageChangeObserver {
+            alert.messageText = messageText()
+            alert.informativeText = informativeText()
+            alert.buttons[0].title = confirmTitle()
+            alert.buttons[1].title = l10n.text(.dialogCancel)
             alert.suppressionButton?.title = l10n.text(.dialogConfirmDontAsk)
         }
 
@@ -83,6 +91,7 @@ final class ConfirmationPresenter {
             response = alert.runModal()
         }
 
+        withExtendedLifetime(languageObserver) {}
         if allowsSuppression, alert.suppressionButton?.state == .on {
             settings.confirmation = ConfirmationOptions(confirmBeforeFileOperations: false)
         }

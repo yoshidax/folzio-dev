@@ -38,6 +38,10 @@ final class MainToolbarController: NSObject {
         self.settings = settings
         super.init()
 
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
+        )
+
         toolbar.delegate = self
         toolbar.displayMode = .iconOnly
         toolbar.allowsUserCustomization = false
@@ -52,6 +56,7 @@ final class MainToolbarController: NSObject {
         sizeSlider.action = #selector(thumbnailSizeChanged(_:))
         sizeSlider.toolTip = l10n.text(.toolbarThumbnailSize)
         sizeSlider.setAccessibilityLabel(l10n.text(.toolbarThumbnailSize))
+        sizeSlider.setAccessibilityHelp(l10n.text(.toolbarThumbnailSize))
         sizeSlider.translatesAutoresizingMaskIntoConstraints = false
         sizeSlider.widthAnchor.constraint(equalToConstant: 120).isActive = true
 
@@ -85,6 +90,43 @@ final class MainToolbarController: NSObject {
         }
         observeEditingAvailability()
         observeHistoryAvailability()
+    }
+
+    @objc private func displayLanguageDidChange() {
+        let entries: [(NSToolbarItem.Identifier, TextKey, NSSegmentedControl?, [TextKey])] = [
+            (Self.historyIdentifier, .toolbarHistory, historyControl, [.menuGoBack, .menuGoForward]),
+            (Self.paneLayoutIdentifier, .toolbarPanes, paneLayoutControl, [.menuViewShowFileListOnly, .menuViewShowPreviewOnly]),
+            (Self.previewZoomIdentifier, .toolbarZoomGroup, previewZoomControl, [.toolbarZoomInHelp, .toolbarZoomToFitHelp, .toolbarZoomOutHelp]),
+            (Self.mediaTypeFilterIdentifier, .toolbarMediaType, mediaTypeFilterControl, [.menuViewShowImagesOnly, .menuViewShowVideosOnly]),
+            (Self.zipVisibilityIdentifier, .menuViewShowZipFiles, zipVisibilityControl, [.menuViewShowZipFiles]),
+            (Self.viewModeIdentifier, .toolbarViewMode, viewModeControl, [.toolbarThumbnails, .toolbarList]),
+        ]
+        for (identifier, key, control, segmentKeys) in entries {
+            let label = l10n.text(key)
+            if let item = toolbar.items.first(where: { $0.itemIdentifier == identifier }) {
+                item.label = label
+                item.paletteLabel = label
+                item.toolTip = label
+            }
+            let labels = segmentKeys.map { l10n.text($0) }
+            for (index, text) in labels.enumerated() { control?.setToolTip(text, forSegment: index) }
+            control?.setAccessibilityLabel(l10n.list(labels))
+            control?.setAccessibilityHelp(l10n.list(labels))
+        }
+        slideshowButton?.toolTip = l10n.text(.toolbarStartSlideshowHelp)
+        slideshowButton?.setAccessibilityLabel(l10n.text(.menuViewStartSlideshow))
+        slideshowButton?.setAccessibilityHelp(l10n.text(.toolbarStartSlideshowHelp))
+        if let item = toolbar.items.first(where: { $0.itemIdentifier == Self.slideshowIdentifier }) {
+            item.label = l10n.text(.menuViewStartSlideshow)
+            item.paletteLabel = item.label
+            item.toolTip = l10n.text(.toolbarStartSlideshowHelp)
+        }
+        sizeSlider.toolTip = l10n.text(.toolbarThumbnailSize)
+        sizeSlider.setAccessibilityLabel(l10n.text(.toolbarThumbnailSize))
+        sizeSlider.setAccessibilityHelp(l10n.text(.toolbarThumbnailSize))
+        sizeItem?.label = l10n.text(.toolbarSize)
+        sizeItem?.paletteLabel = l10n.text(.toolbarSize)
+        sizeItem?.toolTip = l10n.text(.toolbarThumbnailSize)
     }
 
     private func updateSlideshowAvailability() {
@@ -263,6 +305,7 @@ final class MainToolbarController: NSObject {
             control.setToolTip(items[index].label, forSegment: index)
         }
         control.setAccessibilityLabel(l10n.list(items.map(\.label)))
+        control.setAccessibilityHelp(l10n.list(items.map(\.label)))
         control.sizeToFit()
         return control
     }
@@ -349,6 +392,7 @@ extension MainToolbarController: NSToolbarDelegate {
             button.imagePosition = .imageOnly
             button.toolTip = l10n.text(.toolbarStartSlideshowHelp)
             button.setAccessibilityLabel(l10n.text(.menuViewStartSlideshow))
+            button.setAccessibilityHelp(l10n.text(.toolbarStartSlideshowHelp))
             slideshowButton = button
 
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
@@ -377,6 +421,9 @@ extension MainToolbarController: NSToolbarDelegate {
             control.setToolTip(l10n.text(.toolbarZoomInHelp), forSegment: 0)
             control.setToolTip(l10n.text(.toolbarZoomToFitHelp), forSegment: 1)
             control.setToolTip(l10n.text(.toolbarZoomOutHelp), forSegment: 2)
+            control.setAccessibilityHelp(l10n.list([
+                l10n.text(.toolbarZoomInHelp), l10n.text(.toolbarZoomToFitHelp), l10n.text(.toolbarZoomOutHelp),
+            ]))
             previewZoomControl = control
             let item = makeGroupItem(
                 identifier: itemIdentifier,

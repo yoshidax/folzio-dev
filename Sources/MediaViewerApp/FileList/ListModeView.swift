@@ -134,8 +134,42 @@ final class ListModeView: NSView {
         self.provider = provider
         super.init(frame: .zero)
         setup()
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
+        )
         applyModel()
         observeModel()
+    }
+
+    @objc private func displayLanguageDidChange() {
+        for (identifier, key) in [("name", TextKey.listColumnName), ("creationDate", .listColumnCreationDate),
+                                  ("kind", .listColumnKind), ("location", .listColumnLocation)] {
+            tableView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier(identifier))?.title = l10n.text(key)
+        }
+        updateSortMenuItems()
+        refreshVisibleLocalizedCells()
+    }
+
+    private func refreshVisibleLocalizedCells() {
+        let range = tableView.rows(in: tableView.visibleRect)
+        guard range.location != NSNotFound else { return }
+        let files = model.listing.files
+        for row in range.location..<min(range.location + range.length, files.count) {
+            if files[row].kind == .parent {
+                let column = tableView.column(withIdentifier: NSUserInterfaceItemIdentifier("name"))
+                if column >= 0,
+                   let cell = tableView.view(atColumn: column, row: row, makeIfNecessary: false) as? FileListIconCell {
+                    cell.nameField.setAccessibilityLabel(l10n.text(.listParentRow))
+                }
+            }
+            for (identifier, text) in [("creationDate", l10n.dateTime(files[row].creationDate)),
+                                       ("kind", files[row].localizedKindName(using: l10n.kindNames).typeDescription)] {
+                let column = tableView.column(withIdentifier: NSUserInterfaceItemIdentifier(identifier))
+                guard column >= 0,
+                      let cell = tableView.view(atColumn: column, row: row, makeIfNecessary: false) as? NSTableCellView else { continue }
+                cell.textField?.stringValue = text
+            }
+        }
     }
 
     @available(*, unavailable)
@@ -297,6 +331,7 @@ final class ListModeView: NSView {
 
         syncSortDescriptors()
         updateSortMenuItems()
+        refreshVisibleLocalizedCells()
     }
 
     /// 「場所」列は検索結果の表示中だけ出す
@@ -340,6 +375,7 @@ final class ListModeView: NSView {
             submenu = NSMenu(title: l10n.text(.menuViewSortBy))
             submenu.identifier = NSUserInterfaceItemIdentifier("menu.view.sort")
             let parentItem = NSMenuItem(title: l10n.text(.menuViewSortBy), action: nil, keyEquivalent: "")
+            MainMenu.bind(parentItem, .menuViewSortBy)
             parentItem.submenu = submenu
             viewMenu.addItem(parentItem)
         }
@@ -550,7 +586,7 @@ extension ListModeView: NSTableViewDelegate {
         case "creationDate":
             cell.textField?.stringValue = l10n.dateTime(file.creationDate)
         case "kind":
-            cell.textField?.stringValue = file.typeDescription
+            cell.textField?.stringValue = file.localizedKindName(using: l10n.kindNames).typeDescription
         case "location":
             cell.textField?.stringValue = model.listing.search?.location(of: file.url) ?? ""
         default:

@@ -83,6 +83,26 @@ struct BrowserModelFolderTests {
 
     // MARK: - フォルダの行と ..
 
+    @Test("種類名を切り替えてもフォルダと選択を保持し、後続の列挙にも新しい名前を使う")
+    func changingKindNamesPreservesSelectionAndUpdatesFutureListings() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.root)
+        let trip = try #require(env.row("trip"))
+        env.model.select([trip.url], focused: trip.url)
+        env.model.setKindNames(KindNames(folder: "フォルダ", zipArchive: "ZIP アーカイブ"))
+        env.model.setKindNames(FixtureKit.kindNames)
+        env.model.setKindNames(KindNames(folder: "フォルダ", zipArchive: "ZIP アーカイブ"))
+        #expect(await waitUntil { env.row("trip")?.typeDescription == "フォルダ" })
+        #expect(env.model.selection.focused == trip.url)
+        #expect(env.model.selection.selected == [trip.url])
+        await env.model.selectFolder(env.url("trip"))
+        #expect(env.row("trip/day1")?.typeDescription == "フォルダ")
+
+        env.model.setKindNames(FixtureKit.kindNames)
+        #expect(await waitUntil { env.row("trip/day1")?.typeDescription == FixtureKit.kindNames.folder })
+    }
+
     @Test("ツリーのルートの一覧には .. がなく、フォルダとファイルが名前の順に並び、戻る操作は何もしない")
     func rootHasNoParentRow() async throws {
         let env = try makeEnv()

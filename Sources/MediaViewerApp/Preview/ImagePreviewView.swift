@@ -167,6 +167,10 @@ final class ImagePreviewView: NSView {
         setAccessibilityValue(isShowingImage ? Self.percentText(zoom) : nil)
     }
 
+    func refreshLocalizedAccessibility() {
+        updateAccessibilityValue()
+    }
+
     private static func percentText(_ zoom: PreviewZoom) -> String {
         l10n.percent(zoom.percentage)
     }

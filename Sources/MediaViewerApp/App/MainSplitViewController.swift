@@ -78,6 +78,7 @@ final class MainSplitViewController: NSSplitViewController {
     private var hiddenListKeyMonitor: Any?
     /// 同じ起動中に前回検索したキーワード。保存しない（FR-081、R39）
     private var lastSearchKeyword: String?
+    private var pendingKindNames: KindNames?
 
     var onPaneLayoutChange: ((PaneLayout) -> Void)?
     /// スライドショーを開始できるかが変わったとき（一覧・編集・モーダルの変化）に知らせる。
@@ -215,6 +216,13 @@ final class MainSplitViewController: NSSplitViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(textEditingDidEnd), name: NSControl.textDidEndEditingNotification, object: nil
+        )
+
         splitView.isVertical = true
         splitView.dividerStyle = .thin
 
@@ -260,6 +268,26 @@ final class MainSplitViewController: NSSplitViewController {
         observeSlideshowData()
         installFocusMenuItems()
         observeInitialListingState()
+    }
+
+    @objc private func displayLanguageDidChange() {
+        let names = l10n.kindNames
+        if fileListViewController.isEditingText {
+            pendingKindNames = names
+        } else {
+            pendingKindNames = nil
+            model.setKindNames(names)
+        }
+    }
+
+    @objc private func textEditingDidEnd() {
+        guard pendingKindNames != nil else { return }
+        Task { @MainActor [weak self] in
+            guard let self, !self.fileListViewController.isEditingText,
+                  let names = self.pendingKindNames else { return }
+            self.pendingKindNames = nil
+            self.model.setKindNames(names)
+        }
     }
 
     private func observeCollapseChanges() {
@@ -860,6 +888,7 @@ final class MainSplitViewController: NSSplitViewController {
         )
         fileListOnlyItem.keyEquivalentModifierMask = [.command, .control]
         fileListOnlyItem.target = self
+        MainMenu.bind(fileListOnlyItem, .menuViewShowFileListOnly)
         viewMenu.addItem(fileListOnlyItem)
 
         let previewOnlyItem = NSMenuItem(
@@ -869,23 +898,24 @@ final class MainSplitViewController: NSSplitViewController {
         )
         previewOnlyItem.keyEquivalentModifierMask = [.command, .control]
         previewOnlyItem.target = self
+        MainMenu.bind(previewOnlyItem, .menuViewShowPreviewOnly)
         viewMenu.addItem(previewOnlyItem)
 
         addFocusItem(
             to: viewMenu,
-            title: l10n.text(.menuViewFocusTree),
+            key: .menuViewFocusTree,
             keyEquivalent: "1",
             action: #selector(focusTreePane(_:))
         )
         addFocusItem(
             to: viewMenu,
-            title: l10n.text(.menuViewFocusFileList),
+            key: .menuViewFocusFileList,
             keyEquivalent: "2",
             action: #selector(focusFileListPane(_:))
         )
         addFocusItem(
             to: viewMenu,
-            title: l10n.text(.menuViewFocusPreview),
+            key: .menuViewFocusPreview,
             keyEquivalent: "3",
             action: #selector(focusPreviewPane(_:))
         )
@@ -898,16 +928,18 @@ final class MainSplitViewController: NSSplitViewController {
         )
         favoritesItem.keyEquivalentModifierMask = [.command]
         favoritesItem.target = self
+        MainMenu.bind(favoritesItem, .menuViewGoToFavorites)
         viewMenu.addItem(favoritesItem)
     }
 
     private func addFocusItem(
         to menu: NSMenu,
-        title: String,
+        key: TextKey,
         keyEquivalent: String,
         action: Selector
     ) {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+        let item = NSMenuItem(title: l10n.text(key), action: action, keyEquivalent: keyEquivalent)
+        MainMenu.bind(item, key)
         item.keyEquivalentModifierMask = [.command, .option]
         item.target = self
         menu.addItem(item)

@@ -26,11 +26,22 @@ final class ConflictPrompt {
         alert.showsSuppressionButton = true
         alert.suppressionButton?.title = l10n.text(.dialogConflictApplyAll)
 
+        let languageObserver = LanguageChangeObserver {
+            alert.messageText = l10n.text(.dialogConflictTitle)
+            alert.informativeText = self.informativeText(for: conflictingNames, destination: destination)
+            alert.buttons[0].title = l10n.text(.dialogConflictReplace)
+            alert.buttons[1].title = l10n.text(.dialogConflictKeepBoth)
+            alert.buttons[2].title = l10n.text(.dialogConflictStop)
+            alert.suppressionButton?.title = l10n.text(.dialogConflictApplyAll)
+        }
+
         let response = await withCheckedContinuation { continuation in
             alert.beginSheetModal(for: window) { response in
                 continuation.resume(returning: response)
             }
         }
+
+        withExtendedLifetime(languageObserver) {}
 
         let resolution: ConflictResolution
         switch response {

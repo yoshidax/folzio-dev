@@ -1,12 +1,18 @@
 import Foundation
 
 public struct MediaFile: Identifiable, Hashable, Sendable {
+    public enum KindNameSource: Sendable {
+        case folder
+        case zipArchive
+    }
     public var url: URL
     public var name: String
     public var kind: ListItemKind
     public var typeDescription: String
     public var creationDate: Date?
     public var fileSize: Int64
+    /// nil は OS または形式から得た、アプリが翻訳しない種類名。
+    public var kindNameSource: KindNameSource?
 
     public init(
         url: URL,
@@ -14,7 +20,8 @@ public struct MediaFile: Identifiable, Hashable, Sendable {
         kind: ListItemKind,
         typeDescription: String,
         creationDate: Date?,
-        fileSize: Int64
+        fileSize: Int64,
+        kindNameSource: KindNameSource? = nil
     ) {
         self.url = url
         self.name = name
@@ -22,9 +29,20 @@ public struct MediaFile: Identifiable, Hashable, Sendable {
         self.typeDescription = typeDescription
         self.creationDate = creationDate
         self.fileSize = fileSize
+        self.kindNameSource = kindNameSource
     }
 
     public var id: URL { url }
+
+    public func localizedKindName(using names: KindNames) -> MediaFile {
+        var result = self
+        switch kindNameSource {
+        case .folder: result.typeDescription = names.folder
+        case .zipArchive: result.typeDescription = names.zipArchive
+        case nil: break
+        }
+        return result
+    }
 
     public static func == (lhs: MediaFile, rhs: MediaFile) -> Bool {
         lhs.url == rhs.url

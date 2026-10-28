@@ -141,7 +141,12 @@ public final class BrowserModel {
     /// フォルダ・zip の移動のたびに増やし、古い非同期処理の結果を捨てるのに使う
     private var navigationGeneration = 0
     /// 並べ替え済み・種類フィルタ適用前の行。`..` は含めず、`rebuildListing()` で1回だけ加える
-    private var allFiles: [MediaFile] = []
+    private var allFiles: [MediaFile] = [] {
+        didSet { kindFilesRevision &+= 1 }
+    }
+    @ObservationIgnored private var kindFilesRevision = 0
+    @ObservationIgnored private var kindUpdateGeneration = 0
+    @ObservationIgnored private var kindNames: KindNames
     private var listingTask: Task<Void, Never>?
     private var previewTask: Task<Void, Never>?
     private var previewGeneration = 0
@@ -188,6 +193,7 @@ public final class BrowserModel {
         searcher: (any FileNameSearching)? = nil
     ) {
         self.lister = lister
+        self.kindNames = kindNames
         self.decoder = decoder
         self.cache = cache
         self.settings = settings
@@ -202,6 +208,37 @@ public final class BrowserModel {
         self.listing = FolderListing(folder: folder, files: [], state: .empty)
         self.selection = SelectionState()
         self.preview = .empty
+    }
+
+    /// 言語変更後の種類名と並びを、ディスクを再列挙せず更新する。
+    public func setKindNames(_ names: KindNames) {
+        guard names != kindNames else { return }
+        kindNames = names
+        kindUpdateGeneration &+= 1
+        let generation = kindUpdateGeneration
+        Task { [weak self] in
+            guard let self else { return }
+            while generation == self.kindUpdateGeneration {
+                let files = self.allFiles
+                let revision = self.kindFilesRevision
+                let order = self.sortOrder
+                let updated = await Task.detached(priority: .userInitiated) {
+                    sorted(files.map { $0.localizedKindName(using: names) }, by: order)
+                }.value
+                guard generation == self.kindUpdateGeneration else { return }
+                guard revision == self.kindFilesRevision, order == self.sortOrder else { continue }
+                self.allFiles = updated
+                switch self.listing.state {
+                case .loaded, .empty, .noMatches:
+                    self.rebuildListing()
+                case .loading where self.isShowingSearchResults:
+                    self.rebuildListing()
+                default:
+                    break
+                }
+                return
+            }
+        }
     }
 
     /// フォルダの一覧を表示する。検索結果の表示中なら、検索を止めて表示を終える（FR-086）
@@ -689,7 +726,7 @@ public final class BrowserModel {
                   listing.archive == nil else { return }
 
             showsNotFound = false
-            allFiles = sorted(files, by: sortOrder)
+            allFiles = sorted(files.map { $0.localizedKindName(using: kindNames) }, by: sortOrder)
             rebuildListing()
 
             let available = Set(listing.files.map(\.url))
@@ -967,7 +1004,7 @@ public final class BrowserModel {
                 return moved
             }
         }
-        allFiles = sorted(items, by: sortOrder)
+        allFiles = sorted(items.map { $0.localizedKindName(using: kindNames) }, by: sortOrder)
         rebuildListing()
     }
 
@@ -1007,7 +1044,7 @@ public final class BrowserModel {
             guard !Task.isCancelled, generation == navigationGeneration, listing.folder == url else { return }
 
             showsNotFound = false
-            allFiles = sorted(files, by: sortOrder)
+            allFiles = sorted(files.map { $0.localizedKindName(using: kindNames) }, by: sortOrder)
             rebuildListing()
         } catch {
             guard !Task.isCancelled, generation == navigationGeneration, listing.folder == url else { return }
@@ -1201,6 +1238,7 @@ public final class BrowserModel {
             }
             guard !batch.isEmpty else { return }
         }
+        batch = batch.map { $0.localizedKindName(using: kindNames) }
         allFiles = sortedMerge(allFiles, sorted(batch, by: sortOrder), by: sortOrder)
         for file in batch {
             addToSearchIndex(file.url)

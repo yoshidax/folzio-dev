@@ -6,6 +6,22 @@ import Testing
 @Suite("BrowserModel の zip")
 @MainActor
 struct BrowserModelArchiveTests {
+    @Test("zip 内で言語を変えた後、さらに移動してもフォルダ名が選択した言語になる")
+    func changingLanguageUpdatesArchiveDirectories() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.root)
+        await env.model.openItem(env.zip)
+        env.model.setKindNames(KindNames(folder: "フォルダ", zipArchive: "ZIP アーカイブ"))
+        for _ in 0..<100 where env.model.listing.files.first(where: { $0.name == "sub" })?.typeDescription != "フォルダ" {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let sub = try #require(env.model.listing.files.first(where: { $0.name == "sub" }))
+        #expect(sub.typeDescription == "フォルダ")
+        await env.model.openItem(sub.url)
+        #expect(env.model.listing.files.first(where: { $0.name == "deep" })?.typeDescription == "フォルダ")
+    }
+
     // MARK: - フィクスチャ
 
     /// 一時フォルダ。`cover.jpg` と `photos.zip`（`sub/deep/a.jpg`・`b.png`・`anim.gif`・`readme.txt`）を持つ
