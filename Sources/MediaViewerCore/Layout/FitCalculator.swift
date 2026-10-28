@@ -18,8 +18,8 @@ public struct FitCalculator {
         )
     }
 
-    /// フィットの矩形を、中心を保ったまま `zoom.scale` 倍する（FR-029・FR-133）。
-    /// コンテナより大きいときは原点が負になる。丸めはしない。
+    /// Scales the fitted rectangle by `zoom.scale` while keeping its center (FR-029, FR-133).
+    /// The origin becomes negative when the result is larger than the container. Does not round.
     public static func frame(imageSize: CGSize, in container: CGSize, zoom: PreviewZoom) -> CGRect {
         let fitted = fit(imageSize: imageSize, in: container)
         guard fitted != .zero else { return .zero }

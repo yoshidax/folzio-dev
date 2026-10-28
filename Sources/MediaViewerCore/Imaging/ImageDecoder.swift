@@ -11,9 +11,9 @@ public enum DecodeError: Error, Sendable, Equatable {
 
 public protocol ImageDecoding: Sendable {
     func decode(_ url: URL, maxPixelSize: Int) async throws(DecodeError) -> DecodedImage
-    /// ファイル URL 専用（同期）。mvzip の URL では呼ばない
+    /// File URLs only (synchronous). Do not call with an mvzip URL.
     func isAnimated(_ url: URL) -> Bool
-    /// zip の中の画像用。ArchiveReading.data(for:) で読んだ内容を渡す（research.md R24）
+    /// For images inside a zip. Pass the content read by `ArchiveReading.data(for:)` (research.md R24).
     func decode(data: Data, maxPixelSize: Int) async throws(DecodeError) -> DecodedImage
     func isAnimated(data: Data) -> Bool
 }
@@ -77,7 +77,7 @@ public struct ImageDecoder: ImageDecoding {
         return try decode(source, maxPixelSize: maxPixelSize)
     }
 
-    /// ファイル URL と Data の両方が使う判定（対応する型・フレーム数・サムネイルのオプション・byteCost）
+    /// Shared logic for file URLs and Data (supported type, frame count, thumbnail options, and byteCost)
     private static func decode(_ source: CGImageSource, maxPixelSize: Int) throws(DecodeError) -> DecodedImage {
         guard let typeIdentifier = CGImageSourceGetType(source) as String? else {
             throw DecodeError.unreadable

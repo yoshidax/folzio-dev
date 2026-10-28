@@ -1,8 +1,8 @@
 import CoreGraphics
 import Foundation
 
-/// プレビューの表示倍率（FR-133）。100% は FR-028 のフィット表示であり、原寸ではない（A-62）。
-/// 25%以上800%以下の25%刻みだけを取り、上下限では値を変えない。
+/// Preview zoom level (FR-133). 100% is the fit-to-window display from FR-028, not actual size (A-62).
+/// Accepts only multiples of 25% between 25% and 800% and does not change at the limits.
 public struct PreviewZoom: Sendable, Equatable, Comparable {
     public static let step = 25
     public static let minimum = 25
@@ -17,7 +17,7 @@ public struct PreviewZoom: Sendable, Equatable, Comparable {
         self.percentage = percentage
     }
 
-    /// フィットの矩形に掛ける倍率
+    /// Scale applied to the fitted rectangle
     public var scale: CGFloat { CGFloat(percentage) / 100 }
 
     public var canZoomIn: Bool { percentage < Self.maximum }
@@ -36,16 +36,16 @@ public struct PreviewZoom: Sendable, Equatable, Comparable {
     }
 }
 
-/// 表示中の画像と倍率の対応（FR-137）。別の画像に切り替わったときだけ100%に戻す。
-/// 保存も履歴への記録もしない。
+/// Tracks the zoom level for the displayed image (FR-137). Resets to 100% only when the image changes.
+/// Neither persists nor records in history.
 public struct PreviewZoomTracker: Sendable, Equatable {
     public private(set) var level: PreviewZoom = .fit
-    /// 表示中の画像の同一性。空・動画・表示不能は nil
+    /// Identity of the displayed image. Nil for empty, video, or unavailable content.
     public private(set) var imageIdentity: URL?
 
     public init() {}
 
-    /// 表示対象を伝える。同一性が変わったときだけ100%に戻し、true を返す。
+    /// Reports the displayed content. Resets to 100% and returns true only when the identity changes.
     @discardableResult
     public mutating func present(_ identity: URL?) -> Bool {
         guard identity != imageIdentity else { return false }
@@ -54,7 +54,7 @@ public struct PreviewZoomTracker: Sendable, Equatable {
         return true
     }
 
-    /// 同じ画像のまま100%に戻す（履歴の移動用）。変わったら true。
+    /// Resets to 100% while keeping the same image (for history navigation). Returns true when the level changes.
     @discardableResult
     public mutating func reset() -> Bool {
         fit()
@@ -82,12 +82,12 @@ public struct PreviewZoomTracker: Sendable, Equatable {
     }
 }
 
-/// 拡大・縮小・表示領域に合わせるの可否（FR-134・FR-136）。
-/// シート・名前の変更中・設定ウインドウがキーであることは条件に含めない（A-73）。
+/// Availability of zoom in, zoom out, and Zoom to Fit (FR-134, FR-136).
+/// Does not include sheets, renaming, or the Settings window being key in the conditions (A-73).
 public struct PreviewZoomAvailability: Sendable, Equatable {
-    /// プレビューが画像を実際に表示しているか（アニメーションの最初のフレーム待ちは false）
+    /// Whether the preview is actually displaying an image (false while waiting for the first animation frame)
     public var isImageDisplayed: Bool
-    /// 3ペイン・プレビューのみ表示・フルスクリーンのいずれかでプレビューが見えているか
+    /// Whether the preview is visible in the three-pane layout, preview-only, or full screen
     public var isPreviewVisible: Bool
     public var level: PreviewZoom
 

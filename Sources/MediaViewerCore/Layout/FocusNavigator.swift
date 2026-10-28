@@ -52,8 +52,9 @@ public struct FocusNavigator {
         return target == currentIndex ? nil : target
     }
 
-    /// フルスクリーン用（FR-046）。移動先が `isNavigable(index) == false` なら、同じ方向に同じ規則で移動を繰り返す。
-    /// 移動できる行に当たらないまま端に達したら nil。`currentIndex` が nil のときは、先頭から順に最初の移動できる行
+    /// For full screen (FR-046). When the destination has `isNavigable(index) == false`, repeats the move in the
+    /// same direction with the same rules. Returns nil when it reaches an edge without finding a navigable row.
+    /// When `currentIndex` is nil, returns the first navigable row from the start.
     public static func targetIndex(
         currentIndex: Int?,
         fileCount: Int,
@@ -61,7 +62,7 @@ public struct FocusNavigator {
         layout: FocusLayout,
         isNavigable: (Int) -> Bool
     ) -> Int? {
-        // 空リスト・リスト形式の左右は、既存の関数と同じく nil
+        // Empty lists and left/right in list layout return nil, as in the existing function.
         guard targetIndex(
             currentIndex: nil, fileCount: fileCount, move: move, layout: layout
         ) != nil else { return nil }
@@ -80,9 +81,10 @@ public struct FocusNavigator {
         return nil
     }
 
-    /// プレビューのみ表示に切り替えたときの最初のファイル（FR-093）。`currentIndex` の行が `isNavigable` ならそのまま。
-    /// そうでなければ後ろの最初の `isNavigable` な行、後ろになければ前の最も近い行。`currentIndex` が nil（範囲外も同じ扱い）なら
-    /// 先頭から最初の行。`isNavigable` な行がなければ nil
+    /// First file when switching to preview-only (FR-093). Uses the row at `currentIndex` when it is `isNavigable`.
+    /// Otherwise uses the first `isNavigable` row after it, or the nearest row before it when none follows. When
+    /// `currentIndex` is nil (out-of-range values are treated the same), uses the first row from the start. Returns
+    /// nil when no row is `isNavigable`.
     public static func entryIndex(
         currentIndex: Int?,
         fileCount: Int,
