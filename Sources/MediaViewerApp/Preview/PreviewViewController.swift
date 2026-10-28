@@ -25,6 +25,19 @@ final class PreviewViewController: NSViewController {
     private var zoomTracker = PreviewZoomTracker()
     private var lastZoomAvailability: PreviewZoomAvailability?
 
+    /// ペイン表示とは独立した一時的なスライドショーの外観。
+    func setSlideshowBackground(_ enabled: Bool) {
+        loadViewIfNeeded()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        let color = enabled ? NSColor.black.cgColor : nil
+        containerView.layer?.backgroundColor = color
+        contentHostView.layer?.backgroundColor = color
+        // ライト外観でも黒い背景の上で状態表示とスピナーを読めるようにする。
+        imageView.appearance = enabled ? NSAppearance(named: .darkAqua) : nil
+        CATransaction.commit()
+    }
+
     var paneLayout: PaneLayout = .all {
         didSet {
             guard oldValue != paneLayout else { return }
