@@ -29,8 +29,8 @@ public struct FileOperationService: FileOperating {
         }
     }
 
-    /// `resolution` は同名の項目と衝突したときだけ使う。`.abort` は衝突した項目を失敗として返し、
-    /// 衝突しない項目（ゴミ箱への移動や同名のない名前の変更など）はそのまま実行する。
+    /// `resolution` is used only when an item with the same name conflicts. `.abort` returns conflicting items as
+    /// failures and executes non-conflicting items (such as moving to the Trash or renaming without a name conflict).
     public func execute(_ operation: FileOperation, resolution: ConflictResolution) async -> FileOperationResult {
         await Task.detached(priority: .userInitiated) {
             Self.perform(operation, resolution: resolution)

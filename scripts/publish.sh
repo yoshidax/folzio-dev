@@ -18,6 +18,9 @@ fi
 # README の英語版と日本語版の構造がそろっているか確かめる
 scripts/check-readme-sync.sh
 
+# ソースコードのコメントに日本語が残っていないか確かめる
+scripts/check-english-comments.sh
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 

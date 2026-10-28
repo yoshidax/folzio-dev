@@ -1,6 +1,7 @@
 import CoreGraphics
 
-/// 画像内の相対中心を維持し、はみ出す軸の位置を表示可能な範囲に制限する。
+/// Maintains the relative center within the image and clamps the position on overflowing axes to the visible
+/// range.
 public struct PreviewScrollLayout: Sendable {
     public let frame: CGRect
     public let center: CGPoint

@@ -1,6 +1,6 @@
 import Foundation
 
-/// zip の CRC-32（多項式 0xEDB88320）。
+/// CRC-32 for zip (polynomial 0xEDB88320).
 public enum CRC32 {
     private static let table: [UInt32] = (0..<256).map { index -> UInt32 in
         var value = UInt32(index)
@@ -14,7 +14,7 @@ public enum CRC32 {
         data.withUnsafeBytes { update(0, $0) }
     }
 
-    /// 既に計算した CRC（先頭は 0）にバイト列を追記した CRC を返す。
+    /// Returns the CRC after appending the bytes to an already computed CRC (0 at the start).
     public static func update(_ crc: UInt32, _ bytes: UnsafeRawBufferPointer) -> UInt32 {
         var value = ~crc
         for byte in bytes {

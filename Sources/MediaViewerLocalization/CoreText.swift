@@ -1,7 +1,7 @@
 import Foundation
 import MediaViewerCore
 
-/// Core の値（表示言語に依存しない）を文言にする（research.md R8）
+/// Converts Core values (which do not depend on the display language) into localized text (research.md R8).
 extension Localizer {
     public func text(for error: SearchRootError) -> String {
         switch error {
@@ -88,7 +88,7 @@ extension Localizer {
     public func text(for failure: ListingFailure) -> String {
         switch failure {
         case .folderNotFound: return text(.emptyFolderNotFound)
-        // OS が返す理由は訳し直さない（EC-111）
+        // Do not re-translate reasons returned by the OS (EC-111).
         case let .systemFailure(systemReason): return systemReason
         case let .archive(error): return text(for: error)
         }

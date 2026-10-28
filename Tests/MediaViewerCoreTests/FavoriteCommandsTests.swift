@@ -37,7 +37,7 @@ struct FavoriteCommandsTests {
         #expect(FavoriteCommands.contextMenu(for: .favoritesHeader).isEmpty)
     }
 
-    // MARK: お気に入りの名前の変更（FR-099）
+    // MARK: Renaming Favorites (FR-099)
 
     @Test("renameTarget はお気に入りとルート以外のフォルダを返し、ルート・見出し・選択なしは nil（FR-099・FR-103）")
     func renameTargetForFavoriteAndFolder() {
@@ -76,7 +76,7 @@ struct FavoriteCommandsTests {
         #expect(!FavoriteCommands.acceptsFiles(.favoritesHeader))
     }
 
-    // MARK: ツリーのフォルダをゴミ箱に入れる（FR-079）
+    // MARK: Moving Tree Folders to the Trash (FR-079)
 
     private let roots = [URL(fileURLWithPath: "/"), URL(fileURLWithPath: "/Users/me")]
 

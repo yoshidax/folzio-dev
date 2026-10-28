@@ -141,7 +141,7 @@ struct SearchFolderInitialLocationTests {
     }
 }
 
-/// 検証の呼び出し順と可否を記録する注入
+/// Injected validator that records call order and availability.
 private final class ValidationRecorder: @unchecked Sendable {
     private let lock = NSLock()
     private let successes: Set<String>

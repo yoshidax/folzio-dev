@@ -8,7 +8,7 @@ struct ArchiveEntryStreamTests {
     private static let size = 5 * 1024 * 1024
     private static let mb = 1 << 20
 
-    /// 0〜255 を繰り返す（位置から値が分かる）
+    /// Repeats 0–255 so the value identifies the position.
     private static let content: Data = {
         var data = Data(count: size)
         for index in 0..<size { data[index] = UInt8(truncatingIfNeeded: index) }

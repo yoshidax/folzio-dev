@@ -1,37 +1,38 @@
 import Foundation
 
-/// zip の中の項目の URL（`mvzip:///<項目のパス>?archive=<zip の絶対パス>`）。生成と解析はここだけで行う
+/// URL for an entry inside a zip (`mvzip:///<entry path>?archive=<absolute zip path>`). Creation and parsing
+/// happen only here.
 public enum ArchiveURL {
     public static let scheme = "mvzip"
 
     private static let archiveQueryName = "archive"
     private static let parentFragment = "parent"
 
-    /// パスの要素に使える文字。`.urlPathAllowed` から `#`・`?`・`%`・`;` を除く
+    /// Characters allowed in path elements. Starts with `.urlPathAllowed` and removes `#`, `?`, `%`, and `;`.
     private static let pathElementAllowed: CharacterSet = {
         var set = CharacterSet.urlPathAllowed
         set.remove(charactersIn: "#?%;/")
         return set
     }()
 
-    /// クエリの値に使える文字。区切りになりうる記号は残さない
+    /// Characters allowed in query values. Does not keep characters that could act as separators.
     private static let queryValueAllowed: CharacterSet = {
         var set = CharacterSet.alphanumerics
         set.insert(charactersIn: "-._~/")
         return set
     }()
 
-    /// 項目の URL。ディレクトリはパスの末尾を `/` にする。最上位は空のパス
+    /// URL for an entry. Directories end the path with `/`. The root has an empty path.
     public static func entry(archive: URL, path: String) -> URL {
         makeURL(archive: archive, path: path, fragment: nil)
     }
 
-    /// `..` の行の URL。表示中の階層の URL に `#parent` を付けたもの
+    /// URL for the `..` row: the current directory URL with `#parent` appended.
     public static func parentLink(of location: ArchiveLocation) -> URL {
         makeURL(archive: location.archive, path: location.directory, fragment: parentFragment)
     }
 
-    /// `mvzip` 以外のスキーム、または zip の指定がない URL では nil
+    /// Returns nil for schemes other than `mvzip` or URLs without a zip specification.
     public static func parse(_ url: URL) -> (archive: URL, path: String, isParentLink: Bool)? {
         guard url.scheme == scheme,
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false),

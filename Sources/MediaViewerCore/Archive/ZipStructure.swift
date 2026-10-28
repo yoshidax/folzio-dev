@@ -1,8 +1,8 @@
 import Foundation
 
-/// zip の構造（終端レコード・中央ディレクトリ・ローカルヘッダ）の解析（research.md R22）。
-/// `Data` を受けて値を返す純粋関数の集まりで、ファイルは読まない。
-/// すべての読み出しで範囲を確かめ、範囲外は `.notAZip` か `.corrupted` にする。
+/// Parsing of the zip structure (end record, central directory, and local headers) (research.md R22).
+/// A collection of pure functions that take `Data` and return values; they do not read files.
+/// Every read checks bounds; out-of-range data produces `.notAZip` or `.corrupted`.
 enum ZipStructure {
     static let endOfCentralDirectorySignature: UInt32 = 0x0605_4B50
     static let zip64LocatorSignature: UInt32 = 0x0706_4B50
@@ -15,10 +15,10 @@ enum ZipStructure {
     static let zip64EndOfCentralDirectorySize = 56
     static let centralHeaderSize = 46
     static let localHeaderSize = 30
-    /// コメントの最大長（65,535）を含めた終端レコード探索の範囲
+    /// Search range for the end record, including the maximum comment length (65,535).
     static let maxEndSearchBytes = 65_535 + endOfCentralDirectorySize
 
-    /// 中央ディレクトリの場所
+    /// Location of the central directory
     struct CentralDirectoryLocation: Equatable, Sendable {
         var entryCount: UInt64
         var size: UInt64
@@ -27,9 +27,9 @@ enum ZipStructure {
 
     struct EndOfCentralDirectory: Equatable, Sendable {
         var location: CentralDirectoryLocation
-        /// 終端レコードのファイル先頭からの位置（ZIP64 のロケータはこの 20 バイト前）
+        /// Offset of the end record from the start of the file (the ZIP64 locator is 20 bytes before it).
         var recordOffset: UInt64
-        /// 項目数・サイズ・位置のどれかが ZIP64 の目印の値で、ZIP64 の終端レコードを読む必要がある
+        /// Whether the entry count, size, or offset has the ZIP64 marker value, so the ZIP64 end record must be read.
         var needsZip64: Bool
     }
 
@@ -46,9 +46,10 @@ enum ZipStructure {
         var extraField: Data
     }
 
-    // MARK: - 終端レコード
+    // MARK: - End Record
 
-    /// 末尾 `min(fileSize, 65_557)` バイトから、署名を後ろから探す。ディスク番号が 0 以外なら `.multiDisk`
+    /// Searches backward for the signature in the last `min(fileSize, 65_557)` bytes. Throws `.multiDisk` when a disk
+    /// number is not 0.
     static func endOfCentralDirectory(
         inTail tail: Data,
         fileSize: UInt64
@@ -92,7 +93,7 @@ enum ZipStructure {
         return EndOfCentralDirectory(location: location, recordOffset: recordOffset, needsZip64: needsZip64)
     }
 
-    /// ZIP64 終端レコードのロケータ（20 バイト）から、ZIP64 終端レコードの位置を返す
+    /// Returns the offset of the ZIP64 end record from its locator (20 bytes).
     static func zip64Locator(_ data: Data) throws(ArchiveError) -> UInt64 {
         let bytes = [UInt8](data.prefix(zip64LocatorSize))
         guard bytes.count >= zip64LocatorSize,
@@ -101,7 +102,7 @@ enum ZipStructure {
         return try readUInt64(bytes, 8)
     }
 
-    /// ZIP64 終端レコード（固定部 56 バイト）から中央ディレクトリの場所を返す
+    /// Returns the central directory location from the ZIP64 end record (56-byte fixed part).
     static func zip64EndOfCentralDirectory(
         _ data: Data,
         fileSize: UInt64
@@ -128,9 +129,10 @@ enum ZipStructure {
         guard !overflow, end <= limit else { throw .notAZip }
     }
 
-    // MARK: - 中央ディレクトリ
+    // MARK: - Central Directory
 
-    /// 中央ディレクトリ全体を解析する。ZIP64 拡張（0x0001）は、値が 0xFFFFFFFF の項目だけを順に読む
+    /// Parses the entire central directory. For the ZIP64 extra field (0x0001), reads values in order only for
+    /// fields whose value is 0xFFFFFFFF.
     static func centralDirectoryEntries(
         _ data: Data,
         count: UInt64
@@ -202,7 +204,7 @@ enum ZipStructure {
         if offset == 0xFFFF_FFFF { entry.localHeaderOffset = try take() }
     }
 
-    /// 拡張フィールドの中から指定の ID のデータ部の範囲を探す。壊れていれば nil
+    /// Finds the data range for the given ID in the extra field. Returns nil when the field is damaged.
     private static func extraBlock(_ identifier: UInt16, in extra: [UInt8]) -> Range<Int>? {
         var position = 0
         while position + 4 <= extra.count {
@@ -216,10 +218,10 @@ enum ZipStructure {
         return nil
     }
 
-    // MARK: - ローカルヘッダ
+    // MARK: - Local Header
 
-    /// ローカルヘッダの先頭 30 バイトから、データの開始位置（ローカルヘッダの位置 + 30 + 名前 + 拡張）を返す。
-    /// 中央ディレクトリと拡張フィールドの長さが異なることがあるため、ローカルヘッダの値を使う
+    /// Returns the data start offset from the first 30 bytes of the local header (local header offset + 30 + name +
+    /// extra). Uses the local header values because extra field lengths can differ from the central directory.
     static func dataOffset(
         localHeader: Data,
         localHeaderOffset: UInt64
@@ -238,10 +240,10 @@ enum ZipStructure {
         return sum
     }
 
-    // MARK: - 日時
+    // MARK: - Dates
 
-    /// 0x5455 の更新時刻（UTC）があれば使い、なければ DOS 日時を `TimeZone.current` の現地時刻として読む。
-    /// 日付として成り立たない DOS 日時（0 など）は nil
+    /// Uses the 0x5455 modification time (UTC) when present; otherwise reads the DOS date and time as local time in
+    /// `TimeZone.current`. Returns nil for DOS date and time values that are not valid dates (such as 0).
     static func modificationDate(dosDate: UInt16, dosTime: UInt16, extra: Data) -> Date? {
         if let unix = unixModificationTime(in: extra) {
             return Date(timeIntervalSince1970: TimeInterval(unix))
@@ -251,7 +253,7 @@ enum ZipStructure {
         return dosDateTime(dosDate: dosDate, dosTime: dosTime, calendar: calendar)
     }
 
-    /// 拡張タイムスタンプ（0x5455）の更新時刻。なければ nil
+    /// Modification time from the extended timestamp (0x5455), or nil when absent.
     static func unixModificationTime(in extra: Data) -> UInt32? {
         guard !extra.isEmpty else { return nil }
         let bytes = [UInt8](extra)
@@ -276,7 +278,7 @@ enum ZipStructure {
         return calendar.date(from: components)
     }
 
-    // MARK: - 範囲を確かめる読み出し
+    // MARK: - Bounds-Checked Reads
 
     private static func readUInt16(_ bytes: [UInt8], _ offset: Int) throws(ArchiveError) -> UInt16 {
         guard offset >= 0, offset + 2 <= bytes.count else { throw .notAZip }

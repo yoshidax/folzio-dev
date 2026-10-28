@@ -1,14 +1,16 @@
 import Foundation
 
-/// 標準パネルの初期位置を決められない理由。文言は表示の層が決める（data-model.md 2）
+/// Reason the initial location of the standard panel cannot be determined. The presentation layer chooses the
+/// text (data-model.md 2).
 public enum SearchFolderInitialLocationError: Error, Sendable, Equatable {
     case noUsableFolder
 }
 
-/// 標準パネルの初期位置を、現在入力 → 開始時既定 → ホームの順に解決する（FR-143、data-model.md 2）。
+/// Resolves the initial location of the standard panel in this order: current input, startup default, home
+/// (FR-143, data-model.md 2).
 ///
-/// 各候補は `SearchRoot.validate` と同じ条件で確認する。隠しフォルダは許可し、ファイル・zip・
-/// パッケージ・読み取り不能なフォルダは飛ばす。検証処理はテストから注入できる
+/// Validates each candidate with the same conditions as `SearchRoot.validate`. Allows hidden folders and skips
+/// files, zips, packages, and unreadable folders. Tests can inject the validator.
 public enum SearchFolderInitialLocation {
     public typealias Validator = @Sendable (URL) async -> Result<URL, SearchRootError>
 

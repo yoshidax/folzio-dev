@@ -1,39 +1,41 @@
 import Foundation
 
-/// 検索の間のフォルダの名前の変更と、列挙ごとの照合の記録（EC-52・EC-94、research.md R2・R3、data-model.md §3）。
+/// Renames of folders during a search and the match records for each enumeration (EC-52, EC-94; research.md R2, R3;
+/// data-model.md §3).
 ///
-/// 名前の変更より前に始めた列挙から届く結果は古い場所の URL を持つため、列挙を始めた後の変更を順に当てて
-/// 新しい場所に付け替える。名前を変えたフォルダ自身が未照合だった場合（変更の時点でそのフォルダをまだ照合して
-/// いなかった場合）は、元の場所の行を捨て、追加の列挙が新しい名前で流す行を使う。
-/// ディスクは読まず、パスは `SearchPath.normalized` で比べる（`standardizedFileURL` は `/private` を外して
-/// 列挙の記録と形が変わるため使わない）
+/// Results from an enumeration started before a rename carry URLs from the old location, so the ledger applies
+/// renames recorded after that enumeration began and rebases them to the new location. When the renamed folder
+/// itself had not been matched at the time of the rename (its old location had not been visited yet), the ledger
+/// drops the row for the old location and uses the row that a subsequent enumeration emits under the new name.
+/// It does not read the disk and compares paths with `SearchPath.normalized` (it does not use
+/// `standardizedFileURL`, which removes `/private` and changes the form relative to enumeration records).
 public struct SearchRenameLedger: Sendable {
     private struct Stream: Sendable {
-        /// その列挙が照合したディレクトリの記録
+        /// Directories matched by that enumeration
         var visits: SearchVisitLog
-        /// その列挙を始めた時点の `renames` の件数
+        /// Number of entries in `renames` when that enumeration started
         var renameCount: Int
     }
 
-    /// 今の検索の間の名前の変更（古い順）
+    /// Renames during the current search (oldest first)
     private var renames: [RenamedFolder] = []
-    /// 列挙ごとの記録と、開始時点の名前の変更の件数
+    /// Per-enumeration records and the rename count at start
     private var streams: [Stream] = []
-    /// 未照合として扱った名前の変更の位置 → 元の場所の正規化したパス
+    /// Rename index treated as unmatched → normalized path of the original location
     private var rejudged: [Int: String] = [:]
 
     public init() {}
 
-    /// 名前の変更がない（台帳が空）か
+    /// Whether there are no renames (the ledger is empty).
     public var isEmpty: Bool { renames.isEmpty }
 
-    /// 列挙を登録し、その番号（0, 1, …）を返す
+    /// Registers an enumeration and returns its index (0, 1, ...).
     public mutating func addStream(visits: SearchVisitLog) -> Int {
         streams.append(Stream(visits: visits, renameCount: renames.count))
         return streams.count - 1
     }
 
-    /// 名前の変更を記録する。`visited == false` は「変更の時点でそのフォルダをまだ照合していなかった」
+    /// Records a rename. `visited == false` means the folder had not been matched yet at the time of the rename.
     public mutating func recordRename(_ renamed: RenamedFolder, visited: Bool) {
         if !visited {
             rejudged[renames.count] = SearchPath.normalized(renamed.from)
@@ -41,7 +43,8 @@ public struct SearchRenameLedger: Sendable {
         renames.append(renamed)
     }
 
-    /// フォルダを、各列挙が照合した時点の場所に戻して記録を問う。いずれかの列挙に記録があれば true
+    /// Rewinds the folder to its location when each enumeration matched and checks the record. Returns true when any
+    /// enumeration has a record.
     public func hasVisited(_ folder: URL) -> Bool {
         for stream in streams {
             var location = folder
@@ -56,9 +59,9 @@ public struct SearchRenameLedger: Sendable {
         return false
     }
 
-    /// 列挙 `index` から届いた結果に、その列挙を始めた後の名前の変更を順に当てる。未照合として扱った変更の
-    /// 時点で元の場所と同じ行（名前を変えたフォルダ自身）は nil（捨てる）。フォルダの行は URL の最後の要素が
-    /// 変わったときに `name` も新しい名前にする（FR-105）
+    /// Applies renames recorded after enumeration `index` started to a result from it. Returns nil (drops the result)
+    /// for a row at the original location at the time of a rename treated as unmatched (the renamed folder itself).
+    /// For folder rows, also changes `name` to the new name when the last URL component changes (FR-105).
     public func place(_ file: MediaFile, fromStream index: Int) -> MediaFile? {
         guard streams.indices.contains(index) else { return file }
         let stream = streams[index]

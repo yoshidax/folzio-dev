@@ -1,7 +1,7 @@
 import AppKit
 import QuartzCore
 
-/// 前のメディア1枚の写し。入力とアクセシビリティは下の実物へ通す。
+/// Snapshot of the previous media item. Input and accessibility pass through to the real view below.
 @MainActor
 final class SlideshowTransitionOverlayView: NSView {
     private let snapshotLayer = CALayer()

@@ -43,7 +43,8 @@ enum LocalizationTestSupport {
         return try #require(plist as? [String: [String: Any]])
     }
 
-    /// 書式指定を (位置, 種類) の並びにする。`%` が書式指定以外に現れたら nil
+    /// Converts format specifiers into a sequence of (position, kind). Returns nil when `%` appears outside a
+    /// specifier.
     static func specifiers(_ value: String) -> [(Int, String)]? {
         var result: [(Int, String)] = []
         var index = value.startIndex
@@ -79,7 +80,8 @@ enum LocalizationTestSupport {
         return result
     }
 
-    /// 訳に現れるべき書式指定。件数の整数は stringsdict が消費するため訳には現れない
+    /// Format specifiers expected in the translation. The integer count is consumed by stringsdict, so it does not
+    /// appear in the translation.
     static func expectedSpecifiers(for key: TextKey) -> [(Int, String)] {
         let displayedCounts: Set<TextKey> = [.contextCopyMultiple, .searchBarCount, .searchBarCountLimited]
         var expected: [(Int, String)] = []

@@ -14,12 +14,13 @@ final class FileListViewController: NSViewController {
     private let messageLabel = NSTextField(wrappingLabelWithString: "")
     private let progressIndicator = NSProgressIndicator()
     private let bottomBar = NSView()
-    /// 一覧を表示したまま出す、1行のメッセージの帯（R26）。一覧の下端、下部のサイズバーの上
+    /// One-line message band shown while the list stays visible (R26). At the bottom of the list, above the size
+    /// bar.
     private let messageBand = NSView()
     private let messageBandLabel = NSTextField(labelWithString: "")
     private let sizeSlider = NSSlider()
     private let sizeLabel = NSTextField(labelWithString: "")
-    /// 検索結果を表示中に一覧の上端に出す帯（R37）
+    /// Band shown at the top of the list while search results are displayed (R37).
     private let searchBar = NSView()
     private let searchBarLabel = NSTextField(labelWithString: "")
     private let searchBarSpinner = NSProgressIndicator()
@@ -40,13 +41,14 @@ final class FileListViewController: NSViewController {
     private weak var imagesOnlyMenuItem: NSMenuItem?
     private weak var videosOnlyMenuItem: NSMenuItem?
     private weak var zipVisibilityMenuItem: NSMenuItem?
-    /// 一覧の作り直しをまたいで保つスクロール位置（SC-017）
+    /// Scroll position preserved across list rebuilds (SC-017).
     private var pendingScrollOrigin: CGPoint?
 
     var onViewStateChange: ((DisplayMode, Double) -> Void)?
     var onMediaTypeFilterChange: ((MediaTypeFilter) -> Void)?
     var onShowsZipFilesChange: ((Bool) -> Void)?
-    /// ユーザーが表示を変えたときに履歴へ知らせる（FR-107 の（3））。復元の setter からは呼ばない（R70）
+    /// Notifies history when the user changes the presentation (FR-107 item 3). Not called from the restore
+    /// setter (R70).
     var onViewChange: ((HistoryRecordKind) -> Void)?
 
     var isToolbarShown = false {
@@ -123,8 +125,8 @@ final class FileListViewController: NSViewController {
         }
     }
 
-    /// Esc。検索結果の表示中（フルスクリーン中と名前の変更中を除く）なら、検索前のフォルダの一覧に戻る。
-    /// 検索中なら検索は止まる。それ以外では処理しない（FR-086）
+    /// Esc. While showing search results (excluding full screen and renaming), returns to the pre-search folder
+    /// listing. If searching, stops the search. Does nothing otherwise (FR-086).
     private func leaveSearchResults() -> Bool {
         guard model.isShowingSearchResults,
               hiddenListNavigation == nil,
@@ -141,8 +143,8 @@ final class FileListViewController: NSViewController {
         fatalError("init(coder:) is not supported")
     }
 
-    /// 一覧を隠したことで AppKit がフォーカスを移した先（次のキービュー。プレビューなど）。
-    /// 一覧を出し直したとき、フォーカスがまだここにあればファイルリストへ戻す
+    /// Where AppKit moved focus when the list was hidden (the next key view, such as the preview).
+    /// When the list reappears, returns focus to the file list if focus is still there.
     private weak var displacedFocus: NSResponder?
 
     var primaryFocusView: NSView {
@@ -228,17 +230,18 @@ final class FileListViewController: NSViewController {
         }
     }
 
-    /// ファイル操作の対象。一覧の並び順で、`..` の行を除く（R30）
+    /// Target of file operations in listing order, excluding the `..` row (R30).
     var selectedFileURLs: [URL] {
         model.operableSelection
     }
 
-    /// フォーカス行と表示中の場所から決まる、操作ごとの可否
+    /// Availability of each command based on the focused row and current location.
     var focusedItemCommands: ListItemCommands {
         model.focusedItemCommands
     }
 
-    /// 選択に対するファイル操作の可否（フォーカスが `..` でも、ほかの選択の行で判断する）
+    /// Availability of file operations for the selection (judged from other selected rows even when the focus is on
+    /// `..`).
     var selectionItemCommands: ListItemCommands {
         model.selectionItemCommands
     }
@@ -363,8 +366,8 @@ final class FileListViewController: NSViewController {
         messageBandLabel.textColor = .secondaryLabelColor
         messageBandLabel.alignment = .center
         messageBandLabel.lineBreakMode = .byTruncatingTail
-        // ラベルの既定（hugging 251・圧縮抵抗 750）は NSSplitViewItem の holdingPriority（250）を上回り、
-        // ペイン幅をラベルの幅へ引き戻してしまう。帯の幅はペインに従わせ、長い文言は省略する
+        // The label defaults (hugging 251, compression resistance 750) exceed NSSplitViewItem's holdingPriority (250)
+        // and pull the pane width back to the label width. Make the band follow the pane width and truncate long text.
         messageBandLabel.setContentHuggingPriority(.init(1), for: .horizontal)
         messageBandLabel.setContentCompressionResistancePriority(.init(1), for: .horizontal)
         messageBand.addSubview(messageBandLabel)
@@ -383,7 +386,8 @@ final class FileListViewController: NSViewController {
         searchBarLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         searchBarLabel.textColor = .secondaryLabelColor
         searchBarLabel.lineBreakMode = .byTruncatingMiddle
-        // 下端の帯と同じく、ラベルの幅でペイン幅を引き戻さない（holdingPriority 250 を下回らせる）
+        // As with the bottom band, do not let the label width pull the pane width back (stay below holdingPriority
+        // 250).
         searchBarLabel.setContentHuggingPriority(.init(1), for: .horizontal)
         searchBarLabel.setContentCompressionResistancePriority(.init(1), for: .horizontal)
 
@@ -405,8 +409,8 @@ final class FileListViewController: NSViewController {
         ])
     }
 
-    /// 「「<keyword>」の検索結果 — <起点のフォルダ名> — <件数> 件」。検索中は「検索中…」とスピナーを添え、
-    /// 種類フィルタで絞っているときは「<件数> 件中 <表示件数> 件を表示」にする（R37）
+    /// "Search results for "<keyword>" — <root folder name> — <count> items". While searching, appends "Searching…"
+    /// and a spinner; when the media type filter hides items, uses "Showing <visible> of <count> items" (R37).
     private func updateSearchBar() {
         guard let search = model.listing.search else {
             searchBar.isHidden = true
@@ -524,8 +528,8 @@ final class FileListViewController: NSViewController {
         }
     }
 
-    /// 一覧の行が残っているとき（`..` やディレクトリ）は、メッセージの状態でも一覧を表示し続ける。
-    /// 読めないフォルダでも `..` が残れば一覧を出し、メッセージは下端の帯に出す（FR-077）
+    /// Keeps showing the list even in a message state when rows remain (`..` or directories).
+    /// For an unreadable folder, shows the list when `..` remains and puts the message in the bottom band (FR-077).
     private var showsFileList: Bool {
         switch model.listing.state {
         case .loaded:
@@ -555,7 +559,7 @@ final class FileListViewController: NSViewController {
             progressIndicator.startAnimation(nil)
             message = isSearch ? l10n.text(.emptySearching) : l10n.text(.emptyLoading)
         case .empty:
-            // FR-060 の「対応するメディアファイルがありません」と区別する
+            // Distinguish this from "No supported media files" in FR-060.
             message = isSearch ? l10n.text(.emptyNoMatches) : l10n.text(.emptyNoMedia)
         case .noMatches:
             switch model.mediaTypeFilter.emptyState {
@@ -583,7 +587,7 @@ final class FileListViewController: NSViewController {
         restoreScrollOriginIfNeeded(originBeforeRefresh)
     }
 
-    /// 表示中の一覧のスクロール位置。一覧を隠している間は控えない
+    /// Scroll position of the visible list. Not captured while the list is hidden.
     private var currentVisibleOrigin: CGPoint? {
         switch displayMode {
         case .list:
@@ -593,12 +597,12 @@ final class FileListViewController: NSViewController {
         }
     }
 
-    /// 一覧の作り直しの前にスクロール位置を控える（SC-017）
+    /// Captures the scroll position before rebuilding the list (SC-017).
     private func captureScrollOrigin() {
         pendingScrollOrigin = currentVisibleOrigin
     }
 
-    /// 控えた位置へ戻す。一覧の作り直しで原点が変わった場合だけ反映する
+    /// Restores the captured position. Applies it only when the origin changed during the list rebuild.
     private func restoreScrollOriginIfNeeded(_ fallback: CGPoint? = nil) {
         let target = pendingScrollOrigin ?? fallback
         pendingScrollOrigin = nil
@@ -625,14 +629,15 @@ final class FileListViewController: NSViewController {
             thumbnailModeView.needsLayout = true
         }
 
-        // 読み込み中は一覧を隠すため、AppKit がフォーカスを次のキービュー（プレビューなど）へ移す。
-        // フォルダへ入る・戻る間もキーボードフォーカスをファイルリストに残すよう、一覧を出し直したときに戻す（FR-078）
+        // Loading hides the list, so AppKit moves focus to the next key view (such as the preview).
+        // Return focus when the list reappears so keyboard focus stays in the file list while entering or leaving
+        // folders (FR-078).
         if focusWasInFileList, !showsFiles, let window = view.window {
             displacedFocus = window.firstResponder
         }
         if showsFiles, let displaced = displacedFocus {
             displacedFocus = nil
-            // 読み込み中にユーザーがほかのペインへ移ったときは、フォーカスを奪わない
+            // Do not steal focus when the user moved to another pane during loading.
             if let window = view.window, window.firstResponder === displaced {
                 window.makeFirstResponder(primaryFocusView)
             }
@@ -686,7 +691,7 @@ final class FileListViewController: NSViewController {
             action: #selector(increaseThumbnailSize(_:)),
             keyEquivalent: "."
         )
-        // ⌘+ / ⌘- はプレビューの倍率に使うため、Shift なしで押せる ⌃⌘. / ⌃⌘, にする（FR-135、A-74）
+        // ⌘+ and ⌘- are used for preview zoom, so use ⌃⌘. and ⌃⌘, which work without Shift (FR-135, A-74).
         zoomInItem.keyEquivalentModifierMask = [.command, .control]
         zoomInItem.target = self
         MainMenu.bind(zoomInItem, .menuViewLargerThumbnails)
@@ -778,7 +783,7 @@ final class FileListViewController: NSViewController {
         onViewChange?(.thumbnailSize)
     }
 
-    /// 履歴から表示の状態を戻す。記録の入口は通らない（R70）
+    /// Restores the presentation state from history. Does not go through the recording entry point (R70).
     func restore(displayMode: DisplayMode, thumbnailSize: Double) {
         setDisplayMode(displayMode)
         setThumbnailSize(thumbnailSize, persist: true)
@@ -939,7 +944,7 @@ final class FileListViewController: NSViewController {
         NSWorkspace.shared.activateFileViewerSelecting(urls)
     }
 
-    /// フォーカス行の zip ファイル・ディレクトリの中を表示する。`..` なら1つ上へ戻る（⌘↓、FR-069）
+    /// Opens the focused zip file or directory. If it is `..`, goes up one level (⌘↓, FR-069).
     @objc func openFocusedItem(_ sender: Any?) {
         guard !isEditingText,
               focusedItemCommands.canOpenContainer,
@@ -949,7 +954,7 @@ final class FileListViewController: NSViewController {
         openItem(focused)
     }
 
-    /// ダブルクリックと ⌘↓ から呼ぶ。メディアの行では何もしない（Core が判断する）
+    /// Called from double-click and ⌘↓. Does nothing for media rows (Core decides).
     func openItem(_ url: URL) {
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -958,7 +963,8 @@ final class FileListViewController: NSViewController {
         }
     }
 
-    /// zip の中なら1つ上の階層へ戻る。最上位なら zip を含むフォルダの一覧へ戻る（⌘↑、FR-070）
+    /// Inside a zip, goes up one level. At the zip root, returns to the listing of the folder containing the zip
+    /// (⌘↑, FR-070).
     @objc func goToEnclosingLevel(_ sender: Any?) {
         guard !isEditingText, focusedItemCommands.canGoUp else { return }
         Task { @MainActor [weak self] in
@@ -968,7 +974,8 @@ final class FileListViewController: NSViewController {
         }
     }
 
-    /// 一覧への反映（Observation の通知で動く Task）が済んでから、フォーカス行を見える位置へスクロールする
+    /// Scrolls the focused row into view after the list update (the task triggered by the Observation notification)
+    /// finishes.
     private func scrollFocusedItemIntoViewAfterModelUpdate() async {
         await Task.yield()
         switch displayMode {
@@ -1036,7 +1043,7 @@ extension FileListViewController: NSMenuItemValidation {
             return !isEditingText && focusedItemCommands.canGoUp
         }
 
-        // zip の中は読み取り専用（FR-073）。`..` は操作の対象にならない（R30）。判断は ListItemCommands に任せる
+        // A zip is read-only (FR-073). `..` is not an operation target (R30). ListItemCommands makes the decision.
         let commands = selectionItemCommands
         switch menuItem.action {
         case #selector(copy(_:)),

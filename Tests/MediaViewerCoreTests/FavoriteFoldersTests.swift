@@ -9,7 +9,7 @@ struct FavoriteFoldersTests {
     private let c = URL(fileURLWithPath: "/tmp/fav/c", isDirectory: true)
     private let d = URL(fileURLWithPath: "/tmp/fav/d", isDirectory: true)
 
-    /// 登録済みの a と同じ場所を指す別表記（末尾の `/`・`..` を含む）
+    /// Alternative spellings for the same location as registered a (including a trailing `/` and `..`).
     private var aliasesOfA: [URL] {
         [
             a,
@@ -76,7 +76,7 @@ struct FavoriteFoldersTests {
         #expect(favorites.urls == [a, b, c])
     }
 
-    // MARK: - 表示名（FR-099〜101、R48・R50）
+    // MARK: - Display Names (FR-099–101; R48, R50)
 
     @Test("表示名を付けると customName と displayName に反映される")
     func commitSetsDisplayName() {

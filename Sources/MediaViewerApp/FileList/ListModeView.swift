@@ -23,7 +23,7 @@ private final class FileListTableView: NSTableView {
             }
         }
 
-        // メニュー項目が無効なときに、既定の動作（末尾へ移動など）へ渡さない（R26）
+        // Do not pass to the default action (such as moving to the end) when the menu item is disabled (R26).
         if event.isCommandOnlyVerticalArrow {
             return
         }
@@ -101,7 +101,7 @@ final class ListModeView: NSView {
     var onRename: ((URL, String) async -> Void)?
     var onOpenItem: ((URL) -> Void)?
     var onInternalDrop: (([URL], URL, Bool) -> Void)?
-    /// Esc。処理したら true（検索結果の表示を終える。FR-086）
+    /// Esc. Returns true when handled (ends search results; FR-086).
     var onEscape: (() -> Bool)? {
         get { tableView.onEscape }
         set { tableView.onEscape = newValue }
@@ -214,7 +214,7 @@ final class ListModeView: NSView {
         }
         tableView.onReturn = { [weak self] in
             guard let self else { return false }
-            // zip の中では名前の変更を始めない（FR-073）。キーは消費する
+            // Do not start renaming inside a zip (FR-073). Consume the key.
             guard self.model.focusedItemCommands.allowsFileOperations else { return true }
             return self.beginRenaming()
         }
@@ -224,7 +224,7 @@ final class ListModeView: NSView {
         addColumn(identifier: "name", title: l10n.text(.listColumnName), width: 220)
         addColumn(identifier: "creationDate", title: l10n.text(.listColumnCreationDate), width: 150)
         addColumn(identifier: "kind", title: l10n.text(.listColumnKind), width: 150)
-        // 検索結果の表示中だけ出す（FR-084、R37）
+        // Shown only while search results are displayed (FR-084, R37).
         addColumn(identifier: "location", title: l10n.text(.listColumnLocation), width: 180)
         tableView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier("location"))?.isHidden = true
 
@@ -250,7 +250,7 @@ final class ListModeView: NSView {
         onOpenItem?(url)
     }
 
-    /// フォーカス行を見える位置へスクロールする（戻った後の追従: FR-070）
+    /// Scrolls the focused row into view (following after going back; FR-070).
     func scrollToFocused() {
         guard let focused = model.selection.focused,
               let row = model.listing.files.firstIndex(where: { $0.url == focused }) else {
@@ -259,12 +259,12 @@ final class ListModeView: NSView {
         tableView.scrollRowToVisible(row)
     }
 
-    /// 一覧の表示範囲の原点（スクロール位置の保持に使う。SC-017）
+    /// Origin of the visible list range (used to preserve the scroll position; SC-017).
     var visibleOrigin: CGPoint {
         scrollView.contentView.bounds.origin
     }
 
-    /// 控えておいたスクロール位置へ戻す。行が減って文書の範囲を超える場合は、範囲内に収める
+    /// Restores the captured scroll position. Clamps to the document range when rows were removed.
     func restoreVisibleOrigin(_ origin: CGPoint) {
         let clipView = scrollView.contentView
         let proposed = NSRect(origin: origin, size: clipView.bounds.size)
@@ -304,8 +304,8 @@ final class ListModeView: NSView {
 
     private func applyModel() {
         updateLocationColumn()
-        // 表示していない形式では、行の再読み込みと選択の反映を表示したとき（viewDidUnhide）まで遅らせる。
-        // 10,000 行の zip を開くときに、見えない一覧の分までメインスレッドを止めないため（SC-015）
+        // For a hidden mode, defer row reloading and selection updates until it is shown (viewDidUnhide).
+        // This avoids blocking the main thread for an invisible list when opening a zip with 10,000 rows (SC-015).
         guard !isHidden else {
             syncSortDescriptors()
             updateSortMenuItems()
@@ -336,7 +336,7 @@ final class ListModeView: NSView {
         refreshVisibleLocalizedCells()
     }
 
-    /// 「場所」列は検索結果の表示中だけ出す
+    /// Shows the Location column only while search results are displayed.
     private func updateLocationColumn() {
         let hidden = !model.isShowingSearchResults
         guard let column = tableView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier("location")),
@@ -416,7 +416,7 @@ final class ListModeView: NSView {
     @objc private func chooseSortColumn(_ sender: NSMenuItem) {
         guard sender.tag >= 0, sender.tag < Self.sortEntries.count else { return }
         let column = Self.sortEntries[sender.tag].column
-        // 「場所」は検索結果の表示中だけ選べる（FR-084）
+        // Location can be selected only while search results are displayed (FR-084).
         guard column != .location || model.isShowingSearchResults else { return }
         let current = model.sortOrder
         let ascending = current.column == column ? !current.ascending : true
@@ -518,7 +518,7 @@ extension ListModeView: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         guard menuItem.action == #selector(chooseSortColumn(_:)),
               Self.sortEntries.indices.contains(menuItem.tag) else { return true }
-        // 「表示 > 並べ替え」の「場所」は検索結果の表示中だけ有効（FR-084）
+        // Location in View > Sort is enabled only while search results are displayed (FR-084).
         return Self.sortEntries[menuItem.tag].column != .location || model.isShowingSearchResults
     }
 }
@@ -631,7 +631,7 @@ extension ListModeView: NSTableViewDelegate {
         }
 
         if !file.kind.isMedia {
-            // zip ファイル・ディレクトリ・`..` は縮小画像を要求せず、種類のアイコンを出す
+            // Do not request thumbnails for zip files, directories, or `..`; show the kind icon instead.
             cell.cancelIconRequest(using: provider)
             cell.iconPointSize = 0
             cell.iconScale = 0
@@ -747,7 +747,7 @@ extension ListModeView {
         pasteboardWriterForRow row: Int
     ) -> NSPasteboardWriting? {
         guard row >= 0, row < model.listing.files.count else { return nil }
-        // zip の中の行・`..` はドラッグを始めない（FR-073）
+        // Do not start a drag for rows inside a zip or `..` (FR-073).
         guard model.itemCommands(forRowAt: row).allowsFileOperations else { return nil }
         return model.listing.files[row].url as NSURL
     }

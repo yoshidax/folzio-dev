@@ -26,7 +26,7 @@ struct PluralTests {
         }
     }
 
-    /// 数字の違いを除いた語形
+    /// Wording with numeric differences removed.
     private func normalized(_ localizer: Localizer, _ key: TextKey, _ count: Int) -> String {
         value(localizer, key, count)
             .replacingOccurrences(of: localizer.count(count), with: "<n>")

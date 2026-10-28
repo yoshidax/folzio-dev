@@ -1,24 +1,28 @@
 import Foundation
 
-/// 検索キーワードとファイル名・フォルダ名の照合（FR-082、research.md R34）。
+/// Matches search keywords against file and folder names (FR-082, research.md R34).
 ///
-/// - キーワードと名前の両方を NFC にし、大文字小文字をそろえてから比べる。濁点の合成・分解の違いと英字の大文字小文字は区別しない。
-///   全角・半角、ひらがな・カタカナは区別する
-/// - `*` も `?` も含まないキーワードは、名前（ファイル名は拡張子を含む）に対する部分一致
-/// - `*`（0 文字以上）か `?`（1 文字）を含むキーワードは、名前全体との一致。文字の単位は `Character`（書記素クラスタ）
-/// - `[`・`]`・`\` などはただの文字として扱い、エスケープは持たない。照合するのは名前だけで、フォルダのパスは含めない
-/// - フォルダ名も名前全体を照合し、「.」を含むフォルダ名（`2024.10_trip`・`photos.jpg`）は拡張子として扱わない（EC-97）
+/// - Normalizes both the keyword and the name to NFC and folds case before comparing. Does not distinguish
+///   composed and decomposed dakuten or letter case. Distinguishes full-width/half-width and hiragana/katakana.
+/// - A keyword without `*` or `?` matches a substring of the name (file names include the extension).
+/// - A keyword with `*` (zero or more characters) or `?` (one character) matches the whole name. Characters are
+///   `Character` (grapheme clusters).
+/// - Treats `[`, `]`, `\`, and similar characters literally; there is no escaping. Matches names only, not
+///   folder paths.
+/// - Matches folder names against the whole name as well; a folder name containing "." (`2024.10_trip`,
+///   `photos.jpg`) is not treated as having an extension (EC-97).
 public struct SearchPattern: Sendable, Equatable {
-    /// 入力から前後の空白を除いたもの。空にはならない
+    /// Input with leading and trailing whitespace removed. Never empty.
     public let keyword: String
-    /// `*` か `?` を含むか
+    /// Whether the keyword contains `*` or `?`.
     public let usesWildcards: Bool
 
-    /// 正規化したキーワード（イニシャライザで1回だけ作る）
+    /// Normalized keyword (created once in the initializer).
     private let normalizedKeyword: String
     private let keywordCharacters: [Character]
 
-    /// 前後の空白（改行を含む）を除いて空なら nil（「検索」ボタンは無効、Return は何もしない）
+    /// Returns nil when the input is empty after removing leading and trailing whitespace (including newlines).
+    /// The Search button is disabled and Return does nothing.
     public init?(keyword: String) {
         let trimmed = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
@@ -28,7 +32,8 @@ public struct SearchPattern: Sendable, Equatable {
         self.keywordCharacters = Array(normalizedKeyword)
     }
 
-    /// ファイル名またはフォルダ名と照合する。フォルダ名も名前全体を照合し、「.」を拡張子として扱わない（FR-082・EC-97）
+    /// Matches a file name or folder name. Folder names also match against the whole name, and "." is not treated
+    /// as an extension separator (FR-082, EC-97).
     public func matches(fileName: String) -> Bool {
         let name = Self.normalize(fileName)
         guard usesWildcards else {
@@ -42,7 +47,8 @@ public struct SearchPattern: Sendable, Equatable {
             .folding(options: [.caseInsensitive], locale: nil)
     }
 
-    /// 直前の `*` の位置を覚えて戻る反復の照合。再帰せず、最悪でも名前の長さ × キーワードの長さで終わる
+    /// Iterative matching that remembers the last `*` position and backtracks. Does not recurse and finishes in
+    /// at worst the name length times the keyword length.
     private static func globMatches(_ pattern: [Character], _ name: [Character]) -> Bool {
         var p = 0
         var n = 0

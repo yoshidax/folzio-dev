@@ -3,18 +3,19 @@ import Foundation
 public enum ArchiveError: Error, Sendable, Equatable {
     case notFound
     case accessDenied
-    /// 終端レコードが見つからない・構造が壊れている
+    /// The end record cannot be found or the structure is damaged
     case notAZip
-    /// 分割 zip
+    /// Multi-disk zip
     case multiDisk
     case entryEncrypted
     case unsupportedMethod(UInt16)
-    /// 画像の 512MB 上限（research.md R24）
+    /// Image size limit of 512 MB (research.md R24)
     case tooLarge
     case corrupted(ArchiveCorruption)
 }
 
-/// zip の内容が壊れている理由（表示言語に依存しない値）。文言は `MediaViewerLocalization` が決める
+/// Reason the contents of a zip are damaged (a value independent of the display language).
+/// `MediaViewerLocalization` chooses the text.
 public enum ArchiveCorruption: Error, Sendable, Equatable {
     case cannotStartInflate
     case compressedDataDamaged

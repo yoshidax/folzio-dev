@@ -1,9 +1,9 @@
 import Darwin
 import Foundation
 
-/// 読み取り専用で開いた zip ファイルの記述子。参照カウントで共有し、最後の参照が消えたときに閉じる。
-/// 読み出しはすべて `pread`（オフセット指定）なので、複数の読み出しで共有しても互いに干渉しない（research.md R22）。
-/// zip 全体を読み込まない・メモリマップしない。
+/// Descriptor for a zip file opened read-only. Shared by reference counting and closed when the last reference is
+/// released. All reads use `pread` with explicit offsets, so concurrent readers do not interfere with each other
+/// (research.md R22). Does not read the whole zip or memory-map it.
 final class ArchiveFile: Sendable {
     let url: URL
     let size: UInt64
@@ -39,14 +39,14 @@ final class ArchiveFile: Sendable {
         return ArchiveFile(url: url, descriptor: descriptor, size: identity.fileSize, identity: identity)
     }
 
-    /// パスの `stat`。ファイルが消えていれば nil
+    /// `stat` for the path, or nil when the file no longer exists.
     static func currentIdentity(of url: URL) -> ArchiveIdentity? {
         var info = stat()
         guard stat(url.path, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG else { return nil }
         return makeIdentity(info)
     }
 
-    /// `offset` から最大 `length` バイトを読む。ファイルの終わりを越える分は読まない（短くなる）
+    /// Reads up to `length` bytes from `offset`. Does not read past the end of the file (the result is shorter).
     func read(at offset: UInt64, length: Int) throws(ArchiveError) -> Data {
         guard length > 0, offset < size else { return Data() }
         let count = Int(min(UInt64(length), size - offset))
@@ -57,7 +57,7 @@ final class ArchiveFile: Sendable {
         return Data(bytes: base, count: read)
     }
 
-    /// `offset` から `buffer` の大きさまで読み、読めたバイト数を返す（ファイルの終わりでは 0）
+    /// Reads from `offset` up to the size of `buffer` and returns the number of bytes read (0 at the end of the file).
     func read(into buffer: UnsafeMutableRawBufferPointer, at offset: UInt64) throws(ArchiveError) -> Int {
         guard let base = buffer.baseAddress, !buffer.isEmpty,
               offset < size, offset <= UInt64(Int64.max) else { return 0 }

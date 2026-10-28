@@ -2,7 +2,7 @@ import AppKit
 import MediaViewerCore
 import os
 
-/// スライドショー開始前の通常表示と、終了後に戻す状態。App 側だけで保持する。
+/// Normal presentation before starting the slideshow and the state restored after it ends. Kept only in the app.
 struct SlideshowRestoreState {
     let normalPaneLayout: PaneLayout
     let normalFocusedPane: Pane?
@@ -28,8 +28,9 @@ protocol SlideshowCoordinatorDelegate: AnyObject {
     func slideshowCancelTransition()
 }
 
-/// 設定した間隔の期限、矢印・Esc の入力、保留中の自動送りを調停する App 側の実行主体。
-/// playlist は持たず、送るたびに Core の `SlideshowSequence` と最新の一覧から対象を決める。
+/// App-side driver that arbitrates the configured interval deadline, arrow and Esc input, and pending automatic
+/// advance. Does not keep a playlist; determines the target on each advance from Core's `SlideshowSequence`
+/// and the latest listing.
 @MainActor
 final class SlideshowCoordinator {
     weak var delegate: SlideshowCoordinatorDelegate?
@@ -88,7 +89,7 @@ final class SlideshowCoordinator {
         schedule()
     }
 
-    /// 実行中なら止めて復帰する。復帰が全画面解除を待つ間は `isRestoring` を立てる。
+    /// Stops and restores when active. Sets `isRestoring` while restoration waits for full screen to exit.
     func stop() {
         guard isActive else { return }
         delegate?.slideshowCancelTransition()
@@ -111,7 +112,7 @@ final class SlideshowCoordinator {
         }
     }
 
-    /// ウインドウを閉じる・終了するときに、復帰表示を待たずに資源だけ捨てる。
+    /// Discards resources without waiting for the restore display when closing the window or quitting.
     func stopImmediately() {
         guard isActive || isRestoring else { return }
         delegate?.slideshowCancelTransition()
@@ -125,14 +126,16 @@ final class SlideshowCoordinator {
         delegate?.slideshowAvailabilityDidChange()
     }
 
-    /// 閲覧先を置き換える直前（FR-126）。復帰先の確定を待たせず、送りだけを同期で止める。
+    /// Immediately before replacing the location (FR-126). Stops advancing synchronously without waiting to fix the
+    /// restore target.
     func handleWillReplaceLocation() {
         guard isActive else { return }
         stop()
     }
 
-    /// ローカルモニタから渡されたキーを、スライドショーが受理する場合だけ処理する。
-    /// Esc は停止、矢印は期限のやり直しと隠れたファイルリストの移動。`<`・`>` などは既存の処理へ返す。
+    /// Processes a key from the local monitor only when the slideshow accepts it.
+    /// Esc stops; arrows restart the deadline and navigate the hidden file list. Returns `<`, `>`, and similar keys to
+    /// the existing handling.
     func handleKeyEvent(_ event: NSEvent) -> Bool {
         guard isActive, !isRestoring,
               let delegate,
@@ -154,8 +157,9 @@ final class SlideshowCoordinator {
         return true
     }
 
-    /// 一覧・選択の変更後に呼ぶ。対象が0件になったときだけ、読み込み中を除いて自動終了する。
-    /// 現在の対象が消えただけでは選択を変えず、次の期限で先頭から選び直す。
+    /// Called after listing or selection changes. Ends automatically only when there are zero candidates, except while
+    /// loading. Does not change the selection just because the current target disappeared; the next deadline selects
+    /// from the beginning again.
     func listingDidChange() {
         guard isActive, !isRestoring, let delegate else { return }
         guard !SlideshowSequence.hasMedia(in: delegate.slideshowFiles),
@@ -172,7 +176,8 @@ final class SlideshowCoordinator {
         let generation = session.generation
         let clock = self.clock
         deadlineTask = Task { @MainActor [weak self] in
-            // 期限が過去なら即座に戻り、次の run loop で保留とキー入力を調停する。
+            // If the deadline is in the past, return immediately and arbitrate pending work and key input in the next
+            // run loop.
             try? await clock.sleep(until: deadline, tolerance: .zero)
             guard !Task.isCancelled,
                   let self,
@@ -194,8 +199,8 @@ final class SlideshowCoordinator {
         guard isActive, !isRestoring, session.generation == generation else { return }
         guard session.timeout(now: clock.now) else { return }
 
-        // 期限の到来とキー入力が同じ run loop に並んだとき、受理する Esc・矢印を先に
-        // AppKit へ dispatch させる。ここでは保留だけを立て、次の run loop で確定する。
+        // When deadline expiry and key input are queued in the same run loop, dispatch accepted Esc and arrow keys to
+        // AppKit first. Only mark pending work here and commit it in the next run loop.
         RunLoop.main.perform(inModes: [.default, .eventTracking, .modalPanel]) { [weak self] in
             MainActor.assumeIsolated {
                 self?.commitPendingDue(generation: generation)
@@ -209,7 +214,8 @@ final class SlideshowCoordinator {
               session.generation == generation else {
             return
         }
-        // 未処理の受理キーがあれば、この自動送りは延期する。キー側が期限やり直し・停止を行う。
+        // If an accepted key is still unhandled, defer this automatic advance. The key handling restarts the deadline
+        // or stops.
         if delegate.slideshowHasPendingKeyEvent() {
             return
         }

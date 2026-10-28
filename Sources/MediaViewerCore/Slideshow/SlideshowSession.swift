@@ -1,15 +1,15 @@
 import Foundation
 
-/// 期限・取消世代・保留中の自動送りを持つ、Core の実行状態。
-/// 時刻は呼び出し側から単調時計の Instant として入力し、この型自身は sleep しない。
-/// 一度決めた `deadline` は、設定の変更では書き換えない。
-/// 新しい間隔は start・arrow・commit で次の期限を作るときだけ使う。
+/// Core runtime state with the deadline, cancellation generation, and pending automatic advance.
+/// Time is supplied by the caller as a monotonic clock Instant; this type never sleeps.
+/// Changing settings does not rewrite a `deadline` that has already been set.
+/// A new interval is used only when creating the next deadline in start, arrow, or commit.
 public struct SlideshowSession: Sendable {
     public enum Phase: Sendable, Equatable {
         case idle
-        /// 通常の切り替え待ち。
+        /// Waiting for the next regular transition.
         case running
-        /// 最後に受理した矢印から待っている。専用の一時停止状態ではない。
+        /// Waiting after the last accepted arrow. This is not a separate paused state.
         case waitingAfterArrow
     }
 
@@ -21,14 +21,14 @@ public struct SlideshowSession: Sendable {
     public private(set) var phase: Phase = .idle
     public private(set) var deadline: ContinuousClock.Instant?
     public private(set) var generation = 0
-    /// timeout が到来した後、App の入力 dispatch 後に commit するまでの保留。最大1つ。
+    /// Pending item held after a timeout until commit following the app's input dispatch. At most one.
     public private(set) var pendingDue: PendingDue?
 
     public init() {}
 
     public var isActive: Bool { phase != .idle }
 
-    /// idle から開始する。実行中の再開始は選択・期限を変えない。
+    /// Starts from idle. Restarting while active does not change the selection or deadline.
     @discardableResult
     public mutating func start(now: ContinuousClock.Instant, interval: Duration) -> Bool {
         guard phase == .idle else { return false }
@@ -39,7 +39,7 @@ public struct SlideshowSession: Sendable {
         return true
     }
 
-    /// 実行を止め、待機と pending due を無効化する。実行中でなければ何もしない。
+    /// Stops execution and invalidates the wait and any pending due. Does nothing when not active.
     @discardableResult
     public mutating func stop() -> Bool {
         guard phase != .idle else { return false }
@@ -50,7 +50,8 @@ public struct SlideshowSession: Sendable {
         return true
     }
 
-    /// 受理した矢印。移動の成否に関係なく、古い期限と pending due を無効化して now + interval へ移す。
+    /// Accepts an arrow. Regardless of whether navigation succeeds, invalidates the old deadline and pending due and
+    /// moves to now + interval.
     @discardableResult
     public mutating func arrow(now: ContinuousClock.Instant, interval: Duration) -> Bool {
         guard phase != .idle else { return false }
@@ -61,8 +62,8 @@ public struct SlideshowSession: Sendable {
         return true
     }
 
-    /// 期限が来たことを保留する。選択はまだ変えず、期限も変えない。
-    /// 同じ世代の pending が既にあれば true を返す。
+    /// Holds the fact that the deadline has arrived. Does not change the selection or the deadline yet.
+    /// Returns true when a pending item for the same generation already exists.
     @discardableResult
     public mutating func timeout(now: ContinuousClock.Instant) -> Bool {
         guard phase != .idle, let deadline, now >= deadline else { return false }
@@ -73,8 +74,8 @@ public struct SlideshowSession: Sendable {
         return true
     }
 
-    /// 保留中の自動送りを確定する。現在の世代の pending だけを1回許可し、
-    /// 実行状態を running、期限を commit 時刻 + interval にする。
+    /// Commits the pending automatic advance. Allows only the pending item for the current generation once, and sets
+    /// the phase to running and the deadline to the commit time + interval.
     @discardableResult
     public mutating func commit(now: ContinuousClock.Instant, interval: Duration) -> Bool {
         guard phase != .idle,
@@ -92,7 +93,7 @@ public struct SlideshowSession: Sendable {
         pendingDue?.generation == generation
     }
 
-    /// 次の期限までの残り。期限を過ぎていれば zero。idle は nil。
+    /// Time remaining until the next deadline. Zero once the deadline has passed. Nil when idle.
     public func remaining(at now: ContinuousClock.Instant) -> Duration? {
         guard let deadline else { return nil }
         let remaining = now.duration(to: deadline)

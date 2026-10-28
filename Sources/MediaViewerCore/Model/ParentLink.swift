@@ -1,18 +1,19 @@
 import Foundation
 
-/// 通常のフォルダの `..` の行の URL（`mvparent:///<フォルダの絶対パス>`）。生成と判定はここだけで行う。
-/// `FileManager`・`NSWorkspace`・ペーストボードに渡さない（research.md R30）
+/// URL for the `..` row of a regular folder (`mvparent:///<absolute folder path>`). Creation and detection happen
+/// only here. Do not pass it to `FileManager`, `NSWorkspace`, or the pasteboard (research.md R30).
 public enum ParentLink {
     public static let scheme = "mvparent"
 
-    /// パスの要素に使える文字。`.urlPathAllowed` から `#`・`?`・`%`・`;` を除く（`ArchiveURL` と同じ）
+    /// Characters allowed in path elements. Starts with `.urlPathAllowed` and removes `#`, `?`, `%`, and `;`
+    /// (the same as `ArchiveURL`).
     private static let pathElementAllowed: CharacterSet = {
         var set = CharacterSet.urlPathAllowed
         set.remove(charactersIn: "#?%;/")
         return set
     }()
 
-    /// 同じフォルダ（末尾の `/` や `.` の違いを含む）には同じ URL を返す
+    /// Returns the same URL for the same folder, including differences in a trailing `/` or `.`.
     public static func url(for folder: URL) -> URL {
         let path = folder.standardizedFileURL.path
         var components = URLComponents()

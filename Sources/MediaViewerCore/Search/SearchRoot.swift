@@ -1,6 +1,7 @@
 import Foundation
 
-/// 検索起点ディレクトリの入力が使えない理由（FR-081、research.md R35）。文言は表示の層が決める
+/// Reason a search root directory input cannot be used (FR-081, research.md R35). The presentation layer chooses
+/// the text.
 public enum SearchRootError: Error, Sendable, Equatable {
     case empty
     case notAbsolute
@@ -9,10 +10,11 @@ public enum SearchRootError: Error, Sendable, Equatable {
     case accessDenied
 }
 
-/// 検索起点ディレクトリの入力の解釈（`parse`。ディスクを読まない）と確認（`validate`。UI スレッドの外でディスクを読む）
+/// Interpretation of search root directory input (`parse`; does not read the disk) and validation (`validate`;
+/// reads the disk off the UI thread).
 public enum SearchRoot {
-    /// 前後の空白を除き、`~` と `~/` をホームに置き換え、`.`・`..`・末尾の `/` を畳む。
-    /// `/` でも `~` でも始まらない入力と `~user` の形は `.notAbsolute`
+    /// Trims whitespace, replaces `~` and `~/` with the home directory, and folds `.`, `..`, and a trailing `/`.
+    /// Returns `.notAbsolute` for input that starts with neither `/` nor `~`, and for the `~user` form.
     public static func parse(_ input: String, home: URL) -> Result<URL, SearchRootError> {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .failure(.empty) }
@@ -30,8 +32,8 @@ public enum SearchRoot {
         return .success(URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL)
     }
 
-    /// 存在・フォルダであること（パッケージと zip ファイルを除く）・開けることを確かめる。
-    /// 成功ならシンボリックリンクを解決した URL を返す
+    /// Checks that the path exists, is a folder (excluding packages and zip files), and can be opened.
+    /// On success, returns the URL with symbolic links resolved.
     public static func validate(_ url: URL) async -> Result<URL, SearchRootError> {
         await Task.detached(priority: .userInitiated) {
             let resolved = url.resolvingSymlinksInPath()

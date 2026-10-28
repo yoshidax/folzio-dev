@@ -3,13 +3,13 @@ import CoreGraphics
 import CoreVideo
 import VideoToolbox
 
-/// プレビューの動画を再生する `AVPlayer` とループの扱い（FR-031・FR-033）。
-/// `AVPlayer` は1つだけ作り、動画の切り替えはアイテムの載せ替えで行う。
-/// 切り替えのたびに `AVPlayer` を作り直すと、スライドショーで routing context の生成と破棄が繰り返され、
-/// CoreMedia 内部の競合で落ちる（bug: slideshow-video-routing-context-crash）。
-/// ループは `AVPlayerLooper` を使わず、1つのアイテムを終端で先頭へ戻す。
-/// `AVPlayerLooper` はアイテムを複製して切り替えるため、AVPlayerView の 15 秒スキップで終端を越えると
-/// 映像が止まる（bug: preview-skip-forward-frame-freeze）。
+/// `AVPlayer` for preview video playback and loop handling (FR-031, FR-033).
+/// Creates a single `AVPlayer` and switches videos by replacing the item.
+/// Recreating `AVPlayer` on every switch repeatedly creates and destroys routing contexts during the slideshow,
+/// which crashes due to a CoreMedia internal race (bug: slideshow-video-routing-context-crash).
+/// Looping does not use `AVPlayerLooper`; it seeks one item back to the start at the end.
+/// `AVPlayerLooper` duplicates and switches items, so skipping past the end with AVPlayerView's 15-second skip
+/// stops the video (bug: preview-skip-forward-frame-freeze).
 @MainActor
 public final class VideoPlayback {
     public let player = AVPlayer()
@@ -18,7 +18,7 @@ public final class VideoPlayback {
 
     public init() {}
 
-    /// 前のアイテムを外し、`asset` のアイテムを載せる。再生の開始・一時停止は呼び出し側が決める
+    /// Removes the previous item and installs the item for `asset`. The caller decides when to play or pause.
     public func load(asset: AVAsset, loop: Bool) {
         unload()
         let item = AVPlayerItem(asset: asset)
@@ -33,7 +33,8 @@ public final class VideoPlayback {
             player.actionAtItemEnd = .pause
             return
         }
-        // 終端で止めずに先頭へ戻す。rate は変えないので、再生中ならそのまま続き、一時停止中なら先頭で止まったまま
+        // Return to the start instead of stopping at the end. The rate is unchanged, so playback continues when
+        // playing and stays paused at the start when paused.
         player.actionAtItemEnd = .none
         endObserver = NotificationCenter.default.addObserver(
             forName: AVPlayerItem.didPlayToEndTimeNotification,
@@ -46,7 +47,7 @@ public final class VideoPlayback {
         }
     }
 
-    /// 終端の監視をやめ、再生を止めてアイテムを外す。`AVPlayer` は次の `load` で使い回す
+    /// Stops observing the end, stops playback, and removes the item. `AVPlayer` is reused by the next `load`.
     public func unload() {
         if let endObserver {
             NotificationCenter.default.removeObserver(endObserver)
@@ -60,7 +61,7 @@ public final class VideoPlayback {
         player.replaceCurrentItem(with: nil)
     }
 
-    /// 新しいフレームの有無によらず、現在の位置のフレーム1枚を写す。
+    /// Captures one frame at the current position regardless of whether a new frame is available.
     public func currentFrame() -> CGImage? {
         guard let videoOutput,
               let buffer = videoOutput.copyPixelBuffer(forItemTime: player.currentTime(), itemTimeForDisplay: nil)
@@ -70,7 +71,8 @@ public final class VideoPlayback {
         return image
     }
 
-    /// 現在位置から `seconds` 秒動かした位置を `[0, duration]` に丸めて返す。位置か長さが定まらなければ nil
+    /// Returns the position moved by `seconds` from the current position, clamped to `[0, duration]`. Returns nil
+    /// when the position or duration is not finite.
     public nonisolated static func seekTarget(from current: Double, by seconds: Double, duration: Double) -> Double? {
         guard duration.isFinite, duration > 0, current.isFinite else { return nil }
         return min(max(0, current + seconds), duration)

@@ -1,9 +1,10 @@
 import Foundation
 
-/// 日時・件数・割合の書式のロケールを決める（FR-151、research.md R7）。
-/// 表示言語と地域を分け、並び・区切り・12／24時間表示は地域に、語は表示言語に従わせる
+/// Determines the locale used to format dates, counts, and percentages (FR-151, research.md R7).
+/// Keeps the display language and region separate: ordering, separators, and 12/24-hour display follow the region,
+/// while words follow the display language.
 public enum FormattingLocale {
-    /// 数値の記号や割合の配置は表示言語でなく地域の既定を使う。
+    /// Uses the region defaults for numeric symbols and percent placement rather than the display language.
     public static func numeric(current: Locale) -> Locale {
         guard let region = current.region?.identifier else { return current }
         let regionalLanguage = Locale.Language(identifier: "und_\(region)").maximalIdentifier
@@ -35,12 +36,12 @@ public enum FormattingLocale {
         return Locale(components: components)
     }
 
-    /// 桁区切りは地域に従う
+    /// Grouping separators follow the region.
     public static func count(_ value: Int, locale: Locale) -> String {
         value.formatted(.number.locale(locale))
     }
 
-    /// 割合の記号の位置と間の空白は地域に従う
+    /// Percent sign placement and spacing follow the region.
     public static func percent(_ percentage: Int, locale: Locale) -> String {
         (Double(percentage) / 100).formatted(.percent.locale(locale))
     }

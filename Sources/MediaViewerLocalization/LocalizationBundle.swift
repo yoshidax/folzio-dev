@@ -1,9 +1,10 @@
 import Foundation
 
-/// 翻訳の参照先のバンドルを決める（research.md R3）。
-/// `.app` では本体の `Contents/Resources` の lproj を、`swift run` とテストではパッケージのリソースバンドルを使う
+/// Determines the bundle that provides the localized strings (research.md R3).
+/// In an `.app`, uses the lproj in the main bundle's `Contents/Resources`; under `swift run` and in tests,
+/// uses the package resource bundle.
 public enum LocalizationBundle {
-    /// `.app`（本体に en.lproj の表がある）なら本体、なければパッケージのバンドル
+    /// Uses the main bundle when it is an `.app` with an en.lproj table; otherwise uses the package bundle.
     public static func resolve(main: Bundle = .main) -> Bundle {
         if containsTable(language: "en", in: main) {
             return main
@@ -11,10 +12,10 @@ public enum LocalizationBundle {
         return packageBundle
     }
 
-    /// テストと `swift run` 用のパッケージのリソースバンドル
+    /// Package resource bundle used by tests and `swift run`.
     public static var packageBundle: Bundle { Bundle.module }
 
-    /// `bundle` の中の言語別の lproj。表がなければ nil
+    /// The lproj for the given language inside `bundle`, or nil when it has no table.
     public static func table(language: String, in bundle: Bundle) -> Bundle? {
         guard let url = bundle.url(forResource: language, withExtension: "lproj"),
               containsTable(language: language, in: bundle) else {

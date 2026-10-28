@@ -12,7 +12,7 @@ final class VideoPreviewView: NSView {
         category: "Performance"
     )
     private let playback = VideoPlayback()
-    /// 動画を載せている間だけプレーヤーを返す
+    /// Returns the player only while a video is loaded.
     private var player: AVPlayer? { playback.player.currentItem == nil ? nil : playback.player }
     private var timeControlObservation: NSKeyValueObservation?
     private var playbackIntervalState: OSSignpostIntervalState?
@@ -97,7 +97,7 @@ final class VideoPreviewView: NSView {
         timeControlObservation?.invalidate()
         timeControlObservation = nil
 
-        // AVPlayer は捨てずにアイテムだけ外す（bug: slideshow-video-routing-context-crash）
+        // Remove only the item and do not discard AVPlayer (bug: slideshow-video-routing-context-crash).
         playback.unload()
         setAccessibilityLabel("")
     }

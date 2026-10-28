@@ -1,15 +1,15 @@
 import Foundation
 
-/// 名前の検索の要求（FR-083・105、research.md R2・R3）
+/// Request for a name search (FR-083, 105; research.md R2, R3).
 public struct SearchRequest: Sendable {
-    /// 列挙を始めるフォルダ
+    /// Folder where enumeration starts
     public var root: URL
-    /// キーワード
+    /// Keyword
     public var pattern: SearchPattern
-    /// `root` そのものもフォルダとして照合するか。検索の開始・起点か祖先の名前の変更では false。
-    /// 未照合のフォルダの名前を変えたときの追加の列挙だけ true（R3）
+    /// Whether `root` itself is matched as a folder. False when starting a search and when the search root or an
+    /// ancestor is renamed. True only for the additional enumeration after renaming an unmatched folder (R3).
     public var matchesRoot: Bool
-    /// 列挙がディレクトリを照合する直前に記録する先
+    /// Log where directories are recorded immediately before enumeration matches them
     public var visits: SearchVisitLog
 
     public init(
@@ -25,10 +25,11 @@ public struct SearchRequest: Sendable {
     }
 }
 
-/// 検索の記録と照合で使うパスの正規化（EC-94）
+/// Path normalization used for search records and matching (EC-94).
 public enum SearchPath {
-    /// `/` で終わる形を外し、`.`・`..` の要素を取り除く。`standardizedFileURL` は macOS で `/private` を外して
-    /// `/var/...` にするため使わず、呼び出し元が渡した URL の形を保つ（履歴・監視・一覧の URL と同じ形で比べる）
+    /// Removes a trailing `/` and `.` and `..` components. Does not use `standardizedFileURL`, which on macOS
+    /// removes `/private` and produces `/var/...`; this preserves the form of the URL passed by the caller so paths
+    /// compare in the same form as URLs from history, watching, and listings.
     public static func normalized(_ url: URL) -> String {
         var path = url.path
         while path.count > 1, path.hasSuffix("/") {
@@ -49,7 +50,7 @@ public enum SearchPath {
         return "/" + parts.joined(separator: "/")
     }
 
-    /// `path` が `base` 自身か配下か（区切りの `/` まで比べる）
+    /// Whether `path` equals `base` or is inside it (compares through the `/` separator).
     public static func isSameOrWithin(_ path: String, _ base: String) -> Bool {
         let target = normalized(URL(fileURLWithPath: path))
         let root = normalized(URL(fileURLWithPath: base))
@@ -59,23 +60,23 @@ public enum SearchPath {
     }
 }
 
-/// 検索の列挙が照合したディレクトリの記録（EC-94、research.md R2）。
+/// Record of directories matched by a search enumeration (EC-94, research.md R2).
 ///
-/// 列挙は別スレッドで進むため、列挙から `record`、メインアクターから `contains` を呼べるようにロックで保護する。
-/// 記録するのはディレクトリだけ（起点の形に組み直した標準化したパス）で、ファイルは記録しない。
-/// 記録は今の検索の間だけ持ち、検索を止めたら捨てる
+/// Enumeration runs on another thread, so a lock allows `record` from the enumeration and `contains` from the
+/// main actor. Only directories are recorded (normalized paths rebased to the root form); files are not recorded.
+/// The record lasts only for the current search and is discarded when the search stops.
 public final class SearchVisitLog: @unchecked Sendable {
     private let lock = NSLock()
     private var paths: Set<String> = []
 
     public init() {}
 
-    /// 照合する直前に、ディレクトリの標準化したパスを記録する。列挙のスレッドから呼ぶ
+    /// Records a directory's normalized path immediately before matching. Called from the enumeration thread.
     public func record(_ path: String) {
         _ = lock.withLock { paths.insert(path) }
     }
 
-    /// 記録があるか。メインアクターから呼ぶ
+    /// Whether a record exists. Called from the main actor.
     public func contains(_ path: String) -> Bool {
         lock.withLock { paths.contains(path) }
     }

@@ -22,9 +22,9 @@ struct BrowserModelArchiveTests {
         #expect(env.model.listing.files.first(where: { $0.name == "deep" })?.typeDescription == "フォルダ")
     }
 
-    // MARK: - フィクスチャ
+    // MARK: - Fixtures
 
-    /// 一時フォルダ。`cover.jpg` と `photos.zip`（`sub/deep/a.jpg`・`b.png`・`anim.gif`・`readme.txt`）を持つ
+    /// Temporary folder. Contains `cover.jpg` and `photos.zip` (`sub/deep/a.jpg`, `b.png`, `anim.gif`, `readme.txt`).
     private struct Env {
         let root: URL
         let zip: URL
@@ -46,7 +46,7 @@ struct BrowserModelArchiveTests {
         }
     }
 
-    /// `DirectoryLister` は `/private/var/...` の URL を返すため、同じ表記の一時フォルダを作る
+    /// `DirectoryLister` returns `/private/var/...` URLs, so create the temporary folder with the same form.
     private func makeRootDirectory() throws -> URL {
         var root = FileManager.default.temporaryDirectory
             .appendingPathComponent("BrowserModelArchiveTests-\(UUID().uuidString)", isDirectory: true)
@@ -57,7 +57,7 @@ struct BrowserModelArchiveTests {
         return root
     }
 
-    /// zip ファイルの表示は既定で非表示（FR-095）のため、zip の行を扱うテストでは `showsZipFiles` をオンで始める
+    /// Zip files are hidden by default (FR-095), so tests that handle zip rows start with `showsZipFiles` on.
     private func makeEnv(entries: [ZipFixtureEntry]? = nil, showsZipFiles: Bool = true) throws -> Env {
         let root = try makeRootDirectory()
 
@@ -123,7 +123,7 @@ struct BrowserModelArchiveTests {
         return false
     }
 
-    // MARK: - フォルダの一覧
+    // MARK: - Folder Listing
 
     @Test("フォルダの一覧に zip ファイルと画像が並ぶ")
     func folderListsArchiveAndImage() async throws {
@@ -171,7 +171,7 @@ struct BrowserModelArchiveTests {
         #expect(isEmptyPreview(env.model.preview))
     }
 
-    // MARK: - 中への移動
+    // MARK: - Navigating Inside
 
     @Test("zip の行を開くと最上位の一覧になる")
     func openArchiveShowsTopLevel() async throws {
@@ -189,7 +189,7 @@ struct BrowserModelArchiveTests {
         #expect(model.listing.state == .loaded)
         #expect(model.listing.files[0].kind == .parent)
         #expect(model.listing.files[0].url == env.parentLink())
-        // 名前の自然順にディレクトリとメディアが混ざる
+        // Directories and media are interleaved in natural name order.
         #expect(model.listing.files.dropFirst().map(\.name) == ["anim.gif", "b.png", "sub"])
         #expect(model.listing.files.filter { $0.kind == .parent }.count == 1)
         #expect(model.selection.selected.isEmpty)
@@ -323,7 +323,7 @@ struct BrowserModelArchiveTests {
         #expect(env.model.isBrowsingArchive == false)
     }
 
-    // MARK: - プレビュー
+    // MARK: - Preview
 
     @Test("zip の中の静止画は .image、アニメーション画像は .animatedImageData になる")
     func previewImageAndAnimated() async throws {
@@ -449,7 +449,7 @@ struct BrowserModelArchiveTests {
         #expect(cached)
     }
 
-    // MARK: - 空の判定
+    // MARK: - Empty Detection
 
     @Test("読める項目のない zip は .empty で ... だけが残る")
     func archiveWithoutMediaIsEmpty() async throws {
@@ -529,7 +529,7 @@ struct BrowserModelArchiveTests {
         #expect(model.listing.state == .loaded)
     }
 
-    // MARK: - 失敗
+    // MARK: - Failures
 
     @Test("壊れた zip は .failed で、... から戻れる")
     func brokenArchiveFails() async throws {
@@ -556,7 +556,7 @@ struct BrowserModelArchiveTests {
         #expect(env.model.selection.selected == [broken])
     }
 
-    // MARK: - FSEvents・再読み込み
+    // MARK: - FSEvents and Reloading
 
     @Test("zip が書き換えられるとフォルダの一覧に戻る")
     func changedArchiveReturnsToFolder() async throws {
@@ -625,7 +625,7 @@ struct BrowserModelArchiveTests {
         #expect(env.model.listing.state == .loaded)
     }
 
-    // MARK: - zip ファイルの表示の切り替え（FR-098）
+    // MARK: - Zip File Visibility (FR-098)
 
     @Test("zip の中を表示中に非表示へ切り替えても一覧・選択・プレビューは変わらず、設定だけを保存する")
     func hidingZipFilesInsideArchiveOnlySavesSetting() async throws {
@@ -660,7 +660,7 @@ struct BrowserModelArchiveTests {
         }
         #expect(env.model.stopPlaybackSignal == signalBefore)
 
-        // 中の一覧には zip ファイルの行がないため、オンに戻しても変わらない
+        // The contents listing has no zip file rows, so turning visibility back on changes nothing.
         env.model.setShowsZipFiles(true)
         #expect(env.defaults.object(forKey: "view.showsZipFiles") as? Bool == true)
         #expect(env.model.listing.archive == location)

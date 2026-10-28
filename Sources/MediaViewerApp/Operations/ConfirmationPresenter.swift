@@ -10,9 +10,10 @@ final class ConfirmationPresenter {
         self.settings = settings
     }
 
-    /// `includesFolders` が true なら、フォルダは中身ごと操作する旨を添える（R32）。`location` があれば対象の絶対パスを添える（R58）。
-    /// 省略できるかは `ConfirmationPolicy` で決める。省略できない確認（名前の変更・移動・ツリーのゴミ箱）は設定に関わらず
-    /// 常に表示し、「今後表示しない」も出さない（FR-024・FR-079）
+    /// When `includesFolders` is true, notes that folders are processed with their contents (R32). When `location` is
+    /// present, includes the target's absolute path (R58). `ConfirmationPolicy` decides whether confirmation can be
+    /// skipped. Confirmations that cannot be skipped (rename, move, and Trash from the tree) always appear regardless
+    /// of the setting and do not show "Don't ask again" (FR-024, FR-079).
     func confirm(
         _ operation: FileOperation,
         includesFolders: Bool = false,
@@ -87,7 +88,7 @@ final class ConfirmationPresenter {
         } else if allowsSuppression {
             return true
         } else {
-            // 常に確認する操作は、シートの親がなくても確認なしでは実行しない
+            // Operations that always confirm are not executed without confirmation even when there is no sheet parent.
             response = alert.runModal()
         }
 

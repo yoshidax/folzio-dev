@@ -2,7 +2,7 @@ import AppKit
 import MediaViewerCore
 import MediaViewerLocalization
 
-/// システムのキーボードナビゲーションの設定にかかわらず Tab で止まる。
+/// Accepts Tab focus regardless of the system Keyboard Navigation setting.
 private final class KeyViewCheckbox: NSButton {
     override var canBecomeKeyView: Bool { true }
 }

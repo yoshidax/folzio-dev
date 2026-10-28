@@ -48,7 +48,7 @@ struct SearchRenameLedgerTests {
 
         #expect(ledger.place(media("/r/a/one.jpg"), fromStream: index)?.url.path == "/r/c/one.jpg")
         #expect(ledger.place(media("/r/z/one.jpg"), fromStream: index)?.url.path == "/r/z/one.jpg")
-        // 列挙の開始前の名前の変更は当てない
+        // Do not apply renames from before the enumeration started.
         #expect(ledger.place(media("/r/q/one.jpg"), fromStream: index)?.url.path == "/r/q/one.jpg")
     }
 
@@ -67,7 +67,7 @@ struct SearchRenameLedgerTests {
         #expect(child?.url.path == "/r/zzz/g.jpg")
         #expect(child?.name == "g.jpg")
 
-        // 祖先だけが変わったフォルダの行の name はそのまま
+        // The name of a folder row whose only ancestor changed stays the same.
         let descendantFolder = ledger.place(folder("/r/F/sub"), fromStream: index)
         #expect(descendantFolder?.url.path == "/r/zzz/sub")
         #expect(descendantFolder?.name == "sub")
@@ -88,7 +88,7 @@ struct SearchRenameLedgerTests {
         #expect(!ledger.hasVisited(url("/r/other")))
         #expect(index == 0)
 
-        // 複数の列挙のどれかに記録があれば true
+        // True when any of multiple enumerations has a record.
         var second = SearchVisitLog()
         second.record("/r/G")
         _ = ledger.addStream(visits: second)
@@ -105,7 +105,7 @@ struct SearchRenameLedgerTests {
         #expect(ledger.place(folder("/r/F"), fromStream: index) == nil)
         #expect(ledger.place(media("/r/F/g.jpg"), fromStream: index)?.url.path == "/r/F2/g.jpg")
 
-        // 照合済みなら行も新しい場所に付け替えて残す
+        // When matched, rebase and keep the row at the new location.
         var visited = SearchRenameLedger()
         let visitedIndex = visited.addStream(visits: SearchVisitLog())
         visited.recordRename(renamed("/r/F", "/r/F2"), visited: true)

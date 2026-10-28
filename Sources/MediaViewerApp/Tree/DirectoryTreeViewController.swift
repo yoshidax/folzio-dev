@@ -32,15 +32,17 @@ final class DirectoryTreeViewController: NSViewController {
         var url: URL { folder.url }
     }
 
-    /// ツリー最上部の「お気に入り」の見出し。ファイルシステム上にない仮想の行（FR-061）
+    /// Favorites heading at the top of the tree. A virtual row that does not exist on the file system
+    /// (FR-061).
     final class FavoritesHeader {}
 
-    /// 見出しの下の各項目。開閉の三角を持たない（FR-063）
+    /// Item below the heading. Has no disclosure triangle (FR-063).
     final class FavoriteEntry {
         let url: URL
-        /// 表示名。変更していなければ `defaultName`（FR-101）
+        /// Display name. Equal to `defaultName` when unchanged (FR-101).
         var name: String
-        /// 登録したフォルダの名前（ルートならボリューム名）。空の名前で確定したときの戻り先（FR-100）
+        /// Name of the registered folder (the volume name for a root). Fallback when an empty name is committed
+        /// (FR-100).
         var defaultName: String
         var kind: FolderNode.Kind
         var availability: FavoriteAvailability = .unknown
@@ -58,7 +60,7 @@ final class DirectoryTreeViewController: NSViewController {
     private let volumes: any VolumeProviding
     private let coordinator: FileOperationCoordinator
     private let watcher: any FileSystemWatching
-    /// 外部の変更で消えた場所を履歴から取り除く（FR-109）
+    /// Removes locations that disappeared due to external changes from history (FR-109).
     weak var historyNavigator: HistoryNavigator?
     private let settings: SettingsStore
     private let confirmation: ConfirmationPresenter
@@ -71,19 +73,20 @@ final class DirectoryTreeViewController: NSViewController {
     private var favoriteEntries: [FavoriteEntry] = []
     private var volumeTask: Task<Void, Never>?
     private var revealTask: Task<Void, Never>?
-    /// クリック（mouseDown）で選択が変わったときの、そのクリックのイベント番号。同じクリックの mouseUp で
-    /// 送られる `action` では、選択の変化で始めた `selectFolder` を重ねて呼ばない
+    /// Event number of the click whose mouseDown changed the selection. For the `action` sent by mouseUp for the
+    /// same click, does not call `selectFolder` again after the selection-change call.
     private var selectionChangeClickNumber: Int?
     private var eventTask: Task<Void, Never>?
     private var favoriteProbeTask: Task<Void, Never>?
     private var activationObserver: NSObjectProtocol?
     private var didReveal = false
     private var isRestoringSelection = false
-    /// 名前を変えたフォルダ（またはその配下）を選択していたとき、親の読み直しで並び位置が変わった後に見える位置まで
-    /// スクロールする（FR-104）
+    /// Whether to scroll a renamed folder (or a descendant) into view after the parent reload changes its position,
+    /// when that folder was selected (FR-104).
     private var needsRevealSelectionAfterRename = false
 
-    /// 行内編集の対象。お気に入りの表示名と、通常のフォルダの名前で編集の仕組みを共有する（R60）
+    /// Target of inline editing. Favorites display names and regular folder names share the editing mechanism
+    /// (R60).
     private enum EditingTarget {
         case favorite(FavoriteEntry)
         case folder(Node)
@@ -103,7 +106,7 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
-    /// 名前の変更中の行。nil 以外の間は「名前の変更中」（FR-102）
+    /// Row being renamed. A non-nil value means renaming is in progress (FR-102).
     private var editingTarget: EditingTarget?
     private var editingOriginalName: String?
     private var isFinishingEdit = false
@@ -175,7 +178,8 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
-    /// 登録順に項目を並べ直す。同じ場所の既存の項目は使い回し、確認済みの availability と選択を保つ
+    /// Rebuilds items in registration order. Reuses existing items for the same location and preserves the checked
+    /// availability and selection.
     private func rebuildFavoriteEntries() {
         let existing = Dictionary(
             favoriteEntries.map { ($0.url.standardizedFileURL.path, $0) },
@@ -205,14 +209,14 @@ final class DirectoryTreeViewController: NSViewController {
         return outlineView.item(atRow: row)
     }
 
-    /// ⌘⌫ の対象。お気に入りの項目を選択中のときだけ返す（FR-064）
+    /// Target of ⌘⌫. Returns an item only when a favorite item is selected (FR-064).
     private var selectedFavoriteEntry: FavoriteEntry? {
         let item = selectedItem
         guard FavoriteCommands.removalTarget(role(for: item)) != nil else { return nil }
         return item as? FavoriteEntry
     }
 
-    /// 右クリックメニューの項目なら右クリックした行を、キー操作なら選択中の行を対象にする
+    /// Returns the right-clicked row for a context menu item, or the selected row for a keyboard command.
     private func targetItem(for sender: Any?) -> Any? {
         if let menuItem = sender as? NSMenuItem, let represented = menuItem.representedObject {
             return represented
@@ -220,14 +224,14 @@ final class DirectoryTreeViewController: NSViewController {
         return selectedItem
     }
 
-    /// ペースト・Finder に表示の対象。見出し・お気に入りの項目では nil
+    /// Target of paste and Reveal in Finder. Nil for the heading and favorite items.
     private func fileTargetNode(for sender: Any?) -> Node? {
         let item = targetItem(for: sender)
         guard let role = role(for: item), FavoriteCommands.acceptsFiles(role) else { return nil }
         return item as? Node
     }
 
-    /// 項目は menuNeedsUpdate で、対象の行の役割に合わせて作り直す
+    /// Items are rebuilt in menuNeedsUpdate according to the target row's role.
     private func makeContextMenu() -> NSMenu {
         let menu = NSMenu(title: "")
         menu.delegate = self
@@ -305,7 +309,7 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
-    /// ⌘⌫。お気に入りの項目ならお気に入りから削除（FR-064）、ルート以外のフォルダならゴミ箱に入れる（FR-079）
+    /// ⌘⌫. Removes a favorite item from Favorites (FR-064), or moves a non-root folder to the Trash (FR-079).
     @objc func moveToTrash(_ sender: Any?) {
         if let entry = selectedFavoriteEntry {
             Task { [weak self] in
@@ -314,13 +318,13 @@ final class DirectoryTreeViewController: NSViewController {
             return
         }
         guard let url = FavoriteCommands.trashTarget(role(for: selectedItem), roots: rootURLs) else { return }
-        // ツリーのゴミ箱は確認の省略設定に関わらず確認する（FR-079、R66）
+        // Trash from the tree always confirms, regardless of the skip setting (FR-079, R66).
         Task { @MainActor [coordinator] in
             await coordinator.trash([url], origin: .tree)
         }
     }
 
-    /// 右クリックメニューの「ゴミ箱に入れる」。右クリックした行を対象にし、キーボードフォーカスは移さない（R33）
+    /// Move to Trash in the context menu. Targets the right-clicked row and does not move keyboard focus (R33).
     @objc private func trashFolderFromMenu(_ sender: Any?) {
         let role = role(for: targetItem(for: sender))
         guard let url = FavoriteCommands.trashTarget(role, roots: rootURLs) else { return }
@@ -344,7 +348,7 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
-    /// ⌃⌘T。どのペインにフォーカスがあっても MainSplitViewController から呼ばれる（FR-062）
+    /// ⌃⌘T. Called from MainSplitViewController regardless of which pane has focus (FR-062).
     func addSelectedFolderToFavorites() {
         addFavorite(for: selectedItem)
     }
@@ -353,7 +357,7 @@ final class DirectoryTreeViewController: NSViewController {
         FavoriteCommands.canAdd(role(for: selectedItem), favorites: favorites)
     }
 
-    /// ⇧⌘F。見出しを選択するだけで、ファイルリスト・プレビューは変えない（FR-065）
+    /// ⇧⌘F. Only selects the heading; does not change the file list or preview (FR-065).
     func focusFavoritesHeader() {
         let row = outlineView.row(forItem: favoritesHeader)
         guard row >= 0 else { return }
@@ -365,29 +369,29 @@ final class DirectoryTreeViewController: NSViewController {
         view.window?.makeFirstResponder(outlineView)
     }
 
-    /// ツリーにフォーカスがあるときの Return・「編集 > 名前を変更」。お気に入りの項目は表示名の編集（FR-099）、
-    /// ルート以外の通常のフォルダは実際のフォルダの名前の編集（FR-103）を始める。
-    /// zip の中・検索結果の表示中も `BrowserModel` の状態は見ない（EC-46）
+    /// Return and Edit > Rename when the tree has focus. Starts editing the display name for a favorite item
+    /// (FR-099), or the actual folder name for a non-root regular folder (FR-103).
+    /// Does not inspect `BrowserModel` state while inside a zip or showing search results (EC-46).
     @objc func rename(_ sender: Any?) {
         guard let target = editingTarget(for: selectedItem) else { return }
         beginEditing(target)
     }
 
-    /// 右クリックした行の「名前を変更」（お気に入りの項目）。ツリーの選択は変えない（A-21、FR-099）
+    /// Rename in the context menu for a favorite item. Does not change the tree selection (A-21, FR-099).
     @objc private func renameFavoriteFromMenu(_ sender: Any?) {
         let item = (sender as? NSMenuItem)?.representedObject
         guard let target = editingTarget(for: item), case .favorite = target else { return }
         beginEditingFromMenu(target)
     }
 
-    /// 右クリックした行の「名前を変更」（通常のフォルダ）。ツリーの選択は変えない（A-21・A-36、FR-103）
+    /// Rename in the context menu for a regular folder. Does not change the tree selection (A-21, A-36; FR-103).
     @objc private func renameFolderFromMenu(_ sender: Any?) {
         let item = (sender as? NSMenuItem)?.representedObject
         guard let target = editingTarget(for: item), case .folder = target else { return }
         beginEditingFromMenu(target)
     }
 
-    /// 行の名前を変更できるなら、その編集の対象（R59）
+    /// Editing target for the row when its name can be changed (R59).
     private func editingTarget(for item: Any?) -> EditingTarget? {
         switch FavoriteCommands.renameTarget(role(for: item), roots: rootURLs) {
         case .favorite:
@@ -401,7 +405,7 @@ final class DirectoryTreeViewController: NSViewController {
 
     private func beginEditingFromMenu(_ target: EditingTarget) {
         if !beginEditing(target) {
-            // メニューの追跡中は makeFirstResponder に失敗することがあるため、次のターンに回す（R52）
+            // makeFirstResponder can fail during menu tracking, so defer to the next turn (R52).
             Task { @MainActor [weak self] in
                 self?.beginEditing(target)
             }
@@ -441,7 +445,8 @@ final class DirectoryTreeViewController: NSViewController {
             return false
         }
         if let editor = field.currentEditor() as? NSTextView {
-            // お気に入りは全選択（FR-099）、フォルダはファイルリストと同じく最後の「.」より前（FR-103）
+            // Select all for Favorites (FR-099); for folders, select before the last "." as in the file list
+            // (FR-103).
             let selected: String
             switch target {
             case .favorite:
@@ -454,7 +459,7 @@ final class DirectoryTreeViewController: NSViewController {
         return true
     }
 
-    /// 行内編集を終える。`restoresFocus` のときはキーボードフォーカスをツリーに戻す（R51）
+    /// Finishes inline editing. Returns keyboard focus to the tree when `restoresFocus` is true (R51).
     private func finishEditing(commit: Bool, restoresFocus: Bool) {
         guard !isFinishingEdit, let target = editingTarget else { return }
         isFinishingEdit = true
@@ -484,7 +489,7 @@ final class DirectoryTreeViewController: NSViewController {
             if restoresFocus {
                 window.makeFirstResponder(outlineView)
             } else if let field, field.currentEditor() != nil {
-                // クリック先のフォーカスは変えない（A-31）
+                // Do not change focus at the click target (A-31).
                 window.endEditing(for: field)
             }
         }
@@ -497,7 +502,8 @@ final class DirectoryTreeViewController: NSViewController {
                     rebuildFavoriteEntries()
                 }
             case .folder(let node):
-                // 空・編集前と同じ名前は何もしない（EC-48）。検証・確認・失敗の表示はファイルリストと同じくコーディネータが行う（R60）
+                // Do nothing for an empty name or the same name as before editing (EC-48). The coordinator handles
+                // validation, confirmation, and failure display as in the file list (R60).
                 let name = input.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !name.isEmpty, name != originalName {
                     let url = node.url
@@ -514,7 +520,7 @@ final class DirectoryTreeViewController: NSViewController {
         needsReloadAfterEdit = false
     }
 
-    /// ツリーの側から編集を確定するとき、編集欄にフォーカスがあったかを確かめる（R51）
+    /// Checks whether the edit field had focus when the tree commits editing (R51).
     private var editingFieldHasFocus: Bool {
         guard let target = editingTarget else { return false }
         let row = outlineView.row(forItem: target.item)
@@ -530,7 +536,8 @@ final class DirectoryTreeViewController: NSViewController {
         return field.currentEditor() != nil
     }
 
-    /// お気に入りは改行と長さを制限する Formatter を付ける。フォルダはファイルリストの編集欄と同じく付けない（R60）
+    /// Adds a Formatter to limit newlines and length for Favorites. Does not add one for folders, matching the
+    /// file list edit field (R60).
     private func configureEditingField(_ field: NSTextField, for target: EditingTarget) {
         switch target {
         case .favorite:
@@ -562,8 +569,8 @@ final class DirectoryTreeViewController: NSViewController {
         field.setAccessibilityLabel(nil)
     }
 
-    /// セルは行の間で共有されるため、表示のたびに編集の状態を戻す（R51・R54）。
-    /// 編集中の行だけは入力中の値を保つ
+    /// Cells are shared between rows, so reset the editing state on every display (R51, R54).
+    /// Only the row being edited keeps its in-progress value.
     private func prepareCell(_ cell: NSTableCellView, for item: Any) {
         guard let field = cell.textField else { return }
         if let target = editingTarget,
@@ -581,7 +588,7 @@ final class DirectoryTreeViewController: NSViewController {
               case .folder(let url) = role else {
             return
         }
-        // 見出しの開閉状態は変えない
+        // Do not change the heading's expansion state.
         favorites.add(url)
         settings.favorites = favorites
         rebuildFavoriteEntries()
@@ -590,12 +597,13 @@ final class DirectoryTreeViewController: NSViewController {
         refreshFavoriteAvailability()
     }
 
-    /// 登録だけを取り除き、実際のフォルダには触れない（FR-064）
+    /// Removes only the registration and does not touch the actual folder (FR-064).
     private func removeFavorite(_ entry: FavoriteEntry) async {
         guard await confirmation.confirmRemovingFavorite(named: entry.name, path: entry.url.path) else { return }
         guard favorites.contains(entry.url) else { return }
 
-        // 消えた行の位置で別の項目が選ばれて一覧が切り替わらないよう、先に見出しを選ぶ
+        // Select the heading first so another item is not selected at the removed row's position and switches the
+        // list.
         if selectedItem as? FavoriteEntry === entry {
             let headerRow = outlineView.row(forItem: favoritesHeader)
             if headerRow >= 0 {
@@ -610,7 +618,7 @@ final class DirectoryTreeViewController: NSViewController {
         updateWatchSet()
     }
 
-    /// 見出しの子を読み直し、行の増減でずれた選択を同じ item に戻す
+    /// Reloads the heading's children and restores the selection to the same item when rows are added or removed.
     private func reloadFavorites() {
         let previous = selectedItem
         isRestoringSelection = true
@@ -625,8 +633,9 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
-    /// 検索結果の表示中に、選択中のフォルダの行をクリックしたら、そのフォルダの一覧に戻す（FR-086）。
-    /// 開閉の三角と「お気に入り」の見出しでは何もしない。選択が変わるクリックは outlineViewSelectionDidChange に任せる
+    /// Returns to the folder listing when the selected folder row is clicked while showing search results (FR-086).
+    /// Does nothing for the disclosure triangle or the Favorites heading. Clicks that change the selection are left
+    /// to outlineViewSelectionDidChange.
     @objc private func clickedRow(_ sender: Any?) {
         guard !outlineView.isTrackingMouse else { return }
         let event = NSApp.currentEvent
@@ -653,7 +662,7 @@ final class DirectoryTreeViewController: NSViewController {
         guard row >= 0 else { return }
         let item = outlineView.item(atRow: row)
 
-        // 選択は1回目のクリックで outlineViewSelectionDidChange が行う。お気に入りの項目は開閉しない
+        // The first click changes the selection in outlineViewSelectionDidChange. Favorite items do not expand.
         let isExpandable: Bool
         switch item {
         case is FavoritesHeader:
@@ -719,7 +728,8 @@ final class DirectoryTreeViewController: NSViewController {
         outlineView.menu = makeContextMenu()
         outlineView.target = self
         outlineView.doubleAction = #selector(toggleClickedFolder(_:))
-        // 選択中の行のクリックは選択の変化を通知しないため、検索結果の表示を終えるのに action を使う（FR-086、R37）
+        // Clicking the selected row does not report a selection change, so use action to end search results
+        // (FR-086, R37).
         outlineView.action = #selector(clickedRow(_:))
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("folder"))
@@ -759,7 +769,8 @@ final class DirectoryTreeViewController: NSViewController {
             for await newRoots in self.volumes.changes {
                 self.applyRoots(newRoots)
                 await self.historyNavigator?.revalidateAll()
-                // 起点を含むボリュームが外されたとき、存在しなくなった検索結果を外す（Edge Cases、R38）
+                // Remove search results that no longer exist when a volume containing the root is removed
+                // (Edge Cases, R38).
                 if self.model.isShowingSearchResults {
                     await self.model.reloadCurrentFolder()
                 }
@@ -775,7 +786,7 @@ final class DirectoryTreeViewController: NSViewController {
             }
         }
 
-        // ツリーはアプリの終了まで生きるため、volumeTask・eventTask と同じく解除しない
+        // The tree lives until the app quits, so do not unregister this observer, as with volumeTask and eventTask.
         activationObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification,
             object: nil,
@@ -837,7 +848,7 @@ final class DirectoryTreeViewController: NSViewController {
     }
 
     private func applyRoots(_ newRoots: [FolderNode]) {
-        // reloadData で全行のセルを作り直すため、その前に編集中の名前を確定する（R51、EC-43・quickstart 24）
+        // reloadData recreates all row cells, so commit the name being edited first (R51, EC-43, quickstart 24).
         if editingTarget != nil {
             finishEditing(commit: true, restoresFocus: editingFieldHasFocus)
         }
@@ -856,7 +867,7 @@ final class DirectoryTreeViewController: NSViewController {
         }
         rebuildFavoriteEntries()
 
-        // ボリュームの増減でも見出しの展開状態と、お気に入りの行の選択を保つ（FR-061）
+        // Preserve the heading expansion state and the selected favorite row across volume changes (FR-061).
         let headerWasExpanded = outlineView.isItemExpanded(favoritesHeader)
         let selected = selectedItem
         let keepsFavoriteSelection = selected is FavoritesHeader || selected is FavoriteEntry
@@ -879,7 +890,8 @@ final class DirectoryTreeViewController: NSViewController {
         model.setNavigationRoots(roots.map(\.url))
     }
 
-    /// 登録した場所にフォルダがあるかを確かめ、変わった行だけ描き直す（FR-067）。stat は FavoriteProbe のタスク内で行う
+    /// Checks whether each registered location still has a folder and redraws only changed rows (FR-067).
+    /// Performs stat inside the FavoriteProbe task.
     private func refreshFavoriteAvailability() {
         favoriteProbeTask?.cancel()
         favoriteProbeTask = nil
@@ -901,7 +913,7 @@ final class DirectoryTreeViewController: NSViewController {
         where entry.url.standardizedFileURL.path == key && entry.availability != availability {
             entry.availability = availability
             if entry === editingTarget?.item {
-                // 編集中の行は描き直さず、終了時の reloadItem で淡色を反映する（R51、EC-43）
+                // Do not redraw the row being edited; reflect dimming in reloadItem when editing ends (R51, EC-43).
                 needsReloadAfterEdit = true
             } else if outlineView.row(forItem: entry) >= 0 {
                 outlineView.reloadItem(entry)
@@ -909,8 +921,8 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
-    /// 変更のあったフォルダに、登録したフォルダの親か祖先が含まれるときだけ確かめ直す。祖先の名前の変更・戻しでも
-    /// 見つからない表示が変わるため（FR-106、R65）
+    /// Rechecks only when the changed folders include a parent or ancestor of a registered folder. Renaming or
+    /// restoring an ancestor also changes the not-found display (FR-106, R65).
     private func refreshFavoriteAvailabilityIfNeeded(in changed: Set<URL>) {
         let changedComponents = changed.map(\.standardizedFileURL.pathComponents)
         let affected = favorites.urls.contains { url in
@@ -922,8 +934,9 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
-    /// フォルダの名前の変更に成功したときに、読み込み済みのノードの場所を付け替える。ノードのオブジェクトは作り直さず、
-    /// 展開状態・選択・サブフォルダの有無の確認結果を保つ。続く親の読み直しで並び順の位置へ移る（FR-104・106、R64・R65）
+    /// Rebases loaded node locations after a successful folder rename. Does not recreate node objects and preserves
+    /// expansion state, selection, and subfolder check results. The following parent reload moves the node to its
+    /// sorted position (FR-104, 106; R64, R65).
     func didRenameFolder(from oldURL: URL, to newURL: URL) {
         let renamed = RenamedFolder(from: oldURL, to: newURL)
         let oldPath = oldURL.standardizedFileURL.path
@@ -951,7 +964,7 @@ final class DirectoryTreeViewController: NSViewController {
         refreshFavoriteAvailability()
     }
 
-    /// 登録した各フォルダの親。`/` の登録は親がないため除く
+    /// Parent of each registered folder. Excludes `/` because it has no parent.
     private func favoriteParentFolders() -> [URL] {
         favorites.urls.compactMap { url in
             let standardized = url.standardizedFileURL
@@ -960,8 +973,8 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
-    /// 変更のあったフォルダの子・サブフォルダの有無・お気に入りの存在を読み直す。FSEvents のバッチと、
-    /// ファイル操作の完了（FSEvents を待たずに反映する。FR-027、R32）の両方から呼ぶ
+    /// Reloads children, subfolder presence, and favorite existence for changed folders. Called from both FSEvents
+    /// batches and file operation completion (applied without waiting for FSEvents; FR-027, R32).
     func refreshFolders(_ changed: Set<URL>) async {
         await reloadExpandedNodes(in: changed)
         recheckCollapsedNodes(in: changed)
@@ -978,11 +991,12 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
-    /// ルートから対象のフォルダまで、各段の子を読み込んで展開する。辿れた最も深いノードを返す（取り消されたら nil）
+    /// Loads and expands each level's children from a root to the target folder. Returns the deepest node reached
+    /// (nil when cancelled).
     private func expandAncestors(of target: URL) async -> Node? {
         let targetComponents = target.standardizedFileURL.pathComponents
 
-        // 対象を含むルートのうち最も深いものから辿る（ホームの配下を起動ボリューム側から辿らない。R30）
+        // Start from the deepest root containing the target (do not traverse home from the boot volume; R30).
         var root = roots
             .filter { targetComponents.starts(with: $0.url.standardizedFileURL.pathComponents) }
             .max { $0.url.standardizedFileURL.pathComponents.count < $1.url.standardizedFileURL.pathComponents.count }
@@ -1010,7 +1024,7 @@ final class DirectoryTreeViewController: NSViewController {
         return current
     }
 
-    /// ファイルリストの中での移動（フォルダを開く・戻る）をツリーの選択に反映する（FR-078、R31）
+    /// Reflects file list navigation (opening a folder or going back) in the tree selection (FR-078, R31).
     private func observeTreeSyncRequest() {
         withObservationTracking {
             _ = model.treeSyncRequest
@@ -1025,14 +1039,15 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
-    /// 実際の階層で依頼のフォルダまで展開し、その行を選択して必要最小限スクロールする。
-    /// 選択の変更から selectFolder を呼び返さず、キーボードフォーカスも移さない
+    /// Expands to the request's folder in the actual hierarchy, selects its row, and scrolls minimally.
+    /// Does not call selectFolder back from the selection change or move keyboard focus.
     private func syncSelection(to request: TreeSyncRequest) {
         revealTask?.cancel()
         revealTask = Task { [weak self] in
             guard let self else { return }
             let node = await self.expandAncestors(of: request.folder)
-            // 後の依頼・ツリーでの選択・一覧の別の移動があれば、古い同期で選択を上書きしない
+            // Do not let an older synchronization overwrite the selection when a newer request, tree selection, or
+            // other file list navigation exists.
             guard !Task.isCancelled,
                   let node,
                   self.model.treeSyncRequest?.id == request.id,
@@ -1046,12 +1061,13 @@ final class DirectoryTreeViewController: NSViewController {
             self.isRestoringSelection = false
             self.outlineView.scrollRowToVisible(row)
             self.updateWatchSet()
-            // 検索結果から開いたフォルダがツリーに出ない場合は、選択できた最も近い祖先を Core が保存する（EC-102）
+            // When a folder opened from search results is not in the tree, Core saves the nearest ancestor that could
+            // be selected (EC-102).
             self.model.completeSearchResultTreeSync(request, selectedFolder: node.url)
         }
     }
 
-    /// 確認前のノードへの expandItem は isItemExpandable が false のため無視されるので、先に子を読み込む
+    /// expandItem on an unloaded node is ignored because isItemExpandable is false, so load children first.
     private func loadAndExpand(_ node: Node) async {
         await loadChildrenIfNeeded(node)
         if node.folder.isExpandable, !outlineView.isItemExpanded(node) {
@@ -1071,7 +1087,8 @@ final class DirectoryTreeViewController: NSViewController {
         } catch {
             result = .failure(error)
         }
-        // 読み込み中に名前が変わったノードには古い場所の結果を当てない。次の展開で新しい場所を読む（R64）
+        // Do not apply results from the old location to a node renamed during loading. Read the new location on the
+        // next expansion (R64).
         guard node.url == requested else { return }
         applyListing(result, to: node)
         updateWatchSet()
@@ -1080,7 +1097,7 @@ final class DirectoryTreeViewController: NSViewController {
     private func applyListing(_ result: Result<[URL], ListingError>, to node: Node) {
         switch result {
         case .success(let urls):
-            // 行を作り直すと編集欄が消えるため、編集中の子があれば先に確定する（R51）
+            // Recreating rows removes the edit field, so commit any child being edited first (R51).
             if case .folder(let editing) = editingTarget, node.children?.contains(where: { $0 === editing }) == true {
                 finishEditing(commit: true, restoresFocus: editingFieldHasFocus)
             }
@@ -1088,7 +1105,8 @@ final class DirectoryTreeViewController: NSViewController {
                 (node.children ?? []).map { ($0.url.standardizedFileURL, $0) },
                 uniquingKeysWith: { first, _ in first }
             )
-            // 同じ場所のノードは使い回し、展開状態と読み込み済みの子を保つ（名前を変えたノードも付け替え済み。R64）
+            // Reuse nodes for the same location and preserve expansion state and loaded children (renamed nodes are
+            // already rebased; R64).
             let children = urls.map { url -> Node in
                 if let old = previous[url.standardizedFileURL] {
                     old.folder.url = url
@@ -1114,7 +1132,7 @@ final class DirectoryTreeViewController: NSViewController {
             startProbes(for: children, key: .children(ObjectIdentifier(node)))
         case .failure(let error):
             node.folder.applySubfolderListing(.failure(error))
-            // 権限なしは空のまま確定し、それ以外は次の展開で読み直す
+            // For access denied, settle on empty; otherwise reload on the next expansion.
             node.children = node.folder.accessState == .denied ? [] : nil
             outlineView.reloadItem(node, reloadChildren: true)
             outlineView.collapseItem(node)
@@ -1157,7 +1175,7 @@ final class DirectoryTreeViewController: NSViewController {
     private func observeDisplayedFolder() {
         withObservationTracking {
             _ = model.listing.folder
-            // 検索の開始・解除で、起点以下の監視（subtrees）を差し替える
+            // Replace the subtree watch below the search root when a search starts or ends.
             _ = model.listing.search?.root
         } onChange: { [weak self] in
             Task { @MainActor in
@@ -1172,13 +1190,15 @@ final class DirectoryTreeViewController: NSViewController {
         for node in flattenedNodes(from: roots) where outlineView.isItemExpanded(node) {
             folders.insert(node.url.standardizedFileURL)
         }
-        // 折りたたまれた表示中のフォルダも監視し、サブフォルダの増減で三角の有無を更新する
+        // Also watch collapsed visible folders to update the disclosure triangle when subfolders are added or
+        // removed.
         for node in displayedNodes() {
             folders.insert(node.url.standardizedFileURL)
         }
-        // お気に入りのフォルダの移動・削除を親フォルダの変更として受け取る（FR-067）
+        // Receive moves and deletions of favorite folders as changes to their parent folders (FR-067).
         folders.formUnion(favoriteParentFolders())
-        // 検索結果の表示中は、起点以下のすべての階層の変更を受け取り、消えた結果を外す（FR-087、R38）
+        // While showing search results, receive changes at every level below the root and remove results that
+        // disappear (FR-087, R38).
         watcher.watch(folders, subtrees: model.listing.search.map { [$0.root.standardizedFileURL] } ?? [])
     }
 
@@ -1203,7 +1223,7 @@ final class DirectoryTreeViewController: NSViewController {
         }
         for node in targets {
             if node.children != nil {
-                // 折りたたみ中の変更を次の展開で反映するため、読み込み済みの子を捨てる
+                // Discard loaded children so changes while collapsed are reflected on the next expansion.
                 node.children = nil
                 node.folder.children = nil
                 outlineView.reloadItem(node, reloadChildren: true)
@@ -1235,13 +1255,14 @@ final class DirectoryTreeViewController: NSViewController {
         guard node.url == requested else { return }
         let selectedURL = selectedNode?.url
 
-        // 選択中の行が読み直しで消えても selectFolder が呼ばれないよう、反映と選び直しは isRestoringSelection の間に行う（R33）
+        // Apply changes and reselect while isRestoringSelection is true so selectFolder is not called when the
+        // selected row disappears during a reload (R33).
         isRestoringSelection = true
         defer { isRestoringSelection = false }
         applyListing(result, to: node)
 
         guard let selectedURL else { return }
-        // 選択中の行がなければ、残っている最も近い祖先の行を選ぶ
+        // When there is no selected row, select the nearest remaining ancestor.
         var candidate: URL? = selectedURL
         while let url = candidate {
             if let row = rowForURL(url) {
@@ -1288,7 +1309,7 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
         case is FavoritesHeader:
             return favoriteEntries.count
         case nil:
-            // トップレベルは [見出し] + roots
+            // The top level is [heading] + roots.
             return roots.count + 1
         default:
             return 0
@@ -1306,7 +1327,7 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
     }
 
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
-        // 見出しは登録が0件でも開閉できる。お気に入りの項目は三角を持たない
+        // The heading can expand even with no registrations. Favorite items have no triangle.
         if item is FavoritesHeader { return true }
         guard let node = item as? Node else { return false }
         return node.folder.isExpandable
@@ -1340,14 +1361,14 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
             if !operation.isEmpty { outlineView.setDropItem(item, dropChildIndex: NSOutlineViewDropOnItemIndex) }
             return operation
         }
-        // 外部ドラッグの既存動作
+        // Existing behavior for external drags.
         guard let role = role(for: item), FavoriteCommands.acceptsFiles(role) else { return [] }
         guard let node = item as? Node,
               node.folder.accessState != .denied,
               let urls = fileURLs(from: info.draggingPasteboard) else {
             return []
         }
-        // フォルダを自分自身やその配下へはドロップできない（spec Edge Cases、R32）
+        // A folder cannot be dropped onto itself or a descendant (spec Edge Cases, R32).
         let destination = node.url.standardizedFileURL.pathComponents
         if urls.contains(where: { destination.starts(with: $0.standardizedFileURL.pathComponents) }) {
             return []
@@ -1531,9 +1552,11 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
         if case .favorite = role {
             refreshFavoriteAvailability()
         }
-        // 見出しでは一覧を切り替えない（FR-065）。お気に入りの項目でも実際の階層は動かさない（FR-063）
+        // Do not switch the list for the heading (FR-065). Do not navigate the actual hierarchy for favorite items
+        // (FR-063).
         guard let url = FavoriteCommands.folderToShow(for: role) else { return }
-        // ツリーからの選択は treeSyncRequest を変えないため、進行中の同期がユーザーの選択を上書きしないよう取り消す（R31）
+        // Selection from the tree does not change treeSyncRequest, so cancel an in-progress synchronization so it
+        // does not overwrite the user's selection (R31).
         revealTask?.cancel()
         revealTask = nil
         Task { [weak self] in
@@ -1546,7 +1569,8 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
     }
 
     func outlineViewItemWillCollapse(_ notification: Notification) {
-        // 開閉ボタンのクリックでは first responder が変わらないことがある。行が消える前に確定する（R51）
+        // Clicking the disclosure button sometimes does not change the first responder. Commit before the row
+        // disappears (R51).
         guard let target = editingTarget,
               let collapsing = notification.userInfo?["NSObject"] as AnyObject? else {
             return
@@ -1578,7 +1602,7 @@ extension DirectoryTreeViewController: NSTextFieldDelegate {
             return true
         }
         if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
-            // Esc は編集前の表示名に戻す（US1-AS32）
+            // Esc restores the display name from before editing (US1-AS32).
             finishEditing(commit: false, restoresFocus: true)
             return true
         }
@@ -1586,7 +1610,7 @@ extension DirectoryTreeViewController: NSTextFieldDelegate {
     }
 
     func controlTextDidEndEditing(_ obj: Notification) {
-        // ほかの場所のクリックなどで確定する。クリック先のフォーカスは変えない（A-31）
+        // Commit on a click elsewhere. Do not change focus at the click target (A-31).
         guard editingTarget != nil, !isFinishingEdit else { return }
         finishEditing(commit: true, restoresFocus: false)
     }
@@ -1594,8 +1618,8 @@ extension DirectoryTreeViewController: NSTextFieldDelegate {
 
 extension DirectoryTreeViewController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        // Return と ⌘⌫ はメニューのキー等価がフィールドエディタより先に処理される。無効にしないと編集中の Return が
-        // 確定にならず、⌘⌫ でお気に入りが削除される（R53、FR-102）
+        // Menu key equivalents process Return and ⌘⌫ before the field editor. Unless disabled, Return would not
+        // commit while editing and ⌘⌫ would remove the favorite (R53, FR-102).
         if editingTarget != nil {
             switch menuItem.action {
             case #selector(rename(_:)),
@@ -1616,7 +1640,8 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
 
         switch menuItem.action {
         case #selector(rename(_:)):
-            // お気に入りの項目とルート以外のフォルダだけ。見出し・ルート・未選択では無効（US1-AS35・45、FR-099・FR-103）
+            // Only favorite items and non-root folders. Disabled for the heading, roots, and no selection
+            // (US1-AS35, US1-AS45; FR-099, FR-103).
             return editingTarget(for: selectedItem) != nil
         case #selector(renameFavoriteFromMenu(_:)):
             if case .favorite = editingTarget(for: menuItem.representedObject) { return true }
@@ -1630,7 +1655,8 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
         case #selector(revealInFinder(_:)):
             return fileTargetNode(for: menuItem) != nil
         case #selector(moveToTrash(_:)):
-            // ⌘⌫ はお気に入りの項目なら「お気に入りから削除」（FR-064）、ルート以外のフォルダなら「ゴミ箱に入れる」（FR-079）
+            // For a favorite item, ⌘⌫ is Remove from Favorites (FR-064); for a non-root folder, it is Move to Trash
+            // (FR-079).
             if selectedFavoriteEntry != nil {
                 menuItem.title = l10n.text(.menuFileRemoveFromFavorites)
                 return true
@@ -1650,9 +1676,10 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
 }
 
 extension DirectoryTreeViewController: NSMenuDelegate {
-    /// 右クリックした行の役割で項目を作り直す。キーボードで開いたときなどは選択中の行を使う
+    /// Rebuilds items based on the right-clicked row's role. Uses the selected row when opened from the keyboard.
     func menuNeedsUpdate(_ menu: NSMenu) {
-        // メニューを開く前に編集中の名前を確定する。右クリック先はツリーなのでフォーカスを戻す（R51）
+        // Commit the name being edited before opening the menu. Restore focus because the right-click target is the
+        // tree (R51).
         if editingTarget != nil {
             finishEditing(commit: true, restoresFocus: editingFieldHasFocus)
         }
@@ -1663,7 +1690,7 @@ extension DirectoryTreeViewController: NSMenuDelegate {
               let role = role(for: item) else {
             return
         }
-        // 見出しは項目なし（メニューを出さない）
+        // No items for the heading (do not show a menu).
         for kind in FavoriteCommands.contextMenu(for: role, roots: rootURLs) {
             menu.addItem(makeContextMenuItem(kind, representing: item))
         }

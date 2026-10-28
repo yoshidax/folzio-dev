@@ -35,7 +35,7 @@ struct FileNameSearcherTests {
         return batches
     }
 
-    /// 起点からの相対パス（NFC にそろえる）。結果の URL が起点と同じ形で始まることも確かめる
+    /// Relative paths from the root (normalized to NFC). Also verifies that result URLs start with the root form.
     private func relativePaths(_ files: [MediaFile], root: URL) -> Set<String> {
         Set(files.map { file in
             #expect(file.url.path.hasPrefix(root.path + "/"), "起点と違う形の URL: \(file.url.path)")
@@ -43,7 +43,7 @@ struct FileNameSearcherTests {
         })
     }
 
-    // MARK: - フォルダの照合（US15）
+    // MARK: - Folder Matching (US15)
 
     private struct FolderSearchEnv {
         let base: URL
@@ -84,7 +84,7 @@ struct FileNameSearcherTests {
             "locked_kyoto/secret_kyoto.jpg",
             "west/kyoto_day1",
         ])
-        // 隠しフォルダ・パッケージ・フォルダへのリンク・zip ファイル・起点そのもの・一致しない中のファイル
+        // Hidden folders, packages, links to folders, zip files, the root itself, and non-matching files inside.
         for excluded in [
             ".kyoto", "Kyoto.app", "kyoto_link", "kyoto.zip",
             "2024_Kyoto/IMG_0001.jpg", "kyoto/IMG_0002.jpg", ".",
@@ -112,8 +112,8 @@ struct FileNameSearcherTests {
         let env = try makeFolderSearchEnv()
         defer { env.cleanup() }
 
-        // 名前全体との一致（ワイルドカードあり）。大文字小文字は区別しないため `locked_kyoto` も一致し、
-        // 途中に一致する `2024_Kyoto_old` は一致しない（US15-AS2）
+        // Whole-name match with a wildcard. Case-insensitive, so `locked_kyoto` matches, while `2024_Kyoto_old`,
+        // which matches only in the middle, does not (US15-AS2).
         let kyoto2024 = try await collect(in: env.root, "*_Kyoto").flatMap { $0 }
         #expect(relativePaths(kyoto2024, root: env.root) == ["2024_Kyoto", "locked_kyoto"])
         #expect(!relativePaths(kyoto2024, root: env.root).contains("2024_Kyoto_old"))
@@ -161,7 +161,7 @@ struct FileNameSearcherTests {
         #expect(row.name == listed.name)
         #expect(row.typeDescription == listed.typeDescription)
         #expect(row.fileSize == listed.fileSize)
-        // 結果の URL は起点の形（/var/... の起点なら /var/...）で、起点以下を指す
+        // Result URLs use the root form (/var/... for a /var/... root) and point at or below the root.
         #expect(row.url.path.hasPrefix(env.root.path + "/"))
     }
 
@@ -229,7 +229,7 @@ struct FileNameSearcherTests {
         ) {
             found.append(batch)
         }
-        // 記録したパスを使うため、結果を集め終えてから確かめる
+        // Verify after collecting results because the recorded path is used.
         #expect(!found.isEmpty)
 
         func path(_ relative: String) -> String {
@@ -244,7 +244,7 @@ struct FileNameSearcherTests {
         }
         #expect(!visits.contains(env.root.standardizedFileURL.path), "起点を記録している")
 
-        // プロトコル拡張の search(in:matching:) は search(_:) と同じ結果を返す
+        // The protocol extension search(in:matching:) returns the same results as search(_:).
         let shortcut = try await collect(in: env.root, "cat").flatMap { $0 }
         #expect(relativePaths(shortcut, root: env.root) == relativePaths(found.flatMap { $0 }, root: env.root))
     }
@@ -258,7 +258,8 @@ struct FileNameSearcherTests {
             "Cat01.jpg", "a/my_cat.mov", "a/b/deep/cat-deep.png", "b/Cat01.jpg", "cat-folder",
         ])
         #expect(files.count == 5)
-        // 名前が一致したフォルダの中も辿るが、親が一致したことを理由に中の項目を一致とはしない（EC-92）
+        // Descends into folders whose names match, but does not treat their contents as matches merely because the
+        // parent matched (EC-92).
         #expect(!files.contains { $0.url.path.hasSuffix("cat-folder/x.jpg") })
         #expect(files.first { $0.name == "cat-folder" }?.kind == .folder)
     }
@@ -325,7 +326,8 @@ struct FileNameSearcherTests {
         defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: denied.path) }
 
         let files = try await collect(in: env.root, "cat").flatMap { $0 }
-        // `denied` は cat に一致しないため行にならず、中の cat-denied.jpg も出ない。`cat-folder` は行になる
+        // `denied` does not match cat, so it is not a row and cat-denied.jpg inside is not emitted. `cat-folder`
+        // becomes a row.
         #expect(relativePaths(files, root: env.root) == [
             "Cat01.jpg", "a/my_cat.mov", "a/b/deep/cat-deep.png", "b/Cat01.jpg", "cat-folder",
         ])
@@ -350,7 +352,8 @@ struct FileNameSearcherTests {
         #expect(batches.map(\.count).reduce(0, +) == 5)
     }
 
-    /// 受け取る側は BrowserModel と同じくメインアクターで動かす（協調スレッドが塞がっていても止まらない）
+    /// Runs the receiver on the main actor as BrowserModel does (does not hang even when the cooperative thread pool
+    /// is blocked).
     @Test("ストリームを集める Task を取り消すと、列挙が止まる")
     @MainActor
     func cancellationStopsEnumeration() async throws {
@@ -363,7 +366,7 @@ struct FileNameSearcherTests {
         let counter = BatchCounter()
         let pattern = try #require(SearchPattern(keyword: "*"))
         let stream = FileNameSearcher(kindNames: FixtureKit.kindNames).search(in: base.appendingPathComponent("huge", isDirectory: true), matching: pattern)
-        // 最初のバッチを受け取った時点で、集めている Task 自身を取り消す
+        // Cancel the collecting task itself when the first batch arrives.
         let collector = Task { @MainActor in
             for await batch in stream {
                 counter.add(batch.count)

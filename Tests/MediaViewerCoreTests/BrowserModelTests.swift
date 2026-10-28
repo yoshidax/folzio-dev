@@ -160,7 +160,7 @@ struct BrowserModelTests {
         #expect(isUnavailable)
     }
 
-    // MARK: - 種類フィルタ
+    // MARK: - Media Type Filter
 
     @MainActor
     private func filterFolder() -> (URL, [MediaFile]) {
@@ -219,7 +219,7 @@ struct BrowserModelTests {
         model.setMediaTypeFilter(MediaTypeFilter(imagesOnly: true, videosOnly: true))
         #expect(model.listing.files.map(\.name) == ["a.jpg", "b.mov", "c.png", "d.mp4"])
 
-        // US3-13: 両方オンから「画像のみ表示」だけをオフにする
+        // US3-13: Turn off only "Images only" from both on.
         model.setMediaTypeFilter(MediaTypeFilter(videosOnly: true))
         #expect(model.listing.files.map(\.name) == ["b.mov", "d.mp4"])
     }
@@ -423,9 +423,9 @@ struct BrowserModelTests {
         #expect(keysBefore == keysAfter)
     }
 
-    // MARK: - zip ファイルの表示
+    // MARK: - Zip File Visibility
 
-    /// `a.jpg`・`b.zip`・`c.png`・サブフォルダ `sub` を持つフォルダ
+    /// Folder containing `a.jpg`, `b.zip`, `c.png`, and subfolder `sub`.
     @MainActor
     private func zipFolder() -> (URL, [MediaFile]) {
         let folder = URL(fileURLWithPath: "/tmp/zipvis-\(UUID().uuidString)", isDirectory: true)
@@ -603,7 +603,7 @@ struct BrowserModelTests {
         #expect(model.listing.state == .empty)
         #expect(model.listing.files.map(\.name) == [".."])
 
-        // ツリーのルートでは .. もなく空になる
+        // At a tree root, the listing is empty with no `..`.
         model.setNavigationRoots([folder])
         #expect(model.listing.state == .empty)
         #expect(model.listing.files.isEmpty)
@@ -728,7 +728,7 @@ private actor FakeLister: DirectoryListing {
     }
 
     private var responses: [URL: Response]
-    /// `mediaFiles(in:)` の呼び出し回数（列挙し直していないことの確認に使う）
+    /// Number of `mediaFiles(in:)` calls (used to verify the directory is not re-enumerated).
     private(set) var callCount = 0
 
     init(responses: [URL: Response]) {

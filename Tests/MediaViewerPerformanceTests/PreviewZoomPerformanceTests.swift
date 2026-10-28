@@ -3,8 +3,9 @@ import Foundation
 import Testing
 @testable import MediaViewerCore
 
-// 既存の PerformanceBaseline スイート（.serialized）へ追加する。
-// 別スイートにすると既存の性能試験と並列に走り、CPU 競合で閾値を超えることがあるため。
+// Add to the existing PerformanceBaseline suite (.serialized).
+// A separate suite would run in parallel with the existing performance tests, and CPU contention could exceed the
+// thresholds.
 extension PerformanceBaselineTests {
     @Test("24MP 相当の画像で32段の倍率の矩形計算を1000回ずつ行っても1秒以内")
     func previewZoomFrameCalculationWithinBudget() throws {

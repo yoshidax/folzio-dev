@@ -5,7 +5,7 @@ import Testing
 
 @Suite("ZipArchiveReader")
 struct ZipArchiveReaderTests {
-    /// 圧縮が効き、1MB を超えても繰り返しにならない程度の中身
+    /// Content that compresses well and does not repeat within 1 MB.
     private func pattern(count: Int) -> Data {
         var generator = SplitMix(seed: 42)
         var data = Data(count: count)
@@ -96,7 +96,7 @@ struct ZipArchiveReaderTests {
         #expect(try await reader.data(for: entryURL(zip, "dir/日本語 名前.webp"), limit: limit) == small)
         #expect(try await reader.data(for: entryURL(zip, "empty.png"), limit: limit) == Data())
         #expect(try await reader.data(for: entryURL(zip, "empty-stored.png"), limit: limit) == Data())
-        // 同じ項目をもう一度読んでも同じ（データの開始位置を覚えている）
+        // Reading the same entry again returns the same data (the data start offset is cached).
         #expect(try await reader.data(for: entryURL(zip, "deflated.png"), limit: limit) == large)
     }
 
@@ -175,7 +175,7 @@ struct ZipArchiveReaderTests {
         await expectCorrupted { try await reader.data(for: ArchiveURL.parentLink(of: ArchiveLocation(archive: zip, directory: "sub/")), limit: 100) }
     }
 
-    // MARK: - 異常系
+    // MARK: - Error Cases
 
     @Test("存在しない zip は notFound")
     func missingArchive() async {
@@ -281,13 +281,13 @@ struct ZipArchiveReaderTests {
             return data
         }
         let cases: [(String, Data)] = [
-            // deflate: 展開後のサイズが実際より大きい
+            // deflate: inflated size is larger than actual.
             ("usize-large", patched(central + 24, 30_000)),
-            // deflate: 圧縮後のサイズが実際より小さい（入力が途中で終わる）
+            // deflate: compressed size is smaller than actual (input ends early).
             ("csize-small", patched(central + 20, 10)),
-            // 無圧縮: 圧縮後のサイズが展開後のサイズより小さい
+            // stored: compressed size is smaller than the inflated size.
             ("stored-csize-small", patched(secondCentral + 20, 100)),
-            // 無圧縮: ファイルの外まで届くサイズ
+            // stored: size extends beyond the file.
             ("stored-huge", patched(secondCentral + 24, 0x7FFF_0000)),
         ]
         let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
@@ -329,7 +329,7 @@ struct ZipArchiveReaderTests {
         }
     }
 
-    // MARK: - 同一性と複数の zip
+    // MARK: - Identity and Multiple Zips
 
     @Test("zip を開いた後に上書き・削除すると identity が変わる")
     func identityChangesAfterModification() async throws {
@@ -375,7 +375,7 @@ struct ZipArchiveReaderTests {
             #expect(try await reader.data(for: entryURL(first, "same.png"), limit: 100) == Data("from first".utf8))
             #expect(try await reader.data(for: entryURL(second, "same.png"), limit: 100) == Data("from second archive".utf8))
         }
-        // 覚えておく数を超えても、読み直して正しい結果を返す
+        // Even beyond the cache size, reopen and return the correct result.
         #expect(try await reader.data(for: entryURL(third, "same.png"), limit: 100) == Data("from third".utf8))
         #expect(try await reader.data(for: entryURL(first, "same.png"), limit: 100) == Data("from first".utf8))
     }
@@ -407,7 +407,7 @@ struct ZipArchiveReaderTests {
         }
     }
 
-    // MARK: - 補助
+    // MARK: - Helpers
 
     private func expectError<T>(
         _ expected: ArchiveError,

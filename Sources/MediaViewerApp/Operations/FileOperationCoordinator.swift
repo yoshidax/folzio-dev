@@ -9,12 +9,13 @@ final class FileOperationCoordinator {
     private let confirmation: ConfirmationPresenter
     private let conflictPrompt: ConflictPrompt
 
-    /// 操作が終わったときに、影響したフォルダ（対象の親フォルダと操作先）を渡す。ツリーが FSEvents を待たずに反映する（FR-027、R32）
+    /// Passes affected folders (the sources' parent folders and the destination) when an operation finishes.
+    /// Lets the tree apply changes without waiting for FSEvents (FR-027, R32).
     var onFoldersChanged: ((Set<URL>) -> Void)?
-    /// フォルダの名前の変更に成功したときに、元の場所と新しい場所を渡す。`BrowserModel` の付け替えより先に呼び、
-    /// ツリーがノードを作り直さずに付け替えられるようにする（R62・R64）
+    /// Passes the old and new locations after a successful folder rename. Called before `BrowserModel` rebases so the
+    /// tree can rebase without recreating nodes (R62, R64).
     var onFolderRenamed: ((URL, URL) -> Void)?
-    /// 履歴から、移動・名前の変更で消えた場所を取り除く（FR-109）
+    /// Removes locations that disappeared due to moves or renames from history (FR-109).
     weak var historyNavigator: HistoryNavigator?
 
     init(model: BrowserModel, service: any FileOperating, settings: SettingsStore) {
@@ -36,7 +37,8 @@ final class FileOperationCoordinator {
         await transfer(urls, to: destination, kind: copy ? .copy : .move, validateDrop: true)
     }
 
-    /// 複製は元のファイルを変えず、同じフォルダへ「両方残す」で作るため確認しない（FR-018・024）
+    /// Duplicate does not modify the original and creates a copy in the same folder with Keep Both, so it does not
+    /// confirm (FR-018, FR-024).
     func duplicate(_ urls: [URL]) async {
         guard !urls.isEmpty else { return }
 
@@ -55,7 +57,8 @@ final class FileOperationCoordinator {
         notifyFoldersChanged(sources: urls, destination: nil)
     }
 
-    /// ツリーから（`origin: .tree`）は、確認の省略設定に関わらず対象の絶対パスを添えて確認する（FR-079、R66）
+    /// From the tree (`origin: .tree`), confirms with the target's absolute path regardless of the skip setting
+    /// (FR-079, R66).
     func trash(_ urls: [URL], origin: OperationOrigin = .fileList) async {
         guard !urls.isEmpty else { return }
         let operation = FileOperation(kind: .trash, sources: urls)
@@ -68,16 +71,17 @@ final class FileOperationCoordinator {
 
         let result = await service.execute(operation, resolution: .abort)
         await presentFailures(result)
-        // ツリーへ先に知らせ、親の一覧の読み込みを待たずにゴミ箱に入れた行を消す（FR-027）
+        // Notify the tree first so rows moved to the Trash disappear without waiting for the parent listing to load
+        // (FR-027).
         notifyFoldersChanged(sources: urls, destination: nil)
-        // result.succeeded はゴミ箱の中の URL のため使わず、失敗しなかった元の場所を渡す
+        // result.succeeded contains URLs inside the Trash, so pass the original locations that did not fail instead.
         let failedPaths = Set(result.failed.map { $0.url.standardizedFileURL.path })
         let trashedSources = urls.filter { !failedPaths.contains($0.standardizedFileURL.path) }
         historyNavigator?.didRemoveItems(trashedSources)
-        // 表示中のフォルダやその祖先を入れたときだけ親へ移る（FR-079）。検索結果の一覧では検索前のフォルダの
-        // 祖先を選べるため、ツリーからの操作とファイルリストからの操作で扱いが変わる。判断は `BrowserModel` に任せ、
-        // ここでは経路を渡すだけにする（EC-101）。移ったときに読み直すと消えたフォルダの
-        // 「フォルダが見つかりません」が一瞬出るため、false のときだけ呼ぶ
+        // Move to the parent only when the displayed folder or an ancestor was trashed (FR-079). In search results, an
+        // ancestor of the pre-search folder can be selected, so tree and file list operations behave differently. Leave
+        // the decision to `BrowserModel` and only pass the origin here (EC-101). Call only when the result is false,
+        // because reloading after moving would briefly show "Folder not found" for the vanished folder.
         if await !model.leaveTrashedFolders(trashedSources, origin: origin) {
             await model.reloadCurrentFolder()
         }
@@ -93,7 +97,7 @@ final class FileOperationCoordinator {
         }
     }
 
-    /// ツリーから（`origin: .tree`）は、確認モーダルに対象の絶対パスを添える（FR-103、R58）
+    /// From the tree (`origin: .tree`), includes the target's absolute path in the confirmation modal (FR-103, R58).
     func rename(_ file: URL, to newName: String, origin: OperationOrigin = .fileList) async {
         let parent = file.deletingLastPathComponent()
         let existingNames = await siblingNames(in: parent).subtracting([file.lastPathComponent])
@@ -121,13 +125,15 @@ final class FileOperationCoordinator {
         await presentFailures(result)
         if let renamed = result.succeeded.first {
             if isDirectory {
-                // 読み直しと FSEvents より先に、ツリー・一覧・検索結果を新しい場所に付け替える（FR-104・105、R62・R64）
+                // Rebase the tree, listing, and search results to the new location before reloading and FSEvents
+                // (FR-104, 105; R62, R64).
                 onFolderRenamed?(file, renamed)
                 model.didRenameFolder(from: file, to: renamed)
                 historyNavigator?.didRenameFolder(from: file, to: renamed)
             } else {
-                // 検索結果では元の URL が消えて外れてしまうため、読み直しの前に行を差し替える（FR-087、R38）。
-                // 通常のフォルダでは didRenameItem は何もせず、従来どおり読み直しで反映される
+                // In search results, the original URL disappears and the row would be dropped, so replace the row
+                // before reloading (FR-087, R38). In a regular folder, didRenameItem does nothing and the reload
+                // applies the change as before.
                 model.didRenameItem(at: file, to: renamed)
                 historyNavigator?.didRenameItem(from: file, to: renamed)
             }
@@ -194,7 +200,8 @@ final class FileOperationCoordinator {
         await presentFailures(result)
         var removed: [URL] = []
         if case .move = kind {
-            // result.succeeded は移動先の URL のため、失敗しなかった元の場所で履歴を取り除く（FR-109）
+            // result.succeeded contains destination URLs, so remove history using the original locations that did not
+            // fail (FR-109).
             let failedPaths = Set(result.failed.map { $0.url.standardizedFileURL.path })
             removed = attemptedSources.filter { !failedPaths.contains($0.standardizedFileURL.path) }
             model.didMoveSearchItems(removed)
@@ -223,7 +230,7 @@ final class FileOperationCoordinator {
         return false
     }
 
-    /// 対象にフォルダが含まれるか。stat は UI スレッドで行わない
+    /// Whether the targets include a folder. Does not perform stat on the UI thread.
     private func containsFolder(_ urls: [URL]) async -> Bool {
         await Task.detached(priority: .userInitiated) {
             urls.contains { url in

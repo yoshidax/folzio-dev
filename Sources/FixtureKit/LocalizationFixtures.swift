@@ -2,13 +2,14 @@ import Foundation
 import MediaViewerCore
 
 extension FixtureKit {
-    /// Core へ注入する種類名の固定値。テストは日本語の文字列ではなくこれと比べる
+    /// Fixed kind names injected into Core. Tests compare against these instead of Japanese strings.
     public static let kindNames = KindNames(folder: "Folder", zipArchive: "ZIP archive")
 }
 
-/// 翻訳の検証用に、一時ディレクトリへ言語別の lproj を持つバンドルを作る
+/// Creates a bundle with per-language lproj directories in a temporary directory for localization tests.
 public enum LocalizationFixtures {
-    /// `tables` の言語ごとに `Localizable.strings` を書いたバンドルを作る。`plural` は `Localizable.stringsdict` に書く
+    /// Creates a bundle with a `Localizable.strings` for each language in `tables`. Writes `plural` to
+    /// `Localizable.stringsdict`.
     public static func makeBundle(
         tables: [String: [String: String]],
         plural: [String: [String: [String: String]]] = [:]

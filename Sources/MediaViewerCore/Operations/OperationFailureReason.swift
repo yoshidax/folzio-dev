@@ -1,7 +1,8 @@
 import Foundation
 
-/// ファイル操作が失敗した理由（表示言語に依存しない値）。文言は `MediaViewerLocalization` が決める。
-/// OS が返す理由は `systemReason` にそのまま持ち、訳し直さない（EC-111）
+/// Reason a file operation failed (a value independent of the display language).
+/// `MediaViewerLocalization` chooses the text. Reasons returned by the OS are kept verbatim in `systemReason`
+/// and are not re-translated (EC-111).
 public enum OperationFailureReason: Error, Sendable, Equatable {
     case noDestination
     case destinationNotFound
@@ -11,6 +12,6 @@ public enum OperationFailureReason: Error, Sendable, Equatable {
     case sameNameExists
     case sameNameAtDestination
     case trashExistingFailed(systemReason: String)
-    /// コピー・移動・名前の変更そのものが OS に拒否されたときの理由
+    /// Reason the OS rejected the copy, move, or rename itself
     case systemFailure(systemReason: String)
 }

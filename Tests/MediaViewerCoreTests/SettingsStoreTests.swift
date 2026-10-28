@@ -343,7 +343,7 @@ struct SettingsStoreTests {
         }
     }
 
-    // MARK: - zip ファイルの表示（view.showsZipFiles）
+    // MARK: - Zip File Visibility (view.showsZipFiles)
 
     @Test("zip ファイルの表示は未設定なら false（初回起動は非表示）")
     func showsZipFilesDefaultsToFalse() {
@@ -415,7 +415,7 @@ struct SettingsStoreTests {
         #expect(ViewSettings(showsZipFiles: true).showsZipFiles == true)
     }
 
-    // MARK: - スライドショー（slideshow.*）
+    // MARK: - Slideshow (slideshow.*)
 
     @Test("スライドショーは未設定なら既定値（3 秒・繰り返す・効果なし）")
     func slideshowDefaults() {

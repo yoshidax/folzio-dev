@@ -13,9 +13,11 @@ public struct FolderListing: Sendable {
     public var folder: URL
     public var files: [MediaFile]
     public var state: State
-    /// zip の中を表示中なら、その zip と階層。通常のフォルダでは nil（`folder` は zip を含むフォルダのまま）
+    /// The zip and hierarchy when browsing a zip; nil for a regular folder (`folder` remains the folder containing
+    /// the zip).
     public var archive: ArchiveLocation?
-    /// 検索結果を表示中なら、その条件と進み具合。表示中は `folder` を検索前のフォルダのまま変えず、`archive` は nil（FR-084・085）
+    /// Search criteria and progress when showing search results. While showing results, `folder` remains the
+    /// pre-search folder and `archive` is nil (FR-084, FR-085).
     public var search: SearchListing?
 
     public init(
@@ -33,11 +35,12 @@ public struct FolderListing: Sendable {
     }
 }
 
-/// ファイルリストの中での移動をツリーに伝える依頼（FR-078、research.md R31）。`BrowserModel.treeSyncRequest` で公開する
+/// Request that tells the tree about navigation in the file list (FR-078, research.md R31). Exposed as
+/// `BrowserModel.treeSyncRequest`.
 public struct TreeSyncRequest: Sendable, Equatable {
-    /// ツリーで選択するフォルダ（ファイルリストに表示しているフォルダ）
+    /// Folder to select in the tree (the folder shown in the file list)
     public let folder: URL
-    /// 依頼のたびに増やす。ツリーは最新の `id` の結果だけを選択に反映する
+    /// Incremented for every request. The tree applies only the result with the latest `id` to the selection.
     public let id: Int
 
     public init(folder: URL, id: Int) {
@@ -57,7 +60,7 @@ public struct SelectionState: Sendable {
 }
 
 extension SelectionState {
-    /// 表示中の URL（一覧の並び順）に合わせて選択を整理する
+    /// Restricts the selection to visible URLs, preserving the listing order.
     public func restricted(toVisible orderedURLs: [URL]) -> SelectionState {
         let visible = Set(orderedURLs)
         let kept = selected.intersection(visible)
@@ -81,21 +84,21 @@ public enum PreviewContent {
     case loading(URL)
     case image(DecodedImage)
     case animatedImage(URL)
-    /// zip の中のアニメーション画像。`Data` は zip から読んだ項目の内容（プレビューを離れたら捨てる）
+    /// Animated image inside a zip. `Data` is the entry content read from the zip (discarded when leaving the preview).
     case animatedImageData(URL, Data)
     case video(URL)
     case unavailable(name: String, reason: PreviewFailure)
 }
 
-/// フォルダの一覧を読めなかった理由（表示言語に依存しない値）
+/// Reason a folder listing could not be read (a value independent of the display language).
 public enum ListingFailure: Error, Sendable, Equatable {
     case folderNotFound
-    /// OS が返す理由。訳し直さない（EC-111）
+    /// Reason returned by the OS. Do not re-translate (EC-111).
     case systemFailure(systemReason: String)
     case archive(ArchiveError)
 }
 
-/// プレビューを表示できない理由（表示言語に依存しない値）
+/// Reason the preview cannot be displayed (a value independent of the display language).
 public enum PreviewFailure: Error, Sendable, Equatable {
     case unreadable
     case unsupportedFormat

@@ -4,14 +4,14 @@ import Foundation
 public struct ZipFixtureEntry: Sendable {
     public enum Content: Sendable {
         case bytes(Data)
-        /// 全体をメモリに持たずに書くゼロ埋めの中身。
+        /// Zero-filled content written without holding it all in memory.
         case zeros(count: UInt64)
     }
 
     public enum Method: Sendable, Equatable {
         case stored
         case deflated
-        /// 方式番号だけを書き、中身は無圧縮のまま書く（非対応方式の再現用）。
+        /// Writes only the method number and stores the content uncompressed (for reproducing unsupported methods).
         case raw(UInt16)
     }
 
@@ -90,7 +90,7 @@ public enum ZipFixtureWriter {
         return sink.memory
     }
 
-    // MARK: - 出力先
+    // MARK: - Output
 
     private final class Sink {
         let handle: FileHandle?
@@ -137,7 +137,7 @@ public enum ZipFixtureWriter {
         }
     }
 
-    // MARK: - 組み立て
+    // MARK: - Assembly
 
     private struct Record {
         var nameBytes: Data
@@ -389,7 +389,7 @@ public enum ZipFixtureWriter {
         return (dosTime, dosDate)
     }
 
-    /// 中身を最大 1MB ずつ渡す。`.zeros` は 1MB のバッファを使い回す。
+    /// Passes content in chunks of at most 1 MB. `.zeros` reuses a 1 MB buffer.
     private static func feed(
         _ content: ZipFixtureEntry.Content,
         _ body: (UnsafeRawBufferPointer) throws -> Void
@@ -419,7 +419,7 @@ public enum ZipFixtureWriter {
 
     // MARK: - deflate
 
-    /// `compression_stream`（`COMPRESSION_ZLIB` は生の DEFLATE を出す）で 1MB ずつ圧縮する。
+    /// Compresses in 1 MB chunks with `compression_stream` (`COMPRESSION_ZLIB` produces raw DEFLATE).
     private final class Deflater {
         private var stream: compression_stream
         private let output: UnsafeMutablePointer<UInt8>

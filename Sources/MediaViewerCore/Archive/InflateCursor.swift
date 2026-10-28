@@ -1,10 +1,11 @@
 import Compression
 import Foundation
 
-/// zip の deflate 項目を先頭から順方向に展開するカーソル（research.md R24・R25）。
-/// `compression_stream`（`COMPRESSION_ZLIB` はヘッダのない生の DEFLATE）を包み、入力は圧縮データの範囲から 64KB ずつ `pread` で読む。
-/// 展開後の位置 `position` を覚え、前へ戻るときは `reset()` で先頭から展開し直す。
-/// スレッドセーフではない。複数のスレッドから使うときは呼び出し側で直列化する。
+/// A cursor that inflates a zip deflate entry sequentially from the start (research.md R24, R25).
+/// It wraps `compression_stream` (`COMPRESSION_ZLIB` is raw DEFLATE with no header) and reads the compressed
+/// range in 64 KB chunks with `pread`.
+/// It tracks the inflated position in `position`; to move backward it inflates again from the beginning with `reset()`.
+/// This type is not thread-safe. Callers must serialize access when using it from multiple threads.
 final class InflateCursor {
     private static let inputChunkSize = 64 * 1024
     private static let scratchSize = 64 * 1024
@@ -19,15 +20,16 @@ final class InflateCursor {
     private let placeholder: UnsafeMutablePointer<UInt8>
     private var scratch: UnsafeMutablePointer<UInt8>?
 
-    /// 圧縮データのうち、すでにファイルから読んだバイト数
+    /// Number of compressed bytes read from the file so far
     private var inputRead: UInt64 = 0
-    /// 圧縮データの終わりまで読み終えた
+    /// Whether the end of the compressed data has been read
     private var inputExhausted = false
-    /// 圧縮データの終わり（または、これ以上は展開できない状態）に達した
+    /// Whether inflation has finished because the end of the compressed data was reached,
+    /// or because no further data can be inflated
     private var finished = false
     private var failed = false
 
-    /// 展開後の位置
+    /// Offset in the inflated data
     private(set) var position: UInt64 = 0
 
     init(file: ArchiveFile, dataOffset: UInt64, compressedSize: UInt64) {
@@ -50,7 +52,7 @@ final class InflateCursor {
         scratch?.deallocate()
     }
 
-    /// 先頭から展開し直す
+    /// Inflates again from the beginning.
     func reset() {
         if streamReady {
             compression_stream_destroy(&stream)
@@ -63,8 +65,9 @@ final class InflateCursor {
         failed = !startStream()
     }
 
-    /// 展開後の `target` まで、読み捨てて進む。いまの位置より前なら先頭から展開し直す。
-    /// 圧縮データの終わりが先にあれば、そこで止まる（`position` で確かめる）
+    /// Advances to offset `target` in the inflated data, discarding the bytes in between. If `target` is before the
+    /// current position, inflates again from the beginning.
+    /// Stops early if the compressed data ends first; check `position` to confirm.
     func skip(to target: UInt64) throws(ArchiveError) {
         if target < position { reset() }
         guard position < target else { return }
@@ -82,8 +85,9 @@ final class InflateCursor {
         }
     }
 
-    /// 最大 `maxLength` バイトを展開して `buffer` に書き、書いたバイト数を返す。
-    /// 圧縮データの終わりより先を求められたら、展開できた分だけを返す（終わりでは 0）
+    /// Inflates at most `maxLength` bytes into `buffer` and returns the number of bytes written.
+    /// If asked for data past the end of the compressed data, returns only the bytes that could be inflated
+    /// (0 at the end).
     func read(into buffer: UnsafeMutableRawBufferPointer, maxLength: Int) throws(ArchiveError) -> Int {
         guard !failed else { throw .corrupted(.cannotStartInflate) }
         let limit = min(maxLength, buffer.count)
@@ -107,7 +111,8 @@ final class InflateCursor {
             if status == COMPRESSION_STATUS_END {
                 finished = true
             } else if status == COMPRESSION_STATUS_OK {
-                // 入力を使い切り、出力も増えないなら、これ以上は展開できない（圧縮データが途中で終わっている）
+                // If the input is exhausted and no output is produced, no more data can be inflated (the compressed
+                // data ends prematurely).
                 if stream.src_size == before.source, stream.dst_size == before.destination, inputExhausted {
                     finished = true
                 }
@@ -123,7 +128,7 @@ final class InflateCursor {
         return produced
     }
 
-    // MARK: - 内部
+    // MARK: - Internals
 
     private func startStream() -> Bool {
         stream.dst_ptr = placeholder

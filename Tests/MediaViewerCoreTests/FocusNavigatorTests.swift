@@ -157,7 +157,7 @@ struct FocusNavigatorTests {
         ) == 2)
     }
 
-    // MARK: - isNavigable 付き（FR-046）
+    // MARK: - With isNavigable (FR-046)
 
     private func target(
         _ kinds: [ListItemKind],
@@ -198,7 +198,7 @@ struct FocusNavigatorTests {
         ]
         #expect(target(kinds, from: 0, .down, .grid(columns: 2)) == 4)
         #expect(target(kinds, from: 4, .up, .grid(columns: 2)) == 0)
-        // 1 から ↑ は既存の関数と同じく先頭へクランプされ、0 がメディアなので止まる
+        // Up from 1 clamps to the start as in the existing function, and stops because 0 is media.
         #expect(target(kinds, from: 5, .up, .grid(columns: 2)) == 0)
     }
 

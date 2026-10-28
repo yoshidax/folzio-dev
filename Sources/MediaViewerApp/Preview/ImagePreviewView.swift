@@ -40,14 +40,14 @@ final class ImagePreviewView: NSView {
     private let detailLabel = NSTextField(wrappingLabelWithString: "")
     private let spinner = NSProgressIndicator()
     private let doubleClickRecognizer = NSClickGestureRecognizer()
-    // NSScroller は生成時の矩形から方向を決めるため、最初から横長・縦長にする。
+    // NSScroller determines its orientation from the initial frame, so create it already wide or tall.
     private let horizontalScroller = NSScroller(frame: NSRect(x: 0, y: 0, width: 100, height: 15))
     private let verticalScroller = NSScroller(frame: NSRect(x: 0, y: 0, width: 15, height: 100))
     private var scrollCenter = CGPoint(x: 0.5, y: 0.5)
     private var scrollLayout = PreviewScrollLayout(imageSize: .zero, viewport: .zero, center: .zero)
 
     var onDoubleClick: (() -> Void)?
-    /// 画像を表示している／していないが入れ替わったとき（最初のフレーム・画像のクリア）
+    /// Called when whether an image is displayed changes (first frame or clearing the image).
     var onDisplayedImageChange: (() -> Void)?
 
     private var displayedImage: CGImage? {
@@ -61,7 +61,7 @@ final class ImagePreviewView: NSView {
             onDisplayedImageChange?()
         }
     }
-    /// 表示倍率（FR-133）。frame だけに反映し、contents やアニメーションには触れない
+    /// Zoom level (FR-133). Applied only to the frame; does not touch contents or animation.
     private var zoom = PreviewZoom.fit
 
     var isShowingImage: Bool { displayedImage != nil }
@@ -85,7 +85,7 @@ final class ImagePreviewView: NSView {
     private func setup() {
         wantsLayer = true
         layer = CALayer()
-        // スクロール領域の外側はクリップする。
+        // Clip outside the scroll area.
         layer?.masksToBounds = true
 
         contentLayer.contentsGravity = .resize
@@ -93,8 +93,8 @@ final class ImagePreviewView: NSView {
         layer?.addSublayer(contentLayer)
 
         for scroller in [horizontalScroller, verticalScroller] {
-            // 単独の overlay scroller は NSScrollView によるフェード制御がなく、
-            // つまみが表示されない。標準の常時表示スタイルを画像の上に重ねる。
+            // A standalone overlay scroller has no fade control from NSScrollView and shows no knob. Layer the
+            // standard always-visible style over the image.
             scroller.scrollerStyle = .legacy
             scroller.isEnabled = true
             scroller.target = self
@@ -169,7 +169,8 @@ final class ImagePreviewView: NSView {
         needsLayout = true
     }
 
-    /// 倍率を適用する。`announce` は明示的な操作による変更のときだけ true にし、新しい倍率を読み上げる（FR-138）
+    /// Applies the zoom level. Set `announce` only for changes from explicit actions to announce the new level
+    /// (FR-138).
     func applyZoom(_ zoom: PreviewZoom, announce: Bool) {
         let changed = zoom != self.zoom
         self.zoom = zoom
@@ -227,8 +228,8 @@ final class ImagePreviewView: NSView {
             super.scrollWheel(with: event)
             return
         }
-        // NSEvent の delta には OS のスクロール方向設定が反映済み。
-        // このビューは左下原点なので、横と縦で画像内座標への符号が異なる。
+        // NSEvent deltas already reflect the OS scroll direction setting.
+        // This view uses a bottom-left origin, so the sign differs between horizontal and vertical image coordinates.
         moveScroll(x: -event.scrollingDeltaX, y: event.scrollingDeltaY)
     }
 
@@ -271,7 +272,7 @@ final class ImagePreviewView: NSView {
     }
 
     private func updateAccessibilityValue() {
-        // 画像がない状態では倍率を公開しない（FR-138）
+        // Do not expose the zoom level when there is no image (FR-138).
         setAccessibilityValue(isShowingImage ? Self.percentText(zoom) : nil)
     }
 
@@ -378,12 +379,12 @@ final class ImagePreviewView: NSView {
     func transitionSnapshot() -> (image: CGImage?, frame: CGRect, gravity: CALayerContentsGravity) {
         layoutSubtreeIfNeeded()
         if let displayedImage {
-            // contentLayer.contents と同じ画像を共有し、再デコード・再描画しない。
+            // Share the same image as contentLayer.contents and avoid decoding or redrawing it again.
             return (displayedImage, contentLayer.frame, contentLayer.contentsGravity)
         }
         guard !messageStack.isHidden, let layer else { return (nil, .zero, .resize) }
         displayIfNeeded()
-        // 文字・spinner の範囲だけを描き、大きなプレビュー全面の bitmap を作らない。
+        // Draw only the text and spinner area; do not create a bitmap for the entire large preview.
         let rect = messageStack.frame.integral
         let scale = backingScale
         guard rect.width > 0, rect.height > 0,

@@ -11,7 +11,7 @@ public struct MediaFile: Identifiable, Hashable, Sendable {
     public var typeDescription: String
     public var creationDate: Date?
     public var fileSize: Int64
-    /// nil は OS または形式から得た、アプリが翻訳しない種類名。
+    /// Nil means a kind name obtained from the OS or the format that the app does not translate.
     public var kindNameSource: KindNameSource?
 
     public init(
@@ -53,7 +53,8 @@ public struct MediaFile: Identifiable, Hashable, Sendable {
     }
 }
 
-/// アプリが管理する種類名。並べ替え（種類の列）に表示中の名前を使うため、Core へ注入する（EC-112）
+/// Kind names managed by the app. Injected into Core so sorting by the Kind column uses the displayed names
+/// (EC-112).
 public struct KindNames: Sendable, Equatable {
     public var folder: String
     public var zipArchive: String

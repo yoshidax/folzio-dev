@@ -3,13 +3,14 @@ import Foundation
 import ObjectiveC
 import UniformTypeIdentifiers
 
-/// mvzip の URL を `AVURLAsset` に読ませるデリゲート（FR-072、research.md R25）。
-/// 内容の情報と要求範囲を `ArchiveEntryStream` から 512KB ずつ返す。一時ファイルは作らない。
-/// `stream(for:)` は asset（この読み込み器）ごとに 1 回だけ作って共有し、キャッシュとカーソルを asset 単位にする。
+/// Delegate that lets `AVURLAsset` read an mvzip URL (FR-072, research.md R25).
+/// Returns content information and requested ranges from `ArchiveEntryStream` in 512 KB pieces. Creates no
+/// temporary files. `stream(for:)` is created once per asset (this loader) and shared, so the cache and cursors
+/// are per asset.
 public final class ArchiveAssetLoader: NSObject, AVAssetResourceLoaderDelegate, @unchecked Sendable {
     private static let responseChunkSize = 512 * 1024
 
-    /// Sendable でない `AVAssetResourceLoadingRequest` をタスクに渡すための入れ物
+    /// Wrapper that lets a non-Sendable `AVAssetResourceLoadingRequest` be passed to a task.
     private struct SendableBox<Value>: @unchecked Sendable {
         let value: Value
     }
@@ -26,7 +27,7 @@ public final class ArchiveAssetLoader: NSObject, AVAssetResourceLoaderDelegate, 
         self.reader = reader
     }
 
-    /// 最初の要求で作り、以降は同じタスクを共有する（同時に来ても 1 回）
+    /// Creates the task on the first request and shares it afterward (even when requests arrive concurrently).
     private func sharedStream() -> Task<ArchiveEntryStream, any Error> {
         lock.lock()
         defer { lock.unlock() }
@@ -51,7 +52,7 @@ public final class ArchiveAssetLoader: NSObject, AVAssetResourceLoaderDelegate, 
         let streamTask = sharedStream()
         let fileExtension = entryURL.pathExtension
 
-        // 登録を済ませてからタスクを始める（終了時の削除が登録より先になるのを防ぐ）
+        // Register before starting the task so removal on completion cannot happen before registration.
         lock.lock()
         let task = Task.detached { [weak self] in
             let request = box.value
@@ -94,7 +95,7 @@ public final class ArchiveAssetLoader: NSObject, AVAssetResourceLoaderDelegate, 
         lock.unlock()
     }
 
-    // MARK: - 応答
+    // MARK: - Responding
 
     private static func fill(
         _ request: AVAssetResourceLoadingRequest, from stream: ArchiveEntryStream, fileExtension: String
@@ -124,12 +125,13 @@ public final class ArchiveAssetLoader: NSObject, AVAssetResourceLoaderDelegate, 
     }
 }
 
-/// mvzip の URL から再生・代表フレーム用の `AVURLAsset` を作る。asset が生きている間、読み込み器を保持する（R25）
+/// Creates an `AVURLAsset` for playback and poster frames from an mvzip URL. Retains the loader while the asset
+/// is alive (R25).
 public enum ArchiveAssetFactory {
-    /// `AVAssetResourceLoader` はデリゲートを弱参照するため、asset に関連付けて保持させる
+    /// `AVAssetResourceLoader` weakly references its delegate, so retain the loader by associating it with the asset.
     nonisolated(unsafe) private static var loaderKey: UInt8 = 0
 
-    /// デリゲートのコールバックを受ける専用の直列キュー
+    /// Dedicated serial queue for delegate callbacks
     private static let loaderQueue = DispatchQueue(label: "MediaViewer.ArchiveAssetLoader")
 
     public static func makeAsset(for entryURL: URL, reader: any ArchiveReading) -> AVURLAsset {

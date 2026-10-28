@@ -2,10 +2,11 @@ import CoreServices
 import Foundation
 
 public protocol FileSystemWatching: Sendable {
-    /// 監視対象を差し替える。`folders` は直下の追加・削除・名前変更が起きたフォルダの URL を流す。
-    /// `subtrees` のフォルダは配下のすべての階層を監視し、変更のあったパスの親フォルダを、渡された起点の URL に
-    /// 相対の要素をつないだ形で流す。起点自身またはその祖先の削除・移動は起点の URL を流す。配下でも隠しフォルダの中の変更は流さない
-    /// （検索結果の整理、FR-087・R38）
+    /// Replaces the watched targets. `folders` emits URLs of folders where direct children were added, removed, or
+    /// renamed. Folders in `subtrees` are watched recursively; changes emit the parent folder of the changed path by
+    /// joining the relative components to the supplied root URL. Deleting or moving the root itself or an ancestor
+    /// emits the root URL. Changes inside hidden folders below the root are not emitted (search result cleanup;
+    /// FR-087, R38).
     func watch(_ folders: Set<URL>, subtrees: Set<URL>)
     var events: AsyncStream<Set<URL>> { get }
 }
@@ -18,10 +19,12 @@ extension FileSystemWatching {
 
 public final class FileSystemWatcher: FileSystemWatching, @unchecked Sendable {
     private static let debounceInterval: CFTimeInterval = 0.3
-    /// 変更が続いても、最初の未送出の変更からこの時間で必ず送る（FR-054・042・087 の通知を止めない。R38）
+    /// Sends pending changes no later than this interval after the first pending change, even when changes continue
+    /// (keeps notifications for FR-054, 042, and 087 flowing; R38).
     private static let maxLatency: CFTimeInterval = 1.0
 
-    /// 配下のすべての階層を監視する起点。`url` は渡された形（流すときに使う）、`realComponents` は FSEvents が返す実体のパスの要素
+    /// Root watched recursively. `url` is the form passed in (used when emitting); `realComponents` is the path
+    /// components of the real path returned by FSEvents.
     private struct Subtree: Equatable {
         let url: URL
         let realComponents: [String]
@@ -34,14 +37,14 @@ public final class FileSystemWatcher: FileSystemWatching, @unchecked Sendable {
 
     private var watchedFolders: [String: URL] = [:]
     private var watchedSubtrees: [Subtree] = []
-    /// `subtrees` の配下のフォルダ（実体のパス）ごとの isHidden。`subtrees` を差し替えたら捨てる
+    /// `isHidden` per folder (real path) below `subtrees`. Discarded when `subtrees` changes.
     private var hiddenFolderCache: [String: Bool] = [:]
     private var pendingFolders: Set<URL> = []
     private var pendingSince: DispatchTime?
     private var debounceWorkItem: DispatchWorkItem?
-    /// `folders` 用のストリーム。WatchRoot を付けない（bug: fsevents-watchroot-fd-exhaustion）
+    /// Stream for `folders`. Does not use WatchRoot (bug: fsevents-watchroot-fd-exhaustion).
     private var folderStream: FSEventStreamRef?
-    /// `subtrees` 用のストリーム。起点自身と祖先の移動・削除を受け取るため WatchRoot を付ける（R38）
+    /// Stream for `subtrees`. Uses WatchRoot to receive moves and deletions of the root and its ancestors (R38).
     private var subtreeStream: FSEventStreamRef?
 
     public init() {
@@ -76,7 +79,8 @@ public final class FileSystemWatcher: FileSystemWatching, @unchecked Sendable {
 
     public func watch(_ folders: Set<URL>, subtrees: Set<URL>) {
         let normalized = Set(folders.map(\.standardizedFileURL))
-        // subtrees は渡された形のまま持つ。standardizedFileURL は存在するパスの /private を外すため使わない（R38）
+        // Keep subtrees in the form passed in. Do not use standardizedFileURL because it removes /private from
+        // existing paths (R38).
         let normalizedSubtrees = subtrees
         if DispatchQueue.getSpecific(key: queueKey) != nil {
             applyFolders(normalized, subtrees: normalizedSubtrees)
@@ -93,8 +97,9 @@ public final class FileSystemWatcher: FileSystemWatching, @unchecked Sendable {
         url.resolvingSymlinksInPath().standardizedFileURL.path
     }
 
-    /// 実体のパス（`realpath(3)`。FSEvents が返す `/private/var/...` の形）の要素。失敗したら `key(for:)` のパス。
-    /// `standardizedFileURL` は存在するパスの `/private` を外し、消えたパスとの比較が崩れるため通さない
+    /// Path components of the real path (`realpath(3)`; the `/private/var/...` form returned by FSEvents), or the
+    /// path from `key(for:)` on failure. Does not use `standardizedFileURL` because it removes `/private` from
+    /// existing paths and breaks comparisons with paths that no longer exist.
     private static func realComponents(of url: URL) -> [String] {
         let path: String
         if let resolved = realpath(url.path, nil) {
@@ -127,7 +132,7 @@ public final class FileSystemWatcher: FileSystemWatching, @unchecked Sendable {
         pendingSince = nil
         debounceWorkItem?.cancel()
         debounceWorkItem = nil
-        // 変わった側だけを作り直す。ツリーの操作のたびに起点のストリームを作り直さない
+        // Rebuild only the changed side. Do not recreate the subtree stream on every tree operation.
         if foldersChanged {
             rebuildFolderStream()
         }
@@ -136,9 +141,10 @@ public final class FileSystemWatcher: FileSystemWatching, @unchecked Sendable {
         }
     }
 
-    /// WatchRoot は監視するパスの祖先ごとにディスクリプタを開く（1パスあたりパスの深さの分）。ツリーで見えている行を
-    /// すべて監視する `folders` に付けると、GUI アプリの上限（256）を使い切るため付けない。`folders` の変更は親フォルダの
-    /// 変更として届く（bug: fsevents-watchroot-fd-exhaustion）
+    /// WatchRoot opens a descriptor for each ancestor of a watched path (one per path depth). It is not used for
+    /// `folders`, which watches every row visible in the tree, because it would exhaust the 256-descriptor limit for
+    /// GUI apps. Changes to `folders` arrive as changes to the parent folder (bug:
+    /// fsevents-watchroot-fd-exhaustion).
     private func rebuildFolderStream() {
         Self.stop(&folderStream)
         let paths = Set(watchedFolders.values.map(\.path))
@@ -152,7 +158,7 @@ public final class FileSystemWatcher: FileSystemWatching, @unchecked Sendable {
             paths.insert(subtree.url.path)
             paths.insert(NSString.path(withComponents: subtree.realComponents))
         }
-        // WatchRoot: 起点自身とその祖先の移動・削除も受け取る（R38）
+        // WatchRoot: also receive moves and deletions of the root itself and its ancestors (R38).
         subtreeStream = makeStream(paths: paths, watchesRoot: true)
     }
 
@@ -225,10 +231,11 @@ public final class FileSystemWatcher: FileSystemWatching, @unchecked Sendable {
         scheduleEmit(changed)
     }
 
-    /// `subtrees` の起点以下のイベントなら、変更のあったパスの親フォルダを、渡された起点の URL に相対の要素をつないで返す。
-    /// 起点自身・祖先の変更は起点の URL。起点から親までに隠しフォルダを含むものは捨てる（R38）
+    /// For an event at or below a `subtrees` root, returns the parent folder of the changed path by joining the
+    /// relative components to the supplied root URL. Returns the root URL for changes to the root itself or an
+    /// ancestor. Discards paths whose components from the root to the parent include a hidden folder (R38).
     private func subtreeFolders(forEventAt eventURL: URL) -> [URL] {
-        // FSEvents のパスは実体のパス（`.`・`..` を含まない）のため、standardizedFileURL を通さずに要素で比べる
+        // FSEvents paths are real paths (no `.` or `..`), so compare components without standardizedFileURL.
         let eventComponents = eventURL.pathComponents
         let parentComponents = Array(eventComponents.dropLast())
         var result: [URL] = []

@@ -29,7 +29,7 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
         }
     }
 
-    /// Sendable でない QuickLook の要求を取り消しの closure に持たせるための入れ物
+    /// Wrapper that lets a non-Sendable QuickLook request be captured by a cancellation closure.
     private struct SendableBox<Value>: @unchecked Sendable {
         let value: Value
 
@@ -41,13 +41,13 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
     private struct InFlightRequest {
         let url: URL
         let pixelSize: Int
-        /// QuickLook の要求の取り消し、または zip の中の取得タスクの取り消し
+        /// Cancellation of the QuickLook request or of the zip retrieval task
         let cancel: @Sendable () -> Void
     }
 
-    /// zip の中の取得を同時に走らせる件数（research.md R24）
+    /// Number of concurrent retrievals from zips (research.md R24)
     static let maxConcurrentArchiveReads = 4
-    /// zip の中の動画の代表フレームを同時に作る件数（画像とは別枠。research.md R24・R25）
+    /// Number of concurrent poster frames generated for videos in zips (separate from images; research.md R24, R25)
     static let maxConcurrentArchiveVideoReads = 2
 
     private let generator: QLThumbnailGenerator
@@ -124,8 +124,9 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
         }
     }
 
-    /// zip の中の画像と動画。QuickLook は使わない。画像は `Data` から ImageIO で縮小画像を、動画は `AVAssetImageGenerator` で先頭フレームを作る。
-    /// 暗号化・非対応方式・失敗では nil
+    /// Images and videos inside a zip. Does not use QuickLook. Creates a downscaled image from `Data` with
+    /// ImageIO, and a first frame for videos with `AVAssetImageGenerator`. Returns nil for encrypted entries,
+    /// unsupported methods, and failures.
     private func archiveThumbnail(for url: URL, path: String, pixelSize: Int, key: NSString) async -> CGImage? {
         guard let archiveReader,
               let kind = MediaKind(fileExtension: (path as NSString).pathExtension)
@@ -189,7 +190,7 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 
-    /// zip の中の動画の先頭フレーム。asset が読み込み器を保持するので、生成が終わるまで asset を手放さない
+    /// First frame of a video inside a zip. The asset retains the loader, so keep the asset until generation finishes.
     private static func makeArchiveVideoThumbnail(
         url: URL,
         pixelSize: Int,
@@ -215,7 +216,7 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
     }
 }
 
-/// 同時に進める件数を制限する簡単なセマフォ。待っている間に取り消されたら `acquire()` は false を返す
+/// Simple semaphore that limits concurrency. `acquire()` returns false when cancelled while waiting.
 private actor ConcurrencyLimiter {
     private let limit: Int
     private var running = 0
@@ -225,7 +226,7 @@ private actor ConcurrencyLimiter {
         self.limit = limit
     }
 
-    /// true なら枠を得た。呼び出し側は終わったら `release()` を呼ぶ。false なら枠を得ていない
+    /// True when a slot was acquired; the caller must call `release()` when done. False when no slot was acquired.
     func acquire() async -> Bool {
         if Task.isCancelled { return false }
         if running < limit {

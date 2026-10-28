@@ -135,7 +135,8 @@ final class MainToolbarController: NSObject {
         toolbar.validateVisibleItems()
     }
 
-    /// 拡大・縮小・表示領域に合わせるを、画像の表示・ペイン・上下限から有効・無効にする（FR-134・FR-136）
+    /// Enables or disables Zoom In, Zoom Out, and Zoom to Fit from image display, pane visibility, and zoom limits
+    /// (FR-134, FR-136).
     private func applyZoomAvailability() {
         let availability = panes.zoomAvailability
         previewZoomItem?.isEnabled = availability.isAvailable
@@ -162,7 +163,7 @@ final class MainToolbarController: NSObject {
         }
     }
 
-    /// 戻る・進むを、履歴とペインの状態から有効・無効にする（FR-112）
+    /// Enables or disables Back and Forward from history and pane state (FR-112).
     func applyHistoryAvailability() {
         let canNavigate = panes.paneCommands.canNavigateHistory
         historyControl?.setEnabled(canNavigate && panes.historyNavigator.canGoBack, forSegment: 0)
@@ -278,7 +279,7 @@ final class MainToolbarController: NSObject {
         fileList.applyThumbnailSize(sender.doubleValue)
     }
 
-    /// 3つのボタングループを同じ見た目・同じ幅で並べる（FR-045・051・056・089）
+    /// Lays out the three button groups with the same appearance and width (FR-045, 051, 056, 089).
     private func makeSegmentedControl(
         items: [(symbol: String, label: String)],
         trackingMode: NSSegmentedControl.SwitchTracking,
@@ -406,7 +407,8 @@ extension MainToolbarController: NSToolbarDelegate {
             updateSlideshowAvailability()
             return item
         case Self.previewZoomIdentifier:
-            // 押した状態を保たない一時的な操作。100%でも中ボタンを押された見た目にしない（A-61）
+            // A momentary action that does not keep a selected state. Do not show a pressed middle button even at
+            // 100% (A-61).
             guard let control = makeSegmentedControl(
                 items: [
                     ("plus.magnifyingglass", l10n.text(.menuViewZoomIn)),
