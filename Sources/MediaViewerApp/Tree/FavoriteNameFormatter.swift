@@ -1,9 +1,9 @@
 import AppKit
 import MediaViewerCore
 
-/// お気に入りの名前の入力欄に付ける。ペーストを含めて改行と 256 文字目以降が入らないようにする（FR-100、R50）。
-/// 規則は `FavoriteName` に任せ、ここには書かない。状態を持たず、`Formatter` の override は nonisolated のため
-/// 分離の注釈は付けない
+/// Attached to the favorite name field. Prevents newlines and characters after the 256th, including pasted text
+/// (FR-100, R50). The rules live in `FavoriteName` and are not repeated here. This formatter is stateless, and its
+/// `Formatter` overrides are nonisolated, so it has no isolation annotation.
 final class FavoriteNameFormatter: Formatter {
     override init() {
         super.init()
@@ -40,7 +40,7 @@ final class FavoriteNameFormatter: Formatter {
         let result = sanitized as NSString
         partialStringPtr.pointee = result
         if let range = proposedSelRangePtr {
-            // 整形後の長さを超えない範囲に直す
+            // Clamp to the post-formatting length.
             let location = min(range.pointee.location, result.length)
             range.pointee = NSRange(location: location, length: 0)
         }
