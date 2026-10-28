@@ -1,10 +1,10 @@
 import Foundation
 
-/// 表示中の zip とその中の階層（FR-069・070、data-model.md の ArchiveLocation）
+/// Currently displayed zip and the directory inside it (FR-069, FR-070; ArchiveLocation in data-model.md).
 public struct ArchiveLocation: Sendable, Hashable {
-    /// zip ファイルのファイル URL
+    /// File URL of the zip
     public var archive: URL
-    /// zip の中の階層のパス。最上位は空文字、それ以外は `a/b/` のように末尾が `/`
+    /// Directory path inside the zip. The root is an empty string; other paths end with `/`, as in `a/b/`.
     public var directory: String
 
     public init(archive: URL, directory: String) {
@@ -12,7 +12,7 @@ public struct ArchiveLocation: Sendable, Hashable {
         self.directory = directory
     }
 
-    /// 1つ上の階層。最上位では nil（zip を含むフォルダへ戻る）
+    /// Parent directory. Nil at the root (returns to the folder containing the zip).
     public var parent: ArchiveLocation? {
         guard !directory.isEmpty else { return nil }
         let trimmed = directory.hasSuffix("/") ? String(directory.dropLast()) : directory
