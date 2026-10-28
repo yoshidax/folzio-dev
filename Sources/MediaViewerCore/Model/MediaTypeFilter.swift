@@ -25,10 +25,14 @@ public struct MediaTypeFilter: Sendable, Equatable {
         return files.filter { file in file.kind.mediaKind.map(includes) ?? true }
     }
 
-    public var noMatchesMessage: String? {
+    /// 絞り込み中に一覧が0件だったときの表示。文言は表示の層が選ぶ
+    public var emptyState: EmptyState? {
         guard isFiltering else { return nil }
-        return imagesOnly
-            ? "画像のみ表示中: 該当するファイルはありません"
-            : "動画のみ表示中: 該当するファイルはありません"
+        return imagesOnly ? .imagesOnly : .videosOnly
+    }
+
+    public enum EmptyState: Sendable, Equatable {
+        case imagesOnly
+        case videosOnly
     }
 }

@@ -27,9 +27,9 @@ public enum ConflictResolution: Sendable {
 
 public struct FileOperationResult: Sendable {
     public var succeeded: [URL]
-    public var failed: [(url: URL, reason: String)]
+    public var failed: [(url: URL, reason: OperationFailureReason)]
 
-    public init(succeeded: [URL] = [], failed: [(url: URL, reason: String)] = []) {
+    public init(succeeded: [URL] = [], failed: [(url: URL, reason: OperationFailureReason)] = []) {
         self.succeeded = succeeded
         self.failed = failed
     }

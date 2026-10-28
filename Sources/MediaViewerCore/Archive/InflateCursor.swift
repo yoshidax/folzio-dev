@@ -85,7 +85,7 @@ final class InflateCursor {
     /// 最大 `maxLength` バイトを展開して `buffer` に書き、書いたバイト数を返す。
     /// 圧縮データの終わりより先を求められたら、展開できた分だけを返す（終わりでは 0）
     func read(into buffer: UnsafeMutableRawBufferPointer, maxLength: Int) throws(ArchiveError) -> Int {
-        guard !failed else { throw .corrupted("展開を始められません") }
+        guard !failed else { throw .corrupted(.cannotStartInflate) }
         let limit = min(maxLength, buffer.count)
         guard limit > 0, !finished, let base = buffer.baseAddress else { return 0 }
 
@@ -115,7 +115,7 @@ final class InflateCursor {
                 finished = true
                 failed = true
                 position += UInt64(limit - stream.dst_size)
-                throw .corrupted("圧縮データが壊れています")
+                throw .corrupted(.compressedDataDamaged)
             }
         }
         let produced = limit - stream.dst_size

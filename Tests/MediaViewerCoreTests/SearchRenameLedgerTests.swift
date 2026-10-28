@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import MediaViewerCore
+import FixtureKit
 
 @Suite("SearchRenameLedger")
 struct SearchRenameLedgerTests {
@@ -9,7 +10,7 @@ struct SearchRenameLedgerTests {
     }
 
     private func folder(_ path: String) -> MediaFile {
-        DirectoryLister.folderRow(at: url(path, isDirectory: true), creationDate: nil)
+        DirectoryLister.folderRow(at: url(path, isDirectory: true), creationDate: nil, kindNames: FixtureKit.kindNames)
     }
 
     private func media(_ path: String) -> MediaFile {

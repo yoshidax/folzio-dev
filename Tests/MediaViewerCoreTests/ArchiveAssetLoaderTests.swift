@@ -57,7 +57,7 @@ struct ArchiveAssetLoaderTests {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let prepared = try prepare(testCase, in: directory)
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         _ = try await reader.open(prepared.zip)
 
         let asset = ArchiveAssetFactory.makeAsset(
@@ -75,7 +75,7 @@ struct ArchiveAssetLoaderTests {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let prepared = try prepare(testCase, in: directory)
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         _ = try await reader.open(prepared.zip)
 
         let asset = ArchiveAssetFactory.makeAsset(
@@ -96,7 +96,7 @@ struct ArchiveAssetLoaderTests {
 
         // reader も読み込み器もこの関数の中で手放し、asset だけを返す
         let asset: AVURLAsset = try await {
-            let reader = ZipArchiveReader()
+            let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
             _ = try await reader.open(prepared.zip)
             return ArchiveAssetFactory.makeAsset(for: url, reader: reader)
         }()
@@ -109,7 +109,7 @@ struct ArchiveAssetLoaderTests {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let prepared = try prepare(Self.cases[0], in: directory)
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         _ = try await reader.open(prepared.zip)
 
         let asset = ArchiveAssetFactory.makeAsset(

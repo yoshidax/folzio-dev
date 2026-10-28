@@ -130,7 +130,7 @@ struct PaneLayoutTests {
     @Test("showsNoMediaMessage は .all と .fileListOnly では常に false")
     func noMediaMessageIsFalseOutsidePreviewOnly() {
         let folder = makeFolder()
-        let states: [FolderListing.State] = [.loading, .loaded, .empty, .noMatches, .denied, .failed("x")]
+        let states: [FolderListing.State] = [.loading, .loaded, .empty, .noMatches, .denied, .failed(.systemFailure(systemReason: "x"))]
         let fileSets: [[MediaFile]] = [
             [],
             [file("sub", kind: .folder, in: folder)],
@@ -193,7 +193,7 @@ struct PaneLayoutTests {
     @Test("showsNoMediaMessage は previewOnly で行が空の非読み込み状態なら true")
     func noMediaMessageIsTrueForEmptyStates() {
         let folder = makeFolder()
-        let states: [FolderListing.State] = [.empty, .noMatches, .denied, .failed("x")]
+        let states: [FolderListing.State] = [.empty, .noMatches, .denied, .failed(.systemFailure(systemReason: "x"))]
 
         for state in states {
             let listing = FolderListing(folder: folder, files: [], state: state)
@@ -225,7 +225,7 @@ struct PaneLayoutTests {
         #expect(!PaneLayout.shouldAutoSelectEntry(
             in: FolderListing(folder: folder, state: .loading)
         ))
-        for state in [FolderListing.State.loaded, .empty, .noMatches, .denied, .failed("x")] {
+        for state in [FolderListing.State.loaded, .empty, .noMatches, .denied, .failed(.systemFailure(systemReason: "x"))] {
             #expect(
                 PaneLayout.shouldAutoSelectEntry(in: FolderListing(folder: folder, state: state)),
                 "state=\(state)"

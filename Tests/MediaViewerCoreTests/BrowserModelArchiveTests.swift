@@ -75,11 +75,12 @@ struct BrowserModelArchiveTests {
         let defaults = UserDefaults(suiteName: suite)!
         defaults.set(showsZipFiles, forKey: "view.showsZipFiles")
         let model = BrowserModel(
-            lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
             decoder: ImageDecoder(),
             cache: DecodedImageCache(costLimitBytes: 50_000_000),
             settings: SettingsStore(defaults: defaults),
-            archiveReader: ZipArchiveReader()
+            archiveReader: ZipArchiveReader(kindNames: FixtureKit.kindNames)
         )
         return Env(root: root, zip: zip, defaults: defaults, suite: suite, model: model)
     }
@@ -379,7 +380,7 @@ struct BrowserModelArchiveTests {
         model.select([secret], focused: secret)
         let isUnavailable = await waitUntil {
             if case .unavailable(let name, let reason) = model.preview {
-                return name == "secret.jpg" && reason == "暗号化されているため表示できません"
+                return name == "secret.jpg" && reason == .archive(.entryEncrypted)
             }
             return false
         }
@@ -389,7 +390,8 @@ struct BrowserModelArchiveTests {
         model.select([odd], focused: odd)
         let isUnsupported = await waitUntil {
             if case .unavailable(let name, let reason) = model.preview {
-                return name == "odd.png" && reason == "対応していない圧縮方式です"
+                if case .archive(.unsupportedMethod(99)) = reason { return name == "odd.png" }
+                return false
             }
             return false
         }
@@ -407,11 +409,12 @@ struct BrowserModelArchiveTests {
         defer { env.cleanup() }
         let cache = DecodedImageCache(costLimitBytes: 50_000_000)
         let model = BrowserModel(
-            lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
             decoder: ImageDecoder(),
             cache: cache,
             settings: SettingsStore(defaults: env.defaults),
-            archiveReader: ZipArchiveReader()
+            archiveReader: ZipArchiveReader(kindNames: FixtureKit.kindNames)
         )
         await model.selectFolder(env.root)
         await model.openItem(env.zip)
@@ -493,7 +496,8 @@ struct BrowserModelArchiveTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set(true, forKey: "view.showsZipFiles")
         let model = BrowserModel(
-            lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
             decoder: ImageDecoder(),
             cache: DecodedImageCache(costLimitBytes: 1_000_000),
             settings: SettingsStore(defaults: defaults)
@@ -525,7 +529,7 @@ struct BrowserModelArchiveTests {
             Issue.record("state should be failed, got \(env.model.listing.state)")
             return
         }
-        #expect(message.hasPrefix("zip を開けません: "))
+        #expect(message == .archive(.notAZip))
         #expect(env.model.listing.files.map(\.kind) == [.parent])
         #expect(env.model.listing.archive == ArchiveLocation(archive: broken, directory: ""))
 

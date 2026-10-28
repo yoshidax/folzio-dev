@@ -169,7 +169,7 @@ struct FileOperationServiceTests {
         #expect(result.succeeded.isEmpty)
         #expect(result.failed.count == 1)
         #expect(result.failed.first?.url == source)
-        #expect(result.failed.first?.reason.isEmpty == false)
+        #expect(result.failed.first != nil)
         #expect(FileManager.default.fileExists(atPath: source.path))
         #expect(try Data(contentsOf: existing) == Data("existing".utf8))
     }
@@ -237,7 +237,7 @@ struct FileOperationServiceTests {
         #expect(result.succeeded.isEmpty)
         #expect(result.failed.count == 1)
         #expect(result.failed.first?.url == source)
-        #expect(result.failed.first?.reason.isEmpty == false)
+        #expect(result.failed.first != nil)
         #expect(FileManager.default.fileExists(atPath: source.path))
         #expect(try Data(contentsOf: source) == originalContents)
         #expect(try Data(contentsOf: existing) == Data("existing".utf8))
@@ -265,8 +265,7 @@ struct FileOperationServiceTests {
         #expect(result.succeeded.isEmpty)
         let failure = try #require(result.failed.first)
         #expect(failure.url == source)
-        #expect(!failure.reason.isEmpty)
-        #expect(FileManager.default.fileExists(atPath: source.path))
+                #expect(FileManager.default.fileExists(atPath: source.path))
         #expect(try Data(contentsOf: source) == originalContents)
         #expect(!FileManager.default.fileExists(atPath: destination.appendingPathComponent("a.jpg").path))
     }
@@ -308,7 +307,7 @@ struct FileOperationServiceTests {
         #expect(result.succeeded.count == 2)
         #expect(result.failed.count == 1)
         #expect(result.failed.first?.url == missing)
-        #expect(result.failed.first?.reason.isEmpty == false)
+        #expect(result.failed.first != nil)
         #expect(FileManager.default.fileExists(atPath: destination.appendingPathComponent("a.jpg").path))
         #expect(FileManager.default.fileExists(atPath: destination.appendingPathComponent("b.png").path))
     }
@@ -329,8 +328,7 @@ struct FileOperationServiceTests {
         #expect(result.succeeded.isEmpty)
         let failure = try #require(result.failed.first)
         #expect(failure.url == source)
-        #expect(!failure.reason.isEmpty)
-        #expect(FileManager.default.fileExists(atPath: source.path))
+                #expect(FileManager.default.fileExists(atPath: source.path))
     }
 
     // MARK: - フォルダ（FR-018・076）
@@ -459,7 +457,7 @@ struct FileOperationServiceTests {
                 resolution: .abort
             )
             #expect(result.succeeded.isEmpty)
-            #expect(result.failed.first?.reason == "フォルダを自分自身またはその配下へ移動・コピーすることはできません")
+            #expect(result.failed.first?.reason == .intoItself)
             #expect(contents(of: album) == expected)
         }
     }

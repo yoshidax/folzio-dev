@@ -23,7 +23,8 @@ struct ArchiveIndexTests {
                 modificationDate: Date(timeIntervalSince1970: 0),
                 inode: 1
             ),
-            centralEntries: central
+            centralEntries: central,
+            kindNames: FixtureKit.kindNames
         )
     }
 
@@ -149,7 +150,7 @@ struct ArchiveIndexTests {
         let directory = try #require(index.items(in: "").first)
         #expect(directory.name == "folder")
         #expect(directory.kind == .directory)
-        #expect(directory.typeDescription == "フォルダ")
+        #expect(directory.typeDescription == FixtureKit.kindNames.folder)
         #expect(directory.fileSize == 0)
         #expect(directory.url == ArchiveURL.entry(archive: archive, path: "folder/"))
 

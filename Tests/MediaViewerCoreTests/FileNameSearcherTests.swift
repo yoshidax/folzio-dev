@@ -23,7 +23,7 @@ struct FileNameSearcherTests {
     }
 
     private func collect(
-        _ searcher: FileNameSearcher = FileNameSearcher(),
+        _ searcher: FileNameSearcher = FileNameSearcher(kindNames: FixtureKit.kindNames),
         in root: URL,
         _ keyword: String
     ) async throws -> [[MediaFile]] {
@@ -150,11 +150,11 @@ struct FileNameSearcherTests {
         let results = try await collect(in: env.root, "kyoto").flatMap { $0 }
         let row = try #require(results.first { $0.name == "kyoto_day1" && $0.url.deletingLastPathComponent().lastPathComponent == "east" })
         #expect(row.kind == .folder)
-        #expect(row.typeDescription == "フォルダ")
+        #expect(row.typeDescription == FixtureKit.kindNames.folder)
         #expect(row.fileSize == 0)
 
         let listed = try #require(
-            try await DirectoryLister().mediaFiles(in: env.root.appendingPathComponent("east", isDirectory: true))
+            try await DirectoryLister(kindNames: FixtureKit.kindNames).mediaFiles(in: env.root.appendingPathComponent("east", isDirectory: true))
                 .first { $0.name == "kyoto_day1" }
         )
         #expect(row.creationDate == listed.creationDate)
@@ -174,7 +174,7 @@ struct FileNameSearcherTests {
 
         func search(root: URL, matchesRoot: Bool) async -> [MediaFile] {
             var found: [MediaFile] = []
-            for await batch in FileNameSearcher().search(
+            for await batch in FileNameSearcher(kindNames: FixtureKit.kindNames).search(
                 SearchRequest(root: root, pattern: pattern, matchesRoot: matchesRoot)
             ) {
                 found.append(contentsOf: batch)
@@ -224,7 +224,7 @@ struct FileNameSearcherTests {
         let pattern = try #require(SearchPattern(keyword: "cat"))
         let visits = SearchVisitLog()
         var found: [[MediaFile]] = []
-        for await batch in FileNameSearcher().search(
+        for await batch in FileNameSearcher(kindNames: FixtureKit.kindNames).search(
             SearchRequest(root: env.root, pattern: pattern, visits: visits)
         ) {
             found.append(batch)
@@ -281,7 +281,7 @@ struct FileNameSearcherTests {
         defer { env.cleanup() }
         let linked = try await collect(in: env.root, "linked").flatMap { $0 }
         #expect(relativePaths(linked, root: env.root) == ["linked.jpg"])
-        let listed = try await DirectoryLister().mediaFiles(in: env.root)
+        let listed = try await DirectoryLister(kindNames: FixtureKit.kindNames).mediaFiles(in: env.root)
         #expect(listed.contains { $0.name == "linked.jpg" })
 
         let link = try await collect(in: env.root, "link").flatMap { $0 }
@@ -301,9 +301,9 @@ struct FileNameSearcherTests {
         #expect(movie.kind == .media(.mov))
         #expect(top.name == "Cat01.jpg")
 
-        let listedTop = try #require(try await DirectoryLister().mediaFiles(in: env.root).first { $0.name == "Cat01.jpg" })
+        let listedTop = try #require(try await DirectoryLister(kindNames: FixtureKit.kindNames).mediaFiles(in: env.root).first { $0.name == "Cat01.jpg" })
         let listedMovie = try #require(
-            try await DirectoryLister().mediaFiles(in: env.root.appendingPathComponent("a", isDirectory: true))
+            try await DirectoryLister(kindNames: FixtureKit.kindNames).mediaFiles(in: env.root.appendingPathComponent("a", isDirectory: true))
                 .first { $0.name == "my_cat.mov" }
         )
         for (found, listed) in [(top, listedTop), (movie, listedMovie)] {
@@ -345,7 +345,7 @@ struct FileNameSearcherTests {
     func batches() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
-        let batches = try await collect(FileNameSearcher(batchSize: 2, batchInterval: .seconds(10)), in: env.root, "cat")
+        let batches = try await collect(FileNameSearcher(kindNames: FixtureKit.kindNames, batchSize: 2, batchInterval: .seconds(10)), in: env.root, "cat")
         #expect(batches.allSatisfy { $0.count <= 2 && !$0.isEmpty })
         #expect(batches.map(\.count).reduce(0, +) == 5)
     }
@@ -362,7 +362,7 @@ struct FileNameSearcherTests {
 
         let counter = BatchCounter()
         let pattern = try #require(SearchPattern(keyword: "*"))
-        let stream = FileNameSearcher().search(in: base.appendingPathComponent("huge", isDirectory: true), matching: pattern)
+        let stream = FileNameSearcher(kindNames: FixtureKit.kindNames).search(in: base.appendingPathComponent("huge", isDirectory: true), matching: pattern)
         // 最初のバッチを受け取った時点で、集めている Task 自身を取り消す
         let collector = Task { @MainActor in
             for await batch in stream {

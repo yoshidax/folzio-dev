@@ -7,7 +7,7 @@ public struct FolderListing: Sendable {
         case empty
         case noMatches
         case denied
-        case failed(String)
+        case failed(ListingFailure)
     }
 
     public var folder: URL
@@ -84,7 +84,23 @@ public enum PreviewContent {
     /// zip の中のアニメーション画像。`Data` は zip から読んだ項目の内容（プレビューを離れたら捨てる）
     case animatedImageData(URL, Data)
     case video(URL)
-    case unavailable(name: String, reason: String)
+    case unavailable(name: String, reason: PreviewFailure)
+}
+
+/// フォルダの一覧を読めなかった理由（表示言語に依存しない値）
+public enum ListingFailure: Error, Sendable, Equatable {
+    case folderNotFound
+    /// OS が返す理由。訳し直さない（EC-111）
+    case systemFailure(systemReason: String)
+    case archive(ArchiveError)
+}
+
+/// プレビューを表示できない理由（表示言語に依存しない値）
+public enum PreviewFailure: Error, Sendable, Equatable {
+    case unreadable
+    case unsupportedFormat
+    case corrupted
+    case archive(ArchiveError)
 }
 
 public enum FocusDirection: Sendable {

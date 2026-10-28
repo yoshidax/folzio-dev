@@ -1,27 +1,12 @@
 import Foundation
 
-/// 検索起点ディレクトリの入力が使えない理由（FR-081、research.md R35）。`message` を入力欄の下に出す
+/// 検索起点ディレクトリの入力が使えない理由（FR-081、research.md R35）。文言は表示の層が決める
 public enum SearchRootError: Error, Sendable, Equatable {
     case empty
     case notAbsolute
     case notFound
     case notAFolder
     case accessDenied
-
-    public var message: String {
-        switch self {
-        case .empty:
-            return "検索起点ディレクトリを入力してください"
-        case .notAbsolute:
-            return "/ または ~ で始まるパスを入力してください"
-        case .notFound:
-            return "フォルダが見つかりません"
-        case .notAFolder:
-            return "フォルダではありません"
-        case .accessDenied:
-            return "フォルダを読み取れません"
-        }
-    }
 }
 
 /// 検索起点ディレクトリの入力の解釈（`parse`。ディスクを読まない）と確認（`validate`。UI スレッドの外でディスクを読む）

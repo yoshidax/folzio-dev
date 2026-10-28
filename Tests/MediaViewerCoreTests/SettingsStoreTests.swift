@@ -4,6 +4,33 @@ import Testing
 
 @Suite("SettingsStore")
 struct SettingsStoreTests {
+    @Test("表示言語は未設定や不正値なら英語")
+    func displayLanguageDefaultsToEnglish() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+            defaults.set(["ja", "fr"], forKey: "AppleLanguages")
+            #expect(store.displayLanguage == .english)
+            for value in ["fr", "", "en-GB", 42, true] as [Any] {
+                defaults.set(value, forKey: "appearance.language")
+                #expect(store.displayLanguage == .english)
+            }
+        }
+    }
+
+    @Test("表示言語を保存・復元し他の設定を維持する")
+    func displayLanguageRoundTrips() {
+        withDefaults { defaults in
+            let store = SettingsStore(defaults: defaults)
+            store.playback = PlaybackOptions(autoplay: false, loop: false)
+            for language in [DisplayLanguageSetting.japanese, .english] {
+                store.displayLanguage = language
+                #expect(SettingsStore(defaults: defaults).displayLanguage == language)
+                #expect(defaults.string(forKey: "appearance.language") == language.rawValue)
+                #expect(store.playback == PlaybackOptions(autoplay: false, loop: false))
+            }
+        }
+    }
+
     @Test("未設定なら既定値になる")
     func usesDefaults() {
         withDefaults { defaults in

@@ -227,14 +227,14 @@ enum ZipStructure {
         let bytes = [UInt8](localHeader.prefix(localHeaderSize))
         guard bytes.count >= localHeaderSize,
               (try? readUInt32(bytes, 0)) == localHeaderSignature else {
-            throw .corrupted("項目のヘッダが壊れています")
+            throw .corrupted(.headerDamaged)
         }
         let nameLength = UInt64(try readUInt16(bytes, 26))
         let extraLength = UInt64(try readUInt16(bytes, 28))
         let (sum, overflow) = localHeaderOffset.addingReportingOverflow(
             UInt64(localHeaderSize) + nameLength + extraLength
         )
-        guard !overflow else { throw .corrupted("項目の位置が不正です") }
+        guard !overflow else { throw .corrupted(.invalidOffset) }
         return sum
     }
 

@@ -1,5 +1,6 @@
 import AppKit
 import MediaViewerCore
+import MediaViewerLocalization
 
 /// システムのキーボードナビゲーションの設定にかかわらず Tab で止まる。
 private final class KeyViewCheckbox: NSButton {
@@ -17,10 +18,18 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
     private let autoplayCheckbox: NSButton
     private let loopCheckbox: NSButton
     private let confirmFileOperationsCheckbox: NSButton
+    private let languagePopup = KeyViewPopUpButton(frame: .zero, pullsDown: false)
+    private let languageLabel = NSTextField(labelWithString: "")
+    private let videoHeader = NSTextField(labelWithString: "")
+    private let fileOperationsHeader = NSTextField(labelWithString: "")
+    private let slideshowHeader = NSTextField(labelWithString: "")
+    private let intervalLabel = NSTextField(labelWithString: "")
+    private let secondsLabel = NSTextField(labelWithString: "")
+    private let transitionLabel = NSTextField(labelWithString: "")
     private let intervalField = NSTextField(string: "3")
     private let transitionPopup = KeyViewPopUpButton(frame: .zero, pullsDown: false)
     private let repeatsCheckbox = KeyViewCheckbox(
-        checkboxWithTitle: "最後まで表示したら先頭から繰り返す",
+        checkboxWithTitle: l10n.text(.settingsRepeat),
         target: nil,
         action: nil
     )
@@ -31,17 +40,17 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         self.store = store
 
         let autoplayCheckbox = KeyViewCheckbox(
-            checkboxWithTitle: "動画を自動再生する",
+            checkboxWithTitle: l10n.text(.settingsAutoplay),
             target: nil,
             action: nil
         )
         let loopCheckbox = KeyViewCheckbox(
-            checkboxWithTitle: "動画をループ再生する",
+            checkboxWithTitle: l10n.text(.settingsLoop),
             target: nil,
             action: nil
         )
         let confirmFileOperationsCheckbox = KeyViewCheckbox(
-            checkboxWithTitle: "コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する（名前の変更・移動・ツリーのフォルダのゴミ箱は常に確認する）",
+            checkboxWithTitle: l10n.text(.settingsConfirm),
             target: nil,
             action: nil
         )
@@ -57,18 +66,22 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         )
         super.init(window: window)
 
-        window.title = "設定"
+        window.title = l10n.text(.settingsWindow)
         window.isReleasedWhenClosed = false
         window.delegate = self
-        window.contentView = makeContentView()
+        let contentView = makeContentView()
+        window.contentView = contentView
+        contentView.layoutSubtreeIfNeeded()
+        window.setContentSize(NSSize(width: 620, height: max(320, contentView.fittingSize.height)))
         window.autorecalculatesKeyViewLoop = false
+        languagePopup.nextKeyView = autoplayCheckbox
         autoplayCheckbox.nextKeyView = loopCheckbox
         loopCheckbox.nextKeyView = confirmFileOperationsCheckbox
         confirmFileOperationsCheckbox.nextKeyView = intervalField
         intervalField.nextKeyView = repeatsCheckbox
         repeatsCheckbox.nextKeyView = transitionPopup
-        transitionPopup.nextKeyView = autoplayCheckbox
-        window.initialFirstResponder = autoplayCheckbox
+        transitionPopup.nextKeyView = languagePopup
+        window.initialFirstResponder = languagePopup
 
         autoplayCheckbox.target = self
         autoplayCheckbox.action = #selector(toggleAutoplay(_:))
@@ -79,17 +92,30 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         repeatsCheckbox.target = self
         repeatsCheckbox.action = #selector(toggleRepeats(_:))
         intervalField.delegate = self
-        intervalField.setAccessibilityLabel("切り替え間隔（秒）")
-        repeatsCheckbox.setAccessibilityLabel("最後まで表示したら先頭から繰り返す")
-        for (effect, title) in [(SlideshowTransitionEffect.none, "なし"), (.crossfade, "クロスフェード"),
-                                (.slide, "スライド"), (.zoom, "ズーム")] {
+        intervalField.setAccessibilityLabel(l10n.text(.settingsIntervalA11y))
+        repeatsCheckbox.setAccessibilityLabel(l10n.text(.settingsRepeat))
+        for (effect, title) in [(SlideshowTransitionEffect.none, l10n.text(.settingsTransitionNone)),
+                                (.crossfade, l10n.text(.settingsTransitionCrossfade)),
+                                (.slide, l10n.text(.settingsTransitionSlide)),
+                                (.zoom, l10n.text(.settingsTransitionZoom))] {
             transitionPopup.addItem(withTitle: title)
             transitionPopup.lastItem?.representedObject = effect.rawValue
         }
         transitionPopup.target = self
         transitionPopup.action = #selector(selectTransition(_:))
-        transitionPopup.setAccessibilityLabel("切り替え効果")
+        transitionPopup.setAccessibilityLabel(l10n.text(.settingsTransition))
 
+        languagePopup.addItem(withTitle: l10n.text(.settingsLanguageEnglish))
+        languagePopup.lastItem?.representedObject = DisplayLanguageSetting.english.rawValue
+        languagePopup.addItem(withTitle: l10n.text(.settingsLanguageJapanese))
+        languagePopup.lastItem?.representedObject = DisplayLanguageSetting.japanese.rawValue
+        languagePopup.target = self
+        languagePopup.action = #selector(selectLanguage(_:))
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(updateLocalizedLabels), name: .displayLanguageDidChange, object: nil
+        )
+
+        updateLocalizedLabels()
         syncFromStore()
     }
 
@@ -112,25 +138,27 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
             frame: NSRect(x: 0, y: 0, width: 620, height: 340)
         )
 
-        let videoHeader = NSTextField(labelWithString: "動画")
         videoHeader.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
 
-        let fileOperationsHeader = NSTextField(labelWithString: "ファイル操作")
         fileOperationsHeader.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
 
-        let slideshowHeader = NSTextField(labelWithString: "スライドショー")
         slideshowHeader.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
 
+        let languageRow = NSStackView(views: [languageLabel, languagePopup])
+        languageRow.orientation = .horizontal
+        languageRow.alignment = .firstBaseline
+        languageRow.spacing = 8
+
         let intervalRow = NSStackView(views: [
-            NSTextField(labelWithString: "切り替え間隔"),
+            intervalLabel,
             intervalField,
-            NSTextField(labelWithString: "秒"),
+            secondsLabel,
         ])
         intervalRow.orientation = .horizontal
         intervalRow.alignment = .firstBaseline
         intervalRow.spacing = 8
 
-        let transitionRow = NSStackView(views: [NSTextField(labelWithString: "切り替え効果"), transitionPopup])
+        let transitionRow = NSStackView(views: [transitionLabel, transitionPopup])
         transitionRow.orientation = .horizontal
         transitionRow.alignment = .firstBaseline
         transitionRow.spacing = 8
@@ -140,6 +168,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         confirmFileOperationsCheckbox.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         let stack = NSStackView(views: [
+            languageRow,
             videoHeader,
             autoplayCheckbox,
             loopCheckbox,
@@ -162,7 +191,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
             stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -20),
             confirmFileOperationsCheckbox.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            confirmFileOperationsCheckbox.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            confirmFileOperationsCheckbox.heightAnchor.constraint(greaterThanOrEqualToConstant: 60),
             intervalField.widthAnchor.constraint(equalToConstant: 80),
         ])
 
@@ -170,6 +199,11 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
     }
 
     private func syncFromStore() {
+        if let item = languagePopup.itemArray.first(where: {
+            $0.representedObject as? String == store.displayLanguage.rawValue
+        }) {
+            languagePopup.select(item)
+        }
         let playback = store.playback
         autoplayCheckbox.state = playback.autoplay ? .on : .off
         loopCheckbox.state = playback.loop ? .on : .off
@@ -183,6 +217,36 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         }) {
             transitionPopup.select(item)
         }
+    }
+
+    @objc private func selectLanguage(_ sender: NSPopUpButton) {
+        guard let raw = sender.selectedItem?.representedObject as? String,
+              let language = DisplayLanguageSetting(rawValue: raw) else { return }
+        LocalizationState.shared.select(language)
+    }
+
+    @objc private func updateLocalizedLabels() {
+        window?.title = l10n.text(.settingsWindow)
+        languageLabel.stringValue = l10n.text(.settingsLanguage)
+        languagePopup.setAccessibilityLabel(l10n.text(.settingsLanguage))
+        videoHeader.stringValue = l10n.text(.settingsVideo)
+        fileOperationsHeader.stringValue = l10n.text(.settingsFileOperations)
+        slideshowHeader.stringValue = l10n.text(.settingsSlideshow)
+        autoplayCheckbox.title = l10n.text(.settingsAutoplay)
+        loopCheckbox.title = l10n.text(.settingsLoop)
+        confirmFileOperationsCheckbox.title = l10n.text(.settingsConfirm)
+        intervalLabel.stringValue = l10n.text(.settingsInterval)
+        secondsLabel.stringValue = l10n.text(.settingsSeconds)
+        intervalField.setAccessibilityLabel(l10n.text(.settingsIntervalA11y))
+        repeatsCheckbox.title = l10n.text(.settingsRepeat)
+        repeatsCheckbox.setAccessibilityLabel(l10n.text(.settingsRepeat))
+        transitionLabel.stringValue = l10n.text(.settingsTransition)
+        transitionPopup.setAccessibilityLabel(l10n.text(.settingsTransition))
+        for (index, key) in [TextKey.settingsTransitionNone, .settingsTransitionCrossfade,
+                             .settingsTransitionSlide, .settingsTransitionZoom].enumerated() {
+            transitionPopup.item(at: index)?.title = l10n.text(key)
+        }
+        window?.contentView?.layoutSubtreeIfNeeded()
     }
 
     @objc private func selectTransition(_ sender: NSPopUpButton) {

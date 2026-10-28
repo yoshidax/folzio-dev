@@ -1,7 +1,14 @@
 import Foundation
 
+/// アプリが保存する表示言語。OS の優先言語とは独立する。
+public enum DisplayLanguageSetting: String, CaseIterable, Sendable {
+    case english = "en"
+    case japanese = "ja"
+}
+
 public struct SettingsStore {
     private enum Keys {
+        static let displayLanguage = "appearance.language"
         static let displayMode = "view.displayMode"
         static let thumbnailSize = "view.thumbnailSize"
         static let sortColumn = "view.sort.column"
@@ -23,6 +30,16 @@ public struct SettingsStore {
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+    }
+
+    public var displayLanguage: DisplayLanguageSetting {
+        get {
+            (defaults.object(forKey: Keys.displayLanguage) as? String)
+                .flatMap(DisplayLanguageSetting.init(rawValue:)) ?? .english
+        }
+        nonmutating set {
+            defaults.set(newValue.rawValue, forKey: Keys.displayLanguage)
+        }
     }
 
     public var viewSettings: ViewSettings {

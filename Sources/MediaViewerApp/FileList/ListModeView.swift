@@ -1,5 +1,6 @@
 import AppKit
 import MediaViewerCore
+import MediaViewerLocalization
 
 @MainActor
 private final class FileListTableView: NSTableView {
@@ -95,7 +96,6 @@ final class ListModeView: NSView {
     private let provider: any ThumbnailProviding
     private let scrollView = NSScrollView()
     private let tableView = FileListTableView()
-    private let dateFormatter: DateFormatter
 
     var onTogglePlayback: (() -> Void)?
     var onRename: ((URL, String) async -> Void)?
@@ -111,12 +111,14 @@ final class ListModeView: NSView {
         set { tableView.menu = newValue }
     }
 
-    private static let sortEntries: [(column: SortColumn, title: String)] = [
-        (.name, "名前"),
-        (.creationDate, "作成日"),
-        (.kind, "種類"),
-        (.location, "場所"),
-    ]
+    private static var sortEntries: [(column: SortColumn, title: String)] {
+        [
+            (.name, l10n.text(.listColumnName)),
+            (.creationDate, l10n.text(.listColumnCreationDate)),
+            (.kind, l10n.text(.listColumnKind)),
+            (.location, l10n.text(.listColumnLocation)),
+        ]
+    }
 
     private var lastURLs: [URL] = []
     private var isApplyingSelection = false
@@ -130,9 +132,6 @@ final class ListModeView: NSView {
     init(model: BrowserModel, provider: any ThumbnailProviding) {
         self.model = model
         self.provider = provider
-        self.dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .medium
-        dateFormatter.timeStyle = .short
         super.init(frame: .zero)
         setup()
         applyModel()
@@ -186,11 +185,11 @@ final class ListModeView: NSView {
         tableView.target = self
         tableView.doubleAction = #selector(handleDoubleClick(_:))
 
-        addColumn(identifier: "name", title: "名前", width: 220)
-        addColumn(identifier: "creationDate", title: "作成日", width: 150)
-        addColumn(identifier: "kind", title: "種類", width: 150)
+        addColumn(identifier: "name", title: l10n.text(.listColumnName), width: 220)
+        addColumn(identifier: "creationDate", title: l10n.text(.listColumnCreationDate), width: 150)
+        addColumn(identifier: "kind", title: l10n.text(.listColumnKind), width: 150)
         // 検索結果の表示中だけ出す（FR-084、R37）
-        addColumn(identifier: "location", title: "場所", width: 180)
+        addColumn(identifier: "location", title: l10n.text(.listColumnLocation), width: 180)
         tableView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier("location"))?.isHidden = true
 
         scrollView.documentView = tableView
@@ -326,7 +325,7 @@ final class ListModeView: NSView {
     private func installSortMenuIfNeeded() {
         guard !sortMenuInstalled else { return }
         guard let viewMenu = NSApp.mainMenu?.items
-            .first(where: { $0.submenu?.title == "表示" })?
+            .first(where: { $0.submenu?.identifier == NSUserInterfaceItemIdentifier("menu.view") })?
             .submenu else {
             return
         }
@@ -334,12 +333,13 @@ final class ListModeView: NSView {
 
         let submenu: NSMenu
         if let existing = viewMenu.items
-            .first(where: { $0.title == "並べ替え" })?
+            .first(where: { $0.submenu?.identifier == NSUserInterfaceItemIdentifier("menu.view.sort") })?
             .submenu {
             submenu = existing
         } else {
-            submenu = NSMenu(title: "並べ替え")
-            let parentItem = NSMenuItem(title: "並べ替え", action: nil, keyEquivalent: "")
+            submenu = NSMenu(title: l10n.text(.menuViewSortBy))
+            submenu.identifier = NSUserInterfaceItemIdentifier("menu.view.sort")
+            let parentItem = NSMenuItem(title: l10n.text(.menuViewSortBy), action: nil, keyEquivalent: "")
             parentItem.submenu = submenu
             viewMenu.addItem(parentItem)
         }
@@ -367,7 +367,10 @@ final class ListModeView: NSView {
             let isActive = entry.column == order.column
             item.state = isActive ? .on : .off
             item.title = isActive
-                ? "\(entry.title)（\(order.ascending ? "昇順" : "降順")）"
+                ? l10n.text(
+                    order.ascending ? .listSortAscending : .listSortDescending,
+                    .text(entry.title)
+                )
                 : entry.title
         }
     }
@@ -545,7 +548,7 @@ extension ListModeView: NSTableViewDelegate {
 
         switch tableColumn.identifier.rawValue {
         case "creationDate":
-            cell.textField?.stringValue = file.creationDate.map(dateFormatter.string(from:)) ?? "--"
+            cell.textField?.stringValue = l10n.dateTime(file.creationDate)
         case "kind":
             cell.textField?.stringValue = file.typeDescription
         case "location":
@@ -584,7 +587,7 @@ extension ListModeView: NSTableViewDelegate {
             }
             if file.kind == .parent {
                 cell.nameField.stringValue = ".."
-                cell.nameField.setAccessibilityLabel("上の階層へ")
+                cell.nameField.setAccessibilityLabel(l10n.text(.listParentRow))
             } else {
                 cell.nameField.stringValue = file.name
                 cell.nameField.setAccessibilityLabel(nil)

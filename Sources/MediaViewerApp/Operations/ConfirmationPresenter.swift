@@ -1,5 +1,6 @@
 import AppKit
 import MediaViewerCore
+import MediaViewerLocalization
 
 @MainActor
 final class ConfirmationPresenter {
@@ -24,12 +25,12 @@ final class ConfirmationPresenter {
         }
         var informativeText = informativeText(for: operation, includesFolders: includesFolders)
         if let location {
-            informativeText += "\n場所: \(location)"
+            informativeText += "\n" + l10n.text(.dialogConfirmLocation, .text(location))
         }
         return await present(
-            messageText: messageText(for: operation.kind),
+            messageText: messageText(for: operation.kind, count: operation.sources.count),
             informativeText: informativeText,
-            confirmTitle: "実行",
+            confirmTitle: l10n.text(.dialogConfirmContinue),
             allowsSuppression: isSkippable
         )
     }
@@ -39,9 +40,13 @@ final class ConfirmationPresenter {
             return true
         }
         return await present(
-            messageText: "お気に入りから削除しますか？",
-            informativeText: "対象: \(name)\n場所: \(path)\n実際のフォルダは変更されません",
-            confirmTitle: "削除",
+            messageText: l10n.text(.dialogFavoriteRemoveTitle),
+            informativeText: [
+                l10n.text(.dialogFavoriteRemoveItems, .text(name)),
+                l10n.text(.dialogConfirmLocation, .text(path)),
+                l10n.text(.dialogFavoriteRemoveNote),
+            ].joined(separator: "\n"),
+            confirmTitle: l10n.text(.dialogFavoriteRemoveConfirm),
             allowsSuppression: true
         )
     }
@@ -57,11 +62,11 @@ final class ConfirmationPresenter {
         alert.messageText = messageText
         alert.informativeText = informativeText
         alert.addButton(withTitle: confirmTitle)
-        alert.addButton(withTitle: "キャンセル")
+        alert.addButton(withTitle: l10n.text(.dialogCancel))
         alert.buttons[1].keyEquivalent = "\u{1b}"
         if allowsSuppression {
             alert.showsSuppressionButton = true
-            alert.suppressionButton?.title = "今後この確認を表示しない"
+            alert.suppressionButton?.title = l10n.text(.dialogConfirmDontAsk)
         }
 
         let response: NSApplication.ModalResponse
@@ -85,38 +90,38 @@ final class ConfirmationPresenter {
         return response == .alertFirstButtonReturn
     }
 
-    private func messageText(for kind: FileOperation.Kind) -> String {
+    private func messageText(for kind: FileOperation.Kind, count: Int) -> String {
         switch kind {
         case .copy:
-            return "コピーしますか？"
+            return l10n.text(.dialogConfirmCopy, .count(count))
         case .move:
-            return "移動しますか？"
+            return l10n.text(.dialogConfirmMove, .count(count))
         case .rename:
-            return "名前を変更しますか？"
+            return l10n.text(.dialogConfirmRename)
         case .trash:
-            return "ゴミ箱に入れますか？"
+            return l10n.text(.dialogConfirmTrash)
         }
     }
 
     private func informativeText(for operation: FileOperation, includesFolders: Bool) -> String {
         let sources = operation.sources
-        var lines = ["対象: \(sources.count) 件"]
-        lines.append(contentsOf: sources.prefix(5).map { "・\($0.lastPathComponent)" })
+        var lines = [l10n.text(.dialogConfirmItems, .number(sources.count))]
+        lines.append(contentsOf: sources.prefix(5).map { l10n.text(.dialogConfirmBullet, .text($0.lastPathComponent)) })
         if sources.count > 5 {
-            lines.append("ほか \(sources.count - 5) 件")
+            lines.append(l10n.text(.dialogConfirmMore, .number(sources.count - 5)))
         }
         if includesFolders {
             switch operation.kind {
             case .trash:
-                lines.append("フォルダは中身ごとゴミ箱に入ります")
+                lines.append(l10n.text(.dialogConfirmFolderTrash))
             case .copy, .move, .rename:
-                lines.append("フォルダは中身ごと操作します")
+                lines.append(l10n.text(.dialogConfirmFolderProcess))
             }
         }
         switch operation.kind {
         case .copy, .move:
             if let destination = operation.destination {
-                lines.append("操作先: \(destination.path)")
+                lines.append(l10n.text(.dialogConfirmDestination, .text(destination.path)))
             }
         case .rename, .trash:
             break

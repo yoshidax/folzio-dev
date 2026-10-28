@@ -73,7 +73,7 @@ final class ArchiveFile: Sendable {
             } else if errno == EINTR {
                 continue
             } else {
-                throw .corrupted("zip の読み出しに失敗しました")
+                throw .corrupted(.readFailed)
             }
         }
         return total
@@ -96,7 +96,7 @@ final class ArchiveFile: Sendable {
         case EACCES, EPERM:
             return .accessDenied
         default:
-            return .corrupted("zip を読み込めません")
+            return .corrupted(.unreadable)
         }
     }
 }

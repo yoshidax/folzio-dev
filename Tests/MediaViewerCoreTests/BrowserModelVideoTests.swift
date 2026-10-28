@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import Testing
 @testable import MediaViewerCore
+import FixtureKit
 
 @Suite("BrowserModelVideo")
 struct BrowserModelVideoTests {
@@ -19,6 +20,7 @@ struct BrowserModelVideoTests {
         defaults.set(true, forKey: "playback.loop")
 
         let model = BrowserModel(
+            kindNames: FixtureKit.kindNames,
             lister: lister,
             decoder: VideoFakeDecoder(),
             cache: DecodedImageCache(costLimitBytes: 1_000_000),
@@ -49,6 +51,7 @@ struct BrowserModelVideoTests {
         defer { defaults.removePersistentDomain(forName: suite) }
 
         let model = BrowserModel(
+            kindNames: FixtureKit.kindNames,
             lister: lister,
             decoder: VideoFakeDecoder(),
             cache: DecodedImageCache(costLimitBytes: 1_000_000),
@@ -82,6 +85,7 @@ struct BrowserModelVideoTests {
         defer { defaults.removePersistentDomain(forName: suite) }
 
         let model = BrowserModel(
+            kindNames: FixtureKit.kindNames,
             lister: lister,
             decoder: VideoFakeDecoder(),
             cache: DecodedImageCache(costLimitBytes: 1_000_000),

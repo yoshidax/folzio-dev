@@ -1,12 +1,8 @@
 import Foundation
 
-/// 標準パネルの初期位置を決められない理由。表示・読み上げに使う（data-model.md 2）
+/// 標準パネルの初期位置を決められない理由。文言は表示の層が決める（data-model.md 2）
 public enum SearchFolderInitialLocationError: Error, Sendable, Equatable {
-    case noAvailableFolder
-
-    public var message: String {
-        "利用できるフォルダが見つかりません"
-    }
+    case noUsableFolder
 }
 
 /// 標準パネルの初期位置を、現在入力 → 開始時既定 → ホームの順に解決する（FR-143、data-model.md 2）。
@@ -38,6 +34,6 @@ public enum SearchFolderInitialLocation {
                 return .success(url)
             }
         }
-        return .failure(.noAvailableFolder)
+        return .failure(.noUsableFolder)
     }
 }

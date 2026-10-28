@@ -50,7 +50,8 @@ struct PerformanceBaselineTests {
 
         let cache = DecodedImageCache()
         let model = BrowserModel(
-            lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
             decoder: ImageDecoder(),
             cache: cache,
             settings: SettingsStore(defaults: defaults)
@@ -111,7 +112,7 @@ struct PerformanceBaselineTests {
         try FixtureSets.huge(in: directory, count: 10_000)
         let folder = directory.appendingPathComponent("huge", isDirectory: true)
 
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: FixtureKit.kindNames)
         let start = ContinuousClock.now
         let files = try await lister.mediaFiles(in: folder)
         let ordered = sorted(files, by: SortOrder())
@@ -151,7 +152,8 @@ struct PerformanceBaselineTests {
         defer { defaults.removePersistentDomain(forName: suite) }
 
         let model = BrowserModel(
-            lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
             decoder: ImageDecoder(),
             cache: DecodedImageCache(),
             settings: SettingsStore(defaults: defaults)
@@ -193,7 +195,7 @@ struct PerformanceBaselineTests {
         try FixtureSets.huge(in: directory, count: 10_000)
         let folder = directory.appendingPathComponent("huge", isDirectory: true)
 
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: FixtureKit.kindNames)
         let files = try await lister.mediaFiles(in: folder)
         let ordered = sorted(files, by: SortOrder())
 
@@ -218,7 +220,7 @@ struct PerformanceBaselineTests {
         try FixtureSets.huge(in: directory, count: 10_000)
         let folder = directory.appendingPathComponent("huge", isDirectory: true)
 
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: FixtureKit.kindNames)
         let files = try await lister.mediaFiles(in: folder)
         let ordered = sorted(files, by: SortOrder())
 
@@ -271,7 +273,8 @@ struct PerformanceBaselineTests {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let model = BrowserModel(
-            lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
             decoder: ImageDecoder(),
             cache: DecodedImageCache(),
             settings: SettingsStore(defaults: defaults)
@@ -318,7 +321,8 @@ struct PerformanceBaselineTests {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let model = BrowserModel(
-            lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
             decoder: ImageDecoder(),
             cache: DecodedImageCache(),
             settings: SettingsStore(defaults: defaults)
@@ -373,7 +377,7 @@ struct PerformanceBaselineTests {
             FileManager.default.createFile(atPath: path, contents: nil)
         }
 
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: FixtureKit.kindNames)
         let start = ContinuousClock.now
         let hasSubfolders = try await lister.hasSubfolders(in: directory)
         let elapsed = ContinuousClock.now - start
@@ -401,7 +405,7 @@ struct PerformanceBaselineTests {
             )
         }
 
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: FixtureKit.kindNames)
         let start = ContinuousClock.now
         let files = try await lister.mediaFiles(in: directory)
         let elapsed = ContinuousClock.now - start
@@ -465,7 +469,8 @@ struct PerformanceBaselineTests {
 
         let cache = DecodedImageCache()
         let model = BrowserModel(
-            lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
             decoder: ImageDecoder(),
             cache: cache,
             settings: SettingsStore(defaults: defaults)
@@ -520,7 +525,7 @@ struct PerformanceBaselineTests {
         // zip の生成時間は計測に含めない
         let zip = try makeLargeZip(in: directory)
 
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         let start = ContinuousClock.now
         let index = try await reader.open(zip)
         let items = index.items(in: "")
@@ -542,7 +547,7 @@ struct PerformanceBaselineTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let zip = try makeLargeZip(in: directory)
-        let index = try await ZipArchiveReader().open(zip)
+        let index = try await ZipArchiveReader(kindNames: FixtureKit.kindNames).open(zip)
 
         let start = ContinuousClock.now
         let items = index.items(in: "")
@@ -581,7 +586,7 @@ struct PerformanceBaselineTests {
             to: zip
         )
 
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         _ = try await reader.open(zip)
         let stream = try await reader.stream(for: ArchiveURL.entry(archive: zip, path: "zeros.mp4"))
         #expect(stream.length == length, "展開後のサイズが 1GB であること (実際: \(stream.length))")
@@ -648,7 +653,7 @@ struct PerformanceBaselineTests {
         let pattern = try #require(SearchPattern(keyword: "cat"))
         let start = ContinuousClock.now
         var count = 0
-        for await batch in FileNameSearcher().search(in: root, matching: pattern) {
+        for await batch in FileNameSearcher(kindNames: FixtureKit.kindNames).search(in: root, matching: pattern) {
             count += batch.count
         }
         let elapsed = ContinuousClock.now - start
@@ -688,7 +693,7 @@ struct PerformanceBaselineTests {
         var folderCount = 0
         var fileCount = 0
         var matchingFolderNames: [String] = []
-        for await batch in FileNameSearcher().search(in: root, matching: pattern) {
+        for await batch in FileNameSearcher(kindNames: FixtureKit.kindNames).search(in: root, matching: pattern) {
             for file in batch {
                 if file.kind == .folder {
                     folderCount += 1
@@ -746,7 +751,8 @@ struct PerformanceBaselineTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         let searcher = StreamingSearcher()
         let model = BrowserModel(
-            lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
             decoder: ImageDecoder(),
             cache: DecodedImageCache(),
             settings: SettingsStore(defaults: defaults),

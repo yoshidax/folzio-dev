@@ -34,3 +34,14 @@ public struct MediaFile: Identifiable, Hashable, Sendable {
         hasher.combine(url)
     }
 }
+
+/// アプリが管理する種類名。並べ替え（種類の列）に表示中の名前を使うため、Core へ注入する（EC-112）
+public struct KindNames: Sendable, Equatable {
+    public var folder: String
+    public var zipArchive: String
+
+    public init(folder: String, zipArchive: String) {
+        self.folder = folder
+        self.zipArchive = zipArchive
+    }
+}

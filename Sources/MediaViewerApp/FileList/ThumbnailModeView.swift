@@ -1,5 +1,6 @@
 import AppKit
 import MediaViewerCore
+import MediaViewerLocalization
 
 @MainActor
 private final class ThumbnailCollectionView: NSCollectionView {
@@ -88,7 +89,7 @@ private final class ThumbnailItemView: NSCollectionViewItem {
         thumbnailImageView.translatesAutoresizingMaskIntoConstraints = false
         thumbnailImageView.imageScaling = .scaleProportionallyUpOrDown
         thumbnailImageView.imageAlignment = .alignCenter
-        thumbnailImageView.setAccessibilityLabel("サムネイル")
+        thumbnailImageView.setAccessibilityLabel(l10n.text(.a11yThumbnail))
 
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.alignment = .center
@@ -140,7 +141,7 @@ private final class ThumbnailItemView: NSCollectionViewItem {
             nameLabel.stringValue = file.name
             nameLabel.setAccessibilityLabel(file.name)
         }
-        let accessibilityName = file.kind == .parent ? "上の階層へ" : file.name
+        let accessibilityName = file.kind == .parent ? l10n.text(.listParentRow) : file.name
         view.setAccessibilityLabel(accessibilityName)
         if !file.kind.isMedia {
             if !isRenaming {

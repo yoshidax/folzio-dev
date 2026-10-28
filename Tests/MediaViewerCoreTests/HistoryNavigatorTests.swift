@@ -32,7 +32,7 @@ struct HistoryNavigatorTests {
         let navigator: HistoryNavigator
         let host: Host
 
-        init(reader: any ArchiveReading = ZipArchiveReader()) throws {
+        init(reader: any ArchiveReading = ZipArchiveReader(kindNames: FixtureKit.kindNames)) throws {
             var root = FileManager.default.temporaryDirectory
                 .appendingPathComponent("HistoryNavigatorTests-\(UUID().uuidString)", isDirectory: true)
             if root.path.hasPrefix("/var/") {
@@ -72,7 +72,8 @@ struct HistoryNavigatorTests {
             defaults = UserDefaults(suiteName: suite)!
             defaults.set(true, forKey: "view.showsZipFiles")
             model = BrowserModel(
-                lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+                lister: DirectoryLister(kindNames: FixtureKit.kindNames),
                 decoder: ImageDecoder(),
                 cache: DecodedImageCache(costLimitBytes: 50_000_000),
                 settings: SettingsStore(defaults: defaults),
@@ -140,7 +141,7 @@ struct HistoryNavigatorTests {
     }
 
     private final class SlowArchiveReader: ArchiveReading, @unchecked Sendable {
-        private let base = ZipArchiveReader()
+        private let base = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         private let delay: Duration
 
         init(delay: Duration) {
@@ -360,7 +361,7 @@ struct HistoryNavigatorTests {
         await env.openZip("broken.zip")
         #expect(env.navigator.history.current?.location.archive != nil)
         if case let .failed(message) = env.model.listing.state {
-            #expect(message.hasPrefix("zip を開けません: "))
+            #expect(message == .archive(.notAZip))
         } else {
             Issue.record("壊れた zip が .failed になっていません: \(env.model.listing.state)")
         }

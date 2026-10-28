@@ -175,23 +175,24 @@ public final class BrowserModel {
     private enum ArchiveImageResult {
         case image(DecodedImage)
         case animated(Data)
-        case failure(String)
+        case failure(PreviewFailure)
     }
 
     public init(
+        kindNames: KindNames,
         lister: any DirectoryListing,
         decoder: any ImageDecoding,
         cache: DecodedImageCache,
         settings: SettingsStore,
-        archiveReader: any ArchiveReading = ZipArchiveReader(),
-        searcher: any FileNameSearching = FileNameSearcher()
+        archiveReader: (any ArchiveReading)? = nil,
+        searcher: (any FileNameSearching)? = nil
     ) {
         self.lister = lister
         self.decoder = decoder
         self.cache = cache
         self.settings = settings
-        self.archiveReader = archiveReader
-        self.searcher = searcher
+        self.archiveReader = archiveReader ?? ZipArchiveReader(kindNames: kindNames)
+        self.searcher = searcher ?? FileNameSearcher(kindNames: kindNames)
         self.sortOrder = settings.viewSettings.sortOrder
         self.showsZipFiles = settings.viewSettings.showsZipFiles
         self.screenMaxPixel = 4096
@@ -713,11 +714,11 @@ public final class BrowserModel {
                 listing.state = .denied
             case .notFound:
                 showsNotFound = true
-                listing.state = .failed("フォルダが見つかりません")
+                listing.state = .failed(.folderNotFound)
                 onLocationEvent?(.notFound(HistoryLocation(folder: folder)))
             case let .other(message):
                 showsNotFound = false
-                listing.state = .failed(message)
+                listing.state = .failed(.systemFailure(systemReason: message))
             }
             previewTask?.cancel()
             previewTask = nil
@@ -951,7 +952,7 @@ public final class BrowserModel {
             if let location = listing.archive {
                 listing.files = [Self.parentRow(for: location)]
             }
-            listing.state = .failed(error.message)
+            listing.state = .failed(.archive(error))
         }
     }
 
@@ -1019,13 +1020,13 @@ public final class BrowserModel {
                 listing.state = .denied
             case .notFound:
                 showsNotFound = true
-                listing.state = .failed("フォルダが見つかりません")
+                listing.state = .failed(.folderNotFound)
                 if notifyNotFound {
                     onLocationEvent?(.notFound(HistoryLocation(folder: url)))
                 }
             case let .other(message):
                 showsNotFound = false
-                listing.state = .failed(message)
+                listing.state = .failed(.systemFailure(systemReason: message))
             }
         }
     }
@@ -1128,7 +1129,7 @@ public final class BrowserModel {
                 listing = FolderListing(
                     folder: location.folder,
                     files: [Self.parentRow(for: archive)],
-                    state: .failed(resolvedError?.message ?? ArchiveError.notAZip.message),
+                    state: .failed(resolvedError.map(ListingFailure.archive) ?? .archive(.notAZip)),
                     archive: archive
                 )
             }
@@ -1309,7 +1310,7 @@ public final class BrowserModel {
         } else if let mediaKind = MediaKind(fileExtension: url.pathExtension) {
             kind = mediaKind
         } else {
-            preview = .unavailable(name: url.lastPathComponent, reason: "対応していない形式です")
+            preview = .unavailable(name: url.lastPathComponent, reason: .unsupportedFormat)
             return
         }
 
@@ -1352,12 +1353,12 @@ public final class BrowserModel {
             case .readable:
                 break
             case .encrypted:
-                preview = .unavailable(name: url.lastPathComponent, reason: ArchiveError.entryEncrypted.message)
+                preview = .unavailable(name: url.lastPathComponent, reason: .archive(.entryEncrypted))
                 return
             case .unsupportedMethod:
                 preview = .unavailable(
                     name: url.lastPathComponent,
-                    reason: ArchiveError.unsupportedMethod(entry.method).message
+                    reason: .archive(.unsupportedMethod(entry.method))
                 )
                 return
             }
@@ -1391,9 +1392,9 @@ public final class BrowserModel {
         do throws(ArchiveError) {
             data = try await archiveReader.data(for: url, limit: MemoryLimits.archiveImageBytes)
         } catch {
-            return .failure(error.message)
+            return .failure(.archive(error))
         }
-        guard !Task.isCancelled else { return .failure("") }
+        guard !Task.isCancelled else { return .failure(.unreadable) }
 
         if decoder.isAnimated(data: data) {
             return .animated(data)
@@ -1457,14 +1458,14 @@ public final class BrowserModel {
         }
     }
 
-    private static func reason(for error: DecodeError) -> String {
+    private static func reason(for error: DecodeError) -> PreviewFailure {
         switch error {
         case .unreadable:
-            return "ファイルを読み込めません"
+            return .unreadable
         case .unsupported:
-            return "対応していない形式です"
+            return .unsupportedFormat
         case .corrupted:
-            return "ファイルが壊れています"
+            return .corrupted
         }
     }
 }

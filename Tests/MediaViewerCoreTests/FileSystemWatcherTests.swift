@@ -113,7 +113,8 @@ struct FileSystemWatcherTests {
         defer { defaults.removePersistentDomain(forName: suite) }
 
         let model = BrowserModel(
-            lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
             decoder: ImageDecoder(),
             cache: DecodedImageCache(costLimitBytes: 32 * 1024 * 1024),
             settings: SettingsStore(defaults: defaults)

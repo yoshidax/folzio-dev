@@ -42,7 +42,7 @@ struct BrowserModelSearchTests {
         }
 
         static func folderResult(_ url: URL) -> MediaFile {
-            DirectoryLister.folderRow(at: url, creationDate: nil)
+            DirectoryLister.folderRow(at: url, creationDate: nil, kindNames: FixtureKit.kindNames)
         }
 
         static func result(_ url: URL) -> MediaFile {
@@ -88,11 +88,12 @@ struct BrowserModelSearchTests {
         let defaults = UserDefaults(suiteName: suite)!
         let searcher = FakeSearcher()
         let model = BrowserModel(
-            lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
             decoder: ImageDecoder(),
             cache: DecodedImageCache(costLimitBytes: 50_000_000),
             settings: SettingsStore(defaults: defaults),
-            archiveReader: ZipArchiveReader(),
+            archiveReader: ZipArchiveReader(kindNames: FixtureKit.kindNames),
             searcher: searcher
         )
         model.setNavigationRoots([root])
@@ -708,7 +709,8 @@ struct BrowserModelSearchTests {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return DirectoryLister.folderRow(
             at: url,
-            creationDate: (try? url.resourceValues(forKeys: [.creationDateKey]))?.creationDate
+            creationDate: (try? url.resourceValues(forKeys: [.creationDateKey]))?.creationDate,
+            kindNames: FixtureKit.kindNames
         )
     }
 
@@ -761,7 +763,7 @@ struct BrowserModelSearchTests {
         #expect(names(env.model) == ["clips"])
         #expect(env.model.listing.state == .noMatches)
         #expect(env.model.listing.search?.totalCount == 2)
-        #expect(env.model.mediaTypeFilter.noMatchesMessage == "画像のみ表示中: 該当するファイルはありません")
+        #expect(env.model.mediaTypeFilter.emptyState == .imagesOnly)
 
         // 一致がフォルダだけなら、絞り込み中のメッセージも出さない
         env.model.startSearch(pattern("clip"), root: env.root)

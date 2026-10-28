@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import Testing
 @testable import MediaViewerCore
+import FixtureKit
 
 @Suite("BrowserModel")
 struct BrowserModelTests {
@@ -606,6 +607,7 @@ struct BrowserModelTests {
         model.setShowsZipFiles(true)
 
         let restored = BrowserModel(
+            kindNames: FixtureKit.kindNames,
             lister: lister,
             decoder: FakeDecoder(),
             cache: DecodedImageCache(costLimitBytes: 10_000_000),
@@ -625,6 +627,7 @@ struct BrowserModelTests {
         let suite = "BrowserModelTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         let model = BrowserModel(
+            kindNames: FixtureKit.kindNames,
             lister: lister,
             decoder: decoder,
             cache: cache,

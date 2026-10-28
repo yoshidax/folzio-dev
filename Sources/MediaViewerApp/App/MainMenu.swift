@@ -1,4 +1,5 @@
 import AppKit
+import MediaViewerLocalization
 
 /// ツリーが検証で「お気に入りから削除」に変えた項目名を、メニューを開くたびに「ゴミ箱に入れる」へ戻す。
 /// プレビューにフォーカスがあるときは誰も検証しないため、戻さないと前の項目名が残る
@@ -6,7 +7,7 @@ import AppKit
 private final class TrashMenuTitleReset: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         for item in menu.items where item.action == #selector(FileListViewController.moveToTrash(_:)) {
-            item.title = "ゴミ箱に入れる"
+            item.title = l10n.text(.menuFileTrash)
         }
     }
 }
@@ -24,10 +25,11 @@ final class MainMenu {
         let appMenuItem = NSMenuItem()
         mainMenu.addItem(appMenuItem)
         let appMenu = NSMenu(title: "MediaViewer")
+        appMenu.identifier = NSUserInterfaceItemIdentifier("menu.app")
         appMenuItem.submenu = appMenu
 
         let settingsItem = NSMenuItem(
-            title: "設定…",
+            title: l10n.text(.menuAppSettings),
             action: #selector(AppDelegate.showSettings(_:)),
             keyEquivalent: ","
         )
@@ -36,7 +38,7 @@ final class MainMenu {
         appMenu.addItem(.separator())
 
         let quitItem = NSMenuItem(
-            title: "終了",
+            title: l10n.text(.menuAppQuit),
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         )
@@ -45,11 +47,12 @@ final class MainMenu {
 
         let fileMenuItem = NSMenuItem()
         mainMenu.addItem(fileMenuItem)
-        let fileMenu = NSMenu(title: "ファイル")
+        let fileMenu = NSMenu(title: l10n.text(.menuFile))
+        fileMenu.identifier = NSUserInterfaceItemIdentifier("menu.file")
         fileMenuItem.submenu = fileMenu
 
         let openItem = NSMenuItem(
-            title: "開く",
+            title: l10n.text(.menuFileOpen),
             action: #selector(FileListViewController.open(_:)),
             keyEquivalent: "o"
         )
@@ -57,7 +60,7 @@ final class MainMenu {
         fileMenu.addItem(openItem)
 
         let openContainerItem = NSMenuItem(
-            title: "中を表示",
+            title: l10n.text(.menuFileShowContents),
             action: #selector(FileListViewController.openFocusedItem(_:)),
             keyEquivalent: String(UnicodeScalar(NSDownArrowFunctionKey)!)
         )
@@ -66,7 +69,7 @@ final class MainMenu {
         fileMenu.addItem(openContainerItem)
 
         let goUpItem = NSMenuItem(
-            title: "上の階層へ",
+            title: l10n.text(.menuFileEnclosingFolder),
             action: #selector(FileListViewController.goToEnclosingLevel(_:)),
             keyEquivalent: String(UnicodeScalar(NSUpArrowFunctionKey)!)
         )
@@ -75,7 +78,7 @@ final class MainMenu {
         fileMenu.addItem(goUpItem)
 
         let revealItem = NSMenuItem(
-            title: "Finder に表示",
+            title: l10n.text(.menuFileRevealInFinder),
             action: #selector(FileListViewController.revealInFinder(_:)),
             keyEquivalent: ""
         )
@@ -83,7 +86,7 @@ final class MainMenu {
         fileMenu.addItem(revealItem)
 
         let addFavoriteItem = NSMenuItem(
-            title: "お気に入りに追加",
+            title: l10n.text(.menuFileAddToFavorites),
             action: #selector(MainSplitViewController.addSelectedFolderToFavorites(_:)),
             keyEquivalent: "t"
         )
@@ -93,7 +96,7 @@ final class MainMenu {
 
         // ⌘F。⇧⌘F（お気に入りへ移動）・⌃⌘F（フルスクリーン）とは修飾キーで区別する（FR-080、R39）
         let searchItem = NSMenuItem(
-            title: "検索…",
+            title: l10n.text(.menuFileFind),
             action: #selector(MainSplitViewController.showSearch(_:)),
             keyEquivalent: "f"
         )
@@ -103,7 +106,7 @@ final class MainMenu {
         fileMenu.addItem(.separator())
 
         let fileTrashItem = NSMenuItem(
-            title: "ゴミ箱に入れる",
+            title: l10n.text(.menuFileTrash),
             action: #selector(FileListViewController.moveToTrash(_:)),
             keyEquivalent: String(UnicodeScalar(NSBackspaceCharacter)!)
         )
@@ -113,19 +116,40 @@ final class MainMenu {
 
         let editMenuItem = NSMenuItem()
         mainMenu.addItem(editMenuItem)
-        let editMenu = NSMenu(title: "編集")
+        let editMenu = NSMenu(title: l10n.text(.menuEdit))
+        editMenu.identifier = NSUserInterfaceItemIdentifier("menu.edit")
         editMenuItem.submenu = editMenu
 
-        editMenu.addItem(NSMenuItem(title: "取り消す", action: Selector(("undo:")), keyEquivalent: "z"))
-        let redoItem = NSMenuItem(title: "やり直す", action: Selector(("redo:")), keyEquivalent: "Z")
+        editMenu.addItem(NSMenuItem(
+            title: l10n.text(.menuEditUndo),
+            action: Selector(("undo:")),
+            keyEquivalent: "z"
+        ))
+        let redoItem = NSMenuItem(
+            title: l10n.text(.menuEditRedo),
+            action: Selector(("redo:")),
+            keyEquivalent: "Z"
+        )
         editMenu.addItem(redoItem)
         editMenu.addItem(.separator())
-        editMenu.addItem(NSMenuItem(title: "カット", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
-        editMenu.addItem(NSMenuItem(title: "コピー", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
-        editMenu.addItem(NSMenuItem(title: "ペースト", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
+        editMenu.addItem(NSMenuItem(
+            title: l10n.text(.menuEditCut),
+            action: #selector(NSText.cut(_:)),
+            keyEquivalent: "x"
+        ))
+        editMenu.addItem(NSMenuItem(
+            title: l10n.text(.menuEditCopy),
+            action: #selector(NSText.copy(_:)),
+            keyEquivalent: "c"
+        ))
+        editMenu.addItem(NSMenuItem(
+            title: l10n.text(.menuEditPaste),
+            action: #selector(NSText.paste(_:)),
+            keyEquivalent: "v"
+        ))
 
         let movePasteItem = NSMenuItem(
-            title: "移動ペースト",
+            title: l10n.text(.menuEditMovePaste),
             action: #selector(FileListViewController.movePaste(_:)),
             keyEquivalent: "v"
         )
@@ -135,7 +159,7 @@ final class MainMenu {
         editMenu.addItem(.separator())
 
         let duplicateItem = NSMenuItem(
-            title: "複製",
+            title: l10n.text(.menuEditDuplicate),
             action: #selector(FileListViewController.duplicate(_:)),
             keyEquivalent: "d"
         )
@@ -143,7 +167,7 @@ final class MainMenu {
         editMenu.addItem(duplicateItem)
 
         let renameItem = NSMenuItem(
-            title: "名前を変更",
+            title: l10n.text(.menuEditRename),
             action: #selector(FileListViewController.rename(_:)),
             keyEquivalent: "\r"
         )
@@ -152,23 +176,28 @@ final class MainMenu {
         editMenu.addItem(renameItem)
 
         let editTrashItem = NSMenuItem(
-            title: "ゴミ箱に入れる",
+            title: l10n.text(.menuFileTrash),
             action: #selector(FileListViewController.moveToTrash(_:)),
             keyEquivalent: String(UnicodeScalar(NSBackspaceCharacter)!)
         )
         editTrashItem.target = nil
         editMenu.addItem(editTrashItem)
         editMenu.addItem(.separator())
-        editMenu.addItem(NSMenuItem(title: "すべてを選択", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+        editMenu.addItem(NSMenuItem(
+            title: l10n.text(.menuEditSelectAll),
+            action: #selector(NSText.selectAll(_:)),
+            keyEquivalent: "a"
+        ))
         editMenu.delegate = trashTitleReset
 
         let viewMenuItem = NSMenuItem()
         mainMenu.addItem(viewMenuItem)
-        let viewMenu = NSMenu(title: "表示")
+        let viewMenu = NSMenu(title: l10n.text(.menuView))
+        viewMenu.identifier = NSUserInterfaceItemIdentifier("menu.view")
         viewMenuItem.submenu = viewMenu
 
         let toolbarItem = NSMenuItem(
-            title: "ツールバーを表示",
+            title: l10n.text(.menuViewShowToolbar),
             action: #selector(MainWindowController.toggleMainToolbar(_:)),
             keyEquivalent: "T"
         )
@@ -177,7 +206,7 @@ final class MainMenu {
         viewMenu.addItem(.separator())
 
         let fullScreenItem = NSMenuItem(
-            title: "フルスクリーン",
+            title: l10n.text(.menuViewFullScreen),
             action: #selector(MainSplitViewController.togglePreviewFullScreen),
             keyEquivalent: "f"
         )
@@ -188,7 +217,7 @@ final class MainMenu {
 
         // プレビューの表示倍率（FR-135）。⌘+ は `+` の入力に Shift を含む
         let zoomInItem = NSMenuItem(
-            title: "拡大",
+            title: l10n.text(.menuViewZoomIn),
             action: #selector(AppDelegate.previewZoomIn(_:)),
             keyEquivalent: "+"
         )
@@ -199,7 +228,7 @@ final class MainMenu {
         // Shift なしの ⌘= でも拡大する（A-72）。表示は ⌘+ のままにするため非表示にする。
         // 非表示の項目は allowsKeyEquivalentWhenHidden を true にしないとキー等価に反応しない
         let zoomInAlternateItem = NSMenuItem(
-            title: "拡大",
+            title: l10n.text(.menuViewZoomIn),
             action: #selector(AppDelegate.previewZoomIn(_:)),
             keyEquivalent: "="
         )
@@ -210,7 +239,7 @@ final class MainMenu {
         viewMenu.addItem(zoomInAlternateItem)
 
         let zoomOutItem = NSMenuItem(
-            title: "縮小",
+            title: l10n.text(.menuViewZoomOut),
             action: #selector(AppDelegate.previewZoomOut(_:)),
             keyEquivalent: "-"
         )
@@ -219,7 +248,7 @@ final class MainMenu {
         viewMenu.addItem(zoomOutItem)
 
         let zoomToFitItem = NSMenuItem(
-            title: "表示領域に合わせる",
+            title: l10n.text(.menuViewZoomToFit),
             action: #selector(AppDelegate.previewZoomToFit(_:)),
             keyEquivalent: "0"
         )
@@ -229,7 +258,7 @@ final class MainMenu {
 
         // 大文字の S で ⇧⌘S になる
         let slideshowItem = NSMenuItem(
-            title: "スライドショーを開始",
+            title: l10n.text(.menuViewStartSlideshow),
             action: #selector(MainSplitViewController.startSlideshow(_:)),
             keyEquivalent: "S"
         )
@@ -239,11 +268,12 @@ final class MainMenu {
 
         let navigateMenuItem = NSMenuItem()
         mainMenu.addItem(navigateMenuItem)
-        let navigateMenu = NSMenu(title: "移動")
+        let navigateMenu = NSMenu(title: l10n.text(.menuGo))
+        navigateMenu.identifier = NSUserInterfaceItemIdentifier("menu.go")
         navigateMenuItem.submenu = navigateMenu
 
         let backItem = NSMenuItem(
-            title: "戻る",
+            title: l10n.text(.menuGoBack),
             action: #selector(MainSplitViewController.goBack(_:)),
             keyEquivalent: "["
         )
@@ -251,7 +281,7 @@ final class MainMenu {
         navigateMenu.addItem(backItem)
 
         let forwardItem = NSMenuItem(
-            title: "進む",
+            title: l10n.text(.menuGoForward),
             action: #selector(MainSplitViewController.goForward(_:)),
             keyEquivalent: "]"
         )

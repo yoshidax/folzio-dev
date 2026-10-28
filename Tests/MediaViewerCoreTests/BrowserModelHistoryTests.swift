@@ -63,11 +63,12 @@ struct BrowserModelHistoryTests {
         let defaults = UserDefaults(suiteName: suite)!
         defaults.set(true, forKey: "view.showsZipFiles")
         let model = BrowserModel(
-            lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
             decoder: ImageDecoder(),
             cache: DecodedImageCache(costLimitBytes: 50_000_000),
             settings: SettingsStore(defaults: defaults),
-            archiveReader: ZipArchiveReader()
+            archiveReader: ZipArchiveReader(kindNames: FixtureKit.kindNames)
         )
         model.setNavigationRoots([root])
         let recorder = Recorder()
@@ -346,7 +347,7 @@ struct BrowserModelHistoryTests {
         #expect(env.events.isEmpty)
         #expect(env.model.listing.archive?.archive == brokenURL)
         if case let .failed(message) = env.model.listing.state {
-            #expect(message.hasPrefix("zip を開けません: "))
+            #expect(message == .archive(.notAZip))
         } else {
             Issue.record("壊れた zip が .failed になっていません: \(env.model.listing.state)")
         }

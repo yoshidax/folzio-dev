@@ -108,18 +108,12 @@ struct MediaTypeFilterTests {
         }
     }
 
-    @Test("noMatchesMessage は絞り込み中だけ種類に応じた文言を返す")
-    func noMatchesMessageText() {
-        #expect(
-            MediaTypeFilter(imagesOnly: true).noMatchesMessage
-                == "画像のみ表示中: 該当するファイルはありません"
-        )
-        #expect(
-            MediaTypeFilter(videosOnly: true).noMatchesMessage
-                == "動画のみ表示中: 該当するファイルはありません"
-        )
-        #expect(MediaTypeFilter().noMatchesMessage == nil)
-        #expect(MediaTypeFilter(imagesOnly: true, videosOnly: true).noMatchesMessage == nil)
+    @Test("emptyState は絞り込み中だけ種類に応じた値を返す")
+    func emptyState() {
+        #expect(MediaTypeFilter(imagesOnly: true).emptyState == .imagesOnly)
+        #expect(MediaTypeFilter(videosOnly: true).emptyState == .videosOnly)
+        #expect(MediaTypeFilter().emptyState == nil)
+        #expect(MediaTypeFilter(imagesOnly: true, videosOnly: true).emptyState == nil)
     }
 
     // MARK: - SelectionState.restricted(toVisible:)

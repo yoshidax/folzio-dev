@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "my_img_viewer",
+    defaultLocalization: "en",
     platforms: [.macOS(.v15)],
     products: [
         .library(name: "MediaViewerCore", targets: ["MediaViewerCore"]),
@@ -12,12 +13,18 @@ let package = Package(
     ],
     targets: [
         .target(name: "MediaViewerCore"),
+        .target(
+            name: "MediaViewerLocalization",
+            dependencies: ["MediaViewerCore"],
+            resources: [.process("Resources")]
+        ),
         .executableTarget(
             name: "MediaViewerApp",
-            dependencies: ["MediaViewerCore"]
+            dependencies: ["MediaViewerCore", "MediaViewerLocalization"]
         ),
         .target(
             name: "FixtureKit",
+            dependencies: ["MediaViewerCore"],
             resources: [.process("Resources")]
         ),
         .executableTarget(
@@ -27,7 +34,7 @@ let package = Package(
         .executableTarget(name: "make-icon"),
         .testTarget(
             name: "MediaViewerCoreTests",
-            dependencies: ["MediaViewerCore", "FixtureKit"]
+            dependencies: ["MediaViewerCore", "MediaViewerLocalization", "FixtureKit"]
         ),
         .testTarget(
             name: "MediaViewerPerformanceTests",

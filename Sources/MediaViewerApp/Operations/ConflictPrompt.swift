@@ -1,5 +1,6 @@
 import AppKit
 import MediaViewerCore
+import MediaViewerLocalization
 
 @MainActor
 final class ConflictPrompt {
@@ -16,14 +17,14 @@ final class ConflictPrompt {
         }
 
         let alert = NSAlert()
-        alert.messageText = "同じ名前の項目があります"
+        alert.messageText = l10n.text(.dialogConflictTitle)
         alert.informativeText = informativeText(for: conflictingNames, destination: destination)
-        alert.addButton(withTitle: "置き換える")
-        alert.addButton(withTitle: "両方残す")
-        alert.addButton(withTitle: "中止")
+        alert.addButton(withTitle: l10n.text(.dialogConflictReplace))
+        alert.addButton(withTitle: l10n.text(.dialogConflictKeepBoth))
+        alert.addButton(withTitle: l10n.text(.dialogConflictStop))
         alert.buttons[2].keyEquivalent = "\u{1b}"
         alert.showsSuppressionButton = true
-        alert.suppressionButton?.title = "残りすべてに適用"
+        alert.suppressionButton?.title = l10n.text(.dialogConflictApplyAll)
 
         let response = await withCheckedContinuation { continuation in
             alert.beginSheetModal(for: window) { response in
@@ -44,13 +45,13 @@ final class ConflictPrompt {
     }
 
     private func informativeText(for names: [String], destination: URL?) -> String {
-        var lines = ["衝突する項目: \(names.count) 件"]
-        lines.append(contentsOf: names.prefix(5).map { "・\($0)" })
+        var lines = [l10n.text(.dialogConflictItems, .number(names.count))]
+        lines.append(contentsOf: names.prefix(5).map { l10n.text(.dialogConfirmBullet, .text($0)) })
         if names.count > 5 {
-            lines.append("ほか \(names.count - 5) 件")
+            lines.append(l10n.text(.dialogConfirmMore, .number(names.count - 5)))
         }
         if let destination {
-            lines.append("操作先: \(destination.path)")
+            lines.append(l10n.text(.dialogConfirmDestination, .text(destination.path)))
         }
         return lines.joined(separator: "\n")
     }

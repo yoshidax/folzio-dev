@@ -47,7 +47,7 @@ struct SlideshowTransitionStateTests {
             #expect(action == .none)
             #expect(state.phase == .holding)
         }
-        let action = state.reduce(.displayed(content: .unavailable(name: "b", reason: "broken"), focused: b))
+        let action = state.reduce(.displayed(content: .unavailable(name: "b", reason: .unreadable), focused: b))
         #expect(action == .animate(effect: .slide, generation: state.generation))
         #expect(state.phase == .animating)
     }
@@ -68,7 +68,7 @@ struct SlideshowTransitionStateTests {
     func completesOnce() {
         var state = animating()
         let generation = state.generation
-        for content: PreviewContent in [.video(b), .empty, .unavailable(name: "b", reason: "broken")] {
+        for content: PreviewContent in [.video(b), .empty, .unavailable(name: "b", reason: .unreadable)] {
             let repeated = state.reduce(.displayed(content: content, focused: b))
             #expect(repeated == .none)
             #expect(state.phase == .animating)
@@ -135,7 +135,7 @@ struct SlideshowTransitionStateTests {
         let image = try #require(context.makeImage())
         let decoded = DecodedImage(cgImage: image, pixelSize: CGSize(width: 1, height: 1),
             originalPixelSize: CGSize(width: 1, height: 1), byteCost: 4)
-        for content: PreviewContent in [.image(decoded), .empty, .unavailable(name: "a", reason: "broken")] {
+        for content: PreviewContent in [.image(decoded), .empty, .unavailable(name: "a", reason: .unreadable)] {
             #expect(SlideshowTransitionState.readiness(of: content) == .ready)
             var state = holding()
             let action = state.reduce(.displayed(content: content, focused: b))

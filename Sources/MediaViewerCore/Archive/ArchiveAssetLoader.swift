@@ -64,7 +64,7 @@ public final class ArchiveAssetLoader: NSObject, AVAssetResourceLoaderDelegate, 
                 return
             } catch {
                 if Task.isCancelled { return }
-                let message = (error as? ArchiveError)?.message ?? error.localizedDescription
+                let message = String(describing: error)
                 request.finishLoading(with: NSError(
                     domain: "MediaViewer.Archive", code: -1,
                     userInfo: [NSLocalizedDescriptionKey: message]

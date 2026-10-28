@@ -1,6 +1,7 @@
 import AppKit
 import ImageIO
 import MediaViewerCore
+import MediaViewerLocalization
 
 enum AnimatedSource: Sendable {
     case url(URL)
@@ -167,7 +168,7 @@ final class ImagePreviewView: NSView {
     }
 
     private static func percentText(_ zoom: PreviewZoom) -> String {
-        "\(zoom.percentage)%"
+        l10n.percent(zoom.percentage)
     }
 
     func showImage(_ image: DecodedImage, fileName: String) {
@@ -201,7 +202,7 @@ final class ImagePreviewView: NSView {
 
         if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
             if fallback == nil {
-                showUnavailable(name: fileName, reason: "アニメーションを表示できません")
+                showUnavailable(name: fileName, reason: l10n.text(.previewAnimationUnavailable))
             }
             return
         }
@@ -218,7 +219,7 @@ final class ImagePreviewView: NSView {
 
         spinner.isHidden = false
         spinner.startAnimation(nil)
-        nameLabel.stringValue = "読み込み中…"
+        nameLabel.stringValue = l10n.text(.emptyLoading)
         detailLabel.stringValue = fileName
         messageStack.isHidden = false
     }
@@ -243,7 +244,7 @@ final class ImagePreviewView: NSView {
         spinner.stopAnimation(nil)
         spinner.isHidden = true
         nameLabel.stringValue = name
-        detailLabel.stringValue = "表示できません\n\(reason)"
+        detailLabel.stringValue = l10n.text(.previewUnavailable, .text(reason))
         messageStack.isHidden = false
     }
 
@@ -311,7 +312,7 @@ final class ImagePreviewView: NSView {
         guard status == noErr else {
             animationState = nil
             if fallbackImage == nil {
-                showUnavailable(name: fileName, reason: "アニメーションを表示できません")
+                showUnavailable(name: fileName, reason: l10n.text(.previewAnimationUnavailable))
             }
             return
         }

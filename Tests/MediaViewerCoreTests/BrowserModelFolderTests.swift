@@ -57,11 +57,12 @@ struct BrowserModelFolderTests {
         let suite = "BrowserModelFolderTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         let model = BrowserModel(
-            lister: DirectoryLister(),
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
             decoder: ImageDecoder(),
             cache: DecodedImageCache(costLimitBytes: 50_000_000),
             settings: SettingsStore(defaults: defaults),
-            archiveReader: ZipArchiveReader()
+            archiveReader: ZipArchiveReader(kindNames: FixtureKit.kindNames)
         )
         model.setNavigationRoots(roots.map { root.appendingPathComponent($0, isDirectory: true) })
         return Env(root: root, defaults: defaults, suite: suite, model: model)

@@ -79,7 +79,7 @@ struct ThumbnailProviderTests {
         let zip = try makeZip(in: root, entries: [
             ZipFixtureEntry(name: "pics/big.png", content: .bytes(try pngData(in: root, width: 800, height: 400)), method: .deflated),
         ])
-        let provider = ThumbnailProvider(archiveReader: ZipArchiveReader())
+        let provider = ThumbnailProvider(archiveReader: ZipArchiveReader(kindNames: FixtureKit.kindNames))
         let url = ArchiveURL.entry(archive: zip, path: "pics/big.png")
 
         let image = await provider.thumbnail(for: url, pointSize: 50, scale: 2)
@@ -105,7 +105,7 @@ struct ThumbnailProviderTests {
             ZipFixtureEntry(name: "odd.png", content: .bytes(png), method: .raw(99)),
             ZipFixtureEntry(name: "notes.txt", content: .bytes(Data("x".utf8))),
         ])
-        let provider = ThumbnailProvider(archiveReader: ZipArchiveReader())
+        let provider = ThumbnailProvider(archiveReader: ZipArchiveReader(kindNames: FixtureKit.kindNames))
 
         for name in ["locked.png", "clip.mp4", "broken.png", "odd.png", "notes.txt", "missing.png"] {
             let image = await provider.thumbnail(
@@ -128,7 +128,7 @@ struct ThumbnailProviderTests {
         let zip = try makeZip(in: root, entries: [
             ZipFixtureEntry(name: "movies/clip.mp4", content: .bytes(try Data(contentsOf: video)), method: .deflated),
         ])
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         _ = try await reader.open(zip)
         let provider = ThumbnailProvider(archiveReader: reader)
         let url = ArchiveURL.entry(archive: zip, path: "movies/clip.mp4")
@@ -259,7 +259,7 @@ private final class SlowArchiveReader: ArchiveReading, @unchecked Sendable {
         do {
             try await Task.sleep(for: delay)
         } catch {
-            throw ArchiveError.corrupted("cancelled")
+            throw ArchiveError.corrupted(.readCancelled)
         }
         return payload
     }

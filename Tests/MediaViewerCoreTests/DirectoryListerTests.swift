@@ -12,7 +12,7 @@ struct DirectoryListerTests {
 
         try FixtureSets.mixed(in: root)
         let folder = root.appendingPathComponent("mixed", isDirectory: true)
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: FixtureKit.kindNames)
 
         let files = try await lister.mediaFiles(in: folder)
         #expect(files.count == 8)
@@ -45,7 +45,7 @@ struct DirectoryListerTests {
 
         try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: root.path)
 
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: FixtureKit.kindNames)
         do {
             _ = try await lister.mediaFiles(in: root)
             Issue.record("accessDenied was not thrown")
@@ -59,7 +59,7 @@ struct DirectoryListerTests {
         let missing = FileManager.default.temporaryDirectory
             .appendingPathComponent("missing-\(UUID().uuidString)", isDirectory: true)
 
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: FixtureKit.kindNames)
         do {
             _ = try await lister.mediaFiles(in: missing)
             Issue.record("notFound was not thrown")
@@ -83,7 +83,7 @@ struct DirectoryListerTests {
 
         try fixture.populate(root)
 
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: FixtureKit.kindNames)
         let has = try await lister.hasSubfolders(in: root)
         let subfolders = try await lister.subfolders(of: root)
         #expect(has == fixture.expected)
@@ -104,7 +104,7 @@ struct DirectoryListerTests {
         )
         try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: root.path)
 
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: FixtureKit.kindNames)
         await expectListingError(.accessDenied) { try await lister.hasSubfolders(in: root) }
         await expectListingError(.accessDenied) { try await lister.subfolders(of: root) }
     }
@@ -118,7 +118,7 @@ struct DirectoryListerTests {
         let file = root.appendingPathComponent("a.jpg")
         FileManager.default.createFile(atPath: file.path, contents: Data())
 
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: FixtureKit.kindNames)
         for url in [missing, file] {
             await expectListingError(.notFound) { try await lister.hasSubfolders(in: url) }
             await expectListingError(.notFound) { try await lister.subfolders(of: url) }
@@ -140,7 +140,7 @@ struct DirectoryListerTests {
             withIntermediateDirectories: true
         )
 
-        let files = try await DirectoryLister().mediaFiles(in: root)
+        let files = try await DirectoryLister(kindNames: FixtureKit.kindNames).mediaFiles(in: root)
 
         #expect(Set(files.map(\.name)) == ["a.zip", "B.ZIP", "c.jpg", "x.zip"])
         #expect(files.first { $0.name == "x.zip" }?.kind == .folder)
@@ -168,13 +168,13 @@ struct DirectoryListerTests {
         fileManager.createFile(atPath: root.appendingPathComponent("z.zip").path, contents: Data([0x50, 0x4B]))
         fileManager.createFile(atPath: root.appendingPathComponent("notes.txt").path, contents: Data("x".utf8))
 
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: FixtureKit.kindNames)
         let files = try await lister.mediaFiles(in: root)
 
         #expect(Set(files.map(\.name)) == ["sub", "dir.zip", "z.zip", "a.jpg"])
         let sub = try #require(files.first { $0.name == "sub" })
         #expect(sub.kind == .folder)
-        #expect(sub.typeDescription == "フォルダ")
+        #expect(sub.typeDescription == FixtureKit.kindNames.folder)
         #expect(sub.fileSize == 0)
         #expect(sub.creationDate != nil)
         #expect(files.first { $0.name == "dir.zip" }?.kind == .folder)
@@ -195,16 +195,16 @@ struct DirectoryListerTests {
         try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
         try ImageFixtures.jpeg(at: root.appendingPathComponent("a.jpg"), width: 8, height: 8)
 
-        let listed = try #require(try await DirectoryLister().mediaFiles(in: root).first { $0.name == "sub" })
+        let listed = try #require(try await DirectoryLister(kindNames: FixtureKit.kindNames).mediaFiles(in: root).first { $0.name == "sub" })
         let creationDate = try #require(listed.creationDate)
-        let row = DirectoryLister.folderRow(at: sub, creationDate: creationDate)
+        let row = DirectoryLister.folderRow(at: sub, creationDate: creationDate, kindNames: FixtureKit.kindNames)
 
         // contentsOfDirectory は起点の /var を /private/var に解決するため、標準化したパスで比べる
         #expect(row.url.standardizedFileURL == listed.url.standardizedFileURL)
         #expect(row.name == listed.name)
         #expect(row.kind == .folder)
         #expect(row.kind == listed.kind)
-        #expect(row.typeDescription == "フォルダ")
+        #expect(row.typeDescription == FixtureKit.kindNames.folder)
         #expect(row.typeDescription == listed.typeDescription)
         #expect(row.creationDate == listed.creationDate)
         #expect(row.fileSize == 0)
@@ -219,7 +219,7 @@ struct DirectoryListerTests {
         FileManager.default.createFile(atPath: root.appendingPathComponent("a.zip").path, contents: Data([0x50, 0x4B]))
         FileManager.default.createFile(atPath: root.appendingPathComponent("B.ZIP").path, contents: Data([0x50, 0x4B]))
 
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: FixtureKit.kindNames)
         #expect(try await lister.subfolders(of: root).isEmpty)
         #expect(try await lister.hasSubfolders(in: root) == false)
     }

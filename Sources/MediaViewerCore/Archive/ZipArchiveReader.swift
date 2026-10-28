@@ -38,8 +38,11 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
     private let lock = NSLock()
     /// 新しい順
     private var states: [(key: String, state: State)] = []
+    private let kindNames: KindNames
 
-    public init() {}
+    public init(kindNames: KindNames) {
+        self.kindNames = kindNames
+    }
 
     // MARK: - ArchiveReading
 
@@ -100,13 +103,13 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
 
         let location = try centralDirectoryLocation(of: end, in: file)
         guard location.size <= Self.maxCentralDirectoryBytes else {
-            throw .corrupted("中央ディレクトリが大きすぎます")
+            throw .corrupted(.centralDirectoryTooLarge)
         }
         let directory = try file.read(at: location.offset, length: Int(location.size))
         guard UInt64(directory.count) == location.size else { throw .notAZip }
 
         let entries = try ZipStructure.centralDirectoryEntries(directory, count: location.entryCount)
-        let index = ArchiveIndex(archive: archive, identity: file.identity, centralEntries: entries)
+        let index = ArchiveIndex(archive: archive, identity: file.identity, centralEntries: entries, kindNames: kindNames)
         let state = State(index: index, file: file)
         remember(state, forKey: archive.path)
         return state
@@ -170,11 +173,11 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
     /// URL の項目を索引から引く。暗号化・非対応の方式はここで弾く
     private func locateEntry(_ entryURL: URL) throws(ArchiveError) -> (state: State, entry: ArchiveEntry) {
         guard let parsed = ArchiveURL.parse(entryURL), !parsed.isParentLink else {
-            throw .corrupted("項目の場所が不正です")
+            throw .corrupted(.invalidLocation)
         }
         let state = try state(for: parsed.archive)
         guard let entry = state.index.entry(at: parsed.path), !entry.isDirectory else {
-            throw .corrupted("zip の中に項目が見つかりません")
+            throw .corrupted(.entryNotFound)
         }
 
         switch entry.readability {
@@ -200,13 +203,13 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
     private func validateSizes(of entry: ArchiveEntry) throws(ArchiveError) {
         if entry.method == 0 {
             guard entry.uncompressedSize <= entry.compressedSize else {
-                throw .corrupted("項目のサイズが一致しません")
+                throw .corrupted(.sizeMismatch)
             }
             return
         }
         let (limitBytes, overflow) = entry.compressedSize.multipliedReportingOverflow(by: Self.maxInflateRatio)
         guard overflow || entry.uncompressedSize <= limitBytes + 1024 else {
-            throw .corrupted("項目のサイズが一致しません")
+            throw .corrupted(.sizeMismatch)
         }
     }
 
@@ -229,7 +232,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
                     let length = min(Self.ioChunkSize, buffer.count - done)
                     let slice = UnsafeMutableRawBufferPointer(rebasing: buffer[done..<done + length])
                     guard try file.read(into: slice, at: start + UInt64(done)) == length else {
-                        throw .corrupted("項目のデータが途中で終わっています")
+                        throw .corrupted(.dataTruncated)
                     }
                     done += length
                 }
@@ -245,7 +248,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
                 let length = min(Self.ioChunkSize, buffer.count - done)
                 let slice = UnsafeMutableRawBufferPointer(rebasing: buffer[done..<done + length])
                 let produced = try cursor.read(into: slice, maxLength: length)
-                guard produced > 0 else { throw .corrupted("圧縮データが途中で終わっています") }
+                guard produced > 0 else { throw .corrupted(.compressedDataTruncated) }
                 done += produced
             }
         }
@@ -262,7 +265,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
         let start = try ZipStructure.dataOffset(localHeader: header, localHeaderOffset: entry.localHeaderOffset)
         let fileSize = state.file.size
         guard start <= fileSize, entry.compressedSize <= fileSize - start else {
-            throw .corrupted("項目のデータがファイルの外にあります")
+            throw .corrupted(.dataOutsideFile)
         }
         lock.lock()
         state.dataOffsets[entry.path] = start
@@ -271,7 +274,7 @@ public final class ZipArchiveReader: ArchiveReading, @unchecked Sendable {
     }
 
     private static func checkCancellation() throws(ArchiveError) {
-        if Task.isCancelled { throw .corrupted("読み込みを中止しました") }
+        if Task.isCancelled { throw .corrupted(.readCancelled) }
     }
 
     /// `count` バイトの領域を用意して `fill` で埋め、`Data` にする（コピーしない）

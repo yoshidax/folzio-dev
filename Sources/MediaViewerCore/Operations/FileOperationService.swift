@@ -40,7 +40,7 @@ public struct FileOperationService: FileOperating {
     private static func perform(_ operation: FileOperation, resolution: ConflictResolution) -> FileOperationResult {
         let fileManager = FileManager.default
         var succeeded: [URL] = []
-        var failed: [(url: URL, reason: String)] = []
+        var failed: [(url: URL, reason: OperationFailureReason)] = []
         var createdNames: Set<String> = []
 
         for source in operation.sources {
@@ -69,7 +69,7 @@ public struct FileOperationService: FileOperating {
             } catch let failure as OperationFailure {
                 failed.append((source, failure.reason))
             } catch {
-                failed.append((source, error.localizedDescription))
+                failed.append((source, .systemFailure(systemReason: error.localizedDescription)))
             }
         }
 
@@ -84,17 +84,17 @@ public struct FileOperationService: FileOperating {
         fileManager: FileManager
     ) throws -> URL {
         guard let destination = operation.destination else {
-            throw OperationFailure(reason: "操作先のフォルダが指定されていません")
+            throw OperationFailure(reason: .noDestination)
         }
         var isDirectory: ObjCBool = false
         guard fileManager.fileExists(atPath: destination.path, isDirectory: &isDirectory),
               isDirectory.boolValue
         else {
-            throw OperationFailure(reason: "操作先のフォルダが見つかりません")
+            throw OperationFailure(reason: .destinationNotFound)
         }
         var sourceIsDirectory: ObjCBool = false
         guard fileManager.fileExists(atPath: source.path, isDirectory: &sourceIsDirectory) else {
-            throw OperationFailure(reason: "対象のファイルが見つかりません")
+            throw OperationFailure(reason: .sourceNotFound)
         }
 
         let isMove: Bool
@@ -111,7 +111,7 @@ public struct FileOperationService: FileOperating {
 
         let provisionalTarget = destination.appendingPathComponent(source.lastPathComponent)
         if sourceIsDirectory.boolValue, isDescendant(provisionalTarget, of: source) {
-            throw OperationFailure(reason: "フォルダを自分自身またはその配下へ移動・コピーすることはできません")
+            throw OperationFailure(reason: .intoItself)
         }
 
         let target = try resolveTarget(
@@ -126,7 +126,7 @@ public struct FileOperationService: FileOperating {
             do {
                 try fileManager.moveItem(at: source, to: target)
             } catch {
-                throw OperationFailure(reason: error.localizedDescription)
+                throw OperationFailure(reason: .systemFailure(systemReason: error.localizedDescription))
             }
         } else {
             let destinationWasEmpty = !fileManager.fileExists(atPath: target.path)
@@ -136,7 +136,7 @@ public struct FileOperationService: FileOperating {
                 if destinationWasEmpty, fileManager.fileExists(atPath: target.path) {
                     try? fileManager.removeItem(at: target)
                 }
-                throw OperationFailure(reason: error.localizedDescription)
+                throw OperationFailure(reason: .systemFailure(systemReason: error.localizedDescription))
             }
         }
 
@@ -151,16 +151,16 @@ public struct FileOperationService: FileOperating {
         fileManager: FileManager
     ) throws -> URL {
         guard !newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw OperationFailure(reason: "名前を入力してください")
+            throw OperationFailure(reason: .invalidName(.empty))
         }
         guard !newName.contains("/") && !newName.contains(":") else {
-            throw OperationFailure(reason: "名前に「/」または「:」は使用できません")
+            throw OperationFailure(reason: .invalidName(.forbiddenCharacter))
         }
         guard !newName.hasPrefix(".") else {
-            throw OperationFailure(reason: "名前の先頭に「.」は使用できません")
+            throw OperationFailure(reason: .invalidName(.leadingDot))
         }
         guard fileManager.fileExists(atPath: source.path) else {
-            throw OperationFailure(reason: "対象のファイルが見つかりません")
+            throw OperationFailure(reason: .sourceNotFound)
         }
 
         let parent = source.deletingLastPathComponent()
@@ -172,7 +172,7 @@ public struct FileOperationService: FileOperating {
         if fileManager.fileExists(atPath: target.path) {
             switch resolution {
             case .abort:
-                throw OperationFailure(reason: "同じ名前の項目があるため中止しました")
+                throw OperationFailure(reason: .sameNameExists)
             case .replace:
                 _ = try moveToTrash(target, fileManager: fileManager)
             case .keepBoth:
@@ -185,7 +185,7 @@ public struct FileOperationService: FileOperating {
         do {
             try fileManager.moveItem(at: source, to: target)
         } catch {
-            throw OperationFailure(reason: error.localizedDescription)
+            throw OperationFailure(reason: .systemFailure(systemReason: error.localizedDescription))
         }
         return target
     }
@@ -204,7 +204,7 @@ public struct FileOperationService: FileOperating {
 
         switch resolution {
         case .abort:
-            throw OperationFailure(reason: "操作先に同じ名前の項目があるため中止しました")
+            throw OperationFailure(reason: .sameNameAtDestination)
         case .replace:
             _ = try moveToTrash(target, fileManager: fileManager)
             return target
@@ -219,13 +219,13 @@ public struct FileOperationService: FileOperating {
 
     private static func moveToTrash(_ url: URL, fileManager: FileManager) throws -> URL {
         guard fileManager.fileExists(atPath: url.path) else {
-            throw OperationFailure(reason: "対象のファイルが見つかりません")
+            throw OperationFailure(reason: .sourceNotFound)
         }
         var resultingURL: NSURL?
         do {
             try fileManager.trashItem(at: url, resultingItemURL: &resultingURL)
         } catch {
-            throw OperationFailure(reason: "既存の項目をゴミ箱へ移動できませんでした: \(error.localizedDescription)")
+            throw OperationFailure(reason: .trashExistingFailed(systemReason: error.localizedDescription))
         }
         return (resultingURL as URL?) ?? url
     }
@@ -246,5 +246,5 @@ public struct FileOperationService: FileOperating {
 }
 
 private struct OperationFailure: Error, Sendable {
-    let reason: String
+    let reason: OperationFailureReason
 }

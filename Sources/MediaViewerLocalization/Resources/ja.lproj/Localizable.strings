@@ -1,0 +1,582 @@
+/* MediaViewer の表示文言。キーは TextKey の rawValue と一致させる。 */
+
+/* 検索シートの起点の検証で入力欄の下に出す理由 */
+"error.searchRoot.empty" = "検索起点ディレクトリを入力してください";
+
+/* 検索シートの起点の検証で入力欄の下に出す理由 */
+"error.searchRoot.notAbsolute" = "/ または ~ で始まるパスを入力してください";
+
+/* 検索シートの起点の検証で入力欄の下に出す理由 */
+"error.searchRoot.notFound" = "フォルダが見つかりません";
+
+/* 検索シートの起点の検証で入力欄の下に出す理由 */
+"error.searchRoot.notAFolder" = "フォルダではありません";
+
+/* 検索シートの起点の検証で入力欄の下に出す理由 */
+"error.searchRoot.accessDenied" = "フォルダを読み取れません";
+
+/* 検索起点のフォルダ選択パネルの初期位置を決められない理由 */
+"error.searchRoot.noUsableFolder" = "利用できるフォルダが見つかりません";
+
+/* zip を開けない理由の前置き。%1$@ は理由の文 */
+"error.zip.cannotOpen" = "zip を開けません: %1$@";
+
+/* zip を開けない理由（error.zip.cannotOpen の値） */
+"error.zip.notFound" = "zip ファイルが見つかりません";
+
+/* zip を開けない理由（error.zip.cannotOpen の値） */
+"error.zip.accessDenied" = "アクセスできません";
+
+/* zip を開けない理由（error.zip.cannotOpen の値） */
+"error.zip.notAZip" = "zip ファイルとして読めません";
+
+/* zip を開けない理由（error.zip.cannotOpen の値） */
+"error.zip.multiDisk" = "分割された zip には対応していません";
+
+/* zip の中の項目を表示できない理由 */
+"error.zip.entryEncrypted" = "暗号化されているため表示できません";
+
+/* zip の中の項目を表示できない理由 */
+"error.zip.unsupportedMethod" = "対応していない圧縮方式です";
+
+/* zip の中の項目を表示できない理由 */
+"error.zip.tooLarge" = "zip の中の画像が大きすぎるため表示できません";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.cannotStartInflate" = "展開を始められません";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.compressedDataDamaged" = "圧縮データが壊れています";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.dataTruncated" = "項目のデータが途中で終わっています";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.compressedDataTruncated" = "圧縮データが途中で終わっています";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.headerDamaged" = "項目のヘッダが壊れています";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.invalidOffset" = "項目の位置が不正です";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.centralDirectoryTooLarge" = "中央ディレクトリが大きすぎます";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.invalidLocation" = "項目の場所が不正です";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.entryNotFound" = "zip の中に項目が見つかりません";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.sizeMismatch" = "項目のサイズが一致しません";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.dataOutsideFile" = "項目のデータがファイルの外にあります";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.readCancelled" = "読み込みを中止しました";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.readFailed" = "zip の読み出しに失敗しました";
+
+/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+"error.zip.corrupted.unreadable" = "zip を読み込めません";
+
+/* 名前の変更で使えない名前の理由 */
+"error.name.empty" = "名前を入力してください";
+
+/* 名前の変更で使えない名前の理由 */
+"error.name.forbiddenCharacter" = "名前に「/」または「:」は使用できません";
+
+/* 名前の変更で使えない名前の理由 */
+"error.name.leadingDot" = "名前の先頭に「.」は使用できません";
+
+/* 名前の変更で使えない名前の理由 */
+"error.name.duplicate" = "同じ名前の項目がすでに存在します";
+
+/* 名前の変更で使えない名前の理由 */
+"error.name.becomesPackage" = "この名前にするとフォルダがパッケージとして扱われ、表示されなくなります";
+
+/* ファイル操作の失敗の理由 */
+"error.operation.noDestination" = "操作先のフォルダが指定されていません";
+
+/* ファイル操作の失敗の理由 */
+"error.operation.destinationNotFound" = "操作先のフォルダが見つかりません";
+
+/* ファイル操作の失敗の理由 */
+"error.operation.sourceNotFound" = "対象のファイルが見つかりません";
+
+/* ファイル操作の失敗の理由 */
+"error.operation.intoItself" = "フォルダを自分自身またはその配下へ移動・コピーすることはできません";
+
+/* ファイル操作の失敗の理由 */
+"error.operation.sameNameExists" = "同じ名前の項目があるため中止しました";
+
+/* ファイル操作の失敗の理由 */
+"error.operation.sameNameAtDestination" = "操作先に同じ名前の項目があるため中止しました";
+
+/* 既存の項目をゴミ箱へ移動できなかったときの理由。%1$@ は OS が返す理由 */
+"error.operation.trashExistingFailed" = "既存の項目をゴミ箱へ移動できませんでした: %1$@";
+
+/* OS がファイル操作を拒否したときの理由。%1$@ は OS が返す理由（訳し直さない） */
+"error.operation.systemFailure" = "%1$@";
+
+/* 種類フィルタで画像のみを表示して一覧が0件のときの空状態 */
+"empty.filter.images" = "画像のみ表示中: 該当するファイルはありません";
+
+/* 種類フィルタで動画のみを表示して一覧が0件のときの空状態 */
+"empty.filter.videos" = "動画のみ表示中: 該当するファイルはありません";
+
+/* 開こうとしたフォルダが見つからないときの空状態 */
+"empty.folderNotFound" = "フォルダが見つかりません";
+
+/* ファイルリストとプレビューの読み込み中の表示 */
+"empty.loading" = "読み込み中…";
+
+/* 検索中の空状態 */
+"empty.searching" = "検索中…";
+
+/* 対応するメディアファイルがないフォルダの空状態 */
+"empty.noMedia" = "対応するメディアファイルがありません";
+
+/* 検索結果が0件のときの空状態 */
+"empty.noMatches" = "該当する項目はありません";
+
+/* フォルダを読めないときの空状態 */
+"empty.accessDenied" = "アクセスできません";
+
+/* 表示するメディアファイルがないときのプレビュー */
+"preview.noMedia" = "表示するメディアファイルがありません";
+
+/* プレビューを表示できないときの見出し。%1$@ は理由 */
+"preview.unavailable" = "表示できません\n%1$@";
+
+/* アニメーション画像を表示できないときの理由 */
+"preview.animationUnavailable" = "アニメーションを表示できません";
+
+/* プレビューを表示できない理由 */
+"preview.failure.unreadable" = "ファイルを読み込めません";
+
+/* プレビューを表示できない理由 */
+"preview.failure.unsupportedFormat" = "対応していない形式です";
+
+/* プレビューを表示できない理由 */
+"preview.failure.corrupted" = "ファイルが壊れています";
+
+/* 種類名のフォールバック（OS が種類名を返さないとき） */
+"kind.folder" = "フォルダ";
+
+/* 種類名のフォールバック（OS が種類名を返さないとき） */
+"kind.zipArchive" = "ZIP アーカイブ";
+
+/* アプリケーションメニューの設定項目（ダイアログを開くので末尾に …） */
+"menu.app.settings" = "設定…";
+
+/* アプリケーションメニューの終了項目。アプリ名は訳さない */
+"menu.app.quit" = "終了";
+
+/* メニューバーのメニュー名 */
+"menu.file" = "ファイル";
+
+/* ファイルメニューの項目 */
+"menu.file.open" = "開く";
+
+/* ファイルメニューの項目 */
+"menu.file.showContents" = "中を表示";
+
+/* ファイルメニューの項目 */
+"menu.file.enclosingFolder" = "上の階層へ";
+
+/* ファイルメニューの項目 */
+"menu.file.revealInFinder" = "Finder に表示";
+
+/* ファイルメニューの項目 */
+"menu.file.addToFavorites" = "お気に入りに追加";
+
+/* ファイルメニューの項目（ダイアログを開くので末尾に …） */
+"menu.file.find" = "検索…";
+
+/* ファイル・編集メニューの項目。ツリーでお気に入りを選んでいるときは menu.file.removeFromFavorites に変わる */
+"menu.file.trash" = "ゴミ箱に入れる";
+
+/* ファイル・編集メニューの項目。ツリーでお気に入りを選んでいるときに使う */
+"menu.file.removeFromFavorites" = "お気に入りから削除";
+
+/* メニューバーのメニュー名 */
+"menu.edit" = "編集";
+
+/* 編集メニューの項目 */
+"menu.edit.undo" = "取り消す";
+
+/* 編集メニューの項目 */
+"menu.edit.redo" = "やり直す";
+
+/* 編集メニューの項目 */
+"menu.edit.cut" = "カット";
+
+/* 編集メニューの項目 */
+"menu.edit.copy" = "コピー";
+
+/* 編集メニューの項目 */
+"menu.edit.paste" = "ペースト";
+
+/* 編集メニューの項目 */
+"menu.edit.movePaste" = "移動ペースト";
+
+/* 編集メニューの項目 */
+"menu.edit.duplicate" = "複製";
+
+/* 編集メニューの項目 */
+"menu.edit.rename" = "名前を変更";
+
+/* 編集メニューの項目 */
+"menu.edit.selectAll" = "すべてを選択";
+
+/* メニューバーのメニュー名 */
+"menu.view" = "表示";
+
+/* 表示メニューの項目。ツールバーが隠れているときに使う */
+"menu.view.showToolbar" = "ツールバーを表示";
+
+/* 表示メニューの項目。ツールバーが見えているときに使う */
+"menu.view.hideToolbar" = "ツールバーを隠す";
+
+/* 表示メニューの項目 */
+"menu.view.fullScreen" = "フルスクリーン";
+
+/* 表示メニューの項目 */
+"menu.view.zoomIn" = "拡大";
+
+/* 表示メニューの項目 */
+"menu.view.zoomOut" = "縮小";
+
+/* 表示メニューの項目 */
+"menu.view.zoomToFit" = "表示領域に合わせる";
+
+/* 表示メニューとツールバーの項目 */
+"menu.view.startSlideshow" = "スライドショーを開始";
+
+/* 表示メニューとツールバーの項目 */
+"menu.view.showFileListOnly" = "ファイルリストのみ表示";
+
+/* 表示メニューとツールバーの項目 */
+"menu.view.showPreviewOnly" = "プレビューのみ表示";
+
+/* 表示メニューの項目 */
+"menu.view.focusTree" = "ディレクトリツリーへフォーカス";
+
+/* 表示メニューの項目 */
+"menu.view.focusFileList" = "ファイルリストへフォーカス";
+
+/* 表示メニューの項目 */
+"menu.view.focusPreview" = "プレビューへフォーカス";
+
+/* 表示メニューの項目 */
+"menu.view.goToFavorites" = "お気に入りへ移動";
+
+/* 表示メニューの表示形式の項目 */
+"menu.view.asThumbnails" = "サムネイル";
+
+/* 表示メニューの表示形式の項目 */
+"menu.view.asList" = "リスト";
+
+/* 表示メニューの項目 */
+"menu.view.largerThumbnails" = "サムネイルを拡大";
+
+/* 表示メニューの項目 */
+"menu.view.smallerThumbnails" = "サムネイルを縮小";
+
+/* 表示メニューとツールバーの項目 */
+"menu.view.showImagesOnly" = "画像のみ表示";
+
+/* 表示メニューとツールバーの項目 */
+"menu.view.showVideosOnly" = "動画のみ表示";
+
+/* 表示メニューとツールバーの項目 */
+"menu.view.showZipFiles" = "zipファイルを表示";
+
+/* 表示メニューのサブメニュー */
+"menu.view.sortBy" = "並べ替え";
+
+/* メニューバーのメニュー名 */
+"menu.go" = "移動";
+
+/* 移動メニューとツールバーの項目 */
+"menu.go.back" = "戻る";
+
+/* 移動メニューとツールバーの項目 */
+"menu.go.forward" = "進む";
+
+/* 右クリックメニューのコピー（1件）。%1$@ はファイル名 */
+"context.copy.single" = "\"%1$@\" をコピー";
+
+/* ツリーの右クリックメニューのペースト */
+"context.pasteHere" = "ここにペースト";
+
+/* ツリーの右クリックメニューの移動ペースト */
+"context.movePasteHere" = "ここに移動ペースト";
+
+/* ツールバーの履歴のグループの名前 */
+"toolbar.history" = "履歴";
+
+/* ツールバーのペインのグループの名前 */
+"toolbar.panes" = "ペイン";
+
+/* ツールバーの拡大・縮小のグループの名前 */
+"toolbar.zoomGroup" = "拡大・縮小";
+
+/* ツールバーの種類のグループの名前 */
+"toolbar.mediaType" = "種類";
+
+/* ツールバーの表示形式のグループの名前 */
+"toolbar.viewMode" = "表示形式";
+
+/* ツールバーとサイズバーのグループの名前 */
+"toolbar.size" = "サイズ";
+
+/* ツールバーとサイズバーのツールチップとアクセシビリティ。ショートカットを含む */
+"toolbar.thumbnailSize" = "サムネイルのサイズ（⌃⌘. / ⌃⌘,）";
+
+/* スライドショーのツールチップ。ショートカットを含む */
+"toolbar.startSlideshowHelp" = "スライドショーを開始（⇧⌘S）";
+
+/* 拡大のツールチップ。ショートカットを含む */
+"toolbar.zoomInHelp" = "拡大（⌘+）";
+
+/* 表示領域に合わせるのツールチップ。ショートカットを含む */
+"toolbar.zoomToFitHelp" = "表示領域に合わせる（⌘0）";
+
+/* 縮小のツールチップ。ショートカットを含む */
+"toolbar.zoomOutHelp" = "縮小（⌘-）";
+
+/* ツールバーの表示形式の選択肢 */
+"toolbar.thumbnails" = "サムネイル";
+
+/* ツールバーの表示形式の選択肢 */
+"toolbar.list" = "リスト";
+
+/* 設定ウインドウの名前 */
+"settings.window" = "設定";
+
+/* 設定ウインドウの区分の見出し */
+"settings.video" = "動画";
+
+/* 設定ウインドウのチェックボックス */
+"settings.autoplay" = "動画を自動再生する";
+
+/* 設定ウインドウのチェックボックス */
+"settings.loop" = "動画をループ再生する";
+
+/* 設定ウインドウの区分の見出し */
+"settings.fileOperations" = "ファイル操作";
+
+/* 設定ウインドウのチェックボックス */
+"settings.confirm" = "コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する（名前の変更・移動・ツリーのフォルダのゴミ箱は常に確認する）";
+
+/* 設定ウインドウの区分の見出し */
+"settings.slideshow" = "スライドショー";
+
+/* 設定ウインドウの切り替え間隔のラベル */
+"settings.interval" = "切り替え間隔";
+
+/* 切り替え間隔の単位（数値の後ろ） */
+"settings.seconds" = "秒";
+
+/* 切り替え間隔の入力欄のアクセシビリティのラベル */
+"settings.intervalA11y" = "切り替え間隔（秒）";
+
+/* 設定ウインドウのチェックボックスとアクセシビリティのラベル */
+"settings.repeat" = "最後まで表示したら先頭から繰り返す";
+
+/* 設定ウインドウの切り替え効果のラベルとアクセシビリティのラベル */
+"settings.transition" = "切り替え効果";
+
+/* 切り替え効果の選択肢 */
+"settings.transition.none" = "なし";
+
+/* 切り替え効果の選択肢 */
+"settings.transition.crossfade" = "クロスフェード";
+
+/* 切り替え効果の選択肢 */
+"settings.transition.slide" = "スライド";
+
+/* 切り替え効果の選択肢 */
+"settings.transition.zoom" = "ズーム";
+
+/* リスト形式の列見出し。並べ替えのメニューでも使う */
+"list.column.name" = "名前";
+
+/* リスト形式の列見出し。並べ替えのメニューでも使う */
+"list.column.creationDate" = "作成日";
+
+/* リスト形式の列見出し。並べ替えのメニューでも使う */
+"list.column.kind" = "種類";
+
+/* リスト形式の列見出し。並べ替えのメニューでも使う */
+"list.column.location" = "場所";
+
+/* 並べ替えメニューの選択中の列（昇順）。%1$@ は列名 */
+"list.sort.ascending" = "%1$@（昇順）";
+
+/* 並べ替えメニューの選択中の列（降順）。%1$@ は列名 */
+"list.sort.descending" = "%1$@（降順）";
+
+/* 一覧の .. の行のアクセシビリティのラベル */
+"list.parentRow" = "上の階層へ";
+
+/* ツリーの列見出し */
+"tree.column" = "フォルダ";
+
+/* ツリーの固定の行 */
+"tree.favorites" = "お気に入り";
+
+/* ツリーの行のツールチップ */
+"tree.tooltip.notAccessible" = "アクセスできません";
+
+/* ツリーの行のツールチップ */
+"tree.tooltip.notFound" = "見つかりません";
+
+/* ツリーの名前の編集欄のアクセシビリティのラベル */
+"tree.a11y.favoriteName" = "お気に入りの名前";
+
+/* ツリーの名前の編集欄のアクセシビリティのラベル */
+"tree.a11y.folderName" = "フォルダの名前";
+
+/* 検索シートのキーワードのラベル・プレースホルダ・アクセシビリティ */
+"search.keyword" = "検索キーワード";
+
+/* 検索シートの起点のラベル・アクセシビリティ */
+"search.root" = "検索起点ディレクトリ";
+
+/* 検索シートのフォルダ選択ボタン（パネルを開くので末尾に …） */
+"search.choose" = "選択…";
+
+/* 検索シートのフォルダ選択ボタンのヘルプ */
+"search.choose.help" = "標準のフォルダ選択パネルを開きます";
+
+/* 検索シートの検索ボタン */
+"search.search" = "検索";
+
+/* 検索シートのエラーのアクセシビリティのラベル */
+"search.error" = "エラー";
+
+/* 検索起点のフォルダ選択パネルのタイトル */
+"search.panel.title" = "検索起点フォルダを選択";
+
+/* 検索起点のフォルダ選択パネルのメッセージ */
+"search.panel.message" = "検索起点にするフォルダを選択してください。";
+
+/* 検索起点のフォルダ選択パネルのボタン */
+"search.panel.prompt" = "選択";
+
+/* フォルダ選択パネルを開けなかったときの理由 */
+"search.panel.failed" = "フォルダ選択パネルを開けませんでした";
+
+/* 検索バーの完了時の文。%1$@ はキーワード、%2$@ は起点のフォルダ名、%3$@ は件数の句 */
+"search.bar.results" = "「%1$@」の検索結果 — %2$@ — %3$@";
+
+/* 検索バーの検索中の文。%1$@ はキーワード、%2$@ は起点のフォルダ名、%3$@ は件数の句 */
+"search.bar.searching" = "「%1$@」の検索結果 — %2$@ — %3$@ 検索中…";
+
+/* 名前の変更の確認の見出し */
+"dialog.confirm.rename" = "名前を変更しますか？";
+
+/* ゴミ箱の確認の見出し */
+"dialog.confirm.trash" = "ゴミ箱に入れますか？";
+
+/* 確認モーダルの対象の件数。%1$@ は整形済みの件数 */
+"dialog.confirm.items" = "対象: %1$@ 件";
+
+/* 確認モーダルの対象の1行。%1$@ はファイル名 */
+"dialog.confirm.bullet" = "・%1$@";
+
+/* 確認モーダルの残りの件数。%1$@ は整形済みの件数 */
+"dialog.confirm.more" = "ほか %1$@ 件";
+
+/* フォルダをゴミ箱に入れるときの注記 */
+"dialog.confirm.folderTrash" = "フォルダは中身ごとゴミ箱に入ります";
+
+/* フォルダをコピー・移動・名前の変更するときの注記 */
+"dialog.confirm.folderProcess" = "フォルダは中身ごと操作します";
+
+/* 確認モーダルの操作先のパス。%1$@ はパス */
+"dialog.confirm.destination" = "操作先: %1$@";
+
+/* 確認モーダルの場所のパス。%1$@ はパス */
+"dialog.confirm.location" = "場所: %1$@";
+
+/* 確認モーダルの実行ボタン */
+"dialog.confirm.continue" = "実行";
+
+/* 確認モーダルの「今後この確認を表示しない」 */
+"dialog.confirm.dontAsk" = "今後この確認を表示しない";
+
+/* ダイアログのキャンセルボタン */
+"dialog.cancel" = "キャンセル";
+
+/* ダイアログの OK ボタン */
+"dialog.ok" = "OK";
+
+/* お気に入りの削除の確認の見出し */
+"dialog.favoriteRemove.title" = "お気に入りから削除しますか？";
+
+/* お気に入りの削除の確認の対象。%1$@ はお気に入りの表示名 */
+"dialog.favoriteRemove.items" = "対象: %1$@";
+
+/* お気に入りの削除の確認の注記 */
+"dialog.favoriteRemove.note" = "実際のフォルダは変更されません";
+
+/* お気に入りの削除の確認のボタン */
+"dialog.favoriteRemove.confirm" = "削除";
+
+/* 衝突ダイアログの見出し */
+"dialog.conflict.title" = "同じ名前の項目があります";
+
+/* 衝突ダイアログの衝突する件数。%1$@ は整形済みの件数 */
+"dialog.conflict.items" = "衝突する項目: %1$@ 件";
+
+/* 衝突ダイアログのボタン */
+"dialog.conflict.replace" = "置き換える";
+
+/* 衝突ダイアログのボタン */
+"dialog.conflict.keepBoth" = "両方残す";
+
+/* 衝突ダイアログのボタン */
+"dialog.conflict.stop" = "中止";
+
+/* 衝突ダイアログの「残りすべてに適用」 */
+"dialog.conflict.applyAll" = "残りすべてに適用";
+
+/* 拡張子の変更の確認の見出し */
+"dialog.extension.title" = "拡張子が変わります";
+
+/* 拡張子の変更の確認の本文。%1$@ はファイル名、%2$@ は新しい拡張子 */
+"dialog.extension.message" = "「%1$@」の拡張子を「%2$@」に変更します。続けますか？";
+
+/* 拡張子の変更の確認のボタン */
+"dialog.extension.confirm" = "変更";
+
+/* 名前の変更に失敗したときの見出し */
+"dialog.rename.failed" = "名前を変更できません";
+
+/* ファイル操作に失敗したときの見出し */
+"dialog.operation.failed" = "操作を完了できませんでした";
+
+/* ファイル操作の成功・失敗の件数。%1$@ と %2$@ は整形済みの件数 */
+"dialog.operation.summary" = "成功 %1$@ 件 / 失敗 %2$@ 件";
+
+/* ファイル操作の失敗の1行。%1$@ は名前、%2$@ は理由 */
+"dialog.operation.failureLine" = "%1$@: %2$@";
+
+/* ファイル操作の失敗の残りの件数。%1$@ は整形済みの件数 */
+"dialog.operation.more" = "ほか %1$@ 件";
+
+/* サムネイルの画像のアクセシビリティのラベル */
+"a11y.thumbnail" = "サムネイル";
+
+/* 設定ウインドウの表示言語 */
+"settings.language" = "言語";
+"settings.language.english" = "English";
+"settings.language.japanese" = "日本語";

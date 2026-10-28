@@ -33,7 +33,7 @@ struct ArchiveEntryStreamTests {
 
     private func openStream(_ name: String, in directory: URL) async throws -> ArchiveEntryStream {
         let zip = try makeZip(in: directory)
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         _ = try await reader.open(zip)
         return try await reader.stream(for: ArchiveURL.entry(archive: zip, path: name))
     }
@@ -121,7 +121,7 @@ struct ArchiveEntryStreamTests {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let zip = try makeZip(in: directory)
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         _ = try await reader.open(zip)
         do {
             _ = try await reader.stream(for: ArchiveURL.entry(archive: zip, path: "secret.mp4"))

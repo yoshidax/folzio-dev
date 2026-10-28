@@ -1,5 +1,6 @@
 import AppKit
 import MediaViewerCore
+import MediaViewerLocalization
 
 @MainActor
 final class FileListViewController: NSViewController {
@@ -296,6 +297,9 @@ final class FileListViewController: NSViewController {
         messageLabel.translatesAutoresizingMaskIntoConstraints = false
         messageLabel.alignment = .center
         messageLabel.textColor = .secondaryLabelColor
+        messageLabel.lineBreakMode = .byWordWrapping
+        messageLabel.maximumNumberOfLines = 0
+        messageLabel.cell?.wraps = true
         messageLabel.isHidden = true
 
         container.addSubview(progressIndicator)
@@ -395,29 +399,45 @@ final class FileListViewController: NSViewController {
         let rootName = search.root.path == "/" ? "/" : search.root.lastPathComponent
         let shownCount = model.listing.files.count
         let count = shownCount != search.totalCount
-            ? "\(search.totalCount) 件中 \(shownCount) 件を表示"
-            : "\(search.totalCount) 件"
-        var text = "「\(search.keyword)」の検索結果 — \(rootName) — \(count)"
+            ? l10n.text(
+                .searchBarCountLimited,
+                .count(search.totalCount),
+                .text(l10n.count(shownCount))
+            )
+            : l10n.text(.searchBarCount, .count(search.totalCount))
+        let text: String
         if search.phase == .searching {
-            text += " 検索中…"
+            text = l10n.text(
+                .searchBarSearching,
+                .text(search.keyword),
+                .text(rootName),
+                .text(count)
+            )
             searchBarSpinner.startAnimation(nil)
         } else {
+            text = l10n.text(
+                .searchBarResults,
+                .text(search.keyword),
+                .text(rootName),
+                .text(count)
+            )
             searchBarSpinner.stopAnimation(nil)
         }
         searchBarLabel.stringValue = text
-        searchBarLabel.toolTip = search.root.path
+        searchBarLabel.toolTip = text
+        searchBarLabel.setAccessibilityValue(text)
         searchBar.isHidden = false
         searchBarHeightConstraint?.constant = 24
     }
 
     private func setupBottomBar() {
-        let label = NSTextField(labelWithString: "サイズ")
+        let label = NSTextField(labelWithString: l10n.text(.toolbarSize))
         label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         label.textColor = .secondaryLabelColor
-        label.toolTip = "サムネイルのサイズ（⌃⌘. / ⌃⌘,）"
+        label.toolTip = l10n.text(.toolbarThumbnailSize)
 
-        sizeSlider.toolTip = "サムネイルのサイズ（⌃⌘. / ⌃⌘,）"
-        sizeSlider.setAccessibilityLabel("サムネイルのサイズ（⌃⌘. / ⌃⌘,）")
+        sizeSlider.toolTip = l10n.text(.toolbarThumbnailSize)
+        sizeSlider.setAccessibilityLabel(l10n.text(.toolbarThumbnailSize))
         sizeSlider.minValue = ViewSettings.minimumThumbnailSize
         sizeSlider.maxValue = ViewSettings.maximumThumbnailSize
         sizeSlider.doubleValue = initialThumbnailSize
@@ -510,16 +530,20 @@ final class FileListViewController: NSViewController {
         case .loading:
             progressIndicator.isHidden = false
             progressIndicator.startAnimation(nil)
-            message = isSearch ? "検索中…" : "読み込み中…"
+            message = isSearch ? l10n.text(.emptySearching) : l10n.text(.emptyLoading)
         case .empty:
             // FR-060 の「対応するメディアファイルがありません」と区別する
-            message = isSearch ? "該当する項目はありません" : "対応するメディアファイルがありません"
+            message = isSearch ? l10n.text(.emptyNoMatches) : l10n.text(.emptyNoMedia)
         case .noMatches:
-            message = model.mediaTypeFilter.noMatchesMessage ?? ""
+            switch model.mediaTypeFilter.emptyState {
+            case .imagesOnly: message = l10n.text(.emptyFilterImages)
+            case .videosOnly: message = l10n.text(.emptyFilterVideos)
+            case nil: message = ""
+            }
         case .denied:
-            message = "アクセスできません"
+            message = l10n.text(.emptyAccessDenied)
         case let .failed(reason):
-            message = reason
+            message = l10n.text(for: reason)
         }
 
         if let message {
@@ -608,14 +632,14 @@ final class FileListViewController: NSViewController {
     private func installViewMenuItems() {
         guard !installedViewMenuItems else { return }
         guard let viewMenu = NSApp.mainMenu?.items
-            .first(where: { $0.submenu?.title == "表示" })?
+            .first(where: { $0.submenu?.identifier == NSUserInterfaceItemIdentifier("menu.view") })?
             .submenu else {
             return
         }
         installedViewMenuItems = true
 
         let thumbnailsItem = NSMenuItem(
-            title: "サムネイル",
+            title: l10n.text(.menuViewAsThumbnails),
             action: #selector(showThumbnails(_:)),
             keyEquivalent: "1"
         )
@@ -624,7 +648,7 @@ final class FileListViewController: NSViewController {
         thumbnailMenuItem = thumbnailsItem
 
         let listItem = NSMenuItem(
-            title: "リスト",
+            title: l10n.text(.menuViewAsList),
             action: #selector(showList(_:)),
             keyEquivalent: "2"
         )
@@ -633,7 +657,7 @@ final class FileListViewController: NSViewController {
         listMenuItem = listItem
 
         let zoomInItem = NSMenuItem(
-            title: "サムネイルを拡大",
+            title: l10n.text(.menuViewLargerThumbnails),
             action: #selector(increaseThumbnailSize(_:)),
             keyEquivalent: "."
         )
@@ -643,7 +667,7 @@ final class FileListViewController: NSViewController {
         viewMenu.addItem(zoomInItem)
 
         let zoomOutItem = NSMenuItem(
-            title: "サムネイルを縮小",
+            title: l10n.text(.menuViewSmallerThumbnails),
             action: #selector(decreaseThumbnailSize(_:)),
             keyEquivalent: ","
         )
@@ -654,7 +678,7 @@ final class FileListViewController: NSViewController {
         viewMenu.addItem(.separator())
 
         let imagesOnlyItem = NSMenuItem(
-            title: "画像のみ表示",
+            title: l10n.text(.menuViewShowImagesOnly),
             action: #selector(toggleImagesOnly(_:)),
             keyEquivalent: "I"
         )
@@ -663,7 +687,7 @@ final class FileListViewController: NSViewController {
         imagesOnlyMenuItem = imagesOnlyItem
 
         let videosOnlyItem = NSMenuItem(
-            title: "動画のみ表示",
+            title: l10n.text(.menuViewShowVideosOnly),
             action: #selector(toggleVideosOnly(_:)),
             keyEquivalent: "M"
         )
@@ -672,7 +696,7 @@ final class FileListViewController: NSViewController {
         videosOnlyMenuItem = videosOnlyItem
 
         let zipVisibilityItem = NSMenuItem(
-            title: "zipファイルを表示",
+            title: l10n.text(.menuViewShowZipFiles),
             action: #selector(toggleShowsZipFiles(_:)),
             keyEquivalent: "z"
         )

@@ -3,7 +3,16 @@ import Foundation
 public enum NameValidation: Sendable, Equatable {
     case ok
     case needsExtensionChangeConfirmation
-    case invalid(reason: String)
+    case invalid(NameValidationFailure)
+}
+
+/// 名前が使えない理由（表示言語に依存しない値）。文言は `MediaViewerLocalization` が決める
+public enum NameValidationFailure: Error, Sendable, Equatable {
+    case empty
+    case forbiddenCharacter
+    case leadingDot
+    case duplicate
+    case becomesPackage
 }
 
 /// `isDirectory` が true（フォルダの名前の変更）のときは、名前の `.` 以降を拡張子として扱わず、
@@ -16,19 +25,19 @@ public func validateNewName(
     isDirectory: Bool = false
 ) -> NameValidation {
     guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-        return .invalid(reason: "名前を入力してください")
+        return .invalid(.empty)
     }
     guard !name.contains("/") && !name.contains(":") else {
-        return .invalid(reason: "名前に「/」または「:」は使用できません")
+        return .invalid(.forbiddenCharacter)
     }
     guard !name.hasPrefix(".") else {
-        return .invalid(reason: "名前の先頭に「.」は使用できません")
+        return .invalid(.leadingDot)
     }
     guard !existingNames.contains(where: { $0.caseInsensitiveCompare(name) == .orderedSame }) else {
-        return .invalid(reason: "同じ名前の項目がすでに存在します")
+        return .invalid(.duplicate)
     }
     guard !(isDirectory && PackageName.isPackage(name)) else {
-        return .invalid(reason: "この名前にするとフォルダがパッケージとして扱われ、表示されなくなります")
+        return .invalid(.becomesPackage)
     }
 
     guard !isDirectory else { return .ok }

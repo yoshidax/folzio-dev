@@ -1,5 +1,6 @@
 import AppKit
 import MediaViewerCore
+import MediaViewerLocalization
 
 @MainActor
 final class DirectoryTreeViewController: NSViewController {
@@ -224,42 +225,42 @@ final class DirectoryTreeViewController: NSViewController {
         let menuItem: NSMenuItem
         switch kind {
         case .pasteHere:
-            menuItem = NSMenuItem(title: "ここにペースト", action: #selector(paste(_:)), keyEquivalent: "")
+            menuItem = NSMenuItem(title: l10n.text(.contextPasteHere), action: #selector(paste(_:)), keyEquivalent: "")
         case .movePasteHere:
-            menuItem = NSMenuItem(title: "ここに移動ペースト", action: #selector(movePaste(_:)), keyEquivalent: "")
+            menuItem = NSMenuItem(title: l10n.text(.contextMovePasteHere), action: #selector(movePaste(_:)), keyEquivalent: "")
         case .addToFavorites:
             menuItem = NSMenuItem(
-                title: "お気に入りに追加",
+                title: l10n.text(.menuFileAddToFavorites),
                 action: #selector(addToFavorites(_:)),
                 keyEquivalent: "t"
             )
             menuItem.keyEquivalentModifierMask = [.command, .control]
         case .revealInFinder:
-            menuItem = NSMenuItem(title: "Finder に表示", action: #selector(revealInFinder(_:)), keyEquivalent: "")
+            menuItem = NSMenuItem(title: l10n.text(.menuFileRevealInFinder), action: #selector(revealInFinder(_:)), keyEquivalent: "")
         case .removeFromFavorites:
             menuItem = NSMenuItem(
-                title: "お気に入りから削除",
+                title: l10n.text(.menuFileRemoveFromFavorites),
                 action: #selector(removeFavoriteFromMenu(_:)),
                 keyEquivalent: String(UnicodeScalar(NSBackspaceCharacter)!)
             )
             menuItem.keyEquivalentModifierMask = [.command]
         case .moveToTrash:
             menuItem = NSMenuItem(
-                title: "ゴミ箱に入れる",
+                title: l10n.text(.menuFileTrash),
                 action: #selector(trashFolderFromMenu(_:)),
                 keyEquivalent: String(UnicodeScalar(NSBackspaceCharacter)!)
             )
             menuItem.keyEquivalentModifierMask = [.command]
         case .renameFavorite:
             menuItem = NSMenuItem(
-                title: "名前を変更",
+                title: l10n.text(.menuEditRename),
                 action: #selector(renameFavoriteFromMenu(_:)),
                 keyEquivalent: "\r"
             )
             menuItem.keyEquivalentModifierMask = []
         case .renameFolder:
             menuItem = NSMenuItem(
-                title: "名前を変更",
+                title: l10n.text(.menuEditRename),
                 action: #selector(renameFolderFromMenu(_:)),
                 keyEquivalent: "\r"
             )
@@ -518,10 +519,10 @@ final class DirectoryTreeViewController: NSViewController {
         switch target {
         case .favorite:
             field.formatter = favoriteNameFormatter
-            field.setAccessibilityLabel("お気に入りの名前")
+            field.setAccessibilityLabel(l10n.text(.treeA11yFavoriteName))
         case .folder:
             field.formatter = nil
-            field.setAccessibilityLabel("フォルダの名前")
+            field.setAccessibilityLabel(l10n.text(.treeA11yFolderName))
         }
         field.delegate = self
         setEditingAppearance(field, editing: true)
@@ -686,7 +687,7 @@ final class DirectoryTreeViewController: NSViewController {
         outlineView.action = #selector(clickedRow(_:))
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("folder"))
-        column.title = "フォルダ"
+        column.title = l10n.text(.treeColumn)
         column.width = 200
         outlineView.addTableColumn(column)
         outlineView.outlineTableColumn = column
@@ -1326,9 +1327,10 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
             if node !== editingTarget?.item {
                 cell.textField?.stringValue = node.folder.name
             }
+            cell.textField?.toolTip = node.folder.name
             if node.folder.accessState == .denied || node.folder.accessState == .unavailable {
                 cell.textField?.textColor = .disabledControlTextColor
-                cell.toolTip = "アクセスできません"
+                cell.toolTip = l10n.text(.treeTooltipNotAccessible)
             } else {
                 cell.textField?.textColor = .labelColor
                 cell.toolTip = nil
@@ -1338,7 +1340,8 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
             let cell = makeFolderCell(in: outlineView)
             prepareCell(cell, for: item)
             cell.imageView?.image = IconCatalog.favoritesIcon()
-            cell.textField?.stringValue = "お気に入り"
+            cell.textField?.stringValue = l10n.text(.treeFavorites)
+            cell.textField?.toolTip = nil
             cell.textField?.textColor = .labelColor
             cell.toolTip = nil
             return cell
@@ -1349,9 +1352,10 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
             if entry !== editingTarget?.item {
                 cell.textField?.stringValue = entry.name
             }
+            cell.textField?.toolTip = entry.name
             if entry.availability == .missing {
                 cell.textField?.textColor = .disabledControlTextColor
-                cell.toolTip = "見つかりません"
+                cell.toolTip = l10n.text(.treeTooltipNotFound)
             } else {
                 cell.textField?.textColor = .labelColor
                 cell.toolTip = nil
@@ -1517,10 +1521,10 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
         case #selector(moveToTrash(_:)):
             // ⌘⌫ はお気に入りの項目なら「お気に入りから削除」（FR-064）、ルート以外のフォルダなら「ゴミ箱に入れる」（FR-079）
             if selectedFavoriteEntry != nil {
-                menuItem.title = "お気に入りから削除"
+                menuItem.title = l10n.text(.menuFileRemoveFromFavorites)
                 return true
             }
-            menuItem.title = "ゴミ箱に入れる"
+            menuItem.title = l10n.text(.menuFileTrash)
             return FavoriteCommands.trashTarget(role(for: selectedItem), roots: rootURLs) != nil
         case #selector(trashFolderFromMenu(_:)):
             return FavoriteCommands.trashTarget(role(for: targetItem(for: menuItem)), roots: rootURLs) != nil

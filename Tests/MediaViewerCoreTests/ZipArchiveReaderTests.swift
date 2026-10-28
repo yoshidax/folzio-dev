@@ -37,7 +37,7 @@ struct ZipArchiveReaderTests {
             ZipFixtureEntry(name: "b.png", content: .bytes(Data("bb".utf8))),
         ], in: directory)
 
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         let index = try await reader.open(zip)
         #expect(index.archive == zip)
         #expect(index.items(in: "").map(\.name).sorted() == ["b.png", "sub"])
@@ -61,7 +61,7 @@ struct ZipArchiveReaderTests {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let zip = try write([ZipFixtureEntry(name: "a.jpg", content: .bytes(Data("a".utf8)))], in: directory)
-        let index = try await ZipArchiveReader().open(zip)
+        let index = try await ZipArchiveReader(kindNames: FixtureKit.kindNames).open(zip)
         #expect(index.items(in: "").count == 1)
     }
 
@@ -86,7 +86,7 @@ struct ZipArchiveReaderTests {
             ZipFixtureEntry(name: "empty-stored.png", content: .bytes(Data()), method: .stored),
         ], in: directory)
 
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         _ = try await reader.open(zip)
         let limit = 10_000_000
         #expect(try await reader.data(for: entryURL(zip, "stored.jpg"), limit: limit) == large)
@@ -111,7 +111,7 @@ struct ZipArchiveReaderTests {
             ZipFixtureEntry(name: "third.gif", content: .bytes(content), method: .deflated, usesDataDescriptor: true),
         ], in: directory, forceZip64: true)
 
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         let index = try await reader.open(zip)
         #expect(index.items(in: "").count == 3)
         for name in ["first.jpg", "second.png", "third.gif"] {
@@ -124,7 +124,7 @@ struct ZipArchiveReaderTests {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let zip = try write([ZipFixtureEntry(name: "a.png", content: .bytes(Data("abc".utf8)))], in: directory)
-        #expect(try await ZipArchiveReader().data(for: entryURL(zip, "a.png"), limit: 100) == Data("abc".utf8))
+        #expect(try await ZipArchiveReader(kindNames: FixtureKit.kindNames).data(for: entryURL(zip, "a.png"), limit: 100) == Data("abc".utf8))
     }
 
     @Test("展開後のサイズが limit を超える項目は tooLarge")
@@ -136,7 +136,7 @@ struct ZipArchiveReaderTests {
             ZipFixtureEntry(name: "exact.png", content: .bytes(Data(repeating: 1, count: 1000)), method: .stored),
         ], in: directory)
 
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         _ = try await reader.open(zip)
         await expectError(.tooLarge) { try await reader.data(for: entryURL(zip, "zeros.png"), limit: 1_000_000) }
         await expectError(.tooLarge) { try await reader.data(for: entryURL(zip, "exact.png"), limit: 999) }
@@ -154,7 +154,7 @@ struct ZipArchiveReaderTests {
             ZipFixtureEntry(name: "bzip2.jpg", content: .bytes(Data("s".utf8)), method: .raw(12)),
         ], in: directory)
 
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         let index = try await reader.open(zip)
         #expect(index.items(in: "").count == 2)
         await expectError(.entryEncrypted) { try await reader.data(for: entryURL(zip, "secret.jpg"), limit: 100) }
@@ -167,7 +167,7 @@ struct ZipArchiveReaderTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         let zip = try write([ZipFixtureEntry(name: "sub/a.png", content: .bytes(Data("a".utf8)))], in: directory)
 
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         _ = try await reader.open(zip)
         await expectCorrupted { try await reader.data(for: entryURL(zip, "missing.png"), limit: 100) }
         await expectCorrupted { try await reader.data(for: entryURL(zip, "sub/"), limit: 100) }
@@ -181,7 +181,7 @@ struct ZipArchiveReaderTests {
     func missingArchive() async {
         let missing = FileManager.default.temporaryDirectory
             .appendingPathComponent("missing-\(UUID().uuidString).zip")
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         await expectError(.notFound) { try await reader.open(missing) }
         #expect(reader.identity(of: missing) == nil)
     }
@@ -195,7 +195,7 @@ struct ZipArchiveReaderTests {
             try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: zip.path)
             try? FileManager.default.removeItem(at: directory)
         }
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         await expectError(.accessDenied) { try await reader.open(zip) }
     }
 
@@ -210,7 +210,7 @@ struct ZipArchiveReaderTests {
         let folder = directory.appendingPathComponent("folder.zip", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
 
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         await expectError(.notAZip) { try await reader.open(text) }
         await expectError(.notAZip) { try await reader.open(empty) }
         await expectError(.notAZip) { try await reader.open(folder) }
@@ -224,7 +224,7 @@ struct ZipArchiveReaderTests {
             ZipFixtureEntry(name: "a.png", content: .bytes(pattern(count: 3000)), method: .deflated),
             ZipFixtureEntry(name: "b.png", content: .bytes(pattern(count: 3000)), method: .stored),
         ])
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         for length in stride(from: 0, to: data.count, by: max(1, data.count / 40)) {
             let url = directory.appendingPathComponent("cut-\(length).zip")
             try data.prefix(length).write(to: url)
@@ -254,7 +254,7 @@ struct ZipArchiveReaderTests {
             }
             let zip = directory.appendingPathComponent("bad-\(target).zip")
             try data.write(to: zip)
-            let reader = ZipArchiveReader()
+            let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
             _ = try await reader.open(zip)
             await expectCorrupted { try await reader.data(for: entryURL(zip, "a.png"), limit: 100) }
         }
@@ -290,7 +290,7 @@ struct ZipArchiveReaderTests {
             // 無圧縮: ファイルの外まで届くサイズ
             ("stored-huge", patched(secondCentral + 24, 0x7FFF_0000)),
         ]
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         for (name, data) in cases {
             let zip = directory.appendingPathComponent("\(name).zip")
             try data.write(to: zip)
@@ -319,7 +319,7 @@ struct ZipArchiveReaderTests {
         let zip = directory.appendingPathComponent("garbled.zip")
         try data.write(to: zip)
 
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         _ = try await reader.open(zip)
         do {
             let result = try await reader.data(for: entryURL(zip, "a.png"), limit: 1_000_000)
@@ -337,7 +337,7 @@ struct ZipArchiveReaderTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         let zip = try write([ZipFixtureEntry(name: "a.png", content: .bytes(Data("a".utf8)))], in: directory)
 
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         let index = try await reader.open(zip)
         #expect(reader.identity(of: zip) == index.identity)
 
@@ -367,7 +367,7 @@ struct ZipArchiveReaderTests {
             ZipFixtureEntry(name: "same.png", content: .bytes(Data("from third".utf8)), method: .deflated),
         ], in: directory, name: "third.zip")
 
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         let firstIndex = try await reader.open(first)
         let secondIndex = try await reader.open(second)
         #expect(firstIndex.archive == first && secondIndex.archive == second)
@@ -391,7 +391,7 @@ struct ZipArchiveReaderTests {
             },
             in: directory
         )
-        let reader = ZipArchiveReader()
+        let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         _ = try await reader.open(zip)
         await withTaskGroup(of: Bool.self) { group in
             for round in 0..<4 {
@@ -405,20 +405,6 @@ struct ZipArchiveReaderTests {
             }
             for await result in group { #expect(result) }
         }
-    }
-
-    // MARK: - メッセージ
-
-    @Test("ArchiveError.message の文言")
-    func errorMessages() {
-        #expect(ArchiveError.notAZip.message == "zip を開けません: zip ファイルとして読めません")
-        #expect(ArchiveError.multiDisk.message == "zip を開けません: 分割された zip には対応していません")
-        #expect(ArchiveError.entryEncrypted.message == "暗号化されているため表示できません")
-        #expect(ArchiveError.unsupportedMethod(12).message == "対応していない圧縮方式です")
-        #expect(ArchiveError.tooLarge.message == "zip の中の画像が大きすぎるため表示できません")
-        #expect(ArchiveError.notFound.message == "zip を開けません: zip ファイルが見つかりません")
-        #expect(ArchiveError.accessDenied.message == "zip を開けません: アクセスできません")
-        #expect(ArchiveError.corrupted("理由").message == "zip を開けません: 理由")
     }
 
     // MARK: - 補助

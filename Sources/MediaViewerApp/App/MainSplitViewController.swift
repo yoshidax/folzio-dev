@@ -1,5 +1,6 @@
 import AppKit
 import MediaViewerCore
+import MediaViewerLocalization
 import Observation
 
 private final class NotificationTokens: @unchecked Sendable {
@@ -134,11 +135,12 @@ final class MainSplitViewController: NSSplitViewController {
     init() {
         let settings = SettingsStore(defaults: .standard)
         self.settings = settings
-        let lister = DirectoryLister()
+        let lister = DirectoryLister(kindNames: l10n.kindNames)
         let decoder = ImageDecoder()
         let cache = DecodedImageCache()
-        let archiveReader = ZipArchiveReader()
+        let archiveReader = ZipArchiveReader(kindNames: l10n.kindNames)
         let model = BrowserModel(
+            kindNames: l10n.kindNames,
             lister: lister,
             decoder: decoder,
             cache: cache,
@@ -844,7 +846,7 @@ final class MainSplitViewController: NSSplitViewController {
     private func installFocusMenuItems() {
         guard !installedFocusMenu else { return }
         guard let viewMenu = NSApp.mainMenu?.items
-            .first(where: { $0.submenu?.title == "表示" })?
+            .first(where: { $0.submenu?.identifier == NSUserInterfaceItemIdentifier("menu.view") })?
             .submenu else {
             return
         }
@@ -852,7 +854,7 @@ final class MainSplitViewController: NSSplitViewController {
 
         viewMenu.addItem(.separator())
         let fileListOnlyItem = NSMenuItem(
-            title: "ファイルリストのみ表示",
+            title: l10n.text(.menuViewShowFileListOnly),
             action: #selector(toggleFileListOnly(_:)),
             keyEquivalent: "2"
         )
@@ -861,7 +863,7 @@ final class MainSplitViewController: NSSplitViewController {
         viewMenu.addItem(fileListOnlyItem)
 
         let previewOnlyItem = NSMenuItem(
-            title: "プレビューのみ表示",
+            title: l10n.text(.menuViewShowPreviewOnly),
             action: #selector(togglePreviewOnly(_:)),
             keyEquivalent: "3"
         )
@@ -871,26 +873,26 @@ final class MainSplitViewController: NSSplitViewController {
 
         addFocusItem(
             to: viewMenu,
-            title: "ディレクトリツリーへフォーカス",
+            title: l10n.text(.menuViewFocusTree),
             keyEquivalent: "1",
             action: #selector(focusTreePane(_:))
         )
         addFocusItem(
             to: viewMenu,
-            title: "ファイルリストへフォーカス",
+            title: l10n.text(.menuViewFocusFileList),
             keyEquivalent: "2",
             action: #selector(focusFileListPane(_:))
         )
         addFocusItem(
             to: viewMenu,
-            title: "プレビューへフォーカス",
+            title: l10n.text(.menuViewFocusPreview),
             keyEquivalent: "3",
             action: #selector(focusPreviewPane(_:))
         )
 
         // 大文字の F で ⇧⌘F になる
         let favoritesItem = NSMenuItem(
-            title: "お気に入りへ移動",
+            title: l10n.text(.menuViewGoToFavorites),
             action: #selector(focusFavorites(_:)),
             keyEquivalent: "F"
         )

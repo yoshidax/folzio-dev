@@ -16,11 +16,10 @@ struct NameValidationTests {
         "A.JPG",
     ])
     func rejectsInvalidNames(name: String) {
-        guard case .invalid(let reason) = validateNewName(name, for: file, existingNames: existingNames) else {
+        guard case .invalid = validateNewName(name, for: file, existingNames: existingNames) else {
             Issue.record("\(String(reflecting: name)) was accepted")
             return
         }
-        #expect(!reason.isEmpty)
     }
 
     @Test("拡張子が変わる場合は確認を求める")
@@ -43,7 +42,7 @@ struct NameValidationTests {
 
     @Test("対象のファイル自身と同じ名前は衝突として拒否する")
     func rejectsSameName() {
-        #expect(validateNewName("a.jpg", for: file, existingNames: existingNames) == .invalid(reason: "同じ名前の項目がすでに存在します"))
+        #expect(validateNewName("a.jpg", for: file, existingNames: existingNames) == .invalid(.duplicate))
     }
 
     @Test("フォルダの名前の変更では拡張子の確認を求めない")
@@ -72,7 +71,7 @@ struct NameValidationTests {
         let folder = URL(fileURLWithPath: "/tmp/a/Photos", isDirectory: true)
         #expect(
             validateNewName("Photos.app", for: folder, existingNames: [], isDirectory: true)
-                == .invalid(reason: "この名前にするとフォルダがパッケージとして扱われ、表示されなくなります")
+                == .invalid(.becomesPackage)
         )
         #expect(validateNewName("2025.01", for: folder, existingNames: [], isDirectory: true) == .ok)
     }
@@ -91,15 +90,15 @@ struct NameValidationTests {
         let folder = URL(fileURLWithPath: "/tmp/a/Photos", isDirectory: true)
         #expect(
             validateNewName(".app", for: folder, existingNames: [], isDirectory: true)
-                == .invalid(reason: "名前の先頭に「.」は使用できません")
+                == .invalid(.leadingDot)
         )
         #expect(
             validateNewName("a/b.app", for: folder, existingNames: [], isDirectory: true)
-                == .invalid(reason: "名前に「/」または「:」は使用できません")
+                == .invalid(.forbiddenCharacter)
         )
         #expect(
             validateNewName("photos.app", for: folder, existingNames: ["Photos.app"], isDirectory: true)
-                == .invalid(reason: "同じ名前の項目がすでに存在します")
+                == .invalid(.duplicate)
         )
     }
 

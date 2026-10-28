@@ -1,5 +1,6 @@
 import AppKit
 import MediaViewerCore
+import MediaViewerLocalization
 
 @MainActor
 final class MainWindowController: NSWindowController {
@@ -94,7 +95,7 @@ extension MainWindowController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         if menuItem.action == #selector(toggleMainToolbar(_:)) {
             let isVisible = window?.toolbar?.isVisible ?? false
-            menuItem.title = isVisible ? "ツールバーを隠す" : "ツールバーを表示"
+            menuItem.title = isVisible ? l10n.text(.menuViewHideToolbar) : l10n.text(.menuViewShowToolbar)
             return window?.toolbar != nil
         }
         return true

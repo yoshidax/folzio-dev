@@ -53,7 +53,7 @@ public final class ArchiveEntryStream: @unchecked Sendable {
                 let piece = min(Self.storedIOChunkSize, count - done)
                 let slice = UnsafeMutableRawBufferPointer(rebasing: buffer[done..<done + piece])
                 guard try file.read(into: slice, at: dataOffset + offset + UInt64(done)) == piece else {
-                    throw .corrupted("項目のデータが途中で終わっています")
+                    throw .corrupted(.dataTruncated)
                 }
                 done += piece
             }
@@ -74,7 +74,7 @@ public final class ArchiveEntryStream: @unchecked Sendable {
             let chunkStart = UInt64(index) * UInt64(Self.chunkSize)
             let from = Int(position - chunkStart)
             let to = Int(min(UInt64(chunk.count), end - chunkStart))
-            guard from < to else { throw .corrupted("圧縮データが途中で終わっています") }
+            guard from < to else { throw .corrupted(.compressedDataTruncated) }
             result.append(chunk.subdata(in: from..<to))
             position = chunkStart + UInt64(to)
         }
@@ -90,7 +90,7 @@ public final class ArchiveEntryStream: @unchecked Sendable {
         let size = Int(min(UInt64(Self.chunkSize), length - start))
         let cursor = cursor(forPosition: start)
         try cursor.skip(to: start)
-        guard cursor.position == start else { throw .corrupted("圧縮データが途中で終わっています") }
+        guard cursor.position == start else { throw .corrupted(.compressedDataTruncated) }
 
         var data = Data(count: size)
         try data.withUnsafeMutableBytes { (buffer: UnsafeMutableRawBufferPointer) throws(ArchiveError) in
@@ -98,7 +98,7 @@ public final class ArchiveEntryStream: @unchecked Sendable {
             while done < size {
                 let slice = UnsafeMutableRawBufferPointer(rebasing: buffer[done...])
                 let produced = try cursor.read(into: slice, maxLength: size - done)
-                guard produced > 0 else { throw .corrupted("圧縮データが途中で終わっています") }
+                guard produced > 0 else { throw .corrupted(.compressedDataTruncated) }
                 done += produced
             }
         }

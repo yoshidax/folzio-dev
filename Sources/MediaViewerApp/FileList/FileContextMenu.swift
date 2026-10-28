@@ -1,4 +1,5 @@
 import AppKit
+import MediaViewerLocalization
 
 @MainActor
 final class FileContextMenu: NSObject, NSMenuDelegate {
@@ -37,11 +38,11 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         let urls = host?.selectedFileURLs ?? []
         if urls.count == 1, let name = urls.first?.lastPathComponent {
-            copyItem.title = "\"\(name)\" をコピー"
+            copyItem.title = l10n.text(.contextCopySingle, .text(name))
         } else if urls.count > 1 {
-            copyItem.title = "\(urls.count) 項目をコピー"
+            copyItem.title = l10n.text(.contextCopyMultiple, .count(urls.count))
         } else {
-            copyItem.title = "コピー"
+            copyItem.title = l10n.text(.menuEditCopy)
         }
 
         // 「上の階層へ」は戻る先があるとき（zip の中、またはツリーのルート以外のフォルダ）だけ出す。有効・無効は validateMenuItem に任せる
@@ -57,14 +58,14 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
     private func buildMenu() {
         menu.autoenablesItems = true
 
-        openContainerItem.title = "中を表示"
+        openContainerItem.title = l10n.text(.menuFileShowContents)
         openContainerItem.action = #selector(FileListViewController.openFocusedItem(_:))
         openContainerItem.keyEquivalent = String(UnicodeScalar(NSDownArrowFunctionKey)!)
         openContainerItem.keyEquivalentModifierMask = [.command]
         openContainerItem.target = host
         menu.addItem(openContainerItem)
 
-        goUpItem.title = "上の階層へ"
+        goUpItem.title = l10n.text(.menuFileEnclosingFolder)
         goUpItem.action = #selector(FileListViewController.goToEnclosingLevel(_:))
         goUpItem.keyEquivalent = String(UnicodeScalar(NSUpArrowFunctionKey)!)
         goUpItem.keyEquivalentModifierMask = [.command]
@@ -74,48 +75,48 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         addItem(
-            title: "開く",
+            title: l10n.text(.menuFileOpen),
             action: #selector(FileListViewController.open(_:)),
             keyEquivalent: "",
             modifiers: [.command]
         )
         menu.addItem(.separator())
         addItem(
-            title: "ゴミ箱に入れる",
+            title: l10n.text(.menuFileTrash),
             action: #selector(FileListViewController.moveToTrash(_:)),
             keyEquivalent: String(UnicodeScalar(NSBackspaceCharacter)!),
             modifiers: [.command]
         )
         menu.addItem(.separator())
         addItem(
-            title: "名前を変更",
+            title: l10n.text(.menuEditRename),
             action: #selector(FileListViewController.rename(_:)),
             keyEquivalent: "\r",
             modifiers: []
         )
         addItem(
-            title: "複製",
+            title: l10n.text(.menuEditDuplicate),
             action: #selector(FileListViewController.duplicate(_:)),
             keyEquivalent: "d",
             modifiers: [.command]
         )
         menu.addItem(.separator())
 
-        copyItem.title = "コピー"
+        copyItem.title = l10n.text(.menuEditCopy)
         copyItem.action = #selector(FileListViewController.copy(_:))
         copyItem.keyEquivalent = "c"
         copyItem.keyEquivalentModifierMask = [.command]
         copyItem.target = host
         menu.addItem(copyItem)
 
-        pasteItem.title = "ペースト"
+        pasteItem.title = l10n.text(.menuEditPaste)
         pasteItem.action = #selector(FileListViewController.paste(_:))
         pasteItem.keyEquivalent = "v"
         pasteItem.keyEquivalentModifierMask = [.command]
         pasteItem.target = host
         menu.addItem(pasteItem)
 
-        movePasteItem.title = "移動ペースト"
+        movePasteItem.title = l10n.text(.menuEditMovePaste)
         movePasteItem.action = #selector(FileListViewController.movePaste(_:))
         movePasteItem.keyEquivalent = "v"
         movePasteItem.keyEquivalentModifierMask = [.command, .option]
@@ -124,7 +125,7 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
         addItem(
-            title: "Finder に表示",
+            title: l10n.text(.menuFileRevealInFinder),
             action: #selector(FileListViewController.revealInFinder(_:)),
             keyEquivalent: "",
             modifiers: [.command]

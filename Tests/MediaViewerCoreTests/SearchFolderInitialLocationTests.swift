@@ -56,10 +56,9 @@ struct SearchFolderInitialLocationTests {
             home: home,
             validate: recorder.validate
         )
-        #expect(result == .failure(.noAvailableFolder))
+        #expect(result == .failure(.noUsableFolder))
         #expect(recorder.calls.count == 3)
         #expect(input.displayText == "/missing")
-        #expect(SearchFolderInitialLocationError.noAvailableFolder.message == "利用できるフォルダが見つかりません")
     }
 
     @Test("入力の解釈失敗は飛ばし、既定パスは trim せず文字どおり使う")

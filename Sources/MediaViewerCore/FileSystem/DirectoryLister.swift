@@ -45,7 +45,12 @@ public struct DirectoryLister: DirectoryListing {
         .localizedNameKey,
     ]
 
-    public init() {}
+    /// アプリが管理する種類名。Core は日本語の既定値を持たない
+    private let kindNames: KindNames
+
+    public init(kindNames: KindNames) {
+        self.kindNames = kindNames
+    }
 
     public func mediaFiles(in folder: URL) async throws(ListingError) -> [MediaFile] {
         try await run {
@@ -75,7 +80,7 @@ public struct DirectoryLister: DirectoryListing {
                     // ツリーと同じく、パッケージ（.app など）はフォルダとして出さない（R29）。
                     // isPackage の判定は重いため、ディレクトリだけに問い合わせる
                     guard (try? url.resourceValues(forKeys: [.isPackageKey]))?.isPackage != true else { return nil }
-                    return Self.folderRow(at: url, creationDate: values?.creationDate)
+                    return Self.folderRow(at: url, creationDate: values?.creationDate, kindNames: kindNames)
                 }
 
                 if url.pathExtension.lowercased() == Self.archiveExtension {
@@ -83,7 +88,7 @@ public struct DirectoryLister: DirectoryListing {
                         url: url,
                         name: url.lastPathComponent,
                         kind: .archive,
-                        typeDescription: values?.localizedTypeDescription ?? "ZIP アーカイブ",
+                        typeDescription: values?.localizedTypeDescription ?? kindNames.zipArchive,
                         creationDate: values?.creationDate,
                         fileSize: Int64(values?.fileSize ?? 0)
                     )
@@ -95,12 +100,12 @@ public struct DirectoryLister: DirectoryListing {
     }
 
     /// フォルダの行を作る。`FileNameSearcher` と共有し、通常の一覧と検索結果で同じ値にする（FR-139、R1）
-    static func folderRow(at url: URL, creationDate: Date?) -> MediaFile {
+    static func folderRow(at url: URL, creationDate: Date?, kindNames: KindNames) -> MediaFile {
         MediaFile(
             url: url,
             name: url.lastPathComponent,
             kind: .folder,
-            typeDescription: "フォルダ",
+            typeDescription: kindNames.folder,
             creationDate: creationDate,
             fileSize: 0
         )

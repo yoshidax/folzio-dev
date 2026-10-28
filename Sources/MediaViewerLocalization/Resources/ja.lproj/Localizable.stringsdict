@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- 右クリックメニューのコピー（複数件）。%2$@ は整形済みの件数 -->
+  <key>context.copy.multiple</key>
+  <dict>
+    <key>NSStringLocalizedFormatKey</key>
+    <string>%#@value@</string>
+    <key>value</key>
+    <dict>
+      <key>NSStringFormatSpecTypeKey</key>
+      <string>NSStringPluralRuleType</string>
+      <key>NSStringFormatValueTypeKey</key>
+      <string>lld</string>
+      <key>other</key>
+      <string>%2$@ 項目をコピー</string>
+    </dict>
+  </dict>
+  <!-- 検索バーの件数の句。%2$@ は整形済みの件数 -->
+  <key>search.bar.count</key>
+  <dict>
+    <key>NSStringLocalizedFormatKey</key>
+    <string>%#@value@</string>
+    <key>value</key>
+    <dict>
+      <key>NSStringFormatSpecTypeKey</key>
+      <string>NSStringPluralRuleType</string>
+      <key>NSStringFormatValueTypeKey</key>
+      <string>lld</string>
+      <key>other</key>
+      <string>%2$@ 件</string>
+    </dict>
+  </dict>
+  <!-- 検索バーの件数の句（上限で打ち切り）。%2$@ は全件、%3$@ は表示件数 -->
+  <key>search.bar.countLimited</key>
+  <dict>
+    <key>NSStringLocalizedFormatKey</key>
+    <string>%#@value@</string>
+    <key>value</key>
+    <dict>
+      <key>NSStringFormatSpecTypeKey</key>
+      <string>NSStringPluralRuleType</string>
+      <key>NSStringFormatValueTypeKey</key>
+      <string>lld</string>
+      <key>other</key>
+      <string>%2$@ 件中 %3$@ 件を表示</string>
+    </dict>
+  </dict>
+  <!-- コピーの確認の見出し。件数で語形が変わるが件数は表示しない -->
+  <key>dialog.confirm.copy</key>
+  <dict>
+    <key>NSStringLocalizedFormatKey</key>
+    <string>%#@value@</string>
+    <key>value</key>
+    <dict>
+      <key>NSStringFormatSpecTypeKey</key>
+      <string>NSStringPluralRuleType</string>
+      <key>NSStringFormatValueTypeKey</key>
+      <string>lld</string>
+      <key>other</key>
+      <string>コピーしますか？</string>
+    </dict>
+  </dict>
+  <!-- 移動の確認の見出し。件数で語形が変わるが件数は表示しない -->
+  <key>dialog.confirm.move</key>
+  <dict>
+    <key>NSStringLocalizedFormatKey</key>
+    <string>%#@value@</string>
+    <key>value</key>
+    <dict>
+      <key>NSStringFormatSpecTypeKey</key>
+      <string>NSStringPluralRuleType</string>
+      <key>NSStringFormatValueTypeKey</key>
+      <string>lld</string>
+      <key>other</key>
+      <string>移動しますか？</string>
+    </dict>
+  </dict>
+</dict>
+</plist>

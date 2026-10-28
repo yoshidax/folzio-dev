@@ -119,12 +119,4 @@ struct SearchRootTests {
         }
     }
 
-    @Test("理由の文言")
-    func messages() {
-        #expect(SearchRootError.empty.message == "検索起点ディレクトリを入力してください")
-        #expect(SearchRootError.notAbsolute.message == "/ または ~ で始まるパスを入力してください")
-        #expect(SearchRootError.notFound.message == "フォルダが見つかりません")
-        #expect(SearchRootError.notAFolder.message == "フォルダではありません")
-        #expect(SearchRootError.accessDenied.message == "フォルダを読み取れません")
-    }
 }

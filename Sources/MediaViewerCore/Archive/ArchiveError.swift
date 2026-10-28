@@ -11,27 +11,23 @@ public enum ArchiveError: Error, Sendable, Equatable {
     case unsupportedMethod(UInt16)
     /// 画像の 512MB 上限（research.md R24）
     case tooLarge
-    case corrupted(String)
+    case corrupted(ArchiveCorruption)
+}
 
-    /// UI にそのまま出す文言
-    public var message: String {
-        switch self {
-        case .notFound:
-            return "zip を開けません: zip ファイルが見つかりません"
-        case .accessDenied:
-            return "zip を開けません: アクセスできません"
-        case .notAZip:
-            return "zip を開けません: zip ファイルとして読めません"
-        case .multiDisk:
-            return "zip を開けません: 分割された zip には対応していません"
-        case .entryEncrypted:
-            return "暗号化されているため表示できません"
-        case .unsupportedMethod:
-            return "対応していない圧縮方式です"
-        case .tooLarge:
-            return "zip の中の画像が大きすぎるため表示できません"
-        case .corrupted(let reason):
-            return "zip を開けません: \(reason)"
-        }
-    }
+/// zip の内容が壊れている理由（表示言語に依存しない値）。文言は `MediaViewerLocalization` が決める
+public enum ArchiveCorruption: Error, Sendable, Equatable {
+    case cannotStartInflate
+    case compressedDataDamaged
+    case dataTruncated
+    case compressedDataTruncated
+    case headerDamaged
+    case invalidOffset
+    case centralDirectoryTooLarge
+    case invalidLocation
+    case entryNotFound
+    case sizeMismatch
+    case dataOutsideFile
+    case readCancelled
+    case readFailed
+    case unreadable
 }

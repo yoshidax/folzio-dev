@@ -24,16 +24,19 @@ extension FileNameSearching {
 /// - 読み取り権限のないフォルダは飛ばして続ける。名前が一致すれば行として返す
 /// - UI スレッドで列挙しない。zip の中は開かない（`.zip` は対応メディアにもフォルダにも当たらない）
 public struct FileNameSearcher: FileNameSearching {
+    private let kindNames: KindNames
     private let batchSize: Int
     private let batchInterval: Duration
 
-    public init(batchSize: Int = 256, batchInterval: Duration = .milliseconds(100)) {
+    public init(kindNames: KindNames, batchSize: Int = 256, batchInterval: Duration = .milliseconds(100)) {
+        self.kindNames = kindNames
         self.batchSize = max(1, batchSize)
         self.batchInterval = batchInterval
     }
 
     public func search(_ request: SearchRequest) -> AsyncStream<[MediaFile]> {
         let (stream, continuation) = AsyncStream.makeStream(of: [MediaFile].self)
+        let kindNames = kindNames
         let batchSize = batchSize
         let batchInterval = batchInterval
 
@@ -59,7 +62,7 @@ public struct FileNameSearcher: FileNameSearching {
                 lastYield = clock.now
             }
 
-            if request.matchesRoot, let row = Self.matchedRoot(request: request) {
+            if request.matchesRoot, let row = Self.matchedRoot(request: request, kindNames: kindNames) {
                 pending.append(row)
             }
 
@@ -71,7 +74,7 @@ public struct FileNameSearcher: FileNameSearching {
                 if values?.isDirectory == true, values?.isSymbolicLink != true {
                     // 記録は照合の前に行う。記録がなければ、そのディレクトリはまだ照合されていない（R2）
                     request.visits.record(SearchPath.normalized(rebase(url)))
-                    if let row = Self.matchedFolder(at: url, pattern: request.pattern, rebase: rebase) {
+                    if let row = Self.matchedFolder(at: url, pattern: request.pattern, rebase: rebase, kindNames: kindNames) {
                         pending.append(row)
                     }
                 } else if let file = Self.matchedFile(
@@ -133,7 +136,7 @@ public struct FileNameSearcher: FileNameSearching {
     }
 
     /// `matchesRoot` が true のときに、起点そのものを同じ規則で照合する。隠し属性とパッケージも確かめる（R3）
-    private static func matchedRoot(request: SearchRequest) -> MediaFile? {
+    private static func matchedRoot(request: SearchRequest, kindNames: KindNames) -> MediaFile? {
         let root = request.root
         let values = try? root.resourceValues(
             forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .isHiddenKey, .isPackageKey]
@@ -143,7 +146,7 @@ public struct FileNameSearcher: FileNameSearching {
         guard values?.isHidden != true,
               values?.isPackage != true,
               request.pattern.matches(fileName: root.lastPathComponent) else { return nil }
-        return folderRow(at: root)
+        return folderRow(at: root, kindNames: kindNames)
     }
 
     /// 名前が一致したディレクトリの行。パッケージは行にしない（FR-083・A-78）。
@@ -151,16 +154,17 @@ public struct FileNameSearcher: FileNameSearching {
     private static func matchedFolder(
         at url: URL,
         pattern: SearchPattern,
-        rebase: (URL) -> URL
+        rebase: (URL) -> URL,
+        kindNames: KindNames
     ) -> MediaFile? {
         guard pattern.matches(fileName: url.lastPathComponent) else { return nil }
         guard (try? url.resourceValues(forKeys: [.isPackageKey]))?.isPackage != true else { return nil }
-        return folderRow(at: rebase(url))
+        return folderRow(at: rebase(url), kindNames: kindNames)
     }
 
-    private static func folderRow(at url: URL) -> MediaFile {
+    private static func folderRow(at url: URL, kindNames: KindNames) -> MediaFile {
         let creationDate = (try? url.resourceValues(forKeys: [.creationDateKey]))?.creationDate
-        return DirectoryLister.folderRow(at: url, creationDate: creationDate)
+        return DirectoryLister.folderRow(at: url, creationDate: creationDate, kindNames: kindNames)
     }
 
     private static func matchedFile(

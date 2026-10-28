@@ -1,5 +1,6 @@
 import AppKit
 import MediaViewerCore
+import MediaViewerLocalization
 
 @MainActor
 final class FileOperationCoordinator {
@@ -96,7 +97,7 @@ final class FileOperationCoordinator {
         let isDirectory = await containsFolder([file])
         switch validateNewName(newName, for: file, existingNames: existingNames, isDirectory: isDirectory) {
         case .invalid(let reason):
-            await showError(message: "名前を変更できません", detail: reason)
+            await showError(message: l10n.text(.dialogRenameFailed), detail: l10n.text(for: reason))
             return
         case .needsExtensionChangeConfirmation:
             guard await confirmExtensionChange(for: file, to: newName) else { return }
@@ -222,10 +223,10 @@ final class FileOperationCoordinator {
         guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return true }
 
         let alert = NSAlert()
-        alert.messageText = "拡張子が変わります"
-        alert.informativeText = "「\(file.lastPathComponent)」の拡張子を「\((newName as NSString).pathExtension)」に変更します。続けますか？"
-        alert.addButton(withTitle: "変更")
-        alert.addButton(withTitle: "キャンセル")
+        alert.messageText = l10n.text(.dialogExtensionTitle)
+        alert.informativeText = l10n.text(.dialogExtensionMessage, .text(file.lastPathComponent), .text((newName as NSString).pathExtension))
+        alert.addButton(withTitle: l10n.text(.dialogExtensionConfirm))
+        alert.addButton(withTitle: l10n.text(.dialogCancel))
         alert.buttons[1].keyEquivalent = "\u{1b}"
 
         let response = await withCheckedContinuation { continuation in
@@ -240,21 +241,25 @@ final class FileOperationCoordinator {
         guard !result.failed.isEmpty else { return }
 
         var lines = result.failed.prefix(10).map { failure in
-            "\(failure.url.lastPathComponent): \(failure.reason)"
+            l10n.text(
+                .dialogOperationFailureLine,
+                .text(failure.url.lastPathComponent),
+                .text(l10n.text(for: failure.reason))
+            )
         }
         if result.failed.count > 10 {
-            lines.append("ほか \(result.failed.count - 10) 件")
+            lines.append(l10n.text(.dialogOperationMore, .number(result.failed.count - 10)))
         }
 
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "操作を完了できませんでした"
+        alert.messageText = l10n.text(.dialogOperationFailed)
         alert.informativeText = """
-        成功 \(result.succeeded.count) 件 / 失敗 \(result.failed.count) 件
+        \(l10n.text(.dialogOperationSummary, .number(result.succeeded.count), .number(result.failed.count)))
 
         \(lines.joined(separator: "\n"))
         """
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: l10n.text(.dialogOK))
         _ = await runSheet(alert)
     }
 
@@ -263,7 +268,7 @@ final class FileOperationCoordinator {
         alert.alertStyle = .warning
         alert.messageText = message
         alert.informativeText = detail
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: l10n.text(.dialogOK))
         _ = await runSheet(alert)
     }
 

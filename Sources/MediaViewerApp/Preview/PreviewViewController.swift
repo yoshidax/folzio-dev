@@ -1,5 +1,6 @@
 import AppKit
 import MediaViewerCore
+import MediaViewerLocalization
 import QuartzCore
 import os
 
@@ -228,7 +229,7 @@ final class PreviewViewController: NSViewController {
             stopVideo()
             showImageView()
             if paneLayout.showsNoMediaMessage(in: model.listing) {
-                imageView.showMessage("表示するメディアファイルがありません")
+                imageView.showMessage(l10n.text(.previewNoMedia))
             } else {
                 imageView.showEmpty()
             }
@@ -273,7 +274,7 @@ final class PreviewViewController: NSViewController {
             animatedTask = nil
             stopVideo()
             showImageView()
-            imageView.showUnavailable(name: name, reason: reason)
+            imageView.showUnavailable(name: name, reason: l10n.text(for: reason))
         }
         applyTransitionAction(transitionState.reduce(.displayed(content: model.preview, focused: model.selection.focused)))
     }

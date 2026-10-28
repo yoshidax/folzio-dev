@@ -1,4 +1,5 @@
 import AppKit
+import MediaViewerLocalization
 import MediaViewerCore
 import Observation
 
@@ -49,8 +50,8 @@ final class MainToolbarController: NSObject {
         sizeSlider.controlSize = .small
         sizeSlider.target = self
         sizeSlider.action = #selector(thumbnailSizeChanged(_:))
-        sizeSlider.toolTip = "サムネイルのサイズ（⌃⌘. / ⌃⌘,）"
-        sizeSlider.setAccessibilityLabel("サムネイルのサイズ（⌃⌘. / ⌃⌘,）")
+        sizeSlider.toolTip = l10n.text(.toolbarThumbnailSize)
+        sizeSlider.setAccessibilityLabel(l10n.text(.toolbarThumbnailSize))
         sizeSlider.translatesAutoresizingMaskIntoConstraints = false
         sizeSlider.widthAnchor.constraint(equalToConstant: 120).isActive = true
 
@@ -261,7 +262,7 @@ final class MainToolbarController: NSObject {
             control.setWidth(36, forSegment: index)
             control.setToolTip(items[index].label, forSegment: index)
         }
-        control.setAccessibilityLabel(items.map(\.label).joined(separator: "、"))
+        control.setAccessibilityLabel(l10n.list(items.map(\.label)))
         control.sizeToFit()
         return control
     }
@@ -300,8 +301,8 @@ extension MainToolbarController: NSToolbarDelegate {
         case Self.historyIdentifier:
             guard let control = makeSegmentedControl(
                 items: [
-                    ("chevron.left", "戻る"),
-                    ("chevron.right", "進む"),
+                    ("chevron.left", l10n.text(.menuGoBack)),
+                    ("chevron.right", l10n.text(.menuGoForward)),
                 ],
                 trackingMode: .momentary,
                 action: #selector(historySelected(_:))
@@ -311,7 +312,7 @@ extension MainToolbarController: NSToolbarDelegate {
             historyControl = control
             let item = makeGroupItem(
                 identifier: itemIdentifier,
-                label: "履歴",
+                label: l10n.text(.toolbarHistory),
                 control: control
             )
             applyHistoryAvailability()
@@ -319,8 +320,8 @@ extension MainToolbarController: NSToolbarDelegate {
         case Self.paneLayoutIdentifier:
             guard let control = makeSegmentedControl(
                 items: [
-                    ("list.bullet.rectangle", "ファイルリストのみ表示"),
-                    ("sidebar.right", "プレビューのみ表示"),
+                    ("list.bullet.rectangle", l10n.text(.menuViewShowFileListOnly)),
+                    ("sidebar.right", l10n.text(.menuViewShowPreviewOnly)),
                 ],
                 trackingMode: .selectAny,
                 action: #selector(paneLayoutSelected(_:))
@@ -330,7 +331,7 @@ extension MainToolbarController: NSToolbarDelegate {
             paneLayoutControl = control
             let item = makeGroupItem(
                 identifier: itemIdentifier,
-                label: "ペイン",
+                label: l10n.text(.toolbarPanes),
                 control: control
             )
             apply(paneLayout: panes.paneLayout)
@@ -346,14 +347,14 @@ extension MainToolbarController: NSToolbarDelegate {
             button.controlSize = .regular
             button.isBordered = true
             button.imagePosition = .imageOnly
-            button.toolTip = "スライドショーを開始（⇧⌘S）"
-            button.setAccessibilityLabel("スライドショーを開始")
+            button.toolTip = l10n.text(.toolbarStartSlideshowHelp)
+            button.setAccessibilityLabel(l10n.text(.menuViewStartSlideshow))
             slideshowButton = button
 
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-            item.label = "スライドショーを開始"
-            item.paletteLabel = "スライドショーを開始"
-            item.toolTip = "スライドショーを開始（⇧⌘S）"
+            item.label = l10n.text(.menuViewStartSlideshow)
+            item.paletteLabel = l10n.text(.menuViewStartSlideshow)
+            item.toolTip = l10n.text(.toolbarStartSlideshowHelp)
             item.view = button
             item.target = panes
             item.action = #selector(MainSplitViewController.startSlideshow(_:))
@@ -364,22 +365,22 @@ extension MainToolbarController: NSToolbarDelegate {
             // 押した状態を保たない一時的な操作。100%でも中ボタンを押された見た目にしない（A-61）
             guard let control = makeSegmentedControl(
                 items: [
-                    ("plus.magnifyingglass", "拡大"),
-                    ("arrow.up.left.and.down.right.magnifyingglass", "表示領域に合わせる"),
-                    ("minus.magnifyingglass", "縮小"),
+                    ("plus.magnifyingglass", l10n.text(.menuViewZoomIn)),
+                    ("arrow.up.left.and.down.right.magnifyingglass", l10n.text(.menuViewZoomToFit)),
+                    ("minus.magnifyingglass", l10n.text(.menuViewZoomOut)),
                 ],
                 trackingMode: .momentary,
                 action: #selector(previewZoomSelected(_:))
             ) else {
                 return nil
             }
-            control.setToolTip("拡大（⌘+）", forSegment: 0)
-            control.setToolTip("表示領域に合わせる（⌘0）", forSegment: 1)
-            control.setToolTip("縮小（⌘-）", forSegment: 2)
+            control.setToolTip(l10n.text(.toolbarZoomInHelp), forSegment: 0)
+            control.setToolTip(l10n.text(.toolbarZoomToFitHelp), forSegment: 1)
+            control.setToolTip(l10n.text(.toolbarZoomOutHelp), forSegment: 2)
             previewZoomControl = control
             let item = makeGroupItem(
                 identifier: itemIdentifier,
-                label: "拡大・縮小",
+                label: l10n.text(.toolbarZoomGroup),
                 control: control
             )
             previewZoomItem = item
@@ -388,8 +389,8 @@ extension MainToolbarController: NSToolbarDelegate {
         case Self.mediaTypeFilterIdentifier:
             guard let control = makeSegmentedControl(
                 items: [
-                    ("photo", "画像のみ表示"),
-                    ("film", "動画のみ表示"),
+                    ("photo", l10n.text(.menuViewShowImagesOnly)),
+                    ("film", l10n.text(.menuViewShowVideosOnly)),
                 ],
                 trackingMode: .selectAny,
                 action: #selector(mediaTypeFilterSelected(_:))
@@ -399,7 +400,7 @@ extension MainToolbarController: NSToolbarDelegate {
             mediaTypeFilterControl = control
             let item = makeGroupItem(
                 identifier: itemIdentifier,
-                label: "種類",
+                label: l10n.text(.toolbarMediaType),
                 control: control
             )
             apply(mediaTypeFilter: fileList.currentMediaTypeFilter)
@@ -407,7 +408,7 @@ extension MainToolbarController: NSToolbarDelegate {
         case Self.zipVisibilityIdentifier:
             guard let control = makeSegmentedControl(
                 items: [
-                    ("doc.zipper", "zipファイルを表示"),
+                    ("doc.zipper", l10n.text(.menuViewShowZipFiles)),
                 ],
                 trackingMode: .selectAny,
                 action: #selector(zipVisibilitySelected(_:))
@@ -417,7 +418,7 @@ extension MainToolbarController: NSToolbarDelegate {
             zipVisibilityControl = control
             let item = makeGroupItem(
                 identifier: itemIdentifier,
-                label: "zipファイルを表示",
+                label: l10n.text(.menuViewShowZipFiles),
                 control: control
             )
             apply(showsZipFiles: fileList.currentShowsZipFiles)
@@ -425,8 +426,8 @@ extension MainToolbarController: NSToolbarDelegate {
         case Self.viewModeIdentifier:
             guard let control = makeSegmentedControl(
                 items: [
-                    ("square.grid.2x2", "サムネイル"),
-                    ("list.bullet", "リスト"),
+                    ("square.grid.2x2", l10n.text(.toolbarThumbnails)),
+                    ("list.bullet", l10n.text(.toolbarList)),
                 ],
                 trackingMode: .selectOne,
                 action: #selector(viewModeSelected(_:))
@@ -436,15 +437,15 @@ extension MainToolbarController: NSToolbarDelegate {
             viewModeControl = control
             let item = makeGroupItem(
                 identifier: itemIdentifier,
-                label: "表示形式",
+                label: l10n.text(.toolbarViewMode),
                 control: control
             )
             applyCurrentState()
             return item
         case Self.thumbnailSizeIdentifier:
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-            item.label = "サイズ"
-            item.toolTip = "サムネイルのサイズ（⌃⌘. / ⌃⌘,）"
+            item.label = l10n.text(.toolbarSize)
+            item.toolTip = l10n.text(.toolbarThumbnailSize)
             item.view = sizeSlider
             item.autovalidates = false
             sizeItem = item

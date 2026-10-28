@@ -66,7 +66,12 @@ public struct ArchiveIndex: Sendable {
         var central: ZipStructure.CentralEntry
     }
 
-    init(archive: URL, identity: ArchiveIdentity, centralEntries: [ZipStructure.CentralEntry]) {
+    init(
+        archive: URL,
+        identity: ArchiveIdentity,
+        centralEntries: [ZipStructure.CentralEntry],
+        kindNames: KindNames
+    ) {
         self.archive = archive
         self.identity = identity
 
@@ -139,7 +144,7 @@ public struct ArchiveIndex: Sendable {
         }
         self.entries = entries
         self.children = children
-        self.rows = Self.makeRows(archive: archive, entries: entries, children: children)
+        self.rows = Self.makeRows(archive: archive, entries: entries, children: children, kindNames: kindNames)
     }
 
     public func entry(at path: String) -> ArchiveEntry? {
@@ -163,7 +168,8 @@ public struct ArchiveIndex: Sendable {
     private static func makeRows(
         archive: URL,
         entries: [String: ArchiveEntry],
-        children: [String: [String]]
+        children: [String: [String]],
+        kindNames: KindNames
     ) -> [String: [MediaFile]] {
         var descriptions: [String: String] = [:]
         var rows: [String: [MediaFile]] = [:]
@@ -176,7 +182,7 @@ public struct ArchiveIndex: Sendable {
                 let url = ArchiveURL.entry(archive: archive, path: path)
                 if entry.isDirectory {
                     result.append(MediaFile(
-                        url: url, name: entry.name, kind: .directory, typeDescription: "フォルダ",
+                        url: url, name: entry.name, kind: .directory, typeDescription: kindNames.folder,
                         creationDate: entry.modificationDate, fileSize: 0
                     ))
                 } else if let kind = mediaKind(ofName: entry.name) {

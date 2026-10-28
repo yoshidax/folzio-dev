@@ -58,7 +58,7 @@ struct SlideshowFixtureTests {
         try FixtureSets.slideshow(in: directory, generateVideos: false)
 
         let zip = directory.appendingPathComponent("slideshow/slides.zip")
-        let index = try await ZipArchiveReader().open(zip)
+        let index = try await ZipArchiveReader(kindNames: FixtureKit.kindNames).open(zip)
 
         #expect(index.items(in: "").map(\.name).sorted() == [
             "01.jpg",

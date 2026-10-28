@@ -1,5 +1,6 @@
 import AppKit
 import MediaViewerCore
+import MediaViewerLocalization
 
 /// システムの「キーボードナビゲーション」の設定に関わらず、Tab でフォーカスが止まるボタン（R39）
 private final class KeyViewButton: NSButton {
@@ -46,12 +47,12 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
     override func loadView() {
         let container = NSView()
 
-        let keywordLabel = NSTextField(labelWithString: "検索キーワード")
-        let rootLabel = NSTextField(labelWithString: "検索起点ディレクトリ")
+        let keywordLabel = NSTextField(labelWithString: l10n.text(.searchKeyword))
+        let rootLabel = NSTextField(labelWithString: l10n.text(.searchRoot))
 
-        keywordField.placeholderString = "検索キーワード"
+        keywordField.placeholderString = l10n.text(.searchKeyword)
         keywordField.delegate = self
-        keywordField.setAccessibilityLabel("検索キーワード")
+        keywordField.setAccessibilityLabel(l10n.text(.searchKeyword))
         keywordField.stringValue = initialKeyword ?? ""
 
         configureRootField()
@@ -60,22 +61,22 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
         reasonLabel.lineBreakMode = .byWordWrapping
         reasonLabel.maximumNumberOfLines = 0
         reasonLabel.isHidden = true
-        reasonLabel.setAccessibilityLabel("エラー")
+        reasonLabel.setAccessibilityLabel(l10n.text(.searchError))
 
-        chooseFolderButton.title = "選択…"
+        chooseFolderButton.title = l10n.text(.searchChoose)
         chooseFolderButton.bezelStyle = .push
         chooseFolderButton.target = self
         chooseFolderButton.action = #selector(chooseFolder(_:))
-        chooseFolderButton.setAccessibilityLabel("選択…")
-        chooseFolderButton.setAccessibilityHelp("標準のフォルダ選択パネルを開きます")
+        chooseFolderButton.setAccessibilityLabel(l10n.text(.searchChoose))
+        chooseFolderButton.setAccessibilityHelp(l10n.text(.searchChooseHelp))
 
-        cancelButton.title = "キャンセル"
+        cancelButton.title = l10n.text(.dialogCancel)
         cancelButton.bezelStyle = .push
         cancelButton.keyEquivalent = "\u{1b}"
         cancelButton.target = self
         cancelButton.action = #selector(cancel(_:))
 
-        searchButton.title = "検索"
+        searchButton.title = l10n.text(.searchSearch)
         searchButton.bezelStyle = .push
         searchButton.keyEquivalent = "\r"
         searchButton.target = self
@@ -112,7 +113,8 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
             stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
             stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
             stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -20),
-            container.widthAnchor.constraint(equalToConstant: 520),
+            container.widthAnchor.constraint(greaterThanOrEqualToConstant: 420),
+            container.widthAnchor.constraint(lessThanOrEqualToConstant: 760),
             keywordField.widthAnchor.constraint(equalTo: stack.widthAnchor),
             rootRow.widthAnchor.constraint(equalTo: stack.widthAnchor),
             reasonLabel.widthAnchor.constraint(equalTo: stack.widthAnchor),
@@ -154,7 +156,7 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
         rootField.cell?.wraps = false
         rootField.lineBreakMode = .byTruncatingHead
         rootField.delegate = self
-        rootField.setAccessibilityLabel("検索起点ディレクトリ")
+        rootField.setAccessibilityLabel(l10n.text(.searchRoot))
         rootField.stringValue = initialRootPath
     }
 
@@ -197,7 +199,7 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
                 url = value
             case let .failure(error):
                 guard self.inputState.complete(ticket, succeeded: false) else { return }
-                self.showReason(error.message)
+                self.showReason(l10n.text(for: error))
                 self.refreshControls()
                 return
             }
@@ -211,7 +213,7 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
                 self.onSearch(pattern, root)
             case let .failure(error):
                 guard self.inputState.complete(ticket, succeeded: false) else { return }
-                self.showReason(error.message)
+                self.showReason(l10n.text(for: error))
                 self.refreshControls()
             }
         }
@@ -238,7 +240,7 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
                 self.presentFolderPanel(initialDirectory: directory)
             case let .failure(error):
                 guard self.inputState.complete(ticket, succeeded: false) else { return }
-                self.showReason(error.message)
+                self.showReason(l10n.text(for: error))
                 self.refreshControls()
             }
         }
@@ -246,15 +248,15 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
 
     private func presentFolderPanel(initialDirectory: URL) {
         guard !panelPresented, let window = view.window else {
-            showReason("フォルダ選択パネルを開けませんでした")
+            showReason(l10n.text(.searchPanelFailed))
             refreshControls()
             return
         }
 
         let panel = NSOpenPanel()
-        panel.title = "検索起点フォルダを選択"
-        panel.message = "検索起点にするフォルダを選択してください。"
-        panel.prompt = "選択"
+        panel.title = l10n.text(.searchPanelTitle)
+        panel.message = l10n.text(.searchPanelMessage)
+        panel.prompt = l10n.text(.searchPanelPrompt)
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
@@ -301,7 +303,7 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
                 self.refreshControls()
             case let .failure(error):
                 guard self.inputState.complete(ticket, succeeded: false) else { return }
-                self.showReason(error.message)
+                self.showReason(l10n.text(for: error))
                 self.focusChooseButton()
                 self.refreshControls()
             }
