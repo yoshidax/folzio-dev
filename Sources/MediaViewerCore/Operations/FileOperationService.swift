@@ -110,7 +110,7 @@ public struct FileOperationService: FileOperating {
         }
 
         let provisionalTarget = destination.appendingPathComponent(source.lastPathComponent)
-        if sourceIsDirectory.boolValue, isDescendant(provisionalTarget, of: source) {
+        if sourceIsDirectory.boolValue, isDescendant(destination, of: source) {
             throw OperationFailure(reason: .intoItself)
         }
 

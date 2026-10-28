@@ -21,3 +21,7 @@
 ## Dependencies & Execution Order
 
 T001 → T011 → T002 → T003 → T004 → T005 → T006 → T007 → T008 → T009 → T010。順次実施し、GUI をエージェントが起動しない。検証後 converge で不足を調べる。最終検証と最終起動スモークはワークフローの別ゲートとして実施する。
+
+## Phase 2: Convergence
+
+- [X] T012 [US23] `Sources/MediaViewerCore/Operations/FileOperationService.swift` と `Tests/MediaViewerCoreTests/FileOperationServiceTests.swift` で、フォルダを同じ親へコピーし「両方残す」を選んだ場合に元と中身を保って別名でコピーできるよう修正する。自身・配下へのコピーと同一元への置き換え拒否は維持する（EC-121・FR-025、partial）。

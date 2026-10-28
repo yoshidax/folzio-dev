@@ -362,6 +362,26 @@ struct FileOperationServiceTests {
         return Set((enumerator?.allObjects as? [String]) ?? [])
     }
 
+    @Test("フォルダを同じ親へ両方残すコピーでは元と中身を保つ")
+    func copiesFolderIntoSameParent() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let album = try makeAlbum(in: folder)
+        let expected = contents(of: album)
+        let operation = FileOperation(kind: .copy, sources: [album], destination: folder)
+        let replaced = await service.execute(operation, resolution: .replace)
+        #expect(replaced.succeeded.isEmpty)
+        #expect(replaced.failed.count == 1)
+        #expect(contents(of: album) == expected)
+        let result = await service.execute(operation, resolution: .keepBoth)
+        #expect(result.failed.isEmpty)
+        let copy = try #require(result.succeeded.first)
+        #expect(copy != album)
+        #expect(contents(of: copy) == expected)
+        #expect(contents(of: album) == expected)
+    }
+
     @Test("フォルダをコピーすると中身ごと複製され、元も残る")
     func copiesFolderWithContents() async throws {
         let root = try makeTemporaryDirectory()
