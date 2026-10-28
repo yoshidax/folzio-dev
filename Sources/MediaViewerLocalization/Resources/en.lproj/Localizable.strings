@@ -1,582 +1,582 @@
-/* MediaViewer の表示文言。キーは TextKey の rawValue と一致させる。 */
+/* Display strings for MediaViewer. Keys must match the rawValue of TextKey. */
 
-/* 検索シートの起点の検証で入力欄の下に出す理由 */
+/* Reason shown below the input field when the search sheet validates its search root */
 "error.searchRoot.empty" = "Enter a folder to search in";
 
-/* 検索シートの起点の検証で入力欄の下に出す理由 */
+/* Reason shown below the input field when the search sheet validates its search root */
 "error.searchRoot.notAbsolute" = "Enter a path that begins with / or ~";
 
-/* 検索シートの起点の検証で入力欄の下に出す理由 */
+/* Reason shown below the input field when the search sheet validates its search root */
 "error.searchRoot.notFound" = "Folder not found";
 
-/* 検索シートの起点の検証で入力欄の下に出す理由 */
+/* Reason shown below the input field when the search sheet validates its search root */
 "error.searchRoot.notAFolder" = "Not a folder";
 
-/* 検索シートの起点の検証で入力欄の下に出す理由 */
+/* Reason shown below the input field when the search sheet validates its search root */
 "error.searchRoot.accessDenied" = "Can’t read the folder";
 
-/* 検索起点のフォルダ選択パネルの初期位置を決められない理由 */
+/* Reason the initial location of the search root folder selection panel cannot be determined */
 "error.searchRoot.noUsableFolder" = "No available folder was found";
 
-/* zip を開けない理由の前置き。%1$@ は理由の文 */
+/* Lead-in for the reason a zip cannot be opened. %1$@ is the reason sentence */
 "error.zip.cannotOpen" = "Can’t open the zip file: %1$@";
 
-/* zip を開けない理由（error.zip.cannotOpen の値） */
+/* Reason a zip cannot be opened (the value of error.zip.cannotOpen) */
 "error.zip.notFound" = "The zip file can’t be found";
 
-/* zip を開けない理由（error.zip.cannotOpen の値） */
+/* Reason a zip cannot be opened (the value of error.zip.cannotOpen) */
 "error.zip.accessDenied" = "Access denied";
 
-/* zip を開けない理由（error.zip.cannotOpen の値） */
+/* Reason a zip cannot be opened (the value of error.zip.cannotOpen) */
 "error.zip.notAZip" = "Not a readable zip file";
 
-/* zip を開けない理由（error.zip.cannotOpen の値） */
+/* Reason a zip cannot be opened (the value of error.zip.cannotOpen) */
 "error.zip.multiDisk" = "Split zip archives aren’t supported";
 
-/* zip の中の項目を表示できない理由 */
+/* Reason an entry in a zip cannot be displayed */
 "error.zip.entryEncrypted" = "Can’t display an encrypted item";
 
-/* zip の中の項目を表示できない理由 */
+/* Reason an entry in a zip cannot be displayed */
 "error.zip.unsupportedMethod" = "Unsupported compression method";
 
-/* zip の中の項目を表示できない理由 */
+/* Reason an entry in a zip cannot be displayed */
 "error.zip.tooLarge" = "The image in the zip file is too large to display";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.cannotStartInflate" = "Can’t start decompressing";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.compressedDataDamaged" = "The compressed data is damaged";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.dataTruncated" = "The item data ends unexpectedly";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.compressedDataTruncated" = "The compressed data ends unexpectedly";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.headerDamaged" = "The item header is damaged";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.invalidOffset" = "The item offset is invalid";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.centralDirectoryTooLarge" = "The central directory is too large";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.invalidLocation" = "The item location is invalid";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.entryNotFound" = "The item isn’t in the zip file";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.sizeMismatch" = "The item size doesn’t match";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.dataOutsideFile" = "The item data is outside the file";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.readCancelled" = "Reading was canceled";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.readFailed" = "Couldn’t read the zip file";
 
-/* zip の内容が壊れている理由（error.zip.cannotOpen の値） */
+/* Reason the contents of a zip are damaged (the value of error.zip.cannotOpen) */
 "error.zip.corrupted.unreadable" = "Can’t load the zip file";
 
-/* 名前の変更で使えない名前の理由 */
+/* Reason a name cannot be used for renaming */
 "error.name.empty" = "Enter a name";
 
-/* 名前の変更で使えない名前の理由 */
+/* Reason a name cannot be used for renaming */
 "error.name.forbiddenCharacter" = "Names can’t contain “/” or “:”";
 
-/* 名前の変更で使えない名前の理由 */
+/* Reason a name cannot be used for renaming */
 "error.name.leadingDot" = "Names can’t begin with “.”";
 
-/* 名前の変更で使えない名前の理由 */
+/* Reason a name cannot be used for renaming */
 "error.name.duplicate" = "An item with this name already exists";
 
-/* 名前の変更で使えない名前の理由 */
+/* Reason a name cannot be used for renaming */
 "error.name.becomesPackage" = "With this name, the folder would be treated as a package and would no longer be shown";
 
-/* ファイル操作の失敗の理由 */
+/* Reason a file operation failed */
 "error.operation.noDestination" = "No destination folder is specified";
 
-/* ファイル操作の失敗の理由 */
+/* Reason a file operation failed */
 "error.operation.destinationNotFound" = "The destination folder can’t be found";
 
-/* ファイル操作の失敗の理由 */
+/* Reason a file operation failed */
 "error.operation.sourceNotFound" = "The item can’t be found";
 
-/* ファイル操作の失敗の理由 */
+/* Reason a file operation failed */
 "error.operation.intoItself" = "A folder can’t be moved or copied into itself or one of its subfolders";
 
-/* ファイル操作の失敗の理由 */
+/* Reason a file operation failed */
 "error.operation.sameNameExists" = "Stopped because an item with the same name exists";
 
-/* ファイル操作の失敗の理由 */
+/* Reason a file operation failed */
 "error.operation.sameNameAtDestination" = "Stopped because an item with the same name exists at the destination";
 
-/* 既存の項目をゴミ箱へ移動できなかったときの理由。%1$@ は OS が返す理由 */
+/* Reason an existing item could not be moved to the Trash. %1$@ is the reason returned by the OS */
 "error.operation.trashExistingFailed" = "Couldn’t move the existing item to the Trash: %1$@";
 
-/* OS がファイル操作を拒否したときの理由。%1$@ は OS が返す理由（訳し直さない） */
+/* Reason the OS rejected a file operation. %1$@ is the reason returned by the OS (do not re-translate) */
 "error.operation.systemFailure" = "%1$@";
 
-/* 種類フィルタで画像のみを表示して一覧が0件のときの空状態 */
+/* Empty state when the media type filter shows only images and the list is empty */
 "empty.filter.images" = "Showing images only: No matching files";
 
-/* 種類フィルタで動画のみを表示して一覧が0件のときの空状態 */
+/* Empty state when the media type filter shows only videos and the list is empty */
 "empty.filter.videos" = "Showing videos only: No matching files";
 
-/* 開こうとしたフォルダが見つからないときの空状態 */
+/* Empty state when the folder to open cannot be found */
 "empty.folderNotFound" = "Folder not found";
 
-/* ファイルリストとプレビューの読み込み中の表示 */
+/* Loading state for the file list and preview */
 "empty.loading" = "Loading…";
 
-/* 検索中の空状態 */
+/* Empty state while searching */
 "empty.searching" = "Searching…";
 
-/* 対応するメディアファイルがないフォルダの空状態 */
+/* Empty state for a folder with no supported media files */
 "empty.noMedia" = "No supported media files";
 
-/* 検索結果が0件のときの空状態 */
+/* Empty state when the search returns no results */
 "empty.noMatches" = "No matching items";
 
-/* フォルダを読めないときの空状態 */
+/* Empty state when the folder cannot be read */
 "empty.accessDenied" = "Can’t access this folder";
 
-/* 表示するメディアファイルがないときのプレビュー */
+/* Preview when there is no media file to display */
 "preview.noMedia" = "No media file to display";
 
-/* プレビューを表示できないときの見出し。%1$@ は理由 */
+/* Title shown when the preview cannot be displayed. %1$@ is the reason */
 "preview.unavailable" = "Can’t display\n%1$@";
 
-/* アニメーション画像を表示できないときの理由 */
+/* Reason an animated image cannot be displayed */
 "preview.animationUnavailable" = "Can’t display the animation";
 
-/* プレビューを表示できない理由 */
+/* Reason the preview cannot be displayed */
 "preview.failure.unreadable" = "Can’t read the file";
 
-/* プレビューを表示できない理由 */
+/* Reason the preview cannot be displayed */
 "preview.failure.unsupportedFormat" = "Unsupported format";
 
-/* プレビューを表示できない理由 */
+/* Reason the preview cannot be displayed */
 "preview.failure.corrupted" = "The file is damaged";
 
-/* 種類名のフォールバック（OS が種類名を返さないとき） */
+/* Fallback kind name (when the OS does not return a kind name) */
 "kind.folder" = "Folder";
 
-/* 種類名のフォールバック（OS が種類名を返さないとき） */
+/* Fallback kind name (when the OS does not return a kind name) */
 "kind.zipArchive" = "ZIP archive";
 
-/* アプリケーションメニューの設定項目（ダイアログを開くので末尾に …） */
+/* Settings item in the application menu (ends with … because it opens a dialog) */
 "menu.app.settings" = "Settings…";
 
-/* アプリケーションメニューの終了項目。アプリ名は訳さない */
+/* Quit item in the application menu. Do not translate the app name */
 "menu.app.quit" = "Quit MediaViewer";
 
-/* メニューバーのメニュー名 */
+/* Menu bar menu names */
 "menu.file" = "File";
 
-/* ファイルメニューの項目 */
+/* File menu items */
 "menu.file.open" = "Open";
 
-/* ファイルメニューの項目 */
+/* File menu items */
 "menu.file.showContents" = "Show Contents";
 
-/* ファイルメニューの項目 */
+/* File menu items */
 "menu.file.enclosingFolder" = "Enclosing Folder";
 
-/* ファイルメニューの項目 */
+/* File menu items */
 "menu.file.revealInFinder" = "Show in Finder";
 
-/* ファイルメニューの項目 */
+/* File menu items */
 "menu.file.addToFavorites" = "Add to Favorites";
 
-/* ファイルメニューの項目（ダイアログを開くので末尾に …） */
+/* File menu item (ends with … because it opens a dialog) */
 "menu.file.find" = "Find…";
 
-/* ファイル・編集メニューの項目。ツリーでお気に入りを選んでいるときは menu.file.removeFromFavorites に変わる */
+/* File and Edit menu item. Changes to menu.file.removeFromFavorites when a favorite is selected in the tree */
 "menu.file.trash" = "Move to Trash";
 
-/* ファイル・編集メニューの項目。ツリーでお気に入りを選んでいるときに使う */
+/* File and Edit menu item. Used when a favorite is selected in the tree */
 "menu.file.removeFromFavorites" = "Remove from Favorites";
 
-/* メニューバーのメニュー名 */
+/* Menu bar menu names */
 "menu.edit" = "Edit";
 
-/* 編集メニューの項目 */
+/* Edit menu items */
 "menu.edit.undo" = "Undo";
 
-/* 編集メニューの項目 */
+/* Edit menu items */
 "menu.edit.redo" = "Redo";
 
-/* 編集メニューの項目 */
+/* Edit menu items */
 "menu.edit.cut" = "Cut";
 
-/* 編集メニューの項目 */
+/* Edit menu items */
 "menu.edit.copy" = "Copy";
 
-/* 編集メニューの項目 */
+/* Edit menu items */
 "menu.edit.paste" = "Paste";
 
-/* 編集メニューの項目 */
+/* Edit menu items */
 "menu.edit.movePaste" = "Move Item Here";
 
-/* 編集メニューの項目 */
+/* Edit menu items */
 "menu.edit.duplicate" = "Duplicate";
 
-/* 編集メニューの項目 */
+/* Edit menu items */
 "menu.edit.rename" = "Rename";
 
-/* 編集メニューの項目 */
+/* Edit menu items */
 "menu.edit.selectAll" = "Select All";
 
-/* メニューバーのメニュー名 */
+/* Menu bar menu names */
 "menu.view" = "View";
 
-/* 表示メニューの項目。ツールバーが隠れているときに使う */
+/* View menu item. Used when the toolbar is hidden */
 "menu.view.showToolbar" = "Show Toolbar";
 
-/* 表示メニューの項目。ツールバーが見えているときに使う */
+/* View menu item. Used when the toolbar is visible */
 "menu.view.hideToolbar" = "Hide Toolbar";
 
-/* 表示メニューの項目 */
+/* View menu items */
 "menu.view.fullScreen" = "Full Screen";
 
-/* 表示メニューの項目 */
+/* View menu items */
 "menu.view.zoomIn" = "Zoom In";
 
-/* 表示メニューの項目 */
+/* View menu items */
 "menu.view.zoomOut" = "Zoom Out";
 
-/* 表示メニューの項目 */
+/* View menu items */
 "menu.view.zoomToFit" = "Zoom to Fit";
 
-/* 表示メニューとツールバーの項目 */
+/* View menu and toolbar items */
 "menu.view.startSlideshow" = "Start Slideshow";
 
-/* 表示メニューとツールバーの項目 */
+/* View menu and toolbar items */
 "menu.view.showFileListOnly" = "Show File List Only";
 
-/* 表示メニューとツールバーの項目 */
+/* View menu and toolbar items */
 "menu.view.showPreviewOnly" = "Show Preview Only";
 
-/* 表示メニューの項目 */
+/* View menu items */
 "menu.view.focusTree" = "Focus Directory Tree";
 
-/* 表示メニューの項目 */
+/* View menu items */
 "menu.view.focusFileList" = "Focus File List";
 
-/* 表示メニューの項目 */
+/* View menu items */
 "menu.view.focusPreview" = "Focus Preview";
 
-/* 表示メニューの項目 */
+/* View menu items */
 "menu.view.goToFavorites" = "Go to Favorites";
 
-/* 表示メニューの表示形式の項目 */
+/* View mode items in the View menu */
 "menu.view.asThumbnails" = "as Thumbnails";
 
-/* 表示メニューの表示形式の項目 */
+/* View mode items in the View menu */
 "menu.view.asList" = "as List";
 
-/* 表示メニューの項目 */
+/* View menu items */
 "menu.view.largerThumbnails" = "Larger Thumbnails";
 
-/* 表示メニューの項目 */
+/* View menu items */
 "menu.view.smallerThumbnails" = "Smaller Thumbnails";
 
-/* 表示メニューとツールバーの項目 */
+/* View menu and toolbar items */
 "menu.view.showImagesOnly" = "Show Images Only";
 
-/* 表示メニューとツールバーの項目 */
+/* View menu and toolbar items */
 "menu.view.showVideosOnly" = "Show Videos Only";
 
-/* 表示メニューとツールバーの項目 */
+/* View menu and toolbar items */
 "menu.view.showZipFiles" = "Show Zip Files";
 
-/* 表示メニューのサブメニュー */
+/* View menu submenu */
 "menu.view.sortBy" = "Sort By";
 
-/* メニューバーのメニュー名 */
+/* Menu bar menu names */
 "menu.go" = "Go";
 
-/* 移動メニューとツールバーの項目 */
+/* Go menu and toolbar items */
 "menu.go.back" = "Back";
 
-/* 移動メニューとツールバーの項目 */
+/* Go menu and toolbar items */
 "menu.go.forward" = "Forward";
 
-/* 右クリックメニューのコピー（1件）。%1$@ はファイル名 */
+/* Copy in the context menu (single item). %1$@ is the file name */
 "context.copy.single" = "Copy “%1$@”";
 
-/* ツリーの右クリックメニューのペースト */
+/* Paste in the directory tree's context menu */
 "context.pasteHere" = "Paste Here";
 
-/* ツリーの右クリックメニューの移動ペースト */
+/* Move Item Here in the directory tree's context menu */
 "context.movePasteHere" = "Move Item Here";
 
-/* ツールバーの履歴のグループの名前 */
+/* Toolbar history group name */
 "toolbar.history" = "Back/Forward";
 
-/* ツールバーのペインのグループの名前 */
+/* Toolbar panes group name */
 "toolbar.panes" = "Panes";
 
-/* ツールバーの拡大・縮小のグループの名前 */
+/* Toolbar zoom group name */
 "toolbar.zoomGroup" = "Zoom";
 
-/* ツールバーの種類のグループの名前 */
+/* Toolbar media type group name */
 "toolbar.mediaType" = "Media Type";
 
-/* ツールバーの表示形式のグループの名前 */
+/* Toolbar view mode group name */
 "toolbar.viewMode" = "View";
 
-/* ツールバーとサイズバーのグループの名前 */
+/* Toolbar and size bar group name */
 "toolbar.size" = "Size";
 
-/* ツールバーとサイズバーのツールチップとアクセシビリティ。ショートカットを含む */
+/* Tooltip and accessibility text for the toolbar and size bar. Include the shortcut */
 "toolbar.thumbnailSize" = "Thumbnail Size (⌃⌘. / ⌃⌘,)";
 
-/* スライドショーのツールチップ。ショートカットを含む */
+/* Slideshow tooltip. Includes the shortcut */
 "toolbar.startSlideshowHelp" = "Start Slideshow (⇧⌘S)";
 
-/* 拡大のツールチップ。ショートカットを含む */
+/* Zoom in tooltip. Includes the shortcut */
 "toolbar.zoomInHelp" = "Zoom In (⌘+)";
 
-/* 表示領域に合わせるのツールチップ。ショートカットを含む */
+/* Zoom to Fit tooltip. Includes the shortcut */
 "toolbar.zoomToFitHelp" = "Zoom to Fit (⌘0)";
 
-/* 縮小のツールチップ。ショートカットを含む */
+/* Zoom out tooltip. Includes the shortcut */
 "toolbar.zoomOutHelp" = "Zoom Out (⌘-)";
 
-/* ツールバーの表示形式の選択肢 */
+/* View mode options in the toolbar */
 "toolbar.thumbnails" = "Thumbnails";
 
-/* ツールバーの表示形式の選択肢 */
+/* View mode options in the toolbar */
 "toolbar.list" = "List";
 
-/* 設定ウインドウの名前 */
+/* Settings window title */
 "settings.window" = "Settings";
 
-/* 設定ウインドウの区分の見出し */
+/* Section headings in the Settings window */
 "settings.video" = "Video";
 
-/* 設定ウインドウのチェックボックス */
+/* Checkboxes in the Settings window */
 "settings.autoplay" = "Play videos automatically";
 
-/* 設定ウインドウのチェックボックス */
+/* Checkboxes in the Settings window */
 "settings.loop" = "Loop videos";
 
-/* 設定ウインドウの区分の見出し */
+/* Section headings in the Settings window */
 "settings.fileOperations" = "File Operations";
 
-/* 設定ウインドウのチェックボックス */
+/* Checkboxes in the Settings window */
 "settings.confirm" = "Confirm before copying, moving to the Trash, or removing from Favorites (renaming, moving, and moving tree folders to the Trash are always confirmed)";
 
-/* 設定ウインドウの区分の見出し */
+/* Section headings in the Settings window */
 "settings.slideshow" = "Slideshow";
 
-/* 設定ウインドウの切り替え間隔のラベル */
+/* Interval label in the Settings window */
 "settings.interval" = "Interval";
 
-/* 切り替え間隔の単位（数値の後ろ） */
+/* Interval unit (after the number) */
 "settings.seconds" = "seconds";
 
-/* 切り替え間隔の入力欄のアクセシビリティのラベル */
+/* Accessibility label for the interval field */
 "settings.intervalA11y" = "Interval (seconds)";
 
-/* 設定ウインドウのチェックボックスとアクセシビリティのラベル */
+/* Checkbox and accessibility label in the Settings window */
 "settings.repeat" = "Repeat from the beginning after the last item";
 
-/* 設定ウインドウの切り替え効果のラベルとアクセシビリティのラベル */
+/* Transition label and accessibility label in the Settings window */
 "settings.transition" = "Transition";
 
-/* 切り替え効果の選択肢 */
+/* Transition options */
 "settings.transition.none" = "None";
 
-/* 切り替え効果の選択肢 */
+/* Transition options */
 "settings.transition.crossfade" = "Crossfade";
 
-/* 切り替え効果の選択肢 */
+/* Transition options */
 "settings.transition.slide" = "Slide";
 
-/* 切り替え効果の選択肢 */
+/* Transition options */
 "settings.transition.zoom" = "Zoom";
 
-/* リスト形式の列見出し。並べ替えのメニューでも使う */
+/* List view column headings. Also used in the sort menu */
 "list.column.name" = "Name";
 
-/* リスト形式の列見出し。並べ替えのメニューでも使う */
+/* List view column headings. Also used in the sort menu */
 "list.column.creationDate" = "Date Created";
 
-/* リスト形式の列見出し。並べ替えのメニューでも使う */
+/* List view column headings. Also used in the sort menu */
 "list.column.kind" = "Kind";
 
-/* リスト形式の列見出し。並べ替えのメニューでも使う */
+/* List view column headings. Also used in the sort menu */
 "list.column.location" = "Location";
 
-/* 並べ替えメニューの選択中の列（昇順）。%1$@ は列名 */
+/* Selected column in the sort menu (ascending). %1$@ is the column name */
 "list.sort.ascending" = "%1$@ (Ascending)";
 
-/* 並べ替えメニューの選択中の列（降順）。%1$@ は列名 */
+/* Selected column in the sort menu (descending). %1$@ is the column name */
 "list.sort.descending" = "%1$@ (Descending)";
 
-/* 一覧の .. の行のアクセシビリティのラベル */
+/* Accessibility label for the `..` row in the list */
 "list.parentRow" = "Enclosing Folder";
 
-/* ツリーの列見出し */
+/* Directory tree column heading */
 "tree.column" = "Folders";
 
-/* ツリーの固定の行 */
+/* Fixed row in the directory tree */
 "tree.favorites" = "Favorites";
 
-/* ツリーの行のツールチップ */
+/* Tooltip for a directory tree row */
 "tree.tooltip.notAccessible" = "Not accessible";
 
-/* ツリーの行のツールチップ */
+/* Tooltip for a directory tree row */
 "tree.tooltip.notFound" = "Not found";
 
-/* ツリーの名前の編集欄のアクセシビリティのラベル */
+/* Accessibility label for a name edit field in the directory tree */
 "tree.a11y.favoriteName" = "Favorite name";
 
-/* ツリーの名前の編集欄のアクセシビリティのラベル */
+/* Accessibility label for a name edit field in the directory tree */
 "tree.a11y.folderName" = "Folder name";
 
-/* 検索シートのキーワードのラベル・プレースホルダ・アクセシビリティ */
+/* Search sheet keyword label, placeholder, and accessibility text */
 "search.keyword" = "Keyword";
 
-/* 検索シートの起点のラベル・アクセシビリティ */
+/* Search sheet search root label and accessibility text */
 "search.root" = "Search In";
 
-/* 検索シートのフォルダ選択ボタン（パネルを開くので末尾に …） */
+/* Search sheet folder selection button (ends with … because it opens a panel) */
 "search.choose" = "Choose…";
 
-/* 検索シートのフォルダ選択ボタンのヘルプ */
+/* Help text for the search sheet folder selection button */
 "search.choose.help" = "Opens the standard folder selection panel";
 
-/* 検索シートの検索ボタン */
+/* Search sheet search button */
 "search.search" = "Search";
 
-/* 検索シートのエラーのアクセシビリティのラベル */
+/* Accessibility label for the search sheet error */
 "search.error" = "Error";
 
-/* 検索起点のフォルダ選択パネルのタイトル */
+/* Search root folder selection panel title */
 "search.panel.title" = "Choose a Folder to Search";
 
-/* 検索起点のフォルダ選択パネルのメッセージ */
+/* Search root folder selection panel message */
 "search.panel.message" = "Choose the folder to search in.";
 
-/* 検索起点のフォルダ選択パネルのボタン */
+/* Search root folder selection panel button */
 "search.panel.prompt" = "Choose";
 
-/* フォルダ選択パネルを開けなかったときの理由 */
+/* Reason the folder selection panel could not be opened */
 "search.panel.failed" = "Couldn’t open the folder selection panel";
 
-/* 検索バーの完了時の文。%1$@ はキーワード、%2$@ は起点のフォルダ名、%3$@ は件数の句 */
+/* Completed-state sentence in the search bar. %1$@ is the keyword, %2$@ is the search root folder name, and %3$@ is the count phrase */
 "search.bar.results" = "Results for “%1$@” — %2$@ — %3$@";
 
-/* 検索バーの検索中の文。%1$@ はキーワード、%2$@ は起点のフォルダ名、%3$@ は件数の句 */
+/* Searching-state sentence in the search bar. %1$@ is the keyword, %2$@ is the search root folder name, and %3$@ is the count phrase */
 "search.bar.searching" = "Results for “%1$@” — %2$@ — %3$@ Searching…";
 
-/* 名前の変更の確認の見出し */
+/* Title for the rename confirmation */
 "dialog.confirm.rename" = "Rename this item?";
 
-/* ゴミ箱の確認の見出し */
+/* Title for the Trash confirmation */
 "dialog.confirm.trash" = "Move to the Trash?";
 
-/* 確認モーダルの対象の件数。%1$@ は整形済みの件数 */
+/* Number of items in the confirmation modal. %1$@ is the formatted count */
 "dialog.confirm.items" = "Items: %1$@";
 
-/* 確認モーダルの対象の1行。%1$@ はファイル名 */
+/* One line per item in the confirmation modal. %1$@ is the file name */
 "dialog.confirm.bullet" = "• %1$@";
 
-/* 確認モーダルの残りの件数。%1$@ は整形済みの件数 */
+/* Remaining item count in the confirmation modal. %1$@ is the formatted count */
 "dialog.confirm.more" = "and %1$@ more";
 
-/* フォルダをゴミ箱に入れるときの注記 */
+/* Note shown when folders are moved to the Trash */
 "dialog.confirm.folderTrash" = "Folders are moved to the Trash with their contents";
 
-/* フォルダをコピー・移動・名前の変更するときの注記 */
+/* Note shown when folders are copied, moved, or renamed */
 "dialog.confirm.folderProcess" = "Folders are processed with their contents";
 
-/* 確認モーダルの操作先のパス。%1$@ はパス */
+/* Destination path in the confirmation modal. %1$@ is the path */
 "dialog.confirm.destination" = "Destination: %1$@";
 
-/* 確認モーダルの場所のパス。%1$@ はパス */
+/* Location path in the confirmation modal. %1$@ is the path */
 "dialog.confirm.location" = "Location: %1$@";
 
-/* 確認モーダルの実行ボタン */
+/* Continue button in the confirmation modal */
 "dialog.confirm.continue" = "Continue";
 
-/* 確認モーダルの「今後この確認を表示しない」 */
+/* The "Don't ask again" option in the confirmation modal */
 "dialog.confirm.dontAsk" = "Don’t ask again";
 
-/* ダイアログのキャンセルボタン */
+/* Dialog Cancel button */
 "dialog.cancel" = "Cancel";
 
-/* ダイアログの OK ボタン */
+/* Dialog OK button */
 "dialog.ok" = "OK";
 
-/* お気に入りの削除の確認の見出し */
+/* Title for the remove from Favorites confirmation */
 "dialog.favoriteRemove.title" = "Remove from Favorites?";
 
-/* お気に入りの削除の確認の対象。%1$@ はお気に入りの表示名 */
+/* Item in the remove from Favorites confirmation. %1$@ is the favorite's display name */
 "dialog.favoriteRemove.items" = "Item: %1$@";
 
-/* お気に入りの削除の確認の注記 */
+/* Note in the remove from Favorites confirmation */
 "dialog.favoriteRemove.note" = "The folder itself won’t be changed";
 
-/* お気に入りの削除の確認のボタン */
+/* Button in the remove from Favorites confirmation */
 "dialog.favoriteRemove.confirm" = "Remove";
 
-/* 衝突ダイアログの見出し */
+/* Conflict dialog title */
 "dialog.conflict.title" = "An item with the same name already exists";
 
-/* 衝突ダイアログの衝突する件数。%1$@ は整形済みの件数 */
+/* Conflicting item count in the conflict dialog. %1$@ is the formatted count */
 "dialog.conflict.items" = "Conflicting items: %1$@";
 
-/* 衝突ダイアログのボタン */
+/* Conflict dialog buttons */
 "dialog.conflict.replace" = "Replace";
 
-/* 衝突ダイアログのボタン */
+/* Conflict dialog buttons */
 "dialog.conflict.keepBoth" = "Keep Both";
 
-/* 衝突ダイアログのボタン */
+/* Conflict dialog buttons */
 "dialog.conflict.stop" = "Stop";
 
-/* 衝突ダイアログの「残りすべてに適用」 */
+/* The "Apply to All" option in the conflict dialog */
 "dialog.conflict.applyAll" = "Apply to all";
 
-/* 拡張子の変更の確認の見出し */
+/* Title for the file extension change confirmation */
 "dialog.extension.title" = "Change the extension?";
 
-/* 拡張子の変更の確認の本文。%1$@ はファイル名、%2$@ は新しい拡張子 */
+/* Body of the file extension change confirmation. %1$@ is the file name and %2$@ is the new extension */
 "dialog.extension.message" = "Are you sure you want to change the extension of “%1$@” to “.%2$@”?";
 
-/* 拡張子の変更の確認のボタン */
+/* Button in the file extension change confirmation */
 "dialog.extension.confirm" = "Change";
 
-/* 名前の変更に失敗したときの見出し */
+/* Title shown when renaming fails */
 "dialog.rename.failed" = "Can’t rename the item";
 
-/* ファイル操作に失敗したときの見出し */
+/* Title shown when a file operation fails */
 "dialog.operation.failed" = "The operation couldn’t be completed";
 
-/* ファイル操作の成功・失敗の件数。%1$@ と %2$@ は整形済みの件数 */
+/* Counts of successful and failed file operations. %1$@ and %2$@ are formatted counts */
 "dialog.operation.summary" = "Succeeded: %1$@ / Failed: %2$@";
 
-/* ファイル操作の失敗の1行。%1$@ は名前、%2$@ は理由 */
+/* One failure line for a file operation. %1$@ is the name and %2$@ is the reason */
 "dialog.operation.failureLine" = "%1$@: %2$@";
 
-/* ファイル操作の失敗の残りの件数。%1$@ は整形済みの件数 */
+/* Remaining failure count for file operations. %1$@ is the formatted count */
 "dialog.operation.more" = "and %1$@ more";
 
-/* サムネイルの画像のアクセシビリティのラベル */
+/* Accessibility label for a thumbnail image */
 "a11y.thumbnail" = "Thumbnail";
 
-/* 設定ウインドウの表示言語 */
+/* Display language in the Settings window */
 "settings.language" = "Language";
 "settings.language.english" = "English";
 "settings.language.japanese" = "日本語";
