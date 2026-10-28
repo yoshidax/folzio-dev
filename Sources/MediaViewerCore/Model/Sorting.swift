@@ -1,7 +1,7 @@
 import Foundation
 
 public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile] {
-    // `..`（.parent）は並べ替えに加えず、常に先頭に置く
+    // `..` (.parent) is not sorted and is always kept first.
     let parents = files.filter { $0.kind == .parent }
     let rest = files.filter { $0.kind != .parent }
     let indexed = Array(rest.enumerated())
@@ -14,8 +14,8 @@ public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile] {
     }.map(\.element)
 }
 
-/// 並べ替え済みの2つの配列から、`sorted(existing + incoming, by: order)` と同じ順序の配列を1回の走査で作る。
-/// 同順位は `existing` が先（R36）。`..`（.parent）の行は渡されない前提
+/// Builds an array in the same order as `sorted(existing + incoming, by: order)` from two sorted arrays in
+/// a single pass. For ties, `existing` comes first (R36). Assumes `..` (.parent) rows are not passed in.
 public func sortedMerge(_ existing: [MediaFile], _ incoming: [MediaFile], by order: SortOrder) -> [MediaFile] {
     guard !existing.isEmpty else { return incoming }
     guard !incoming.isEmpty else { return existing }
@@ -25,7 +25,7 @@ public func sortedMerge(_ existing: [MediaFile], _ incoming: [MediaFile], by ord
     var i = 0
     var j = 0
     while i < existing.count, j < incoming.count {
-        // incoming が厳密に先のときだけ incoming を置く（同順位は existing が先）
+        // Places incoming only when it comes strictly first (existing comes first on ties).
         if precedes(incoming[j], existing[i], by: order) == true {
             result.append(incoming[j])
             j += 1
@@ -39,8 +39,9 @@ public func sortedMerge(_ existing: [MediaFile], _ incoming: [MediaFile], by ord
     return result
 }
 
-/// `a` が `b` より先なら true、後なら false、同順位なら nil。作成日の nil は向きに関わらず最後、
-/// 列の値が同じなら名前の自然順（昇順）を第2キーにする
+/// Returns true when `a` precedes `b`, false when it follows, and nil when they tie. A nil creation date sorts
+/// last regardless of direction; when column values are equal, the natural name order (ascending) is the secondary
+/// key.
 private func precedes(_ a: MediaFile, _ b: MediaFile, by order: SortOrder) -> Bool? {
     if order.column == .creationDate {
         if a.creationDate == nil, b.creationDate != nil {
@@ -87,7 +88,7 @@ private func comparePrimary(_ a: MediaFile, _ b: MediaFile, column: SortColumn) 
         }
         return a.kind.sortKey.localizedStandardCompare(b.kind.sortKey)
     case .location:
-        // 検索結果の表示中だけ使う（FR-084）。保存しない
+        // Used only while showing search results (FR-084). Not persisted.
         return a.url.deletingLastPathComponent().path
             .localizedStandardCompare(b.url.deletingLastPathComponent().path)
     }

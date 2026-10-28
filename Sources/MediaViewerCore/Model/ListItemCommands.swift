@@ -1,17 +1,19 @@
-/// 行の種類・「zip の中を表示中か」・「戻る先があるか」・「検索結果を表示中か」から、操作ごとの可否を返す純粋計算
-/// （FR-069・073・076・077・087、research.md R26・R30・R32・R38）。
-/// 不可の操作は、メニュー項目を淡色にし、キーボードショートカットとドラッグでは何もしない
+/// Pure computation that returns whether each command is available from the row kind, whether a zip is being
+/// browsed, whether there is an enclosing level, and whether search results are shown
+/// (FR-069, 073, 076, 077, 087; research.md R26, R30, R32, R38).
+/// Unavailable commands appear dimmed in menus and do nothing for keyboard shortcuts and drags.
 public struct ListItemCommands: Sendable, Equatable {
-    /// フォーカス行の種類。行がない（未選択）ときは nil
+    /// Kind of the focused row. Nil when there is no row (nothing is selected).
     public let kind: ListItemKind?
-    /// zip の中を表示中なら true
+    /// Whether a zip is being browsed.
     public let isBrowsingArchive: Bool
-    /// ⌘↑ で戻る先があるか（zip の中、またはツリーのルート以外の通常のフォルダ）
+    /// Whether ⌘↑ has an enclosing level to return to (inside a zip, or a regular folder that is not a tree root).
     public let hasEnclosingLevel: Bool
-    /// 検索結果を表示中なら true。ペーストと ⌘↑ を不可にする（貼り付け先・戻る先のフォルダがない。FR-087）
+    /// Whether search results are shown. Disables paste and ⌘↑ because there is no destination or enclosing folder
+    /// (FR-087).
     public let isShowingSearchResults: Bool
 
-    /// `hasEnclosingLevel` を省略（nil）すると `isBrowsingArchive` と同じにする
+    /// Omitting `hasEnclosingLevel` (nil) makes it equal to `isBrowsingArchive`.
     public init(
         kind: ListItemKind?,
         isBrowsingArchive: Bool,
@@ -24,22 +26,24 @@ public struct ListItemCommands: Sendable, Equatable {
         self.isShowingSearchResults = isShowingSearchResults
     }
 
-    /// 中を表示（ダブルクリック・⌘↓）。zip ファイル・フォルダ・ディレクトリは中へ、`..` は上へ。メディアと行なしは何もしない
+    /// Opens the container (double-click, ⌘↓). Opens zip files, folders, and directories; `..` goes up.
+    /// Does nothing for media files or no row.
     public var canOpenContainer: Bool {
         kind?.opensAsContainer ?? false
     }
 
-    /// 上の階層へ（⌘↑）。どの行を選択中でも、戻る先があれば戻れる
+    /// Goes to the enclosing level (⌘↑). Works regardless of the selected row when an enclosing level exists.
     public var canGoUp: Bool {
         hasEnclosingLevel && !isShowingSearchResults
     }
 
-    /// 開く（⌘O）・コピー・複製・名前の変更・ゴミ箱・Finder に表示・ドラッグ。zip の中は読み取り専用で、`..` は対象にならない
+    /// Open (⌘O), copy, duplicate, rename, move to Trash, Reveal in Finder, and drag. A zip is read-only, and `..`
+    /// is not a target.
     public var allowsFileOperations: Bool {
         !isBrowsingArchive && kind != .parent
     }
 
-    /// 一覧へのペースト・移動ペースト。zip の中と検索結果の表示中は不可
+    /// Paste and Move Item Here into the list. Unavailable inside a zip and while showing search results.
     public var allowsPaste: Bool {
         !isBrowsingArchive && !isShowingSearchResults
     }
