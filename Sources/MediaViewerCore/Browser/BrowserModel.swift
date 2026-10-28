@@ -1,17 +1,17 @@
 import Foundation
 import Observation
 
-/// `BrowserModel` が場所を変えたときの同期の通知（R70）
+/// Synchronous notification when `BrowserModel` changes location (R70).
 public enum LocationEvent: Sendable, Equatable {
     case navigated(leavingFocus: URL?)
-    /// 検索結果のフォルダの行を開き、検索結果の表示を終えた（FR-113・140、EC-99・EC-100）。
-    /// `HistoryNavigator` は表示の状態を現在の履歴へ反映してから、記録の要否を判定する
+    /// A search result folder row was opened and search results are no longer shown (FR-113, 140; EC-99, EC-100).
+    /// `HistoryNavigator` applies the presentation state to the current history entry, then decides whether to record.
     case openedSearchResultFolder(leavingFocus: URL?)
     case relocated(vanished: [URL])
     case notFound(HistoryLocation)
 }
 
-/// 表示を変えずに確かめた場所（R73）。索引や開けなかった理由は表示に使う
+/// Location validated without changing the display (R73). The index and failure reason are used by the display.
 public struct ResolvedHistoryLocation: Sendable {
     public let location: HistoryLocation
     private let navigationGeneration: Int
@@ -61,30 +61,33 @@ public final class BrowserModel {
     public private(set) var preview: PreviewContent
     public private(set) var stopPlaybackSignal = 0
     public private(set) var mediaTypeFilter = MediaTypeFilter()
-    /// zip ファイルの行を一覧に出すか（FR-095）。保存の正は `SettingsStore` の `view.showsZipFiles`
+    /// Whether zip file rows appear in the list (FR-095). The source of truth for persistence is
+    /// `SettingsStore`'s `view.showsZipFiles`.
     public private(set) var showsZipFiles: Bool
     public var screenMaxPixel: Int
     public var playbackRequest: PlaybackOptions { settings.playback }
-    /// 場所を変えたときの同期の通知（R70）。`HistoryNavigator` が設定する。Observation の対象外
+    /// Synchronous notification when the location changes (R70). Set by `HistoryNavigator`. Not observed by
+    /// Observation.
     @ObservationIgnored public var onLocationEvent: ((LocationEvent) -> Void)?
-    /// 閲覧先を置き換える直前に同期で呼ぶ（FR-126）。スライドショーはここで送りを止め、復帰先を確定する。
-    /// `listing`・`selection` を変える前に呼ぶ。Observation の対象外
+    /// Called synchronously immediately before replacing the location (FR-126). The slideshow stops advancing here
+    /// and fixes the restore target. Called before changing `listing` and `selection`. Not observed by Observation.
     @ObservationIgnored public var onWillReplaceLocation: (() -> Void)?
-    /// zip の中を表示中か（FR-069）
+    /// Whether a zip is being browsed (FR-069).
     public var isBrowsingArchive: Bool { listing.archive != nil }
-    /// ⌘↑ で戻る先があるか。zip の中、またはツリーのルート以外の通常のフォルダ（FR-077）。検索結果の表示中はない（FR-087）
+    /// Whether ⌘↑ has an enclosing level to return to: inside a zip, or a regular folder that is not a tree root
+    /// (FR-077). False while showing search results (FR-087).
     public var hasEnclosingLevel: Bool {
         guard !isShowingSearchResults else { return false }
         return listing.archive != nil || enclosingFolder != nil
     }
-    /// 検索結果を表示中か（FR-084〜086）。`listing.folder` は検索前のフォルダのまま
+    /// Whether search results are shown (FR-084–086). `listing.folder` remains the pre-search folder.
     public var isShowingSearchResults: Bool { listing.search != nil }
-    /// 今の表示の場所（FR-108）。検索結果の表示中と「見つからない」表示では nil（R70）
+    /// Current display location (FR-108). Nil while showing search results or the not-found display (R70).
     public var historyLocation: HistoryLocation? {
         guard !isShowingSearchResults, !showsNotFound else { return nil }
         return HistoryLocation(folder: listing.folder, archive: listing.archive)
     }
-    /// 一覧の並び順の選択から `..` の行を除いたもの。ファイル操作・コピー・ドラッグの対象（R30）
+    /// Selection in listing order without the `..` row. Target of file operations, copy, and drag (R30).
     public var operableSelection: [URL] {
         let selected = selection.selected
         guard !selected.isEmpty else { return [] }
@@ -95,15 +98,16 @@ public final class BrowserModel {
         }
         return urls
     }
-    /// ファイルリストの中でフォルダを移ったときに、ツリーへ出す選択の同期の依頼（FR-078、R31）。
-    /// ツリーからの選択（`selectFolder`）・zip の中の移動・外部の変更による移動では変えない
+    /// Request to synchronize the tree selection when moving to a folder within the file list (FR-078, R31).
+    /// Not changed by selection from the tree (`selectFolder`), navigation inside a zip, or external changes.
     public private(set) var treeSyncRequest: TreeSyncRequest?
-    /// 「場所」（`.location`）は検索結果の表示中だけ受け付け、保存しない（FR-084）。通常のフォルダでの代入は元の値に戻す
+    /// Location (`.location`) is accepted only while showing search results and is not persisted (FR-084).
+    /// Assigning it for a regular folder restores the original value.
     public var sortOrder: SortOrder {
         didSet {
             guard sortOrder != oldValue, !isRevertingSortOrder else { return }
             if sortOrder.column == .location, !isShowingSearchResults {
-                // 戻す代入でも didSet が呼ばれるため、その間は設定の書き込みと並べ直しを行わない
+                // The restoring assignment also calls didSet, so skip settings writes and re-sorting during it.
                 isRevertingSortOrder = true
                 sortOrder = oldValue
                 isRevertingSortOrder = false
@@ -129,18 +133,19 @@ public final class BrowserModel {
     private let archiveReader: any ArchiveReading
     private let searcher: any FileNameSearching
 
-    /// ツリーのルート（ホーム・ボリューム）。通常のフォルダの `..` と ⌘↑ の戻る先を決める（R30）
+    /// Tree roots (home and volumes). Determine the `..` and ⌘↑ enclosing folder for regular folders (R30).
     private var navigationRoots: [URL] = []
     private var treeSyncCounter = 0
-    /// 検索結果のフォルダを開いたときのツリー同期の依頼の ID。同期が完了したときに、選択できた場所を
-    /// 最後に選択していたフォルダとして保存する（EC-102・R10）。次のナビゲーションで消す
+    /// ID of the tree synchronization request for a folder opened from search results. When synchronization
+    /// completes, stores the location that could be selected as the last selected folder (EC-102, R10). Cleared on
+    /// the next navigation.
     private var pendingSearchTreeSyncID: Int?
 
-    /// 表示中の zip の索引。zip の外、または開いている途中・開けなかったときは nil
+    /// Index of the displayed zip. Nil outside a zip, while opening, or when opening failed.
     private var archiveIndex: ArchiveIndex?
-    /// フォルダ・zip の移動のたびに増やし、古い非同期処理の結果を捨てるのに使う
+    /// Incremented on every folder or zip navigation and used to discard results from older asynchronous work.
     private var navigationGeneration = 0
-    /// 並べ替え済み・種類フィルタ適用前の行。`..` は含めず、`rebuildListing()` で1回だけ加える
+    /// Sorted rows before applying the media type filter. Excludes `..`, which `rebuildListing()` adds once.
     private var allFiles: [MediaFile] = [] {
         didSet { kindFilesRevision &+= 1 }
     }
@@ -153,25 +158,26 @@ public final class BrowserModel {
     private var prefetchTasks: [URL: Task<Void, Never>] = [:]
     private var isRevertingSortOrder = false
 
-    /// 実行中の検索の列挙（元の列挙と、名前の変更で足した列挙）。新しい検索・フォルダの移動（`resetForNavigation`）で取り消す
+    /// Running search enumerations (the original and any added for renames). Cancelled by a new search or folder
+    /// navigation (`resetForNavigation`).
     private var searchTasks: [Task<Void, Never>] = []
-    /// 今の検索の条件。名前の変更で新しい場所を追加で列挙するのに使う（R63）
+    /// Criteria of the current search. Used to enumerate the new location after a rename (R63).
     private var searchPattern: SearchPattern?
-    /// 今の検索の間に行われたフォルダの名前の変更。後から届いた結果の URL を順に付け替える（R63）
+    /// Folder renames during the current search. Rebases URLs of results that arrive later (R63).
     private var searchLedger = SearchRenameLedger()
     private var movedSearchPaths: Set<String> = []
-    /// 今の検索で終わっていない列挙の数。0 になったら検索を終える（R63）
+    /// Number of enumerations that have not finished in the current search. The search ends when it reaches 0 (R63).
     private var activeSearchStreams = 0
-    /// 開いている zip（開いている途中を含む）を開いた後のフォルダの名前の変更。索引の行は開いたときの zip の場所で
-    /// 作られているため、階層を移るたびに付け替える（R62、EC-50）
+    /// Folder renames after opening the current zip (including while opening). Index rows are built with the zip
+    /// location at open time, so they are rebased on every level change (R62, EC-50).
     private var archiveRenames: [RenamedFolder] = []
-    /// 検索結果を、ファイルを含むフォルダ（`standardizedFileURL.path`）ごとに引く。外部の変更で確かめる結果を、
-    /// 全件ではなく届いたフォルダ以下だけに絞るのに使う（R38）
+    /// Search results indexed by the folder containing the file (`standardizedFileURL.path`). Used to limit
+    /// existence checks after external changes to the reported folders instead of all results (R38).
     private var searchResultsByFolder: [String: Set<URL>] = [:]
-    /// 通常のフォルダの読み込みが「見つからない」で終わった表示か（EC-62・EC-65）。履歴の場所を nil にする
+    /// Whether a regular folder load ended in the not-found display (EC-62, EC-65). Makes the history location nil.
     private var showsNotFound = false
 
-    /// 場所の変更の理由（R70）。通知の `leavingFocus` は呼び出しの直前に読む
+    /// Reason for the location change (R70). The notification's `leavingFocus` is read immediately before the call.
     private enum LocationChangeReason {
         case navigated
         case openedSearchResultFolder
@@ -211,7 +217,7 @@ public final class BrowserModel {
         self.preview = .empty
     }
 
-    /// 言語変更後の種類名と並びを、ディスクを再列挙せず更新する。
+    /// Updates kind names and ordering after a language change without re-enumerating the disk.
     public func setKindNames(_ names: KindNames) {
         guard names != kindNames else { return }
         kindNames = names
@@ -242,7 +248,7 @@ public final class BrowserModel {
         }
     }
 
-    /// フォルダの一覧を表示する。検索結果の表示中なら、検索を止めて表示を終える（FR-086）
+    /// Shows a folder listing. If search results are shown, stops the search and ends the search display (FR-086).
     public func selectFolder(_ url: URL) async {
         await selectFolder(url, reason: .navigated)
     }
@@ -258,7 +264,8 @@ public final class BrowserModel {
         resetForNavigation()
         leaveSearchIfNeeded()
         if openedFromSearchResults {
-            // 検索結果から開いた依頼だけ、同期の完了で保存先の更新を受け付ける（EC-102）
+            // Only for requests opened from search results, accept updating the saved location when synchronization
+            // completes (EC-102).
             pendingSearchTreeSyncID = treeSyncRequest?.id
         }
         archiveIndex = nil
@@ -293,8 +300,9 @@ public final class BrowserModel {
         }
     }
 
-    /// 検索を始め、結果を見つかった順に現在の並べ替えで一覧へ加える（FR-084・085）。列挙の完了を待たずに戻る。
-    /// `listing.folder`・`lastFolder`・`treeSyncRequest` は変えず、zip の中で始めた場合は zip の状態を捨てる
+    /// Starts a search and adds results to the list in the current sort order as they are found (FR-084, 085).
+    /// Returns without waiting for enumeration to finish. Does not change `listing.folder`, `lastFolder`, or
+    /// `treeSyncRequest`; when started inside a zip, discards the zip state.
     public func startSearch(_ pattern: SearchPattern, root: URL) {
         resetForNavigation()
         archiveIndex = nil
@@ -309,8 +317,8 @@ public final class BrowserModel {
         startSearchStream(in: root, matching: pattern)
     }
 
-    /// 列挙を1つ始める。すべての列挙が終わったときに検索を終える（R63）。照合の記録は列挙ごとに作って台帳に登録し、
-    /// 検索を止めたら台帳ごと捨てる（R2・R3）
+    /// Starts one enumeration. Ends the search when all enumerations finish (R63). Creates a match log per
+    /// enumeration and registers it in the ledger; discards the whole ledger when the search stops (R2, R3).
     private func startSearchStream(in root: URL, matching pattern: SearchPattern, matchesRoot: Bool = false) {
         let generation = navigationGeneration
         let visits = SearchVisitLog()
@@ -333,8 +341,9 @@ public final class BrowserModel {
         searchTasks.append(task)
     }
 
-    /// 検索結果で名前を変更したときに、その行の URL・名前を差し替えて並べ直す。キーワードに一致しなくなっても残し、
-    /// 対応メディアの拡張子でなくなったら外す。検索結果の表示中でなければ何もしない（FR-087、R38）
+    /// After renaming in search results, replaces the row's URL and name and re-sorts. Keeps rows that no longer
+    /// match the keyword, and removes rows that no longer have a supported media extension. Does nothing when search
+    /// results are not shown (FR-087, R38).
     public func didRenameItem(at oldURL: URL, to newURL: URL) {
         guard isShowingSearchResults,
               let index = allFiles.firstIndex(where: { $0.url == oldURL }) else { return }
@@ -361,16 +370,17 @@ public final class BrowserModel {
             selected.insert(newURL)
         }
         if selection.focused == oldURL {
-            // プレビューは新しい URL で読み直す
+            // Reload the preview with the new URL.
             select(selected, focused: newURL)
         } else {
             selection = SelectionState(selected: selected, focused: selection.focused)
         }
     }
 
-    /// フォルダの名前を変えた後に、表示中の一覧・選択・検索結果・zip の中の位置・最後に選択していたフォルダの場所を付け替える。
-    /// ディスクは読まず、プレビューと再生中の動画は変えない（`select` を呼ばない）。検索中なら、後から届く結果も付け替え、
-    /// 検索起点の配下の名前の変更では新しい場所を追加で列挙する。関係がなければ何もしない（FR-104・105、R62・R63）
+    /// After renaming a folder, rebases the displayed listing, selection, search results, position inside a zip, and
+    /// last selected folder. Does not read the disk and does not change the preview or playing video (does not call
+    /// `select`). During a search, also rebases results that arrive later and, for a rename below the search root,
+    /// enumerates the new location. Does nothing when there is no relationship (FR-104, 105; R62, R63).
     public func didRenameFolder(from oldURL: URL, to newURL: URL) {
         let renamed = RenamedFolder(from: oldURL, to: newURL)
         let oldName = oldURL.standardizedFileURL.path
@@ -393,7 +403,7 @@ public final class BrowserModel {
 
         var filesChanged = false
         var namesChanged = false
-        // 検索結果の索引の付け替えで、同じ URL をもう一度付け替えないよう、元の URL と新しい URL を残す（R67）
+        // Keep the original and new URLs so rebasing the search result index does not rebase the same URL twice (R67).
         let collectsMoves = isShowingSearchResults
         var moves: [(URL, URL)] = []
         let files = allFiles.map { file -> MediaFile in
@@ -431,17 +441,18 @@ public final class BrowserModel {
             settings.viewSettings = viewSettings
         }
 
-        // 検索中は、表示中の行に関係がなくても、起点の配下の名前の変更なら後から届く結果に関わる。
-        // 照合済みだったかで、新しい場所を起点そのものとして照合するかを決める（EC-94、R2・R3）
+        // During a search, a rename below the root matters for results that arrive later even when it does not affect
+        // displayed rows. Whether the folder was already matched determines whether the new location is matched as the
+        // root itself (EC-94, R2, R3).
         var additionalSearchRoot: URL?
         var additionalMatchesRoot = false
         if listing.search?.phase == .searching, let previousRoot {
             if let rebasedRoot = renamed.rebase(previousRoot) {
-                // 起点そのものか祖先の名前を変えた。起点は行にしないため、新しい起点を列挙し直す
+                // Renamed the root itself or an ancestor. Enumerate the new root again because the root is not a row.
                 searchLedger.recordRename(renamed, visited: true)
                 additionalSearchRoot = rebasedRoot
             } else if RenamedFolder(from: previousRoot, to: previousRoot).rebase(oldURL) != nil {
-                // 起点の配下のフォルダ。そのフォルダの新しい場所だけを列挙する
+                // A folder below the root. Enumerate only the folder's new location.
                 let visited = searchLedger.hasVisited(oldURL)
                 searchLedger.recordRename(renamed, visited: visited)
                 additionalSearchRoot = newURL
@@ -452,7 +463,7 @@ public final class BrowserModel {
         guard changed || filesChanged || selectionChanged || additionalSearchRoot != nil else { return }
 
         let folderChanged = updated.folder != listing.folder
-        // 開いている途中を含め、zip の中を表示中なら索引の行の付け替えに使う
+        // Use for rebasing index rows when a zip is displayed, including while opening.
         if listing.archive != nil {
             archiveRenames.append(renamed)
         }
@@ -461,7 +472,8 @@ public final class BrowserModel {
             selection = SelectionState(selected: selected, focused: focused)
         }
         if filesChanged {
-            // 配下のファイルの名前は変わらないため、並び順が変わるのは行の名前が変わったときと「場所」で並べ替え中だけ
+            // Files below the folder do not change names, so the order changes only when a row name changes or when
+            // sorting by Location.
             allFiles = namesChanged || sortOrder.column == .location ? sorted(files, by: sortOrder) : files
         }
         if isShowingSearchResults, filesChanged {
@@ -477,7 +489,8 @@ public final class BrowserModel {
             if isShowingSearchResults {
                 rebuildListing()
             } else if folderChanged, listing.archive == nil {
-                // 読み込み中の一覧は古い場所の結果を捨てるため、新しい場所で読み直す（世代は変えない）
+                // A loading listing discards results from the old location, so reload with the new location (keep the
+                // generation).
                 listingTask?.cancel()
                 let generation = navigationGeneration
                 let folder = listing.folder
@@ -492,9 +505,9 @@ public final class BrowserModel {
         }
     }
 
-    /// 検索結果の索引のキー（ファイルを含むフォルダ）を付け替える。10,000 件の URL からキーを作り直さないよう、
-    /// キーごとに付け替える（R67）。キーは `searchFolderKey` と同じ標準化した形で比べるため、名前を変えた後の場所
-    /// （存在する）を標準化し、元の場所はその親に元の名前を足して作る
+    /// Rebases search result index keys (the folder containing the file). Rebases per key instead of rebuilding keys
+    /// from 10,000 URLs (R67). Because keys are compared in the same standardized form as `searchFolderKey`,
+    /// standardizes the new location (which exists) and builds the old location from its parent plus the old name.
     private func rebaseSearchIndex(_ renamed: RenamedFolder, moved: [URL: URL]) {
         let newKeyFolder = renamed.to.standardizedFileURL
         let keyRenamed = RenamedFolder(
@@ -507,14 +520,15 @@ public final class BrowserModel {
             if let newKey = keyRenamed.rebase(URL(fileURLWithPath: key, isDirectory: true))?.path {
                 index[newKey, default: []].formUnion(urls.map { moved[$0] ?? renamed.rebaseOrSelf($0) })
             } else {
-                // キーが変わらない行でも、名前を変えたフォルダ自身の行は URL が変わる（R4）
+                // Even when the key does not change, the row for the renamed folder itself has a new URL (R4).
                 index[key, default: []].formUnion(urls.map { moved[$0] ?? $0 })
             }
         }
         searchResultsByFolder = index
     }
 
-    /// ツリーのルートを受け取る。変わったら、読み込み済みの通常のフォルダの一覧の `..` を作り直す（ディスクは読まない）
+    /// Receives the tree roots. When they change, rebuilds `..` for loaded regular folder listings (does not read the
+    /// disk).
     public func setNavigationRoots(_ urls: [URL]) {
         guard urls != navigationRoots else { return }
         navigationRoots = urls
@@ -536,7 +550,8 @@ public final class BrowserModel {
         }
     }
 
-    /// 一覧の行を開く。zip ファイル・フォルダ・ディレクトリは中へ、`..` は上へ。メディアと一覧にない URL では何もしない（FR-069・076）
+    /// Opens a listing row. Zip files, folders, and directories open their contents; `..` goes up. Does nothing for
+    /// media files or URLs not in the listing (FR-069, 076).
     public func openItem(_ url: URL) async {
         guard let file = listing.files.first(where: { $0.url == url }) else { return }
 
@@ -555,7 +570,8 @@ public final class BrowserModel {
         case .parent:
             await goToEnclosingLevel()
         case .folder:
-            // 検索結果から開いたときは、履歴の記録の前に表示の状態を現在の履歴へ反映する（FR-113・EC-99）
+            // When opened from search results, apply the presentation state to the current history entry before
+            // recording (FR-113, EC-99).
             await navigateToFolder(
                 file.url,
                 selecting: nil,
@@ -566,12 +582,13 @@ public final class BrowserModel {
         }
     }
 
-    /// 表示中のフォルダ（zip の中なら zip を含むフォルダ）自身か祖先をゴミ箱に入れたときに、親へ移る。
-    /// `treeSyncRequest` を出す（FR-079）。移ったら true、該当しなければ何もせず false。
+    /// Moves to the parent when the displayed folder (the folder containing the zip when inside a zip) or an ancestor
+    /// is moved to the Trash. Emits `treeSyncRequest` (FR-079). Returns true when it moved; otherwise does nothing and
+    /// returns false.
     ///
-    /// 検索結果の一覧から（`origin: .fileList`）のゴミ箱では、選択した行が検索前のフォルダの祖先になることがある。
-    /// そのときも検索結果の表示を続け、検索前のフォルダが消えたことは表示を終えたときに知らせる（EC-101）。
-    /// ツリーから（`origin: .tree`）は従来どおり親へ移る
+    /// For Trash from the search result list (`origin: .fileList`), a selected row can be an ancestor of the pre-search
+    /// folder. In that case, keeps showing search results and reports that the pre-search folder disappeared when the
+    /// display ends (EC-101). From the tree (`origin: .tree`), moves to the parent as before.
     @discardableResult
     public func leaveTrashedFolders(_ trashed: [URL], origin: OperationOrigin = .tree) async -> Bool {
         if origin == .fileList, isShowingSearchResults { return false }
@@ -584,10 +601,11 @@ public final class BrowserModel {
         return true
     }
 
-    /// 検索結果から開いたフォルダのツリー同期の完了を受け取る（FR-140、EC-102、research.md R10）。
-    /// 検索結果から開いた依頼のまま、一覧がそのフォルダを表示していて、選択できた場所がそのフォルダ自身か
-    /// 祖先（標準化した pathComponents で比較）であるときだけ、最後に選択していたフォルダを選択先にする。
-    /// 一覧・履歴・フォーカスは変えず、ディスクも読まない。古い依頼・重複・通常の一覧や履歴からの同期は受け付けない
+    /// Receives completion of tree synchronization for a folder opened from search results (FR-140, EC-102,
+    /// research.md R10). Only when the request still comes from search results, the listing shows that folder, and
+    /// the selected location is the folder itself or an ancestor (compared with standardized pathComponents), stores
+    /// the selected location as the last selected folder. Does not change the listing, history, or focus, and does not
+    /// read the disk. Rejects stale requests, duplicates, and synchronization from regular listings or history.
     public func completeSearchResultTreeSync(_ request: TreeSyncRequest, selectedFolder: URL) {
         guard let pending = pendingSearchTreeSyncID,
               pending == request.id,
@@ -609,10 +627,10 @@ public final class BrowserModel {
         }
     }
 
-    /// 1つ上の階層へ。zip の最上位からはフォルダの一覧へ戻る（FR-070）。zip の外では親フォルダへ戻り、
-    /// ツリーのルートでは何もしない（FR-077）
+    /// Goes to the enclosing level. From the zip root, returns to the folder listing (FR-070). Outside a zip, returns
+    /// to the parent folder and does nothing at a tree root (FR-077).
     public func goToEnclosingLevel() async {
-        // 検索結果の表示中は戻る先がない（FR-087）
+        // No enclosing level while showing search results (FR-087).
         guard !isShowingSearchResults else { return }
         guard let location = listing.archive else {
             if let parent = enclosingFolder {
@@ -646,9 +664,9 @@ public final class BrowserModel {
         schedulePrefetch(around: focused)
     }
 
-    /// スライドショーの対象を選択に反映する（FR-127）。同じ URL のフォーカスが既に選ばれているなら
-    /// プレビューを読み直さず、選択を1件に整理するだけにする。動画の再生位置も保つ。
-    /// 実際にフォーカスが変わったときだけ true を返す。
+    /// Applies the slideshow target to the selection (FR-127). When the same URL is already focused, does not
+    /// reload the preview, only narrows the selection to that one item, and keeps the video playback position.
+    /// Returns true only when the focus actually changed.
     @discardableResult
     public func synchronizeSlideshowSelection(to url: URL) -> Bool {
         if selection.focused == url {
@@ -681,9 +699,10 @@ public final class BrowserModel {
         }
     }
 
-    /// zip ファイルの表示を切り替えて保存する（FR-095〜098）。同じ値なら何もしない。
-    /// zip の中を表示中は設定を保存するだけで、一覧・選択・プレビューを変えない（FR-098）。
-    /// それ以外は一覧を作り直し（ディスクは読み直さない）、選択を表示中の行に整理する（FR-097）
+    /// Toggles and persists zip file visibility (FR-095–098). Does nothing for the same value.
+    /// While a zip is displayed, only persists the setting and does not change the listing, selection, or preview
+    /// (FR-098). Otherwise rebuilds the listing (without reading the disk) and restricts the selection to visible
+    /// rows (FR-097).
     public func setShowsZipFiles(_ shows: Bool) {
         guard shows != showsZipFiles else { return }
         showsZipFiles = shows
@@ -699,7 +718,7 @@ public final class BrowserModel {
             break
         }
 
-        // 選択がなければ整理するものがない。10,000 件の URL を集合にする費用を省く（SC-017）
+        // Nothing to restrict without a selection. Avoids building a set of 10,000 URLs (SC-017).
         guard !selection.selected.isEmpty || selection.focused != nil else { return }
         let restricted = selection.restricted(toVisible: listing.files.map(\.url))
         if restricted.focused == selection.focused {
@@ -711,12 +730,13 @@ public final class BrowserModel {
     }
 
     public func reloadCurrentFolder() async {
-        // 検索結果の表示中はディスクを列挙し直さず、存在しなくなった結果を外すだけにする（FR-087、R38）
+        // While showing search results, do not re-enumerate the disk; only remove results that no longer exist
+        // (FR-087, R38).
         if isShowingSearchResults {
             await pruneMissingResults(under: nil)
             return
         }
-        // zip の中では、フォルダの一覧で zip の中の一覧を上書きしない
+        // Do not overwrite the zip contents with a folder listing while inside a zip.
         guard listing.archive == nil else { return }
         let folder = listing.folder
         let generation = navigationGeneration
@@ -767,7 +787,8 @@ public final class BrowserModel {
     }
 
     public func handleFileSystemEvent(_ folders: Set<URL>) async {
-        // 検索結果の表示中は、届いたフォルダ以下の結果だけを確かめる。`listing.folder` が消えても親へ移らない（R38）
+        // While showing search results, check only results under the reported folders. Do not move to the parent even
+        // when `listing.folder` disappears (R38).
         if isShowingSearchResults {
             await pruneMissingResults(under: folders)
             return
@@ -789,7 +810,7 @@ public final class BrowserModel {
         }
 
         if let location = listing.archive {
-            // 開いている途中は索引がないため、比べずに待つ
+            // While opening, there is no index to compare, so wait without comparing.
             if archiveIndex == nil, listing.state == .loading { return }
             if let identity = archiveReader.identity(of: location.archive),
                identity == archiveIndex?.identity {
@@ -826,12 +847,13 @@ public final class BrowserModel {
         select([url], focused: url)
     }
 
-    // MARK: - 一覧
+    // MARK: - Listing
 
-    /// `allFiles`（`..` を含まない）から表示する行と状態を作る。`..` は zip の中では常に、通常のフォルダでは
-    /// 戻る先があるときだけ、ここで1回加える（FR-070・077）。検索結果では加えず、検索中で結果がまだなければ `.loading`
+    /// Builds displayed rows and state from `allFiles` (which does not include `..`). Adds `..` here once: always
+    /// inside a zip, and only when an enclosing level exists for regular folders (FR-070, 077). Does not add it for
+    /// search results, and uses `.loading` while searching before any results arrive.
     private func rebuildListing() {
-        // 種類フィルタのあとに zip ファイルの表示を1回だけ通す。`allFiles` は変えない（FR-095、R46）
+        // Apply the zip visibility once after the media type filter. Does not change `allFiles` (FR-095, R46).
         let filtered = ZipFileVisibility(showsZipFiles: showsZipFiles)
             .apply(to: mediaTypeFilter.apply(to: allFiles))
         if let location = listing.archive {
@@ -845,8 +867,8 @@ public final class BrowserModel {
             return
         }
 
-        // zip ファイル・フォルダ・ディレクトリ・`..` は「メディアがない」の判定で数えない（FR-060）。
-        // メディアは zip の表示設定に影響されないため `allFiles`、それ以外の行は表示する行から求める（FR-097）
+        // Zip files, folders, directories, and `..` do not count for the "no media" decision (FR-060).
+        // Media is unaffected by zip visibility, so use `allFiles`; derive other rows from the displayed rows (FR-097).
         let hasMedia = allFiles.contains { $0.kind.isMedia }
         let hasOtherRows = filtered.contains { !$0.kind.isMedia }
         if !hasMedia && !hasOtherRows {
@@ -873,24 +895,27 @@ public final class BrowserModel {
         )
     }
 
-    /// 通常のフォルダの1つ上の階層。ツリーのルートとルートの外では nil
+    /// Enclosing level of a regular folder. Nil at a tree root and outside the roots.
     private var enclosingFolder: URL? {
         FolderNavigation.enclosingFolder(of: listing.folder, roots: navigationRoots)
     }
 
-    /// 通常のフォルダの先頭に置く `..` の行。戻る先がないとき・検索結果の表示中は空
+    /// `..` row placed at the start of a regular folder. Empty when there is no enclosing level or while showing
+    /// search results.
     private func folderParentRows() -> [MediaFile] {
         guard !isShowingSearchResults, enclosingFolder != nil else { return [] }
         return [Self.parentRow(url: ParentLink.url(for: listing.folder))]
     }
 
-    /// 読めない通常のフォルダ（`.denied` / `.failed`）の行。ルート以外では `..` だけを残し、行き止まりにしない（FR-077）
+    /// Rows for an unreadable regular folder (`.denied` or `.failed`). Keeps only `..` outside roots so the folder is
+    /// not a dead end (FR-077).
     private func unreadableFolderRows() -> [MediaFile] {
         listing.archive == nil ? folderParentRows() : []
     }
 
-    /// ファイルリストの中でフォルダを移る（フォルダの行を開く・`..`・⌘↑）。`selectFolder` と同じく読み込み、
-    /// ツリーへ同期の依頼を出す。読み込み後に `target` の行があれば、その行だけを選択する（FR-076〜078）
+    /// Moves to a folder within the file list (opening a folder row, `..`, or ⌘↑). Loads like `selectFolder` and
+    /// emits a tree synchronization request. If a row for `target` exists after loading, selects only that row
+    /// (FR-076–078).
     private func navigateToFolder(
         _ url: URL,
         selecting target: URL?,
@@ -898,7 +923,7 @@ public final class BrowserModel {
     ) async {
         treeSyncCounter += 1
         let request = TreeSyncRequest(folder: url, id: treeSyncCounter)
-        // 依頼は読み込みの前に出し、ツリーの同期を一覧の完了で待たせない
+        // Emit the request before loading so tree synchronization does not wait for the listing to finish.
         treeSyncRequest = request
         await selectFolder(url, reason: reason)
 
@@ -912,8 +937,8 @@ public final class BrowserModel {
         }
     }
 
-    /// 読み込み・プレビュー・先読みの取り消し、動画の停止、選択とプレビューを空にする。
-    /// `selectFolder` と zip の中の移動で共有する
+    /// Cancels loading, preview, and prefetching, stops video, and clears the selection and preview.
+    /// Shared by `selectFolder` and navigation inside a zip.
     private func resetForNavigation() {
         onWillReplaceLocation?()
         navigationGeneration += 1
@@ -947,7 +972,7 @@ public final class BrowserModel {
         allFiles = []
     }
 
-    /// zip を開いて最上位の一覧を作る。開く間は `.loading`
+    /// Opens a zip and builds the root listing. Uses `.loading` while opening.
     private func openArchive(_ url: URL) async {
         let leavingFocus = selection.focused
         resetForNavigation()
@@ -983,7 +1008,7 @@ public final class BrowserModel {
         switch result {
         case let .success(index):
             archiveIndex = index
-            // 開いている途中に zip を含むフォルダの名前が変わっていれば、新しい場所で表示する（R62）
+            // If the folder containing the zip was renamed while opening, display it at the new location (R62).
             showArchiveLevel(ArchiveLocation(archive: rebasedForArchive(url), directory: ""), index: index)
         case let .failure(error):
             archiveIndex = nil
@@ -995,7 +1020,7 @@ public final class BrowserModel {
         }
     }
 
-    /// 開いている索引から、zip の中の1つの階層の一覧を作る（zip は読み直さない）
+    /// Builds a listing for one level inside a zip from the open index (does not reopen the zip).
     private func showArchiveLevel(_ location: ArchiveLocation, index: ArchiveIndex) {
         listing = FolderListing(folder: listing.folder, files: [], state: .loading, archive: location)
         var items = index.items(in: location.directory)
@@ -1010,12 +1035,12 @@ public final class BrowserModel {
         rebuildListing()
     }
 
-    /// zip を開いた後の名前の変更を順に当てる
+    /// Applies renames recorded after the zip was opened, in order.
     private func rebasedForArchive(_ url: URL) -> URL {
         archiveRenames.reduce(url) { $1.rebaseOrSelf($0) }
     }
 
-    /// zip を閉じ、zip を含むフォルダの一覧をディスクから読み直す。`lastFolder` は書き換えない
+    /// Closes the zip and reloads the folder containing it from disk. Does not rewrite `lastFolder`.
     private func returnToFolder(selecting target: URL?, reason: LocationChangeReason) async {
         let folder = listing.folder
         let leavingFocus = selection.focused
@@ -1070,9 +1095,10 @@ public final class BrowserModel {
         }
     }
 
-    // MARK: - 履歴
+    // MARK: - History
 
-    /// 表示を変えずに場所を確かめる。stat と zip の索引の作成は UI スレッドの外（R73）
+    /// Validates a location without changing the display. Performs stat and zip index creation off the UI thread
+    /// (R73).
     public func resolveHistoryLocation(_ location: HistoryLocation) async -> HistoryLocationResolution {
         let generation = navigationGeneration
 
@@ -1133,8 +1159,8 @@ public final class BrowserModel {
         }
     }
 
-    /// 確かめた場所を表示する。読み込みの完了を待たずに戻り、読み込みの後に `focusing` の行だけを選択する。
-    /// `treeSyncRequest` を出し、`lastFolder` を保存する。`onLocationEvent` は呼ばない（R74）
+    /// Shows a validated location. Returns without waiting for loading to finish and selects only the `focusing` row
+    /// after loading. Emits `treeSyncRequest` and saves `lastFolder`. Does not call `onLocationEvent` (R74).
     public func showHistoryLocation(_ resolved: ResolvedHistoryLocation, focusing: URL?) {
         let resolvedGeneration = navigationGeneration
         guard resolved.isCurrent(for: resolvedGeneration) else { return }
@@ -1212,10 +1238,10 @@ public final class BrowserModel {
         select([row.url], focused: row.url)
     }
 
-    // MARK: - 検索結果
+    // MARK: - Search Results
 
-    /// 検索結果の表示を終える前に、「場所」の並べ替えを保存済みの並べ替えに戻す（FR-084・086）。
-    /// `listing` を作り直す前に呼ぶ
+    /// Before ending search results, restores the Location sort to the persisted sort (FR-084, 086).
+    /// Call before rebuilding `listing`.
     private func leaveSearchIfNeeded() {
         guard isShowingSearchResults else { return }
         if sortOrder.column == .location {
@@ -1223,8 +1249,9 @@ public final class BrowserModel {
         }
     }
 
-    /// 届いたバッチを現在の並べ替えで並べてから、並べ替え済みの全件にマージする（R36）。
-    /// 名前の変更の後は、その列挙を始めた後の変更を順に当てて新しい場所にし、追加の列挙と重なる結果を捨てる（R63）
+    /// Sorts an incoming batch with the current order, then merges it into the fully sorted results (R36).
+    /// After renames, applies changes recorded since that enumeration started to rebase results and drops results
+    /// that overlap with the additional enumeration (R63).
     private func appendSearchResults(_ incoming: [MediaFile], fromStream index: Int) {
         guard isShowingSearchResults, !incoming.isEmpty else { return }
         var batch = incoming.filter { !isMovedSearchPath($0.url) }
@@ -1249,7 +1276,8 @@ public final class BrowserModel {
         listing.search?.totalCount = allFiles.count
         rebuildListing()
 
-        // 行は増えるだけだが、種類フィルタで見えない行を選択に残さないよう整理する。フォーカスが変わらなければプレビューを読み直さない
+        // Rows only increase, but restrict the selection so it does not keep rows hidden by the media type filter.
+        // Do not reload the preview when the focus does not change.
         guard !selection.selected.isEmpty || selection.focused != nil else { return }
         let restricted = selection.restricted(toVisible: listing.files.map(\.url))
         if restricted.focused == selection.focused {
@@ -1275,8 +1303,8 @@ public final class BrowserModel {
         }
     }
 
-    /// 存在しなくなった検索結果を外す。`folders` が nil なら全件、あればそのフォルダ以下の結果だけを UI スレッドの外で確かめる。
-    /// 新しく現れたファイルは加えない（FR-087、R38）
+    /// Removes search results that no longer exist. Checks all results when `folders` is nil; otherwise checks only
+    /// results under those folders off the UI thread. Does not add newly appeared files (FR-087, R38).
     private func pruneMissingResults(under folders: Set<URL>?) async {
         guard isShowingSearchResults else { return }
         let targets: [URL]
@@ -1302,7 +1330,8 @@ public final class BrowserModel {
         removeSearchResults(missing)
     }
 
-    /// 移動元の結果と、既に列挙中の古い場所から遅れて届く結果を取り除く。
+    /// Removes results from the source of a move and delayed results from an old location that is still being
+    /// enumerated.
     public func didMoveSearchItems(_ sources: [URL]) {
         guard isShowingSearchResults else { return }
         movedSearchPaths.formUnion(sources.map { $0.standardizedFileURL.path })
@@ -1315,7 +1344,8 @@ public final class BrowserModel {
         return movedSearchPaths.contains { path == $0 || path.hasPrefix($0 == "/" ? "/" : $0 + "/") }
     }
 
-    /// 検索結果から行を外し、選択を整理する。フォーカスが外れたらプレビューを空にし、再生中の動画を止める
+    /// Removes rows from search results and restricts the selection. When focus is lost, clears the preview and stops
+    /// the playing video.
     private func removeSearchResults(_ urls: Set<URL>) {
         allFiles.removeAll { urls.contains($0.url) }
         for url in urls {
@@ -1340,7 +1370,7 @@ public final class BrowserModel {
         }
     }
 
-    // MARK: - プレビュー
+    // MARK: - Preview
 
     private func loadPreview(for url: URL?) {
         previewGeneration += 1
@@ -1353,7 +1383,7 @@ public final class BrowserModel {
             return
         }
 
-        // 一覧の行の種類を先に見る。メディア以外（zip ファイル・ディレクトリ・`..`）はプレビューしない（FR-075）
+        // Check the listing row kind first. Do not preview non-media rows (zip files, directories, and `..`) (FR-075).
         let kind: MediaKind
         if let file = listing.files.first(where: { $0.url == url }) {
             guard case let .media(mediaKind) = file.kind else {
@@ -1436,7 +1466,7 @@ public final class BrowserModel {
         }
     }
 
-    /// zip の中の画像を、キャッシュ → `Data` の読み込み → デコードの順で得る。アニメーション画像は `Data` のまま返す
+    /// Obtains an image inside a zip in this order: cache, read `Data`, decode. Returns animated images as `Data`.
     private func archiveImage(for url: URL, maxPixelSize: Int) async -> ArchiveImageResult {
         if let cached = await cache.get(url) {
             return .image(cached)
@@ -1484,7 +1514,7 @@ public final class BrowserModel {
 
         for neighborIndex in [index - 1, index + 1] where listing.files.indices.contains(neighborIndex) {
             let file = listing.files[neighborIndex]
-            // 動画とメディア以外の行（zip ファイル・ディレクトリ・`..`）は先読みしない
+            // Do not prefetch videos or non-media rows (zip files, directories, and `..`).
             guard file.kind.isMedia, !file.kind.isVideo else { continue }
             guard prefetchTasks[file.url] == nil else { continue }
 
