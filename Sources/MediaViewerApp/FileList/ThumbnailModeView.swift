@@ -34,7 +34,7 @@ private final class ThumbnailCollectionView: NSCollectionView {
             }
         }
 
-        // メニュー項目が無効なときに、既定の動作へ渡さない（R26）
+        // Do not pass to the default action when the menu item is disabled (R26).
         if event.isCommandOnlyVerticalArrow {
             return
         }
@@ -168,7 +168,7 @@ private final class ThumbnailItemView: NSCollectionViewItem {
         updateSelectionAppearance()
     }
 
-    /// zip ファイル・ディレクトリ・`..` の行の、種類のアイコン。縮小画像は要求しない
+    /// Kind icon for zip file, directory, and `..` rows. Does not request a thumbnail.
     func showListItemIcon(for kind: ListItemKind, pointSize: Double) {
         thumbnailImageView.imageScaling = .scaleNone
         thumbnailImageView.contentTintColor = .secondaryLabelColor
@@ -340,7 +340,7 @@ final class ThumbnailModeView: NSView {
     var onRename: ((URL, String) async -> Void)?
     var onOpenItem: ((URL) -> Void)?
     var onInternalDrop: (([URL], URL, Bool) -> Void)?
-    /// Esc。処理したら true（検索結果の表示を終える。FR-086）
+    /// Esc. Returns true when handled (ends search results; FR-086).
     var onEscape: (() -> Bool)? {
         get { collectionView.onEscape }
         set { collectionView.onEscape = newValue }
@@ -367,7 +367,7 @@ final class ThumbnailModeView: NSView {
         columnCount()
     }
 
-    /// 隠れたファイルリストの移動に使う、セクションの余白を除いた幅（R43）
+    /// Width excluding section insets, used for navigating a hidden file list (R43).
     var navigationWidth: Double {
         Double(max(
             0,
@@ -375,7 +375,7 @@ final class ThumbnailModeView: NSView {
         ))
     }
 
-    /// 指定した幅での列数（R43）
+    /// Number of columns for the given width (R43).
     func columnCount(forWidth width: Double) -> Int {
         max(1, ThumbnailGridLayout.columns(
             availableWidth: width,
@@ -392,12 +392,12 @@ final class ThumbnailModeView: NSView {
         scrollItemIntoView(at: index)
     }
 
-    /// 一覧の表示範囲の原点（スクロール位置の保持に使う。SC-017）
+    /// Origin of the visible list range (used to preserve the scroll position; SC-017).
     var visibleOrigin: CGPoint {
         scrollView.contentView.bounds.origin
     }
 
-    /// 控えておいたスクロール位置へ戻す。行が減って文書の範囲を超える場合は、範囲内に収める
+    /// Restores the captured scroll position. Clamps to the document range when rows were removed.
     func restoreVisibleOrigin(_ origin: CGPoint) {
         let clipView = scrollView.contentView
         let proposed = NSRect(origin: origin, size: clipView.bounds.size)
@@ -580,7 +580,7 @@ final class ThumbnailModeView: NSView {
     }
 
     private func applyModel() {
-        // 表示していない形式では、再読み込みと選択の反映を表示したとき（viewDidUnhide）まで遅らせる（SC-015）
+        // For a hidden mode, defer reloading and selection updates until it is shown (viewDidUnhide) (SC-015).
         guard !isHidden else { return }
         let files = model.listing.files
         let urls = files.map(\.url)
@@ -626,7 +626,7 @@ final class ThumbnailModeView: NSView {
     private func requestThumbnail(for file: MediaFile) {
         guard window?.inLiveResize != true else { return }
         guard file.kind.isMedia else {
-            // メディア以外の行は縮小画像を要求せず、種類のアイコンを出す
+            // Do not request thumbnails for non-media rows; show the kind icon instead.
             cancelRequest(for: file.url)
             for case let item as ThumbnailItemView in collectionView.visibleItems()
             where item.representedURL == file.url {
@@ -712,12 +712,12 @@ final class ThumbnailModeView: NSView {
         columnCount(forWidth: navigationWidth)
     }
 
-    /// メディア以外の行のアイコンの大きさ（サムネイルの大きさの半分程度）
+    /// Icon size for non-media rows (about half the thumbnail size).
     private var listItemIconPointSize: Double {
         max(16, storedThumbnailSize / 2)
     }
 
-    /// ダブルクリックされた項目を単一選択にしてから、中を表示する（FR-069・070）
+    /// Selects a double-clicked item as the only selection, then opens it (FR-069, FR-070).
     private func openItem(at index: Int) {
         let files = model.listing.files
         guard files.indices.contains(index) else { return }
@@ -730,7 +730,7 @@ final class ThumbnailModeView: NSView {
     }
 
     private func beginRenameFromKeyboard() -> Bool {
-        // zip の中では名前の変更を始めない（FR-073）。キーは消費する
+        // Do not start renaming inside a zip (FR-073). Consume the key.
         guard model.focusedItemCommands.allowsFileOperations else { return true }
         guard onRename != nil else { return false }
         let selected = model.selection.selected
@@ -945,7 +945,8 @@ extension ThumbnailModeView: NSCollectionViewDataSource {
             self?.commitRename(url: url, newName: newName)
         }
         thumbnailItem.configure(with: file, iconPointSize: listItemIconPointSize)
-        // 検索結果では、名前だけで見分けられない同名のファイルを場所のツールチップで示す（FR-084、R37）
+        // In search results, show the location tooltip for same-named files that cannot be distinguished by name alone
+        // (FR-084, R37).
         thumbnailItem.view.toolTip = model.listing.search?.location(of: file.url)
         requestThumbnail(for: file)
         return thumbnailItem
@@ -979,7 +980,7 @@ extension ThumbnailModeView: NSCollectionViewDelegateFlowLayout {
     ) -> NSPasteboardWriting? {
         let files = model.listing.files
         guard files.indices.contains(indexPath.item) else { return nil }
-        // zip の中の行・`..` はドラッグを始めない（FR-073）
+        // Do not start a drag for rows inside a zip or `..` (FR-073).
         guard model.itemCommands(forRowAt: indexPath.item).allowsFileOperations else { return nil }
         return files[indexPath.item].url as NSURL
     }

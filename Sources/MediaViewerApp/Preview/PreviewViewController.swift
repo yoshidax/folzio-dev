@@ -21,11 +21,11 @@ final class PreviewViewController: NSViewController {
     )
     private var animatedTask: Task<Void, Never>?
     private var configuredVideoURL: URL?
-    /// 表示倍率と表示中の画像の対応（FR-137）。保存せず、履歴にも記録しない
+    /// Zoom level for the displayed image (FR-137). Neither persisted nor recorded in history.
     private var zoomTracker = PreviewZoomTracker()
     private var lastZoomAvailability: PreviewZoomAvailability?
 
-    /// ペイン表示とは独立した一時的なスライドショーの外観。
+    /// Temporary slideshow appearance independent of pane visibility.
     func setSlideshowBackground(_ enabled: Bool) {
         loadViewIfNeeded()
         CATransaction.begin()
@@ -33,7 +33,7 @@ final class PreviewViewController: NSViewController {
         let color = enabled ? NSColor.black.cgColor : nil
         containerView.layer?.backgroundColor = color
         contentHostView.layer?.backgroundColor = color
-        // ライト外観でも黒い背景の上で状態表示とスピナーを読めるようにする。
+        // Make status text and the spinner readable on the black background even in light appearance.
         imageView.appearance = enabled ? NSAppearance(named: .darkAqua) : nil
         CATransaction.commit()
     }
@@ -53,7 +53,7 @@ final class PreviewViewController: NSViewController {
         }
     }
 
-    /// 拡大・縮小・表示領域に合わせるの可否が変わったとき（FR-134・FR-136）
+    /// Notifies when zoom in, zoom out, or Zoom to Fit availability changes (FR-134, FR-136).
     var onZoomAvailabilityChange: (() -> Void)?
 
     var zoomAvailability: PreviewZoomAvailability {
@@ -100,7 +100,7 @@ final class PreviewViewController: NSViewController {
         return true
     }
 
-    // MARK: - 表示倍率（FR-133〜FR-138）
+    // MARK: - Zoom (FR-133–FR-138)
 
     @discardableResult
     func zoomIn() -> Bool {
@@ -121,7 +121,7 @@ final class PreviewViewController: NSViewController {
         return applyZoomChange(zoomTracker.fit())
     }
 
-    /// 履歴の移動後に、同じ画像でも100%に戻す（FR-137）。読み上げはしない
+    /// Resets to 100% after history navigation even for the same image (FR-137). Does not announce.
     func resetZoom() {
         imageView.resetScrollPosition()
         guard zoomTracker.reset() else { return }
@@ -149,7 +149,7 @@ final class PreviewViewController: NSViewController {
         onZoomAvailabilityChange?()
     }
 
-    /// 表示対象の同一性。`.image` は URL を持たないため選択中の URL を使う
+    /// Identity of the displayed content. Uses the selected URL for `.image`, which carries no URL.
     private func zoomIdentity(for content: PreviewContent) -> URL? {
         switch content {
         case .image:
@@ -256,7 +256,8 @@ final class PreviewViewController: NSViewController {
     }
 
     private func updateFromModel() {
-        // 別の画像へ切り替わったときだけ100%に戻す。表示より先に適用し、前の倍率で一瞬描かない
+        // Reset to 100% only when switching to another image. Apply before display so the previous zoom is not briefly
+        // drawn.
         if zoomTracker.present(zoomIdentity(for: model.preview)) {
             imageView.resetScrollPosition()
             applyCurrentZoom(announce: false)
@@ -320,7 +321,7 @@ final class PreviewViewController: NSViewController {
         applyTransitionAction(transitionState.reduce(.displayed(content: model.preview, focused: model.selection.focused)))
     }
 
-    /// 動画 URL を再生に渡す。同じ URL の再設定は無視する。
+    /// Passes a video URL to playback. Ignores setting the same URL again.
     private func showVideo(_ url: URL) {
         guard configuredVideoURL != url else { return }
         configuredVideoURL = url
@@ -330,7 +331,7 @@ final class PreviewViewController: NSViewController {
         }
         let playback = model.playbackRequest
         if ArchiveURL.parse(url) != nil {
-            // zip の中の動画は ArchiveAssetFactory 経由の AVURLAsset で再生する
+            // Play videos inside a zip with an AVURLAsset created through ArchiveAssetFactory.
             videoView.configure(
                 asset: ArchiveAssetFactory.makeAsset(for: url, reader: archiveReader),
                 autoplay: playback.autoplay,

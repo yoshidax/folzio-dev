@@ -2,14 +2,14 @@ import AppKit
 import MediaViewerCore
 import MediaViewerLocalization
 
-/// システムの「キーボードナビゲーション」の設定に関わらず、Tab でフォーカスが止まるボタン（R39）
+/// Button that accepts Tab focus regardless of the system Keyboard Navigation setting (R39).
 private final class KeyViewButton: NSButton {
     override var canBecomeKeyView: Bool { true }
 }
 
-/// 検索のモーダル（メインウインドウのシート）。キーワードと検索起点ディレクトリを受け取り、
-/// 起点を確かめてから `onSearch` を呼ぶ（FR-080〜082）。「選択…」は標準の `NSOpenPanel` を
-/// 子シートとして開き、確定後に非同期で再検証する（FR-141〜144）
+/// Search modal (a sheet on the main window). Accepts a keyword and search root directory, validates the root,
+/// then calls `onSearch` (FR-080–082). "Choose…" opens a standard `NSOpenPanel` as a child sheet and revalidates
+/// asynchronously after confirmation (FR-141–144).
 @MainActor
 final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
     private let initialKeyword: String?
@@ -194,7 +194,8 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
         refreshControls()
     }
 
-    /// 検索・選択の可否を決める。初期位置の解決中も検索でき、検索検証中は選択と重複検索を無効にする
+    /// Determines whether search and selection are available. Search remains available while resolving the initial
+    /// location; selection and duplicate searches are disabled while validating a search.
     private func refreshControls() {
         let pending = inputState.pendingOperation
         chooseFolderButton.isEnabled = !panelPresented && pending == .idle
@@ -347,7 +348,7 @@ final class SearchPanelController: NSViewController, NSSearchFieldDelegate {
         localizedReason = nil
     }
 
-    /// 理由を入力欄の下に出し、読み上げる（モーダルは閉じない。FR-081）
+    /// Shows the reason below the field and announces it (does not close the modal; FR-081).
     private func showReason(_ render: @escaping @MainActor () -> String) {
         localizedReason = render
         let message = render()

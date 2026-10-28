@@ -2,8 +2,9 @@ import AppKit
 import MediaViewerCore
 
 extension BrowserModel {
-    /// フォーカス行の種類・zip の中を表示中か・戻る先があるか・検索結果を表示中かから、操作ごとの可否を返す。
-    /// メニュー・キー・ドラッグで同じ判断を使う（FR-069・073・077・087、research.md R26・R30・R38）
+    /// Returns command availability from the focused row kind, whether a zip is being browsed, whether an enclosing
+    /// level exists, and whether search results are shown. Menus, keys, and drags use the same decision
+    /// (FR-069, 073, 077, 087; research.md R26, R30, R38).
     var focusedItemCommands: ListItemCommands {
         ListItemCommands(
             kind: focusedKind,
@@ -13,8 +14,8 @@ extension BrowserModel {
         )
     }
 
-    /// 選択に対するファイル操作（コピー・ゴミ箱など）の可否。対象は `operableSelection` で `..` を除くため、
-    /// フォーカスが `..` でも、ほかの行が選ばれていればその行を操作できる（R30）
+    /// Availability of file operations for the selection (copy, Trash, and so on). Because `operableSelection` excludes
+    /// `..`, other selected rows can be operated on even when the focus is on `..` (R30).
     var selectionItemCommands: ListItemCommands {
         let kind = focusedKind == .parent && !operableSelection.isEmpty ? nil : focusedKind
         return ListItemCommands(
@@ -31,7 +32,7 @@ extension BrowserModel {
         }
     }
 
-    /// 指定した行の種類に対する可否。行が範囲外なら nil の種類として扱う
+    /// Availability for the kind of the given row. Treats out-of-range rows as a nil kind.
     func itemCommands(forRowAt index: Int) -> ListItemCommands {
         let files = listing.files
         let kind = files.indices.contains(index) ? files[index].kind : nil
@@ -45,7 +46,7 @@ extension BrowserModel {
 }
 
 extension NSEvent {
-    /// 修飾キーなしの Esc か
+    /// Whether this is Esc with no modifier keys.
     var isPlainEscape: Bool {
         guard charactersIgnoringModifiers == "\u{1b}" else { return false }
         let relevant = modifierFlags
@@ -54,8 +55,8 @@ extension NSEvent {
         return relevant.isEmpty
     }
 
-    /// Command だけを押した ↓ / ↑ か。メニュー項目が無効なときに、
-    /// NSTableView / NSCollectionView の既定の動作（末尾へ移動など）へ渡さないために使う（R26）
+    /// Whether this is ↓ or ↑ with only Command. Used to avoid passing to the default NSTableView or
+    /// NSCollectionView action (such as moving to the end) when the menu item is disabled (R26).
     var isCommandOnlyVerticalArrow: Bool {
         guard specialKey == .downArrow || specialKey == .upArrow else { return false }
         let relevant = modifierFlags
