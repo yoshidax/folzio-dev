@@ -1,9 +1,10 @@
 import Foundation
 
-/// 設定ウインドウの切り替え間隔（秒）の入力文字列を解析する。
-/// 受理するのは、前後の空白を除いた ASCII／全角の数字だけ。符号・小数点・桁区切りは受け付けない。
+/// Parses the input string for the slideshow interval (seconds) in the Settings window.
+/// Accepts only ASCII or full-width digits after trimming whitespace. Rejects signs, decimal points, and grouping
+/// separators.
 public enum SlideshowIntervalInput {
-    /// 有効な間隔（秒）を返す。`SlideshowOptions.intervalRange` の外や不正な入力は nil。
+    /// Returns a valid interval in seconds, or nil when outside `SlideshowOptions.intervalRange` or invalid.
     public static func parse(_ text: String) -> Int? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         var ascii = String.UnicodeScalarView()

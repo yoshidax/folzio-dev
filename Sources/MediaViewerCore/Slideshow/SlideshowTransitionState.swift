@@ -1,13 +1,13 @@
 import Foundation
 
-/// プレビューの表示だけを調停する。期限・選択・snapshot の画像は持たない。
+/// Arbitrates only the preview display. Does not hold deadlines, selections, or snapshot images.
 public struct SlideshowTransitionState: Sendable, Equatable {
     public enum Phase: Sendable, Equatable { case idle, holding, animating }
     public enum Readiness: Sendable, Equatable { case ready, pending }
     public enum Event {
         case arm(target: URL, current: URL?, effect: SlideshowTransitionEffect)
         case displayed(content: PreviewContent, focused: URL?)
-        // 同じ URL を再び準備する場合も、古い通知が新しい効果を始めないよう世代を照合する。
+        // Compare generations so an old notification cannot start a new effect when the same URL is prepared again.
         case ready(url: URL, generation: Int)
         case completed(generation: Int)
         case cancel

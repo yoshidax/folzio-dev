@@ -6,7 +6,8 @@ public enum NameValidation: Sendable, Equatable {
     case invalid(NameValidationFailure)
 }
 
-/// 名前が使えない理由（表示言語に依存しない値）。文言は `MediaViewerLocalization` が決める
+/// Reason a name cannot be used (a value independent of the display language).
+/// `MediaViewerLocalization` chooses the text.
 public enum NameValidationFailure: Error, Sendable, Equatable {
     case empty
     case forbiddenCharacter
@@ -15,9 +16,9 @@ public enum NameValidationFailure: Error, Sendable, Equatable {
     case becomesPackage
 }
 
-/// `isDirectory` が true（フォルダの名前の変更）のときは、名前の `.` 以降を拡張子として扱わず、
-/// 拡張子の変更の確認（`needsExtensionChangeConfirmation`）を返さない（research.md R32）。
-/// パッケージになる名前（`.app` など）は、フォルダが見えなくなるため拒否する（EC-53、R57）
+/// When `isDirectory` is true (renaming a folder), does not treat the part after `.` as an extension and does not
+/// return `needsExtensionChangeConfirmation` (research.md R32). Rejects names that would make the folder a package
+/// (such as `.app`) because the folder would no longer be visible (EC-53, R57).
 public func validateNewName(
     _ name: String,
     for file: URL,

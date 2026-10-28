@@ -6,19 +6,21 @@ public enum SlideshowAdvance: Equatable, Sendable {
     case empty
 }
 
-/// スライドショーの対象列・開始位置・次の対象を、最新の一覧と選択から求める純粋計算。
-/// 実行中の固定 playlist は持たず、呼ぶたびに `listing.files` から導出する。
+/// Pure computation that derives the slideshow candidates, start position, and next target from the latest
+/// listing and selection. Does not keep a fixed playlist while running; derives them from `listing.files` on
+/// each call.
 public struct SlideshowSequence: Sendable {
     public init() {}
 
-    /// 表示順を保ったまま、対応メディアの URL だけを取り出す。フォルダ・zip 自体・
-    /// zip 内ディレクトリ・親リンクは `kind.isMedia` でないため含まれない。
+    /// Extracts only supported media URLs while preserving display order. Folders, zip files themselves,
+    /// directories inside a zip, and parent links are not `kind.isMedia` and are excluded.
     public static func candidates(in files: [MediaFile]) -> [URL] {
         files.compactMap { $0.kind.isMedia ? $0.url : nil }
     }
 
-    /// 開始位置。選択中のフォーカスメディア → 選択中メディアの表示順先頭 → 対象先頭。
-    /// 選択が非メディアだけ、または空なら対象先頭になる。
+    /// Start position: the focused media item in the selection, then the first selected media item in display order,
+    /// then the first candidate. If the selection contains only non-media items or is empty, uses the first
+    /// candidate.
     public static func startTarget(
         in files: [MediaFile],
         selected: Set<URL>,
@@ -36,8 +38,8 @@ public struct SlideshowSequence: Sendable {
         return candidates.first
     }
 
-    /// 最新のフォーカスが対象に残っていればその次（末尾なら先頭）、残っていなければ先頭。
-    /// 対象が空なら nil。
+    /// Returns the item after the latest focus when it is still a candidate (wrapping to the first at the end), or
+    /// the first candidate when it is not. Returns nil when there are no candidates.
     public static func nextTarget(in files: [MediaFile], focused: URL?) -> URL? {
         if case .target(let url) = advance(in: files, focused: focused, repeats: true) {
             return url
@@ -45,8 +47,8 @@ public struct SlideshowSequence: Sendable {
         return nil
     }
 
-    /// 最新の一覧で次の対象を求める。繰り返さない場合、末尾では送らずに終了する。
-    /// 選択が消えた場合は、繰り返しの設定にかかわらず先頭から続ける。
+    /// Determines the next target from the latest listing. When not repeating, finishes at the end instead of
+    /// advancing. When the selection disappears, continues from the first candidate regardless of the repeat setting.
     public static func advance(in files: [MediaFile], focused: URL?, repeats: Bool) -> SlideshowAdvance {
         let candidates = candidates(in: files)
         guard let first = candidates.first else { return .empty }

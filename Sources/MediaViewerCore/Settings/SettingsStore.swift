@@ -1,6 +1,6 @@
 import Foundation
 
-/// アプリが保存する表示言語。OS の優先言語とは独立する。
+/// Display language saved by the app. Independent of the OS preferred languages.
 public enum DisplayLanguageSetting: String, CaseIterable, Sendable {
     case english = "en"
     case japanese = "ja"
@@ -48,7 +48,8 @@ public struct SettingsStore {
                 .flatMap(DisplayMode.init(rawValue:)) ?? .list
             let thumbnailSize = storedDouble(forKey: Keys.thumbnailSize)
                 ?? ViewSettings.defaultThumbnailSize
-            // 「場所」は検索結果の表示中だけ使い、保存しない（FR-084）。万一入っていたら名前にする
+            // Location is used only while showing search results and is not persisted (FR-084). If present, fall back
+            // to name.
             let column = (defaults.object(forKey: Keys.sortColumn) as? String)
                 .flatMap(SortColumn.init(rawValue:))
                 .flatMap { $0 == .location ? nil : $0 } ?? .name
@@ -111,7 +112,8 @@ public struct SettingsStore {
         }
     }
 
-    /// 項目ごとに独立して検証する。不正な項目だけ既定値になり、ほかの項目は保存値のまま
+    /// Validates each item independently. Only invalid items fall back to defaults; other items keep their stored
+    /// values.
     public var slideshow: SlideshowOptions {
         get {
             let transition = (defaults.object(forKey: Keys.slideshowTransition) as? String)
@@ -130,9 +132,10 @@ public struct SettingsStore {
         }
     }
 
-    /// 絶対パスの配列で保存する。配列でなければ空、文字列でない要素・空文字・相対パスは捨てる（FR-066）。
-    /// 表示名は `favorites.displayNames`（標準化した絶対パス → 表示名）に、付けた分だけ保存する。
-    /// 旧形式（`favorites.paths` だけ）は全件表示名なしとして読む。移行処理は持たない（R49）
+    /// Persisted as an array of absolute paths. A non-array reads as empty; non-string elements, empty strings, and
+    /// relative paths are dropped (FR-066). Display names are stored in `favorites.displayNames` (standardized
+    /// absolute path → display name) only for items that have one. The legacy format (only `favorites.paths`) reads
+    /// as having no display names. There is no migration (R49).
     public var favorites: FavoriteFolders {
         get {
             guard let stored = defaults.object(forKey: Keys.favoritePaths) as? [Any] else {
@@ -142,7 +145,8 @@ public struct SettingsStore {
                 .compactMap { $0 as? String }
                 .filter { !$0.isEmpty && $0.hasPrefix("/") }
                 .map { URL(fileURLWithPath: $0, isDirectory: true) }
-            // 辞書でなければ表示名なし。未登録のパス・空になる値の破棄、正規化、255 文字への丸めは init が行う
+            // No display names when not a dictionary. The initializer drops unregistered paths and values that
+            // normalize to empty, normalizes values, and truncates to 255 characters.
             let names = (defaults.object(forKey: Keys.favoriteDisplayNames) as? [String: Any])?
                 .compactMapValues { $0 as? String } ?? [:]
             return FavoriteFolders(urls: urls, customNames: names)
@@ -161,7 +165,8 @@ public struct SettingsStore {
         defaults.object(forKey: key) as? Bool
     }
 
-    /// 真偽値でない数値で、Int へ正確に変換でき、1〜3600 の範囲にあるときだけ返す
+    /// Returns the value only when it is a numeric value (not a Boolean), converts exactly to Int, and is in the
+    /// 1–3600 range.
     private func storedInterval(forKey key: String) -> Int? {
         guard let number = defaults.object(forKey: key) as? NSNumber,
               CFGetTypeID(number) != CFBooleanGetTypeID(),
