@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import MediaViewerCore
 
-// #expect の中では mutating メソッドを呼べないため、結果を変数に受けてから確かめる。
+// Cannot call a mutating method inside #expect, so store the result in a variable first.
 @Suite("PreviewZoomTracker")
 struct PreviewZoomTrackerTests {
     private let urlA = URL(fileURLWithPath: "/tmp/zoom/a.jpg")

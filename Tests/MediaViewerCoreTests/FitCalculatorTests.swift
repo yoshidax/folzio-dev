@@ -67,7 +67,7 @@ struct FitCalculatorTests {
         #expect(FitCalculator.fit(imageSize: imageSize, in: container) == .zero)
     }
 
-    // MARK: - 倍率の適用（frame(imageSize:in:zoom:)）
+    // MARK: - Applying Zoom (frame(imageSize:in:zoom:))
 
     @Test("100%は fit と同じ矩形", arguments: [
         (CGSize(width: 2000, height: 1000), CGSize(width: 500, height: 500)),

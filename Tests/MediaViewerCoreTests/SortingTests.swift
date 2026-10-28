@@ -103,7 +103,7 @@ struct SortingTests {
         }
     }
 
-    // MARK: - 場所と sortedMerge（FR-084・085）
+    // MARK: - Location and sortedMerge (FR-084, 085)
 
     @Test("場所は親フォルダのパスの自然順で、同じ場所では名前の自然順")
     func sortsByLocation() {
@@ -130,7 +130,8 @@ struct SortingTests {
                 let name = names.randomElement(using: &generator)!
                 let folder = folders.randomElement(using: &generator)!
                 return MediaFile(
-                    // 同じ名前・同じ場所の行（同順位）も作り、fileSize の通し番号で区別する
+                    // Also create rows with the same name and location (ties), distinguished by a fileSize sequence
+                    // number.
                     url: URL(fileURLWithPath: "\(folder)/\(name)"),
                     name: name,
                     kind: .media(MediaKind(fileExtension: (name as NSString).pathExtension) ?? .jpeg),
@@ -203,7 +204,7 @@ struct SortingTests {
     }
 }
 
-/// 固定のシードの乱数（SplitMix64）
+/// Fixed-seed random number generator (SplitMix64).
 struct SeededGenerator: RandomNumberGenerator {
     private var state: UInt64
 

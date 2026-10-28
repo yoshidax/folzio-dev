@@ -26,10 +26,10 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.files.map(\.url) == [kept.url])
     }
 
-    // MARK: - フィクスチャ
+    // MARK: - Fixtures
 
-    /// 一時フォルダ `root`。`cover.jpg`・`trip/day1/1.jpg`・`trip/day2/`・`empty/` を持つ。
-    /// 検索の起点は `SearchRoot.validate` の結果と同じく `/private` を付けない形（`/var/...`）で渡す
+    /// Temporary folder `root`. Contains `cover.jpg`, `trip/day1/1.jpg`, `trip/day2/`, and `empty/`.
+    /// Passes the search root in the same form as `SearchRoot.validate` (without `/private`, as `/var/...`).
     private struct Env {
         let root: URL
         let defaults: UserDefaults
@@ -45,7 +45,7 @@ struct BrowserModelSearchTests {
             root.appendingPathComponent(path, isDirectory: true)
         }
 
-        /// ディスクに画像（`.mp4`・`.mov` なら空の動画）を作り、検索結果の行を返す
+        /// Creates an image on disk (an empty video for `.mp4` and `.mov`) and returns a search result row.
         func makeResult(_ path: String) throws -> MediaFile {
             let url = url(path)
             try FileManager.default.createDirectory(
@@ -151,7 +151,7 @@ struct BrowserModelSearchTests {
         return condition()
     }
 
-    /// バッチを流し、一覧の件数が `count` になるまで待つ
+    /// Sends a batch and waits until the listing has `count` items.
     private func send(_ batch: [MediaFile], _ env: Env, expecting count: Int) async {
         env.searcher.send(batch)
         let arrived = await waitUntil { env.model.listing.search?.totalCount == count }
@@ -164,7 +164,7 @@ struct BrowserModelSearchTests {
         #expect(finished)
     }
 
-    // MARK: - 開始
+    // MARK: - Starting
 
     @Test("検索を始めると、検索前のフォルダ・lastFolder・ツリーの同期を変えずに、選択とプレビューを空にする")
     func startingSearchResetsSelectionOnly() async throws {
@@ -215,7 +215,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.stopPlaybackSignal > signal)
     }
 
-    // MARK: - バッチと完了
+    // MARK: - Batches and Completion
 
     @Test("バッチは並べ替え済みでマージされ、選択とフォーカスが保たれ、.. とフォルダの行がない")
     func batchesMergeAndKeepSelection() async throws {
@@ -275,7 +275,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.search?.totalCount == 1)
     }
 
-    // MARK: - 解除と新しい検索
+    // MARK: - Cancellation and New Searches
 
     @Test("フォルダを選ぶと検索を取り消して表示を終え、その後のバッチは加わらない")
     func selectingFolderLeavesSearch() async throws {
@@ -357,7 +357,7 @@ struct BrowserModelSearchTests {
         #expect(path(env.model.listing.folder) == path(env.root))
     }
 
-    // MARK: - zip ファイルの表示の切り替え（FR-098）
+    // MARK: - Zip File Visibility (FR-098)
 
     @Test("検索結果の表示中に zip ファイルの表示を切り替えても、結果・選択・プレビューは変わらず設定だけを保存する")
     func togglingZipVisibilityDuringSearchChangesNothing() async throws {
@@ -392,7 +392,7 @@ struct BrowserModelSearchTests {
         }
     }
 
-    // MARK: - 並べ替え
+    // MARK: - Sorting
 
     @Test("検索結果では場所で並べられ、保存されない。表示を終えると保存済みの並べ替えに戻る")
     func locationSortDuringSearch() async throws {
@@ -442,7 +442,7 @@ struct BrowserModelSearchTests {
         }
     }
 
-    // MARK: - 結果の整理
+    // MARK: - Pruning Results
 
     @Test("reloadCurrentFolder は消えた結果だけを外し、新しいファイルは加えない")
     func reloadPrunesMissingResults() async throws {
@@ -588,7 +588,7 @@ struct BrowserModelSearchTests {
         #expect(path(env.model.listing.folder) == path(env.root))
     }
 
-    // MARK: - フォルダの名前の変更（FR-105、EC-52、R63）
+    // MARK: - Folder Renames (FR-105, EC-52, R63)
 
     private func renameFolder(_ env: Env, _ from: String, to newName: String) throws -> (URL, URL) {
         let old = env.folder(from)
@@ -622,7 +622,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.stopPlaybackSignal == signal)
         #expect(env.searcher.requests.count == 1)
 
-        // 外部の変更の確かめ直しでも、新しい場所の結果は外れない
+        // Even after rechecking external changes, results at the new location are not removed.
         await env.model.reloadCurrentFolder()
         #expect(env.model.listing.search?.totalCount == 2)
     }
@@ -679,7 +679,7 @@ struct BrowserModelSearchTests {
         #expect(await waitUntil { env.model.listing.search?.totalCount == 2 })
         #expect(env.model.listing.files.contains { path($0.url) == path(env.url("trip2/day1/1.jpg")) })
 
-        // 追加の列挙が同じファイルを返しても1行だけ
+        // Only one row remains even when the additional enumeration returns the same file.
         env.searcher.send([Env.result(env.url("trip2/day1/1.jpg"))], to: 1)
         try? await Task.sleep(for: .milliseconds(100))
         #expect(env.model.listing.search?.totalCount == 2)
@@ -703,7 +703,7 @@ struct BrowserModelSearchTests {
 
         #expect(env.searcher.requests.count == 2)
         #expect(path(env.searcher.requests.last?.root) == path(new))
-        // 起点そのものは列挙の対象にしない（行にならない）
+        // Do not enumerate the root itself (it does not become a row).
         #expect(env.searcher.requests.last?.matchesRoot == false)
         #expect(path(env.model.listing.search?.root) == path(new))
     }
@@ -721,9 +721,9 @@ struct BrowserModelSearchTests {
         #expect(path(env.model.listing.search?.root) == path(env.folder("trip")))
     }
 
-    // MARK: - フォルダの行（US15、FR-139）
+    // MARK: - Folder Rows (US15, FR-139)
 
-    /// ディスクにフォルダを作り、通常の一覧と同じ値のフォルダの行を返す
+    /// Creates a folder on disk and returns a folder row with the same values as a regular listing.
     private func makeFolderResult(_ env: Env, _ path: String) throws -> MediaFile {
         let url = env.folder(path)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
@@ -755,7 +755,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.state == .loaded)
         #expect(env.model.listing.files.count == 5)
 
-        // フォルダ1件だけの一致では、該当する項目がない旨を出さない
+        // Do not show the no-matching-items message when only one folder matches.
         env.model.startSearch(pattern("kyoto"), root: env.root)
         await send([folder1], env, expecting: 1)
         await finish(env)
@@ -785,7 +785,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.search?.totalCount == 2)
         #expect(env.model.mediaTypeFilter.emptyState == .imagesOnly)
 
-        // 一致がフォルダだけなら、絞り込み中のメッセージも出さない
+        // Do not show the filtering message when only folders match.
         env.model.startSearch(pattern("clip"), root: env.root)
         await send([clips], env, expecting: 1)
         await finish(env)
@@ -848,7 +848,7 @@ struct BrowserModelSearchTests {
         env.model.sortOrder = SortOrder(column: .location, ascending: true)
         #expect(names(env.model) == ["2024_Kyoto", "m_Kyoto.jpg", "n_Kyoto.mp4", "zzz_Kyoto"])
 
-        // 種類の並べ替えでもフォルダの行は外れない
+        // Folder rows are not removed when sorting by kind.
         env.model.sortOrder = SortOrder(column: .kind, ascending: true)
         #expect(Set(names(env.model)) == ["2024_Kyoto", "zzz_Kyoto", "m_Kyoto.jpg", "n_Kyoto.mp4"])
         #expect(env.model.listing.state == .loaded)
@@ -869,7 +869,7 @@ struct BrowserModelSearchTests {
         #expect(!names(env.model).contains(".."))
     }
 
-    // MARK: - フォルダの行を開く（FR-140、US15-AS3、EC-93）
+    // MARK: - Opening Folder Rows (FR-140, US15-AS3, EC-93)
 
     @Test("検索中にフォルダの行を開くと検索を止め、そのフォルダの一覧にしてツリーと lastFolder を同期し、後から届く結果を捨てる")
     func openingFolderRowDuringSearch() async throws {
@@ -892,12 +892,12 @@ struct BrowserModelSearchTests {
         #expect(path(env.model.treeSyncRequest?.folder) == path(day2.url))
         #expect(path(env.lastFolder) == path(day2.url))
 
-        // 止めた列挙のバッチは一覧に混ざらない
+        // Batches from a stopped enumeration do not enter the listing.
         let late = try env.makeResult("s/late.jpg")
         env.searcher.send([late], to: 0)
         try await Task.sleep(for: .milliseconds(100))
         #expect(!names(env.model).contains("late.jpg"))
-        // day2 は空のフォルダ
+        // day2 is an empty folder.
         #expect(Set(names(env.model)) == [".."])
     }
 
@@ -973,7 +973,7 @@ struct BrowserModelSearchTests {
 
         #expect(events == [.openedSearchResultFolder(leavingFocus: day2.url)])
 
-        // 通常の一覧からフォルダを開いた場合は、従来どおり navigated を知らせる
+        // Opening a folder from a regular listing still reports navigated.
         await env.model.selectFolder(env.folder("trip"))
         events.removeAll()
         let day1 = try #require(env.model.listing.files.first { $0.name == "day1" })
@@ -1001,7 +1001,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.files.first?.kind == .parent)
     }
 
-    // MARK: - ツリー同期の完了（EC-102）
+    // MARK: - Tree Synchronization Completion (EC-102)
 
     @Test("検索結果から開いたフォルダの同期完了では、表示可能な祖先を最後のフォルダとして保存する")
     func completeSearchResultTreeSyncSavesVisibleAncestor() async throws {
@@ -1027,7 +1027,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.selection.focused == focused)
         #expect(events.isEmpty)
 
-        // 重複した完了は無視する
+        // Ignore duplicate completions.
         env.model.completeSearchResultTreeSync(request, selectedFolder: env.folder(".hidden-parent"))
         #expect(path(env.lastFolder) == path(visible))
     }
@@ -1061,19 +1061,19 @@ struct BrowserModelSearchTests {
         let request = try #require(env.model.treeSyncRequest)
         let saved = env.lastFolder
 
-        // 古い ID・別の依頼
+        // Stale ID or a different request.
         env.model.completeSearchResultTreeSync(TreeSyncRequest(folder: open.url, id: request.id - 1), selectedFolder: env.root)
         #expect(path(env.lastFolder) == path(saved))
         env.model.completeSearchResultTreeSync(TreeSyncRequest(folder: open.url, id: request.id + 1), selectedFolder: env.root)
         #expect(path(env.lastFolder) == path(saved))
 
-        // 祖先でない場所（文字列の前方が同じ兄弟も含む）
+        // A location that is not an ancestor (including siblings sharing a string prefix).
         env.model.completeSearchResultTreeSync(request, selectedFolder: sibling.url)
         #expect(path(env.lastFolder) == path(saved))
         env.model.completeSearchResultTreeSync(request, selectedFolder: env.folder("trip"))
         #expect(path(env.lastFolder) == path(saved))
 
-        // 通常の一覧から開いた依頼は対象外
+        // Requests opened from a regular listing are not eligible.
         let day1 = try makeFolderResult(env, "trip/day1")
         await env.model.selectFolder(env.root)
         await env.model.openItem(day1.url)
@@ -1094,7 +1094,7 @@ struct BrowserModelSearchTests {
         await env.model.openItem(open.url)
         let request = try #require(env.model.treeSyncRequest)
 
-        // 別の移動（resetForNavigation）の後に同じフォルダを通常の一覧として表示し直す
+        // Show the same folder as a regular listing again after another navigation (resetForNavigation).
         await env.model.selectFolder(env.folder("trip"))
         await env.model.selectFolder(open.url)
         let saved = env.lastFolder
@@ -1120,7 +1120,7 @@ struct BrowserModelSearchTests {
         #expect(path(env.lastFolder) == path(open.url))
     }
 
-    // MARK: - ファイル操作・外部の変更（US15、FR-087・105、EC-35・36・94・95・101）
+    // MARK: - File Operations and External Changes (US15, FR-087, 105; EC-35, 36, 94, 95, 101)
 
     private func location(_ env: Env, of url: URL) -> String? {
         env.model.listing.search?.location(of: url)
@@ -1153,7 +1153,7 @@ struct BrowserModelSearchTests {
         #expect(isImagePreview(env.model.preview))
         #expect(env.model.listing.search?.totalCount == 2)
 
-        // 「名前」で並べ替え中なら、新しい名前で並べ直す
+        // When sorting by Name, re-sort with the new name.
         env.model.sortOrder = SortOrder(column: .name, ascending: true)
         #expect(names(env.model) == ["g.jpg", "zzz"])
     }
@@ -1315,11 +1315,11 @@ struct BrowserModelSearchTests {
         await env.model.reloadCurrentFolder()
         #expect(names(env.model).isEmpty)
 
-        // Esc と同じ経路で検索結果の表示を終えると、検索前のフォルダが見つからないことを知らせる
+        // Ending search results through the same path as Esc reports that the pre-search folder was not found.
         let target = env.model.listing.folder
         await env.model.selectFolder(target)
         #expect(!env.model.isShowingSearchResults)
-        // 移ろうとした通知の後に、見つからなかったことを知らせる
+        // Report not found after the navigation notification.
         #expect(events.last == .notFound(HistoryLocation(folder: day1)), "受け取った通知: \(events)")
     }
 
@@ -1371,7 +1371,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.treeSyncRequest == request)
 
         await env.model.selectFolder(env.model.listing.folder)
-        // 移ろうとした通知の後に、見つからなかったことを知らせる
+        // Report not found after the navigation notification.
         #expect(events.last == .notFound(HistoryLocation(folder: day1)), "受け取った通知: \(events)")
     }
 
@@ -1408,7 +1408,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.stopPlaybackSignal > signal)
     }
 
-    // MARK: - 検索中の名前の変更（EC-52・EC-94、FR-105）
+    // MARK: - Renames During Search (EC-52, EC-94; FR-105)
 
     private func makeEmptyFolder(_ env: Env, _ path: String) throws -> URL {
         let url = env.folder(path)
@@ -1423,7 +1423,7 @@ struct BrowserModelSearchTests {
         let folder = try makeEmptyFolder(env, "trip/zzz")
         env.model.startSearch(pattern("b"), root: env.folder("trip"))
         #expect(env.searcher.requests.count == 1)
-        // 列挙0は F を照合して記録したが、名前が一致しないため行を流していない
+        // Enumeration 0 matched and recorded F, but did not emit a row because the name did not match.
         env.searcher.requests[0].visits.record(folder.path)
 
         let (old, new) = try renameFolder(env, "trip/zzz", to: "bbb")
@@ -1449,12 +1449,12 @@ struct BrowserModelSearchTests {
         #expect(path(env.searcher.requests.last?.root) == path(new))
         #expect(env.searcher.requests.last?.matchesRoot == true)
 
-        // 名前の変更の前に列挙を始めた列挙0から届いた古い場所の行は捨てる
+        // Drop old-location rows from enumeration 0, which started before the rename.
         env.searcher.send([Env.folderResult(old)], to: 0)
         try await Task.sleep(for: .milliseconds(100))
         #expect(env.model.listing.search?.totalCount == 0)
 
-        // 追加の列挙から届いた行だけが新しい名前で残る
+        // Only the row from the additional enumeration remains under the new name.
         env.searcher.send([Env.folderResult(new)], to: 1)
         #expect(await waitUntil { env.model.listing.search?.totalCount == 1 })
         let row = try #require(env.model.listing.files.first)
@@ -1472,7 +1472,7 @@ struct BrowserModelSearchTests {
         env.searcher.requests[0].visits.record(folder.path)
         await send([Env.folderResult(folder)], env, expecting: 1)
 
-        // キーワードに一致しなくなっても行は外れない
+        // The row remains even when it no longer matches the keyword.
         let (old, new) = try renameFolder(env, "trip/bbb", to: "zzz")
         env.model.didRenameFolder(from: old, to: new)
 
@@ -1480,7 +1480,7 @@ struct BrowserModelSearchTests {
         #expect(row.name == "zzz")
         #expect(path(row.url) == path(new))
 
-        // 名前の変更より前に始めた列挙0から届いた中の結果は、新しい場所で加わる
+        // Results from enumeration 0 started before the rename are added at the new location.
         let inside = new.appendingPathComponent("b-1.jpg")
         env.searcher.send([Env.result(old.appendingPathComponent("b-1.jpg"))], to: 0)
         #expect(await waitUntil { env.model.listing.search?.totalCount == 2 })
@@ -1507,7 +1507,7 @@ struct BrowserModelSearchTests {
     }
 }
 
-/// 結果をテストから任意の順・時点で流す検索器。取り消された回数を記録する
+/// Searcher that emits results in any order and at any time from tests. Records cancellation count.
 private final class FakeSearcher: FileNameSearching, @unchecked Sendable {
     private let lock = NSLock()
     private var continuations: [AsyncStream<[MediaFile]>.Continuation] = []
@@ -1535,7 +1535,7 @@ private final class FakeSearcher: FileNameSearching, @unchecked Sendable {
         return stream
     }
 
-    /// 最後に始めた検索のストリームへバッチを流す
+    /// Sends a batch to the most recently started search stream.
     func send(_ batch: [MediaFile]) {
         let continuation = lock.withLock { continuations.last }
         continuation?.yield(batch)
@@ -1546,7 +1546,7 @@ private final class FakeSearcher: FileNameSearching, @unchecked Sendable {
         continuation?.finish()
     }
 
-    /// `index` 番目に始めた検索のストリームへバッチを流す
+    /// Sends a batch to the search stream started at `index`.
     func send(_ batch: [MediaFile], to index: Int) {
         let continuation = lock.withLock { continuations[index] }
         continuation.yield(batch)

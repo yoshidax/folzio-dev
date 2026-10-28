@@ -51,7 +51,7 @@ struct NameValidationTests {
         #expect(validateNewName("album.2024", for: folder, existingNames: [], isDirectory: true) == .ok)
         let dotted = URL(fileURLWithPath: "/tmp/photos.old", isDirectory: true)
         #expect(validateNewName("photos", for: dotted, existingNames: [], isDirectory: true) == .ok)
-        // isDirectory を省略したファイルは従来どおり
+        // Files that omit isDirectory behave as before.
         #expect(validateNewName("a.png", for: file, existingNames: existingNames) == .needsExtensionChangeConfirmation)
     }
 
@@ -64,7 +64,7 @@ struct NameValidationTests {
         }
     }
 
-    // MARK: パッケージになる名前（EC-53・EC-14）
+    // MARK: Names That Become Packages (EC-53, EC-14)
 
     @Test("フォルダをパッケージになる名前に変えようとすると拒否する")
     func folderRejectsPackageName() {

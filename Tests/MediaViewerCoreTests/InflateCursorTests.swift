@@ -81,7 +81,7 @@ struct InflateCursorTests {
         let cursor = makeCursor(fixture)
         #expect(cursor.position == 0)
         if chunk == 1 {
-            // 1 バイトずつは遅いので先頭だけ確かめる
+            // Checking every byte is slow, so verify only the beginning.
             #expect(try read(cursor, length: 2000) == fixture.content.prefix(2000))
             #expect(cursor.position == 2000)
         } else {
@@ -143,7 +143,7 @@ struct InflateCursorTests {
         #expect(cursor.position == 1234)
         #expect(try read(cursor, length: 100) == fixture.content[1234..<1334])
 
-        // 終わりまで読んだ後でも reset で読み直せる
+        // reset can read again even after reaching the end.
         _ = try readAll(cursor, chunk: 65_536)
         cursor.reset()
         #expect(try readAll(cursor, chunk: 65_536) == fixture.content)

@@ -178,7 +178,7 @@ struct FileSystemWatcherTests {
         await stopCollector(collector)
     }
 
-    // MARK: - subtrees（検索結果の整理、R38）
+    // MARK: - subtrees (Search Result Pruning, R38)
 
     @Test("subtrees は配下のすべての階層の変更を、変更のあったパスの親フォルダとして流す")
     func subtreeDeliversDeepChanges() async throws {
@@ -364,9 +364,9 @@ struct FileSystemWatcherTests {
         await stopCollector(privateCollector)
     }
 
-    // MARK: - ディスクリプタの使用量（bug: fsevents-watchroot-fd-exhaustion）
+    // MARK: - Descriptor Usage (bug: fsevents-watchroot-fd-exhaustion)
 
-    /// プロセスが開いているファイルディスクリプタの数
+    /// Number of file descriptors open in the process.
     private func openDescriptorCount() -> Int {
         (try? FileManager.default.contentsOfDirectory(atPath: "/dev/fd").count) ?? 0
     }
@@ -383,14 +383,15 @@ struct FileSystemWatcherTests {
 
         let watcher = FileSystemWatcher()
         let before = openDescriptorCount()
-        // ツリーの選択・展開のたびの作り直しと同じく、集合を変えながら作り直す
+        // Rebuild while changing the set, as when the tree is rebuilt on every selection or expansion.
         for round in 0..<4 {
             watcher.watch(Set(folders.dropLast(round)), subtrees: [])
         }
         let increase = openDescriptorCount() - before
         watcher.watch([], subtrees: [])
 
-        // GUI アプリの上限は 256。WatchRoot を付けると 100 フォルダで 1,000 を超える。ほかのテストが同時に開く分の余裕を見る
+        // The GUI app limit is 256. WatchRoot would exceed 1,000 with 100 folders. Allow headroom for descriptors
+        // opened by other tests.
         #expect(increase < 100, "100 フォルダの監視で開いたディスクリプタ: +\(increase)")
     }
 
@@ -407,7 +408,7 @@ struct FileSystemWatcherTests {
         let watcher = FileSystemWatcher()
         let before = openDescriptorCount()
         watcher.watch(Set(folders), subtrees: [root])
-        // folders だけを変えても、subtrees 側のストリームは作り直さない
+        // Changing only folders does not rebuild the subtrees stream.
         watcher.watch(Set(folders.dropLast()), subtrees: [root])
         let increase = openDescriptorCount() - before
         watcher.watch([], subtrees: [])
@@ -428,7 +429,7 @@ struct FileSystemWatcherTests {
             return (watcher, recorder, collector)
         }
 
-        // 削除
+        // Deletion
         let removed = base.appendingPathComponent("removed", isDirectory: true)
         try fileManager.createDirectory(at: removed.appendingPathComponent("a"), withIntermediateDirectories: true)
         try await Task.sleep(for: .milliseconds(200))
@@ -440,7 +441,7 @@ struct FileSystemWatcherTests {
         await stopCollector(c1)
         _ = w1
 
-        // 名前の変更
+        // Rename
         let renamed = base.appendingPathComponent("renamed", isDirectory: true)
         try fileManager.createDirectory(at: renamed, withIntermediateDirectories: true)
         try await Task.sleep(for: .milliseconds(200))
@@ -452,7 +453,7 @@ struct FileSystemWatcherTests {
         await stopCollector(c2)
         _ = w2
 
-        // 親フォルダの名前の変更
+        // Parent folder rename
         let parent = base.appendingPathComponent("parent", isDirectory: true)
         let child = parent.appendingPathComponent("child", isDirectory: true)
         try fileManager.createDirectory(at: child, withIntermediateDirectories: true)
@@ -465,7 +466,7 @@ struct FileSystemWatcherTests {
         await stopCollector(c3)
         _ = w3
 
-        // folders だけのときは、そのフォルダ自身の削除を流さない
+        // With folders only, do not emit deletion of the folder itself.
         let plain = base.appendingPathComponent("plain", isDirectory: true)
         let plainA = plain.appendingPathComponent("a", isDirectory: true)
         try fileManager.createDirectory(at: plainA, withIntermediateDirectories: true)
@@ -562,7 +563,7 @@ private actor EventRecorder {
         events
     }
 
-    /// `folder` を含むイベントが届いた時刻
+    /// Times at which events containing `folder` arrived.
     func instants(containing folder: URL) -> [ContinuousClock.Instant] {
         let target = folder.standardizedFileURL
         return zip(events, times).filter { event, _ in
@@ -570,13 +571,13 @@ private actor EventRecorder {
         }.map(\.1)
     }
 
-    /// `after` 番目以降のイベントに `folder` が含まれるまで待つ
+    /// Waits until an event at or after `after` contains `folder`.
     func waitForFolder(_ folder: URL, after index: Int = 0, timeout: Duration = .seconds(3)) async -> Bool {
         let target = folder.standardizedFileURL
         return await waitFor(after: index, timeout: timeout) { $0.standardizedFileURL == target }
     }
 
-    /// パスの文字列が `path` と一致する URL が流れるまで待つ（パスの形も比べる）
+    /// Waits until a URL whose path string equals `path` is emitted (also compares the path form).
     func waitForPath(_ path: String, timeout: Duration = .seconds(3)) async -> Bool {
         await waitFor(after: 0, timeout: timeout) { $0.path == path }
     }

@@ -4,7 +4,8 @@ import Testing
 @testable import FixtureKit
 @testable import MediaViewerCore
 
-/// `VideoFixtures` は書き出しの間スレッドをブロックする。並列に走らせると協調スレッドを使い切って止まるため、直列にする
+/// `VideoFixtures` blocks its thread while writing. Running in parallel can exhaust the cooperative thread pool
+/// and hang, so run serially.
 @Suite("ArchiveAssetLoader", .serialized)
 struct ArchiveAssetLoaderTests {
     struct Case: Sendable, CustomTestStringConvertible {
@@ -14,7 +15,7 @@ struct ArchiveAssetLoaderTests {
         var testDescription: String { "\(name) (\(methodLabel))" }
     }
 
-    /// mp4 と mov（再生用の情報が末尾）を、無圧縮と deflate で格納する 4 通り
+    /// Four combinations: mp4 and mov (with playback metadata at the end), each stored or deflated.
     private static let cases: [Case] = [
         Case(name: "clip.mp4", method: .stored, methodLabel: "stored"),
         Case(name: "clip.mp4", method: .deflated, methodLabel: "deflated"),
@@ -34,7 +35,8 @@ struct ArchiveAssetLoaderTests {
         return directory
     }
 
-    /// 動画を作って zip に格納する。mov・mp4 とも fastStart: false（再生用の情報が末尾）
+    /// Creates a video and stores it in a zip. Uses fastStart: false for both mov and mp4 (playback metadata at the
+    /// end).
     private func prepare(_ testCase: Case, in directory: URL) throws -> Prepared {
         let original = directory.appendingPathComponent(testCase.name)
         if testCase.name.hasSuffix(".mov") {
@@ -94,7 +96,7 @@ struct ArchiveAssetLoaderTests {
         let prepared = try prepare(testCase, in: directory)
         let url = ArchiveURL.entry(archive: prepared.zip, path: testCase.name)
 
-        // reader も読み込み器もこの関数の中で手放し、asset だけを返す
+        // Release the reader and loader inside this function and return only the asset.
         let asset: AVURLAsset = try await {
             let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
             _ = try await reader.open(prepared.zip)

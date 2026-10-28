@@ -22,7 +22,8 @@ struct VideoPlaybackSeekTargetTests {
     }
 }
 
-/// `VideoFixtures` は書き出しの間スレッドをブロックする。並列に走らせると協調スレッドを使い切って止まるため、直列にする
+/// `VideoFixtures` blocks its thread while writing. Running in parallel can exhaust the cooperative thread pool
+/// and hang, so run serially.
 @Suite("VideoPlayback", .serialized)
 @MainActor
 struct VideoPlaybackTests {
@@ -42,8 +43,8 @@ struct VideoPlaybackTests {
         #expect(player.currentItem?.status == .readyToPlay)
     }
 
-    /// bug: preview-skip-forward-frame-freeze。終端を越えるシークで別のアイテムへ切り替わらず、
-    /// 同じアイテムの先頭から再生を続ける
+    /// bug: preview-skip-forward-frame-freeze. Seeking past the end continues playing from the start of the same
+    /// item instead of switching to another item.
     @Test("ループ再生で終端を越えてシークすると、同じアイテムの先頭から再生を続ける")
     func loopSeekPastEndKeepsItem() async throws {
         let (directory, video) = try makeVideo(seconds: 2)
@@ -58,7 +59,7 @@ struct VideoPlaybackTests {
 
         player.play()
         try await Task.sleep(for: .milliseconds(300))
-        // AVPlayerView の「15 秒進む」と同じく、丸めずに長さを越えた位置へシークする
+        // Seek past the duration without rounding, as AVPlayerView's "Skip Forward 15 Seconds" does.
         await player.seek(to: CMTime(seconds: 17, preferredTimescale: 600))
         try await Task.sleep(for: .milliseconds(700))
 
@@ -110,8 +111,8 @@ struct VideoPlaybackTests {
         #expect(player.currentTime().seconds > 1.9)
     }
 
-    /// bug: slideshow-video-routing-context-crash。動画を切り替えるたびに AVPlayer を作り直すと、
-    /// スライドショーで routing context の生成と破棄が繰り返され、CoreMedia 内部の競合で落ちる
+    /// bug: slideshow-video-routing-context-crash. Recreating AVPlayer on every video switch repeatedly creates and
+    /// destroys routing contexts during the slideshow, crashing due to a CoreMedia internal race.
     @Test("動画を載せ替えても AVPlayer は同じインスタンスを使い続ける")
     func reusesPlayerAcrossLoads() async throws {
         let (directory, video) = try makeVideo(seconds: 2)
@@ -150,7 +151,7 @@ struct VideoPlaybackTests {
         try await waitUntilReady(player)
         await player.seek(to: CMTime(seconds: 1, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
 
-        // 前のアイテムのループ監視が残っていれば、ここで新しいアイテムが先頭へ戻る
+        // If the previous item's loop observer remains, the new item seeks back to the start here.
         NotificationCenter.default.post(name: AVPlayerItem.didPlayToEndTimeNotification, object: first)
         try await Task.sleep(for: .milliseconds(300))
         #expect(player.currentTime().seconds > 0.9)

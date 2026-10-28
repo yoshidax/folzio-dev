@@ -275,7 +275,7 @@ struct BrowserModelHistoryTests {
         #expect(isEmptyPreview(env.model.preview))
 
         if case .missing = await env.model.resolveHistoryLocation(HistoryLocation(folder: env.url("Missing"))) {
-            // 期待どおり
+            // Expected.
         } else {
             Issue.record("存在しないフォルダが missing になっていません")
         }
@@ -322,7 +322,7 @@ struct BrowserModelHistoryTests {
         #expect(env.model.selection.focused == photo.url)
 
         if case .missing = await env.model.resolveHistoryLocation(missing) {
-            // 期待どおり
+            // Expected.
         } else {
             Issue.record("zip にないディレクトリが missing になっていません")
         }

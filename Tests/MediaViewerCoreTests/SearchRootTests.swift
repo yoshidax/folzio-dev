@@ -63,7 +63,7 @@ struct SearchRootTests {
         #expect(await SearchRoot.validate(root.appendingPathComponent("Viewer.app")) == .failure(.notAFolder))
 
         try fileManager.setAttributes([.posixPermissions: 0o000], ofItemAtPath: denied.path)
-        // root で実行されていて開けてしまう場合は飛ばす
+        // Skip when running as root and the folder is readable.
         if let directory = opendir(denied.path) {
             closedir(directory)
         } else {

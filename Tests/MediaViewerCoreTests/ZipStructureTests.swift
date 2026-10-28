@@ -29,7 +29,7 @@ struct ZipStructureTests {
         ZipFixtureEntry(name: name, content: .bytes(Data(text.utf8)))
     }
 
-    // MARK: - 終端レコード
+    // MARK: - End Record
 
     @Test("コメントなしの終端レコードが見つかる")
     func findsEndRecordWithoutComment() throws {
@@ -110,7 +110,7 @@ struct ZipStructureTests {
         #expect(throws: ArchiveError.notAZip) { try endRecord(of: oversized) }
     }
 
-    // MARK: - 中央ディレクトリ
+    // MARK: - Central Directory
 
     @Test("中央ディレクトリの項目が書いた値と一致する")
     func parsesCentralDirectory() throws {
@@ -161,7 +161,7 @@ struct ZipStructureTests {
         #expect(third.nameBytes == Data("dir/".utf8))
         #expect(third.uncompressedSize == 0)
 
-        // 先頭のローカルヘッダの署名
+        // Signature of the first local header.
         #expect(Array(data[Int(second.localHeaderOffset)..<Int(second.localHeaderOffset) + 4]) == [0x50, 0x4B, 0x03, 0x04])
     }
 
@@ -180,7 +180,7 @@ struct ZipStructureTests {
         #expect(parsed[1].compressedSize == 5000)
         #expect(parsed[0].crc32 == CRC32.checksum(content))
 
-        // ローカルヘッダのサイズは 0 だが、データの開始位置は求められる
+        // The local header size is 0, but the data start offset can still be computed.
         let offset = parsed[1].localHeaderOffset
         let header = Data(data[Int(offset)..<Int(offset) + 30])
         let start = try ZipStructure.dataOffset(localHeader: header, localHeaderOffset: offset)
@@ -242,27 +242,27 @@ struct ZipStructureTests {
         let end = try endRecord(of: data)
         let directory = slice(data, offset: end.location.offset, length: end.location.size)
 
-        // 項目数が実際より多い
+        // Entry count is larger than actual.
         #expect(throws: ArchiveError.notAZip) {
             try ZipStructure.centralDirectoryEntries(directory, count: 3)
         }
-        // 非常に大きな項目数
+        // Very large entry count.
         #expect(throws: ArchiveError.notAZip) {
             try ZipStructure.centralDirectoryEntries(directory, count: UInt64.max)
         }
-        // どの位置で切れても落ちない
+        // Does not crash when truncated at any position.
         for length in 0..<directory.count {
             #expect(throws: ArchiveError.notAZip) {
                 try ZipStructure.centralDirectoryEntries(Data(directory.prefix(length)), count: 2)
             }
         }
-        // 署名の破損
+        // Corrupted signature.
         var broken = directory
         broken[0] = 0
         #expect(throws: ArchiveError.notAZip) {
             try ZipStructure.centralDirectoryEntries(broken, count: 2)
         }
-        // 名前の長さが全体を超える
+        // Name length exceeds the whole data.
         var longName = directory
         longName[28] = 0xFF
         longName[29] = 0xFF
@@ -271,7 +271,7 @@ struct ZipStructureTests {
         }
     }
 
-    // MARK: - ローカルヘッダ
+    // MARK: - Local Header
 
     @Test("データの開始位置は、ローカルヘッダの名前と拡張フィールドの長さから求める")
     func dataOffsetUsesLocalHeader() throws {
@@ -313,7 +313,7 @@ struct ZipStructureTests {
             let directory = slice(data, offset: location.offset, length: location.size)
             return try ZipStructure.centralDirectoryEntries(directory, count: location.entryCount)[0]
         }()
-        // 中央ディレクトリの拡張は 28 バイト、ローカルは 20 バイト
+        // The central directory extra field is 28 bytes; the local one is 20 bytes.
         #expect(entry.extraField.count == 28)
         let header = Data(data[0..<30])
         let start = try ZipStructure.dataOffset(localHeader: header, localHeaderOffset: 0)
@@ -334,7 +334,7 @@ struct ZipStructureTests {
         }
     }
 
-    // MARK: - 日時
+    // MARK: - Dates
 
     @Test("0x5455 の更新時刻があればそれを使い、なければ DOS 日時を現地時刻として読む")
     func modificationDates() throws {
@@ -346,7 +346,7 @@ struct ZipStructureTests {
                 == Date(timeIntervalSince1970: 1_650_000_002)
         )
 
-        // 2023-11-14 22:13:20（偶数秒）を現地時刻で DOS 日時にする
+        // Convert 2023-11-14 22:13:20 (even seconds) to DOS date and time in local time.
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone.current
         let expected = try #require(
@@ -356,13 +356,13 @@ struct ZipStructureTests {
         let dosTime = UInt16(22 << 11 | 13 << 5 | 20 / 2)
         #expect(ZipStructure.modificationDate(dosDate: dosDate, dosTime: dosTime, extra: Data()) == expected)
 
-        // 拡張フィールドに 0x5455 がない場合や壊れている場合も DOS 日時
+        // Use the DOS date and time when the 0x5455 extended field is absent or damaged.
         let other = Data([0x01, 0x00, 0x02, 0x00, 0xAA, 0xBB])
         #expect(ZipStructure.modificationDate(dosDate: dosDate, dosTime: dosTime, extra: other) == expected)
         let truncated = Data([0x55, 0x54, 0x09, 0x00, 0x01])
         #expect(ZipStructure.modificationDate(dosDate: dosDate, dosTime: dosTime, extra: truncated) == expected)
 
-        // 日付として成り立たない DOS 日時は nil
+        // Returns nil for DOS date and time values that are not valid dates.
         #expect(ZipStructure.modificationDate(dosDate: 0, dosTime: 0, extra: Data()) == nil)
     }
 

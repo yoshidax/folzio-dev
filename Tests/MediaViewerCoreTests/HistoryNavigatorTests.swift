@@ -697,9 +697,9 @@ struct HistoryNavigatorTests {
         #expect(name(env.navigator) == "B")
     }
 
-    // MARK: - 検索結果からフォルダを開く（FR-113・140、EC-99・EC-100）
+    // MARK: - Opening Folders from Search Results (FR-113, 140; EC-99, EC-100)
 
-    /// 検索結果にフォルダの行が現れるまで待ち、その URL を返す
+    /// Waits until a folder row appears in search results and returns its URL.
     private func waitForSearchRow(_ env: Env, name: String) async -> URL? {
         let deadline = ContinuousClock.now + .seconds(5)
         while ContinuousClock.now < deadline {
@@ -729,7 +729,7 @@ struct HistoryNavigatorTests {
         #expect(name(env.navigator) == "B")
         #expect(env.navigator.history.count == 2)
         #expect(env.navigator.history.current?.viewState.presentation.displayMode == .thumbnails)
-        // 検索前の場所にも、検索を終えた時点の表示の状態が入る
+        // The pre-search location also receives the presentation state at the end of the search.
         #expect(env.navigator.history.backEntries.last?.viewState.presentation.displayMode == .thumbnails)
         #expect(env.navigator.canGoForward == false)
 
@@ -758,7 +758,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.current?.viewState.presentation.displayMode == .thumbnails)
         #expect(env.navigator.canGoBack == false)
 
-        // 前に履歴がある場合は、戻ると検索前の場所より前へ移る
+        // When there is earlier history, going back moves before the pre-search location.
         await env.select("B")
         await env.select("A")
         env.model.startSearch(pattern, root: env.root)
@@ -766,7 +766,7 @@ struct HistoryNavigatorTests {
         await env.model.openItem(again)
         await env.waitForListing()
 
-        // A・B・A の3件から変えず、検索結果から開いた A は同じ場所として記録しない
+        // Keep the three entries A, B, A; opening A from search results does not record it as a separate location.
         #expect(env.navigator.history.count == 3)
         #expect(env.navigator.history.current?.location.folder.lastPathComponent == "A")
         await env.goBack()
@@ -781,7 +781,7 @@ struct HistoryNavigatorTests {
         await env.select("A")
         await env.openZip("z1.zip")
         await env.openArchiveDirectory("sub")
-        // A・zip の最上位・zip の中の sub
+        // A, the zip root, and sub inside the zip.
         #expect(env.navigator.history.count == 3)
         #expect(env.navigator.history.current?.location.archive?.directory == "sub/")
 
@@ -791,7 +791,7 @@ struct HistoryNavigatorTests {
         await env.model.openItem(row)
         await env.waitForListing()
 
-        // zip の中の履歴の次に記録し、zip を含むフォルダ A を重複して挟まない
+        // Record after the history inside the zip and do not insert a duplicate folder A containing the zip.
         #expect(env.navigator.history.count == 4)
         #expect(name(env.navigator) == "B")
         #expect(env.navigator.history.backEntries.last?.location.archive?.directory == "sub/")
@@ -838,13 +838,13 @@ struct HistoryNavigatorTests {
         await env.model.selectFolder(a)
         #expect(env.navigator.history.count == 1)
 
-        // A の祖先 P が行になるよう、P の親を起点にする
+        // Use P's parent as the root so A's ancestor P becomes a row.
         let pattern = try #require(SearchPattern(keyword: "P"))
         env.model.startSearch(pattern, root: env.url("Outer"))
         let row = try #require(await waitForSearchRow(env, name: "P"))
         try await Task.sleep(for: .milliseconds(100))
 
-        // `FileOperationCoordinator.trash` と同じ順に呼ぶ
+        // Call in the same order as `FileOperationCoordinator.trash`.
         try FileManager.default.removeItem(at: parent)
         env.navigator.didRemoveItems([parent])
         #expect(await env.model.leaveTrashedFolders([parent], origin: .fileList) == false)
@@ -853,7 +853,7 @@ struct HistoryNavigatorTests {
         #expect(env.model.listing.files.isEmpty)
         #expect(path(row) == path(parent))
 
-        // ⌘[ で検索結果の表示を終える。検索前のフォルダはもうないため、現在の履歴を残さない
+        // End search results with ⌘[. Do not keep the current entry because the pre-search folder no longer exists.
         await env.goBack()
         #expect(!env.model.isShowingSearchResults)
         #expect(env.navigator.history.current == nil)

@@ -69,7 +69,7 @@ struct ThumbnailProviderTests {
         }
     }
 
-    // MARK: - zip の中の画像
+    // MARK: - Images Inside a Zip
 
     @Test("zip の中の PNG は QuickLook を使わず縮小画像が返る", .timeLimit(.minutes(1)))
     func generatesThumbnailForImageInsideZip() async throws {
@@ -87,7 +87,7 @@ struct ThumbnailProviderTests {
         #expect(max(thumbnail.width, thumbnail.height) == 128)
         #expect(thumbnail.width > thumbnail.height)
 
-        // 2 回目はキャッシュから返る（同じ CGImage）
+        // The second call returns from the cache (the same CGImage).
         let again = await provider.thumbnail(for: url, pointSize: 50, scale: 2)
         #expect(again === thumbnail)
     }
@@ -122,7 +122,8 @@ struct ThumbnailProviderTests {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
 
-        // VideoFixtures は書き出しの間スレッドを塞ぐので、並列に走るテストと重ならないよう 1 本にまとめる
+        // VideoFixtures blocks its thread while writing, so combine into one test to avoid overlap with parallel
+        // tests.
         let video = root.appendingPathComponent("clip.mp4")
         try VideoFixtures.mp4(at: video, fastStart: false)
         let zip = try makeZip(in: root, entries: [
@@ -223,7 +224,7 @@ struct ThumbnailProviderTests {
     }
 }
 
-/// `data(for:)` が一定時間かかり、同時実行数を記録する読み取り器
+/// Reader whose `data(for:)` takes a fixed time and records concurrency.
 private final class SlowArchiveReader: ArchiveReading, @unchecked Sendable {
     struct Snapshot {
         var running = 0

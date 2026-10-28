@@ -199,7 +199,7 @@ struct DirectoryListerTests {
         let creationDate = try #require(listed.creationDate)
         let row = DirectoryLister.folderRow(at: sub, creationDate: creationDate, kindNames: FixtureKit.kindNames)
 
-        // contentsOfDirectory は起点の /var を /private/var に解決するため、標準化したパスで比べる
+        // contentsOfDirectory resolves the root's /var to /private/var, so compare standardized paths.
         #expect(row.url.standardizedFileURL == listed.url.standardizedFileURL)
         #expect(row.name == listed.name)
         #expect(row.kind == .folder)

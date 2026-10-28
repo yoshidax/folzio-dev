@@ -348,9 +348,9 @@ struct FileOperationServiceTests {
                 #expect(FileManager.default.fileExists(atPath: source.path))
     }
 
-    // MARK: - フォルダ（FR-018・076）
+    // MARK: - Folders (FR-018, 076)
 
-    /// `ops/album/`（`a.jpg`・`inner/`）に、配下の `inner/b.jpg` を足したもの
+    /// `ops/album/` (`a.jpg`, `inner/`) plus `inner/b.jpg` under it.
     private func makeAlbum(in folder: URL) throws -> URL {
         let album = folder.appendingPathComponent("album", isDirectory: true)
         try ImageFixtures.jpeg(at: album.appendingPathComponent("inner/b.jpg"), width: 8, height: 8)

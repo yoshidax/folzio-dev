@@ -6,9 +6,9 @@ import Testing
 @Suite("BrowserModel のフォルダ")
 @MainActor
 struct BrowserModelFolderTests {
-    // MARK: - フィクスチャ
+    // MARK: - Fixtures
 
-    /// 一時フォルダ `root`。`cover.jpg`・`trip/day1/1.jpg`・`trip/day2/`・`empty/`・`only/inner/` を持つ
+    /// Temporary folder `root`. Contains `cover.jpg`, `trip/day1/1.jpg`, `trip/day2/`, `empty/`, and `only/inner/`.
     private struct Env {
         let root: URL
         let defaults: UserDefaults
@@ -19,14 +19,14 @@ struct BrowserModelFolderTests {
             root.appendingPathComponent(path, isDirectory: true)
         }
 
-        /// 一覧の行のうち、パスが `path` のもの
+        /// Row in the listing whose path is `path`.
         @MainActor
         func row(_ path: String) -> MediaFile? {
             let target = url(path).standardizedFileURL.path
             return model.listing.files.first { $0.url.standardizedFileURL.path == target }
         }
 
-        /// 保存された最後のフォルダ（FR-003）
+        /// Last saved folder (FR-003).
         var lastFolder: URL? {
             SettingsStore(defaults: defaults).viewSettings.lastFolder
         }
@@ -37,7 +37,7 @@ struct BrowserModelFolderTests {
         }
     }
 
-    /// `DirectoryLister` は `/private/var/...` の URL を返すため、同じ表記の一時フォルダを作る
+    /// `DirectoryLister` returns `/private/var/...` URLs, so create the temporary folder with the same form.
     private func makeEnv(roots: [String] = [""]) throws -> Env {
         var root = FileManager.default.temporaryDirectory
             .appendingPathComponent("BrowserModelFolderTests-\(UUID().uuidString)", isDirectory: true)
@@ -81,7 +81,7 @@ struct BrowserModelFolderTests {
         try FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: url.path)
     }
 
-    // MARK: - フォルダの行と ..
+    // MARK: - Folder Rows and ..
 
     @Test("種類名を切り替えてもフォルダと選択を保持し、後続の列挙にも新しい名前を使う")
     func changingKindNamesPreservesSelectionAndUpdatesFutureListings() async throws {
@@ -160,14 +160,14 @@ struct BrowserModelFolderTests {
         #expect((env.model.treeSyncRequest?.id ?? 0) > idBeforeUp)
         #expect(path(env.lastFolder) == path(env.url("trip")))
 
-        // .. の行を開いても同じ結果になる
+        // Opening the `..` row gives the same result.
         await env.model.openItem(day1.url)
         let parent = try #require(env.model.listing.files.first { $0.kind == .parent })
         await env.model.openItem(parent.url)
         #expect(path(env.model.listing.folder) == path(env.url("trip")))
         #expect(env.model.selection.focused == env.row("trip/day1")?.url)
 
-        // もう一度戻るとルートで、trip が選ばれ、.. はない
+        // Going back again reaches the root, where trip is selected and there is no `..`.
         await env.model.goToEnclosingLevel()
         #expect(path(env.model.listing.folder) == path(env.root))
         #expect(env.model.selection.focused == env.row("trip")?.url)
@@ -204,7 +204,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.listing.files.map(\.name) == ["day1", "day2"])
     }
 
-    // MARK: - 空の判定（FR-060）と種類フィルタ
+    // MARK: - Empty Detection (FR-060) and Media Type Filter
 
     @Test("空のフォルダは .. だけで .empty、フォルダだけのフォルダは .loaded")
     func emptyStates() async throws {
@@ -235,7 +235,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.listing.state == .noMatches)
     }
 
-    // MARK: - 読めないフォルダ（FR-077）
+    // MARK: - Unreadable Folders (FR-077)
 
     @Test("権限のないフォルダへ入ると .. だけが残り、.. で戻れる")
     func deniedFolderKeepsParentRow() async throws {
@@ -268,7 +268,8 @@ struct BrowserModelFolderTests {
             env.cleanup()
         }
 
-        // standardizedFileURL は存在するパスだけ先頭の /private を外すため、存在しないフォルダは外した表記で作る
+        // standardizedFileURL removes leading /private only for existing paths, so create the missing folder
+        // without it.
         let missing = env.root.standardizedFileURL.appendingPathComponent("missing", isDirectory: true)
         await env.model.selectFolder(missing)
         if case .failed = env.model.listing.state {} else {
@@ -298,7 +299,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.listing.files.isEmpty)
     }
 
-    // MARK: - プレビュー・操作の対象
+    // MARK: - Preview and Operation Targets
 
     @Test("フォルダの行を選ぶとプレビューは空になり、再生中の動画は止まる")
     func selectingFolderClearsPreview() async throws {
@@ -339,7 +340,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.operableSelection.isEmpty)
     }
 
-    // MARK: - 同期の依頼を出さない経路
+    // MARK: - Paths That Do Not Emit Synchronization Requests
 
     @Test("zip の中の移動では同期の依頼と lastFolder が変わらない")
     func archiveNavigationDoesNotRequestTreeSync() async throws {
@@ -375,7 +376,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.treeSyncRequest == nil)
     }
 
-    // MARK: - ゴミ箱に入れたフォルダから出る（FR-079）
+    // MARK: - Leaving Trashed Folders (FR-079)
 
     @Test("表示中のフォルダ自身を消すと、親の一覧になり、選択とプレビューが空で、同期の依頼が増える")
     func leavingTrashedShowingFolder() async throws {
@@ -501,7 +502,7 @@ struct BrowserModelFolderTests {
         #expect(path(env.model.listing.folder) == path(env.root))
     }
 
-    // MARK: - フォルダの名前の変更（FR-104、R62）
+    // MARK: - Folder Renames (FR-104, R62)
 
     private func isImagePreview(_ preview: PreviewContent) -> Bool {
         if case .image = preview { return true }
@@ -517,7 +518,7 @@ struct BrowserModelFolderTests {
         return condition()
     }
 
-    /// `trip/day1` を表示して `1.jpg` をプレビューした状態にする
+    /// Shows `trip/day1` with `1.jpg` previewed.
     private func showDay1Photo(_ env: Env) async throws -> URL {
         await env.model.selectFolder(env.url("trip/day1"))
         let photo = try #require(env.row("trip/day1/1.jpg")).url
@@ -552,7 +553,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.stopPlaybackSignal == signal)
         #expect(path(env.lastFolder) == path(env.url("trip2/day1")))
 
-        // ⌘↑ は新しい名前のフォルダへ戻る（US1-AS40）
+        // ⌘↑ returns to the folder under its new name (US1-AS40).
         await env.model.goToEnclosingLevel()
         #expect(path(env.model.listing.folder) == path(env.url("trip2")))
     }

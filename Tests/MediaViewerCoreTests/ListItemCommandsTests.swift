@@ -5,7 +5,7 @@ import Testing
 struct ListItemCommandsTests {
     private static let allKinds: [ListItemKind] = [.media(.jpeg), .media(.mp4), .archive, .folder, .directory, .parent]
 
-    // MARK: - 通常のフォルダ（zip の外）
+    // MARK: - Regular Folders (Outside a Zip)
 
     @Test("zip の外のメディアは操作できるが、中へは入れず上へも戻れない")
     func mediaOutsideArchive() {
@@ -86,7 +86,7 @@ struct ListItemCommandsTests {
         }
     }
 
-    // MARK: - zip の中
+    // MARK: - Inside a Zip
 
     @Test("zip の中のメディアは中へ入れず、上へは戻れて、ファイル操作とペーストは不可")
     func mediaInsideArchive() {
@@ -137,7 +137,7 @@ struct ListItemCommandsTests {
         }
     }
 
-    // MARK: - 検索結果（FR-087）
+    // MARK: - Search Results (FR-087)
 
     @Test("検索結果ではペーストと上の階層へが不可で、ほかのファイル操作は通常のフォルダと同じ")
     func searchResults() {
