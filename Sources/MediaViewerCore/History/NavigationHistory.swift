@@ -1,6 +1,7 @@
 import Foundation
 
-/// 履歴の列（FR-107〜FR-111）。記録・移動・分岐・上限・まとめの規則をすべてこの値型に置く（R68）
+/// History sequence (FR-107–111). All recording, navigation, branching, capacity, and consolidation rules live
+/// in this value type (R68).
 public struct NavigationHistory: Sendable {
     public static let capacity = 100
 
@@ -26,7 +27,7 @@ public struct NavigationHistory: Sendable {
     public var canGoBack: Bool { !backEntries.isEmpty }
     public var canGoForward: Bool { !forwardEntries.isEmpty }
 
-    /// 戻る側・現在・進む側を1列に並べたもの（存在の確認に使う）
+    /// Back entries, current, and forward entries in one sequence (used for existence checks)
     public var allEntries: [HistoryEntry] {
         var entries = backEntries
         if let current { entries.append(current) }
@@ -34,7 +35,8 @@ public struct NavigationHistory: Sendable {
         return entries
     }
 
-    /// 操作の後の状態を1件の履歴として記録する。同じ状態なら何もせず false（FR-107・R71）
+    /// Records the state after an operation as one history entry. Does nothing and returns false for the same state
+    /// (FR-107, R71).
     @discardableResult
     public mutating func record(
         location: HistoryLocation,
@@ -83,7 +85,7 @@ public struct NavigationHistory: Sendable {
         }
     }
 
-    /// 見つからなかった候補を取り除く（FR-109・EC-54）
+    /// Removes a candidate that could not be found (FR-109, EC-54).
     public mutating func dropCandidate(_ direction: HistoryDirection) {
         switch direction {
         case .back:
@@ -97,7 +99,7 @@ public struct NavigationHistory: Sendable {
         version += 1
     }
 
-    /// 1つ前・1つ後の履歴へ移る。離れる履歴にフォーカス行を記録する（FR-108）
+    /// Moves to the previous or next history entry. Records the focused row on the entry being left (FR-108).
     @discardableResult
     public mutating func move(_ direction: HistoryDirection, leavingFocus: URL?) -> HistoryEntry? {
         guard let target = candidate(direction) else { return nil }
@@ -123,7 +125,7 @@ public struct NavigationHistory: Sendable {
         return target
     }
 
-    /// 現在の表示の状態を書き換える（検索結果の表示を終えたとき。R76）
+    /// Replaces the current presentation state (when search results end; R76).
     public mutating func updateCurrentViewState(_ viewState: HistoryViewState) {
         guard var entry = current, entry.viewState != viewState else { return }
         entry.viewState = viewState
@@ -133,7 +135,7 @@ public struct NavigationHistory: Sendable {
         version += 1
     }
 
-    /// 現在の場所を置き換える（EC-60）。表示の状態と進む側は変えない
+    /// Replaces the current location (EC-60). Does not change the presentation state or forward entries.
     public mutating func replaceCurrentLocation(_ location: HistoryLocation) {
         guard var entry = current, entry.location != location else { return }
         entry.location = location
@@ -142,7 +144,7 @@ public struct NavigationHistory: Sendable {
         version += 1
     }
 
-    /// 現在を戻る側の末尾へ移して現在を nil にする（EC-62）
+    /// Moves the current entry to the end of the back entries and sets current to nil (EC-62).
     public mutating func detachCurrent() {
         guard let entry = current else { return }
         backEntries.append(entry)
@@ -151,7 +153,7 @@ public struct NavigationHistory: Sendable {
         version += 1
     }
 
-    /// 現在を取り除いて nil にする（EC-65）
+    /// Removes the current entry and sets it to nil (EC-65).
     public mutating func removeCurrent() {
         guard current != nil else { return }
         current = nil
@@ -160,7 +162,7 @@ public struct NavigationHistory: Sendable {
         version += 1
     }
 
-    /// いずれかの `url` 自身か配下を指す履歴を取り除く（FR-109）
+    /// Removes entries at or below any of `urls` (FR-109).
     public mutating func removeEntries(within urls: [URL], keepingCurrent: Bool) {
         guard !urls.isEmpty else { return }
         var changed = false
@@ -185,7 +187,7 @@ public struct NavigationHistory: Sendable {
         }
     }
 
-    /// `allEntries` の位置で指定した履歴を取り除く（外部の変更。現在を含みうる）
+    /// Removes entries at the given `allEntries` positions (external changes; may include the current entry).
     public mutating func removeEntries(at positions: Set<Int>) {
         guard !positions.isEmpty else { return }
         let entries = allEntries
@@ -214,7 +216,8 @@ public struct NavigationHistory: Sendable {
         version += 1
     }
 
-    /// 名前を変えたフォルダの履歴を直す。現在は新しい場所に置き換え、ほかは取り除く（FR-109・R75）
+    /// Updates history for a renamed folder. Replaces the current location with the new one and removes other
+    /// entries (FR-109, R75).
     public mutating func renameFolder(_ renamed: RenamedFolder) {
         var changed = false
 
@@ -241,7 +244,8 @@ public struct NavigationHistory: Sendable {
         version += 1
     }
 
-    /// 隣り合う同じ状態の履歴を1つにする（EC-59）。現在を含む組は現在を、含まなければ新しい方を残す
+    /// Consolidates adjacent entries with the same state (EC-59). Keeps the current entry when the group contains it;
+    /// otherwise keeps the newer entry.
     @discardableResult
     private mutating func consolidate() -> Bool {
         let entries = allEntries

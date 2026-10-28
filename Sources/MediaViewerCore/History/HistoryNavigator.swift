@@ -1,15 +1,16 @@
 import Foundation
 import Observation
 
-/// App が持つ表示の状態（表示形式・サムネイルサイズ・ペインの表示状態）の読み書き（R74）
+/// Reads and writes the presentation state owned by the app (view mode, thumbnail size, and pane layout) (R74).
 @MainActor
 public protocol HistoryPresentationHost: AnyObject {
     var historyPresentation: HistoryPresentation { get }
-    /// 記録せずに表示の状態を戻す。保存の対象（表示形式・サイズ）は保存する（FR-108）
+    /// Restores the presentation state without recording it. Persists the values that are saved (view mode and size)
+    /// (FR-108).
     func applyHistoryPresentation(_ presentation: HistoryPresentation)
 }
 
-/// 戻る・進むの実行と、記録・取り除きの契機をまとめる（R72〜R76）
+/// Coordinates Back/Forward execution and the triggers for recording and removing entries (R72–R76).
 @MainActor
 @Observable
 public final class HistoryNavigator {
@@ -20,22 +21,22 @@ public final class HistoryNavigator {
     @ObservationIgnored private var pendingDirections: [HistoryDirection] = []
     @ObservationIgnored private var processingTask: Task<Void, Never>?
     @ObservationIgnored private var idleWaiters: [CheckedContinuation<Void, Never>] = []
-    /// 直前の `.navigated` で記録する前の履歴。`.notFound` のときに記録を取り消す（R75）
+    /// History before the most recent `.navigated` record. Reverts the record on `.notFound` (R75).
     @ObservationIgnored private var snapshot: NavigationHistory?
     @ObservationIgnored private var snapshotLocation: HistoryLocation?
     @ObservationIgnored private var snapshotVersion: Int?
 
-    /// 検索結果の表示中は、戻る側の履歴がなくても「戻る」を使える（FR-113）
+    /// While search results are shown, Back is available even without back history (FR-113).
     public var canGoBack: Bool {
         model.isShowingSearchResults || history.canGoBack
     }
 
-    /// 検索結果の表示中は「進む」を無効にする（FR-113）
+    /// Disables Forward while search results are shown (FR-113).
     public var canGoForward: Bool {
         !model.isShowingSearchResults && history.canGoForward
     }
 
-    /// `model.onLocationEvent` を自身に設定する
+    /// Sets `model.onLocationEvent` to this instance.
     public init(model: BrowserModel) {
         self.model = model
         model.onLocationEvent = { [weak self] event in
@@ -51,7 +52,7 @@ public final class HistoryNavigator {
         enqueue(.forward)
     }
 
-    /// 要求のキューが空になるまで待つ（テスト用）
+    /// Waits until the request queue is empty (for tests).
     public func waitUntilIdle() async {
         guard processingTask != nil || !pendingDirections.isEmpty else { return }
         await withCheckedContinuation { continuation in
@@ -59,7 +60,7 @@ public final class HistoryNavigator {
         }
     }
 
-    /// 表示の変更を1件の履歴として記録する（FR-107 の（3））
+    /// Records a presentation change as one history entry (FR-107 item 3).
     public func recordViewChange(_ kind: HistoryRecordKind) {
         guard !model.isShowingSearchResults,
               let location = model.historyLocation,
@@ -109,7 +110,7 @@ public final class HistoryNavigator {
         await removeMissingEntries(targets)
     }
 
-    // MARK: - 記録
+    // MARK: - Recording
 
     private func handleLocationEvent(_ event: LocationEvent) {
         switch event {
@@ -137,8 +138,8 @@ public final class HistoryNavigator {
             }
 
         case let .openedSearchResultFolder(leavingFocus):
-            // 検索結果の表示を終えた時点の表示の状態を現在の履歴（検索前の場所）へ反映してから、
-            // 記録の要否を判定する（FR-113・EC-99・EC-100）
+            // Apply the presentation state at the end of search results to the current history entry (the pre-search
+            // location), then decide whether to record (FR-113, EC-99, EC-100).
             guard let location = model.historyLocation,
                   let viewState = currentViewState() else { return }
             history.updateCurrentViewState(viewState)
@@ -196,7 +197,7 @@ public final class HistoryNavigator {
         snapshotVersion = nil
     }
 
-    // MARK: - 戻る・進む
+    // MARK: - Back and Forward
 
     private func enqueue(_ direction: HistoryDirection) {
         pendingDirections.append(direction)
@@ -259,7 +260,7 @@ public final class HistoryNavigator {
         presentationHost?.applyHistoryPresentation(viewState.presentation)
     }
 
-    // MARK: - 存在の確認
+    // MARK: - Existence Checks
 
     private func removeMissingEntries(_ targets: [(Int, URL, Bool)]) async {
         guard !targets.isEmpty else { return }

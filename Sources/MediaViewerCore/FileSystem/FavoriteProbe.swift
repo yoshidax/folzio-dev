@@ -11,7 +11,7 @@ public struct FavoriteProbeResult: Sendable, Equatable {
 }
 
 public enum FavoriteProbe {
-    /// fileExists(atPath:isDirectory:) がディレクトリを返すか。UI スレッドから呼ばない
+    /// Whether `fileExists(atPath:isDirectory:)` reports a directory. Do not call on the UI thread.
     public static func folderExists(_ url: URL) -> Bool {
         var isDirectory: ObjCBool = false
         return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)

@@ -7,9 +7,9 @@ public enum ListingError: Error, Sendable, Equatable {
 }
 
 public protocol DirectoryListing: Sendable {
-    /// 直下のサブフォルダ（kind = .folder。判定は subfolders(of:) と同じで、隠しフォルダ・パッケージは除く）、
-    /// 対応メディアファイル、zip ファイル（.zip、kind = .archive）を返す（隠しファイル・非対応形式は除く。FR-008・068・076）。
-    /// 1回のディレクトリの列挙から作り、並べ替えはしない
+    /// Returns direct subfolders (`.folder`; the same rule as `subfolders(of:)`, excluding hidden folders and
+    /// packages), supported media files, and zip files (`.zip`, `.archive`), excluding hidden files and unsupported
+    /// formats (FR-008, 068, 076). Builds the result from a single directory enumeration and does not sort it.
     func mediaFiles(in folder: URL) async throws(ListingError) -> [MediaFile]
     func subfolders(of folder: URL) async throws(ListingError) -> [URL]
     func hasSubfolders(in folder: URL) async throws(ListingError) -> Bool
@@ -30,7 +30,7 @@ public struct DirectoryLister: DirectoryListing {
         .localizedTypeDescriptionKey,
     ]
 
-    /// メディアの行の値に使うキー（一致したファイルだけ読む検索で使う）
+    /// Keys used for media row values (used by search, which reads only matching files)
     private static let mediaKeys: Set<URLResourceKey> = [
         .creationDateKey,
         .fileSizeKey,
@@ -45,7 +45,7 @@ public struct DirectoryLister: DirectoryListing {
         .localizedNameKey,
     ]
 
-    /// アプリが管理する種類名。Core は日本語の既定値を持たない
+    /// Kind names managed by the app. Core has no Japanese defaults.
     private let kindNames: KindNames
 
     public init(kindNames: KindNames) {
@@ -77,8 +77,8 @@ public struct DirectoryLister: DirectoryListing {
             return urls.compactMap { url -> MediaFile? in
                 let values = try? url.resourceValues(forKeys: Self.fileKeys)
                 if values?.isDirectory == true {
-                    // ツリーと同じく、パッケージ（.app など）はフォルダとして出さない（R29）。
-                    // isPackage の判定は重いため、ディレクトリだけに問い合わせる
+                    // As in the tree, do not show packages (such as .app) as folders (R29).
+                    // isPackage is expensive, so query it only for directories.
                     guard (try? url.resourceValues(forKeys: [.isPackageKey]))?.isPackage != true else { return nil }
                     return Self.folderRow(at: url, creationDate: values?.creationDate, kindNames: kindNames)
                 }
@@ -100,7 +100,8 @@ public struct DirectoryLister: DirectoryListing {
         }
     }
 
-    /// フォルダの行を作る。`FileNameSearcher` と共有し、通常の一覧と検索結果で同じ値にする（FR-139、R1）
+    /// Builds a folder row. Shared with `FileNameSearcher` so listings and search results use the same values
+    /// (FR-139, R1).
     static func folderRow(at url: URL, creationDate: Date?, kindNames: KindNames) -> MediaFile {
         MediaFile(
             url: url,
@@ -113,7 +114,8 @@ public struct DirectoryLister: DirectoryListing {
         )
     }
 
-    /// メディアファイルの行を作る。`FileNameSearcher` と共有し、通常の一覧と検索結果で同じ値にする（R36）
+    /// Builds a media file row. Shared with `FileNameSearcher` so listings and search results use the same values
+    /// (R36).
     static func mediaFile(at url: URL, kind: MediaKind) -> MediaFile? {
         mediaFile(at: url, kind: kind, values: try? url.resourceValues(forKeys: mediaKeys))
     }
@@ -154,8 +156,8 @@ public struct DirectoryLister: DirectoryListing {
         try await run {
             try Self.ensureDirectory(folder)
 
-            // 10,000 件規模のフォルダでも速く終わるよう、readdir の d_type でディレクトリ以外を読み飛ばし、
-            // 隠し属性とパッケージの判定はディレクトリだけに行う。条件は subfolders(of:) と同じ
+            // Finish quickly even for folders with 10,000 items: skip non-directories using d_type from readdir, and
+            // check hidden attributes and packages only for directories. The conditions match subfolders(of:).
             guard let directory = opendir(folder.path) else {
                 throw Self.listingError(errno: errno)
             }
@@ -199,7 +201,7 @@ public struct DirectoryLister: DirectoryListing {
     }
 
     private static func isVisibleSubfolder(_ url: URL) -> Bool {
-        // isPackage の判定は重いため、ディレクトリだけに問い合わせる
+        // isPackage is expensive, so query it only for directories.
         guard (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else { return false }
         return (try? url.resourceValues(forKeys: [.isPackageKey]))?.isPackage != true
     }

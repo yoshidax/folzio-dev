@@ -1,6 +1,6 @@
 import Foundation
 
-/// 履歴の「場所」（FR-108）。ファイルリストに表示していたフォルダと、zip の中の位置の組（R69）
+/// History location (FR-108): the folder shown in the file list and the position inside a zip (R69).
 public struct HistoryLocation: Sendable, Equatable {
     public var folder: URL
     public var archive: ArchiveLocation?
@@ -17,7 +17,7 @@ public struct HistoryLocation: Sendable, Equatable {
                 == rhs.archive.map { HistoryPath.normalized($0.archive.path) }
     }
 
-    /// `url` 自身か配下を指すか。zip の中は zip ファイルの場所で判断する（R73）
+    /// Whether this location is `url` itself or is inside it. For a zip, uses the zip file location (R73).
     public func isWithin(_ url: URL) -> Bool {
         if let archive {
             return HistoryPath.isWithin(archive.archive.path, url.path)
@@ -25,7 +25,7 @@ public struct HistoryLocation: Sendable, Equatable {
         return HistoryPath.isWithin(folder.path, url.path)
     }
 
-    /// 名前を変えたフォルダに関係すれば新しい場所、なければ nil（R69・R75）
+    /// Returns the new location when it relates to a renamed folder; otherwise nil (R69, R75).
     public func rebased(by renamed: RenamedFolder) -> HistoryLocation? {
         let newFolder = renamed.rebase(folder)
         if let archive {
@@ -40,7 +40,7 @@ public struct HistoryLocation: Sendable, Equatable {
     }
 }
 
-/// 履歴の「表示の状態」のうち App が持つ部分（R74）
+/// Part of the history presentation state owned by the app (R74).
 public struct HistoryPresentation: Sendable, Equatable {
     public var displayMode: DisplayMode
     public var thumbnailSize: Double
@@ -53,7 +53,7 @@ public struct HistoryPresentation: Sendable, Equatable {
     }
 }
 
-/// 履歴の「表示の状態」（FR-108）。種類フィルタと zip ファイルの表示は `BrowserModel` が持つ
+/// History presentation state (FR-108). `BrowserModel` owns the media type filter and zip file visibility.
 public struct HistoryViewState: Sendable, Equatable {
     public var presentation: HistoryPresentation
     public var mediaTypeFilter: MediaTypeFilter
@@ -70,7 +70,7 @@ public struct HistoryViewState: Sendable, Equatable {
     }
 }
 
-/// 1件の履歴。`focusedItem` はその履歴から離れたときにフォーカスしていた行（FR-108）
+/// One history entry. `focusedItem` is the row focused when leaving this entry (FR-108).
 public struct HistoryEntry: Sendable, Equatable {
     public var location: HistoryLocation
     public var viewState: HistoryViewState
@@ -82,7 +82,7 @@ public struct HistoryEntry: Sendable, Equatable {
         self.focusedItem = focusedItem
     }
 
-    /// 場所と表示の状態だけを比べる（FR-107 の「同じ状態」、EC-59）
+    /// Compares only the location and presentation state (the "same state" in FR-107; EC-59).
     public func hasSameState(as other: HistoryEntry) -> Bool {
         location == other.location && viewState == other.viewState
     }
@@ -99,7 +99,7 @@ public enum HistoryDirection: Sendable, Equatable {
     case forward
 }
 
-/// `.`・`..` を取り除いたパスで場所を比べる（R69）。`RenamedFolder` と同じ規則
+/// Compares locations using paths with `.` and `..` removed (R69). The same rule as `RenamedFolder`.
 private enum HistoryPath {
     static func normalized(_ path: String) -> String {
         var contiguous = path
