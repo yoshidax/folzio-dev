@@ -15,6 +15,25 @@
 - 実装中に更新する仕様文書は、作業中の feature の `tasks.md` のチェックと、タスクで明示された追記（例: T077 の quickstart）だけにする
 - 進捗は作業中の feature の `tasks.md` を正とする
 
+## コードコメント（英語）
+
+OSS として配布するため、ソースコードのコメントは英語で書きます。日本語のコメントが残っているファイルは、
+コード・識別子・文字列リテラルを変えずにコメントだけを翻訳します。
+
+- doc comment（`///`）は Apple の API ドキュメントの慣例に合わせ、三人称単数・現在形で書く
+  （例: `Inflates ... and returns ...`）。同じコメント内で命令形と三人称を混ぜない
+- Boolean の値・プロパティの説明は `Whether ...` で始める
+- コメントは1行100〜120文字程度で折り返す。長い文は文単位で改行してよい
+- 用語は次に揃える
+  - 展開 / 圧縮: inflate / deflate（`zip` は小文字、`ZIP64` は大文字）
+  - zip の項目: entry
+  - 圧縮データ: compressed data
+  - スレッド安全でない: not thread-safe
+  - 先頭から展開し直す: inflate again from the beginning
+- 型名・関数名・引数名・`FR-*` や `research.md` の R 番号などの ID は翻訳しない
+- 翻訳後もコメントのみの変更でも `swift build` と `swift test` を実行する
+- 基準とする書式の例: `Sources/MediaViewerCore/Archive/InflateCursor.swift`
+
 ## Phase の検証ゲート
 
 まとまった変更・Phase の終わりに、次をこの順で行います。
