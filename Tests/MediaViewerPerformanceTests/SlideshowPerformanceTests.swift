@@ -5,9 +5,9 @@ import FixtureKit
 import Testing
 @testable import MediaViewerCore
 
-// 既存の PerformanceBaseline スイート（.serialized）へ追加する。
-// 別スイートにすると Swift Testing が既存の性能試験と並列実行し、
-// 一時的な CPU 競合で 10〜20 万件の閾値を超えることがあるため。
+// Add to the existing PerformanceBaseline suite (.serialized).
+// A separate suite would make Swift Testing run it in parallel with the existing performance tests, and temporary CPU
+// contention could exceed the 100,000–200,000-item thresholds.
 extension PerformanceBaselineTests {
     @Test("video output 付きのプレーヤーが1秒以内に最初のフレームを返す")
     @MainActor

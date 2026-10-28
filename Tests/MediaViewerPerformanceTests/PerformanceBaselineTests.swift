@@ -133,7 +133,7 @@ struct PerformanceBaselineTests {
     @Test("10,000 ファイルのフォルダへ戻ったときの最初の項目の表示が 1 秒以内")
     @MainActor
     func historyBackToHugeFolderWithinBudget() async throws {
-        // 10,000 ファイルの作成は MainActor の外で行い、並行して走るほかのテストを止めない
+        // Create 10,000 files off the MainActor so concurrent tests are not blocked.
         let directory = try await Task.detached(priority: .userInitiated) {
             let directory = try makeTemporaryDirectory()
             try FixtureSets.huge(in: directory, count: 10_000)
@@ -224,7 +224,7 @@ struct PerformanceBaselineTests {
         let files = try await lister.mediaFiles(in: folder)
         let ordered = sorted(files, by: SortOrder())
 
-        // 準備（10件に1件を zip ファイルの行に置き換える）は計測に含めない
+        // Exclude preparation (replacing one in ten rows with a zip file row) from measurement.
         var mixed = ordered
         for index in mixed.indices where index.isMultiple(of: 10) {
             var archive = mixed[index]
@@ -257,7 +257,7 @@ struct PerformanceBaselineTests {
         try FixtureSets.huge(in: directory, count: 10_000)
         let folder = directory.appendingPathComponent("huge", isDirectory: true)
 
-        // 準備（10件に1件を zip ファイルに置き換える）は計測に含めない
+        // Exclude preparation (replacing one in ten rows with a zip file) from measurement.
         let template = directory.appendingPathComponent("template.zip")
         try ZipFixtureWriter.write([], to: template)
         let fileManager = FileManager.default
@@ -305,7 +305,7 @@ struct PerformanceBaselineTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         try FixtureSets.huge(in: directory, count: 10_000)
-        // 名前を変えるフォルダ自身の行と、ほかのフォルダの行（100 件）を結果に含める（R4・R9）
+        // Include the renamed folder's own row and 100 other folder rows in the results (R4, R9).
         let seeded = directory.appendingPathComponent("huge", isDirectory: true)
         for index in 0 ..< 100 {
             try FileManager.default.createDirectory(
@@ -328,7 +328,7 @@ struct PerformanceBaselineTests {
             settings: SettingsStore(defaults: defaults)
         )
 
-        // 検索を終えるまでと、ディスク上の名前の変更は計測に含めない
+        // Exclude waiting for the search to finish and the on-disk rename from measurement.
         model.startSearch(try #require(SearchPattern(keyword: "img")), root: directory)
         let finished = await waitUntil(timeout: .seconds(30)) { model.listing.search?.phase == .finished }
         #expect(finished, "検索が終わること")
@@ -337,7 +337,7 @@ struct PerformanceBaselineTests {
             "10,101 件 (実際: \(model.listing.search?.totalCount ?? -1))"
         )
         #expect(model.listing.files.filter { $0.kind == .folder }.count == 101, "フォルダの行は 101 件")
-        // 負荷の高いマシンでの外れ値で落ちないよう、名前を行き来して3回測り、中央値で判定する
+        // To avoid outliers on loaded machines, alternate names and measure three times, using the median.
         let names = ["img-huge2", "img-huge", "img-huge2"]
         var current = folder
         var samples: [Duration] = []
@@ -353,7 +353,7 @@ struct PerformanceBaselineTests {
                 .filter(\.kind.isMedia)
                 .allSatisfy { $0.url.deletingLastPathComponent().lastPathComponent == name }
             #expect(mediaMoved, "すべてのメディアの行が新しい場所（\(name)）になること")
-            // 名前を変えたフォルダ自身の行は、新しい URL と名前になる
+            // The renamed folder's own row gets the new URL and name.
             let renamedRow = model.listing.files.first {
                 $0.kind == .folder && $0.url.deletingLastPathComponent().standardizedFileURL == directory.standardizedFileURL
             }
@@ -522,7 +522,7 @@ struct PerformanceBaselineTests {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        // zip の生成時間は計測に含めない
+        // Exclude zip creation time from measurement.
         let zip = try makeLargeZip(in: directory)
 
         let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
@@ -539,8 +539,8 @@ struct PerformanceBaselineTests {
         )
     }
 
-    /// `items(in:)` は zip を開いた後に MainActor の `BrowserModel` から呼ばれる。行は `open` のバックグラウンドで
-    /// 作っておき、ここでは作らない（SC-015 の 100ms 以上の停止 0 回）
+    /// `items(in:)` is called from `BrowserModel` on the MainActor after the zip opens. Rows are built in the
+    /// background by `open` and are not built here (zero stops of 100 ms or more for SC-015).
     @Test("10,000 項目の zip を開いた後の items(in:) が 10ms 以内 (SC-015)")
     func archiveItemsAreReadyAfterOpen() async throws {
         let directory = try makeTemporaryDirectory()
@@ -558,7 +558,7 @@ struct PerformanceBaselineTests {
         #expect(elapsed < .milliseconds(10), "items(in:) は 10ms 以内 (実測: \(elapsed))")
     }
 
-    /// 小さな JPEG（各 1KB、無圧縮）10,000 個の zip
+    /// Zip of 10,000 small JPEGs (1 KB each, stored).
     private func makeLargeZip(in directory: URL) throws -> URL {
         let zip = directory.appendingPathComponent("large.zip")
         let body = Data(repeating: 0xAB, count: 1024)
@@ -578,7 +578,7 @@ struct PerformanceBaselineTests {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        // ゼロ埋め 1GB を deflate で格納する。zip の生成時間は計測に含めない
+        // Store 1 GB of zeros with deflate. Exclude zip creation time from measurement.
         let zip = directory.appendingPathComponent("big-deflated.zip")
         let length: UInt64 = 1 << 30
         try ZipFixtureWriter.write(
@@ -593,7 +593,8 @@ struct PerformanceBaselineTests {
 
         let chunk = 512 * 1024
         let mebibyte: UInt64 = 1 << 20
-        // 先頭から末尾まで 512KB ずつ、続けて 900MB・100MB・10MB の位置（後ろ向き）から各 4MB
+        // Read 512 KB at a time from start to end, then 4 MB each from positions 900 MB, 100 MB, and 10 MB
+        // (backward).
         var plan: [(offset: UInt64, count: Int)] = []
         var position: UInt64 = 0
         while position < length {
@@ -627,7 +628,7 @@ struct PerformanceBaselineTests {
         )
     }
 
-    // MARK: - ファイル名の検索（FR-085・SC-016）
+    // MARK: - File Name Search (FR-085, SC-016)
 
     @Test("10,000 ファイルの階層の検索が 3 秒以内（SC-016）")
     func searchingTenThousandFilesWithinBudget() async throws {
@@ -672,7 +673,7 @@ struct PerformanceBaselineTests {
         try ImageFixtures.jpeg(at: templateURL, width: 8, height: 8)
         let template = try Data(contentsOf: templateURL)
         try FileManager.default.removeItem(at: templateURL)
-        // SC-016 と同じ 100 フォルダ × 100 ファイル。フォルダ名の半数（50 個）がキーワードを含む
+        // The same 100 folders × 100 files as SC-016. Half of the folder names (50) contain the keyword.
         let root = directory.appendingPathComponent("tree", isDirectory: true)
         for folderIndex in 0 ..< 100 {
             let folderName = folderIndex.isMultiple(of: 2)
@@ -707,7 +708,7 @@ struct PerformanceBaselineTests {
 
         #expect(folderCount == 50, "一致するフォルダは 50 件 (実際: \(folderCount))")
         #expect(fileCount == 5_000, "一致するファイルは 5,000 件 (実際: \(fileCount))")
-        // folder-%03d は cat を含まないため、SC-016 の検索（ファイルだけの 5,000 件）は変わらない
+        // folder-%03d does not contain cat, so the SC-016 search (5,000 files only) is unchanged.
         #expect(!matchingFolderNames.contains { $0.hasPrefix("folder-") })
         #expect(elapsed < .seconds(3), "フォルダも照合する 10,000 ファイルの検索は 3 秒以内 (実測: \(elapsed))")
         print("[perf] search 10,000 files with folders: \(elapsed), folders \(folderCount), files \(fileCount)")
@@ -743,7 +744,7 @@ struct PerformanceBaselineTests {
         print("[perf] batch 256 into 50,000: \(elapsed)")
     }
 
-    /// フェイクの検索器で `existing` を流した後、`batch` を流してから一覧の件数が増えるまでの時間
+    /// Time from sending `batch` to the listing count increasing after `existing` from the fake searcher.
     @MainActor
     private func measureBatch(existing: [MediaFile], batch: [MediaFile]) async throws -> Duration {
         let suite = "PerformanceBaselineTests.\(UUID().uuidString)"
@@ -773,7 +774,7 @@ struct PerformanceBaselineTests {
         return elapsed
     }
 
-    /// ディスクを使わない検索結果。`folders` 個のフォルダに分散する
+    /// Search results that do not use the disk. Spread across `folders` folders.
     private func syntheticResults(count: Int, folders: Int, prefix: String, offset: Int = 0) -> [MediaFile] {
         (0..<count).map { index in
             let serial = index + offset
@@ -812,7 +813,7 @@ func selectionIndexTenThousandRows() {
     #expect(elapsed < .milliseconds(100), "選択同期が 100ms 以上止まらないこと")
 }
 
-/// 現在のプロセスの `phys_footprint`（バイト）。
+/// `phys_footprint` of the current process in bytes.
 private func physicalFootprint() -> UInt64 {
     var info = task_vm_info_data_t()
     var count = mach_msg_type_number_t(
@@ -865,7 +866,7 @@ private func waitForCache(
     return await cache.get(url) != nil
 }
 
-/// テストから任意の時点で結果を流す検索器
+/// Searcher that emits results at any time from tests.
 private final class StreamingSearcher: FileNameSearching, @unchecked Sendable {
     private let lock = NSLock()
     private var continuation: AsyncStream<[MediaFile]>.Continuation?
