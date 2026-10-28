@@ -5,7 +5,7 @@ import Testing
 
 @Suite("DirectoryLister")
 struct DirectoryListerTests {
-    @Test("mixed から対応メディアとサブフォルダだけを返す")
+    @Test("Returns only supported media and subfolders from mixed")
     func listsOnlySupportedMedia() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -35,7 +35,7 @@ struct DirectoryListerTests {
         #expect(subfolders.map(\.lastPathComponent) == ["sub"])
     }
 
-    @Test("権限のないフォルダは accessDenied を返す")
+    @Test("A folder without permission returns accessDenied")
     func reportsAccessDenied() async throws {
         let root = try makeTemporaryDirectory()
         defer {
@@ -54,7 +54,7 @@ struct DirectoryListerTests {
         }
     }
 
-    @Test("存在しないパスは notFound を返す")
+    @Test("A nonexistent path returns notFound")
     func reportsNotFound() async {
         let missing = FileManager.default.temporaryDirectory
             .appendingPathComponent("missing-\(UUID().uuidString)", isDirectory: true)
@@ -68,7 +68,7 @@ struct DirectoryListerTests {
         }
     }
 
-    @Test("hasSubfolders は subfolders と同じ条件でサブフォルダの有無を返す", arguments: [
+    @Test("hasSubfolders uses the same inclusion rules as subfolders", arguments: [
         SubfolderFixture.empty,
         .filesOnly,
         .hiddenFolderOnly,
@@ -90,7 +90,7 @@ struct DirectoryListerTests {
         #expect(has == !subfolders.isEmpty)
     }
 
-    @Test("権限のないフォルダの hasSubfolders は accessDenied を返す")
+    @Test("hasSubfolders returns accessDenied for a folder without permission")
     func hasSubfoldersReportsAccessDenied() async throws {
         let root = try makeTemporaryDirectory()
         defer {
@@ -109,7 +109,7 @@ struct DirectoryListerTests {
         await expectListingError(.accessDenied) { try await lister.subfolders(of: root) }
     }
 
-    @Test("存在しないパスとファイルのパスの hasSubfolders は notFound を返す")
+    @Test("hasSubfolders returns notFound for nonexistent paths and file paths")
     func hasSubfoldersReportsNotFound() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -125,7 +125,7 @@ struct DirectoryListerTests {
         }
     }
 
-    @Test("zip ファイルを kind == .archive で返し、zip という名前のディレクトリはフォルダとして返し、隠し zip は返さない")
+    @Test("Returns zip files as .archive, directories named zip as folders, and excludes hidden zip files")
     func listsZipFilesAsArchives() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -152,7 +152,7 @@ struct DirectoryListerTests {
         #expect(files.first { $0.name == "c.jpg" }?.kind == .media(.jpeg))
     }
 
-    @Test("サブフォルダを kind == .folder で返し、隠しフォルダとパッケージは返さない。subfolders と同じフォルダになる")
+    @Test("Returns subfolders as .folder, excludes hidden folders and packages, and matches subfolders")
     func listsSubfoldersAsFolders() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -186,7 +186,7 @@ struct DirectoryListerTests {
         #expect(folderURLs == subfolders)
     }
 
-    @Test("folderRow は mediaFiles のフォルダの行と同じ値を作る（FR-139）")
+    @Test("folderRow produces the same values as folder rows in mediaFiles (FR-139)")
     func folderRowMatchesListedFolder() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -211,7 +211,7 @@ struct DirectoryListerTests {
         #expect(row.fileSize == listed.fileSize)
     }
 
-    @Test("subfolders と hasSubfolders は zip ファイルを数えない")
+    @Test("subfolders and hasSubfolders do not count zip files")
     func subfolderQueriesIgnoreZipFiles() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }

@@ -6,7 +6,7 @@ import Testing
 struct ArchiveURLTests {
     private let archive = URL(fileURLWithPath: "/tmp/z/写真 集.zip")
 
-    @Test("項目の URL は mvzip スキームで、名前と拡張子を返す")
+    @Test("Entry URLs use the mvzip scheme and return the name and extension")
     func entryURLShape() {
         let url = ArchiveURL.entry(archive: archive, path: "sub/a b.jpg")
         #expect(url.scheme == "mvzip")
@@ -15,7 +15,7 @@ struct ArchiveURLTests {
         #expect(url.isFileURL == false)
     }
 
-    @Test("parse で元の値に戻る")
+    @Test("parse restores the original values")
     func parseRoundTrip() throws {
         let url = ArchiveURL.entry(archive: archive, path: "sub/a b.jpg")
         let parsed = try #require(ArchiveURL.parse(url))
@@ -24,7 +24,7 @@ struct ArchiveURLTests {
         #expect(parsed.isParentLink == false)
     }
 
-    @Test("日本語・空白・#・?・% を含むパスと zip のパスでも往復で一致する")
+    @Test("Round-trips paths containing Japanese, spaces, #, ?, and %, including the zip path")
     func parseRoundTripWithSpecialCharacters() throws {
         let archives = [
             archive,
@@ -48,7 +48,7 @@ struct ArchiveURLTests {
         }
     }
 
-    @Test("ディレクトリは末尾の / を保ち、最上位は空のパス")
+    @Test("Directories keep a trailing / and the root has an empty path")
     func directoryAndRoot() throws {
         let directory = ArchiveURL.entry(archive: archive, path: "sub/")
         #expect(try #require(ArchiveURL.parse(directory)).path == "sub/")
@@ -61,7 +61,7 @@ struct ArchiveURLTests {
         #expect(parsed.archive == archive)
     }
 
-    @Test("parentLink は fragment が parent で、同じ階層どうしだけが等しい")
+    @Test("parentLink uses the parent fragment and only equal levels compare equal")
     func parentLink() throws {
         let location = ArchiveLocation(archive: archive, directory: "sub/")
         let link = ArchiveURL.parentLink(of: location)
@@ -77,7 +77,7 @@ struct ArchiveURLTests {
         #expect(link != ArchiveURL.entry(archive: archive, path: "sub/"))
     }
 
-    @Test("同じ引数で作った URL は等しく、Set で1つにまとまる")
+    @Test("URLs created with the same arguments are equal and deduplicate in a Set")
     func equalityAndHashing() {
         let first = ArchiveURL.entry(archive: archive, path: "sub/a b.jpg")
         let second = ArchiveURL.entry(archive: archive, path: "sub/a b.jpg")
@@ -86,18 +86,18 @@ struct ArchiveURLTests {
         #expect(set.count == 2)
     }
 
-    @Test("ファイル URL や mvzip 以外のスキームの parse は nil")
+    @Test("parse returns nil for file URLs and schemes other than mvzip")
     func parseRejectsOtherSchemes() {
         #expect(ArchiveURL.parse(URL(fileURLWithPath: "/tmp/a.jpg")) == nil)
         #expect(ArchiveURL.parse(URL(string: "other:///a.jpg?archive=%2Ftmp%2Fz.zip")!) == nil)
     }
 
-    @Test("archive の指定がない mvzip の URL は parse できない")
+    @Test("parse rejects mvzip URLs without an archive")
     func parseRejectsMissingArchive() {
         #expect(ArchiveURL.parse(URL(string: "mvzip:///a.jpg")!) == nil)
     }
 
-    @Test("ArchiveLocation.parent は1つ上の階層を返し、最上位では nil")
+    @Test("ArchiveLocation.parent returns the enclosing level and nil at the root")
     func locationParent() {
         let deep = ArchiveLocation(archive: archive, directory: "a/b/")
         #expect(deep.parent == ArchiveLocation(archive: archive, directory: "a/"))

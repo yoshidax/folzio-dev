@@ -2,9 +2,9 @@ import Foundation
 import MediaViewerLocalization
 import Testing
 
-@Suite("翻訳の管理元の突き合わせ")
+@Suite("Localization Catalog Consistency")
 struct CatalogConsistencyTests {
-    @Test("管理元は TextKey の全ケースを両言語で過不足なく持つ")
+    @Test("The catalogs contain every TextKey case in both languages with no extras")
     func keysMatch() throws {
         for language in LocalizationTestSupport.languages {
             let strings = try LocalizationTestSupport.strings(language)
@@ -27,7 +27,7 @@ struct CatalogConsistencyTests {
         }
     }
 
-    @Test("複数形の表は英語に one と other、日本語に other を持つ")
+    @Test("Plural tables have one and other in English and other in Japanese")
     func pluralForms() throws {
         for language in LocalizationTestSupport.languages {
             let dict = try LocalizationTestSupport.stringsdict(language)
@@ -45,7 +45,7 @@ struct CatalogConsistencyTests {
         }
     }
 
-    @Test("すべての訳の書式指定が TextKey の引数と一致する")
+    @Test("Every translation's format specifiers match the TextKey arguments")
     func argumentsMatch() throws {
         for language in LocalizationTestSupport.languages {
             let strings = try LocalizationTestSupport.strings(language)
@@ -54,13 +54,13 @@ struct CatalogConsistencyTests {
             for key in TextKey.allCases {
                 let expected = LocalizationTestSupport.expectedSpecifiers(for: key)
                 if let value = strings[key.rawValue] {
-                    let actual = try #require(LocalizationTestSupport.specifiers(value), "\(language): \(key.rawValue) の書式が不正")
+                    let actual = try #require(LocalizationTestSupport.specifiers(value), "\(language): \(key.rawValue) has invalid format specifiers")
                     #expect(Set(actual.map { $0.0 }) == Set(expected.map { $0.0 }), "\(language): positions in \(key.rawValue)")
                     #expect(actual.map(\.1).sorted() == expected.map(\.1).sorted(), "\(language): kinds in \(key.rawValue)")
                 } else if let entry = dict[key.rawValue],
                           let value = entry["value"] as? [String: String] {
                     for (form, translation) in value where form != "NSStringFormatSpecTypeKey" && form != "NSStringFormatValueTypeKey" {
-                        let actual = try #require(LocalizationTestSupport.specifiers(translation), "\(language): \(key.rawValue).\(form) の書式が不正")
+                        let actual = try #require(LocalizationTestSupport.specifiers(translation), "\(language): \(key.rawValue).\(form) has invalid format specifiers")
                         #expect(Set(actual.map { $0.0 }) == Set(expected.map { $0.0 }), "\(language): positions in \(key.rawValue).\(form)")
                         #expect(actual.map(\.1).sorted() == expected.map(\.1).sorted(), "\(language): kinds in \(key.rawValue).\(form)")
                     }
@@ -69,7 +69,7 @@ struct CatalogConsistencyTests {
         }
     }
 
-    @Test("各ケースは TextKey の定義以外から参照されている")
+    @Test("Each case is referenced from outside the TextKey definition")
     func casesAreReferenced() throws {
         let sources = ["Sources/MediaViewerApp", "Sources/MediaViewerLocalization"]
         var text = ""
@@ -88,7 +88,7 @@ struct CatalogConsistencyTests {
         }
     }
 
-    @Test("すべての翻訳単位に翻訳者向けの説明がある")
+    @Test("Every translation unit has a translator-facing description")
     func commentsExist() {
         for key in TextKey.allCases {
             #expect(!key.comment.isEmpty, "Description of \(key.rawValue) is empty")

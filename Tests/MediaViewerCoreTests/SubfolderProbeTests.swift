@@ -16,7 +16,7 @@ struct SubfolderProbeTests {
         return results
     }
 
-    @Test("全 URL の結果を1回ずつ流し、同時実行数は上限を超えない")
+    @Test("Emits each URL result once and keeps concurrency within the limit")
     func yieldsEveryURLOnceWithinLimit() async {
         let urls = makeURLs(10)
         let lister = ProbeFakeLister()
@@ -28,7 +28,7 @@ struct SubfolderProbeTests {
         #expect(await lister.maxInFlight <= 3)
     }
 
-    @Test("1件の失敗は他の URL に波及しない")
+    @Test("A failure for one URL does not affect other URLs")
     func isolatesFailures() async {
         let urls = makeURLs(5)
         let failing = urls[2]
@@ -49,7 +49,7 @@ struct SubfolderProbeTests {
         }
     }
 
-    @Test("空の入力ではすぐに終わる")
+    @Test("Finishes immediately for empty input")
     func finishesForEmptyInput() async {
         let lister = ProbeFakeLister()
         let results = await collect(SubfolderProbe.results(for: [], lister: lister))
@@ -57,7 +57,7 @@ struct SubfolderProbeTests {
         #expect(await lister.started == 0)
     }
 
-    @Test("上限が 0 以下なら 1 として扱う")
+    @Test("Treats a limit of 0 or less as 1")
     func treatsNonPositiveLimitAsOne() async {
         let urls = makeURLs(10)
         let lister = ProbeFakeLister()
@@ -68,7 +68,7 @@ struct SubfolderProbeTests {
         #expect(await lister.maxInFlight == 1)
     }
 
-    @Test("ストリームを抜けたら未実行の確認を始めない")
+    @Test("Does not start pending checks after leaving the stream")
     func stopsAfterTermination() async throws {
         let urls = makeURLs(20)
         let lister = ProbeFakeLister()

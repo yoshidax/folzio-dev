@@ -36,7 +36,7 @@ struct ArchiveIndexTests {
         items.map(\.name).sorted()
     }
 
-    @Test("ディレクトリの項目がなくても、途中のディレクトリを補う")
+    @Test("Synthesizes intermediate directories even without explicit directory entries")
     func synthesizesDirectories() throws {
         let index = try makeIndex([file("sub/deep/a.jpg")])
 
@@ -53,7 +53,7 @@ struct ArchiveIndexTests {
         #expect(deep[0].kind == .media(.jpeg))
     }
 
-    @Test("隠し項目・__MACOSX・..・対応メディア以外は出さない")
+    @Test("Excludes hidden entries, __MACOSX, .., and unsupported media")
     func excludesHiddenAndUnsupported() throws {
         let index = try makeIndex([
             file(".hidden.jpg"),
@@ -75,7 +75,7 @@ struct ArchiveIndexTests {
         #expect(index.entry(at: "readme.txt") == nil)
     }
 
-    @Test("先頭の /・空の要素・. は取り除き、\\ は名前の一部")
+    @Test("Removes leading slashes, empty components, and dots; backslashes remain part of names")
     func normalizesPaths() throws {
         let index = try makeIndex([
             file("/x//./y.png"),
@@ -87,7 +87,7 @@ struct ArchiveIndexTests {
         #expect(index.entry(at: "a\\b.jpg")?.name == "a\\b.jpg")
     }
 
-    @Test("同じパスの重複は先に出たものを使う")
+    @Test("Uses the first entry when paths are duplicated")
     func duplicatesUseFirst() throws {
         let index = try makeIndex([
             file("dup.jpg", "first"),
@@ -99,7 +99,7 @@ struct ArchiveIndexTests {
         #expect(index.entry(at: "dup.jpg")?.uncompressedSize == 5)
     }
 
-    @Test("ファイルとディレクトリが同じ名前ならディレクトリとして扱う", arguments: [true, false])
+    @Test("Treats a file and directory with the same name as a directory", arguments: [true, false])
     func directoryWinsOverFile(fileFirst: Bool) throws {
         let fileEntry = file("pic.jpg")
         let directoryEntry = ZipFixtureEntry(name: "pic.jpg", isDirectory: true)
@@ -110,7 +110,7 @@ struct ArchiveIndexTests {
         #expect(items[0].kind == .directory)
     }
 
-    @Test("中にファイルがあるディレクトリと同名のファイルも、ディレクトリになる")
+    @Test("Treats a file sharing the name of a nonempty directory as a directory")
     func implicitDirectoryWinsOverFile() throws {
         let index = try makeIndex([file("pic.jpg"), file("pic.jpg/inner.png")])
         let items = index.items(in: "")
@@ -119,7 +119,7 @@ struct ArchiveIndexTests {
         #expect(index.items(in: "pic.jpg/").map(\.name) == ["inner.png"])
     }
 
-    @Test("readability: 方式 0・8 は readable、暗号化は encrypted、方式 12 は unsupportedMethod")
+    @Test("readability: methods 0 and 8 are readable, encryption is encrypted, and method 12 is unsupportedMethod")
     func readability() throws {
         let index = try makeIndex([
             ZipFixtureEntry(name: "stored.jpg", content: .bytes(Data("a".utf8)), method: .stored),
@@ -136,7 +136,7 @@ struct ArchiveIndexTests {
         #expect(index.items(in: "").count == 4)
     }
 
-    @Test("行の値: 名前・更新日時・展開後のサイズ・種類・URL")
+    @Test("Row values include the name, modification date, inflated size, kind, and URL")
     func rowValues() throws {
         let modified = Date(timeIntervalSince1970: 1_650_000_002)
         let content = Data(repeating: 0x61, count: 1234)
@@ -164,7 +164,7 @@ struct ArchiveIndexTests {
         #expect(index.entry(at: "folder/photo.jpg")?.uncompressedSize == 1234)
     }
 
-    @Test("拡張タイムスタンプがなければ DOS 日時を更新日時にする")
+    @Test("Uses the DOS date as the modification date when no extended timestamp exists")
     func dosModificationDate() throws {
         let modified = Date(timeIntervalSince1970: 1_700_000_000)
         let index = try makeIndex([
@@ -174,7 +174,7 @@ struct ArchiveIndexTests {
         #expect(abs(date.timeIntervalSince(modified)) <= 2)
     }
 
-    @Test("items に .. は含まれず、存在しない階層は空配列")
+    @Test("items excludes .. and returns an empty array for nonexistent levels")
     func noParentRowAndMissingDirectory() throws {
         let index = try makeIndex([file("sub/a.jpg")])
         #expect(!index.items(in: "").contains { $0.kind == .parent || $0.name == ".." })
@@ -183,7 +183,7 @@ struct ArchiveIndexTests {
         #expect(index.items(in: "sub/a.jpg").isEmpty)
     }
 
-    @Test("CP932 の名前（UTF-8 フラグなし）でも階層が組み立てられる（FR-074）")
+    @Test("Builds the hierarchy from CP932 names without the UTF-8 flag (FR-074)")
     func cp932Names() throws {
         let encoding = String.Encoding(
             rawValue: CFStringConvertEncodingToNSStringEncoding(
@@ -201,7 +201,7 @@ struct ArchiveIndexTests {
         #expect(index.entry(at: "フォルダ/画像.png")?.path == "フォルダ/画像.png")
     }
 
-    @Test("識別情報と zip の URL を保持する")
+    @Test("Retains the identity and zip URL")
     func keepsIdentityAndArchive() throws {
         let index = try makeIndex([file("a.jpg")])
         #expect(index.archive == archive)
@@ -210,7 +210,7 @@ struct ArchiveIndexTests {
         #expect(index.identity.fileSize > 0)
     }
 
-    @Test("ディレクトリの項目は entry(at:) で末尾 / のパスで引ける")
+    @Test("entry(at:) finds directory entries by paths with a trailing slash")
     func entryLookupForDirectories() throws {
         let index = try makeIndex([file("sub/deep/a.jpg")])
         #expect(index.entry(at: "sub/")?.isDirectory == true)
@@ -219,7 +219,7 @@ struct ArchiveIndexTests {
         #expect(index.entry(at: "nothing") == nil)
     }
 
-    @Test("containsDirectory は最上位と存在するディレクトリだけ true")
+    @Test("containsDirectory is true only for the root and existing directories")
     func containsDirectory() throws {
         let explicit = try makeIndex([
             file("a/"),

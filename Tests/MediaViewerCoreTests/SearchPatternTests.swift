@@ -10,7 +10,7 @@ struct SearchPatternTests {
         try #require(SearchPattern(keyword: keyword))
     }
 
-    @Test("空・空白だけのキーワードは nil。前後の空白を除き、ワイルドカードの有無を持つ")
+    @Test("Returns nil for empty or whitespace-only keywords; trims whitespace and records wildcard presence")
     func initTrimsAndRejectsEmpty() throws {
         #expect(SearchPattern(keyword: "") == nil)
         #expect(SearchPattern(keyword: "  ") == nil)
@@ -22,7 +22,7 @@ struct SearchPatternTests {
         #expect(try pattern("[1].jpg").usesWildcards == false)
     }
 
-    @Test("ワイルドカードなしは拡張子を含むファイル名への部分一致で、大文字小文字を区別しない")
+    @Test("Without wildcards, matches a substring of the file name including the extension, case-insensitively")
     func substringMatch() throws {
         let cat = try pattern("cat")
         #expect(cat.matches(fileName: "Cat01.jpg"))
@@ -32,7 +32,7 @@ struct SearchPatternTests {
         #expect(try pattern("png").matches(fileName: "a.png"))
     }
 
-    @Test("NFC と NFD の違いは区別せず、濁点・全角・ひらがなとカタカナは区別する")
+    @Test("Ignores NFC/NFD differences but distinguishes dakuten, full-width, and hiragana/katakana")
     func normalization() throws {
         #expect(nfdGa.unicodeScalars.contains("\u{3099}"))
         #expect(try pattern("が").matches(fileName: nfdGa))
@@ -42,7 +42,7 @@ struct SearchPatternTests {
         #expect(!(try pattern("ネコ").matches(fileName: "ねこ.jpg")))
     }
 
-    @Test("ワイルドカードありはファイル名全体との一致")
+    @Test("With wildcards, matches the whole file name")
     func wildcardMatch() throws {
         let png = try pattern("*.png")
         #expect(png.matches(fileName: "a.png"))
@@ -69,7 +69,7 @@ struct SearchPatternTests {
         #expect(!(try pattern("cat*").matches(fileName: "my_cat.mov")))
     }
 
-    @Test("記号はただの文字として扱う")
+    @Test("Treats symbols as literal characters")
     func symbolsAreLiteral() throws {
         let bracket = try pattern("[1].jpg")
         #expect(bracket.matches(fileName: "[1].jpg"))
@@ -77,7 +77,7 @@ struct SearchPatternTests {
         #expect(try pattern("a\\b").matches(fileName: "a\\b.jpg"))
     }
 
-    @Test("長い名前と多くの * でも一致しない結果をすぐ返す")
+    @Test("Returns a non-match quickly even with a long name and many *")
     func longNameDoesNotHang() throws {
         let name = String(repeating: "a", count: 200)
         #expect(!(try pattern("*a*a*a*a*b").matches(fileName: name)))

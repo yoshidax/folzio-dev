@@ -29,7 +29,7 @@ struct SearchRenameLedgerTests {
         RenamedFolder(from: url(from, isDirectory: true), to: url(to, isDirectory: true))
     }
 
-    @Test("初期状態は空で、addStream は 0, 1, … を返す")
+    @Test("Starts empty; addStream returns 0, 1, ...")
     func streamsAreNumbered() {
         var ledger = SearchRenameLedger()
         #expect(ledger.isEmpty)
@@ -38,7 +38,7 @@ struct SearchRenameLedgerTests {
         #expect(ledger.isEmpty)
     }
 
-    @Test("place はその列挙を始めた後の名前の変更だけを順に当てる")
+    @Test("place applies only renames recorded after that enumeration started, in order")
     func placeAppliesOnlyLaterRenames() {
         var ledger = SearchRenameLedger()
         ledger.recordRename(renamed("/r/q", "/r/qq"), visited: true)
@@ -52,7 +52,7 @@ struct SearchRenameLedgerTests {
         #expect(ledger.place(media("/r/q/one.jpg"), fromStream: index)?.url.path == "/r/q/one.jpg")
     }
 
-    @Test("フォルダの行は URL の最後の要素が変わったときだけ name も変える")
+    @Test("For a folder row, changes name only when the last URL component changes")
     func folderNameFollowsLastComponent() {
         var ledger = SearchRenameLedger()
         let index = ledger.addStream(visits: SearchVisitLog())
@@ -73,7 +73,7 @@ struct SearchRenameLedgerTests {
         #expect(descendantFolder?.name == "sub")
     }
 
-    @Test("hasVisited は各列挙の開始後の名前の変更を逆順に戻した場所で記録を問う")
+    @Test("hasVisited checks records at the location obtained by reversing renames after each enumeration started")
     func hasVisitedReversesRenames() {
         let log = SearchVisitLog()
         var ledger = SearchRenameLedger()
@@ -96,7 +96,7 @@ struct SearchRenameLedgerTests {
         #expect(ledger.hasVisited(url("/r/F2")))
     }
 
-    @Test("未照合として扱った名前の変更は、元の場所の行を捨て、中の結果は付け替える")
+    @Test("A rename treated as unevaluated drops the old-location row and rebases descendant results")
     func rejudgedRenamesDropTheFolderRow() {
         var ledger = SearchRenameLedger()
         let index = ledger.addStream(visits: SearchVisitLog())
@@ -114,7 +114,7 @@ struct SearchRenameLedgerTests {
         #expect(row?.name == "F2")
     }
 
-    @Test("名前の変更の後に始めた列挙の結果はそのまま残す")
+    @Test("Results from an enumeration started after the rename remain unchanged")
     func laterStreamsAreUnaffected() {
         var ledger = SearchRenameLedger()
         ledger.recordRename(renamed("/r/F", "/r/F2"), visited: false)

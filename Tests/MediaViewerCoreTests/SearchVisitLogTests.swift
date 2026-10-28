@@ -4,7 +4,7 @@ import Testing
 
 @Suite("SearchVisitLog")
 struct SearchVisitLogTests {
-    @Test("記録したパスだけを含む")
+    @Test("Contains only recorded paths")
     func recordsPaths() {
         let log = SearchVisitLog()
         #expect(!log.contains("/a"))
@@ -14,7 +14,7 @@ struct SearchVisitLogTests {
         #expect(!log.contains("/a/b"))
     }
 
-    @Test("複数の Task から並行に記録しても、すべて残る")
+    @Test("Keeps all records made concurrently from multiple tasks")
     func concurrentRecords() async {
         let log = SearchVisitLog()
         await withTaskGroup(of: Void.self) { group in

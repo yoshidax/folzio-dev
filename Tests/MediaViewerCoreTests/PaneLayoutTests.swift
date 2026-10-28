@@ -6,7 +6,7 @@ import Testing
 struct PaneLayoutTests {
     private let layouts: [PaneLayout] = [.all, .fileListOnly, .previewOnly]
 
-    @Test("init(soloPane:) は nil・ファイルリスト・プレビューを3状態に対応させる")
+    @Test("init(soloPane:) maps nil, file list, and preview to the three states")
     func initializesFromSoloPane() {
         let cases: [(SoloPane?, PaneLayout)] = [
             (nil, .all),
@@ -21,7 +21,7 @@ struct PaneLayoutTests {
         }
     }
 
-    @Test("soloPane は init の逆で、.all だけ nil")
+    @Test("soloPane reverses init and is nil only for .all")
     func exposesSoloPane() {
         let cases: [(PaneLayout, SoloPane?)] = [
             (.all, nil),
@@ -35,7 +35,7 @@ struct PaneLayoutTests {
         }
     }
 
-    @Test("toggling の3×2の全組み合わせが遷移表と一致する")
+    @Test("All 3x2 toggling combinations match the transition table")
     func togglesAccordingToTransitionTable() {
         let cases: [(PaneLayout, SoloPane, PaneLayout)] = [
             (.all, .fileList, .fileListOnly),
@@ -53,7 +53,7 @@ struct PaneLayoutTests {
         }
     }
 
-    @Test("applyingToolbarSelection の3×4の全組み合わせが表と一致し、両押しを書き戻さない")
+    @Test("All 3x4 applyingToolbarSelection combinations match the table without writing back both buttons as pressed")
     func appliesToolbarSelection() {
         let cases: [(PaneLayout, Bool, Bool, PaneLayout)] = [
             (.all, false, false, .all),
@@ -87,7 +87,7 @@ struct PaneLayoutTests {
         }
     }
 
-    @Test("isVisible は各状態で表示するペインだけ true")
+    @Test("isVisible is true only for panes displayed in each state")
     func reportsVisiblePanes() {
         let cases: [(PaneLayout, [Pane])] = [
             (.all, [.tree, .fileList, .preview]),
@@ -103,7 +103,7 @@ struct PaneLayoutTests {
         }
     }
 
-    @Test("focusTarget の切り替え先3×フォーカス4の全組み合わせが表と一致する")
+    @Test("All three target states and four focus values match the focusTarget table")
     func computesFocusTarget() {
         let cases: [(PaneLayout, Pane?, Pane?)] = [
             (.all, .tree, nil),
@@ -127,7 +127,7 @@ struct PaneLayoutTests {
         }
     }
 
-    @Test("showsNoMediaMessage は .all と .fileListOnly では常に false")
+    @Test("showsNoMediaMessage is always false for .all and .fileListOnly")
     func noMediaMessageIsFalseOutsidePreviewOnly() {
         let folder = makeFolder()
         let states: [FolderListing.State] = [.loading, .loaded, .empty, .noMatches, .denied, .failed(.systemFailure(systemReason: "x"))]
@@ -150,7 +150,7 @@ struct PaneLayoutTests {
         }
     }
 
-    @Test("showsNoMediaMessage は previewOnly の loaded でメディア行があれば false")
+    @Test("showsNoMediaMessage is false for loaded previewOnly with media rows")
     func noMediaMessageIsFalseForLoadedWithMedia() {
         let folder = makeFolder()
         let media = file("a.jpg", kind: .media(.jpeg), in: folder)
@@ -166,7 +166,7 @@ struct PaneLayoutTests {
         #expect(!PaneLayout.previewOnly.showsNoMediaMessage(in: unselected))
     }
 
-    @Test("showsNoMediaMessage は previewOnly の loaded でメディア以外の行だけなら true")
+    @Test("showsNoMediaMessage is true for loaded previewOnly with only non-media rows")
     func noMediaMessageIsTrueForLoadedNonMediaRows() {
         let folder = makeFolder()
         let kinds: [ListItemKind] = [.folder, .archive, .directory, .parent]
@@ -190,7 +190,7 @@ struct PaneLayoutTests {
         #expect(PaneLayout.previewOnly.showsNoMediaMessage(in: listing))
     }
 
-    @Test("showsNoMediaMessage は previewOnly で行が空の非読み込み状態なら true")
+    @Test("showsNoMediaMessage is true for previewOnly with empty rows while not loading")
     func noMediaMessageIsTrueForEmptyStates() {
         let folder = makeFolder()
         let states: [FolderListing.State] = [.empty, .noMatches, .denied, .failed(.systemFailure(systemReason: "x"))]
@@ -204,7 +204,7 @@ struct PaneLayoutTests {
         }
     }
 
-    @Test("showsNoMediaMessage は previewOnly でも読み込み中なら false")
+    @Test("showsNoMediaMessage is false while loading even in previewOnly")
     func noMediaMessageIsFalseWhileLoading() {
         let folder = makeFolder()
         let emptyListing = FolderListing(folder: folder, files: [], state: .loading)
@@ -218,7 +218,7 @@ struct PaneLayoutTests {
         #expect(!PaneLayout.previewOnly.showsNoMediaMessage(in: nonMediaListing))
     }
 
-    @Test("shouldAutoSelectEntry は読み込み中だけ false で、ほかの状態は true")
+    @Test("shouldAutoSelectEntry is false only while loading and true in all other states")
     func shouldAutoSelectEntryOnlyWhileNotLoading() {
         let folder = makeFolder()
 
@@ -233,7 +233,7 @@ struct PaneLayoutTests {
         }
     }
 
-    @Test("PanePresentation の3状態×フルスクリーンの6通りが表示ペインを決める")
+    @Test("Three PanePresentation states combined with full screen determine visible panes in six cases")
     func presentationResolvesVisiblePanes() {
         let cases: [(PaneLayout, Bool, [Pane])] = [
             (.all, false, [.tree, .fileList, .preview]),
@@ -272,7 +272,7 @@ struct PaneLayoutTests {
         }
     }
 
-    @Test("PaneCommands の3×2×2の12通りが5つの規則と一致する")
+    @Test("All 3x2x2 PaneCommands combinations match the five rules")
     func commandsFollowRules() {
         var cases = 0
 
@@ -313,7 +313,7 @@ struct PaneLayoutTests {
         #expect(cases == 12)
     }
 
-    @Test("canNavigateHistory はフルスクリーン中と名前の変更中だけ false で、ペインの表示に左右されない")
+    @Test("canNavigateHistory is false only during full screen or renaming, regardless of pane visibility")
     func canNavigateHistoryIgnoresLayout() {
         for layout in layouts {
             for isFullScreen in [false, true] {
@@ -332,7 +332,7 @@ struct PaneLayoutTests {
         }
     }
 
-    @Test("fileListOnly は検索でき、お気に入りは使えない")
+    @Test("fileListOnly enables search and disables Favorites")
     func fileListOnlyCommands() {
         let commands = PaneCommands(layout: .fileListOnly, isFullScreen: false, isEditingText: false)
         #expect(commands.canSearch)
@@ -340,7 +340,7 @@ struct PaneLayoutTests {
         #expect(!commands.allowsAddingFavorite)
     }
 
-    @Test("previewOnly は検索・お気に入り・お気に入り追加のすべてが使えない")
+    @Test("previewOnly disables search, Favorites, and Add to Favorites")
     func previewOnlyCommands() {
         let commands = PaneCommands(layout: .previewOnly, isFullScreen: false, isEditingText: false)
         #expect(!commands.canSearch)
@@ -348,7 +348,7 @@ struct PaneLayoutTests {
         #expect(!commands.allowsAddingFavorite)
     }
 
-    @Test(".all のフルスクリーン中はお気に入り追加だけ使える")
+    @Test("Full screen with .all enables only Add to Favorites")
     func allPanesFullScreenCommands() {
         let commands = PaneCommands(layout: .all, isFullScreen: true, isEditingText: false)
         #expect(!commands.canChangeLayout)
@@ -357,7 +357,7 @@ struct PaneLayoutTests {
         #expect(commands.allowsAddingFavorite)
     }
 
-    @Test("名前の変更中は4つの操作がすべて使えない")
+    @Test("Renaming disables all four actions")
     func editingTextDisablesCommands() {
         for layout in layouts {
             for isFullScreen in [false, true] {
@@ -375,7 +375,7 @@ struct PaneLayoutTests {
         }
     }
 
-    @Test("canFocus はフルスクリーンと編集中に左右されない")
+    @Test("canFocus is independent of full screen and editing")
     func canFocusIgnoresFullScreenAndEditing() {
         for layout in layouts {
             for pane in Pane.allCases {
@@ -396,7 +396,7 @@ struct PaneLayoutTests {
         }
     }
 
-    @Test("dividerPositions は保存した幅を保ち、広がった分はプレビューが受け取る")
+    @Test("dividerPositions preserves saved widths and gives extra width to the preview")
     func dividerPositionsPreserveSavedWidths() {
         let minimums: [Double] = [160, 240, 320]
         let saved: [Double] = [220, 360, 600]
@@ -405,25 +405,25 @@ struct PaneLayoutTests {
         #expect(dividerPositions(saved: saved, total: 1382, minimums: minimums) == [220, 581])
     }
 
-    @Test("プレビューが最小幅に足りなければファイルリストから詰める")
+    @Test("Shrinks the file list if the preview is below its minimum width")
     func dividerPositionsShrinkFileList() {
         let positions = dividerPositions(saved: [220, 360, 600], total: 850, minimums: [160, 240, 320])
         #expect(positions == [220, 529])
     }
 
-    @Test("ファイルリストが最小幅でも足りなければツリーから詰める")
+    @Test("Shrinks the tree if the file list reaches its minimum and the preview still needs space")
     func dividerPositionsShrinkTree() {
         let positions = dividerPositions(saved: [220, 360, 600], total: 730, minimums: [160, 240, 320])
         #expect(positions == [168, 409])
     }
 
-    @Test("最小幅の合計に届かなければツリーとファイルリストを最小幅にする")
+    @Test("Sets the tree and file list to their minimum widths when total width is below the sum of minimums")
     func dividerPositionsUseMinimumsWhenTooNarrow() {
         let positions = dividerPositions(saved: [220, 360, 600], total: 700, minimums: [160, 240, 320])
         #expect(positions == [160, 401])
     }
 
-    @Test("保存した幅が不正なら全体1182で初回の既定を使う")
+    @Test("Invalid saved widths use first-launch defaults for a total width of 1182")
     func dividerPositionsFallBackToDefaults() {
         let minimums: [Double] = [160, 240, 320]
         let savedCases: [(String, [Double])] = [

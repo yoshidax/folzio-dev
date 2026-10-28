@@ -2,9 +2,9 @@ import Foundation
 import MediaViewerLocalization
 import Testing
 
-@Suite("値を含む文")
+@Suite("Value Sentences")
 struct ValueSentenceTests {
-    @Test("値は書式として解釈されず、文字どおりに入る")
+    @Test("Values are inserted verbatim and are not interpreted as format specifiers")
     func valuesAreLiteral() {
         let samples = ["%@", "%d", "{0}", "%1$@", "نص", "טקסט", "100%"]
         for language in LocalizationTestSupport.languages {

@@ -6,7 +6,7 @@ import Testing
 
 @Suite("ThumbnailProvider")
 struct ThumbnailProviderTests {
-    @Test("要求サイズを 64 / 128 / 256 / 512 の段階に切り上げる")
+    @Test("Rounds requested sizes up to 64, 128, 256, or 512")
     func roundsPointSizeToPixelSteps() {
         #expect(ThumbnailProvider.pixelSize(forPointSize: 16, scale: 1) == 64)
         #expect(ThumbnailProvider.pixelSize(forPointSize: 16, scale: 2) == 64)
@@ -20,7 +20,7 @@ struct ThumbnailProviderTests {
         #expect(ThumbnailProvider.pixelSize(forPointSize: .infinity, scale: 1) == 64)
     }
 
-    @Test("mixed の JPEG と mp4 でサムネイルが返る", .timeLimit(.minutes(1)))
+    @Test("Returns thumbnails for mixed JPEG and mp4 files", .timeLimit(.minutes(1)))
     func generatesThumbnailsForMixedFixtures() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -52,7 +52,7 @@ struct ThumbnailProviderTests {
         }
     }
 
-    @Test("broken のファイルでは nil が返りクラッシュしない", .timeLimit(.minutes(1)))
+    @Test("Returns nil for broken files without crashing", .timeLimit(.minutes(1)))
     func returnsNilForBrokenFixtures() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -71,7 +71,7 @@ struct ThumbnailProviderTests {
 
     // MARK: - Images Inside a Zip
 
-    @Test("zip の中の PNG は QuickLook を使わず縮小画像が返る", .timeLimit(.minutes(1)))
+    @Test("Returns a downscaled image for a PNG inside a zip without using QuickLook", .timeLimit(.minutes(1)))
     func generatesThumbnailForImageInsideZip() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -92,7 +92,7 @@ struct ThumbnailProviderTests {
         #expect(again === thumbnail)
     }
 
-    @Test("zip の中の暗号化された項目・壊れた動画と画像では nil が返る", .timeLimit(.minutes(1)))
+    @Test("Returns nil for encrypted entries and broken videos and images inside a zip", .timeLimit(.minutes(1)))
     func returnsNilForUnreadableEntriesInsideZip() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -117,7 +117,7 @@ struct ThumbnailProviderTests {
         }
     }
 
-    @Test("zip の中の mp4 は先頭フレームの縮小画像が返り、2 回目はキャッシュから返る", .timeLimit(.minutes(2)))
+    @Test("Returns a downscaled first frame for an mp4 inside a zip and serves the second request from the cache", .timeLimit(.minutes(2)))
     func generatesThumbnailForVideoInsideZip() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -143,14 +143,14 @@ struct ThumbnailProviderTests {
         #expect(again === thumbnail)
     }
 
-    @Test("archiveReader がないと zip の中の URL は nil が返る")
+    @Test("Returns nil for URLs inside a zip when there is no archiveReader")
     func returnsNilForArchiveURLWithoutReader() async {
         let url = ArchiveURL.entry(archive: URL(fileURLWithPath: "/tmp/none.zip"), path: "a.png")
         let image = await ThumbnailProvider().thumbnail(for: url, pointSize: 50, scale: 2)
         #expect(image == nil)
     }
 
-    @Test("zip の中の取得は同時 4 件までに制限される", .timeLimit(.minutes(1)))
+    @Test("Limits concurrent retrievals from a zip to 4", .timeLimit(.minutes(1)))
     func limitsConcurrentArchiveReads() async throws {
         let reader = SlowArchiveReader(delay: .milliseconds(50), data: try pngBytes(width: 32, height: 32))
         let provider = ThumbnailProvider(archiveReader: reader)
@@ -177,7 +177,7 @@ struct ThumbnailProviderTests {
         #expect(state.maxRunning >= 2)
     }
 
-    @Test("cancel(for:) は zip の中の要求を URL とピクセル数で取り消し、他のサイズは巻き込まない", .timeLimit(.minutes(1)))
+    @Test("cancel(for:) cancels a zip request by URL and pixel size without affecting other sizes", .timeLimit(.minutes(1)))
     func cancelsArchiveRequestsByURLAndPixelSize() async throws {
         let reader = SlowArchiveReader(delay: .seconds(30), data: try pngBytes(width: 32, height: 32))
         let provider = ThumbnailProvider(archiveReader: reader)

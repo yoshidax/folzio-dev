@@ -6,7 +6,7 @@ import Testing
 
 @Suite("ImageDecoder")
 struct ImageDecoderTests {
-    @Test("長辺を maxPixelSize 以下にダウンサンプリングする")
+    @Test("Downsamples the long side to at most maxPixelSize")
     func downsamplesLargeImage() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -22,7 +22,7 @@ struct ImageDecoderTests {
         #expect(image.byteCost > 0)
     }
 
-    @Test("アニメーション GIF だけを animated と判定する")
+    @Test("Identifies only animated GIFs as animated")
     func detectsAnimation() throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -37,7 +37,7 @@ struct ImageDecoderTests {
         #expect(!decoder.isAnimated(png))
     }
 
-    @Test("破損ファイルでもクラッシュせずエラーか正常な画像を返す")
+    @Test("Does not crash on a corrupted file and returns an error or a valid image")
     func handlesBrokenFiles() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -58,7 +58,7 @@ struct ImageDecoderTests {
         }
     }
 
-    @Test("decode(data:) はファイル URL の decode と同じ pixelSize を返す", arguments: ["jpg", "png"])
+    @Test("decode(data:) returns the same pixelSize as decoding a file URL", arguments: ["jpg", "png"])
     func decodesDataLikeFile(fileExtension: String) async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -79,7 +79,7 @@ struct ImageDecoderTests {
         #expect(fromData.byteCost == fromFile.byteCost)
     }
 
-    @Test("壊れた Data は corrupted か unreadable で失敗する")
+    @Test("Corrupted Data fails with corrupted or unreadable")
     func rejectsBrokenData() async {
         let decoder = ImageDecoder()
         for data in [Data(), Data([0x00, 0x01, 0x02, 0x03]), Data("not an image".utf8)] {
@@ -92,7 +92,7 @@ struct ImageDecoderTests {
         }
     }
 
-    @Test("isAnimated(data:) はアニメーション GIF だけ true")
+    @Test("isAnimated(data:) is true only for animated GIFs")
     func detectsAnimationFromData() throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }

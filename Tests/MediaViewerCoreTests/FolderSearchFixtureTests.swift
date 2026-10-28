@@ -3,7 +3,7 @@ import Testing
 @testable import FixtureKit
 @testable import MediaViewerCore
 
-@Suite("フォルダ検索の検証データ")
+@Suite("Folder Search Fixtures")
 struct FolderSearchFixtureTests {
     private func makeBase() throws -> URL {
         let base = FileManager.default.temporaryDirectory
@@ -12,7 +12,7 @@ struct FolderSearchFixtureTests {
         return base
     }
 
-    @Test("folderSearch は quickstart の検証データを作る")
+    @Test("folderSearch creates the quickstart fixtures")
     func folderSearchLayout() throws {
         let base = try makeBase()
         defer { try? FileManager.default.removeItem(at: base) }
@@ -54,12 +54,12 @@ struct FolderSearchFixtureTests {
         #expect(destination.hasSuffix("/2024_Kyoto"), "Link destination: \(destination)")
         #expect(
             link.resolvingSymlinksInPath().lastPathComponent == "2024_Kyoto",
-            "リンクがフォルダを指していない: \(link.resolvingSymlinksInPath().path)"
+            "Link does not point to a folder: \(link.resolvingSymlinksInPath().path)"
         )
 
         #expect(
             fileManager.isReadableFile(atPath: kyoto.appendingPathComponent("locked_kyoto").path),
-            "locked_kyoto は生成直後に読めること"
+            "locked_kyoto must be readable immediately after creation"
         )
 
         let open = base.appendingPathComponent("folder-search/.hidden-parent/search-root/kyoto_open", isDirectory: true)
@@ -69,7 +69,7 @@ struct FolderSearchFixtureTests {
         #expect(fileManager.fileExists(atPath: open.appendingPathComponent("IMG_0003.jpg").path))
     }
 
-    @Test("folderSearchScale は既定の件数で SC-053 の階層を作り、起点を返す")
+    @Test("folderSearchScale creates the SC-053 hierarchy with default counts and returns the root")
     func folderSearchScaleDefaultCounts() throws {
         let base = try makeBase()
         defer { try? FileManager.default.removeItem(at: base) }
@@ -92,7 +92,7 @@ struct FolderSearchFixtureTests {
         #expect(names.filter { $0.hasPrefix("kyoto-0") && $0.hasSuffix(".zip") }.count == 5)
     }
 
-    @Test("folderSearchScale は件数を変えられる")
+    @Test("folderSearchScale accepts custom counts")
     func folderSearchScaleCustomCounts() throws {
         let base = try makeBase()
         defer { try? FileManager.default.removeItem(at: base) }

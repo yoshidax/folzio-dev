@@ -3,9 +3,9 @@ import FixtureKit
 import MediaViewerLocalization
 import Testing
 
-@Suite("訳が欠けたときのフォールバック")
+@Suite("Fallback for Missing Translations")
 struct FallbackTests {
-    @Test("表示言語の訳が無ければ英語（開発言語）の訳を使い、キーや空欄を出さない")
+    @Test("Falls back to English (development language) when the display language has no translation, without showing keys or blanks")
     func fallsBackToEnglish() throws {
         let url = try LocalizationFixtures.makeBundle(tables: [
             "en": ["error.searchRoot.empty": "Enter a folder to search in"],
@@ -25,7 +25,7 @@ struct FallbackTests {
         #expect(!localizer.text(.errorSearchRootEmpty).isEmpty)
     }
 
-    @Test("表示言語の訳があればそれを優先する")
+    @Test("Prefers the display language translation when present")
     func prefersDisplayLanguage() throws {
         let url = try LocalizationFixtures.makeBundle(tables: [
             "en": ["error.searchRoot.empty": "Enter a folder to search in"],

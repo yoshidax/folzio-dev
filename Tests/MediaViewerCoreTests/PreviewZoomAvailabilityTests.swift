@@ -3,7 +3,7 @@ import Testing
 
 @Suite("PreviewZoomAvailability")
 struct PreviewZoomAvailabilityTests {
-    @Test("画像を表示しプレビューが見えていれば、100%で3操作とも使える")
+    @Test("All three zoom actions are available at 100% when an image is shown and the preview is visible")
     func availableAtFit() {
         let availability = PreviewZoomAvailability(isImageDisplayed: true, isPreviewVisible: true, level: .fit)
         #expect(availability.isAvailable)
@@ -12,7 +12,7 @@ struct PreviewZoomAvailabilityTests {
         #expect(availability.canFit)
     }
 
-    @Test("800%では拡大だけ、25%では縮小だけが無効")
+    @Test("Only zoom in is disabled at 800%, and only zoom out at 25%")
     func limits() throws {
         let maximum = PreviewZoomAvailability(
             isImageDisplayed: true,
@@ -33,7 +33,7 @@ struct PreviewZoomAvailabilityTests {
         #expect(minimum.canFit)
     }
 
-    @Test("画像がない・プレビューが見えないときは倍率にかかわらず3操作とも無効", arguments: [
+    @Test("All three actions are disabled without an image or when the preview is not visible, regardless of zoom", arguments: [
         (false, true, 100),
         (true, false, 100),
         (false, false, 100),

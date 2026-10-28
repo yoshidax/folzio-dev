@@ -28,7 +28,7 @@ struct SlideshowTransitionStateTests {
         return state
     }
 
-    @Test("同じ対象と効果なしでは arm せず、動画を止める action も出さない")
+    @Test("Does not arm for the same target or for no effect, and emits no action to stop video")
     func ignoresUnneededArm() {
         var state = SlideshowTransitionState()
         let same = state.reduce(.arm(target: a, current: a, effect: .crossfade))
@@ -39,7 +39,7 @@ struct SlideshowTransitionStateTests {
         #expect(state.targetURL == nil)
     }
 
-    @Test("準備中の表示では待ち、対象の再表示で準備完了を判定し直す")
+    @Test("Waits while preparation is displayed and re-evaluates readiness when the target is shown again")
     func waitsForTarget() {
         var state = holding()
         for content: PreviewContent in [.loading(b), .animatedImage(b), .animatedImageData(b, Data()), .video(b)] {
@@ -52,7 +52,7 @@ struct SlideshowTransitionStateTests {
         #expect(state.phase == .animating)
     }
 
-    @Test("表示の URL を持たないケースはフォーカスを使い、別の対象なら打ち切る", arguments: [false, true])
+    @Test("Uses focus for cases without a display URL and aborts for a different target", arguments: [false, true])
     func otherContentCancels(animated: Bool) {
         for content: PreviewContent in [.loading(c), .video(c), .animatedImage(c), .animatedImageData(c, Data()), .empty] {
             var state = animated ? animating() : holding()
@@ -64,7 +64,7 @@ struct SlideshowTransitionStateTests {
         }
     }
 
-    @Test("効果中の同じ対象の再表示と準備完了は無視し、現世代の完了でだけ外す")
+    @Test("Ignores re-presentation and readiness for the same target during an effect and clears only on the current generation's completion")
     func completesOnce() {
         var state = animating()
         let generation = state.generation
@@ -85,7 +85,7 @@ struct SlideshowTransitionStateTests {
         #expect(repeated == .none)
     }
 
-    @Test("新しい arm は古い効果を置き換え、古い通知を無視する", arguments: [false, true])
+    @Test("A new arm replaces the old effect and ignores stale notifications", arguments: [false, true])
     func replaces(animated: Bool) {
         var state = animated ? animating() : holding()
         let old = state.generation
@@ -103,7 +103,7 @@ struct SlideshowTransitionStateTests {
         #expect(ready == .animate(effect: .zoom, generation: state.generation))
     }
 
-    @Test("同じ対象・効果なしの arm、矢印や終了、リサイズは効果を打ち切る", arguments: [false, true])
+    @Test("Arming the same target, arming with no effect, arrows, exit, and resize abort the effect", arguments: [false, true])
     func cancels(animated: Bool) {
         let events: [SlideshowTransitionState.Event] = [
             .arm(target: b, current: b, effect: .slide),
@@ -128,7 +128,7 @@ struct SlideshowTransitionStateTests {
         #expect(ready == .none)
     }
 
-    @Test("すべての PreviewContent の準備完了判定")
+    @Test("Readiness for every PreviewContent case")
     func readiness() throws {
         let context = try #require(CGContext(data: nil, width: 1, height: 1, bitsPerComponent: 8,
             bytesPerRow: 4, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))

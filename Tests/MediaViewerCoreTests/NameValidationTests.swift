@@ -7,7 +7,7 @@ struct NameValidationTests {
     private let file = URL(fileURLWithPath: "/tmp/a.jpg")
     private let existingNames: Set<String> = ["a.jpg", "photo.png"]
 
-    @Test("空・不正な文字・先頭のドット・大文字小文字だけ異なる名前を拒否する", arguments: [
+    @Test("Rejects empty names, invalid characters, leading dots, and names differing only in case", arguments: [
         "",
         "   ",
         "a/b.jpg",
@@ -22,7 +22,7 @@ struct NameValidationTests {
         }
     }
 
-    @Test("拡張子が変わる場合は確認を求める")
+    @Test("Requests confirmation when the extension changes")
     func asksForExtensionChange() {
         #expect(
             validateNewName("a.png", for: file, existingNames: existingNames)
@@ -34,18 +34,18 @@ struct NameValidationTests {
         )
     }
 
-    @Test("拡張子が同じ名前は受け入れる")
+    @Test("Accepts names with the same extension")
     func acceptsValidName() {
         #expect(validateNewName("b.jpg", for: file, existingNames: existingNames) == .ok)
         #expect(validateNewName("B.JPG", for: file, existingNames: existingNames) == .ok)
     }
 
-    @Test("対象のファイル自身と同じ名前は衝突として拒否する")
+    @Test("Rejects the target file's own name as a conflict")
     func rejectsSameName() {
         #expect(validateNewName("a.jpg", for: file, existingNames: existingNames) == .invalid(.duplicate))
     }
 
-    @Test("フォルダの名前の変更では拡張子の確認を求めない")
+    @Test("Folder renaming does not request extension confirmation")
     func folderSkipsExtensionConfirmation() {
         let folder = URL(fileURLWithPath: "/tmp/album", isDirectory: true)
         #expect(validateNewName("album.2024", for: folder, existingNames: [], isDirectory: true) == .ok)
@@ -55,7 +55,7 @@ struct NameValidationTests {
         #expect(validateNewName("a.png", for: file, existingNames: existingNames) == .needsExtensionChangeConfirmation)
     }
 
-    @Test("フォルダでも空・不正な文字・先頭のドット・同名は拒否する", arguments: ["", "a/b", ".x", "ALBUM 2"])
+    @Test("Also rejects empty names, invalid characters, leading dots, and duplicate names for folders", arguments: ["", "a/b", ".x", "ALBUM 2"])
     func folderRejectsInvalidNames(name: String) {
         let folder = URL(fileURLWithPath: "/tmp/album", isDirectory: true)
         guard case .invalid = validateNewName(name, for: folder, existingNames: ["album 2"], isDirectory: true) else {
@@ -66,7 +66,7 @@ struct NameValidationTests {
 
     // MARK: Names That Become Packages (EC-53, EC-14)
 
-    @Test("フォルダをパッケージになる名前に変えようとすると拒否する")
+    @Test("Rejects renaming a folder to a name that makes it a package")
     func folderRejectsPackageName() {
         let folder = URL(fileURLWithPath: "/tmp/a/Photos", isDirectory: true)
         #expect(
@@ -76,7 +76,7 @@ struct NameValidationTests {
         #expect(validateNewName("2025.01", for: folder, existingNames: [], isDirectory: true) == .ok)
     }
 
-    @Test("ファイルにはパッケージの検査を適用しない")
+    @Test("Does not apply package checks to files")
     func fileIgnoresPackageName() {
         let png = URL(fileURLWithPath: "/tmp/a/Photos.png")
         #expect(
@@ -85,7 +85,7 @@ struct NameValidationTests {
         )
     }
 
-    @Test("パッケージの検査より既存の検査が先に当たる")
+    @Test("Existing validation runs before package checks")
     func existingChecksComeFirst() {
         let folder = URL(fileURLWithPath: "/tmp/a/Photos", isDirectory: true)
         #expect(
@@ -102,26 +102,26 @@ struct NameValidationTests {
         )
     }
 
-    @Test("uniqueName は 2 から連番を振る")
+    @Test("uniqueName starts numbering at 2")
     func numbersUniqueNames() {
         #expect(uniqueName(for: "a.jpg", existingNames: []) == "a 2.jpg")
         #expect(uniqueName(for: "a.jpg", existingNames: ["a.jpg"]) == "a 2.jpg")
         #expect(uniqueName(for: "a.jpg", existingNames: ["a.jpg", "a 2.jpg"]) == "a 3.jpg")
     }
 
-    @Test("既存の連番の続きから採番する")
+    @Test("Continues numbering after existing numbered names")
     func continuesExistingCounter() {
         #expect(uniqueName(for: "c 2.jpg", existingNames: ["c 2.jpg"]) == "c 3.jpg")
         #expect(uniqueName(for: "c 2.jpg", existingNames: ["c 2.jpg", "c 3.jpg"]) == "c 4.jpg")
     }
 
-    @Test("大文字小文字を区別せずに衝突を判定する")
+    @Test("Detects conflicts without case sensitivity")
     func detectsCaseInsensitiveCollisions() {
         #expect(uniqueName(for: "a.jpg", existingNames: ["A.JPG"]) == "a 2.jpg")
         #expect(uniqueName(for: "a.jpg", existingNames: ["A.JPG", "A 2.JPG"]) == "a 3.jpg")
     }
 
-    @Test("拡張子のない名前にも連番を付ける")
+    @Test("Also numbers names without extensions")
     func handlesNameWithoutExtension() {
         #expect(uniqueName(for: "notes", existingNames: ["notes"]) == "notes 2")
         #expect(uniqueName(for: "notes", existingNames: ["NOTES", "notes 2"]) == "notes 3")

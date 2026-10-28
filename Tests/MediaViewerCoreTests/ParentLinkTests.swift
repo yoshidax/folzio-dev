@@ -6,7 +6,7 @@ import Testing
 struct ParentLinkTests {
     private let folder = URL(fileURLWithPath: "/tmp/写真 集/a#b", isDirectory: true)
 
-    @Test("mvparent スキームの URL を作り、同じフォルダには同じ URL を返す")
+    @Test("Creates an mvparent URL and returns the same URL for the same folder")
     func makesStableURL() {
         let url = ParentLink.url(for: folder)
         #expect(url.scheme == "mvparent")
@@ -16,7 +16,7 @@ struct ParentLinkTests {
         #expect(url != ParentLink.url(for: URL(fileURLWithPath: "/tmp/写真 集", isDirectory: true)))
     }
 
-    @Test("isParentLink は mvparent の URL だけ true")
+    @Test("isParentLink is true only for mvparent URLs")
     func detectsParentLink() {
         #expect(ParentLink.isParentLink(ParentLink.url(for: folder)))
         #expect(!ParentLink.isParentLink(folder))

@@ -54,7 +54,7 @@ struct ArchiveAssetLoaderTests {
         return Prepared(original: original, zip: zip)
     }
 
-    @Test("asset の duration が元のファイルと一致し、動画のトラックがある", arguments: cases)
+    @Test("Asset duration matches the original file and the asset has a video track", arguments: cases)
     func durationAndTracks(testCase: Case) async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -72,7 +72,7 @@ struct ArchiveAssetLoaderTests {
         #expect(!tracks.isEmpty)
     }
 
-    @Test("AVAssetImageGenerator が先頭のフレームを返す", arguments: cases)
+    @Test("AVAssetImageGenerator returns the first frame", arguments: cases)
     func firstFrame(testCase: Case) async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -88,7 +88,7 @@ struct ArchiveAssetLoaderTests {
         #expect(result.image.width > 0)
     }
 
-    @Test("asset を作った関数を抜けて、読み込み器を外から保持しなくても読み込みが完了する")
+    @Test("Loading completes after the asset-creating function returns without retaining the loader externally")
     func loaderIsRetainedByAsset() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -106,7 +106,7 @@ struct ArchiveAssetLoaderTests {
         #expect(duration.seconds > 0)
     }
 
-    @Test("暗号化の項目の asset では load(.duration) が失敗する")
+    @Test("load(.duration) fails for an asset with an encrypted entry")
     func encryptedEntryFails() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

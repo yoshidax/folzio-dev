@@ -3,7 +3,7 @@ import Testing
 @testable import FixtureKit
 @testable import MediaViewerCore
 
-@Suite("BrowserModel の場所の通知")
+@Suite("BrowserModel location notifications")
 @MainActor
 struct BrowserModelHistoryTests {
     @MainActor
@@ -91,7 +91,7 @@ struct BrowserModelHistoryTests {
         return nil
     }
 
-    @Test("selectFolder は読み込みの前に navigated を1回出し、直前のフォーカス行を渡す")
+    @Test("selectFolder emits navigated once before loading and passes the previously focused row")
     func selectFolderEmitsNavigated() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -110,7 +110,7 @@ struct BrowserModelHistoryTests {
         #expect(path(env.model.listing.folder) == path(env.url("B")))
     }
 
-    @Test("フォルダを開くと navigated を1回だけ出し、場所は開いたフォルダになる")
+    @Test("Opening a folder emits navigated exactly once with the opened folder as its location")
     func openingFolderEmitsOnce() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -123,7 +123,7 @@ struct BrowserModelHistoryTests {
         #expect(path(env.model.historyLocation?.folder) == path(env.url("A/Sub")))
     }
 
-    @Test("zip を開き、中を移り、上へ戻る各操作が navigated を出す")
+    @Test("Opening a zip, navigating inside it, and going up each emit navigated")
     func archiveNavigationEmitsNavigated() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -152,7 +152,7 @@ struct BrowserModelHistoryTests {
         #expect(path(env.model.historyLocation?.folder) == path(env.url("A")))
     }
 
-    @Test("通常のフォルダで上の階層へ移ると navigated を出し、直前のフォルダを選ぶ")
+    @Test("Going up in a regular folder emits navigated and selects the folder just left")
     func goingUpEmitsNavigated() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -166,7 +166,7 @@ struct BrowserModelHistoryTests {
         #expect(env.model.selection.focused?.lastPathComponent == "Sub")
     }
 
-    @Test("表示中のフォルダが外から消えると、親へ移って relocated を出す")
+    @Test("External deletion of the current folder navigates to its parent and emits relocated")
     func deletedFolderRelocates() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -180,7 +180,7 @@ struct BrowserModelHistoryTests {
         #expect(env.events == [.relocated(vanished: [env.url("A/Sub")])])
     }
 
-    @Test("開いていた zip が外から消えると、フォルダへ戻って relocated を出す")
+    @Test("External deletion of the open zip returns to its containing folder and emits relocated")
     func deletedArchiveRelocates() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -197,7 +197,7 @@ struct BrowserModelHistoryTests {
         #expect(env.events == [.relocated(vanished: [zip.url])])
     }
 
-    @Test("読み直しでフォルダが見つからないと notFound を出し、historyLocation を nil にする")
+    @Test("A folder missing on reload emits notFound and sets historyLocation to nil")
     func reloadNotFoundEmits() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -211,7 +211,7 @@ struct BrowserModelHistoryTests {
         #expect(env.model.historyLocation == nil)
     }
 
-    @Test("名前を変えたフォルダの表示は新しい場所に追従し、通知は出さない")
+    @Test("The renamed folder view follows the new location without emitting a notification")
     func renamedFolderFollows() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -248,7 +248,7 @@ struct BrowserModelHistoryTests {
         }
     }
 
-    @Test("resolveHistoryLocation は通常のフォルダの存在を確かめ、show は通知を出さずに表示する")
+    @Test("resolveHistoryLocation checks regular folder existence and show displays it without notifications")
     func resolveAndShowNormalFolder() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -286,7 +286,7 @@ struct BrowserModelHistoryTests {
         return false
     }
 
-    @Test("zip の中の場所を確かめて表示し、ないディレクトリは見つからない（EC-64）")
+    @Test("Resolves and displays locations inside a zip and reports absent directories as missing (EC-64)")
     func resolveAndShowArchiveFolder() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -328,7 +328,7 @@ struct BrowserModelHistoryTests {
         }
     }
 
-    @Test("壊れた zip は飛ばさず、show でエラーの表示になる（EC-56・EC-64）")
+    @Test("A damaged zip is not skipped and show displays an error (EC-56, EC-64)")
     func showBrokenArchive() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -353,7 +353,7 @@ struct BrowserModelHistoryTests {
         }
     }
 
-    @Test("検索結果の表示中は historyLocation が nil で、フォルダを選ぶと検索を終えて navigated を出す")
+    @Test("historyLocation is nil in search results; selecting a folder ends the search and emits navigated")
     func searchEndsOnFolderSelection() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }

@@ -6,7 +6,7 @@ import Testing
 struct SlideshowSequenceTests {
     private let folder = URL(fileURLWithPath: "/tmp/slideshow-sequence", isDirectory: true)
 
-    @Test("対象は表示順のメディアだけで、親・フォルダ・zip・zip 内フォルダを除く")
+    @Test("Includes only media in display order and excludes parent, folder, zip, and archive-folder rows")
     func candidatesExcludeNonMedia() {
         let files = [
             row("..", .parent),
@@ -23,7 +23,7 @@ struct SlideshowSequenceTests {
         #expect(!SlideshowSequence.hasMedia(in: [row("..", .parent), row("album", .folder)]))
     }
 
-    @Test("開始は選択中のフォーカスメディア、なければ選択メディアの先頭、なければ先頭")
+    @Test("Starts at selected focused media, otherwise the first selected media, otherwise the first media")
     func startTargetUsesSelection() {
         let files = [media("a.jpg", .jpeg), media("b.png", .png), media("c.mp4", .mp4)]
 
@@ -58,7 +58,7 @@ struct SlideshowSequenceTests {
         ) == url("c.mp4"))
     }
 
-    @Test("開始はフォルダ選択だけなら対象先頭、対象なしなら nil")
+    @Test("Folder-only selection starts at the first eligible item; no eligible items returns nil")
     func startTargetSkipsNonMediaSelection() {
         let files = [row("album", .folder), media("a.jpg", .jpeg)]
 
@@ -75,7 +75,7 @@ struct SlideshowSequenceTests {
         ) == nil)
     }
 
-    @Test("次は最新の一覧順で次へ進み、末尾から先頭へ戻る")
+    @Test("Advances in the latest listing order and wraps from the end to the start")
     func nextTargetWraps() {
         let files = [media("a.jpg", .jpeg), media("b.png", .png), media("c.mp4", .mp4)]
 
@@ -86,7 +86,7 @@ struct SlideshowSequenceTests {
         #expect(SlideshowSequence.nextTarget(in: files, focused: url("album")) == url("a.jpg"))
     }
 
-    @Test("対象が1件なら同じ対象を返し、0件なら nil")
+    @Test("One eligible item returns itself and zero items returns nil")
     func nextTargetHandlesSmallLists() {
         #expect(SlideshowSequence.nextTarget(
             in: [media("only.jpg", .jpeg)],
@@ -104,7 +104,7 @@ struct SlideshowSequenceTests {
         ) == nil)
     }
 
-    @Test("同名でも URL が違えば別の対象として順に進む")
+    @Test("Same-name items with different URLs advance as separate items")
     func sameNameDifferentLocations() {
         let left = mediaAt(folder.appendingPathComponent("left/same.jpg"))
         let right = mediaAt(folder.appendingPathComponent("right/same.jpg"))
@@ -120,7 +120,7 @@ struct SlideshowSequenceTests {
         #expect(SlideshowSequence.nextTarget(in: files, focused: archive.url) == left.url)
     }
 
-    @Test("並べ替え後の一覧を渡すと、その順で次を返す")
+    @Test("Passing a resorted listing returns the next item in that order")
     func nextTargetUsesCurrentOrder() {
         let files = [media("c.mp4", .mp4), media("b.png", .png), media("a.jpg", .jpeg)]
 
@@ -128,7 +128,7 @@ struct SlideshowSequenceTests {
         #expect(SlideshowSequence.nextTarget(in: files, focused: url("a.jpg")) == url("c.mp4"))
     }
 
-    @Test("繰り返しの設定で途中・末尾・消えた選択・対象なしを判断する", arguments: [true, false])
+    @Test("Repeat settings determine behavior in the middle, at the end, with a missing selection, and with no eligible items", arguments: [true, false])
     func advanceBranches(repeats: Bool) {
         let files = [media("a.jpg", .jpeg), media("b.png", .png), media("c.mp4", .mp4),
                      row("album", .folder), row("photos.zip", .archive)]
@@ -161,7 +161,7 @@ struct SlideshowSequenceTests {
         #expect(SlideshowSequence.advance(in: single, focused: nil, repeats: repeats) == .target(focused))
     }
 
-    @Test("末尾は最新の一覧・並び順・繰り返し設定で判定する")
+    @Test("Determines the end using the latest listing, sort order, and repeat setting")
     func advanceUsesCurrentListingAndOptions() {
         let a = media("a.jpg", .jpeg)
         let b = media("b.png", .png)
@@ -175,7 +175,7 @@ struct SlideshowSequenceTests {
         #expect(SlideshowSequence.advance(in: [a, b], focused: b.url, repeats: false) == .finish)
     }
 
-    @Test("通常・zip 内・別フォルダ混在でも途中から末尾へ進み、繰り返さなければ終了する")
+    @Test("Mixed regular, archived, and different-folder items advance from the middle to the end and stop without repeat")
     func advanceAcrossLocations() {
         let archive = folder.appendingPathComponent("photos.zip")
         let ordinary = [media("a.jpg", .jpeg), media("b.png", .png), media("c.mp4", .mp4)]

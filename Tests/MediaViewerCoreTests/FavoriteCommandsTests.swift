@@ -8,7 +8,7 @@ struct FavoriteCommandsTests {
     private let registered = URL(fileURLWithPath: "/tmp/fav/registered")
     private var favorites: FavoriteFolders { FavoriteFolders(urls: [registered]) }
 
-    @Test("canAdd は未登録の .folder だけ true")
+    @Test("canAdd is true only for an unregistered .folder")
     func canAddOnlyForUnregisteredFolder() {
         #expect(FavoriteCommands.canAdd(.folder(folder), favorites: favorites))
         #expect(!FavoriteCommands.canAdd(.folder(registered), favorites: favorites))
@@ -17,7 +17,7 @@ struct FavoriteCommandsTests {
         #expect(!FavoriteCommands.canAdd(nil, favorites: favorites))
     }
 
-    @Test("removalTarget は .favorite のときだけ URL を返す")
+    @Test("removalTarget returns a URL only for .favorite")
     func removalTargetOnlyForFavorite() {
         #expect(FavoriteCommands.removalTarget(.favorite(registered)) == registered)
         #expect(FavoriteCommands.removalTarget(.folder(folder)) == nil)
@@ -25,7 +25,7 @@ struct FavoriteCommandsTests {
         #expect(FavoriteCommands.removalTarget(nil) == nil)
     }
 
-    @Test("右クリックメニューの項目と並びは役割で決まる")
+    @Test("Context menu items and their order depend on the role")
     func contextMenuItems() {
         #expect(
             FavoriteCommands.contextMenu(for: .folder(folder))
@@ -39,7 +39,7 @@ struct FavoriteCommandsTests {
 
     // MARK: Renaming Favorites (FR-099)
 
-    @Test("renameTarget はお気に入りとルート以外のフォルダを返し、ルート・見出し・選択なしは nil（FR-099・FR-103）")
+    @Test("renameTarget returns favorites and non-root folders; roots, headings, and no selection return nil (FR-099, FR-103)")
     func renameTargetForFavoriteAndFolder() {
         let a = URL(fileURLWithPath: "/Users/me/a")
         #expect(FavoriteCommands.renameTarget(.favorite(a), roots: roots) == .favorite(a))
@@ -52,7 +52,7 @@ struct FavoriteCommandsTests {
         #expect(FavoriteCommands.renameTarget(.favorite(a), roots: []) == .favorite(a))
     }
 
-    @Test("「名前を変更」は .folder（ルートを含む）と見出しのメニューに含まれない")
+    @Test("Rename is absent from .folder menus including roots and from heading menus")
     func renameFavoriteIsOnlyInFavoriteMenu() {
         let a = URL(fileURLWithPath: "/Users/me/a")
         let root = URL(fileURLWithPath: "/Users/me")
@@ -62,14 +62,14 @@ struct FavoriteCommandsTests {
         #expect(!FavoriteCommands.contextMenu(for: .favoritesHeader, roots: roots).contains(.renameFavorite))
     }
 
-    @Test("選択したときに表示するフォルダ。見出しは nil")
+    @Test("Selection resolves the folder to display and returns nil for headings")
     func folderToShowForRoles() {
         #expect(FavoriteCommands.folderToShow(for: .folder(folder)) == folder)
         #expect(FavoriteCommands.folderToShow(for: .favorite(registered)) == registered)
         #expect(FavoriteCommands.folderToShow(for: .favoritesHeader) == nil)
     }
 
-    @Test("ドロップ・ペーストを受け付けるのは .folder だけ")
+    @Test("Only .folder accepts drops and paste")
     func acceptsFilesOnlyForFolder() {
         #expect(FavoriteCommands.acceptsFiles(.folder(folder)))
         #expect(!FavoriteCommands.acceptsFiles(.favorite(registered)))
@@ -80,7 +80,7 @@ struct FavoriteCommandsTests {
 
     private let roots = [URL(fileURLWithPath: "/"), URL(fileURLWithPath: "/Users/me")]
 
-    @Test("trashTarget は通常のフォルダの URL を返す（ルートに / を含むボリュームの下も対象）")
+    @Test("trashTarget returns regular folder URLs, including folders under volumes whose roots contain /")
     func trashTargetForOrdinaryFolder() {
         let home = URL(fileURLWithPath: "/Users/me/a")
         let volume = URL(fileURLWithPath: "/Volumes/Ext/a")
@@ -88,7 +88,7 @@ struct FavoriteCommandsTests {
         #expect(FavoriteCommands.trashTarget(.folder(volume), roots: roots) == volume)
     }
 
-    @Test("trashTarget はルート・お気に入り・見出し・選択なし・ルート一覧が空のとき nil")
+    @Test("trashTarget is nil for roots, favorites, headings, no selection, and an empty roots list")
     func trashTargetIsNilForOthers() {
         let a = URL(fileURLWithPath: "/Users/me/a")
         #expect(FavoriteCommands.trashTarget(.folder(URL(fileURLWithPath: "/Users/me")), roots: roots) == nil)
@@ -100,7 +100,7 @@ struct FavoriteCommandsTests {
         #expect(FavoriteCommands.trashTarget(.folder(a), roots: []) == nil)
     }
 
-    @Test("通常のフォルダの右クリックメニューは「ゴミ箱に入れる」「名前を変更」をそれぞれ区切り線の前に置く（A-37）")
+    @Test("Regular folder context menus place Move to Trash and Rename before their respective separators (A-37)")
     func contextMenuForOrdinaryFolderHasTrashAndRename() {
         let a = URL(fileURLWithPath: "/Users/me/a")
         #expect(
@@ -112,7 +112,7 @@ struct FavoriteCommandsTests {
         )
     }
 
-    @Test("ルートのフォルダと roots 省略時は従来の並び。お気に入り・見出しは roots を渡しても変わらない")
+    @Test("Root folders and omitted roots retain the existing order; passing roots leaves favorites and headings unchanged")
     func contextMenuWithoutTrash() {
         let plain: [TreeContextMenuItem] =
             [.pasteHere, .movePasteHere, .separator, .addToFavorites, .separator, .revealInFinder]

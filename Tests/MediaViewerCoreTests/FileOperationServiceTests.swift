@@ -7,7 +7,7 @@ import Testing
 struct FileOperationServiceTests {
     private let service = FileOperationService()
 
-    @Test("同じ項目への置き換えは元を消さず拒否する")
+    @Test("Rejects replacing an item with itself without deleting the original")
     func refusesReplaceOfSource() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -24,7 +24,7 @@ struct FileOperationServiceTests {
         #expect(try Data(contentsOf: source) == before)
     }
 
-    @Test("コピーすると元を残したまま操作先に複製される")
+    @Test("Copying duplicates the item at the destination and preserves the original")
     func copiesFile() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -43,7 +43,7 @@ struct FileOperationServiceTests {
         #expect(try Data(contentsOf: destination.appendingPathComponent("a.jpg")) == Data(contentsOf: source))
     }
 
-    @Test("移動すると元の場所から消える")
+    @Test("Moving removes the item from its original location")
     func movesFile() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -62,7 +62,7 @@ struct FileOperationServiceTests {
         #expect(FileManager.default.fileExists(atPath: destination.appendingPathComponent("a.jpg").path))
     }
 
-    @Test("名前を変更すると新しい名前で同じフォルダに残る")
+    @Test("Renaming keeps the item in the same folder with its new name")
     func renamesFile() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -81,7 +81,7 @@ struct FileOperationServiceTests {
         #expect(FileManager.default.fileExists(atPath: renamed.path))
     }
 
-    @Test("ゴミ箱へ移動するとゴミ箱内の URL を返し元の場所から消える")
+    @Test("Moving to Trash returns the URL in Trash and removes the item from its original location")
     func trashesFile() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -106,7 +106,7 @@ struct FileOperationServiceTests {
         #expect(!FileManager.default.fileExists(atPath: source.path))
     }
 
-    @Test("衝突を検出する")
+    @Test("Detects conflicts")
     func detectsConflicts() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -123,7 +123,7 @@ struct FileOperationServiceTests {
         #expect(service.conflicts(for: FileOperation(kind: .trash, sources: [source])) == [])
     }
 
-    @Test("置き換えると既存の項目をゴミ箱へ入れてからコピーする")
+    @Test("Replacing moves the existing item to Trash before copying")
     func replacesExistingItem() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -144,7 +144,7 @@ struct FileOperationServiceTests {
         #expect(FileManager.default.fileExists(atPath: source.path))
     }
 
-    @Test("両方残すと既存と衝突しない連番の名前でコピーする")
+    @Test("Keeping both copies with a numbered name that does not conflict")
     func keepsBothOnConflict() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -168,7 +168,7 @@ struct FileOperationServiceTests {
         #expect(try Data(contentsOf: destination.appendingPathComponent("c 2.jpg")) == Data("existing-c".utf8))
     }
 
-    @Test("中止を指定したコピーは操作先に同名があれば失敗として返し既存の項目を変更しない")
+    @Test("Copying with abort fails on a destination name conflict and preserves the existing item")
     func abortsCopyOnConflict() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -191,7 +191,7 @@ struct FileOperationServiceTests {
         #expect(try Data(contentsOf: existing) == Data("existing".utf8))
     }
 
-    @Test("中止を指定してもゴミ箱へ移動しゴミ箱内の URL を返す")
+    @Test("The abort policy still moves items to Trash and returns their URLs in Trash")
     func trashesFileWithAbortResolution() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -217,7 +217,7 @@ struct FileOperationServiceTests {
         #expect(!FileManager.default.fileExists(atPath: source.path))
     }
 
-    @Test("中止を指定した名前の変更は同名がなければ名前を変える")
+    @Test("Renaming with abort changes the name when no conflict exists")
     func renamesFileWithAbortResolution() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -236,7 +236,7 @@ struct FileOperationServiceTests {
         #expect(FileManager.default.fileExists(atPath: renamed.path))
     }
 
-    @Test("中止を指定した名前の変更は同名があれば失敗として返し両方のファイルを変更しない")
+    @Test("Renaming with abort fails on a name conflict and preserves both files")
     func abortsRenameOnConflict() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -260,7 +260,7 @@ struct FileOperationServiceTests {
         #expect(try Data(contentsOf: existing) == Data("existing".utf8))
     }
 
-    @Test("書き込みできないフォルダでは失敗理由を返し元のファイルを変更しない")
+    @Test("An unwritable folder returns a failure reason and preserves the source file")
     func failsInReadOnlyFolder() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -287,7 +287,7 @@ struct FileOperationServiceTests {
         #expect(!FileManager.default.fileExists(atPath: destination.appendingPathComponent("a.jpg").path))
     }
 
-    @Test("同じフォルダへの移動は何もしない")
+    @Test("Moving to the same folder does nothing")
     func movingToSameFolderIsNoOp() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -306,7 +306,7 @@ struct FileOperationServiceTests {
         #expect(try Data(contentsOf: source) == originalContents)
     }
 
-    @Test("1件が失敗しても残りの処理を続ける")
+    @Test("Continues processing remaining items after one fails")
     func continuesAfterFailure() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -329,7 +329,7 @@ struct FileOperationServiceTests {
         #expect(FileManager.default.fileExists(atPath: destination.appendingPathComponent("b.png").path))
     }
 
-    @Test("フォルダを自分自身へコピーしようとすると失敗する")
+    @Test("Copying a folder onto itself fails")
     func refusesCopyingFolderIntoItself() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -362,7 +362,7 @@ struct FileOperationServiceTests {
         return Set((enumerator?.allObjects as? [String]) ?? [])
     }
 
-    @Test("フォルダを同じ親へ両方残すコピーでは元と中身を保つ")
+    @Test("Copying a folder to the same parent with keep-both preserves the source and its contents")
     func copiesFolderIntoSameParent() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -382,7 +382,7 @@ struct FileOperationServiceTests {
         #expect(contents(of: album) == expected)
     }
 
-    @Test("フォルダをコピーすると中身ごと複製され、元も残る")
+    @Test("Copying a folder duplicates its contents and preserves the source")
     func copiesFolderWithContents() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -401,7 +401,7 @@ struct FileOperationServiceTests {
         #expect(contents(of: album).contains("inner/b.jpg"))
     }
 
-    @Test("フォルダを移動すると中身ごと操作先へ移る")
+    @Test("Moving a folder moves its contents to the destination")
     func movesFolderWithContents() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -420,7 +420,7 @@ struct FileOperationServiceTests {
         #expect(contents(of: destination.appendingPathComponent("album", isDirectory: true)) == expected)
     }
 
-    @Test("フォルダの名前を変えても中身は残る")
+    @Test("Renaming a folder preserves its contents")
     func renamesFolder() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -438,7 +438,7 @@ struct FileOperationServiceTests {
         #expect(contents(of: folder.appendingPathComponent("album 2024", isDirectory: true)) == expected)
     }
 
-    @Test("フォルダをゴミ箱に入れると元の場所から消え、ゴミ箱の URL を返す")
+    @Test("Moving a folder to Trash removes it from its original location and returns its URL in Trash")
     func trashesFolder() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -455,7 +455,7 @@ struct FileOperationServiceTests {
         try? FileManager.default.removeItem(at: trashed)
     }
 
-    @Test("同名のフォルダがあると衝突し、置き換えはフォルダごと、両方残すは連番になる")
+    @Test("Same-name folders conflict; replace handles the whole folder and keep-both uses a numbered name")
     func folderConflicts() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -479,7 +479,7 @@ struct FileOperationServiceTests {
         #expect(!contents(of: existing).contains("old.jpg"))
     }
 
-    @Test("フォルダを自分の配下へ移動・コピーすると失敗し、何も変わらない")
+    @Test("Moving or copying a folder into its descendants fails and changes nothing")
     func refusesMovingFolderIntoDescendant() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }

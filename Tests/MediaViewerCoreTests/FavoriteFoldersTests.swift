@@ -18,12 +18,12 @@ struct FavoriteFoldersTests {
         ]
     }
 
-    @Test("既定は空")
+    @Test("Defaults to empty")
     func defaultsToEmpty() {
         #expect(FavoriteFolders().urls.isEmpty)
     }
 
-    @Test("add は登録順に末尾へ追加する")
+    @Test("add appends in registration order")
     func addAppendsInOrder() {
         var favorites = FavoriteFolders()
         let added = [a, b, c].map { favorites.add($0) }
@@ -31,7 +31,7 @@ struct FavoriteFoldersTests {
         #expect(favorites.urls == [a, b, c])
     }
 
-    @Test("登録済みの場所は表記が違っても追加しない")
+    @Test("Does not add an already registered location with a different path representation")
     func addRejectsDuplicates() {
         var favorites = FavoriteFolders(urls: [a])
         for alias in aliasesOfA {
@@ -41,7 +41,7 @@ struct FavoriteFoldersTests {
         }
     }
 
-    @Test("contains は表記の違いを同一視する")
+    @Test("contains treats different path representations as the same location")
     func containsMatchesAliases() {
         let favorites = FavoriteFolders(urls: [a])
         for alias in aliasesOfA {
@@ -50,7 +50,7 @@ struct FavoriteFoldersTests {
         #expect(!favorites.contains(d))
     }
 
-    @Test("remove は登録済みだけを取り除き、順序を保つ")
+    @Test("remove deletes only registered locations and preserves order")
     func removeKeepsOrder() {
         var favorites = FavoriteFolders(urls: [a, b, c])
         let removedB = favorites.remove(b)
@@ -62,7 +62,7 @@ struct FavoriteFoldersTests {
         #expect(favorites.urls == [a, c])
     }
 
-    @Test("remove は .. を含む表記でも取り除ける")
+    @Test("remove also accepts path representations containing ..")
     func removeMatchesAliases() {
         var favorites = FavoriteFolders(urls: [a, b, c])
         let removed = favorites.remove(URL(fileURLWithPath: "/tmp/fav/x/../b"))
@@ -70,7 +70,7 @@ struct FavoriteFoldersTests {
         #expect(favorites.urls == [a, c])
     }
 
-    @Test("init(urls:) は重複を先勝ちで除き、順序を保つ")
+    @Test("init(urls:) removes duplicates using the first occurrence and preserves order")
     func initRemovesDuplicates() {
         let favorites = FavoriteFolders(urls: [a, b, a, c, b])
         #expect(favorites.urls == [a, b, c])
@@ -78,7 +78,7 @@ struct FavoriteFoldersTests {
 
     // MARK: - Display Names (FR-099–101; R48, R50)
 
-    @Test("表示名を付けると customName と displayName に反映される")
+    @Test("Setting a display name updates customName and displayName")
     func commitSetsDisplayName() {
         var favorites = FavoriteFolders(urls: [a, b])
         let changed = favorites.commitDisplayName("2025（バックアップ）", for: b, defaultName: "2025")
@@ -89,7 +89,7 @@ struct FavoriteFoldersTests {
         #expect(favorites.displayName(for: a, defaultName: "a") == "a")
     }
 
-    @Test("別の名前へ変更できる")
+    @Test("Changes to a different name")
     func commitChangesDisplayName() {
         var favorites = FavoriteFolders(urls: [a])
         favorites.commitDisplayName("one", for: a, defaultName: "a")
@@ -98,7 +98,7 @@ struct FavoriteFoldersTests {
         #expect(favorites.customName(for: a) == "two")
     }
 
-    @Test("空・空白だけで確定すると表示名を解除する")
+    @Test("Committing an empty or whitespace-only name clears the display name")
     func commitBlankClearsDisplayName() {
         for blank in ["", "   "] {
             var favorites = FavoriteFolders(urls: [a])
@@ -110,7 +110,7 @@ struct FavoriteFoldersTests {
         }
     }
 
-    @Test("現在の表示名と同じ名前の確定は何もしない")
+    @Test("Committing the current display name changes nothing")
     func commitSameNameIsNoOp() {
         var favorites = FavoriteFolders(urls: [a])
         favorites.commitDisplayName("one", for: a, defaultName: "a")
@@ -122,7 +122,7 @@ struct FavoriteFoldersTests {
         }
     }
 
-    @Test("表示名なしの項目で defaultName と同じ名前を確定しても表示名は付かない（R50）")
+    @Test("Committing defaultName for an item without a display name does not set one (R50)")
     func commitDefaultNameWithoutCustomNameIsNoOp() {
         var favorites = FavoriteFolders(urls: [a])
         let changed = favorites.commitDisplayName("a", for: a, defaultName: "a")
@@ -131,7 +131,7 @@ struct FavoriteFoldersTests {
         #expect(favorites.customNamesByPath.isEmpty)
     }
 
-    @Test("表示名ありの項目で defaultName と同じ名前を確定すると表示名として残る（EC-41）")
+    @Test("Committing defaultName for an item with a display name retains it as a display name (EC-41)")
     func commitDefaultNameWithCustomNameIsKept() {
         var favorites = FavoriteFolders(urls: [a])
         favorites.commitDisplayName("one", for: a, defaultName: "a")
@@ -140,7 +140,7 @@ struct FavoriteFoldersTests {
         #expect(favorites.customName(for: a) == "a")
     }
 
-    @Test("同じ表示名を複数の項目に付けられ、/ と : も受け付ける（EC-41）")
+    @Test("Multiple items can share a display name and accept / and : (EC-41)")
     func commitAllowsDuplicatesAndSpecialCharacters() {
         var favorites = FavoriteFolders(urls: [a, b])
         let changedA = favorites.commitDisplayName("same", for: a, defaultName: "a")
@@ -155,7 +155,7 @@ struct FavoriteFoldersTests {
         #expect(favorites.customName(for: a) == "a/b:c")
     }
 
-    @Test("未登録の場所への commit は false で何も変えない")
+    @Test("Committing an unregistered location returns false and changes nothing")
     func commitRejectsUnregistered() {
         var favorites = FavoriteFolders(urls: [a])
         let changed = favorites.commitDisplayName("x", for: d, defaultName: "d")
@@ -164,7 +164,7 @@ struct FavoriteFoldersTests {
         #expect(favorites.customName(for: d) == nil)
     }
 
-    @Test("remove で表示名も消え、add し直すと表示名なしになる（EC-44）")
+    @Test("remove clears the display name and adding again starts without one (EC-44)")
     func removeDiscardsDisplayName() {
         var favorites = FavoriteFolders(urls: [a, b])
         favorites.commitDisplayName("one", for: b, defaultName: "b")
@@ -175,7 +175,7 @@ struct FavoriteFoldersTests {
         #expect(favorites.customName(for: b) == nil)
     }
 
-    @Test("表記の違いでも同じ登録の表示名を引ける・設定できる")
+    @Test("Different path representations retrieve and set the same registered display name")
     func displayNameMatchesAliases() {
         var favorites = FavoriteFolders(urls: [a])
         for alias in aliasesOfA {
@@ -187,7 +187,7 @@ struct FavoriteFoldersTests {
         }
     }
 
-    @Test("init(customNames:) は未登録のキーと空になる値を捨て、長さと改行を整える")
+    @Test("init(customNames:) discards unregistered keys and empty values and normalizes length and newlines")
     func initSanitizesCustomNames() {
         let long = String(repeating: "x", count: 256)
         let favorites = FavoriteFolders(
@@ -205,7 +205,7 @@ struct FavoriteFoldersTests {
         #expect(withNewline.customName(for: a) == "one")
     }
 
-    @Test("customNamesByPath のキーは standardizedFileURL.path")
+    @Test("customNamesByPath uses standardizedFileURL.path as its keys")
     func customNamesByPathUsesStandardizedPath() {
         var favorites = FavoriteFolders(urls: [URL(fileURLWithPath: "/tmp/fav/x/../a")])
         favorites.commitDisplayName("one", for: a, defaultName: "a")
@@ -215,7 +215,7 @@ struct FavoriteFoldersTests {
         #expect(fromAlias.customNamesByPath == ["/tmp/fav/a": "two"])
     }
 
-    @Test("等価比較は表示名を含む")
+    @Test("Equality includes display names")
     func equalityIncludesDisplayNames() {
         let plain = FavoriteFolders(urls: [a, b])
         let named = FavoriteFolders(urls: [a, b], customNames: [b.path: "one"])

@@ -8,7 +8,7 @@ struct FolderDisclosureTests {
         FolderNode(url: URL(fileURLWithPath: "/tmp/folder"), name: "folder", kind: .folder)
     }
 
-    @Test("既定ではサブフォルダの有無は未確認で、開閉できない")
+    @Test("Defaults to unknown subfolder presence and cannot expand or collapse")
     func defaultsToUnknown() {
         let node = makeNode()
         #expect(node.subfolderState == .unknown)
@@ -16,7 +16,7 @@ struct FolderDisclosureTests {
     }
 
     @Test(
-        "開閉できるのは権限なし以外で、サブフォルダがあるか確認に失敗したときだけ",
+        "Allows disclosure only if access is not denied and the subfolder state is either present or failed",
         arguments: [FolderNode.AccessState.unknown, .accessible, .denied, .unavailable]
     )
     func expandability(access: FolderNode.AccessState) {
@@ -30,7 +30,7 @@ struct FolderDisclosureTests {
         }
     }
 
-    @Test("確認でサブフォルダがあれば present になる")
+    @Test("A probe finding subfolders sets present")
     func probeFindsSubfolders() {
         var node = makeNode()
         node.applySubfolderProbe(.success(true))
@@ -39,7 +39,7 @@ struct FolderDisclosureTests {
         #expect(node.isExpandable)
     }
 
-    @Test("確認でサブフォルダがなければ absent になる")
+    @Test("A probe finding no subfolders sets absent")
     func probeFindsNoSubfolders() {
         var node = makeNode()
         node.applySubfolderProbe(.success(false))
@@ -48,7 +48,7 @@ struct FolderDisclosureTests {
         #expect(!node.isExpandable)
     }
 
-    @Test("確認が権限なしで失敗すれば denied になり、開閉できない")
+    @Test("An access-denied probe sets denied and disables disclosure")
     func probeDenied() {
         var node = makeNode()
         node.applySubfolderProbe(.failure(.accessDenied))
@@ -56,7 +56,7 @@ struct FolderDisclosureTests {
         #expect(!node.isExpandable)
     }
 
-    @Test("確認が権限以外の理由で失敗すれば failed になり、開閉できる", arguments: [
+    @Test("A probe failing for another reason sets failed and allows disclosure", arguments: [
         ListingError.notFound,
         .other("x"),
     ])
@@ -67,7 +67,7 @@ struct FolderDisclosureTests {
         #expect(node.isExpandable)
     }
 
-    @Test("再確認の結果で状態を上書きする")
+    @Test("A repeated probe overwrites the state with its result")
     func reprobeOverridesState() {
         var node = makeNode()
         node.applySubfolderProbe(.success(true))
@@ -82,7 +82,7 @@ struct FolderDisclosureTests {
         #expect(denied.isExpandable)
     }
 
-    @Test("展開して子が1件以上なら present になる")
+    @Test("Expanding with at least one child sets present")
     func listingWithChildren() {
         var node = makeNode()
         node.subfolderState = .failed
@@ -91,7 +91,7 @@ struct FolderDisclosureTests {
         #expect(node.accessState == .accessible)
     }
 
-    @Test("展開して子が0件なら absent になり、開閉できない")
+    @Test("Expanding with no children sets absent and disables disclosure")
     func listingWithoutChildren() {
         var node = makeNode()
         node.subfolderState = .present
@@ -100,7 +100,7 @@ struct FolderDisclosureTests {
         #expect(!node.isExpandable)
     }
 
-    @Test("展開時の読み込みが権限なしで失敗すれば denied になり、子は空になる")
+    @Test("An access-denied load during expansion sets denied and clears children")
     func listingDenied() {
         var node = makeNode()
         node.subfolderState = .present
@@ -110,7 +110,7 @@ struct FolderDisclosureTests {
         #expect(!node.isExpandable)
     }
 
-    @Test("展開時の読み込みが権限以外の理由で失敗すれば unavailable になり、再展開できる", arguments: [
+    @Test("A load failing for another reason during expansion sets unavailable and allows another expansion", arguments: [
         ListingError.notFound,
         .other("x"),
     ])
@@ -125,7 +125,7 @@ struct FolderDisclosureTests {
         #expect(node.isExpandable)
     }
 
-    @Test("読めなかったフォルダも、読み直しに成功すれば accessible に戻る")
+    @Test("A successful reload restores accessible even for a previously unreadable folder")
     func listingRecovers() {
         var node = makeNode()
         node.applySubfolderListing(.failure(.other("x")))
@@ -134,7 +134,7 @@ struct FolderDisclosureTests {
         #expect(node.accessState == .accessible)
     }
 
-    @Test("ダブルクリックは展開中なら折りたたみ、開閉できれば展開し、それ以外は何もしない")
+    @Test("Double-click collapses expanded folders, expands expandable folders, and otherwise does nothing")
     func doubleClickToggle() {
         #expect(FolderDisclosure.doubleClickToggle(isExpandable: true, isExpanded: false) == .expand)
         #expect(FolderDisclosure.doubleClickToggle(isExpandable: true, isExpanded: true) == .collapse)

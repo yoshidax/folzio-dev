@@ -15,13 +15,13 @@ struct ArchiveNameDecoderTests {
         try #require(text.data(using: Self.cp932))
     }
 
-    @Test("UTF-8 フラグありの UTF-8 はそのまま読む")
+    @Test("Reads UTF-8 as-is when the UTF-8 flag is set")
     func utf8WithFlag() {
         let bytes = Data("写真.jpg".utf8)
         #expect(ArchiveNameDecoder.decode(bytes, utf8Flag: true) == "写真.jpg")
     }
 
-    @Test("UTF-8 フラグありで不正なバイトを含んでも置換文字で返す")
+    @Test("Returns replacement characters for invalid bytes when the UTF-8 flag is set")
     func utf8FlagWithInvalidBytes() {
         var bytes = Data("ab".utf8)
         bytes.append(contentsOf: [0xFF, 0xFE])
@@ -32,40 +32,40 @@ struct ArchiveNameDecoderTests {
         #expect(decoded.hasSuffix("c.png"))
     }
 
-    @Test("UTF-8 フラグなしでも、厳密に UTF-8 として読めれば UTF-8 で読む")
+    @Test("Reads as UTF-8 without the flag when the bytes are valid UTF-8")
     func utf8WithoutFlag() {
         let bytes = Data("日本語/画像.png".utf8)
         #expect(ArchiveNameDecoder.decode(bytes, utf8Flag: false) == "日本語/画像.png")
     }
 
-    @Test("UTF-8 フラグなしの CP932 を読む")
+    @Test("Reads CP932 without the UTF-8 flag")
     func cp932WithoutFlag() throws {
         let bytes = try cp932Bytes("写真①.jpg")
         #expect(ArchiveNameDecoder.decode(bytes, utf8Flag: false) == "写真①.jpg")
     }
 
-    @Test("2バイト目が 0x5C の文字を含む CP932 も壊れない")
+    @Test("Does not corrupt CP932 characters whose second byte is 0x5C")
     func cp932WithBackslashTrailByte() throws {
         let bytes = try cp932Bytes("表示.png")
         #expect(bytes.contains(0x5C))
         #expect(ArchiveNameDecoder.decode(bytes, utf8Flag: false) == "表示.png")
     }
 
-    @Test("UTF-8 でも CP932 でもないバイト列は CP437 で読む")
+    @Test("Reads bytes that are neither UTF-8 nor CP932 as CP437")
     func cp437Fallback() {
         let decoded = ArchiveNameDecoder.decode(Data([0x80, 0xFF, 0x41]), utf8Flag: false)
         #expect(decoded == "\u{00C7}\u{00A0}A")
         #expect(decoded.count == 3)
     }
 
-    @Test("ASCII だけの名前はフラグに関わらず同じ結果")
+    @Test("ASCII-only names produce the same result with or without the flag")
     func asciiIsIndependentOfFlag() {
         let bytes = Data("dir/photo 1.jpg".utf8)
         #expect(ArchiveNameDecoder.decode(bytes, utf8Flag: true) == "dir/photo 1.jpg")
         #expect(ArchiveNameDecoder.decode(bytes, utf8Flag: false) == "dir/photo 1.jpg")
     }
 
-    @Test("空のバイト列は空文字")
+    @Test("Empty bytes produce an empty string")
     func emptyBytes() {
         #expect(ArchiveNameDecoder.decode(Data(), utf8Flag: true) == "")
         #expect(ArchiveNameDecoder.decode(Data(), utf8Flag: false) == "")

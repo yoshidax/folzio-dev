@@ -65,7 +65,7 @@ struct FileNameSearcherTests {
         )
     }
 
-    @Test("名前が一致するフォルダをファイルと同じ結果に返し、隠し・パッケージ・フォルダへのリンク・zip・起点を除く")
+    @Test("Returns matching folders alongside files and excludes hidden items, packages, folder links, zip files, and the root")
     func folderSearchMatchesFolders() async throws {
         let env = try makeFolderSearchEnv()
         defer { env.cleanup() }
@@ -91,7 +91,7 @@ struct FileNameSearcherTests {
         ] {
             #expect(
                 !relativePaths(results, root: env.root).contains(excluded),
-                "行になっている: \(excluded)"
+                "Unexpected result row: \(excluded)"
             )
         }
 
@@ -107,7 +107,7 @@ struct FileNameSearcherTests {
         #expect(kind("clips/kyoto_clip.mov") == .media(.mov))
     }
 
-    @Test("ワイルドカードはフォルダ名の全体と照合し、「.」を拡張子として扱わない")
+    @Test("Wildcards match the entire folder name without treating dots as extensions")
     func folderSearchWildcardsAndDots() async throws {
         let env = try makeFolderSearchEnv()
         defer { env.cleanup() }
@@ -128,7 +128,7 @@ struct FileNameSearcherTests {
         #expect(!jpgFolders.contains { $0.name.hasSuffix(".png") })
     }
 
-    @Test("権限のないフォルダは名前が一致すれば行になり、中は辿らない（EC-33・EC-91）")
+    @Test("A folder without permission becomes a row if its name matches but is not traversed (EC-33, EC-91)")
     func folderSearchUnreadableFolder() async throws {
         let env = try makeFolderSearchEnv()
         defer { env.cleanup() }
@@ -142,7 +142,7 @@ struct FileNameSearcherTests {
         #expect(!results.contains { $0.name == "secret_kyoto.jpg" })
     }
 
-    @Test("フォルダの行の値は DirectoryLister のフォルダの行と同じ")
+    @Test("Folder row values match DirectoryLister folder rows")
     func folderRowValuesMatchLister() async throws {
         let env = try makeFolderSearchEnv()
         defer { env.cleanup() }
@@ -165,7 +165,7 @@ struct FileNameSearcherTests {
         #expect(row.url.path.hasPrefix(env.root.path + "/"))
     }
 
-    @Test("matchesRoot が true のときだけ起点そのものを照合し、隠し属性とパッケージの起点は行にしない")
+    @Test("Matches the root only when matchesRoot is true and excludes hidden and package roots")
     func matchesRootOption() async throws {
         let env = try makeFolderSearchEnv()
         defer { env.cleanup() }
@@ -196,7 +196,7 @@ struct FileNameSearcherTests {
         #expect(!(await search(root: packageRoot, matchesRoot: true)).contains { $0.name == "Kyoto.app" })
     }
 
-    @Test("SC-053: 一致するフォルダ50件とファイル50件のちょうど100件を返す")
+    @Test("SC-053: Returns exactly 100 matches comprising 50 folders and 50 files")
     func scaleMatchingFoldersAndFiles() async throws {
         let base = FileManager.default.temporaryDirectory
             .appendingPathComponent("FileNameSearcherTests-scale-\(UUID().uuidString)", isDirectory: true)
@@ -217,7 +217,7 @@ struct FileNameSearcherTests {
         #expect(!results.contains { $0.url.standardizedFileURL == root.standardizedFileURL })
     }
 
-    @Test("ディレクトリは照合の前に記録し、ファイル・隠し・リンク・パッケージの中・起点は記録しない")
+    @Test("Records directories before matching but excludes files, hidden items, links, package contents, and the root")
     func recordsVisitedDirectories() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -249,7 +249,7 @@ struct FileNameSearcherTests {
         #expect(relativePaths(shortcut, root: env.root) == relativePaths(found.flatMap { $0 }, root: env.root))
     }
 
-    @Test("cat は対応メディアとフォルダを返し、隠し・パッケージ・zip・リンク経由・一致したフォルダの中の一致しない名前を除く")
+    @Test("cat returns supported media and folders but excludes hidden items, packages, zip files, linked paths, and nonmatching descendants")
     func keywordCat() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -264,7 +264,7 @@ struct FileNameSearcherTests {
         #expect(files.first { $0.name == "cat-folder" }?.kind == .folder)
     }
 
-    @Test("ワイルドカードと NFD の名前")
+    @Test("Matches wildcards and NFD names")
     func wildcardsAndNormalization() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -276,7 +276,7 @@ struct FileNameSearcherTests {
         #expect(relativePaths(ga, root: env.root) == ["kana/が.png"])
     }
 
-    @Test("ファイルへのリンクは通常のファイルとして返し、フォルダへのリンクは辿らない")
+    @Test("Returns file links as regular files and does not traverse folder links")
     func symbolicLinks() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -291,7 +291,7 @@ struct FileNameSearcherTests {
         #expect(relativePaths(dog, root: env.root) == ["a/dog.png"])
     }
 
-    @Test("返す MediaFile の値は DirectoryLister と同じ")
+    @Test("Returned MediaFile values match DirectoryLister")
     func mediaFileValuesMatchLister() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -315,7 +315,7 @@ struct FileNameSearcherTests {
         }
     }
 
-    @Test("権限のないサブフォルダを飛ばして終わる")
+    @Test("Skips subfolders without permission and completes")
     func skipsUnreadableFolders() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -333,7 +333,7 @@ struct FileNameSearcherTests {
         ])
     }
 
-    @Test("存在しない起点と空のフォルダでは何も流さずに終わる")
+    @Test("Completes without yielding results for nonexistent roots and empty folders")
     func emptyAndMissingRoots() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -343,7 +343,7 @@ struct FileNameSearcherTests {
         #expect(try await collect(in: env.base.appendingPathComponent("missing", isDirectory: true), "*").isEmpty)
     }
 
-    @Test("バッチは batchSize 件以下に分けて流す")
+    @Test("Yields batches of at most batchSize items")
     func batches() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -354,7 +354,7 @@ struct FileNameSearcherTests {
 
     /// Runs the receiver on the main actor as BrowserModel does (does not hang even when the cooperative thread pool
     /// is blocked).
-    @Test("ストリームを集める Task を取り消すと、列挙が止まる")
+    @Test("Cancelling the Task collecting the stream stops enumeration")
     @MainActor
     func cancellationStopsEnumeration() async throws {
         let base = FileManager.default.temporaryDirectory

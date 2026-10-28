@@ -7,7 +7,7 @@ import Testing
 // A separate suite would run in parallel with the existing performance tests, and CPU contention could exceed the
 // thresholds.
 extension PerformanceBaselineTests {
-    @Test("24MP 相当の画像で32段の倍率の矩形計算を1000回ずつ行っても1秒以内")
+    @Test("Computes 32 zoom levels 1,000 times each for a 24 MP image within 1 second")
     func previewZoomFrameCalculationWithinBudget() throws {
         let imageSize = CGSize(width: 6000, height: 4000)
         let container = CGSize(width: 1600, height: 1200)
@@ -27,7 +27,7 @@ extension PerformanceBaselineTests {
         #expect(checksum > 0)
         #expect(
             elapsed < .seconds(1),
-            "32,000 回の倍率の矩形計算は1秒以内 (実測: \(elapsed))"
+            "32,000 zoom rectangle calculations must take at most one second (measured: \(elapsed))"
         )
     }
 }

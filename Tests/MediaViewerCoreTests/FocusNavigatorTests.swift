@@ -3,7 +3,7 @@ import Testing
 
 @Suite("FocusNavigator")
 struct FocusNavigatorTests {
-    @Test("リスト形式は上下で前後に移動する")
+    @Test("List mode moves to the previous or next item with up and down")
     func listMovesVertically() {
         #expect(FocusNavigator.targetIndex(
             currentIndex: 2,
@@ -19,7 +19,7 @@ struct FocusNavigatorTests {
         ) == 3)
     }
 
-    @Test("リスト形式の左右は移動しない")
+    @Test("Left and right do not move focus in List mode")
     func listIgnoresHorizontalMoves() {
         #expect(FocusNavigator.targetIndex(
             currentIndex: 2,
@@ -35,7 +35,7 @@ struct FocusNavigatorTests {
         ) == nil)
     }
 
-    @Test("リスト形式は端で停止する")
+    @Test("List mode stops at the ends")
     func listStopsAtEnds() {
         #expect(FocusNavigator.targetIndex(
             currentIndex: 0,
@@ -51,7 +51,7 @@ struct FocusNavigatorTests {
         ) == nil)
     }
 
-    @Test("サムネイル形式は左右で前後に移動する")
+    @Test("Thumbnails mode moves to the previous or next item with left and right")
     func gridMovesHorizontally() {
         #expect(FocusNavigator.targetIndex(
             currentIndex: 4,
@@ -67,7 +67,7 @@ struct FocusNavigatorTests {
         ) == 5)
     }
 
-    @Test("サムネイル形式は上下で行単位に移動する")
+    @Test("Thumbnails mode moves by rows with up and down")
     func gridMovesByRow() {
         #expect(FocusNavigator.targetIndex(
             currentIndex: 6,
@@ -83,7 +83,7 @@ struct FocusNavigatorTests {
         ) == 6)
     }
 
-    @Test("サムネイル形式は端で停止する")
+    @Test("Thumbnails mode stops at the ends")
     func gridStopsAtEnds() {
         #expect(FocusNavigator.targetIndex(
             currentIndex: 0,
@@ -111,7 +111,7 @@ struct FocusNavigatorTests {
         ) == 0)
     }
 
-    @Test("最終行が短い場合は範囲内にクランプする")
+    @Test("Clamps to the valid range when the last row is shorter")
     func gridClampsShortLastRow() {
         #expect(FocusNavigator.targetIndex(
             currentIndex: 8,
@@ -121,7 +121,7 @@ struct FocusNavigatorTests {
         ) == nil)
     }
 
-    @Test("現在位置がない場合は先頭を選ぶ")
+    @Test("Selects the first item when there is no current position")
     func selectsFirstItemWhenNoFocus() {
         #expect(FocusNavigator.targetIndex(
             currentIndex: nil,
@@ -131,7 +131,7 @@ struct FocusNavigatorTests {
         ) == 0)
     }
 
-    @Test("空リストでは移動先がない")
+    @Test("An empty list has no destination")
     func emptyListReturnsNil() {
         #expect(FocusNavigator.targetIndex(
             currentIndex: nil,
@@ -141,7 +141,7 @@ struct FocusNavigatorTests {
         ) == nil)
     }
 
-    @Test("列数が0以下なら1列として扱う")
+    @Test("Treats nonpositive column counts as one column")
     func invalidColumnCountFallsBackToOne() {
         #expect(FocusNavigator.targetIndex(
             currentIndex: 1,
@@ -174,14 +174,14 @@ struct FocusNavigatorTests {
         )
     }
 
-    @Test("リスト形式はメディア以外の行を読み飛ばして次のメディアに移動する")
+    @Test("List mode skips non-media rows to reach the next media item")
     func navigableListSkipsNonMedia() {
         let kinds: [ListItemKind] = [.media(.jpeg), .directory, .directory, .media(.png)]
         #expect(target(kinds, from: 0, .down, .list) == 3)
         #expect(target(kinds, from: 3, .up, .list) == 0)
     }
 
-    @Test("グリッドは上の行に移動できる行がなければ nil、左右は読み飛ばす")
+    @Test("Grid navigation returns nil when no eligible row exists above and skips non-media rows horizontally")
     func navigableGrid() {
         let kinds: [ListItemKind] = [.parent, .directory, .media(.jpeg), .media(.png)]
         #expect(target(kinds, from: 2, .up, .grid(columns: 2)) == nil)
@@ -189,7 +189,7 @@ struct FocusNavigatorTests {
         #expect(target(kinds, from: 2, .right, .grid(columns: 2)) == 3)
     }
 
-    @Test("グリッドの上下は列数ずつ、メディアに当たるまで繰り返す")
+    @Test("Vertical grid navigation repeatedly steps by the column count until reaching media")
     func navigableGridVerticalRepeats() {
         let kinds: [ListItemKind] = [
             .media(.jpeg), .directory,
@@ -202,21 +202,21 @@ struct FocusNavigatorTests {
         #expect(target(kinds, from: 5, .up, .grid(columns: 2)) == 0)
     }
 
-    @Test("移動先の方向にメディアがなければ nil")
+    @Test("Returns nil when no media exists in the direction of movement")
     func navigableNoMediaInDirection() {
         let kinds: [ListItemKind] = [.media(.jpeg), .directory, .directory]
         #expect(target(kinds, from: 0, .down, .list) == nil)
         #expect(target(kinds, from: 2, .down, .list) == nil)
     }
 
-    @Test("フォルダと .. の行も読み飛ばす")
+    @Test("Also skips folder and .. rows")
     func navigableSkipsFolders() {
         let kinds: [ListItemKind] = [.parent, .folder, .media(.jpeg), .folder, .media(.png)]
         #expect(target(kinds, from: 2, .down, .list) == 4)
         #expect(target(kinds, from: 2, .up, .list) == nil)
     }
 
-    @Test("全部がメディアでなければ nil")
+    @Test("Returns nil when all rows are non-media")
     func navigableAllNonMedia() {
         let kinds: [ListItemKind] = [.parent, .directory, .archive]
         #expect(target(kinds, from: 0, .down, .list) == nil)
@@ -224,7 +224,7 @@ struct FocusNavigatorTests {
         #expect(target(kinds, from: nil, .right, .grid(columns: 2)) == nil)
     }
 
-    @Test("currentIndex が nil のときは先頭から順に最初のメディアの位置")
+    @Test("A nil currentIndex finds the first media item from the start")
     func navigableNilCurrentIndex() {
         let kinds: [ListItemKind] = [.parent, .directory, .media(.jpeg), .media(.png)]
         #expect(target(kinds, from: nil, .down, .list) == 2)
@@ -233,7 +233,7 @@ struct FocusNavigatorTests {
         #expect(target(kinds, from: nil, .left, .grid(columns: 2)) == 2)
     }
 
-    @Test("リスト形式の左右と空リストは nil のまま")
+    @Test("Left and right in List mode and an empty list still return nil")
     func navigableKeepsBaseNilCases() {
         let kinds: [ListItemKind] = [.media(.jpeg), .media(.png)]
         #expect(target(kinds, from: 0, .right, .list) == nil)
@@ -254,14 +254,14 @@ struct FocusNavigatorTests {
         )
     }
 
-    @Test("メディアにフォーカスがあれば選択を変えない")
+    @Test("Preserves selection when a media item is focused")
     func entryKeepsMediaFocus() {
         let kinds: [ListItemKind] = [.media(.jpeg), .media(.png)]
         #expect(entry(kinds, from: 0) == 0)
         #expect(entry(kinds, from: 1) == 1)
     }
 
-    @Test("メディア以外なら後ろの最初のメディアを選ぶ")
+    @Test("Selects the first following media item when a non-media item is focused")
     func entryFindsNextMedia() {
         let kinds: [ListItemKind] = [.parent, .folder, .media(.jpeg), .archive, .media(.png)]
         #expect(entry(kinds, from: 0) == 2)
@@ -269,20 +269,20 @@ struct FocusNavigatorTests {
         #expect(entry(kinds, from: 3) == 4)
     }
 
-    @Test("後ろにメディアがなければ前の最も近いメディアを選ぶ")
+    @Test("Selects the nearest preceding media item when none follows")
     func entryFallsBackToPreviousMedia() {
         let kinds: [ListItemKind] = [.media(.jpeg), .folder, .media(.png), .folder, .archive]
         #expect(entry(kinds, from: 3) == 2)
         #expect(entry(kinds, from: 4) == 2)
     }
 
-    @Test("未選択なら先頭から最初のメディアを選ぶ")
+    @Test("Selects the first media item from the start when nothing is selected")
     func entrySelectsFirstMediaWhenUnselected() {
         let kinds: [ListItemKind] = [.parent, .directory, .media(.jpeg), .media(.png)]
         #expect(entry(kinds, from: nil) == 2)
     }
 
-    @Test("メディアが1件もなければ nil")
+    @Test("Returns nil when no media items exist")
     func entryReturnsNilWithoutMedia() {
         let kinds: [ListItemKind] = [.parent, .folder, .archive, .directory]
         #expect(entry(kinds, from: 0) == nil)
@@ -290,7 +290,7 @@ struct FocusNavigatorTests {
         #expect(entry([], from: nil) == nil)
     }
 
-    @Test("範囲外の currentIndex は未選択と同じく先頭のメディア")
+    @Test("An out-of-range currentIndex selects the first media item just like no selection")
     func entryTreatsOutOfRangeAsUnselected() {
         let kinds: [ListItemKind] = [.parent, .directory, .media(.jpeg), .media(.png)]
         #expect(entry(kinds, from: -1) == 2)
@@ -298,7 +298,7 @@ struct FocusNavigatorTests {
         #expect(entry(kinds, from: 10) == 2)
     }
 
-    @Test("プレビューのみ表示で選択がなくなった後の矢印キーは先頭のメディアへ移る")
+    @Test("Arrow keys select the first media item after selection is cleared in preview-only mode")
     func navigableNilCurrentIndexAfterPreviewOnly() {
         let kinds: [ListItemKind] = [.parent, .folder, .media(.jpeg), .archive, .media(.png)]
         #expect(target(kinds, from: nil, .up, .list) == 2)
@@ -311,7 +311,7 @@ struct FocusNavigatorTests {
         #expect(target(kinds, from: nil, .right, .list) == nil)
     }
 
-    @Test("isNavigable が常に true なら既存の関数と同じ結果になる")
+    @Test("An always-true isNavigable produces the same results as the existing function")
     func navigableAlwaysTrueMatchesBase() {
         let layouts: [FocusLayout] = [.list, .grid(columns: 1), .grid(columns: 3), .grid(columns: 0), .grid(columns: 10)]
         let moves: [FocusMove] = [.left, .right, .up, .down]

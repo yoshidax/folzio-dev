@@ -2,9 +2,9 @@ import Foundation
 import MediaViewerLocalization
 import Testing
 
-@Suite("コンパイル済みの翻訳")
+@Suite("Compiled Translations")
 struct CompiledBundleTests {
-    @Test("両言語の lproj から全キーを引ける（キー・空文字・番兵を返さない）")
+    @Test("All keys resolve from both language lproj files (does not return keys, empty strings, or sentinels)")
     func lookups() throws {
         for language in LocalizationTestSupport.languages {
             let table = try #require(
@@ -20,7 +20,7 @@ struct CompiledBundleTests {
         }
     }
 
-    @Test("整形した後に置換されていない % が残らない")
+    @Test("No unsubstituted % remains after formatting")
     func formattedValuesHaveNoPlaceholders() {
         for language in LocalizationTestSupport.languages {
             let localizer = LocalizationTestSupport.localizer(language)

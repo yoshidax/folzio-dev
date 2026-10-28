@@ -5,7 +5,7 @@ import Testing
 
 @Suite("DecodedImageCache")
 struct DecodedImageCacheTests {
-    @Test("上限を超えたら最も古いものを捨てる")
+    @Test("Discards the oldest entry when over the limit")
     func evictsLeastRecentlyUsed() async {
         let cache = DecodedImageCache(costLimitBytes: 100)
         let a = URL(fileURLWithPath: "/tmp/a.jpg")
@@ -24,7 +24,7 @@ struct DecodedImageCacheTests {
         #expect(await cache.totalCost <= 100)
     }
 
-    @Test("get で利用順が更新される")
+    @Test("get updates the usage order")
     func touchingRefreshesOrder() async {
         let cache = DecodedImageCache(costLimitBytes: 100)
         let a = URL(fileURLWithPath: "/tmp/a.jpg")
@@ -41,7 +41,7 @@ struct DecodedImageCacheTests {
         #expect(await cache.get(b) == nil)
     }
 
-    @Test("上限を超える1枚は保持しない")
+    @Test("Does not keep an image that exceeds the limit")
     func rejectsOversizedImage() async {
         let cache = DecodedImageCache(costLimitBytes: 50)
         let url = URL(fileURLWithPath: "/tmp/huge.jpg")
@@ -51,7 +51,7 @@ struct DecodedImageCacheTests {
         #expect(await cache.totalCost == 0)
     }
 
-    @Test("removeAll で空になる")
+    @Test("removeAll empties the cache")
     func removesAll() async {
         let cache = DecodedImageCache(costLimitBytes: 100)
         let url = URL(fileURLWithPath: "/tmp/a.jpg")

@@ -4,7 +4,7 @@ import Testing
 
 @Suite("SettingsStore")
 struct SettingsStoreTests {
-    @Test("表示言語は未設定や不正値なら英語")
+    @Test("The display language defaults to English when unset or invalid")
     func displayLanguageDefaultsToEnglish() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -17,7 +17,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("表示言語を保存・復元し他の設定を維持する")
+    @Test("Saves and restores the display language while preserving other settings")
     func displayLanguageRoundTrips() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -31,7 +31,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("未設定なら既定値になる")
+    @Test("Unset settings use default values")
     func usesDefaults() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -48,7 +48,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("保存した値が往復する")
+    @Test("Saved values round-trip")
     func roundTripsValues() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -81,7 +81,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("ツールバーの表示状態だけを変えても他の表示設定は変わらない")
+    @Test("Changing only toolbar visibility preserves other view settings")
     func togglingToolbarKeepsOtherViewSettings() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -106,7 +106,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("サムネイルサイズは 48〜512 に丸める")
+    @Test("Clamps thumbnail size to 48 through 512")
     func clampsThumbnailSize() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -119,7 +119,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("型が不正な値は既定値に戻る")
+    @Test("Values of the wrong type fall back to defaults")
     func fallsBackForInvalidValues() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -143,14 +143,14 @@ struct SettingsStoreTests {
 
     // MARK: - favorites
 
-    @Test("お気に入りは未保存なら空")
+    @Test("Unsaved Favorites are empty")
     func favoritesDefaultToEmpty() {
         withDefaults { defaults in
             #expect(SettingsStore(defaults: defaults).favorites == FavoriteFolders())
         }
     }
 
-    @Test("お気に入りは登録順のまま絶対パスの配列で往復する")
+    @Test("Favorites round-trip as absolute paths in registration order")
     func favoritesRoundTrip() {
         withDefaults { defaults in
             let b = URL(fileURLWithPath: "/tmp/fav/b", isDirectory: true)
@@ -164,7 +164,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("お気に入りの不正値は捨てる")
+    @Test("Discards invalid Favorites values")
     func favoritesDropInvalidValues() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -180,7 +180,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("お気に入りの表示名が往復し、favorites.displayNames に書かれる（R49）")
+    @Test("Favorite display names round-trip and are written to favorites.displayNames (R49)")
     func favoriteDisplayNamesRoundTrip() {
         withDefaults { defaults in
             let a = URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)
@@ -196,7 +196,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("旧形式（favorites.paths だけ）は登録順のまま全件表示名なしで読む（EC-45）")
+    @Test("The legacy favorites.paths-only format retains registration order with no display names (EC-45)")
     func favoritesLegacyFormatHasNoDisplayNames() {
         withDefaults { defaults in
             defaults.set(["/tmp/fav/b", "/tmp/fav/a"], forKey: "favorites.paths")
@@ -210,7 +210,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("favorites.displayNames が辞書でなければ表示名なしで、登録は失われない")
+    @Test("A non-dictionary favorites.displayNames leaves names unset without losing registrations")
     func favoriteDisplayNamesIgnoredWhenNotDictionary() {
         withDefaults { defaults in
             let a = URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)
@@ -226,7 +226,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("表示名の不正な項目（文字列でない値・未登録のパス・空白だけ）を捨て、改行は除く")
+    @Test("Discards non-string, unregistered-path, and whitespace-only display names and removes newlines")
     func favoriteDisplayNamesDropInvalidEntries() {
         withDefaults { defaults in
             defaults.set(["/tmp/fav/a", "/tmp/fav/b", "/tmp/fav/c", "/tmp/fav/d"], forKey: "favorites.paths")
@@ -247,7 +247,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("300 文字の保存値は 255 文字に丸めて読む")
+    @Test("Reads a saved 300-character value truncated to 255 characters")
     func favoriteDisplayNamesAreTruncatedOnRead() {
         withDefaults { defaults in
             defaults.set(["/tmp/fav/a"], forKey: "favorites.paths")
@@ -262,7 +262,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("表示名が1つもなければ favorites.displayNames のキーを消す")
+    @Test("Removes the favorites.displayNames key when no display names remain")
     func favoriteDisplayNamesKeyRemovedWhenEmpty() {
         withDefaults { defaults in
             let a = URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)
@@ -275,7 +275,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("削除した登録の表示名は書き込まれない")
+    @Test("Does not write display names for removed registrations")
     func removedFavoriteDisplayNameIsNotWritten() {
         withDefaults { defaults in
             let a = URL(fileURLWithPath: "/tmp/fav/a", isDirectory: true)
@@ -293,7 +293,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("お気に入りを保存してもほかの設定は変わらない")
+    @Test("Saving Favorites preserves other settings")
     func savingFavoritesKeepsOtherSettings() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -321,7 +321,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("並べ替えの「場所」は保存せず、ほかの表示設定は書く。保存値の location は名前として読む")
+    @Test("Location sorting is not saved while other view settings are; a saved location value is read as name sorting")
     func locationSortIsNotPersisted() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -345,7 +345,7 @@ struct SettingsStoreTests {
 
     // MARK: - Zip File Visibility (view.showsZipFiles)
 
-    @Test("zip ファイルの表示は未設定なら false（初回起動は非表示）")
+    @Test("Zip visibility defaults to false when unset and zip files are hidden on first launch")
     func showsZipFilesDefaultsToFalse() {
         withDefaults { defaults in
             #expect(defaults.object(forKey: "view.showsZipFiles") == nil)
@@ -353,7 +353,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("zip ファイルの表示が Bool でない値なら false")
+    @Test("Non-Bool zip visibility falls back to false")
     func showsZipFilesFallsBackForInvalidValue() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -364,7 +364,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("zip ファイルの表示は書き戻して読み直せる")
+    @Test("Zip visibility can be written and read back")
     func showsZipFilesRoundTrips() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -382,7 +382,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("zip ファイルの表示だけを変えても他の表示設定は変わらない")
+    @Test("Changing only zip visibility preserves other view settings")
     func togglingZipVisibilityKeepsOtherViewSettings() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -409,7 +409,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("ViewSettings の showsZipFiles は既定が false で、イニシャライザで指定できる")
+    @Test("ViewSettings.showsZipFiles defaults to false and can be specified in the initializer")
     func viewSettingsInitializerHandlesZipVisibility() {
         #expect(ViewSettings().showsZipFiles == false)
         #expect(ViewSettings(showsZipFiles: true).showsZipFiles == true)
@@ -417,7 +417,7 @@ struct SettingsStoreTests {
 
     // MARK: - Slideshow (slideshow.*)
 
-    @Test("スライドショーは未設定なら既定値（3 秒・繰り返す・効果なし）")
+    @Test("Unset slideshow settings default to three seconds, repeat enabled, and no transition")
     func slideshowDefaults() {
         withDefaults { defaults in
             let options = SettingsStore(defaults: defaults).slideshow
@@ -429,7 +429,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("スライドショーの設定が往復し、専用キーに書かれる")
+    @Test("Slideshow settings round-trip and are written to dedicated keys")
     func slideshowRoundTrips() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -450,7 +450,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("範囲外の間隔で初期化すると 3 秒になる")
+    @Test("Initializing with an out-of-range interval uses three seconds")
     func slideshowOptionsInitializerRejectsOutOfRangeInterval() {
         #expect(SlideshowOptions(intervalSeconds: 0).intervalSeconds == 3)
         #expect(SlideshowOptions(intervalSeconds: 3601).intervalSeconds == 3)
@@ -458,7 +458,7 @@ struct SettingsStoreTests {
         #expect(SlideshowOptions.intervalRange == 1...3600)
     }
 
-    @Test("初期化後に間隔を変更しても範囲外の値を持たない")
+    @Test("Changing the interval after initialization cannot retain an out-of-range value")
     func slideshowOptionsMutationValidatesInterval() {
         var options = SlideshowOptions(intervalSeconds: 10, repeats: false, transition: .zoom)
         for value in [0, -1, 3601, Int.min, Int.max] {
@@ -475,7 +475,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("スライドショーの間隔の不正値は 3 秒に戻り、他の項目は保存値のまま")
+    @Test("An invalid slideshow interval falls back to three seconds while preserving other saved settings")
     func slideshowInvalidIntervalFallsBackOnly() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -496,7 +496,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("スライドショーの繰り返しの不正値は true に戻り、他の項目は保存値のまま")
+    @Test("An invalid slideshow repeat value falls back to true while preserving other saved settings")
     func slideshowInvalidRepeatsFallsBackOnly() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -512,7 +512,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("スライドショーの効果の不正値は none に戻り、他の項目は保存値のまま")
+    @Test("An invalid slideshow transition falls back to none while preserving other saved settings")
     func slideshowInvalidTransitionFallsBackOnly() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
@@ -529,7 +529,7 @@ struct SettingsStoreTests {
         }
     }
 
-    @Test("スライドショーを保存しても既存のキーは変わらない")
+    @Test("Saving slideshow settings preserves existing keys")
     func savingSlideshowKeepsOtherSettings() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)

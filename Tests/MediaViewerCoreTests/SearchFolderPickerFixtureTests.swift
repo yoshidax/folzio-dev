@@ -3,9 +3,9 @@ import ImageIO
 import Testing
 @testable import FixtureKit
 
-@Suite("検索起点フォルダ選択の検証データ")
+@Suite("Search Root Folder Picker Fixtures")
 struct SearchFolderPickerFixtureTests {
-    @Test("quickstart の通常・非表示・異常系と直下10,000フォルダを生成する")
+    @Test("Creates the quickstart normal, hidden, and error cases plus 10,000 direct folders")
     func pickerLayout() throws {
         let fileManager = FileManager.default
         let base = fileManager.temporaryDirectory
@@ -18,11 +18,11 @@ struct SearchFolderPickerFixtureTests {
         func url(_ path: String) -> URL { root.appendingPathComponent(path) }
         func expectDirectory(_ path: String) throws {
             #expect(try url(path).resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true,
-                    "フォルダ: \(path)")
+                    "Folder: \(path)")
         }
         func expectJPEG(_ path: String) throws {
             let source = try #require(CGImageSourceCreateWithURL(url(path) as CFURL, nil),
-                                      "画像: \(path)")
+                                      "Image: \(path)")
             #expect(CGImageSourceGetType(source) as String? == "public.jpeg")
             #expect(CGImageSourceCreateImageAtIndex(source, 0, nil) != nil)
         }

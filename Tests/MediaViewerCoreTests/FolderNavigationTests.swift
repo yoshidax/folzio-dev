@@ -18,25 +18,25 @@ struct FolderNavigationTests {
         FolderNavigation.enclosingFolder(of: folder(path), roots: roots)?.standardizedFileURL.path
     }
 
-    @Test("ルートそのものでは nil", arguments: ["/", "/Users/me", "/Users/me/", "/Volumes/Ext", "/Volumes/Ext/"])
+    @Test("Returns nil at the root itself", arguments: ["/", "/Users/me", "/Users/me/", "/Volumes/Ext", "/Volumes/Ext/"])
     func rootHasNoEnclosingFolder(path: String) {
         #expect(enclosing(path) == nil)
     }
 
-    @Test("ホームの配下は、最も深いルートのホームの中で親を返す")
+    @Test("Under the home folder, returns the parent within the deepest matching home root")
     func deepestRootWins() {
         #expect(enclosing("/Users/me/a") == "/Users/me")
         #expect(enclosing("/Users/me/a/b") == "/Users/me/a")
     }
 
-    @Test("起動ボリュームと外付けボリュームの中で親を返す")
+    @Test("Returns parents within the startup and external volumes")
     func volumes() {
         #expect(enclosing("/Users/x") == "/Users")
         #expect(enclosing("/Users") == "/")
         #expect(enclosing("/Volumes/Ext/p") == "/Volumes/Ext")
     }
 
-    @Test("パスの要素で比べ、文字列の前方一致で誤らない")
+    @Test("Compares path components without false string-prefix matches")
     func comparesPathComponents() {
         let homeOnly = [folder("/Users/me")]
         #expect(enclosing("/Users/me2/a", roots: homeOnly) == nil)
@@ -44,7 +44,7 @@ struct FolderNavigationTests {
         #expect(enclosing("/Users/me/./a/../b", roots: homeOnly) == "/Users/me")
     }
 
-    @Test("どのルートにも含まれない、またはルートが空なら nil")
+    @Test("Returns nil outside all roots or with an empty roots list")
     func outsideRoots() {
         #expect(enclosing("/Volumes/Other/a", roots: [folder("/Users/me"), folder("/Volumes/Ext")]) == nil)
         #expect(enclosing("/Users/me/a", roots: []) == nil)
@@ -65,23 +65,23 @@ struct FolderNavigationTests {
         )?.standardizedFileURL.path
     }
 
-    @Test("表示中のフォルダ自身をゴミ箱に入れたら親を返す")
+    @Test("Trashing the current folder returns its parent")
     func trashedShowingFolder() {
         #expect(shown(["/Users/me/a/b"], showing: "/Users/me/a/b") == "/Users/me/a")
     }
 
-    @Test("祖先をゴミ箱に入れたら祖先の親を返す（ルートそのものが親でもよい）")
+    @Test("Trashing an ancestor returns its parent, which may be the root itself")
     func trashedAncestor() {
         #expect(shown(["/Users/me/a"], showing: "/Users/me/a/b/c") == "/Users/me")
     }
 
-    @Test("複数なら最も浅いものの親を返し、配列の順に依らない")
+    @Test("Multiple trashed folders return the shallowest folder's parent regardless of array order")
     func shallowestWins() {
         #expect(shown(["/Users/me/a/b", "/Users/me/a"], showing: "/Users/me/a/b/c") == "/Users/me")
         #expect(shown(["/Users/me/a", "/Users/me/a/b"], showing: "/Users/me/a/b/c") == "/Users/me")
     }
 
-    @Test("兄弟・配下だけ・名前の接頭辞だけ・空・ルート・ルートが空は nil")
+    @Test("Returns nil for siblings, descendants only, name prefixes only, empty input, roots, and an empty roots list")
     func unrelatedIsNil() {
         #expect(shown(["/Users/me/a/x"], showing: "/Users/me/a/b") == nil)
         #expect(shown(["/Users/me/a/b/c"], showing: "/Users/me/a/b") == nil)
@@ -91,7 +91,7 @@ struct FolderNavigationTests {
         #expect(shown(["/Users/me/a/b"], showing: "/Users/me/a/b", roots: []) == nil)
     }
 
-    @Test("末尾の / や .. を含む表記でも同じ結果になる")
+    @Test("Trailing slashes and .. path representations produce the same result")
     func standardizesPaths() {
         #expect(shown(["/Users/me/a/b/"], showing: "/Users/me/a/b") == "/Users/me/a")
         #expect(shown(["/Users/me/a/b"], showing: "/Users/me/a/b/") == "/Users/me/a")

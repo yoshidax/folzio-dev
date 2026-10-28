@@ -6,7 +6,7 @@ import FixtureKit
 
 @Suite("PerformanceBaseline", .serialized)
 struct PerformanceBaselineTests {
-    @Test("24MP JPEG のデコードが 0.5 秒以内")
+    @Test("Decodes a 24 MP JPEG within 0.5 seconds")
     func decodes24MegapixelJPEGWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -21,15 +21,15 @@ struct PerformanceBaselineTests {
 
         #expect(
             max(image.pixelSize.width, image.pixelSize.height) <= 5120,
-            "長辺が maxPixelSize 以下であること (実際: \(image.pixelSize))"
+            "The longest edge must be at most maxPixelSize (actual: \(image.pixelSize))"
         )
         #expect(
             elapsed < .milliseconds(500),
-            "24MP JPEG のデコードは 0.5 秒以内 (実測: \(elapsed))"
+            "Decoding a 24 MP JPEG must take at most 0.5 seconds (measured: \(elapsed))"
         )
     }
 
-    @Test("キャッシュ済みの隣接ファイルへの切替が 0.1 秒以内")
+    @Test("Switches to a cached adjacent file within 0.1 seconds")
     @MainActor
     func cachedNeighborSwitchWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
@@ -61,7 +61,7 @@ struct PerformanceBaselineTests {
         await model.selectFolder(directory)
         #expect(
             model.listing.files.map(\.name) == names,
-            "3 件が名前順に列挙されること (実際: \(model.listing.files.map(\.name)))"
+            "Three items must be enumerated in name order (actual: \(model.listing.files.map(\.name)))"
         )
         guard model.listing.files.count == 3 else {
             Issue.record("At least 3 items are required to measure adjacent file switching")
@@ -100,11 +100,11 @@ struct PerformanceBaselineTests {
         #expect(model.selection.focused == next.url, "Focus moves to the next file")
         #expect(
             elapsed < .milliseconds(100),
-            "キャッシュ済みの隣接ファイルへの切替は 0.1 秒以内 (実測: \(elapsed))"
+            "Switching to a cached adjacent file must take at most 0.1 seconds (measured: \(elapsed))"
         )
     }
 
-    @Test("huge(10,000) の列挙と並べ替えが 1 秒以内")
+    @Test("Enumerates and sorts huge(10,000) within one second")
     func hugeFolderListingAndSortingWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -122,15 +122,15 @@ struct PerformanceBaselineTests {
         #expect(ordered.count == 10_000, "10,000 items are sorted (actual: \(ordered.count))")
         #expect(
             ordered.first?.name == "img_00001.jpg",
-            "自然順の先頭が img_00001.jpg であること (実際: \(ordered.first?.name ?? "nil"))"
+            "The first item in natural order must be img_00001.jpg (actual: \(ordered.first?.name ?? "nil"))"
         )
         #expect(
             elapsed < .seconds(1),
-            "10,000 ファイルの列挙と並べ替えは 1 秒以内 (実測: \(elapsed))"
+            "Enumerating and sorting 10,000 files must take at most one second (measured: \(elapsed))"
         )
     }
 
-    @Test("10,000 ファイルのフォルダへ戻ったときの最初の項目の表示が 1 秒以内")
+    @Test("Displays the first item within one second when returning to a 10,000-file folder")
     @MainActor
     func historyBackToHugeFolderWithinBudget() async throws {
         // Create 10,000 files off the MainActor so concurrent tests are not blocked.
@@ -179,15 +179,15 @@ struct PerformanceBaselineTests {
         #expect(ready, "A listing of 10,000 files is displayed")
         #expect(
             model.listing.files.filter { $0.kind != .parent }.count == 10_000,
-            "10,000 件が一覧にあること (実際: \(model.listing.files.filter { $0.kind != .parent }.count))"
+            "The listing must contain 10,000 items (actual: \(model.listing.files.filter { $0.kind != .parent }.count))"
         )
         #expect(
             elapsed < .seconds(1),
-            "10,000 ファイルのフォルダへ戻って最初の項目が表示されるまで 1 秒以内 (実測: \(elapsed))"
+            "Returning to a 10,000-file folder must display the first item within one second (measured: \(elapsed))"
         )
     }
 
-    @Test("10,000 件への種類フィルタの適用が 0.05 秒以内")
+    @Test("Applies media type filtering to 10,000 items within 0.05 seconds")
     func mediaTypeFilterOnHugeFolderWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -208,11 +208,11 @@ struct PerformanceBaselineTests {
         #expect(videos.isEmpty, "Videos only: 0 items (actual: \(videos.count))")
         #expect(
             elapsed < .milliseconds(50),
-            "種類フィルタの適用は 0.05 秒以内 (実測: \(elapsed))"
+            "Applying media type filters must take at most 0.05 seconds (measured: \(elapsed))"
         )
     }
 
-    @Test("10,000 件（zip ファイルを混ぜる）への zip ファイルの表示の適用が 0.05 秒以内")
+    @Test("Applies zip visibility to 10,000 items including zip files within 0.05 seconds")
     func zipFileVisibilityOnHugeFolderWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -244,11 +244,11 @@ struct PerformanceBaselineTests {
         print("[perf] ZipFileVisibility.apply 10,000 (hide + show): \(elapsed)")
         #expect(
             elapsed < .milliseconds(50),
-            "zip ファイルの表示の適用は 0.05 秒以内 (実測: \(elapsed))"
+            "Applying zip visibility must take at most 0.05 seconds (measured: \(elapsed))"
         )
     }
 
-    @Test("10,000 ファイルのフォルダでの zip ファイルの表示の切り替えが 0.2 秒以内")
+    @Test("Toggles zip visibility in a 10,000-file folder within 0.2 seconds")
     @MainActor
     func toggleZipFileVisibilityOnHugeFolderWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
@@ -298,7 +298,7 @@ struct PerformanceBaselineTests {
         #expect(hideElapsed < .milliseconds(200), "Switching to hidden takes at most 0.2 seconds (measured: \(hideElapsed))")
     }
 
-    @Test("10,000 件の検索結果での didRenameFolder が 0.1 秒以内（フォルダの行を含む）")
+    @Test("didRenameFolder handles 10,000 search results including folder rows within 0.1 seconds")
     @MainActor
     func renameFolderWithHugeSearchResultsWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
@@ -334,7 +334,7 @@ struct PerformanceBaselineTests {
         #expect(finished, "The search finishes")
         #expect(
             model.listing.search?.totalCount == expectedCount,
-            "10,101 件 (実際: \(model.listing.search?.totalCount ?? -1))"
+            "10,101 items (actual: \(model.listing.search?.totalCount ?? -1))"
         )
         #expect(model.listing.files.filter { $0.kind == .folder }.count == 101, "There are 101 folder rows")
         // To avoid outliers on loaded machines, alternate names and measure three times, using the median.
@@ -367,7 +367,7 @@ struct PerformanceBaselineTests {
         #expect(median < .milliseconds(100), "Rebasing after rename takes at most 0.1 seconds (median: \(median), measured: \(samples))")
     }
 
-    @Test("サブフォルダのない 10,000 ファイルのフォルダの hasSubfolders が 0.2 秒以内")
+    @Test("hasSubfolders checks a 10,000-file folder without subfolders within 0.2 seconds")
     func hasSubfoldersInLargeFolderWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -385,11 +385,11 @@ struct PerformanceBaselineTests {
         #expect(!hasSubfolders, "There are no subfolders")
         #expect(
             elapsed < .milliseconds(200),
-            "10,000 ファイルのフォルダのサブフォルダの有無の確認は 0.2 秒以内 (実測: \(elapsed))"
+            "Checking for subfolders in a 10,000-file folder must take at most 0.2 seconds (measured: \(elapsed))"
         )
     }
 
-    @Test("10,000 ファイルと 1,000 サブフォルダのフォルダの列挙が 1 秒以内")
+    @Test("Enumerates a folder with 10,000 files and 1,000 subfolders within one second")
     func listsLargeFolderWithSubfoldersWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -415,11 +415,11 @@ struct PerformanceBaselineTests {
         print("mediaFiles(in:) 10,000 files + 1,000 folders: \(elapsed)")
         #expect(
             elapsed < .seconds(1),
-            "10,000 ファイルと 1,000 サブフォルダの列挙は SC-003 の列挙と同じ 1 秒以内 (実測: \(elapsed))"
+            "Enumerating 10,000 files and 1,000 subfolders must take at most one second, as in SC-003 (measured: \(elapsed))"
         )
     }
 
-    @Test("100MP グレースケール PNG をデコードしバイトコストを抑える")
+    @Test("Decodes a 100 MP grayscale PNG while limiting byte cost")
     func decodesHundredMegapixelPNGWithinMemoryBudget() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -435,19 +435,19 @@ struct PerformanceBaselineTests {
 
         #expect(
             image.byteCost <= maximumByteCost,
-            "byteCost が 5120x5120x4 以下であること (実際: \(image.byteCost))"
+            "byteCost must be at most 5120x5120x4 (actual: \(image.byteCost))"
         )
         #expect(
             longSide <= 5120,
-            "長辺が 5120px 以下であること (実際: \(image.pixelSize))"
+            "The longest edge must be at most 5120 px (actual: \(image.pixelSize))"
         )
         #expect(
             image.originalPixelSize.width == 10_000 && image.originalPixelSize.height == 10_000,
-            "元の大きさが 10000x10000 であること (実際: \(image.originalPixelSize))"
+            "The original size must be 10000x10000 (actual: \(image.originalPixelSize))"
         )
     }
 
-    @Test("連続 100 回のフォーカス移動後もプレビューキャッシュが 256MB 以下")
+    @Test("Preview cache stays at or below 256 MB after 100 consecutive focus moves")
     @MainActor
     func repeatedFocusMovesStayWithinCacheLimit() async throws {
         let directory = try makeTemporaryDirectory()
@@ -509,15 +509,15 @@ struct PerformanceBaselineTests {
         let totalCost = await cache.totalCost
         #expect(
             totalCost <= MemoryLimits.previewCacheBytes,
-            "キャッシュの totalCost が 256MB 以下であること (実際: \(totalCost) bytes)"
+            "Cache totalCost must be at most 256 MB (actual: \(totalCost) bytes)"
         )
         #expect(
             model.selection.focused == model.listing.files.last?.url,
-            "最後のファイルにフォーカスがあること"
+            "The last file must be focused"
         )
     }
 
-    @Test("10,000 項目の zip の open と items(in:) の合計が 0.5 秒以内")
+    @Test("Opening a 10,000-entry zip and calling items(in:) takes at most 0.5 seconds in total")
     func opensLargeArchiveWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -531,17 +531,17 @@ struct PerformanceBaselineTests {
         let items = index.items(in: "")
         let elapsed = ContinuousClock.now - start
 
-        print("ZipArchiveReader.open + items(in:) 10,000 件: \(elapsed)")
+        print("ZipArchiveReader.open + items(in:) for 10,000 entries: \(elapsed)")
         #expect(items.count == 10_000, "10,000 items are enumerated (actual: \(items.count))")
         #expect(
             elapsed < .milliseconds(500),
-            "10,000 項目の zip の open + items は 0.5 秒以内 (実測: \(elapsed))"
+            "Opening a 10,000-entry zip and listing items must take at most 0.5 seconds (measured: \(elapsed))"
         )
     }
 
     /// `items(in:)` is called from `BrowserModel` on the MainActor after the zip opens. Rows are built in the
     /// background by `open` and are not built here (zero stops of 100 ms or more for SC-015).
-    @Test("10,000 項目の zip を開いた後の items(in:) が 10ms 以内 (SC-015)")
+    @Test("items(in:) takes at most 10 ms after opening a 10,000-entry zip (SC-015)")
     func archiveItemsAreReadyAfterOpen() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -553,7 +553,7 @@ struct PerformanceBaselineTests {
         let items = index.items(in: "")
         let elapsed = ContinuousClock.now - start
 
-        print("ArchiveIndex.items(in:) 10,000 件: \(elapsed)")
+        print("ArchiveIndex.items(in:) for 10,000 entries: \(elapsed)")
         #expect(items.count == 10_000, "10,000 items are enumerated (actual: \(items.count))")
         #expect(elapsed < .milliseconds(10), "items(in:) takes at most 10 ms (measured: \(elapsed))")
     }
@@ -573,7 +573,7 @@ struct PerformanceBaselineTests {
         return zip
     }
 
-    @Test("1GB の deflate 項目の stream 読み出しで phys_footprint の増加が 128MB 以下 (SC-014)")
+    @Test("Streaming a 1 GB deflate entry increases phys_footprint by at most 128 MB (SC-014)")
     func entryStreamReadsStayWithinMemoryBudget() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -620,17 +620,17 @@ struct PerformanceBaselineTests {
         }
         let elapsed = ContinuousClock.now - start
 
-        print("ArchiveEntryStream 1GB deflate: 最大増加 \(maximumIncrease / 1_048_576)MB (\(maximumIncrease) bytes), 所要時間 \(elapsed), 読み出し \(plan.count) 回")
+        print("ArchiveEntryStream 1 GB deflate: maximum increase \(maximumIncrease / 1_048_576) MB (\(maximumIncrease) bytes), elapsed \(elapsed), reads \(plan.count)")
         #expect(readBytes > 0)
         #expect(
             maximumIncrease <= 128 * 1024 * 1024,
-            "64 回ごとの phys_footprint の最大増加は 128MB 以下 (実測: \(maximumIncrease) bytes)"
+            "The maximum phys_footprint increase sampled every 64 reads must be at most 128 MB (measured: \(maximumIncrease) bytes)"
         )
     }
 
     // MARK: - File Name Search (FR-085, SC-016)
 
-    @Test("10,000 ファイルの階層の検索が 3 秒以内（SC-016）")
+    @Test("Searches a 10,000-file hierarchy within three seconds (SC-016)")
     func searchingTenThousandFilesWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -664,7 +664,7 @@ struct PerformanceBaselineTests {
         print("[perf] search 10,000 files: \(elapsed)")
     }
 
-    @Test("フォルダ名も照合する 10,000 ファイルの階層の検索が 3 秒以内（SC-054）")
+    @Test("Searches a 10,000-file hierarchy including folder-name matching within three seconds (SC-054)")
     func searchingFoldersAndFilesWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -714,7 +714,7 @@ struct PerformanceBaselineTests {
         print("[perf] search 10,000 files with folders: \(elapsed), folders \(folderCount), files \(fileCount)")
     }
 
-    @Test("10,000 件への 256 件のマージが 0.05 秒以内（FR-085）")
+    @Test("Merges 256 items into 10,000 items within 0.05 seconds (FR-085)")
     @MainActor
     func mergingBatchIntoTenThousandWithinBudget() async throws {
         let order = SortOrder()
@@ -732,7 +732,7 @@ struct PerformanceBaselineTests {
         print("[perf] merge 256 into 10,000: sortedMerge \(mergeElapsed), BrowserModel \(modelElapsed)")
     }
 
-    @Test("50,000 件への 256 件のバッチの処理が 100ms 未満（FR-085・SC-016）")
+    @Test("Processes a 256-item batch against 50,000 items in under 100 ms (FR-085, SC-016)")
     @MainActor
     func processingBatchIntoFiftyThousandWithinBudget() async throws {
         let order = SortOrder()
@@ -792,7 +792,7 @@ struct PerformanceBaselineTests {
     }
 }
 
-@Test("10,000 行から 5,000 件を選んだ行番号変換が 100ms 未満（FR-016・SC-003）")
+@Test("Converts row indices for 5,000 selected items among 10,000 rows in under 100 ms (FR-016, SC-003)")
 func selectionIndexTenThousandRows() {
     let urls = (0..<10_000).map {
         URL(fileURLWithPath: "/selection/\($0)", isDirectory: true)

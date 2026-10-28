@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import MediaViewerCore
 
-@Suite("SearchRootInput と親の入力世代")
+@Suite("SearchRootInput and the parent input generation")
 struct SearchRootInputTests {
     private let home = URL(fileURLWithPath: "/Users/me", isDirectory: true)
 
@@ -14,7 +14,7 @@ struct SearchRootInputTests {
         URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL
     }
 
-    @Test("typed は既存規則で解釈し、picked は末尾空白をそのまま使う")
+    @Test("typed uses existing parsing rules while picked preserves trailing whitespace")
     func resolvesTypedAndPicked() {
         #expect(SearchRootInput.typed(" ~/a/b ").resolvedInput(home: home) == .success(standardized("/Users/me/a/b")))
         #expect(SearchRootInput.typed("/a/b/").resolvedInput(home: home) == .success(standardized("/a/b")))
@@ -29,7 +29,7 @@ struct SearchRootInputTests {
         #expect(SearchRootInput.picked(picked).resolvedInput(home: home) != .success(standardized("/Users/me/Photos")))
     }
 
-    @Test("起点欄の編集だけ入力元を typed へ戻し、キーワード編集と終了では変えない")
+    @Test("Only editing the root field resets the source to typed; editing the keyword and closing do not")
     func inputSourceTransitions() {
         let picked = URL(fileURLWithPath: "/Users/me/Photos ", isDirectory: true)
         var state = SearchPanelInputState(rootInput: .picked(picked), keyword: "hit")
@@ -57,7 +57,7 @@ struct SearchRootInputTests {
         #expect(pickedState.pendingOperation == .idle)
     }
 
-    @Test("初期位置の解決は捕捉した入力を返し、編集・終了・検索受理で失効する")
+    @Test("Initial-location resolution returns the captured input and is invalidated by editing, closing, or accepting a search")
     func initialLocationTickets() throws {
         var state = SearchPanelInputState(rootInput: .typed("/start"), keyword: "hit")
         let ticket = try requireValue(state.beginInitialLocationResolution(panelPresented: false))
@@ -88,7 +88,7 @@ struct SearchRootInputTests {
         #expect(!closedAdopted)
     }
 
-    @Test("検索受理は初期位置と選択の検証を失効させ、検索の成功だけで親を終了する")
+    @Test("Accepting a search invalidates initial-location and selection validation; only search success closes the parent")
     func searchInvalidatesPendingWork() throws {
         var state = SearchPanelInputState(rootInput: .typed("/start"), keyword: "hit")
         let initial = try requireValue(state.beginInitialLocationResolution(panelPresented: false))
@@ -118,7 +118,7 @@ struct SearchRootInputTests {
         #expect(state.pendingOperation == .idle)
     }
 
-    @Test("初期位置の解決中の検索は完了順によらず旧解決を採用しない")
+    @Test("A search during initial-location resolution rejects the old resolution regardless of completion order")
     func completionOrderDoesNotReviveInitialLocation() throws {
         for initialFirst in [true, false] {
             for searchSucceeds in [true, false] {
@@ -144,7 +144,7 @@ struct SearchRootInputTests {
         }
     }
 
-    @Test("確定後の検証は選択 URL を捕捉し、成功後だけ picked を適用できる")
+    @Test("Post-confirmation validation captures the selected URL and allows applying picked only after success")
     func selectionValidationTickets() throws {
         var state = SearchPanelInputState(rootInput: .typed("/start"), keyword: "hit")
         let url = URL(fileURLWithPath: "/Users/me/Photos ", isDirectory: true)
@@ -183,7 +183,7 @@ struct SearchRootInputTests {
         #expect(!closedAdopted)
     }
 
-    @Test("初期位置・選択の検証中の検索は失効し、検索検証中の重複検索を拒否する")
+    @Test("Searching invalidates pending initial-location and selection validation; duplicate searches during search validation are rejected")
     func selectionThenSearch() throws {
         var state = SearchPanelInputState(rootInput: .typed("/start"), keyword: "hit")
         let selection = try requireValue(
@@ -205,7 +205,7 @@ struct SearchRootInputTests {
         #expect(activeAdopted)
     }
 
-    @Test("空キーワードは無操作で、保留中の初期位置を失効させない")
+    @Test("An empty keyword does nothing and does not invalidate a pending initial location")
     func emptyKeywordIsNoOp() throws {
         var state = SearchPanelInputState(rootInput: .typed("/start"), keyword: "   ")
         let generation = state.requestGeneration
@@ -223,7 +223,7 @@ struct SearchRootInputTests {
         #expect(adopted)
     }
 
-    @Test("パネル表示中は親の検索・選択・初期位置を拒否する")
+    @Test("The parent rejects search, selection, and initial-location requests while the panel is open")
     func panelPresentationBlocksActions() throws {
         var state = SearchPanelInputState(rootInput: .typed("/start"), keyword: "hit")
         let initial = state.beginInitialLocationResolution(panelPresented: true)
@@ -238,7 +238,7 @@ struct SearchRootInputTests {
         #expect(state.pendingOperation == .idle)
     }
 
-    @Test("処理種別または入力世代が一致しない完了は採用しない")
+    @Test("Rejects completions with a mismatched operation kind or input generation")
     func wrongTicketIsRejected() throws {
         var state = SearchPanelInputState(rootInput: .typed("/start"), keyword: "hit")
         let initial = try requireValue(state.beginInitialLocationResolution(panelPresented: false))

@@ -7,7 +7,7 @@ struct SlideshowSessionTests {
     private let clock = ContinuousClock()
     private var t0: ContinuousClock.Instant { clock.now }
 
-    @Test("開始は running と now+3秒の期限を作り、実行中の再開始は変えない")
+    @Test("Starting sets running with a deadline three seconds after now; starting again while running changes nothing")
     func starts() {
         var session = SlideshowSession()
         let now = t0
@@ -28,7 +28,7 @@ struct SlideshowSessionTests {
         #expect(session.generation == 1)
     }
 
-    @Test("期限前の timeout は false、期限後は保留し、commit で次の期限へ進む")
+    @Test("timeout is false before the deadline, becomes pending afterward, and commit advances to the next deadline")
     func timeoutThenCommit() {
         var session = SlideshowSession()
         let now = t0
@@ -55,7 +55,7 @@ struct SlideshowSessionTests {
         #expect(!secondCommit)
     }
 
-    @Test("timeout の後に矢印が来たら、保留を取り消して矢印の期限を優先する")
+    @Test("An arrow after timeout cancels pending work and takes priority with its own deadline")
     func arrowCancelsPendingDue() {
         var session = SlideshowSession()
         let now = t0
@@ -74,7 +74,7 @@ struct SlideshowSessionTests {
         #expect(!committed)
     }
 
-    @Test("矢印の後に期限が来たら、commit で次の送りを実行できる")
+    @Test("A deadline after an arrow allows commit to perform the next advance")
     func dueAfterArrowCommits() {
         var session = SlideshowSession()
         let now = t0
@@ -95,7 +95,7 @@ struct SlideshowSessionTests {
         #expect(session.phase == .running)
     }
 
-    @Test("停止は待機と保留を無効化し、再開始で世代を進める")
+    @Test("Stopping invalidates waits and pending work; restarting advances the generation")
     func stopInvalidates() {
         var session = SlideshowSession()
         let now = t0
@@ -119,7 +119,7 @@ struct SlideshowSessionTests {
         #expect(session.generation == generation + 1)
     }
 
-    @Test("idle の矢印・timeout・commit は何もしない")
+    @Test("Arrows, timeout, and commit do nothing while idle")
     func idleIgnoresInputs() {
         var session = SlideshowSession()
         let now = t0
@@ -133,7 +133,7 @@ struct SlideshowSessionTests {
         #expect(session.phase == .idle)
     }
 
-    @Test("remaining は期限までを返し、超過後は zero、idle は nil")
+    @Test("remaining returns time until the deadline, zero after it, and nil while idle")
     func remaining() {
         var session = SlideshowSession()
         let now = t0
@@ -147,7 +147,7 @@ struct SlideshowSessionTests {
         #expect(session.remaining(at: now) == nil)
     }
 
-    @Test("世代の異なる pending は commit できない")
+    @Test("Cannot commit pending work from a different generation")
     func stalePendingCannotCommit() {
         var session = SlideshowSession()
         let now = t0
@@ -161,7 +161,7 @@ struct SlideshowSessionTests {
         #expect(!session.hasPendingDue(for: oldGeneration))
     }
 
-    @Test("設定した間隔の期限でだけ1回送り、遅延後は確定時刻から次を数える", arguments: [1, 3, 10])
+    @Test("Advances once only at the configured deadline and measures the next interval from commit time after a delay", arguments: [1, 3, 10])
     func configurableIntervals(seconds: Int) {
         var session = SlideshowSession()
         let now = t0
@@ -192,7 +192,7 @@ struct SlideshowSessionTests {
         #expect(session.deadline == late.advanced(by: interval))
     }
 
-    @Test("間隔を変更しても予定済みの期限は変えず、次の確定から新しい間隔を使う")
+    @Test("Changing the interval preserves the scheduled deadline and uses the new interval after the next commit")
     func intervalChangesAfterCommit() {
         var session = SlideshowSession()
         let now = t0
@@ -212,7 +212,7 @@ struct SlideshowSessionTests {
         #expect(session.deadline == deadline.advanced(by: .seconds(2)))
     }
 
-    @Test("矢印は最新の間隔で待機し、待機中の変更は待機後の周期から使う")
+    @Test("Arrows wait using the latest interval; changes during the wait apply to the cycle after it")
     func intervalChangesWhileWaitingAfterArrow() {
         var session = SlideshowSession()
         let now = t0

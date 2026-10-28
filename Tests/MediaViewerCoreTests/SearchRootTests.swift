@@ -11,7 +11,7 @@ struct SearchRootTests {
         try? SearchRoot.parse(input, home: home).get().path
     }
 
-    @Test("入力を解釈する。ディスクは読まない")
+    @Test("Parses input without reading the disk")
     func parse() {
         #expect(SearchRoot.parse("", home: home) == .failure(.empty))
         #expect(SearchRoot.parse("  ", home: home) == .failure(.empty))
@@ -26,7 +26,7 @@ struct SearchRootTests {
         #expect(parsedPath("/no/such/folder/anywhere") == "/no/such/folder/anywhere")
     }
 
-    @Test("フォルダ・リンク・存在しない・ファイル・zip・パッケージ・権限なしを見分ける")
+    @Test("Distinguishes folders, links, missing paths, files, zips, packages, and denied access")
     func validate() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("SearchRootTests-\(UUID().uuidString)", isDirectory: true)
@@ -71,7 +71,7 @@ struct SearchRootTests {
         }
     }
 
-    @Test("隠し祖先・隠しフォルダは直接入力の検証を拒否せず、パッケージ自身は拒否する")
+    @Test("Does not reject a hidden ancestor or hidden folder when entered directly, but rejects the package itself")
     func hiddenAncestorsAreNotRejectedForTypedInput() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("SearchRootTests-\(UUID().uuidString)", isDirectory: true)
@@ -90,7 +90,7 @@ struct SearchRootTests {
         #expect(await SearchRoot.validate(package) == .failure(.notAFolder))
     }
 
-    @Test("選択後の消失・非フォルダ化・権限変更を再検証で拒否する")
+    @Test("Revalidation rejects a selected folder that disappeared, became a non-folder, or lost permissions")
     func revalidationCatchesChanges() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("SearchRootTests-\(UUID().uuidString)", isDirectory: true)

@@ -8,14 +8,14 @@ struct MediaTypeFilterTests {
         (false, false), (true, false), (false, true), (true, true),
     ]
 
-    @Test("既定値は両方オフ")
+    @Test("Both options default to off")
     func defaultsAreOff() {
         let filter = MediaTypeFilter()
         #expect(filter.imagesOnly == false)
         #expect(filter.videosOnly == false)
     }
 
-    @Test("includes は 4 通りの組み合わせで全 6 種に対して正しい")
+    @Test("includes handles all six kinds correctly for all four combinations")
     func includesForAllCombinations() {
         for combo in Self.combinations {
             let filter = MediaTypeFilter(imagesOnly: combo.imagesOnly, videosOnly: combo.videosOnly)
@@ -34,7 +34,7 @@ struct MediaTypeFilterTests {
         }
     }
 
-    @Test("isFiltering は片方だけがオンのときだけ true")
+    @Test("isFiltering is true only when exactly one option is enabled")
     func isFilteringOnlyWhenExactlyOneIsOn() {
         #expect(MediaTypeFilter(imagesOnly: false, videosOnly: false).isFiltering == false)
         #expect(MediaTypeFilter(imagesOnly: true, videosOnly: false).isFiltering == true)
@@ -42,7 +42,7 @@ struct MediaTypeFilterTests {
         #expect(MediaTypeFilter(imagesOnly: true, videosOnly: true).isFiltering == false)
     }
 
-    @Test("apply は並び順を保って絞り込む")
+    @Test("apply filters while preserving order")
     func applyKeepsOrder() {
         let folder = URL(fileURLWithPath: "/tmp/filter", isDirectory: true)
         let files = ["b.mov", "a.jpg", "c.mp4", "d.png"].map { file($0, in: folder) }
@@ -56,7 +56,7 @@ struct MediaTypeFilterTests {
         )
     }
 
-    @Test("apply は media 以外の行（zip・ディレクトリ・...）を常に残し、並び順も保つ")
+    @Test("apply always preserves non-media rows including zip, directories, and ... in their original order")
     func applyKeepsNonMediaRows() {
         let folder = URL(fileURLWithPath: "/tmp/filter", isDirectory: true)
         let files = [
@@ -79,7 +79,7 @@ struct MediaTypeFilterTests {
         #expect(MediaTypeFilter().apply(to: files).map(\.name) == files.map(\.name))
     }
 
-    @Test("media が 1 つもなくても、media 以外の行は絞り込み中でも残る")
+    @Test("Non-media rows remain while filtering even when there are no media rows")
     func applyKeepsOnlyNonMediaRows() {
         let folder = URL(fileURLWithPath: "/tmp/filter", isDirectory: true)
         let files = [item("..", .parent, in: folder), item("sub", .directory, in: folder)]
@@ -87,7 +87,7 @@ struct MediaTypeFilterTests {
         #expect(MediaTypeFilter(videosOnly: true).apply(to: files).map(\.name) == ["..", "sub"])
     }
 
-    @Test("apply はフォルダの行を残し、並び順を保つ")
+    @Test("apply preserves folder rows and their order")
     func applyKeepsFolderRows() {
         let folder = URL(fileURLWithPath: "/tmp/filter", isDirectory: true)
         let files = [
@@ -100,7 +100,7 @@ struct MediaTypeFilterTests {
         #expect(MediaTypeFilter(videosOnly: true).apply(to: files).map(\.name) == ["..", "album", "b.mov"])
     }
 
-    @Test("apply は空配列に対して空配列を返す")
+    @Test("apply returns an empty array for an empty array")
     func applyToEmpty() {
         for combo in Self.combinations {
             let filter = MediaTypeFilter(imagesOnly: combo.imagesOnly, videosOnly: combo.videosOnly)
@@ -108,7 +108,7 @@ struct MediaTypeFilterTests {
         }
     }
 
-    @Test("emptyState は絞り込み中だけ種類に応じた値を返す")
+    @Test("emptyState returns a kind-specific value only while filtering")
     func emptyState() {
         #expect(MediaTypeFilter(imagesOnly: true).emptyState == .imagesOnly)
         #expect(MediaTypeFilter(videosOnly: true).emptyState == .videosOnly)
@@ -118,7 +118,7 @@ struct MediaTypeFilterTests {
 
     // MARK: - SelectionState.restricted(toVisible:)
 
-    @Test("フォーカスが表示中のままなら選択は表示中のものだけになりフォーカスは保たれる")
+    @Test("If focus remains visible, selection retains only visible items and focus is preserved")
     func restrictedKeepsVisibleFocus() {
         let (a, b, v) = (url("a.jpg"), url("b.png"), url("v.mov"))
         let state = SelectionState(selected: [a, v], focused: a)
@@ -127,7 +127,7 @@ struct MediaTypeFilterTests {
         #expect(result.focused == a)
     }
 
-    @Test("フォーカスが非表示になり選択が残るとき、表示順で最後の選択中のものがフォーカスになる")
+    @Test("If focus is hidden but selection remains, the last selected item in display order becomes focused")
     func restrictedMovesFocusToLastVisibleSelected() {
         let (a, b, c, v) = (url("a.jpg"), url("b.png"), url("c.gif"), url("v.mov"))
         let state = SelectionState(selected: [a, c, v], focused: v)
@@ -141,7 +141,7 @@ struct MediaTypeFilterTests {
         #expect(second.focused == c)
     }
 
-    @Test("選択が残らないときは選択が空でフォーカスは nil")
+    @Test("No remaining selection clears selection and sets focus to nil")
     func restrictedClearsWhenNothingRemains() {
         let (a, b, v) = (url("a.jpg"), url("b.png"), url("v.mov"))
         let result = SelectionState(selected: [v], focused: v).restricted(toVisible: [a, b])
@@ -149,7 +149,7 @@ struct MediaTypeFilterTests {
         #expect(result.focused == nil)
     }
 
-    @Test("フォーカスがないときは nil のまま")
+    @Test("Absent focus remains nil")
     func restrictedKeepsNilFocus() {
         let a = url("a.jpg")
         let result = SelectionState(selected: [a], focused: nil).restricted(toVisible: [a])
@@ -157,7 +157,7 @@ struct MediaTypeFilterTests {
         #expect(result.focused == nil)
     }
 
-    @Test("表示が空なら選択は空でフォーカスは nil")
+    @Test("An empty display clears selection and sets focus to nil")
     func restrictedToEmptyVisible() {
         let (a, v) = (url("a.jpg"), url("v.mov"))
         let result = SelectionState(selected: [a, v], focused: a).restricted(toVisible: [])

@@ -6,7 +6,7 @@ import FixtureKit
 
 @Suite("BrowserModel")
 struct BrowserModelTests {
-    @Test("言語切り替え前に始まった列挙も新しい種類名で表示する")
+    @Test("Enumeration started before a language change also displays the new kind names")
     @MainActor
     func languageChangeDuringListing() async {
         let folder = URL(fileURLWithPath: "/tmp/localization-\(UUID().uuidString)", isDirectory: true)
@@ -22,7 +22,7 @@ struct BrowserModelTests {
         #expect(model.listing.files.first?.typeDescription == "フォルダ")
     }
 
-    @Test("種類名を変更すると種類順だけを並べ直し、OS の名前と選択を保持する")
+    @Test("Changing kind names resorts only kind sorting and preserves OS-provided names and selection")
     @MainActor
     func changingLanguageResortsKindNames() async {
         let folder = URL(fileURLWithPath: "/tmp/localization-sort-\(UUID().uuidString)", isDirectory: true)
@@ -46,7 +46,7 @@ struct BrowserModelTests {
         #expect(model.selection.focused == child.url)
     }
 
-    @Test("フォルダを素早く切り替えると最後の一覧だけが残る")
+    @Test("Rapid folder switches retain only the last listing")
     @MainActor
     func keepsOnlyLastFolder() async {
         let first = URL(fileURLWithPath: "/tmp/first-\(UUID().uuidString)", isDirectory: true)
@@ -71,7 +71,7 @@ struct BrowserModelTests {
         #expect(defaults.string(forKey: "view.lastFolderPath") == second.path)
     }
 
-    @Test("空のフォルダと権限なしフォルダの状態を反映する")
+    @Test("Reflects empty-folder and access-denied states")
     @MainActor
     func reflectsEmptyAndDenied() async {
         let emptyFolder = URL(fileURLWithPath: "/tmp/empty-\(UUID().uuidString)", isDirectory: true)
@@ -93,7 +93,7 @@ struct BrowserModelTests {
         #expect(model.listing.files.isEmpty)
     }
 
-    @Test("moveFocus は端で止まる")
+    @Test("moveFocus stops at the ends")
     @MainActor
     func moveFocusStopsAtEdges() async {
         let folder = URL(fileURLWithPath: "/tmp/move-\(UUID().uuidString)", isDirectory: true)
@@ -119,7 +119,7 @@ struct BrowserModelTests {
         #expect(model.selection.focused == files[1].url)
     }
 
-    @Test("フォーカスの前後1件をキャッシュに入れる")
+    @Test("Caches one item before and after the focused item")
     @MainActor
     func prefetchesNeighbors() async {
         let folder = URL(fileURLWithPath: "/tmp/prefetch-\(UUID().uuidString)", isDirectory: true)
@@ -137,7 +137,7 @@ struct BrowserModelTests {
         #expect(await waitForCache(cache, files[2].url))
     }
 
-    @Test("デコード失敗は unavailable になる")
+    @Test("Decode failure becomes unavailable")
     @MainActor
     func reportsDecodeFailure() async {
         let folder = URL(fileURLWithPath: "/tmp/failure-\(UUID().uuidString)", isDirectory: true)
@@ -187,7 +187,7 @@ struct BrowserModelTests {
         return false
     }
 
-    @Test("種類フィルタの既定は両方オフで全件が表示される")
+    @Test("Both media type filters default to off and show all items")
     @MainActor
     func filterDefaultShowsAll() async {
         let (folder, files) = filterFolder()
@@ -201,7 +201,7 @@ struct BrowserModelTests {
         #expect(model.listing.state == .loaded)
     }
 
-    @Test("種類フィルタで画像のみ・動画のみ・両方オンを切り替える")
+    @Test("Switches media type filters between images only, videos only, and both enabled")
     @MainActor
     func filterSwitchesKinds() async {
         let (folder, files) = filterFolder()
@@ -224,7 +224,7 @@ struct BrowserModelTests {
         #expect(model.listing.files.map(\.name) == ["b.mov", "d.mp4"])
     }
 
-    @Test("該当なしと空のフォルダを区別する")
+    @Test("Distinguishes no matches from an empty folder")
     @MainActor
     func filterDistinguishesNoMatchesAndEmpty() async {
         let imageFolder = URL(fileURLWithPath: "/tmp/filter-img-\(UUID().uuidString)", isDirectory: true)
@@ -251,7 +251,7 @@ struct BrowserModelTests {
         #expect(model.listing.files.isEmpty)
     }
 
-    @Test("フォルダを移動しても種類フィルタが保たれる")
+    @Test("Navigating between folders preserves media type filters")
     @MainActor
     func filterPersistsAcrossFolders() async {
         let (folder, files) = filterFolder()
@@ -272,7 +272,7 @@ struct BrowserModelTests {
         #expect(model.listing.files.map(\.name) == ["y.mov", "z.mp4"])
     }
 
-    @Test("絞り込み中の並べ替えは絞り込みを保ち該当なしも維持する")
+    @Test("Sorting while filtering preserves the filter and the no-matches state")
     @MainActor
     func filterWithSortOrder() async {
         let (folder, files) = filterFolder()
@@ -296,7 +296,7 @@ struct BrowserModelTests {
         #expect(model.listing.files.isEmpty)
     }
 
-    @Test("絞り込み中の読み直しで新しいファイルも絞り込まれる")
+    @Test("Reloading while filtering also filters new files")
     @MainActor
     func filterAppliesOnReload() async {
         let (folder, files) = filterFolder()
@@ -315,7 +315,7 @@ struct BrowserModelTests {
         #expect(model.listing.files.map(\.name) == ["b.mov", "d.mp4", "e.mov"])
     }
 
-    @Test("フォーカスが隠れると選択が整理されプレビューが切り替わる")
+    @Test("Hiding the focused item reconciles selection and switches the preview")
     @MainActor
     func filterRestrictsSelectionWhenFocusHidden() async {
         let (folder, files) = filterFolder()
@@ -335,7 +335,7 @@ struct BrowserModelTests {
         #expect(isImage)
     }
 
-    @Test("フォーカスが表示中のままなら選択だけ差し替えてプレビューを読み直さない")
+    @Test("Keeping the focused item visible updates only selection without reloading the preview")
     @MainActor
     func filterKeepsPreviewWhenFocusVisible() async {
         let (folder, files) = filterFolder()
@@ -358,7 +358,7 @@ struct BrowserModelTests {
         #expect(isImagePreview(model))
     }
 
-    @Test("選択が残らないときは空になり、絞り込みを戻しても選択は戻らない")
+    @Test("No remaining selected items clears selection, and removing the filter does not restore it")
     @MainActor
     func filterClearsSelectionWhenNothingRemains() async {
         let (folder, files) = filterFolder()
@@ -380,7 +380,7 @@ struct BrowserModelTests {
         #expect(model.selection.focused == nil)
     }
 
-    @Test("同じ種類フィルタを再設定しても一覧と選択は変わらない")
+    @Test("Reapplying the same media type filter preserves the listing and selection")
     @MainActor
     func filterSameValueIsNoOp() async {
         let (folder, files) = filterFolder()
@@ -406,7 +406,7 @@ struct BrowserModelTests {
         #expect(model.stopPlaybackSignal == signalBefore)
     }
 
-    @Test("種類フィルタは設定に保存されない")
+    @Test("Media type filters are not saved in settings")
     @MainActor
     func filterIsNotPersisted() async {
         let (folder, files) = filterFolder()
@@ -438,7 +438,7 @@ struct BrowserModelTests {
         return (folder, files)
     }
 
-    @Test("zip ファイルの表示の既定は非表示で、.. は先頭のまま zip の行だけが出ない")
+    @Test("Zip files default to hidden; only zip rows are excluded and .. stays first")
     @MainActor
     func zipDefaultHidesArchiveRows() async {
         let (folder, files) = zipFolder()
@@ -454,7 +454,7 @@ struct BrowserModelTests {
         #expect(model.listing.state == .loaded)
     }
 
-    @Test("zip ファイルの表示をオンにすると並べ替えの位置に戻り、列挙し直さない")
+    @Test("Showing zip files restores their sorted positions without enumerating again")
     @MainActor
     func zipShowRestoresRowsWithoutRelisting() async {
         let (folder, files) = zipFolder()
@@ -474,7 +474,7 @@ struct BrowserModelTests {
         #expect(defaults.object(forKey: "view.showsZipFiles") as? Bool == true)
     }
 
-    @Test("zip ファイルの表示をオフに戻すと行が消え、オンに戻すと setResponse なしで同じ並びで戻る")
+    @Test("Hiding and showing zip files restores the same order without setResponse")
     @MainActor
     func zipHideThenShowAgain() async {
         let (folder, files) = zipFolder()
@@ -497,7 +497,7 @@ struct BrowserModelTests {
         #expect(await lister.callCount == callsBefore)
     }
 
-    @Test("zip ファイルの表示は種類フィルタと独立に組み合わさる")
+    @Test("Zip visibility combines independently with media type filters")
     @MainActor
     func zipVisibilityComposesWithMediaTypeFilter() async {
         let (folder, files) = zipFolder()
@@ -515,7 +515,7 @@ struct BrowserModelTests {
         #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "c.png", "sub"])
     }
 
-    @Test("zip ファイルを非表示にするとフォーカスが外れ、残った選択へフォーカスが移りプレビューする")
+    @Test("Hiding a focused zip moves focus and preview to a remaining selected item")
     @MainActor
     func zipHideMovesFocusToRemainingSelection() async {
         let (folder, files) = zipFolder()
@@ -536,7 +536,7 @@ struct BrowserModelTests {
         #expect(isImage)
     }
 
-    @Test("フォーカスが表示中のままなら選択も読み込み済みのプレビューも変わらない")
+    @Test("Keeping the focused item visible preserves selection and the loaded preview")
     @MainActor
     func zipHideKeepsPreviewWhenFocusVisible() async {
         let (folder, files) = zipFolder()
@@ -562,7 +562,7 @@ struct BrowserModelTests {
         #expect(model.stopPlaybackSignal == signalBefore)
     }
 
-    @Test("zip ファイルだけを選んでいたときは選択が空になり、オンに戻しても選択は戻らない")
+    @Test("Hiding zip files when only zip files are selected clears selection without restoring it when shown again")
     @MainActor
     func zipHideClearsSelectionWhenNothingRemains() async {
         let (folder, files) = zipFolder()
@@ -585,7 +585,7 @@ struct BrowserModelTests {
         #expect(model.selection.focused == nil)
     }
 
-    @Test("zip ファイルだけのフォルダを非表示にすると .empty（専用の状態にしない）で、.. だけが残る")
+    @Test("Hiding a folder's only zip files gives .empty without a separate state and leaves only ..")
     @MainActor
     func zipOnlyFolderBecomesEmpty() async {
         let folder = URL(fileURLWithPath: "/tmp/ziponly-\(UUID().uuidString)", isDirectory: true)
@@ -613,7 +613,7 @@ struct BrowserModelTests {
         #expect(model.listing.files.map(\.name) == ["a.zip", "b.zip"])
     }
 
-    @Test("同じ zip ファイルの表示を再設定しても一覧と選択は変わらない")
+    @Test("Reapplying the same zip visibility preserves the listing and selection")
     @MainActor
     func zipSameValueIsNoOp() async {
         let (folder, files) = zipFolder()
@@ -636,7 +636,7 @@ struct BrowserModelTests {
         #expect(model.stopPlaybackSignal == signalBefore)
     }
 
-    @Test("zip ファイルの表示は保存され、同じ設定で作った BrowserModel が復元する")
+    @Test("Zip visibility is saved and restored by a BrowserModel created with the same settings")
     @MainActor
     func zipVisibilityIsRestored() async {
         let (folder, files) = zipFolder()

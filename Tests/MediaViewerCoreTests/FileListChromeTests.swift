@@ -3,28 +3,28 @@ import Testing
 
 @Suite("FileListChrome")
 struct FileListChromeTests {
-    @Test("サムネイル形式でツールバー非表示なら下部バーを出し、スライダーは有効")
+    @Test("Thumbnails mode with the toolbar hidden shows the bottom bar and enables the slider")
     func thumbnailsWithoutToolbar() {
         let chrome = FileListChrome(displayMode: .thumbnails, toolbarShown: false)
         #expect(chrome.showsBottomSizeBar)
         #expect(chrome.toolbarSliderEnabled)
     }
 
-    @Test("サムネイル形式でツールバー表示中なら下部バーを隠し、スライダーは有効")
+    @Test("Thumbnails mode with the toolbar visible hides the bottom bar and enables the slider")
     func thumbnailsWithToolbar() {
         let chrome = FileListChrome(displayMode: .thumbnails, toolbarShown: true)
         #expect(!chrome.showsBottomSizeBar)
         #expect(chrome.toolbarSliderEnabled)
     }
 
-    @Test("リスト形式でツールバー非表示なら下部バーを出さず、スライダーは無効")
+    @Test("List mode with the toolbar hidden hides the bottom bar and disables the slider")
     func listWithoutToolbar() {
         let chrome = FileListChrome(displayMode: .list, toolbarShown: false)
         #expect(!chrome.showsBottomSizeBar)
         #expect(!chrome.toolbarSliderEnabled)
     }
 
-    @Test("リスト形式でツールバー表示中なら下部バーを出さず、スライダーは無効")
+    @Test("List mode with the toolbar visible hides the bottom bar and disables the slider")
     func listWithToolbar() {
         let chrome = FileListChrome(displayMode: .list, toolbarShown: true)
         #expect(!chrome.showsBottomSizeBar)

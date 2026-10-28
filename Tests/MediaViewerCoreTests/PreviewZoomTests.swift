@@ -4,7 +4,7 @@ import Testing
 
 @Suite("PreviewZoom")
 struct PreviewZoomTests {
-    @Test("刻み・上下限・フィットの定数")
+    @Test("Step, limits, and fit constants")
     func constants() {
         #expect(PreviewZoom.step == 25)
         #expect(PreviewZoom.minimum == 25)
@@ -12,24 +12,24 @@ struct PreviewZoomTests {
         #expect(PreviewZoom.fit.percentage == 100)
     }
 
-    @Test("25〜800 の25の倍数だけを受け付ける", arguments: [25, 50, 100, 775, 800])
+    @Test("Accepts only multiples of 25 between 25 and 800", arguments: [25, 50, 100, 775, 800])
     func acceptsValidPercentages(percentage: Int) {
         #expect(PreviewZoom(percentage: percentage)?.percentage == percentage)
     }
 
-    @Test("範囲外・25の倍数でない値は作れない", arguments: [0, -25, 30, 101, 799, 801])
+    @Test("Rejects out-of-range values and values that are not multiples of 25", arguments: [0, -25, 30, 101, 799, 801])
     func rejectsInvalidPercentages(percentage: Int) {
         #expect(PreviewZoom(percentage: percentage) == nil)
     }
 
-    @Test("scale は百分率を100で割った値")
+    @Test("scale is the percentage divided by 100")
     func scale() throws {
         #expect(try #require(PreviewZoom(percentage: 25)).scale == 0.25)
         #expect(PreviewZoom.fit.scale == 1.0)
         #expect(try #require(PreviewZoom(percentage: 800)).scale == 8.0)
     }
 
-    @Test("拡大は25ポイントの加算で、800%で止まる")
+    @Test("Zoom in adds 25 points and stops at 800%")
     func zoomsIn() throws {
         let first = PreviewZoom.fit.zoomedIn()
         #expect(first.percentage == 125)
@@ -39,7 +39,7 @@ struct PreviewZoomTests {
         #expect(maximum.zoomedIn() == maximum)
     }
 
-    @Test("縮小は25ポイントの減算で、25%で止まる")
+    @Test("Zoom out subtracts 25 points and stops at 25%")
     func zoomsOut() throws {
         var zoom = try #require(PreviewZoom(percentage: 150))
         var steps: [Int] = []
@@ -51,7 +51,7 @@ struct PreviewZoomTests {
         #expect(zoom.zoomedOut() == zoom)
     }
 
-    @Test("100%から28回の拡大で800%になり、それ以上は変わらない")
+    @Test("28 zoom-in steps from 100% reach 800% and further steps do not change it")
     func reachesMaximumAfterTwentyEightSteps() {
         var zoom = PreviewZoom.fit
         for _ in 0..<28 {
@@ -61,7 +61,7 @@ struct PreviewZoomTests {
         #expect(zoom.zoomedIn().percentage == 800)
     }
 
-    @Test("上限・下限での可否")
+    @Test("Availability at the upper and lower limits")
     func canZoom() throws {
         #expect(try #require(PreviewZoom(percentage: 800)).canZoomIn == false)
         #expect(try #require(PreviewZoom(percentage: 775)).canZoomIn)
@@ -69,7 +69,7 @@ struct PreviewZoomTests {
         #expect(try #require(PreviewZoom(percentage: 50)).canZoomOut)
     }
 
-    @Test("百分率の順に比較できる")
+    @Test("Compares in percentage order")
     func comparable() throws {
         let small = try #require(PreviewZoom(percentage: 75))
         let large = try #require(PreviewZoom(percentage: 125))

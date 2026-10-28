@@ -9,7 +9,7 @@ import Testing
 // A separate suite would make Swift Testing run it in parallel with the existing performance tests, and temporary CPU
 // contention could exceed the 100,000–200,000-item thresholds.
 extension PerformanceBaselineTests {
-    @Test("video output 付きのプレーヤーが1秒以内に最初のフレームを返す")
+    @Test("A player with video output returns the first frame within 1 second")
     @MainActor
     func slideshowVideoOutputFirstFrameWithinBudget() async throws {
         let directory = FileManager.default.temporaryDirectory
@@ -37,7 +37,7 @@ extension PerformanceBaselineTests {
         print("[perf] slideshow video output first frame: \(elapsed)")
     }
 
-    @Test("10,000 件の通常／検索相当一覧で対象抽出と次位置探索が 50ms 未満")
+    @Test("Candidate extraction and next-position lookup take less than 50 ms for a 10,000-item regular or search listing")
     func slideshowTenThousandWithinBudget() {
         let files = slideshowSyntheticResults(count: 10_000, folders: 100)
         let focused = files[7_777].url
@@ -59,7 +59,7 @@ extension PerformanceBaselineTests {
         print("[perf] slideshow sequence 10,000: \(elapsed)")
     }
 
-    @Test("50,000 件の一覧からスライドショーの対象抽出が 100ms 未満")
+    @Test("Slideshow candidate extraction takes less than 100 ms for a 50,000-item listing")
     func slideshowFiftyThousandWithinBudget() {
         let files = slideshowSyntheticResults(count: 50_000, folders: 500)
         let index = 25_000
@@ -82,7 +82,7 @@ extension PerformanceBaselineTests {
         print("[perf] slideshow sequence 50,000: \(elapsed)")
     }
 
-    @Test("200,000 件の zip 一覧相当からスライドショーの対象抽出が 200ms 未満")
+    @Test("Slideshow candidate extraction takes less than 200 ms for a 200,000-item zip listing")
     func slideshowTwoHundredThousandWithinBudget() {
         let files = slideshowSyntheticResults(count: 200_000, folders: 2_000)
         let focused = files[123_456].url
@@ -98,7 +98,7 @@ extension PerformanceBaselineTests {
         print("[perf] slideshow sequence 200,000: \(elapsed)")
     }
 
-    @Test("任意 now の20周期で期限のずれが蓄積しない")
+    @Test("Deadline drift does not accumulate over 20 cycles from arbitrary now values")
     func slideshowTwentyCyclesDoNotDrift() {
         let interval = Duration.seconds(3)
         var session = SlideshowSession()

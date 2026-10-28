@@ -2,9 +2,9 @@ import Foundation
 import MediaViewerCore
 import Testing
 
-@Suite("表示言語変更時の種類名")
+@Suite("Kind Names After Changing the Display Language")
 struct MediaFileKindLocalizationTests {
-    @Test("アプリの種類名だけを変更し OS の種類名を保持する")
+    @Test("Changes only app-managed kind names and preserves OS kind names")
     func changesOnlyApplicationNames() {
         let names = KindNames(folder: "フォルダ", zipArchive: "ZIP アーカイブ")
         let folder = MediaFile(url: URL(fileURLWithPath: "/folder"), name: "folder", kind: .folder,

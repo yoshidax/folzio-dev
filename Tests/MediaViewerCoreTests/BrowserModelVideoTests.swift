@@ -6,7 +6,7 @@ import FixtureKit
 
 @Suite("BrowserModelVideo")
 struct BrowserModelVideoTests {
-    @Test("動画を選ぶと video 状態と設定どおりの再生オプションになる")
+    @Test("Selecting a video enters the video state with the configured playback options")
     @MainActor
     func exposesPlaybackOptions() async {
         let folder = URL(fileURLWithPath: "/tmp/video-\(UUID().uuidString)", isDirectory: true)
@@ -38,7 +38,7 @@ struct BrowserModelVideoTests {
         #expect(model.playbackRequest == PlaybackOptions(autoplay: false, loop: true))
     }
 
-    @Test("動画から画像へ移ると停止の合図が先に増える")
+    @Test("Moving from a video to an image increments the stop signal first")
     @MainActor
     func emitsStopSignal() async {
         let folder = URL(fileURLWithPath: "/tmp/video-\(UUID().uuidString)", isDirectory: true)
@@ -72,7 +72,7 @@ struct BrowserModelVideoTests {
         #expect(isImage)
     }
 
-    @Test("再生中の動画が種類フィルタで隠れると停止の合図が増えプレビューが空になる")
+    @Test("Hiding the playing video with the media type filter increments the stop signal and clears the preview")
     @MainActor
     func filterHidingPlayingVideoStopsPlayback() async {
         let folder = URL(fileURLWithPath: "/tmp/video-\(UUID().uuidString)", isDirectory: true)

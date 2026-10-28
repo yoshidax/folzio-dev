@@ -4,13 +4,13 @@ import Testing
 
 @Suite("ZipFileVisibility")
 struct ZipFileVisibilityTests {
-    @Test("既定値は非表示")
+    @Test("The default is hidden")
     func defaultsAreHidden() {
         #expect(ZipFileVisibility().showsZipFiles == false)
         #expect(ZipFileVisibility(showsZipFiles: true).showsZipFiles == true)
     }
 
-    @Test("false は zip ファイルの行だけを除き、残りの並び順を保つ")
+    @Test("false removes only zip file rows and preserves the order of the rest")
     func hiddenRemovesOnlyArchiveRows() {
         let files = [
             item("b.zip", .archive),
@@ -26,26 +26,26 @@ struct ZipFileVisibilityTests {
         #expect(result.map(\.url) == files.filter { $0.kind != .archive }.map(\.url))
     }
 
-    @Test("false で zip ファイルだけの入力は空になる")
+    @Test("false makes a zip-only input empty")
     func hiddenWithOnlyArchivesIsEmpty() {
         let files = [item("a.zip", .archive), item("b.zip", .archive)]
         #expect(ZipFileVisibility(showsZipFiles: false).apply(to: files).isEmpty)
     }
 
-    @Test("false で zip ファイルを含まない入力は同じ並びのまま")
+    @Test("false leaves an input without zip files in the same order")
     func hiddenWithoutArchivesKeepsInput() {
         let files = [item("c.png", .media(.png)), item("a.jpg", .media(.jpeg)), item("sub", .folder)]
         let result = ZipFileVisibility(showsZipFiles: false).apply(to: files)
         #expect(result.map(\.url) == files.map(\.url))
     }
 
-    @Test("空配列は空配列のまま")
+    @Test("An empty array stays empty")
     func emptyStaysEmpty() {
         #expect(ZipFileVisibility(showsZipFiles: false).apply(to: []).isEmpty)
         #expect(ZipFileVisibility(showsZipFiles: true).apply(to: []).isEmpty)
     }
 
-    @Test("true は入力と完全に一致し、元の配列を変えない")
+    @Test("true returns the input unchanged and does not modify the original array")
     func shownReturnsInputUnchanged() {
         let files = [
             item("b.zip", .archive),
@@ -66,7 +66,7 @@ struct ZipFileVisibilityTests {
         #expect(files.map(\.url) == original.map(\.url))
     }
 
-    @Test("種類フィルタの結果に通すと、画像の行だけが残り zip ファイルも消える")
+    @Test("Applied after the media type filter, leaves only image rows and removes zip files")
     func composesWithMediaTypeFilter() {
         let files = [
             item("a.jpg", .media(.jpeg)),

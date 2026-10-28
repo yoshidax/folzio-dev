@@ -3,7 +3,7 @@ import Testing
 
 @Suite("SlideshowTransitionEffect")
 struct SlideshowTransitionEffectTests {
-    @Test("保存値と視差効果を減らす設定での置き換え")
+    @Test("Replacement with a saved value and Reduce Motion enabled")
     func effects() {
         #expect(SlideshowTransitionEffect.allCases.map(\.rawValue) == ["none", "crossfade", "slide", "zoom"])
         for effect in SlideshowTransitionEffect.allCases {

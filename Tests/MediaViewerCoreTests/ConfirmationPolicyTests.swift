@@ -23,7 +23,7 @@ struct ConfirmationPolicyTests {
         Case(kind: .rename(newName: "b"), origin: .tree, isSkippable: false),
     ]
 
-    @Test("省略できるのはコピーとファイルリストからのゴミ箱だけ（FR-024・FR-079）", arguments: cases)
+    @Test("Only copy and Trash from the file list can skip confirmation (FR-024, FR-079)", arguments: cases)
     func isSkippable(_ testCase: Case) {
         #expect(ConfirmationPolicy.isSkippable(testCase.kind, origin: testCase.origin) == testCase.isSkippable)
     }

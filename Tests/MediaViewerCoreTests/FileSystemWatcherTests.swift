@@ -6,7 +6,7 @@ import Testing
 
 @Suite("FileSystemWatcher")
 struct FileSystemWatcherTests {
-    @Test("ファイル追加で監視フォルダのイベントが2秒以内に届く")
+    @Test("Adding a file delivers an event for the watched folder within two seconds")
     func deliversEventForAddedFile() async throws {
         let folder = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -21,19 +21,19 @@ struct FileSystemWatcherTests {
         let (event, observed) = await recorder.waitForEvent(after: 0)
         #expect(
             event != nil,
-            "ファイル追加後2秒以内にイベントが届かなかった。observed: \(describe(observed))"
+            "No event arrived within two seconds of adding a file. observed: \(describe(observed))"
         )
         if let event {
             #expect(
                 containsFolder(event, folder),
-                "イベントに監視フォルダが含まれない。event: \(describe(event)), folder: \(folder.path)"
+                "Event does not include the watched folder. event: \(describe(event)), folder: \(folder.path)"
             )
         }
 
         await stopCollector(collector)
     }
 
-    @Test("ファイル名変更で監視フォルダのイベントが2秒以内に届く")
+    @Test("Renaming a file delivers an event for the watched folder within two seconds")
     func deliversEventForRenamedFile() async throws {
         let folder = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -54,19 +54,19 @@ struct FileSystemWatcherTests {
         let (event, observed) = await recorder.waitForEvent(after: 0)
         #expect(
             event != nil,
-            "名前変更後2秒以内にイベントが届かなかった。observed: \(describe(observed))"
+            "No event arrived within two seconds of renaming a file. observed: \(describe(observed))"
         )
         if let event {
             #expect(
                 containsFolder(event, folder),
-                "イベントに監視フォルダが含まれない。event: \(describe(event)), folder: \(folder.path)"
+                "Event does not include the watched folder. event: \(describe(event)), folder: \(folder.path)"
             )
         }
 
         await stopCollector(collector)
     }
 
-    @Test("ファイル削除で監視フォルダのイベントが2秒以内に届く")
+    @Test("Deleting a file delivers an event for the watched folder within two seconds")
     func deliversEventForDeletedFile() async throws {
         let folder = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -84,19 +84,19 @@ struct FileSystemWatcherTests {
         let (event, observed) = await recorder.waitForEvent(after: 0)
         #expect(
             event != nil,
-            "削除後2秒以内にイベントが届かなかった。observed: \(describe(observed))"
+            "No event arrived within two seconds of deleting a file. observed: \(describe(observed))"
         )
         if let event {
             #expect(
                 containsFolder(event, folder),
-                "イベントに監視フォルダが含まれない。event: \(describe(event)), folder: \(folder.path)"
+                "Event does not include the watched folder. event: \(describe(event)), folder: \(folder.path)"
             )
         }
 
         await stopCollector(collector)
     }
 
-    @Test("外部変更を BrowserModel の一覧・選択・プレビューに反映する")
+    @Test("Reflects external changes in the BrowserModel listing, selection, and preview")
     @MainActor
     func browserModelReflectsExternalChanges() async throws {
         let folder = try makeTemporaryDirectory()
@@ -129,7 +129,7 @@ struct FileSystemWatcherTests {
         }
         #expect(
             becameImage,
-            "a.jpg のプレビューが画像にならなかった。preview: \(describe(model.preview))"
+            "The preview for a.jpg did not become an image. preview: \(describe(model.preview))"
         )
 
         let watcher = FileSystemWatcher()
@@ -143,7 +143,7 @@ struct FileSystemWatcherTests {
         let (event, observed) = await recorder.waitForEvent(after: 0)
         #expect(
             event != nil,
-            "外部変更後2秒以内にイベントが届かなかった。observed: \(describe(observed))"
+            "No event arrived within two seconds of an external change. observed: \(describe(observed))"
         )
         guard let event else {
             await stopCollector(collector)
@@ -151,7 +151,7 @@ struct FileSystemWatcherTests {
         }
         #expect(
             containsFolder(event, folder),
-            "イベントに監視フォルダが含まれない。event: \(describe(event)), folder: \(folder.path)"
+            "Event does not include the watched folder. event: \(describe(event)), folder: \(folder.path)"
         )
 
         await model.handleFileSystemEvent(event)
@@ -160,11 +160,11 @@ struct FileSystemWatcherTests {
         #expect(names == ["b.jpg", "c.jpg"], "Listing was not updated. actual: \(names)")
         #expect(
             model.selection.focused == nil,
-            "削除したファイルがフォーカスに残っている。focused: \(model.selection.focused?.path ?? "nil")"
+            "The deleted file remains focused. focused: \(model.selection.focused?.path ?? "nil")"
         )
         #expect(
             model.selection.selected.isEmpty,
-            "削除したファイルが選択に残っている。selected: \(model.selection.selected.map(\.path).sorted())"
+            "The deleted file remains selected. selected: \(model.selection.selected.map(\.path).sorted())"
         )
         let previewIsEmpty: Bool = switch model.preview {
         case .empty: true
@@ -172,7 +172,7 @@ struct FileSystemWatcherTests {
         }
         #expect(
             previewIsEmpty,
-            "削除したファイルのプレビューが残っている。preview: \(describe(model.preview))"
+            "The deleted file's preview remains visible. preview: \(describe(model.preview))"
         )
 
         await stopCollector(collector)
@@ -180,7 +180,7 @@ struct FileSystemWatcherTests {
 
     // MARK: - subtrees (Search Result Pruning, R38)
 
-    @Test("subtrees は配下のすべての階層の変更を、変更のあったパスの親フォルダとして流す")
+    @Test("subtrees emits changes at every descendant level as the changed path's parent folder")
     func subtreeDeliversDeepChanges() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -213,7 +213,7 @@ struct FileSystemWatcherTests {
         await stopCollector(collector)
     }
 
-    @Test("subtrees の外の変更と、folders の孫の変更は流れない")
+    @Test("Excludes changes outside subtrees and changes to grandchildren of folders")
     func subtreeIgnoresOutsideChanges() async throws {
         let base = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: base) }
@@ -240,7 +240,7 @@ struct FileSystemWatcherTests {
 
         let subtreeEvents = await subtreeRecorder.snapshot()
         #expect(!subtreeEvents.contains { event in event.contains { $0.path.hasPrefix(other.path) } },
-                "subtrees の外: \(describe(subtreeEvents))")
+                "Outside subtrees: \(describe(subtreeEvents))")
         let folderEvents = await folderRecorder.snapshot()
         #expect(folderEvents.isEmpty, "folders grandchild: \(describe(folderEvents))")
 
@@ -248,7 +248,7 @@ struct FileSystemWatcherTests {
         await stopCollector(folderCollector)
     }
 
-    @Test("subtrees の配下でも、隠しフォルダの中の変更は流れない")
+    @Test("Excludes changes inside hidden folders even under subtrees")
     func subtreeIgnoresHiddenFolders() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -285,13 +285,13 @@ struct FileSystemWatcherTests {
         let hiddenPaths = [cache, objects, hidden].map(\.standardizedFileURL.path)
         #expect(!events.contains { event in
             event.contains { url in hiddenPaths.contains { url.standardizedFileURL.path.hasPrefix($0) } }
-        }, "隠しフォルダ: \(describe(events))")
+        }, "Hidden folder: \(describe(events))")
         #expect(!events.contains { $0.contains { $0.standardizedFileURL.path.contains("/.git") } })
 
         await stopCollector(collector)
     }
 
-    @Test("変更が続いても、最初の変更から 1.5 秒以内に流れ、続く間も流れ続ける")
+    @Test("Continuous changes emit within 1.5 seconds of the first change and keep emitting while changes continue")
     func continuousChangesAreNotStarved() async throws {
         for useSubtrees in [false, true] {
             let root = try makeTemporaryDirectory()
@@ -326,7 +326,7 @@ struct FileSystemWatcherTests {
         }
     }
 
-    @Test("subtrees の通知は、渡した起点の URL の形で流す（/private を付け外ししない）")
+    @Test("subtrees notifications preserve the supplied root URL representation without adding or removing /private")
     func subtreeKeepsGivenPathForm() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -371,7 +371,7 @@ struct FileSystemWatcherTests {
         (try? FileManager.default.contentsOfDirectory(atPath: "/dev/fd").count) ?? 0
     }
 
-    @Test("folders を多く監視して作り直しても、開いているディスクリプタは監視の数に比例して増えない")
+    @Test("Recreating many folder watches does not increase open descriptors in proportion to watch count")
     func watchingManyFoldersDoesNotExhaustDescriptors() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -395,7 +395,7 @@ struct FileSystemWatcherTests {
         #expect(increase < 100, "Descriptors opened by watching 100 folders: +\(increase)")
     }
 
-    @Test("subtrees（WatchRoot）を足しても、増えるのは起点の分だけ")
+    @Test("Adding subtrees (WatchRoot) increases descriptors only by the number of roots")
     func subtreeWatchRootCostsOnlyForTheRoot() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -416,7 +416,7 @@ struct FileSystemWatcherTests {
         #expect(increase < 150, "Descriptors opened by watching 100 folders and one root: +\(increase)")
     }
 
-    @Test("起点自身・親フォルダの削除と移動は、起点の URL として流す。folders だけなら自身は流さない")
+    @Test("Deleting or moving the root or its parent emits the root URL; folders-only watches do not emit the root itself")
     func subtreeReportsRootChanges() async throws {
         let base = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: base) }

@@ -3,12 +3,12 @@ import MediaViewerCore
 import MediaViewerLocalization
 import Testing
 
-@Suite("Core の値の文言")
+@Suite("Core Value Text")
 struct CoreTextTests {
     private let ja = LocalizationTestSupport.localizer("ja")
     private let en = LocalizationTestSupport.localizer("en")
 
-    @Test("検索起点の理由")
+    @Test("Search root reasons")
     func searchRoot() {
         let cases: [(SearchRootError, String)] = [
             (.empty, "検索起点ディレクトリを入力してください"),
@@ -25,7 +25,7 @@ struct CoreTextTests {
         #expect(en.text(for: SearchFolderInitialLocationError.noUsableFolder) == "No available folder was found")
     }
 
-    @Test("zip の理由（全ケース）")
+    @Test("Zip reasons (all cases)")
     func archiveErrors() {
         let corruptions: [(ArchiveCorruption, String)] = [
             (.cannotStartInflate, "展開を始められません"),
@@ -58,7 +58,7 @@ struct CoreTextTests {
         #expect(ja.text(for: ArchiveError.tooLarge) == "zip の中の画像が大きすぎるため表示できません")
     }
 
-    @Test("名前の検証の理由（全ケース）")
+    @Test("Name validation reasons (all cases)")
     func nameValidation() {
         let cases: [(NameValidationFailure, String)] = [
             (.empty, "名前を入力してください"),
@@ -73,7 +73,7 @@ struct CoreTextTests {
         }
     }
 
-    @Test("ファイル操作の失敗の理由（全ケース）")
+    @Test("File operation failure reasons (all cases)")
     func operationFailures() {
         #expect(ja.text(for: OperationFailureReason.noDestination) == "操作先のフォルダが指定されていません")
         #expect(ja.text(for: OperationFailureReason.destinationNotFound) == "操作先のフォルダが見つかりません")
@@ -97,7 +97,7 @@ struct CoreTextTests {
         }
     }
 
-    @Test("一覧とプレビューの理由")
+    @Test("Listing and preview reasons")
     func listingAndPreview() {
         #expect(ja.text(for: ListingFailure.folderNotFound) == "フォルダが見つかりません")
         #expect(ja.text(for: ListingFailure.systemFailure(systemReason: "理由")) == "理由")
@@ -113,7 +113,7 @@ struct CoreTextTests {
         #expect(en.text(for: PreviewFailure.corrupted) == "The file is damaged")
     }
 
-    @Test("種類名と空状態")
+    @Test("Kind names and empty states")
     func kindNamesAndEmptyStates() {
         #expect(ja.kindNames == KindNames(folder: "フォルダ", zipArchive: "ZIP アーカイブ"))
         #expect(en.kindNames == KindNames(folder: "Folder", zipArchive: "ZIP archive"))
@@ -123,7 +123,7 @@ struct CoreTextTests {
         #expect(en.text(.emptyFilterVideos) == "Showing videos only: No matching files")
     }
 
-    @Test("種類名を変えても複製と両方残すの名前は変わらない（EC-113）")
+    @Test("Changing kind names does not change Duplicate or Keep Both names (EC-113)")
     func namesDoNotDependOnKindNames() {
         #expect(uniqueName(for: "a.jpg", existingNames: ["a.jpg"]) == "a 2.jpg")
         #expect(uniqueName(for: "a 2.jpg", existingNames: ["a.jpg", "a 2.jpg"]) == "a 3.jpg")

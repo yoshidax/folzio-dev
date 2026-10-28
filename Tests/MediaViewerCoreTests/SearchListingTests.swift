@@ -17,21 +17,21 @@ struct SearchListingTests {
         URL(fileURLWithPath: path)
     }
 
-    @Test("起点のフォルダ名に、ファイルを含むフォルダまでの相対パスをつなぐ")
+    @Test("Joins the root folder name with the relative path to the folder containing the file")
     func locationUnderRoot() {
         let search = listing(root: "/Users/me/Pictures")
         #expect(search.location(of: file("/Users/me/Pictures/a.jpg")) == "Pictures")
         #expect(search.location(of: file("/Users/me/Pictures/2024/trip/a.jpg")) == "Pictures/2024/trip")
     }
 
-    @Test("起点が / なら絶対パス")
+    @Test("Uses an absolute path when the root is /")
     func locationUnderFilesystemRoot() {
         let search = listing(root: "/")
         #expect(search.location(of: file("/Users/me/a.jpg")) == "/Users/me")
         #expect(search.location(of: file("/a.jpg")) == "/")
     }
 
-    @Test("空白・日本語を含むパスと、末尾に / がある起点")
+    @Test("Paths containing spaces and Japanese, and a root with a trailing /")
     func locationWithSpacesAndJapanese() {
         let expected = "写真 2024/旅行"
         let path = "/Users/me/写真 2024/旅行/a.jpg"
