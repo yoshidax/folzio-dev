@@ -4,9 +4,9 @@ import Foundation
 
 public enum VideoFixtures {
     /// - Parameters:
-    ///   - fastStart: true なら再生用の情報（moov）をファイルの先頭に置く。
-    ///   - averageBitRate: 指定すると平均ビットレート（bps）を設定する。
-    ///   - noisyFrames: true なら毎フレーム変わるノイズ模様にする（大きなファイルを作るため）。
+    ///   - fastStart: When true, places the playback metadata (moov) at the start of the file.
+    ///   - averageBitRate: Sets the average bit rate (bps) when provided.
+    ///   - noisyFrames: When true, uses a noise pattern that changes every frame (to create a large file).
     public static func mp4(
         at url: URL, width: Int = 640, height: Int = 360, seconds: Double = 1.5,
         fastStart: Bool = false, averageBitRate: Int? = nil, noisyFrames: Bool = false
@@ -134,7 +134,8 @@ public enum VideoFixtures {
         }
     }
 
-    /// 1 フレーム分の 2 倍の長さの擬似乱数列（xorshift64）。フレームごとに読み出す位置をずらして使う。
+    /// Pseudo-random sequence (xorshift64) twice the length of one frame. Reads from a different position each
+    /// frame.
     private static func makeNoiseTable(width: Int, height: Int) -> [UInt8] {
         let count = width * height * 4 * 2
         var table = [UInt8](repeating: 0, count: count)
@@ -151,7 +152,8 @@ public enum VideoFixtures {
         return table
     }
 
-    /// 毎フレーム異なる位置のノイズ表をコピーして埋める（debug ビルドでも速い。圧縮しにくく、高ビットレートに届く）。
+    /// Fills the buffer by copying the noise table from a different position each frame (fast even in debug builds;
+    /// hard to compress and reaches a high bit rate).
     private static func fillNoise(_ buffer: CVPixelBuffer, frame: Int, table: [UInt8]) {
         CVPixelBufferLockBaseAddress(buffer, [])
         defer { CVPixelBufferUnlockBaseAddress(buffer, []) }

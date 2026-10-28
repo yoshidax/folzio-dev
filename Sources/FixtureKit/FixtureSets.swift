@@ -16,8 +16,8 @@ public enum FixtureSets {
         try zoom(in: directory)
     }
 
-    /// `010-search-folder-picker/quickstart.md` の検証データ。
-    /// 権限変更・削除用フォルダは通常の読取可能な状態で用意する。
+    /// Fixture data for `010-search-folder-picker/quickstart.md`.
+    /// Creates folders used for permission changes and deletion in a normal readable state.
     public static func searchFolderPicker(in directory: URL) throws {
         let root = try prepare(directory.appendingPathComponent("search-folder-picker", isDirectory: true))
         let fileManager = FileManager.default
@@ -61,7 +61,7 @@ public enum FixtureSets {
             ZipFixtureEntry(name: "hit.jpg", content: .bytes(jpeg), method: .deflated),
         ], to: root.appendingPathComponent("archive.zip"))
 
-        // JPEG は一度だけ生成し、各フォルダに小さな画像を1件ずつ置く。
+        // Generate the JPEG once and place one small image in each folder.
         for index in 1...10_000 {
             let folder = try makeFolder(String(format: "many-folders/folder-%05d", index))
             try jpeg.write(to: folder.appendingPathComponent("hit.jpg"))
@@ -89,9 +89,10 @@ public enum FixtureSets {
         )
     }
 
-    /// `slideshow/`（quickstart.md「検証用フォルダの準備」の表）を作る。
-    /// mixed には画像3件・GIF・1秒 MP4・10秒 MOV・サブフォルダ・zip・非対応テキストを置く。
-    /// single は動画1件、empty は非メディアだけ、search は同名別場所、slides.zip は mixed 相当と sub 階層。
+    /// Creates `slideshow/` (the table in "Preparing test folders" in quickstart.md).
+    /// mixed contains three images, a GIF, a 1-second MP4, a 10-second MOV, a subfolder, a zip, and an unsupported text
+    /// file. single has one video, empty has only non-media, search has same names in different locations, and
+    /// slides.zip mirrors mixed plus a sub level.
     public static func slideshow(in directory: URL, generateVideos: Bool = true) throws {
         let root = try prepare(directory.appendingPathComponent("slideshow", isDirectory: true))
         let fileManager = FileManager.default
@@ -168,7 +169,7 @@ public enum FixtureSets {
             try writePlaceholderVideo(at: single.appendingPathComponent("only.mp4"))
         }
 
-        // 切り替え効果の検証用: 表示順が分かる5件（3件目は破損）
+        // For transition tests: five items whose display order is identifiable (the third is corrupted).
         let transitions = try prepare(root.appendingPathComponent("transitions", isDirectory: true))
         try ImageFixtures.jpeg(at: transitions.appendingPathComponent("01-image.jpg"), width: 800, height: 600)
         try ImageFixtures.png(at: transitions.appendingPathComponent("04-image.png"), width: 400, height: 300)
@@ -252,8 +253,8 @@ public enum FixtureSets {
         )
     }
 
-    /// `zoom/`（008 quickstart.md「検証データ」の表）を作る。
-    /// フィットで大きく拡大される 16×16・1×1、24MP の横長 JPEG、縦長の PNG を置く。
+    /// Creates `zoom/` (the "Test data" table in 008 quickstart.md).
+    /// Contains 16×16 and 1×1 images that are enlarged significantly by fit, a 24 MP wide JPEG, and a tall PNG.
     public static func zoom(in directory: URL) throws {
         let folder = try prepare(directory.appendingPathComponent("zoom", isDirectory: true))
         try ImageFixtures.png(at: folder.appendingPathComponent("01-small-16.png"), width: 16, height: 16)
@@ -273,7 +274,7 @@ public enum FixtureSets {
             withIntermediateDirectories: true
         )
 
-        // フォルダの操作の検証用（quickstart.md「US4」の 7〜9）
+        // For folder operation tests (items 7–9 in "US4" in quickstart.md).
         let album = folder.appendingPathComponent("album", isDirectory: true)
         try FileManager.default.createDirectory(
             at: album.appendingPathComponent("inner", isDirectory: true),
@@ -283,7 +284,8 @@ public enum FixtureSets {
         try ImageFixtures.jpeg(at: album.appendingPathComponent("b.jpg"), width: 64, height: 64)
     }
 
-    /// `folders/`（quickstart.md「検証用フォルダの準備」の表）を作る。ファイルリストのフォルダの検証用（FR-076〜078）
+    /// Creates `folders/` (the table in "Preparing test folders" in quickstart.md). For file list folder tests
+    /// (FR-076–078).
     public static func folders(in directory: URL) throws {
         let folder = try prepare(directory.appendingPathComponent("folders", isDirectory: true))
         let fileManager = FileManager.default
@@ -308,15 +310,16 @@ public enum FixtureSets {
         _ = try makeFolder("empty-folder")
         let hidden = try makeFolder(".hidden-folder")
         try ImageFixtures.jpeg(at: hidden.appendingPathComponent("secret.jpg"), width: 32, height: 32)
-        // 拡張子 .app のディレクトリはパッケージになり、一覧にもツリーにも出ない
+        // A directory with the .app extension becomes a package and appears in neither the listing nor the tree.
         _ = try makeFolder("Viewer.app/Contents")
-        // 名前が .zip のディレクトリは、zip ではなくフォルダとして出る
+        // A directory named .zip appears as a folder, not as a zip.
         let dirZip = try makeFolder("dir.zip")
         try ImageFixtures.jpeg(at: dirZip.appendingPathComponent("inside.jpg"), width: 64, height: 64)
     }
 
-    /// `search/`（quickstart.md の `search/` の表）を作る。ファイル名の検索の検証用（FR-080〜087）。
-    /// 権限のないフォルダは作らない（後片付けと作り直しを壊さないため。quickstart ではターミナルで作る）
+    /// Creates `search/` (the `search/` table in quickstart.md). For file name search tests (FR-080–087).
+    /// Does not create folders without permission, to avoid breaking cleanup and regeneration (quickstart creates them
+    /// from the terminal).
     public static func search(in directory: URL) throws {
         let folder = try prepare(directory.appendingPathComponent("search", isDirectory: true))
         let fileManager = FileManager.default
@@ -343,7 +346,7 @@ public enum FixtureSets {
         try jpeg("numbers/IMG_0001.jpg")
         try jpeg("numbers/IMG_12.jpg")
 
-        // 名前を NFD（か + 結合用濁点）で書く。キーワード「が」（NFC）で見つかることの確認用
+        // Write the name in NFD (ka + combining dakuten) to verify it is found by the keyword "\u{304C}" (NFC).
         let kana = try makeFolder("kana")
         let nfdName = "か\u{3099}.png".decomposedStringWithCanonicalMapping
         let nfdURL = kana.appendingPathComponent(nfdName)
@@ -368,8 +371,9 @@ public enum FixtureSets {
         _ = try makeFolder("Viewer.app/Contents")
         try jpeg("Viewer.app/Contents/cat-pkg.jpg")
 
-        // フォルダへのリンクは辿らない。ファイルへのリンクは通常のファイルとして扱う（FR-083）。
-        // linked.jpg の名前には cat を含めず、cat・*.png・IMG_????.jpg・が の結果を変えない
+        // Do not follow links to folders. Treat links to files as regular files (FR-083).
+        // The linked.jpg name does not contain cat, so it does not change the results for cat, *.png, IMG_????.jpg,
+        // or "\u{304C}".
         try fileManager.createSymbolicLink(
             at: folder.appendingPathComponent("link"),
             withDestinationURL: folder.appendingPathComponent("a", isDirectory: true)
@@ -380,9 +384,10 @@ public enum FixtureSets {
         )
     }
 
-    /// `folder-search/`（009 quickstart.md「検証データ」の表）を作る。検索でフォルダも対象にする検証用（US15）。
-    /// 起点は `folder-search/Kyoto`。名前に kyoto を含むフォルダとファイル、含まない項目、除外対象（隠し・パッケージ・
-    /// フォルダへのリンク・zip）、同じ名前の別の場所のフォルダ、権限を変えるフォルダを持つ
+    /// Creates `folder-search/` (the "Test data" table in 009 quickstart.md). For tests where search includes folders
+    /// (US15). The root is `folder-search/Kyoto`. Contains folders and files with kyoto in the name, items without it,
+    /// excluded items (hidden, packages, links to folders, and zips), same-named folders in other locations, and a
+    /// folder whose permissions are changed.
     public static func folderSearch(in directory: URL) throws {
         let root = try prepare(directory.appendingPathComponent("folder-search", isDirectory: true))
         let fileManager = FileManager.default
@@ -429,14 +434,15 @@ public enum FixtureSets {
         let locked = try makeFolder(kyoto, "locked_kyoto")
         try ImageFixtures.jpeg(at: locked.appendingPathComponent("secret_kyoto.jpg"), width: 64, height: 48)
 
-        // 隠しの祖先の中を検索起点として直接指定し、結果のフォルダを開く（EC-102）
+        // Specify a path inside a hidden ancestor directly as the search root and open the resulting folder (EC-102).
         let open = try makeFolder(root, ".hidden-parent/search-root/kyoto_open")
         try ImageFixtures.jpeg(at: open.appendingPathComponent("IMG_0003.jpg"), width: 64, height: 48)
     }
 
-    /// SC-053 の件数の階層を作り、起点（`folder-search-scale/kyoto_root/`）の URL を返す。`makeAll` からは呼ばない。
-    /// 名前に kyoto を含むフォルダ・対応メディアファイル・含まないフォルダと、除外対象（隠しフォルダ・パッケージ・
-    /// フォルダへのシンボリックリンク・zip ファイル）を引数の件数だけ作る
+    /// Creates the SC-053 count hierarchy and returns the URL of the root
+    /// (`folder-search-scale/kyoto_root/`). Not called from `makeAll`. Creates folders, supported media files, and
+    /// folders without kyoto in the name, plus excluded items (hidden folders, packages, symbolic links to folders, and
+    /// zip files), using the requested counts.
     @discardableResult
     public static func folderSearchScale(
         in directory: URL,
@@ -494,7 +500,7 @@ public enum FixtureSets {
 
     // MARK: - zip
 
-    /// `zip/`（quickstart.md「検証用フォルダの準備」の表）を作る。
+    /// Creates `zip/` (the table in "Preparing test folders" in quickstart.md).
     public static func zip(in directory: URL) throws {
         let folder = try prepare(directory.appendingPathComponent("zip", isDirectory: true))
         let scratch = try makeScratchDirectory()
@@ -510,7 +516,7 @@ public enum FixtureSets {
 
         try Data(jpeg).write(to: folder.appendingPathComponent("cover.jpg"))
 
-        // photos.zip: deflate。ディレクトリの項目は書かない。
+        // photos.zip: deflate. Do not write directory entries.
         let inner = try ZipFixtureWriter.archiveData([
             ZipFixtureEntry(name: "inner.jpg", content: .bytes(smallJPEG), method: .deflated),
         ])
@@ -547,7 +553,7 @@ public enum FixtureSets {
             ZipFixtureEntry(name: "movie-tail.mov", content: .bytes(mov), method: .deflated),
         ], to: folder.appendingPathComponent("videos-deflated.zip"))
 
-        // 名前の文字コード
+        // Name character encodings
         try ZipFixtureWriter.write([
             ZipFixtureEntry(
                 name: "写真①.jpg", rawName: try cp932("写真①.jpg"),
@@ -563,7 +569,7 @@ public enum FixtureSets {
             ZipFixtureEntry(name: "フォルダ/画像.png", content: .bytes(png), method: .deflated),
         ], to: folder.appendingPathComponent("names-utf8.zip"))
 
-        // 非対応の項目
+        // Unsupported entries
         try ZipFixtureWriter.write([
             ZipFixtureEntry(name: "encrypted.jpg", content: .bytes(jpeg), method: .stored, encryptedFlag: true),
             ZipFixtureEntry(name: "bzip2.png", content: .bytes(png), method: .raw(12)),
@@ -575,7 +581,7 @@ public enum FixtureSets {
         ], to: folder.appendingPathComponent("no-media.zip"))
         try ZipFixtureWriter.write([], to: folder.appendingPathComponent("empty.zip"))
 
-        // 途中で切れた zip と、zip ではないファイル
+        // A truncated zip and a file that is not a zip
         let whole = try ZipFixtureWriter.archiveData([
             ZipFixtureEntry(name: "01.jpg", content: .bytes(jpeg), method: .stored),
             ZipFixtureEntry(name: "02.png", content: .bytes(png), method: .stored),
@@ -583,7 +589,7 @@ public enum FixtureSets {
         try whole.prefix(whole.count * 2 / 3).write(to: folder.appendingPathComponent("broken.zip"))
         try writeText("This is not a zip archive.\n", to: folder.appendingPathComponent("not-a-zip.zip"))
 
-        // huge.zip: 10,000 個の小さな JPEG（SC-015）
+        // huge.zip: 10,000 small JPEGs (SC-015)
         let hugeEntries = (1...10_000).map { index in
             ZipFixtureEntry(
                 name: String(format: "img_%05d.jpg", index),
@@ -593,15 +599,16 @@ public enum FixtureSets {
         try ZipFixtureWriter.write(hugeEntries, to: folder.appendingPathComponent("huge.zip"))
     }
 
-    /// `zip-big/`（SC-014 のメモリ確認用）を作る。時間とディスクを使うため `makeAll` には含めない。
+    /// Creates `zip-big/` (for the SC-014 memory check). Not included in `makeAll` because it takes time and disk
+    /// space.
     public static func bigVideoZips(in directory: URL) throws {
         let folder = try prepare(directory.appendingPathComponent("zip-big", isDirectory: true))
-        // fastStart の書き出しが途中のファイル（.sb-…）を残すことがあるため、作業用フォルダごと消す。
+        // The fastStart writer can leave partial files (.sb-…), so delete the whole scratch folder.
         let scratch = try makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: scratch) }
         let videoURL = scratch.appendingPathComponent("big-video.mp4")
 
-        // 毎フレーム変わるノイズで、約 60Mbps × 150 秒 = 約 1.1GB にする。
+        // Use noise that changes every frame to reach about 60 Mbps × 150 seconds = about 1.1 GB.
         try VideoFixtures.mp4(
             at: videoURL, width: 1920, height: 1080, seconds: 150,
             fastStart: true, averageBitRate: 60_000_000, noisyFrames: true
@@ -619,7 +626,7 @@ public enum FixtureSets {
         try Data("placeholder video\n".utf8).write(to: url, options: .atomic)
     }
 
-    /// AVAssetWriter の fastStart が残す一時ファイル（.sb-*）を片付ける。
+    /// Cleans up temporary files (.sb-*) left by AVAssetWriter fastStart.
     private static func removeWriteTemporaries(in folder: URL) {
         guard let names = try? FileManager.default.contentsOfDirectory(atPath: folder.path) else {
             return
@@ -643,7 +650,7 @@ public enum FixtureSets {
         return try Data(contentsOf: url)
     }
 
-    /// CP932（Windows 版 Shift_JIS。丸数字などの機種依存文字を含む）。
+    /// CP932 (Windows Shift_JIS, including vendor-specific characters such as circled numbers).
     private static func cp932(_ string: String) throws -> Data {
         let encoding = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(
             CFStringEncoding(CFStringEncodings.dosJapanese.rawValue)
