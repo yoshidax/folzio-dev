@@ -64,8 +64,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    // MARK: - プレビューの表示倍率（FR-135）
-    // target を明示し、シート・設定ウインドウ・名前の変更中がキーでも届くようにする（A-73）
+    // MARK: - Preview Zoom (FR-135)
+    // Set an explicit target so the actions arrive even when a sheet, the Settings window, or a rename is key (A-73).
 
     @objc func previewZoomIn(_ sender: Any?) {
         mainWindowController?.zoomIn()

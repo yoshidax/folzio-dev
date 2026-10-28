@@ -1,8 +1,9 @@
 import AppKit
 import MediaViewerLocalization
 
-/// ツリーが検証で「お気に入りから削除」に変えた項目名を、メニューを開くたびに「ゴミ箱に入れる」へ戻す。
-/// プレビューにフォーカスがあるときは誰も検証しないため、戻さないと前の項目名が残る
+/// Resets the item title that the tree changed to Remove from Favorites during validation back to Move to Trash
+/// whenever the menu opens. When the preview has focus, nothing validates it, so the previous title would
+/// otherwise remain.
 @MainActor
 private final class TrashMenuTitleReset: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
@@ -14,7 +15,7 @@ private final class TrashMenuTitleReset: NSObject, NSMenuDelegate {
 
 @MainActor
 final class MainMenu {
-    /// NSMenu.delegate は weak のため保持する
+    /// Retained because NSMenu.delegate is weak.
     private static let trashTitleReset = TrashMenuTitleReset()
 
     static func bind(_ item: NSMenuItem, _ key: TextKey) {
@@ -34,8 +35,9 @@ final class MainMenu {
         }
     }
 
-    /// `zoomTarget` は表示メニューの「拡大」「縮小」「表示領域に合わせる」の target。
-    /// キー入力先のウインドウに依存せずメインウインドウのプレビューを操作するため、明示的に渡す（FR-135、A-73）
+    /// `zoomTarget` is the target of Zoom In, Zoom Out, and Zoom to Fit in the View menu.
+    /// Passed explicitly so the actions operate on the main window's preview regardless of which window has key
+    /// focus (FR-135, A-73).
     static func install(zoomTarget: AppDelegate) {
         let mainMenu = NSMenu()
 
@@ -111,7 +113,7 @@ final class MainMenu {
         addFavoriteItem.target = nil
         fileMenu.addItem(addFavoriteItem)
 
-        // ⌘F。⇧⌘F（お気に入りへ移動）・⌃⌘F（フルスクリーン）とは修飾キーで区別する（FR-080、R39）
+        // ⌘F. Distinguished from ⇧⌘F (Go to Favorites) and ⌃⌘F (full screen) by modifiers (FR-080, R39).
         let searchItem = NSMenuItem(
             title: l10n.text(.menuFileFind),
             action: #selector(MainSplitViewController.showSearch(_:)),
@@ -232,7 +234,7 @@ final class MainMenu {
         viewMenu.addItem(fullScreenItem)
         viewMenu.addItem(.separator())
 
-        // プレビューの表示倍率（FR-135）。⌘+ は `+` の入力に Shift を含む
+        // Preview zoom (FR-135). ⌘+ includes Shift in the `+` keystroke.
         let zoomInItem = NSMenuItem(
             title: l10n.text(.menuViewZoomIn),
             action: #selector(AppDelegate.previewZoomIn(_:)),
@@ -242,8 +244,8 @@ final class MainMenu {
         zoomInItem.target = zoomTarget
         viewMenu.addItem(zoomInItem)
 
-        // Shift なしの ⌘= でも拡大する（A-72）。表示は ⌘+ のままにするため非表示にする。
-        // 非表示の項目は allowsKeyEquivalentWhenHidden を true にしないとキー等価に反応しない
+        // Also zoom in with ⌘= without Shift (A-72). Keep it hidden so the displayed shortcut stays ⌘+.
+        // A hidden item does not respond to its key equivalent unless allowsKeyEquivalentWhenHidden is true.
         let zoomInAlternateItem = NSMenuItem(
             title: l10n.text(.menuViewZoomIn),
             action: #selector(AppDelegate.previewZoomIn(_:)),
@@ -273,7 +275,7 @@ final class MainMenu {
         zoomToFitItem.target = zoomTarget
         viewMenu.addItem(zoomToFitItem)
 
-        // 大文字の S で ⇧⌘S になる
+        // An uppercase S makes this ⇧⌘S.
         let slideshowItem = NSMenuItem(
             title: l10n.text(.menuViewStartSlideshow),
             action: #selector(MainSplitViewController.startSlideshow(_:)),

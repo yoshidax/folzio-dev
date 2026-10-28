@@ -6,7 +6,7 @@ extension Notification.Name {
     static let displayLanguageDidChange = Notification.Name("MediaViewer.displayLanguageDidChange")
 }
 
-/// アプリの設定に基づく表示言語を MainActor で共有する。
+/// Shares the display language from the app settings on the MainActor.
 @MainActor
 final class LocalizationState {
     static let shared = LocalizationState()
@@ -30,7 +30,7 @@ final class LocalizationState {
 @MainActor
 var l10n: Localizer { LocalizationState.shared.localizer }
 
-/// 一時的に表示するシートなどの文言を、表示中も更新する。
+/// Updates the text of temporarily presented sheets and similar UI while they are visible.
 @MainActor
 final class LanguageChangeObserver: NSObject {
     private let update: @MainActor () -> Void

@@ -57,7 +57,7 @@ final class MainSplitViewController: NSSplitViewController {
     private let previewViewController: PreviewViewController
     private let fileOperationCoordinator: FileOperationCoordinator
     let historyNavigator: HistoryNavigator
-    /// zip の読み込み元。BrowserModel と ThumbnailProvider で同じインスタンスを共有する
+    /// Source for zip reads. `BrowserModel` and `ThumbnailProvider` share the same instance.
     private let archiveReader: ZipArchiveReader
     private var didObserveInitialListingChange = false
     private var didNotifyInitialListingDisplayed = false
@@ -76,17 +76,17 @@ final class MainSplitViewController: NSSplitViewController {
     private var didNormalizeInitialPaneState = false
     private var isAppInitiatedFullScreenTransition = false
     private var hiddenListKeyMonitor: Any?
-    /// 同じ起動中に前回検索したキーワード。保存しない（FR-081、R39）
+    /// Keyword from the previous search in the same launch. Not persisted (FR-081, R39).
     private var lastSearchKeyword: String?
     private var pendingKindNames: KindNames?
 
     var onPaneLayoutChange: ((PaneLayout) -> Void)?
-    /// スライドショーを開始できるかが変わったとき（一覧・編集・モーダルの変化）に知らせる。
+    /// Notifies when whether the slideshow can start changes (listing, editing, or modal changes).
     var onSlideshowAvailabilityChange: (() -> Void)?
-    /// プレビューの拡大・縮小・表示領域に合わせるの可否が変わったとき（FR-134・FR-136）
+    /// Notifies when zoom in, zoom out, or Zoom to Fit availability changes (FR-134, FR-136).
     var onZoomAvailabilityChange: (() -> Void)?
 
-    /// スライドショーの実行主体。delegate に自分を設定するため lazy で作る。
+    /// Slideshow driver. Created lazily because it sets this controller as its delegate.
     private(set) lazy var slideshowCoordinator: SlideshowCoordinator = {
         let coordinator = SlideshowCoordinator(settings: settings)
         coordinator.delegate = self
@@ -98,7 +98,7 @@ final class MainSplitViewController: NSSplitViewController {
     private var pendingSlideshowGeneration = 0
     private var slideshowPresentationGeneration = 0
     private var slideshowRestoreCompletion: (@MainActor () -> Void)?
-    /// スライドショー内部の previewOnly 適用中は、隠れた一覧の先頭を自動選択しない。
+    /// Does not auto-select the first item of a hidden list while applying previewOnly inside the slideshow.
     private var isApplyingSlideshowPresentation = false
 
     var paneCommands: PaneCommands {
@@ -111,7 +111,7 @@ final class MainSplitViewController: NSSplitViewController {
         )
     }
 
-    /// メニュー・ツールバー・開始操作の共通条件（FR-114・115）。
+    /// Shared condition for the menu, toolbar, and start action (FR-114, FR-115).
     var canStartSlideshow: Bool {
         guard let window = view.window else { return false }
         return SlideshowStartPolicy(
@@ -149,7 +149,7 @@ final class MainSplitViewController: NSSplitViewController {
             archiveReader: archiveReader
         )
         let volumes = VolumeProvider(changes: MainSplitViewController.makeVolumeChanges())
-        // ツリーの初回の選択（selectFolder）より前に、`..` と ⌘↑ の戻る先を決めるルートを渡す（R30）
+        // Pass the roots that determine `..` and ⌘↑ targets before the tree's initial selection (selectFolder) (R30).
         model.setNavigationRoots(volumes.rootNodes().map(\.url))
         let fileSystemWatcher = FileSystemWatcher()
         let thumbnailProvider = ThumbnailProvider(archiveReader: archiveReader)
@@ -192,7 +192,7 @@ final class MainSplitViewController: NSSplitViewController {
                 await treeViewController?.refreshFolders(folders)
             }
         }
-        // 一覧の付け替えより先に、同期でツリーのノードを付け替える（R64）
+        // Rebase tree nodes synchronously before rebasing the listing (R64).
         fileOperationCoordinator.onFolderRenamed = { [weak treeViewController] oldURL, newURL in
             treeViewController?.didRenameFolder(from: oldURL, to: newURL)
         }
@@ -258,7 +258,7 @@ final class MainSplitViewController: NSSplitViewController {
         previewViewController.onDoubleClick = { [weak self] in
             self?.togglePreviewFullScreen()
         }
-        // ペイン表示の変更も PreviewViewController.isPaneVisible を通ってここへ届く
+        // Pane visibility changes also arrive here through PreviewViewController.isPaneVisible.
         previewViewController.onZoomAvailabilityChange = { [weak self] in
             self?.onZoomAvailabilityChange?()
         }
@@ -336,8 +336,8 @@ final class MainSplitViewController: NSSplitViewController {
         }
     }
 
-    /// 一覧と選択の変化を、スライドショーの自動終了判定と開始ボタンの可否へつなぐ。
-    /// 対象が0件になったときだけ止め、選択の消失や並べ替えでは期限を変えない。
+    /// Connects listing and selection changes to the slideshow auto-end decision and the start button availability.
+    /// Stops only when there are zero candidates; losing the selection or re-sorting does not change the deadline.
     private func observeSlideshowData() {
         withObservationTracking {
             _ = model.listing
@@ -429,14 +429,15 @@ final class MainSplitViewController: NSSplitViewController {
         historyNavigator.recordViewChange(.viewChange)
     }
 
-    /// 「表示 > スライドショーを開始」とツールバーのボタン（FR-114・115）。
+    /// View > Start Slideshow and the toolbar button (FR-114, FR-115).
     @objc func startSlideshow(_ sender: Any?) {
         guard canStartSlideshow else { return }
         slideshowCoordinator.start()
     }
 
-    /// 開始時点の通常表示（ペイン・フォーカス・3ペイン幅）を保存して previewOnly へ移る（FR-114・118）。
-    /// 一覧の先頭は選ばない。開始対象は呼び出し元の `SlideshowSequence.startTarget` が決める。
+    /// Saves the normal presentation at start (panes, focus, and three-pane widths) and moves to previewOnly
+    /// (FR-114, FR-118). Does not select the first item; the caller's `SlideshowSequence.startTarget` chooses the
+    /// start target.
     private func prepareSlideshowPresentation() -> Bool {
         guard canStartSlideshow, view.window != nil else { return false }
 
@@ -465,7 +466,8 @@ final class MainSplitViewController: NSSplitViewController {
         return true
     }
 
-    /// 終了時の復帰（FR-118・119）。全画面なら解除通知を待ってから幅とフォーカスを最終適用する。
+    /// Restores on exit (FR-118, FR-119). In full screen, waits for the exit notification before applying the final
+    /// widths and focus.
     private func restoreSlideshowPresentation(completion: @escaping @MainActor () -> Void) {
         guard let state = slideshowRestoreState, let window = view.window else {
             discardSlideshowRestore()
@@ -550,7 +552,7 @@ final class MainSplitViewController: NSSplitViewController {
         )
     }
 
-    /// スライドショーが横取りしてよい Esc・修飾なし矢印か（FR-123）。
+    /// Whether the slideshow may intercept this Esc or unmodified arrow key (FR-123).
     private func evaluateSlideshowKeyEvent(_ event: NSEvent) -> Bool {
         guard let window = view.window,
               event.windowNumber == window.windowNumber else {
@@ -568,7 +570,8 @@ final class MainSplitViewController: NSSplitViewController {
         }
     }
 
-    /// スライドショー中の `/`（再生・一時停止）を受け取れるか。Esc・矢印と同じ入力条件を使う。
+    /// Whether `/` (play/pause) can be accepted during the slideshow. Uses the same input conditions as Esc and
+    /// arrows.
     private func acceptsSlideshowPlaybackKey(_ event: NSEvent) -> Bool {
         guard let window = view.window,
               event.windowNumber == window.windowNumber else {
@@ -579,8 +582,8 @@ final class MainSplitViewController: NSSplitViewController {
         return slideshowInputPolicy.acceptsKeys
     }
 
-    /// 期限とキーが同じ run loop に並んだとき、未処理の受理キーを覗く（dequeue しない）。
-    /// メニュー追跡中の eventTracking は対象にせず、キーを横取りしない。
+    /// Peeks at an unhandled accepted key when a deadline and a key are queued in the same run loop (without
+    /// dequeueing). Does not target eventTracking during menu tracking and does not intercept the key.
     private func peekSlideshowKeyEvent() -> Bool {
         guard let event = NSApp.nextEvent(
             matching: .keyDown,
@@ -593,15 +596,17 @@ final class MainSplitViewController: NSSplitViewController {
         return evaluateSlideshowKeyEvent(event)
     }
 
-    /// `cancelOperation` から呼ぶ、ローカルモニタを通らなかった Esc の保険（FR-123）。
-    /// 終了・ウインドウを閉じるときに、復帰表示を待たずスライドショーの資源を捨てる（EC-72）。
+    /// Fallback for Esc that did not pass through the local monitor, called from `cancelOperation` (FR-123).
+    /// Discards slideshow resources without waiting for the restore display when quitting or closing the window
+    /// (EC-72).
     func stopSlideshowImmediately() {
         slideshowCoordinator.stopImmediately()
         discardSlideshowRestore()
     }
 
     func handleSlideshowEscapeFallback() -> Bool {
-        // 復帰処理中の再入力で全画面を往復させない。復帰が終わるまで Esc は消費する。
+        // Do not bounce in and out of full screen on repeated input during restore. Consume Esc until restore
+        // finishes.
         if slideshowCoordinator.isRestoring { return true }
         guard slideshowCoordinator.isActive else { return false }
         guard slideshowInputPolicy.accepts(.escape) else { return false }
@@ -796,7 +801,7 @@ final class MainSplitViewController: NSSplitViewController {
             return true
         }
 
-        // `/` はスライドショー中も動画の再生・一時停止に使う（FR-121）。期限は変えない。
+        // `/` plays or pauses video during the slideshow too (FR-121). Does not change the deadline.
         if slideshowCoordinator.isActive,
            event.charactersIgnoringModifiers == "/",
            acceptsSlideshowPlaybackKey(event) {
@@ -923,7 +928,7 @@ final class MainSplitViewController: NSSplitViewController {
             action: #selector(focusPreviewPane(_:))
         )
 
-        // 大文字の F で ⇧⌘F になる
+        // An uppercase F makes this ⇧⌘F.
         let favoritesItem = NSMenuItem(
             title: l10n.text(.menuViewGoToFavorites),
             action: #selector(focusFavorites(_:)),
@@ -958,13 +963,13 @@ final class MainSplitViewController: NSSplitViewController {
         historyNavigator.recordViewChange(.viewChange)
     }
 
-    /// ⌘[。履歴を1つ戻る（FR-112）
+    /// ⌘[. Goes back one history entry (FR-112).
     @objc func goBack(_ sender: Any?) {
         guard paneCommands.canNavigateHistory, historyNavigator.canGoBack else { return }
         historyNavigator.goBack()
     }
 
-    /// ⌘]。履歴を1つ進む（FR-112）
+    /// ⌘]. Goes forward one history entry (FR-112).
     @objc func goForward(_ sender: Any?) {
         guard paneCommands.canNavigateHistory, historyNavigator.canGoForward else { return }
         historyNavigator.goForward()
@@ -990,7 +995,7 @@ final class MainSplitViewController: NSSplitViewController {
         treeViewController.focusFavoritesHeader()
     }
 
-    /// ⌃⌘T。どのペインにフォーカスがあっても、ツリーで選択中のフォルダを登録する（FR-062）
+    /// ⌃⌘T. Registers the folder selected in the tree regardless of which pane has focus (FR-062).
     @objc func addSelectedFolderToFavorites(_ sender: Any?) {
         guard paneCommands.allowsAddingFavorite,
               treeViewController.canAddSelectedFolderToFavorites else {
@@ -999,7 +1004,8 @@ final class MainSplitViewController: NSSplitViewController {
         treeViewController.addSelectedFolderToFavorites()
     }
 
-    /// ⌘F。検索のモーダルを開く。起点の既定値は表示中のフォルダ（検索結果の表示中は検索前のフォルダ。FR-080・081）
+    /// ⌘F. Opens the search modal. The default root is the displayed folder (the pre-search folder while showing
+    /// search results; FR-080, FR-081).
     @objc func showSearch(_ sender: Any?) {
         guard paneCommands.canSearch else { return }
         let panel = SearchPanelController(
@@ -1009,7 +1015,7 @@ final class MainSplitViewController: NSSplitViewController {
             guard let self else { return }
             self.lastSearchKeyword = pattern.keyword
             self.model.startSearch(pattern, root: root)
-            // 続けて矢印キーで結果を辿れるよう、ファイルリストへフォーカスを移す
+            // Move focus to the file list so the arrow keys can navigate the results.
             self.focusPane(self.fileListViewController.primaryFocusView)
         }
         presentAsSheet(panel)
@@ -1045,7 +1051,7 @@ extension MainSplitViewController: HistoryPresentationHost {
         HistoryPresentation(
             displayMode: fileListViewController.currentDisplayMode,
             thumbnailSize: fileListViewController.currentThumbnailSize,
-            // スライドショー中の表示変更は、復帰先の通常 layout で記録する（FR-121）
+            // Record presentation changes during the slideshow in the normal layout used for restore (FR-121).
             paneLayout: slideshowRestoreState?.normalPaneLayout ?? paneLayout
         )
     }
@@ -1056,19 +1062,20 @@ extension MainSplitViewController: HistoryPresentationHost {
             thumbnailSize: presentation.thumbnailSize
         )
         setPaneLayout(presentation.paneLayout)
-        // 履歴の移動が成立したときだけ呼ばれる。同じ画像に戻る場合も100%にする（FR-137、EC-88）
+        // Called only when history navigation succeeds. Resets to 100% even when returning to the same image
+        // (FR-137, EC-88).
         previewViewController.resetZoom()
     }
 }
 
-// MARK: - プレビューの表示倍率（FR-133〜FR-137）
+// MARK: - Preview Zoom (FR-133–FR-137)
 
 extension MainSplitViewController {
     var zoomAvailability: PreviewZoomAvailability {
         previewViewController.zoomAvailability
     }
 
-    /// 倍率の変更は履歴に記録しない（FR-137）
+    /// Zoom changes are not recorded in history (FR-137).
     @discardableResult
     func zoomIn() -> Bool {
         previewViewController.zoomIn()

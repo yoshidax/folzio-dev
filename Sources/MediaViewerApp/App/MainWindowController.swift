@@ -51,7 +51,7 @@ final class MainWindowController: NSWindowController {
         fatalError("init(coder:) is not supported")
     }
 
-    /// 終了時にスライドショーの Task・保留・復帰状態を残さない。
+    /// Leaves no slideshow tasks, pending work, or restore state on termination.
     func stopSlideshowImmediately() {
         splitViewController.stopSlideshowImmediately()
     }
@@ -64,7 +64,7 @@ final class MainWindowController: NSWindowController {
         super.cancelOperation(sender)
     }
 
-    // MARK: - プレビューの表示倍率（AppDelegate のメニュー操作と検証のための入口）
+    // MARK: - Preview Zoom (entry points for AppDelegate menu actions and validation)
 
     var zoomAvailability: PreviewZoomAvailability {
         splitViewController.zoomAvailability
