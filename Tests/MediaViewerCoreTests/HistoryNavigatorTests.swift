@@ -101,7 +101,7 @@ struct HistoryNavigatorTests {
 
         func openArchiveDirectory(_ name: String) async {
             guard let row = model.listing.files.first(where: { $0.name == name && $0.kind == .directory }) else {
-                Issue.record("zip の中のフォルダがありません: \(name)")
+                Issue.record("Folder inside the zip is missing: \(name)")
                 return
             }
             await model.openItem(row.url)
@@ -109,7 +109,7 @@ struct HistoryNavigatorTests {
 
         func openZip(_ name: String) async {
             guard let row = model.listing.files.first(where: { $0.name == name }) else {
-                Issue.record("zip の行がありません: \(name)")
+                Issue.record("Zip row is missing: \(name)")
                 return
             }
             await model.openItem(row.url)
@@ -178,7 +178,7 @@ struct HistoryNavigatorTests {
         navigator.history.current?.location.archive?.directory
     }
 
-    @Test("最初の表示は1件だけ記録し、戻る・進むはどちらも使えない（SC-032）")
+    @Test("The initial display records one entry with neither Back nor Forward available (SC-032)")
     func initialRecord() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -190,7 +190,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.canGoForward == false)
     }
 
-    @Test("A → B → C を戻って進める（US7-AS1・AS2）")
+    @Test("Navigates back and forward through A, B, and C (US7-AS1, AS2)")
     func backAndForward() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -209,7 +209,7 @@ struct HistoryNavigatorTests {
         #expect(name(env.navigator) == "B")
     }
 
-    @Test("戻った後に新しく移ると進む側を消す（US7-AS5）")
+    @Test("New navigation after going back clears forward history (US7-AS5)")
     func newNavigationClearsForward() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -227,7 +227,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.backEntries.map(\.location.folder.lastPathComponent) == ["A"])
     }
 
-    @Test("戻る先が消えていれば飛ばして前の履歴へ移り、その履歴を取り除く（EC-54・SC-030）")
+    @Test("Skips and removes a missing back destination and navigates to the preceding entry (EC-54, SC-030)")
     func skipsMissingBackEntry() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -247,7 +247,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.canGoForward == false)
     }
 
-    @Test("進む先が消えていても飛ばす（EC-55）")
+    @Test("Also skips missing forward destinations (EC-55)")
     func skipsMissingForwardEntry() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -265,7 +265,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.backEntries.map(\.location.folder.lastPathComponent) == ["A"])
     }
 
-    @Test("複数の候補が続けて消えていても、存在する履歴まで飛ばす")
+    @Test("Skips consecutive missing candidates until an existing entry is found")
     func skipsSeveralMissingEntries() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -282,7 +282,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.count == 2)
     }
 
-    @Test("表示中のフォルダが消えて現在を取り除いても、戻るで前の履歴へ移れる（EC-65）")
+    @Test("Back reaches a previous entry even after the current folder disappears and its entry is removed (EC-65)")
     func removedCurrentStillAllowsBack() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -299,7 +299,7 @@ struct HistoryNavigatorTests {
         #expect(name(env.navigator) == "A")
     }
 
-    @Test("外で名前を変えた場所は見つからないので取り除く（EC-57）")
+    @Test("An externally renamed location is missing and removed (EC-57)")
     func externallyRenamedFolderIsRemoved() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -315,7 +315,7 @@ struct HistoryNavigatorTests {
         #expect(name(env.navigator) == "A")
     }
 
-    @Test("表示中のフォルダが消えると親の履歴に置き換わり、隣と同じならまとめる（EC-60）")
+    @Test("A deleted current folder is replaced by its parent and coalesced with an identical neighbor (EC-60)")
     func relocatedReplacesCurrentAndConsolidates() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -331,7 +331,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.canGoBack == false)
     }
 
-    @Test("置き換えても進む側は残る（EC-60）")
+    @Test("Replacing the current entry preserves forward history (EC-60)")
     func relocatedKeepsForward() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -350,7 +350,7 @@ struct HistoryNavigatorTests {
         #expect(name(env.navigator) == "C")
     }
 
-    @Test("壊れた zip の履歴は飛ばさず、エラーの表示にする（EC-56）")
+    @Test("A damaged zip entry is not skipped and displays an error (EC-56)")
     func brokenArchiveIsNotSkipped() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -363,7 +363,7 @@ struct HistoryNavigatorTests {
         if case let .failed(message) = env.model.listing.state {
             #expect(message == .archive(.notAZip))
         } else {
-            Issue.record("壊れた zip が .failed になっていません: \(env.model.listing.state)")
+            Issue.record("A corrupted zip did not become .failed: \(env.model.listing.state)")
         }
 
         await env.goBack()
@@ -373,7 +373,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.canGoBack)
     }
 
-    @Test("検索結果の表示中は戻るで検索を終え、履歴は移らない（US7-AS11）")
+    @Test("Back closes search results without moving through history (US7-AS11)")
     func backEndsSearch() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -392,7 +392,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.canGoBack == false)
     }
 
-    @Test("起動直後の検索でも戻るで検索を終えられる（US7-AS12）")
+    @Test("Back also closes a search started immediately after launch (US7-AS12)")
     func backEndsSearchAtStartup() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -407,7 +407,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.canGoBack == false)
     }
 
-    @Test("zip の中で始めた検索を終えるとフォルダが新しい履歴になり、もう一度戻ると zip の中へ戻る（US7-AS13・R76）")
+    @Test("Ending a search started inside a zip records the folder; another Back returns inside the zip (US7-AS13, R76)")
     func backEndsSearchInsideArchive() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -430,7 +430,7 @@ struct HistoryNavigatorTests {
         #expect(archiveDirectory(env.navigator) == "sub/")
     }
 
-    @Test("名前の変更で現在は新しい場所に置き換わり、ほかの履歴は取り除かれる（EC-61）")
+    @Test("Renaming replaces the current location and removes other affected entries (EC-61)")
     func renamedFolderUpdatesHistory() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -445,7 +445,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.backEntries.map(\.location.folder.lastPathComponent) == ["A"])
     }
 
-    @Test("ごみ箱に入れた履歴を取り除いても現在は残る（EC-58・FR-109）")
+    @Test("Removing trashed history entries preserves the current entry (EC-58, FR-109)")
     func removedItemsLeaveCurrent() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -459,7 +459,7 @@ struct HistoryNavigatorTests {
         #expect(name(env.navigator) == "C")
     }
 
-    @Test("確認中に場所が変わったら、古い戻る要求を捨てる（R72）")
+    @Test("A location change during validation discards the old Back request (R72)")
     func supersededRequestIsDiscarded() async throws {
         let env = try Env(reader: SlowArchiveReader(delay: .milliseconds(300)))
         defer { env.cleanup() }
@@ -484,7 +484,7 @@ struct HistoryNavigatorTests {
         #expect(path(env.model.listing.folder) == path(env.url("D")))
     }
 
-    @Test("連打した戻るは1つずつ順に処理し、最終的に2つ前へ移る（R72）")
+    @Test("Repeated Back requests run sequentially and eventually move back two entries (R72)")
     func queuedRequestsKeepOrder() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -497,7 +497,7 @@ struct HistoryNavigatorTests {
         env.navigator.goBack()
         env.navigator.goBack()
         let enqueueElapsed = ContinuousClock.now - start
-        #expect(enqueueElapsed < .milliseconds(100), "要求の受付で UI を止めない (実測: \(enqueueElapsed))")
+        #expect(enqueueElapsed < .milliseconds(100), "Do not block the UI while accepting the request (measured: \(enqueueElapsed))")
 
         await env.navigator.waitUntilIdle()
         #expect(name(env.navigator) == "A")
@@ -506,7 +506,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.canGoForward)
     }
 
-    @Test("確認と読み込みの間も goBack・goForward の呼び出しは 100ms 以上止まらない（SC-029）")
+    @Test("goBack and goForward calls never block for 100 ms or more during validation and loading (SC-029)")
     func navigationCallDoesNotBlock() async throws {
         let env = try Env(reader: SlowArchiveReader(delay: .milliseconds(300)))
         defer { env.cleanup() }
@@ -518,13 +518,13 @@ struct HistoryNavigatorTests {
         let start = ContinuousClock.now
         env.navigator.goForward()
         let elapsed = ContinuousClock.now - start
-        #expect(elapsed < .milliseconds(100), "goForward の受付は 100ms 未満 (実測: \(elapsed))")
+        #expect(elapsed < .milliseconds(100), "Accepting goForward takes less than 100 ms (measured: \(elapsed))")
 
         await env.navigator.waitUntilIdle()
         #expect(env.navigator.history.current?.location.archive != nil)
     }
 
-    @Test("検索結果の表示中と見つからない表示では表示の変更を記録しない（FR-113）")
+    @Test("Does not record view changes in search results or the not-found view (FR-113)")
     func recordViewChangeIgnoresUnavailableLocations() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -543,7 +543,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.count == noCurrentCount)
     }
 
-    @Test("表示変更は presentationHost が返す復帰 layout で記録する")
+    @Test("Records view changes using the restoration layout returned by presentationHost")
     func recordUsesHostProjection() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -560,7 +560,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.current?.viewState.presentation == normal)
     }
 
-    @Test("presentationHost がないときは表示の変更を記録しない")
+    @Test("Does not record view changes without a presentationHost")
     func recordViewChangeNeedsHost() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -573,7 +573,7 @@ struct HistoryNavigatorTests {
         env.navigator.presentationHost = env.host
     }
 
-    @Test("同じ状態の再設定は記録しない")
+    @Test("Reapplying the same state records nothing")
     func recordViewChangeIgnoresSameState() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -585,7 +585,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.version == version)
     }
 
-    @Test("同じ場所の戻るは一覧を作り直さず、表示の状態だけを戻す（US8-AS1・AS5）")
+    @Test("Back within the same location restores only view state without rebuilding the listing (US8-AS1, AS5)")
     func sameLocationRestoresPresentation() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -608,7 +608,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.canGoForward)
     }
 
-    @Test("場所が変わる戻るは、場所と表示の状態の両方を戻す（US8-AS5）")
+    @Test("Back to a different location restores both location and view state (US8-AS5)")
     func differentLocationRestoresPresentation() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -628,7 +628,7 @@ struct HistoryNavigatorTests {
         #expect(env.host.presentation.thumbnailSize == 128)
     }
 
-    @Test("種類フィルタ・zip の表示・ペインの表示も戻す（US8-AS3・AS4）")
+    @Test("Also restores media type filters, zip visibility, and pane visibility (US8-AS3, AS4)")
     func restoresModelAndPaneState() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -648,7 +648,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.canGoBack == false)
     }
 
-    @Test("検索を終えた後の表示の状態は現在の履歴になる（R76）")
+    @Test("View state after ending a search becomes the current history entry (R76)")
     func searchEndUpdatesCurrentViewState() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -663,7 +663,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.current?.viewState.presentation.thumbnailSize == 192)
     }
 
-    @Test("戻った直後の表示の変更は新しい履歴になり、進む側を消す（US8-AS7）")
+    @Test("A view change immediately after Back creates a new entry and clears forward history (US8-AS7)")
     func viewChangeAfterBackClearsForward() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -680,7 +680,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.count == 2)
     }
 
-    @Test("見つからなかった移動は記録を取り消し、現在を残さない（EC-62）")
+    @Test("Navigation to a missing location cancels its record without retaining a current entry (EC-62)")
     func missingNavigationRollsBackRecord() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -711,7 +711,7 @@ struct HistoryNavigatorTests {
         return env.model.listing.files.first(where: { $0.name == name && $0.kind == .folder })?.url
     }
 
-    @Test("検索結果からフォルダを開くと、検索前の場所の表示の状態を反映してから記録し、戻ると検索前の場所へ戻る")
+    @Test("Opening a search result folder applies and records the pre-search view state; Back returns to the pre-search location")
     func openingFolderFromSearchRecordsNavigation() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -739,7 +739,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.current?.viewState.presentation.displayMode == .thumbnails)
     }
 
-    @Test("検索前の場所の行を開くと新しい履歴を記録せず、表示の状態だけを反映する（EC-99）")
+    @Test("Opening the pre-search location's row only applies view state without recording a new entry (EC-99)")
     func openingSameFolderFromSearchDoesNotRecord() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -773,7 +773,7 @@ struct HistoryNavigatorTests {
         #expect(name(env.navigator) == "B")
     }
 
-    @Test("zip の中で始めた検索の結果から開くと、zip の中の履歴の次に記録し、zip を含むフォルダは記録しない（EC-100）")
+    @Test("Opening results from a search started inside a zip records after the zip location without recording its containing folder (EC-100)")
     func openingFolderFromSearchInsideArchive() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -805,7 +805,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.current?.location.archive?.directory == "sub/")
     }
 
-    @Test("開いたフォルダが開く直前に消えていれば記録を取り消し、検索前の場所の表示の状態は残る")
+    @Test("A folder disappearing just before opening cancels its record and preserves the pre-search view state")
     func openingMissingFolderFromSearchRollsBack() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -826,7 +826,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.backEntries.last?.viewState.presentation.displayMode == .thumbnails)
     }
 
-    @Test("検索結果の一覧から検索前のフォルダの祖先をゴミ箱に入れても検索を続け、戻ると見つからない（EC-101）")
+    @Test("Trashing an ancestor of the pre-search folder in search results keeps searching; Back reports it missing (EC-101)")
     func trashingAncestorFromFileListDuringSearch() async throws {
         let env = try Env()
         defer { env.cleanup() }
@@ -861,7 +861,7 @@ struct HistoryNavigatorTests {
         #expect(env.navigator.history.count == 0)
     }
 
-    @Test("検索結果の表示中にフォルダを選ぶと新しい履歴になる（FR-113）")
+    @Test("Selecting a folder while showing search results creates a new history entry (FR-113)")
     func folderSelectedDuringSearchIsRecorded() async throws {
         let env = try Env()
         defer { env.cleanup() }

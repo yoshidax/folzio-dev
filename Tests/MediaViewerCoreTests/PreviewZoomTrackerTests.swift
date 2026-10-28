@@ -8,14 +8,14 @@ struct PreviewZoomTrackerTests {
     private let urlA = URL(fileURLWithPath: "/tmp/zoom/a.jpg")
     private let urlB = URL(fileURLWithPath: "/tmp/zoom/b.jpg")
 
-    @Test("初期状態は100%で画像なし")
+    @Test("Starts at 100% with no image")
     func initialState() {
         let tracker = PreviewZoomTracker()
         #expect(tracker.level == .fit)
         #expect(tracker.imageIdentity == nil)
     }
 
-    @Test("同じ画像の再提示は倍率を保ち、別の画像で100%に戻る")
+    @Test("Re-presenting the same image keeps the zoom; a different image resets to 100%")
     func presentKeepsOrResets() {
         var tracker = PreviewZoomTracker()
         let presentedA = tracker.present(urlA)
@@ -36,7 +36,7 @@ struct PreviewZoomTrackerTests {
         #expect(tracker.imageIdentity == urlB)
     }
 
-    @Test("画像がない状態（空・動画・表示不能）は100%に戻る")
+    @Test("Resets to 100% when there is no image (empty, video, or unavailable)")
     func presentNilResets() {
         var tracker = PreviewZoomTracker()
         tracker.present(urlA)
@@ -50,7 +50,7 @@ struct PreviewZoomTrackerTests {
         #expect(clearedAgain == false)
     }
 
-    @Test("reset は同じ画像のまま100%に戻す（履歴の移動用）")
+    @Test("reset returns to 100% for the same image (for history navigation)")
     func resetKeepsIdentity() {
         var tracker = PreviewZoomTracker()
         tracker.present(urlA)
@@ -65,7 +65,7 @@ struct PreviewZoomTrackerTests {
         #expect(tracker.imageIdentity == urlA)
     }
 
-    @Test("上限・下限での拡大・縮小は値を変えず false を返す")
+    @Test("Zooming at the limits leaves the value unchanged and returns false")
     func clampsAtLimits() {
         var tracker = PreviewZoomTracker()
         tracker.present(urlA)
@@ -91,7 +91,7 @@ struct PreviewZoomTrackerTests {
         #expect(tracker.level.percentage == 25)
     }
 
-    @Test("fit は100%以外から戻したときだけ true")
+    @Test("fit returns true only when returning from a value other than 100%")
     func fitReportsChange() {
         var tracker = PreviewZoomTracker()
         tracker.present(urlA)

@@ -3,7 +3,7 @@ import Testing
 
 @Suite("MediaKind")
 struct MediaKindTests {
-    @Test("対応拡張子を大文字小文字を区別せず判定する", arguments: [
+    @Test("Recognizes supported extensions case-insensitively", arguments: [
         ("jpg", MediaKind.jpeg),
         ("JPG", .jpeg),
         ("Jpeg", .jpeg),
@@ -23,12 +23,12 @@ struct MediaKindTests {
         #expect(MediaKind(fileExtension: fileExtension) == expected)
     }
 
-    @Test("非対応拡張子は nil になる", arguments: ["txt", "pdf", "heic", ""])
+    @Test("Returns nil for unsupported extensions", arguments: ["txt", "pdf", "heic", ""])
     func rejectsUnsupportedExtensions(fileExtension: String) {
         #expect(MediaKind(fileExtension: fileExtension) == nil)
     }
 
-    @Test("動画だけ isVideo が true になる")
+    @Test("isVideo is true only for videos")
     func marksVideos() {
         #expect(MediaKind.mp4.isVideo)
         #expect(MediaKind.mov.isVideo)

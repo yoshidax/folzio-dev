@@ -73,7 +73,7 @@ final class SlideshowCoordinator {
         delegate.slideshowFocusPreview()
 
         let started = session.start(now: clock.now, interval: settings.slideshow.interval)
-        assert(started, "idle のときだけ start する")
+        assert(started, "start is only valid from idle")
         guard started else {
             isActive = false
             isRestoring = true

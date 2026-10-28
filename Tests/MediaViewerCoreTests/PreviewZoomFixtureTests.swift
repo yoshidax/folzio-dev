@@ -5,7 +5,7 @@ import Testing
 
 @Suite("PreviewZoomFixture")
 struct PreviewZoomFixtureTests {
-    @Test("zoom は小さい画像・極小画像・24MP の横長・縦長の4件を持つ")
+    @Test("zoom contains four items: a small image, a tiny image, a 24 MP wide image, and a tall image")
     func zoomSet() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

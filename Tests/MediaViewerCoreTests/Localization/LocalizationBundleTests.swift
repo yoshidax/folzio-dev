@@ -3,9 +3,9 @@ import FixtureKit
 import MediaViewerLocalization
 import Testing
 
-@Suite("翻訳の参照先")
+@Suite("Localization Bundle Resolution")
 struct LocalizationBundleTests {
-    @Test(".app の lproj があれば本体のバンドルを使う")
+    @Test("Uses the main bundle when it has an .app lproj")
     func resolvesMainBundle() throws {
         let url = try LocalizationFixtures.makeBundle(tables: [
             "en": ["error.searchRoot.empty": "Enter a folder to search in"],
@@ -16,7 +16,7 @@ struct LocalizationBundleTests {
         #expect(LocalizationBundle.resolve(main: bundle) == bundle)
     }
 
-    @Test("lproj が無ければパッケージのバンドルを使う")
+    @Test("Uses the package bundle when no lproj exists")
     func resolvesPackageBundle() throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("MediaViewerEmptyBundle-\(UUID().uuidString).bundle", isDirectory: true)
@@ -29,7 +29,7 @@ struct LocalizationBundleTests {
         #expect(LocalizationBundle.resolve(main: bundle) == LocalizationBundle.packageBundle)
     }
 
-    @Test("パッケージのバンドルから作った Localizer は両言語で内部キーを返さない")
+    @Test("A Localizer created from the package bundle returns no internal keys in either language")
     func packageBundleLocalizer() {
         for language in LocalizationTestSupport.languages {
             let localizer = LocalizationTestSupport.localizer(language)

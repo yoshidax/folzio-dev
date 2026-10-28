@@ -4,25 +4,25 @@ import Testing
 
 @Suite("FavoriteName")
 struct FavoriteNameTests {
-    @Test("上限は 255 文字")
+    @Test("The limit is 255 characters")
     func maximumLengthIs255() {
         #expect(FavoriteName.maximumLength == 255)
     }
 
-    @Test("normalized は前後の空白と改行を取り除く")
+    @Test("normalized trims leading and trailing whitespace and newlines")
     func normalizedTrimsWhitespace() {
         #expect(FavoriteName.normalized("  2025 ") == "2025")
         #expect(FavoriteName.normalized("\n2025\n") == "2025")
     }
 
-    @Test("normalized は空・空白だけなら nil")
+    @Test("normalized returns nil for empty or whitespace-only input")
     func normalizedReturnsNilForBlank() {
         #expect(FavoriteName.normalized("") == nil)
         #expect(FavoriteName.normalized("   ") == nil)
         #expect(FavoriteName.normalized(" \n\t ") == nil)
     }
 
-    @Test("中の改行（\\n・\\r\\n・U+2028）を取り除く")
+    @Test("Removes internal newlines (\\n, \\r\\n, and U+2028)")
     func removesInnerNewlines() {
         for newline in ["\n", "\r\n", "\u{2028}"] {
             #expect(FavoriteName.normalized("a\(newline)b") == "ab", "\(newline.unicodeScalars.map(\.value))")
@@ -30,12 +30,12 @@ struct FavoriteNameTests {
         }
     }
 
-    @Test("sanitizedForEditing は前後の空白を残す")
+    @Test("sanitizedForEditing preserves leading and trailing whitespace")
     func sanitizedKeepsSurroundingSpaces() {
         #expect(FavoriteName.sanitizedForEditing(" a ") == " a ")
     }
 
-    @Test("255 文字ちょうどはそのまま、超えた分は先頭 255 文字に切れる")
+    @Test("Keeps exactly 255 characters and truncates longer input to the first 255")
     func truncatesAtMaximumLength() {
         let exact = String(repeating: "a", count: 255)
         #expect(FavoriteName.sanitizedForEditing(exact) == exact)
@@ -48,7 +48,7 @@ struct FavoriteNameTests {
         }
     }
 
-    @Test("長さは書記素クラスタで数え、書記素の途中で切らない")
+    @Test("Counts grapheme clusters and never splits one")
     func countsGraphemeClusters() {
         for unit in ["👨‍👩‍👧", "e\u{301}"] {
             let exact = String(repeating: unit, count: 255)
@@ -62,7 +62,7 @@ struct FavoriteNameTests {
         }
     }
 
-    @Test("/ と : を含む名前をそのまま受け付ける")
+    @Test("Accepts names containing / and : as-is")
     func acceptsSlashAndColon() {
         #expect(FavoriteName.normalized("a/b:c") == "a/b:c")
         #expect(FavoriteName.sanitizedForEditing("a/b:c") == "a/b:c")

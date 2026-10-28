@@ -28,7 +28,7 @@ struct ZipArchiveReaderTests {
 
     // MARK: - open
 
-    @Test("open で索引ができ、identity が stat と一致する")
+    @Test("open builds the index and identity matches stat")
     func openBuildsIndexAndIdentity() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -55,7 +55,7 @@ struct ZipArchiveReaderTests {
         #expect(reader.identity(of: zip) == index.identity)
     }
 
-    @Test("open は UI スレッドの外で実行され、MainActor からも呼べる")
+    @Test("open runs off the UI thread and can be called from MainActor")
     @MainActor
     func openFromMainActor() async throws {
         let directory = try makeTemporaryDirectory()
@@ -67,7 +67,7 @@ struct ZipArchiveReaderTests {
 
     // MARK: - data(for:limit:)
 
-    @Test("無圧縮・deflate・データ記述子の項目が書いた内容と一致する")
+    @Test("Stored, deflate, and data-descriptor entries match their written contents")
     func readsEachMethod() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -100,7 +100,7 @@ struct ZipArchiveReaderTests {
         #expect(try await reader.data(for: entryURL(zip, "deflated.png"), limit: limit) == large)
     }
 
-    @Test("ZIP64 の zip の項目が書いた内容と一致する")
+    @Test("Entries in a ZIP64 zip match their written contents")
     func readsZip64() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -119,7 +119,7 @@ struct ZipArchiveReaderTests {
         }
     }
 
-    @Test("open を呼ばなくても data(for:) で zip を開いて読める")
+    @Test("data(for:) opens and reads a zip without an explicit open call")
     func readsWithoutExplicitOpen() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -127,7 +127,7 @@ struct ZipArchiveReaderTests {
         #expect(try await ZipArchiveReader(kindNames: FixtureKit.kindNames).data(for: entryURL(zip, "a.png"), limit: 100) == Data("abc".utf8))
     }
 
-    @Test("展開後のサイズが limit を超える項目は tooLarge")
+    @Test("Entries whose inflated size exceeds limit return tooLarge")
     func rejectsTooLarge() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -145,7 +145,7 @@ struct ZipArchiveReaderTests {
         #expect(MemoryLimits.archiveImageBytes == 512 * 1024 * 1024)
     }
 
-    @Test("暗号化と非対応の方式は専用のエラー")
+    @Test("Encryption and unsupported methods return dedicated errors")
     func rejectsEncryptedAndUnsupported() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -161,7 +161,7 @@ struct ZipArchiveReaderTests {
         await expectError(.unsupportedMethod(12)) { try await reader.data(for: entryURL(zip, "bzip2.jpg"), limit: 100) }
     }
 
-    @Test("索引にない項目とディレクトリの URL は corrupted")
+    @Test("Unindexed entry URLs and directory URLs return corrupted")
     func rejectsUnknownEntries() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -177,7 +177,7 @@ struct ZipArchiveReaderTests {
 
     // MARK: - Error Cases
 
-    @Test("存在しない zip は notFound")
+    @Test("A nonexistent zip returns notFound")
     func missingArchive() async {
         let missing = FileManager.default.temporaryDirectory
             .appendingPathComponent("missing-\(UUID().uuidString).zip")
@@ -186,7 +186,7 @@ struct ZipArchiveReaderTests {
         #expect(reader.identity(of: missing) == nil)
     }
 
-    @Test("権限のない zip は accessDenied")
+    @Test("A zip without permission returns accessDenied")
     func unreadableArchive() async throws {
         let directory = try makeTemporaryDirectory()
         let zip = try write([ZipFixtureEntry(name: "a.png", content: .bytes(Data("a".utf8)))], in: directory)
@@ -199,7 +199,7 @@ struct ZipArchiveReaderTests {
         await expectError(.accessDenied) { try await reader.open(zip) }
     }
 
-    @Test("テキストの .zip・空のファイル・ディレクトリは notAZip")
+    @Test("Text files named .zip, empty files, and directories return notAZip")
     func notAZip() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -216,7 +216,7 @@ struct ZipArchiveReaderTests {
         await expectError(.notAZip) { try await reader.open(folder) }
     }
 
-    @Test("途中で切れた zip は失敗し、クラッシュしない")
+    @Test("A truncated zip fails without crashing")
     func truncatedArchive() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -230,14 +230,14 @@ struct ZipArchiveReaderTests {
             try data.prefix(length).write(to: url)
             do {
                 _ = try await reader.open(url)
-                Issue.record("長さ \(length) で失敗しなかった")
+                Issue.record("Did not fail at length \(length)")
             } catch {
                 #expect(error == .notAZip || { if case .corrupted = error { return true }; return false }())
             }
         }
     }
 
-    @Test("ローカルヘッダの位置がファイルの外を指す項目は corrupted")
+    @Test("An entry with a local-header offset outside the file returns corrupted")
     func localHeaderOutsideFile() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -260,7 +260,7 @@ struct ZipArchiveReaderTests {
         }
     }
 
-    @Test("サイズが実際と合わない項目は corrupted で、クラッシュしない")
+    @Test("An entry whose size differs from its actual size returns corrupted without crashing")
     func mismatchedSizes() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -298,16 +298,16 @@ struct ZipArchiveReaderTests {
             let target = name.hasPrefix("stored") ? "b.png" : "a.png"
             do {
                 let result = try await reader.data(for: entryURL(zip, target), limit: 0x7FFF_FFFF)
-                Issue.record("\(name): 失敗しなかった (\(result.count) バイト)")
+                Issue.record("\(name): did not fail (\(result.count) bytes)")
             } catch {
                 if case .corrupted = error {} else if error == .tooLarge {} else {
-                    Issue.record("\(name): 想定外のエラー \(error)")
+                    Issue.record("\(name): unexpected error \(error)")
                 }
             }
         }
     }
 
-    @Test("deflate のデータが壊れていても、クラッシュせずに結果を返す")
+    @Test("Damaged deflate data returns a result without crashing")
     func garbledDeflateData() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -325,13 +325,13 @@ struct ZipArchiveReaderTests {
             let result = try await reader.data(for: entryURL(zip, "a.png"), limit: 1_000_000)
             #expect(result != content)
         } catch {
-            if case .corrupted = error {} else { Issue.record("想定外のエラー \(error)") }
+            if case .corrupted = error {} else { Issue.record("Unexpected error \(error)") }
         }
     }
 
     // MARK: - Identity and Multiple Zips
 
-    @Test("zip を開いた後に上書き・削除すると identity が変わる")
+    @Test("Overwriting or deleting a zip after opening changes identity")
     func identityChangesAfterModification() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -353,7 +353,7 @@ struct ZipArchiveReaderTests {
         #expect(reader.identity(of: zip) == nil)
     }
 
-    @Test("同じ reader で2つの zip を交互に読んでも結果が混ざらない")
+    @Test("Alternating reads of two zip files with the same reader does not mix results")
     func alternatingArchives() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -380,7 +380,7 @@ struct ZipArchiveReaderTests {
         #expect(try await reader.data(for: entryURL(first, "same.png"), limit: 100) == Data("from first".utf8))
     }
 
-    @Test("複数のタスクから同時に読んでも結果が混ざらない")
+    @Test("Concurrent reads from multiple tasks do not mix results")
     func concurrentReads() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -416,7 +416,7 @@ struct ZipArchiveReaderTests {
     ) async {
         do {
             _ = try await body()
-            Issue.record("エラー \(expected) が投げられなかった", sourceLocation: sourceLocation)
+            Issue.record("Error \(expected) was not thrown", sourceLocation: sourceLocation)
         } catch {
             #expect(error as? ArchiveError == expected, sourceLocation: sourceLocation)
         }
@@ -428,10 +428,10 @@ struct ZipArchiveReaderTests {
     ) async {
         do {
             _ = try await body()
-            Issue.record("corrupted が投げられなかった", sourceLocation: sourceLocation)
+            Issue.record("corrupted was not thrown", sourceLocation: sourceLocation)
         } catch {
             if case .corrupted? = error as? ArchiveError { return }
-            Issue.record("想定外のエラー \(error)", sourceLocation: sourceLocation)
+            Issue.record("Unexpected error \(error)", sourceLocation: sourceLocation)
         }
     }
 }

@@ -3,7 +3,7 @@ import Testing
 
 @Suite("ThumbnailScroll")
 struct ThumbnailScrollTests {
-    @Test("ビューポートの下にある項目は最小限スクロールする")
+    @Test("Scrolls minimally for an item below the viewport")
     func scrollsDownToItemBelowViewport() {
         let offset = ThumbnailScroll.offsetY(
             itemMinY: 120,
@@ -16,7 +16,7 @@ struct ThumbnailScrollTests {
         #expect(offset != 0)
     }
 
-    @Test("ビューポートの上にある項目は上端に合わせる")
+    @Test("Aligns an item above the viewport to the top")
     func scrollsUpToItemAboveViewport() {
         let offset = ThumbnailScroll.offsetY(
             itemMinY: 30,
@@ -28,7 +28,7 @@ struct ThumbnailScrollTests {
         #expect(offset == 30)
     }
 
-    @Test("下側が部分的に見えている項目は項目全体が見える位置までスクロールする")
+    @Test("Scrolls until an item whose lower part is visible is fully visible")
     func scrollsDownForPartiallyVisibleItem() {
         let offset = ThumbnailScroll.offsetY(
             itemMinY: 80,
@@ -40,7 +40,7 @@ struct ThumbnailScrollTests {
         #expect(offset == 30)
     }
 
-    @Test("上側が部分的に見えている項目は項目全体が見える位置までスクロールする")
+    @Test("Scrolls until an item whose upper part is visible is fully visible")
     func scrollsUpForPartiallyVisibleItem() {
         let offset = ThumbnailScroll.offsetY(
             itemMinY: 20,
@@ -52,7 +52,7 @@ struct ThumbnailScrollTests {
         #expect(offset == 20)
     }
 
-    @Test("既に全体が見えている項目ではスクロールしない")
+    @Test("Does not scroll when the item is already fully visible")
     func keepsOffsetForVisibleItem() {
         let offset = ThumbnailScroll.offsetY(
             itemMinY: 30,
@@ -64,7 +64,7 @@ struct ThumbnailScrollTests {
         #expect(offset == 0)
     }
 
-    @Test("末尾では最大スクロール位置にクランプする")
+    @Test("Clamps to the maximum scroll position at the end")
     func clampsAtBottom() {
         let offset = ThumbnailScroll.offsetY(
             itemMinY: 190,
@@ -76,7 +76,7 @@ struct ThumbnailScrollTests {
         #expect(offset == 100)
     }
 
-    @Test("先頭では 0 にクランプする")
+    @Test("Clamps to 0 at the start")
     func clampsAtTop() {
         let offset = ThumbnailScroll.offsetY(
             itemMinY: 0,
@@ -88,7 +88,7 @@ struct ThumbnailScrollTests {
         #expect(offset == 0)
     }
 
-    @Test("ビューポートより高い項目は上端を合わせる")
+    @Test("Aligns the top of an item taller than the viewport")
     func alignsTopForTallerItem() {
         let offset = ThumbnailScroll.offsetY(
             itemMinY: 10,
@@ -100,7 +100,7 @@ struct ThumbnailScrollTests {
         #expect(offset == 10)
     }
 
-    @Test("不正な寸法では現在の原点を返す")
+    @Test("Returns the current origin for invalid dimensions")
     func returnsCurrentOriginForInvalidValues() {
         #expect(ThumbnailScroll.offsetY(
             itemMinY: 10,

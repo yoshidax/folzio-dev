@@ -67,7 +67,7 @@ public struct Localizer: @unchecked Sendable {
     /// Looks up the translation unit and substitutes arguments into its positional format. Uses the development
     /// language (English) translation when the display language has none (EC-110).
     public func text(_ key: TextKey, _ values: [TextValue]) -> String {
-        assert(argumentKindsMatch(values, key.arguments), "引数が TextKey.\(key) と一致しません")
+        assert(argumentKindsMatch(values, key.arguments), "arguments do not match TextKey.\(key)")
         let format = formatString(for: key)
         guard format != Self.missing else { return format }
 

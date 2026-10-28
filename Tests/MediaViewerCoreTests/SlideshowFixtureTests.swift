@@ -6,7 +6,7 @@ import MediaViewerCore
 
 @Suite("SlideshowFixture")
 struct SlideshowFixtureTests {
-    @Test("mixed は画像3件・GIF・短長動画・サブフォルダ・zip・非対応テキストを持つ")
+    @Test("mixed contains three images, a GIF, short and long videos, a subfolder, a zip, and unsupported text")
     func mixedSet() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -30,7 +30,7 @@ struct SlideshowFixtureTests {
         ))
     }
 
-    @Test("single は動画1件、empty は非メディアだけ、search は同名別場所を持つ")
+    @Test("single has one video, empty has only non-media, and search has same names in other locations")
     func smallSets() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -51,7 +51,7 @@ struct SlideshowFixtureTests {
         }
     }
 
-    @Test("slides.zip はルートの対応メディアと sub 階層を持つ")
+    @Test("slides.zip contains supported media at the root and a sub level")
     func slidesZip() async throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -70,7 +70,7 @@ struct SlideshowFixtureTests {
         #expect(index.items(in: "sub/").map(\.name).sorted() == ["10.jpg", "11.png"])
     }
 
-    @Test("transitions は表示順が分かる5件を名前昇順で持ち、3件目だけデコードできない")
+    @Test("transitions contains five items in ascending name order, with only the third undecodable")
     func transitionsSet() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -89,13 +89,13 @@ struct SlideshowFixtureTests {
         for name in ["01-image.jpg", "04-image.png"] {
             let source = CGImageSourceCreateWithURL(folder.appendingPathComponent(name) as CFURL, nil)
             let image = source.flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }
-            #expect(image != nil, "\(name) はデコードできる")
+            #expect(image != nil, "\(name) can be decoded")
         }
         let brokenSource = CGImageSourceCreateWithURL(
             folder.appendingPathComponent("03-broken.jpg") as CFURL, nil
         )
         let brokenImage = brokenSource.flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }
-        #expect(brokenImage == nil, "03-broken.jpg はデコードできない")
+        #expect(brokenImage == nil, "03-broken.jpg cannot be decoded")
     }
 
     private func makeDirectory() throws -> URL {

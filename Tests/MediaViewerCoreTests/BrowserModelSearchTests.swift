@@ -3,10 +3,10 @@ import Testing
 @testable import FixtureKit
 @testable import MediaViewerCore
 
-@Suite("BrowserModel の検索")
+@Suite("BrowserModel search")
 @MainActor
 struct BrowserModelSearchTests {
-    @Test("移動済みの検索結果と遅れて届く旧結果を外し、残りの選択を保つ")
+    @Test("Removes moved search results and delayed old results while preserving the remaining selection")
     func movedSearchResultsAreNotReintroduced() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -155,7 +155,7 @@ struct BrowserModelSearchTests {
     private func send(_ batch: [MediaFile], _ env: Env, expecting count: Int) async {
         env.searcher.send(batch)
         let arrived = await waitUntil { env.model.listing.search?.totalCount == count }
-        #expect(arrived, "バッチが一覧に加わらなかった。totalCount: \(env.model.listing.search?.totalCount ?? -1)")
+        #expect(arrived, "Batch was not added to the listing. totalCount: \(env.model.listing.search?.totalCount ?? -1)")
     }
 
     private func finish(_ env: Env) async {
@@ -166,7 +166,7 @@ struct BrowserModelSearchTests {
 
     // MARK: - Starting
 
-    @Test("検索を始めると、検索前のフォルダ・lastFolder・ツリーの同期を変えずに、選択とプレビューを空にする")
+    @Test("Starting a search clears selection and preview without changing the previous folder, lastFolder, or tree synchronization")
     func startingSearchResetsSelectionOnly() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -196,7 +196,7 @@ struct BrowserModelSearchTests {
         #expect(env.searcher.requests.count == 1)
     }
 
-    @Test("動画のプレビュー中に検索を始めると再生を止める")
+    @Test("Starting a search during video preview stops playback")
     func startingSearchStopsVideo() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -205,7 +205,7 @@ struct BrowserModelSearchTests {
         let clip = try #require(env.model.listing.files.first { $0.name == "clip.mp4" })
         env.model.select([clip.url], focused: clip.url)
         guard case .video = env.model.preview else {
-            Issue.record("動画のプレビューにならなかった")
+            Issue.record("Preview did not become a video")
             return
         }
         let signal = env.model.stopPlaybackSignal
@@ -217,7 +217,7 @@ struct BrowserModelSearchTests {
 
     // MARK: - Batches and Completion
 
-    @Test("バッチは並べ替え済みでマージされ、選択とフォーカスが保たれ、.. とフォルダの行がない")
+    @Test("Merges batches in sort order, preserves selection and focus, and includes no .. or folder rows")
     func batchesMergeAndKeepSelection() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -240,12 +240,12 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.state == .loaded)
         #expect(env.model.selection.selected == [b.url])
         #expect(env.model.selection.focused == b.url)
-        #expect(isImagePreview(env.model.preview), "プレビューを読み直した: \(env.model.preview)")
+        #expect(isImagePreview(env.model.preview), "Preview was reloaded: \(env.model.preview)")
         #expect(!env.model.listing.files.contains { $0.kind == .parent || $0.kind == .folder })
         #expect(env.model.hasEnclosingLevel == false)
     }
 
-    @Test("ストリームが終わると finished。0 件なら empty")
+    @Test("Stream completion becomes finished, or empty with zero results")
     func finishing() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -260,7 +260,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.state == .loaded)
     }
 
-    @Test("種類フィルタで 0 件なら noMatches で、totalCount は変わらない")
+    @Test("A media type filter with zero results becomes noMatches without changing totalCount")
     func filterWithSearchResults() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -277,7 +277,7 @@ struct BrowserModelSearchTests {
 
     // MARK: - Cancellation and New Searches
 
-    @Test("フォルダを選ぶと検索を取り消して表示を終え、その後のバッチは加わらない")
+    @Test("Selecting a folder cancels and closes search results and ignores later batches")
     func selectingFolderLeavesSearch() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -301,7 +301,7 @@ struct BrowserModelSearchTests {
         #expect(names(env.model) == ["..", "day1", "day2"])
     }
 
-    @Test("結果の表示中に新しい検索を始めると、前の検索を取り消して結果を置き換える")
+    @Test("Starting a new search while showing results cancels the previous search and replaces its results")
     func newSearchReplacesResults() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -319,7 +319,7 @@ struct BrowserModelSearchTests {
         #expect(names(env.model) == ["b.jpg"])
     }
 
-    @Test("置き換え前の検索のバッチは、後から届いても結果に加わらない")
+    @Test("Late batches from the replaced search are not added to the results")
     func replacedSearchDropsOldBatches() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -334,10 +334,10 @@ struct BrowserModelSearchTests {
         #expect(await waitUntil { names(env.model) == ["b.jpg"] })
         env.searcher.send([a], to: 0)
         try await Task.sleep(for: .milliseconds(100))
-        #expect(names(env.model) == ["b.jpg"], "失効したバッチは捨てる (実際: \(names(env.model)))")
+        #expect(names(env.model) == ["b.jpg"], "Stale batches are discarded (actual: \(names(env.model)))")
     }
 
-    @Test("zip の中で検索を始めると zip の状態を捨て、listing.folder は zip を含むフォルダのまま")
+    @Test("Starting a search inside a zip discards zip state and keeps listing.folder at the containing folder")
     func startingSearchInsideArchive() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -359,7 +359,7 @@ struct BrowserModelSearchTests {
 
     // MARK: - Zip File Visibility (FR-098)
 
-    @Test("検索結果の表示中に zip ファイルの表示を切り替えても、結果・選択・プレビューは変わらず設定だけを保存する")
+    @Test("Toggling zip visibility in search results only saves the setting and preserves results, selection, and preview")
     func togglingZipVisibilityDuringSearchChangesNothing() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -394,7 +394,7 @@ struct BrowserModelSearchTests {
 
     // MARK: - Sorting
 
-    @Test("検索結果では場所で並べられ、保存されない。表示を終えると保存済みの並べ替えに戻る")
+    @Test("Search results support location sorting without saving it; leaving restores the saved sort order")
     func locationSortDuringSearch() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -420,7 +420,7 @@ struct BrowserModelSearchTests {
         #expect(env.viewSettings.sortOrder == SortOrder(column: .kind, ascending: false))
     }
 
-    @Test("通常のフォルダでは場所への代入を受け付けず、設定と一覧を変えない")
+    @Test("Regular folders reject location sorting without changing settings or the listing")
     func locationSortRejectedOutsideSearch() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -444,7 +444,7 @@ struct BrowserModelSearchTests {
 
     // MARK: - Pruning Results
 
-    @Test("reloadCurrentFolder は消えた結果だけを外し、新しいファイルは加えない")
+    @Test("reloadCurrentFolder removes only missing results and adds no new files")
     func reloadPrunesMissingResults() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -466,7 +466,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.search?.totalCount == 1)
     }
 
-    @Test("didRenameItem は行を差し替えて並べ直し、選択を新しい URL にする。対応メディアでなくなったら外す")
+    @Test("didRenameItem replaces and resorts the row, updates selected URLs, and removes unsupported media")
     func renamingResults() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -500,7 +500,7 @@ struct BrowserModelSearchTests {
         #expect(names(env.model) == before)
     }
 
-    @Test("handleFileSystemEvent は届いたフォルダ以下の結果だけを確かめ、検索前のフォルダが消えても親へ移らない")
+    @Test("handleFileSystemEvent checks only results under the event folder and does not navigate up if the previous folder disappears")
     func fileSystemEventsPruneUnderFolders() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -536,7 +536,7 @@ struct BrowserModelSearchTests {
         #expect(names(env.model) == ["d.jpg"])
     }
 
-    @Test("検索起点そのものが消えると、すべての結果を外して表示は続ける")
+    @Test("Deleting the search root removes all results while keeping search results open")
     func searchRootDisappears() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -572,7 +572,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.isShowingSearchResults)
     }
 
-    @Test("leaveTrashedFolders は検索前のフォルダの祖先なら親へ移って表示を終え、無関係なら検索結果のまま")
+    @Test("leaveTrashedFolders navigates up and closes results for an ancestor of the previous folder but preserves unrelated results")
     func trashingAncestorLeavesSearch() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -597,7 +597,7 @@ struct BrowserModelSearchTests {
         return (old, new)
     }
 
-    @Test("検索結果の表示中にフォルダの名前を変えると、結果は残って場所・選択が新しい名前になり、プレビューは変わらない")
+    @Test("Renaming a folder in search results preserves results, updates locations and selection, and keeps the preview")
     func renamingFolderRebasesResults() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -627,7 +627,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.search?.totalCount == 2)
     }
 
-    @Test("「場所」で並べ替え中は、名前を変えた後の場所で並べ直す")
+    @Test("Location sorting reorders results by their new locations after a rename")
     func renamingFolderResortsByLocation() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -644,7 +644,7 @@ struct BrowserModelSearchTests {
         #expect(names(env.model) == ["1.jpg", "a.jpg"])
     }
 
-    @Test("検索起点そのものの名前を変えると、起点が新しい場所になり、結果は外れない")
+    @Test("Renaming the search root updates its location without removing results")
     func renamingSearchRoot() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -662,7 +662,7 @@ struct BrowserModelSearchTests {
         #expect(env.searcher.requests.count == 1)
     }
 
-    @Test("検索中に名前を変えると、後から届く古い場所の結果も付け替え、新しい場所を追加で列挙して重複を除く（EC-52）")
+    @Test("Renaming during search remaps late results at old locations, enumerates the new location, and removes duplicates (EC-52)")
     func renamingFolderWhileSearching() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -692,7 +692,7 @@ struct BrowserModelSearchTests {
         #expect(await waitUntil { env.model.listing.search?.phase == .finished })
     }
 
-    @Test("検索中に検索起点そのものの名前を変えると、新しい起点を追加で列挙する")
+    @Test("Renaming the search root during search additionally enumerates the new root")
     func renamingSearchRootWhileSearching() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -708,7 +708,7 @@ struct BrowserModelSearchTests {
         #expect(path(env.model.listing.search?.root) == path(new))
     }
 
-    @Test("検索中でも、検索起点の外のフォルダの名前を変えたときは追加で列挙しない")
+    @Test("Renaming a folder outside the search root during search does not trigger additional enumeration")
     func renamingFolderOutsideSearchRoot() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -734,7 +734,7 @@ struct BrowserModelSearchTests {
         )
     }
 
-    @Test("件数はフォルダとファイルの合計で、フォルダだけの一致と 0 件を区別する（US15-AS10・EC-32・EC-96）")
+    @Test("Counts include folders and files and distinguish folder-only matches from zero results (US15-AS10, EC-32, EC-96)")
     func folderRowsCountTowardsTotal() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -767,7 +767,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.search?.totalCount == 0)
     }
 
-    @Test("種類フィルタはフォルダの行を隠さず、一致するメディアが残らなければ noMatches、フォルダだけなら loaded")
+    @Test("Media type filters preserve folder rows; no remaining matching media gives noMatches, while folders alone give loaded")
     func folderRowsWithTypeFilter() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -793,7 +793,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.state == .loaded)
     }
 
-    @Test("フォルダの行にフォーカスを移すとプレビューが空になり、再生中の動画を止める（US15-AS4）")
+    @Test("Focusing a folder row clears the preview and stops any playing video (US15-AS4)")
     func focusingFolderRowClearsPreviewAndStopsVideo() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -806,7 +806,7 @@ struct BrowserModelSearchTests {
 
         env.model.select([video.url], focused: video.url)
         guard case .video = env.model.preview else {
-            Issue.record("動画のプレビューにならなかった")
+            Issue.record("Preview did not become a video")
             return
         }
         let signal = env.model.stopPlaybackSignal
@@ -818,7 +818,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.selection.focused == folder.url)
     }
 
-    @Test("名前・作成日・場所の並べ替えで、フォルダとファイルが区別なく混ざって並ぶ（FR-084・A-25）")
+    @Test("Name, creation date, and location sorting interleave folders and files without distinction (FR-084, A-25)")
     func folderRowsSortMixedWithMedia() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -854,7 +854,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.state == .loaded)
     }
 
-    @Test("検索結果の一覧の先頭に .. の行はない（FR-084）")
+    @Test("Search results have no .. row at the start (FR-084)")
     func searchResultsHaveNoParentRow() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -871,7 +871,7 @@ struct BrowserModelSearchTests {
 
     // MARK: - Opening Folder Rows (FR-140, US15-AS3, EC-93)
 
-    @Test("検索中にフォルダの行を開くと検索を止め、そのフォルダの一覧にしてツリーと lastFolder を同期し、後から届く結果を捨てる")
+    @Test("Opening a folder row during search stops the search, shows the folder, synchronizes the tree and lastFolder, and discards late results")
     func openingFolderRowDuringSearch() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -901,7 +901,7 @@ struct BrowserModelSearchTests {
         #expect(Set(names(env.model)) == [".."])
     }
 
-    @Test("検索が終わった後にフォルダの行を開いても同じ")
+    @Test("Opening a folder row after search completion behaves the same way")
     func openingFolderRowAfterSearchFinished() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -921,7 +921,7 @@ struct BrowserModelSearchTests {
         #expect(path(env.model.treeSyncRequest?.folder) == path(day1.url))
     }
 
-    @Test("「場所」で並べ替え中にフォルダの行を開くと、保存済みの並べ替えに戻る")
+    @Test("Opening a folder row while sorting by location restores the saved sort order")
     func openingFolderRowRestoresSortOrder() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -937,7 +937,7 @@ struct BrowserModelSearchTests {
         #expect(env.viewSettings.sortOrder == saved)
     }
 
-    @Test("メディアの行を開いても何も変わらない")
+    @Test("Opening a media row changes nothing")
     func openingMediaRowDoesNothing() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -955,7 +955,7 @@ struct BrowserModelSearchTests {
         #expect(env.searcher.cancelledCount == 0)
     }
 
-    @Test("検索結果から開いたときだけ openedSearchResultFolder を知らせ、通常の一覧では navigated のまま")
+    @Test("Only opening a folder from search results emits openedSearchResultFolder; regular listings still emit navigated")
     func openingFolderRowSendsOpenedSearchResultFolder() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -978,11 +978,11 @@ struct BrowserModelSearchTests {
         events.removeAll()
         let day1 = try #require(env.model.listing.files.first { $0.name == "day1" })
         await env.model.openItem(day1.url)
-        #expect(events.count == 1, "受け取った通知: \(events)")
+        #expect(events.count == 1, "Received events: \(events)")
         #expect(events.first == .navigated(leavingFocus: nil))
     }
 
-    @Test("読み取り権限のないフォルダの行を開くと accessDenied の表示になり、.. で戻れる")
+    @Test("Opening an unreadable folder row shows accessDenied and allows returning via ..")
     func openingUnreadableFolderRow() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1003,7 +1003,7 @@ struct BrowserModelSearchTests {
 
     // MARK: - Tree Synchronization Completion (EC-102)
 
-    @Test("検索結果から開いたフォルダの同期完了では、表示可能な祖先を最後のフォルダとして保存する")
+    @Test("Completed synchronization for a folder opened from search results saves its displayable ancestor as the last folder")
     func completeSearchResultTreeSyncSavesVisibleAncestor() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1032,7 +1032,7 @@ struct BrowserModelSearchTests {
         #expect(path(env.lastFolder) == path(visible))
     }
 
-    @Test("同期完了で選択できた場所が開いたフォルダ自身なら、その場所を保存する")
+    @Test("Completed synchronization saves the opened folder itself when it can be selected")
     func completeSearchResultTreeSyncSavesSelectedFolder() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1048,7 +1048,7 @@ struct BrowserModelSearchTests {
         #expect(path(env.lastFolder) == path(open.url))
     }
 
-    @Test("古い依頼・別の依頼・祖先でない場所・通常のナビゲーションの同期は保存先を変えない")
+    @Test("Old requests, other requests, non-ancestor locations, and regular navigation synchronization do not change the saved location")
     func completeSearchResultTreeSyncRejectsInvalidRequests() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1083,7 +1083,7 @@ struct BrowserModelSearchTests {
         #expect(path(env.lastFolder) == path(normalSaved))
     }
 
-    @Test("次のナビゲーションの後は、同じフォルダを再表示していても古い同期完了を無視する")
+    @Test("After further navigation, old synchronization completions are ignored even when showing the same folder again")
     func completeSearchResultTreeSyncIgnoresAfterNavigation() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1103,7 +1103,7 @@ struct BrowserModelSearchTests {
         #expect(path(env.lastFolder) == path(saved))
     }
 
-    @Test("見つからなかったフォルダの同期完了では保存しない")
+    @Test("Synchronization completion for a missing folder saves nothing")
     func completeSearchResultTreeSyncIgnoresNotFound() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1126,7 +1126,7 @@ struct BrowserModelSearchTests {
         env.model.listing.search?.location(of: url)
     }
 
-    @Test("フォルダの行の名前を変えると、行と中の結果が新しい名前になり、選択・フォーカスが新しい URL で保たれる")
+    @Test("Renaming a folder row updates it and its descendant results and preserves selection and focus with new URLs")
     func renamingFolderRow() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1158,7 +1158,7 @@ struct BrowserModelSearchTests {
         #expect(names(env.model) == ["g.jpg", "zzz"])
     }
 
-    @Test("フォルダの行の名前を変えた後に削除すると、行と中の結果が両方外れる")
+    @Test("Deleting a folder after renaming its row removes both the row and its descendant results")
     func renamedFolderRowIsRemovedWithItsResults() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1181,7 +1181,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.isShowingSearchResults)
     }
 
-    @Test("中の結果を開いているフォルダを名前の変更の後に削除すると、プレビューが空になり件数が減る")
+    @Test("Deleting a renamed folder with a previewed descendant result clears the preview and decreases the count")
     func deletingRenamedFolderClearsPreview() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1208,7 +1208,7 @@ struct BrowserModelSearchTests {
         #expect(isEmptyPreview(env.model.preview))
     }
 
-    @Test("アプリの外でフォルダを移すと行と中の結果が外れ、新しく現れたフォルダは加わらない")
+    @Test("Moving a folder outside the app removes its row and descendant results without adding newly appearing folders")
     func externallyMovedFolderIsRemoved() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1230,7 +1230,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.isShowingSearchResults)
     }
 
-    @Test("フォルダの行を複製したフォルダは結果に加わらない")
+    @Test("Duplicating a folder row does not add the duplicate folder to results")
     func copiedFolderIsNotAdded() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1247,7 +1247,7 @@ struct BrowserModelSearchTests {
         #expect(!names(env.model).contains("F copy"))
     }
 
-    @Test("検索の起点の外にあるフォルダの名前の変更では結果が変わらない")
+    @Test("Renaming a folder outside the search root leaves results unchanged")
     func renamingFolderOutsideRootChangesNothing() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1264,7 +1264,7 @@ struct BrowserModelSearchTests {
         #expect(env.searcher.requests.count == 1)
     }
 
-    @Test("検索が終わった後の、行でないフォルダの名前の変更では追加の列挙を始めない（EC-94 の前半）")
+    @Test("Renaming a folder without a result row after search completion starts no additional enumeration (EC-94, first half)")
     func renamingNonRowFolderAfterSearchDoesNotEnumerate() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1287,7 +1287,7 @@ struct BrowserModelSearchTests {
         _ = hidden
     }
 
-    @Test("検索結果の一覧から検索前のフォルダの祖先をゴミ箱に入れると、表示を続けて行を外す（EC-101）")
+    @Test("Trashing an ancestor of the previous folder from search results keeps results open and removes rows (EC-101)")
     func trashingSearchFolderAncestorFromFileListKeepsResults() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1320,10 +1320,10 @@ struct BrowserModelSearchTests {
         await env.model.selectFolder(target)
         #expect(!env.model.isShowingSearchResults)
         // Report not found after the navigation notification.
-        #expect(events.last == .notFound(HistoryLocation(folder: day1)), "受け取った通知: \(events)")
+        #expect(events.last == .notFound(HistoryLocation(folder: day1)), "Received events: \(events)")
     }
 
-    @Test("検索結果の一覧から検索前のフォルダの祖先をゴミ箱に入れた場合も、ツリーからの経路では親へ移る")
+    @Test("Trashing an ancestor of the previous folder via the tree still navigates up while search results are shown")
     func trashingSearchFolderAncestorFromTreeLeavesSearch() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1340,7 +1340,7 @@ struct BrowserModelSearchTests {
         #expect(path(env.model.listing.folder) == path(env.root))
     }
 
-    @Test("検索結果の一覧で検索前のフォルダの祖先を移すと行を外し、表示を続ける（EC-101 の移動）")
+    @Test("Moving an ancestor of the previous folder in search results removes rows and keeps results open (EC-101, move)")
     func movingSearchFolderAncestorKeepsResults() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1372,10 +1372,10 @@ struct BrowserModelSearchTests {
 
         await env.model.selectFolder(env.model.listing.folder)
         // Report not found after the navigation notification.
-        #expect(events.last == .notFound(HistoryLocation(folder: day1)), "受け取った通知: \(events)")
+        #expect(events.last == .notFound(HistoryLocation(folder: day1)), "Received events: \(events)")
     }
 
-    @Test("検索の起点がフォルダの行と中の結果ごと消えても、すべて外して表示を続ける（EC-36）")
+    @Test("Deleting the search root with its folder row and descendant results removes everything and keeps results open (EC-36)")
     func searchRootDisappearsWithFolderRows() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1416,7 +1416,7 @@ struct BrowserModelSearchTests {
         return url
     }
 
-    @Test("照合済みのフォルダの名前を変えると、追加の列挙は新しい場所を照合せず、行は加わらない（EC-94 の前半）")
+    @Test("Renaming an already evaluated folder does not recheck the new location during additional enumeration or add a row (EC-94, first half)")
     func renamingVisitedFolderDoesNotRecheckTheFolder() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1435,7 +1435,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.search?.totalCount == 0)
     }
 
-    @Test("未照合のフォルダの名前を変えると新しい場所を起点として照合し、古い場所の行は捨てる（EC-94 の後半）")
+    @Test("Renaming an unevaluated folder checks the new location as a root and discards old-location rows (EC-94, second half)")
     func renamingUnvisitedFolderRechecksTheFolder() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1463,7 +1463,7 @@ struct BrowserModelSearchTests {
         #expect(row.kind == .folder)
     }
 
-    @Test("照合済みで一致したフォルダの行は新しい名前で残り、後から届いた中の結果は新しい場所で加わる（EC-52）")
+    @Test("An already matched folder row keeps its new name and late descendant results use the new location (EC-52)")
     func renamingVisitedFolderKeepsRowAndReroutesResults() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -1484,10 +1484,10 @@ struct BrowserModelSearchTests {
         let inside = new.appendingPathComponent("b-1.jpg")
         env.searcher.send([Env.result(old.appendingPathComponent("b-1.jpg"))], to: 0)
         #expect(await waitUntil { env.model.listing.search?.totalCount == 2 })
-        #expect(env.model.listing.files.contains { path($0.url) == path(inside) }, "一覧: \(names(env.model))")
+        #expect(env.model.listing.files.contains { path($0.url) == path(inside) }, "Listing: \(names(env.model))")
     }
 
-    @Test("名前の変更の後に届いた照合済みのフォルダの行は、新しい URL と名前で加わる")
+    @Test("An already evaluated folder row arriving after a rename is added with its new URL and name")
     func visitedFolderRowArrivingAfterRenameUsesNewName() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }

@@ -3,7 +3,7 @@ import Testing
 @testable import FixtureKit
 @testable import MediaViewerCore
 
-@Suite("BrowserModel のフォルダ")
+@Suite("BrowserModel folder browsing")
 @MainActor
 struct BrowserModelFolderTests {
     // MARK: - Fixtures
@@ -83,7 +83,7 @@ struct BrowserModelFolderTests {
 
     // MARK: - Folder Rows and ..
 
-    @Test("種類名を切り替えてもフォルダと選択を保持し、後続の列挙にも新しい名前を使う")
+    @Test("Changing kind names preserves the folder and selection and uses the new names in subsequent enumeration")
     func changingKindNamesPreservesSelectionAndUpdatesFutureListings() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -103,7 +103,7 @@ struct BrowserModelFolderTests {
         #expect(await waitUntil { env.row("trip/day1")?.typeDescription == FixtureKit.kindNames.folder })
     }
 
-    @Test("ツリーのルートの一覧には .. がなく、フォルダとファイルが名前の順に並び、戻る操作は何もしない")
+    @Test("A tree root lists folders and files by name without .. and ignores the go-up action")
     func rootHasNoParentRow() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -119,7 +119,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.treeSyncRequest == nil)
     }
 
-    @Test("フォルダの行を開くと、その一覧になり、.. が先頭に入り、lastFolder と同期の依頼が更新される")
+    @Test("Opening a folder row shows its listing with .. first and updates lastFolder and the synchronization request")
     func openingFolderNavigates() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -141,7 +141,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.hasEnclosingLevel == true)
     }
 
-    @Test(".. と goToEnclosingLevel で親へ戻り、直前のフォルダの行が選ばれる")
+    @Test("Both .. and goToEnclosingLevel return to the parent and select the folder just left")
     func goingUpSelectsPreviousFolder() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -174,7 +174,7 @@ struct BrowserModelFolderTests {
         #expect(!env.model.listing.files.contains { $0.kind == .parent })
     }
 
-    @Test("ツリーからの選択では同期の依頼を出さないが、ルート以外なら .. は出る")
+    @Test("Selecting from the tree issues no synchronization request but shows .. outside the root")
     func selectFolderDoesNotRequestTreeSync() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -186,7 +186,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.listing.files.map(\.kind) == [.parent])
     }
 
-    @Test("ルートが空なら .. を出さず、setNavigationRoots で読み直さずに .. が入る")
+    @Test("An empty root has no ..; setNavigationRoots adds .. without reloading")
     func navigationRootsControlParentRow() async throws {
         let env = try makeEnv(roots: [])
         defer { env.cleanup() }
@@ -206,7 +206,7 @@ struct BrowserModelFolderTests {
 
     // MARK: - Empty Detection (FR-060) and Media Type Filter
 
-    @Test("空のフォルダは .. だけで .empty、フォルダだけのフォルダは .loaded")
+    @Test("An empty folder is .empty with only ..; a folder containing only folders is .loaded")
     func emptyStates() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -220,7 +220,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.listing.state == .loaded)
     }
 
-    @Test("種類フィルタでもフォルダは残り、メディアが元々ない階層は .loaded のまま")
+    @Test("Media type filters preserve folders and keep levels originally without media .loaded")
     func filterKeepsFolders() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -237,7 +237,7 @@ struct BrowserModelFolderTests {
 
     // MARK: - Unreadable Folders (FR-077)
 
-    @Test("権限のないフォルダへ入ると .. だけが残り、.. で戻れる")
+    @Test("Entering a folder without permission leaves only .. and allows returning via ..")
     func deniedFolderKeepsParentRow() async throws {
         let env = try makeEnv()
         let locked = env.url("locked")
@@ -259,7 +259,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.selection.focused == env.row("locked")?.url)
     }
 
-    @Test("存在しないフォルダと、読み直しで読めなくなったフォルダでも .. だけが残る")
+    @Test("Nonexistent folders and folders that become unreadable on reload also retain only ..")
     func failedFolderKeepsParentRow() async throws {
         let env = try makeEnv()
         let trip = env.url("trip")
@@ -284,7 +284,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.listing.files.map(\.kind) == [.parent])
     }
 
-    @Test("ルートが読めないときは .. も出さない")
+    @Test("An unreadable root has no .. row")
     func deniedRootHasNoParentRow() async throws {
         let env = try makeEnv()
         defer {
@@ -301,7 +301,7 @@ struct BrowserModelFolderTests {
 
     // MARK: - Preview and Operation Targets
 
-    @Test("フォルダの行を選ぶとプレビューは空になり、再生中の動画は止まる")
+    @Test("Selecting a folder row clears the preview and stops any playing video")
     func selectingFolderClearsPreview() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -324,7 +324,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.stopPlaybackSignal > before)
     }
 
-    @Test("operableSelection は一覧の並び順で .. を除く")
+    @Test("operableSelection follows listing order and excludes ..")
     func operableSelectionExcludesParent() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -342,7 +342,7 @@ struct BrowserModelFolderTests {
 
     // MARK: - Paths That Do Not Emit Synchronization Requests
 
-    @Test("zip の中の移動では同期の依頼と lastFolder が変わらない")
+    @Test("Navigation inside a zip preserves the synchronization request and lastFolder")
     func archiveNavigationDoesNotRequestTreeSync() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -363,7 +363,7 @@ struct BrowserModelFolderTests {
         #expect(path(env.lastFolder) == path(lastFolder))
     }
 
-    @Test("表示中のフォルダが外部で消えて親へ移っても、同期の依頼は出さない")
+    @Test("Moving to the parent after the current folder is externally deleted issues no synchronization request")
     func fileSystemEventDoesNotRequestTreeSync() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -378,7 +378,7 @@ struct BrowserModelFolderTests {
 
     // MARK: - Leaving Trashed Folders (FR-079)
 
-    @Test("表示中のフォルダ自身を消すと、親の一覧になり、選択とプレビューが空で、同期の依頼が増える")
+    @Test("Deleting the current folder shows its parent, clears selection and preview, and increments the synchronization request")
     func leavingTrashedShowingFolder() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -403,7 +403,7 @@ struct BrowserModelFolderTests {
         #expect(env.row("trip/day2") != nil)
     }
 
-    @Test("表示中のフォルダの祖先を消すと、その親の一覧になる")
+    @Test("Deleting an ancestor of the current folder shows that ancestor's parent listing")
     func leavingTrashedAncestor() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -419,7 +419,7 @@ struct BrowserModelFolderTests {
         #expect(env.row("trip") == nil)
     }
 
-    @Test("無関係なフォルダを消しても、一覧・選択・同期の依頼は変わず false を返す")
+    @Test("Deleting unrelated folders returns false and preserves the listing, selection, and synchronization request")
     func leavingUnrelatedFolderDoesNothing() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -440,7 +440,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.treeSyncRequest == requestBefore)
     }
 
-    @Test("空の配列では false を返し、何も変わらない")
+    @Test("An empty array returns false and changes nothing")
     func leavingNothingDoesNothing() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -455,7 +455,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.treeSyncRequest == requestBefore)
     }
 
-    @Test("動画のプレビュー中に表示中のフォルダを消すと、停止の合図が増える")
+    @Test("Deleting the current folder during video preview increments the stop signal")
     func leavingTrashedFolderStopsVideo() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -479,7 +479,7 @@ struct BrowserModelFolderTests {
         #expect(isEmptyPreview(env.model.preview))
     }
 
-    @Test("zip の中を表示中に、zip を含むフォルダを消すと、zip の状態を捨てて親の一覧になる")
+    @Test("Deleting the containing folder while browsing a zip discards zip state and shows the parent listing")
     func leavingTrashedFolderContainingOpenArchive() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -534,7 +534,7 @@ struct BrowserModelFolderTests {
         return (old, new)
     }
 
-    @Test("表示中のフォルダの祖先の名前を変えると、一覧・選択・lastFolder が新しい場所になり、プレビューは変わらない")
+    @Test("Renaming an ancestor updates the listing, selection, and lastFolder to the new location and preserves the preview")
     func renamingAncestorRebasesListing() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -558,7 +558,7 @@ struct BrowserModelFolderTests {
         #expect(path(env.model.listing.folder) == path(env.url("trip2")))
     }
 
-    @Test("表示中のフォルダ自身の名前を変えた後、古い場所のイベントが届いても親へ移らない")
+    @Test("An event for the old location after renaming the current folder does not navigate to the parent")
     func renamingDisplayedFolderIgnoresOldEvents() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -574,7 +574,7 @@ struct BrowserModelFolderTests {
         #expect(isImagePreview(env.model.preview))
     }
 
-    @Test("親の一覧を表示中にフォルダの名前を変えると、行の名前が変わって並び順の位置へ移り、選択は残る")
+    @Test("Renaming a folder in its parent listing updates and repositions the row while preserving selection")
     func renamingFolderRowInParentListing() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -590,7 +590,7 @@ struct BrowserModelFolderTests {
         #expect(path(env.model.selection.focused) == path(env.url("a-trip")))
     }
 
-    @Test("zip の中を表示中に zip を含むフォルダの名前を変えても、一覧はそのままで、別の項目を新しい場所から読める（EC-50）")
+    @Test("Renaming the containing folder while browsing a zip preserves the listing and reads other entries at the new location (EC-50)")
     func renamingFolderContainingOpenArchive() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -624,7 +624,7 @@ struct BrowserModelFolderTests {
         #expect(env.model.selection.focused.map { path($0) } == path(newZip))
     }
 
-    @Test("関係のないフォルダの名前を変えても、一覧・選択・lastFolder は変わらない")
+    @Test("Renaming an unrelated folder preserves the listing, selection, and lastFolder")
     func renamingUnrelatedFolderChangesNothing() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }

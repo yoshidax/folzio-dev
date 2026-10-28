@@ -31,7 +31,7 @@ struct ZipStructureTests {
 
     // MARK: - End Record
 
-    @Test("コメントなしの終端レコードが見つかる")
+    @Test("Finds the end record without a comment")
     func findsEndRecordWithoutComment() throws {
         let data = try ZipFixtureWriter.archiveData([sample("a.txt"), sample("b.txt")])
         let end = try endRecord(of: data)
@@ -41,7 +41,7 @@ struct ZipStructureTests {
         #expect(end.location.offset + end.location.size == end.recordOffset)
     }
 
-    @Test("コメント 1KB と 65535 バイトでも見つかる", arguments: [1024, 65_535])
+    @Test("Also finds the end record with 1 KB and 65535-byte comments", arguments: [1024, 65_535])
     func findsEndRecordWithComment(commentLength: Int) throws {
         let comment = Data(repeating: 0x41, count: commentLength)
         let data = try ZipFixtureWriter.archiveData([sample("a.txt")], comment: comment)
@@ -50,7 +50,7 @@ struct ZipStructureTests {
         #expect(end.recordOffset == UInt64(data.count - 22 - commentLength))
     }
 
-    @Test("コメントに終端レコードの署名が含まれても、本物の終端レコードを返す")
+    @Test("Returns the real end record even when the comment contains its signature")
     func ignoresSignatureInsideComment() throws {
         var comment = Data()
         comment.append(contentsOf: [0x50, 0x4B, 0x05, 0x06])
@@ -61,7 +61,7 @@ struct ZipStructureTests {
         #expect(end.recordOffset == UInt64(data.count - 22 - comment.count))
     }
 
-    @Test("末尾が切れた Data は notAZip")
+    @Test("Truncated Data returns notAZip")
     func truncatedTail() throws {
         let data = try ZipFixtureWriter.archiveData([sample("a.txt")], comment: Data("comment".utf8))
         for cut in [1, 5, 12, 22, 25] {
@@ -74,7 +74,7 @@ struct ZipStructureTests {
         }
     }
 
-    @Test("ランダムな 1KB は notAZip")
+    @Test("Random 1 KB data returns notAZip")
     func randomBytes() {
         var generator = SystemRandomNumberGenerator()
         let bytes = Data((0..<1024).map { _ in UInt8.random(in: 0...255, using: &generator) })
@@ -86,7 +86,7 @@ struct ZipStructureTests {
         }
     }
 
-    @Test("終端レコードのディスク番号が 1 なら multiDisk")
+    @Test("An end-record disk number of 1 returns multiDisk")
     func multiDisk() throws {
         var data = try ZipFixtureWriter.archiveData([sample("a.txt")])
         data[data.count - 22 + 4] = 1
@@ -97,7 +97,7 @@ struct ZipStructureTests {
         #expect(throws: ArchiveError.multiDisk) { try endRecord(of: second) }
     }
 
-    @Test("中央ディレクトリの位置がファイルの外を指すなら notAZip")
+    @Test("A central-directory offset outside the file returns notAZip")
     func centralDirectoryOutsideFile() throws {
         var data = try ZipFixtureWriter.archiveData([sample("a.txt")])
         let position = data.count - 22 + 16
@@ -112,7 +112,7 @@ struct ZipStructureTests {
 
     // MARK: - Central Directory
 
-    @Test("中央ディレクトリの項目が書いた値と一致する")
+    @Test("Central-directory entries match their written values")
     func parsesCentralDirectory() throws {
         let content = Data("deflate me deflate me deflate me".utf8)
         let modified = Date(timeIntervalSince1970: 1_700_000_000)
@@ -165,7 +165,7 @@ struct ZipStructureTests {
         #expect(Array(data[Int(second.localHeaderOffset)..<Int(second.localHeaderOffset) + 4]) == [0x50, 0x4B, 0x03, 0x04])
     }
 
-    @Test("データ記述子（ビット 3）の項目でもサイズは中央ディレクトリの値になる")
+    @Test("Entries with data descriptors (bit 3) still use central-directory sizes")
     func dataDescriptorSizes() throws {
         let content = Data(repeating: 0x42, count: 5000)
         let data = try ZipFixtureWriter.archiveData([
@@ -187,7 +187,7 @@ struct ZipStructureTests {
         #expect(Data(data[Int(start)..<Int(start) + 5000]) == content)
     }
 
-    @Test("forceZip64 の zip は ZIP64 の終端レコードとロケータを辿って読める")
+    @Test("Reads forceZip64 archives by following the ZIP64 end record and locator")
     func zip64Chain() throws {
         let content = Data("zip64 content".utf8)
         let data = try ZipFixtureWriter.archiveData(
@@ -220,7 +220,7 @@ struct ZipStructureTests {
         #expect(parsed[1].localHeaderOffset == UInt64(30 + 5 + 20 + content.count))
     }
 
-    @Test("ZIP64 のロケータと終端レコードの署名が違えば notAZip")
+    @Test("Incorrect ZIP64 locator or end-record signatures return notAZip")
     func zip64BadSignatures() {
         #expect(throws: ArchiveError.notAZip) {
             try ZipStructure.zip64Locator(Data(repeating: 0, count: 20))
@@ -236,7 +236,7 @@ struct ZipStructureTests {
         }
     }
 
-    @Test("壊れた中央ディレクトリは notAZip で、クラッシュしない")
+    @Test("A damaged central directory returns notAZip without crashing")
     func corruptedCentralDirectory() throws {
         let data = try ZipFixtureWriter.archiveData([sample("a.txt"), sample("b.txt")])
         let end = try endRecord(of: data)
@@ -273,7 +273,7 @@ struct ZipStructureTests {
 
     // MARK: - Local Header
 
-    @Test("データの開始位置は、ローカルヘッダの名前と拡張フィールドの長さから求める")
+    @Test("Computes the data offset from the local-header name and extra-field lengths")
     func dataOffsetUsesLocalHeader() throws {
         let content = Data("local header content".utf8)
         let data = try ZipFixtureWriter.archiveData(
@@ -296,7 +296,7 @@ struct ZipStructureTests {
         }
     }
 
-    @Test("中央ディレクトリと拡張フィールドの長さが違う項目でも正しい位置を返す")
+    @Test("Returns the correct offset even when central-directory and local-header extra-field lengths differ")
     func dataOffsetWhenExtraLengthsDiffer() throws {
         let content = Data("zip64 local header is longer".utf8)
         let data = try ZipFixtureWriter.archiveData(
@@ -321,7 +321,7 @@ struct ZipStructureTests {
         #expect(Data(data[Int(start)..<Int(start) + content.count]) == content)
     }
 
-    @Test("不正なローカルヘッダは corrupted")
+    @Test("An invalid local header returns corrupted")
     func invalidLocalHeader() {
         #expect(throws: ArchiveError.self) {
             try ZipStructure.dataOffset(localHeader: Data(repeating: 0, count: 30), localHeaderOffset: 0)
@@ -336,7 +336,7 @@ struct ZipStructureTests {
 
     // MARK: - Dates
 
-    @Test("0x5455 の更新時刻があればそれを使い、なければ DOS 日時を現地時刻として読む")
+    @Test("Uses the 0x5455 modification time when present and otherwise interprets DOS dates in local time")
     func modificationDates() throws {
         var extra = Data([0x55, 0x54, 0x05, 0x00, 0x01])
         let unix: UInt32 = 1_650_000_002
@@ -366,7 +366,7 @@ struct ZipStructureTests {
         #expect(ZipStructure.modificationDate(dosDate: 0, dosTime: 0, extra: Data()) == nil)
     }
 
-    @Test("DOS 日時は書き出し側と往復で一致する")
+    @Test("DOS dates round-trip with the writer")
     func dosRoundTripWithWriter() throws {
         let modified = Date(timeIntervalSince1970: 1_700_000_000)
         let data = try ZipFixtureWriter.archiveData([

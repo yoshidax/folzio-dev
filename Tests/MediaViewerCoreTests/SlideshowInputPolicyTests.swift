@@ -4,7 +4,7 @@ import Testing
 
 @Suite("SlideshowInputPolicy")
 struct SlideshowInputPolicyTests {
-    @Test("6条件の64通りで、Esc と矢印は全条件を満たすときだけ受理する")
+    @Test("Across 64 combinations of six conditions, accepts Esc and arrows only when all conditions hold")
     func truthTable() {
         for active in [false, true] {
             for restoring in [false, true] {
@@ -41,7 +41,7 @@ struct SlideshowInputPolicyTests {
         }
     }
 
-    @Test("メニューがキーを処理している間は Esc・矢印を受理しない")
+    @Test("Does not accept Esc or arrows while a menu is handling keys")
     func menuOwnsInput() {
         let policy = SlideshowInputPolicy(
             isActive: true,
@@ -57,7 +57,7 @@ struct SlideshowInputPolicyTests {
         #expect(!policy.accepts(.arrow))
     }
 
-    @Test("開始可否は候補・実行状態・編集・シート・モーダルで決まり、読み込み中と全画面は妨げない")
+    @Test("Start availability depends on candidates, running state, editing, sheets, and modals; loading and full screen do not prevent it")
     func startTruthTable() {
         for hasCandidate in [false, true] {
             for loading in [false, true] {
@@ -98,7 +98,7 @@ struct SlideshowInputPolicyTests {
         }
     }
 
-    @Test("スライドショー中と復帰中はペイン切り替えと履歴移動を止める")
+    @Test("Stops pane switching and history navigation during the slideshow and while restoring")
     func paneCommandsRespectSlideshow() {
         let normal = PaneCommands(layout: .all, isFullScreen: false, isEditingText: false)
         #expect(normal.canChangeLayout)

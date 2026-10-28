@@ -3,10 +3,10 @@ import Testing
 @testable import FixtureKit
 @testable import MediaViewerCore
 
-@Suite("BrowserModel の zip")
+@Suite("BrowserModel zip browsing")
 @MainActor
 struct BrowserModelArchiveTests {
-    @Test("zip 内で言語を変えた後、さらに移動してもフォルダ名が選択した言語になる")
+    @Test("Folder names use the selected language after changing language inside a zip and navigating further")
     func changingLanguageUpdatesArchiveDirectories() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -125,7 +125,7 @@ struct BrowserModelArchiveTests {
 
     // MARK: - Folder Listing
 
-    @Test("フォルダの一覧に zip ファイルと画像が並ぶ")
+    @Test("Folder listings include zip files and images")
     func folderListsArchiveAndImage() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -139,7 +139,7 @@ struct BrowserModelArchiveTests {
         #expect(env.model.isBrowsingArchive == false)
     }
 
-    @Test("zip の行を選ぶとプレビューは空のまま")
+    @Test("Selecting a zip row keeps the preview empty")
     func selectingArchiveRowKeepsPreviewEmpty() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -150,7 +150,7 @@ struct BrowserModelArchiveTests {
         #expect(isEmptyPreview(env.model.preview))
     }
 
-    @Test("動画の再生中に zip の行へ移ると停止の合図が増える")
+    @Test("Moving to a zip row during video playback increments the stop signal")
     func movingFromVideoToArchiveStopsPlayback() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -173,7 +173,7 @@ struct BrowserModelArchiveTests {
 
     // MARK: - Navigating Inside
 
-    @Test("zip の行を開くと最上位の一覧になる")
+    @Test("Opening a zip row shows the top-level listing")
     func openArchiveShowsTopLevel() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -197,7 +197,7 @@ struct BrowserModelArchiveTests {
         #expect(isEmptyPreview(model.preview))
     }
 
-    @Test("並べ替えを変えても ... は先頭に1つだけ")
+    @Test("Changing the sort order keeps exactly one ... row at the start")
     func parentRowStaysFirstAfterSort() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -209,7 +209,7 @@ struct BrowserModelArchiveTests {
         #expect(env.model.listing.files.map(\.name) == ["..", "sub", "b.png", "anim.gif"])
     }
 
-    @Test("ディレクトリを辿り、戻るたびに直前の行が選ばれる")
+    @Test("Returning through directories selects the directory just left each time")
     func navigateDownAndUp() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -251,7 +251,7 @@ struct BrowserModelArchiveTests {
         #expect(model.selection.selected == [env.zip])
     }
 
-    @Test(".. の行を開くと goToEnclosingLevel と同じ結果になる")
+    @Test("Opening the .. row has the same result as goToEnclosingLevel")
     func openParentRowGoesUp() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -269,7 +269,7 @@ struct BrowserModelArchiveTests {
         #expect(env.model.selection.selected == [env.zip])
     }
 
-    @Test("メディアの行と一覧にない URL の openItem は何もしない")
+    @Test("openItem does nothing for media rows and URLs absent from the listing")
     func openMediaDoesNothing() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -288,7 +288,7 @@ struct BrowserModelArchiveTests {
         #expect(env.model.listing.archive?.directory == "")
     }
 
-    @Test("lastFolder は zip に入っても戻っても一時フォルダのまま")
+    @Test("lastFolder remains the temporary folder when entering and leaving a zip")
     func lastFolderStaysAtContainingFolder() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -305,7 +305,7 @@ struct BrowserModelArchiveTests {
         #expect(env.defaults.string(forKey: "view.lastFolderPath") == env.root.path)
     }
 
-    @Test("zip の中で別のフォルダを選ぶとそのフォルダの一覧になる")
+    @Test("Selecting another folder while inside a zip shows that folder listing")
     func selectFolderLeavesArchive() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -325,7 +325,7 @@ struct BrowserModelArchiveTests {
 
     // MARK: - Preview
 
-    @Test("zip の中の静止画は .image、アニメーション画像は .animatedImageData になる")
+    @Test("Still images inside a zip become .image and animated images become .animatedImageData")
     func previewImageAndAnimated() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -357,7 +357,7 @@ struct BrowserModelArchiveTests {
         #expect(isAnimated)
     }
 
-    @Test("zip の中のディレクトリと ... を選ぶとプレビューは空になる")
+    @Test("Selecting directories or ... inside a zip clears the preview")
     func previewEmptyForDirectoryAndParent() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -381,7 +381,7 @@ struct BrowserModelArchiveTests {
         #expect(isEmptyPreview(model.preview))
     }
 
-    @Test("暗号化・非対応方式の画像は unavailable になる")
+    @Test("Encrypted images and images with unsupported methods become unavailable")
     func previewEncryptedEntry() async throws {
         let env = try makeEnv(entries: [
             ZipFixtureEntry(name: "secret.jpg", content: .bytes(Data(repeating: 1, count: 32)), encryptedFlag: true),
@@ -414,7 +414,7 @@ struct BrowserModelArchiveTests {
         #expect(isUnsupported)
     }
 
-    @Test("フォーカス前後の zip の中の画像を先読みする")
+    @Test("Prefetches images inside a zip immediately before and after the focused item")
     func prefetchesArchiveNeighbors() async throws {
         let jpeg = try smallJPEG()
         let env = try makeEnv(entries: [
@@ -451,7 +451,7 @@ struct BrowserModelArchiveTests {
 
     // MARK: - Empty Detection
 
-    @Test("読める項目のない zip は .empty で ... だけが残る")
+    @Test("A zip without readable entries is .empty with only ... remaining")
     func archiveWithoutMediaIsEmpty() async throws {
         let env = try makeEnv(entries: [
             ZipFixtureEntry(name: "readme.txt", content: .bytes(Data("hi".utf8))),
@@ -465,7 +465,7 @@ struct BrowserModelArchiveTests {
         #expect(env.model.listing.state == .empty)
     }
 
-    @Test("ディレクトリだけの zip は .loaded")
+    @Test("A zip containing only directories is .loaded")
     func archiveWithOnlyDirectoryIsLoaded() async throws {
         let env = try makeEnv(entries: [
             ZipFixtureEntry(name: "docs/readme.txt", content: .bytes(Data("hi".utf8))),
@@ -480,7 +480,7 @@ struct BrowserModelArchiveTests {
         #expect(env.model.listing.state == .loaded)
     }
 
-    @Test("画像だけの zip を動画のみにすると .noMatches")
+    @Test("A zip containing only images becomes .noMatches when filtered to videos")
     func videosOnlyOnImageArchiveIsNoMatches() async throws {
         let jpeg = try smallJPEG()
         let env = try makeEnv(entries: [
@@ -502,7 +502,7 @@ struct BrowserModelArchiveTests {
         #expect(env.model.listing.state == .loaded)
     }
 
-    @Test("zip だけのフォルダは .loaded")
+    @Test("A folder containing only zip files is .loaded")
     func folderWithOnlyArchiveIsLoaded() async throws {
         let root = try makeRootDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -531,7 +531,7 @@ struct BrowserModelArchiveTests {
 
     // MARK: - Failures
 
-    @Test("壊れた zip は .failed で、... から戻れる")
+    @Test("A damaged zip is .failed and allows returning via ...")
     func brokenArchiveFails() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -558,7 +558,7 @@ struct BrowserModelArchiveTests {
 
     // MARK: - FSEvents and Reloading
 
-    @Test("zip が書き換えられるとフォルダの一覧に戻る")
+    @Test("Returns to the containing folder listing when the zip is overwritten")
     func changedArchiveReturnsToFolder() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -580,7 +580,7 @@ struct BrowserModelArchiveTests {
         #expect(isEmptyPreview(env.model.preview))
     }
 
-    @Test("zip が変わっていなければ zip の中のまま")
+    @Test("Stays inside the zip when it is unchanged")
     func unchangedArchiveStays() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -595,7 +595,7 @@ struct BrowserModelArchiveTests {
         #expect(env.model.listing.files.map(\.url) == before)
     }
 
-    @Test("zip が削除されるとフォルダの一覧に戻る")
+    @Test("Returns to the containing folder listing when the zip is deleted")
     func deletedArchiveReturnsToFolder() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -610,7 +610,7 @@ struct BrowserModelArchiveTests {
         #expect(isEmptyPreview(env.model.preview))
     }
 
-    @Test("zip の中の reloadCurrentFolder は一覧を変えない")
+    @Test("reloadCurrentFolder inside a zip leaves the listing unchanged")
     func reloadInsideArchiveKeepsListing() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -627,7 +627,7 @@ struct BrowserModelArchiveTests {
 
     // MARK: - Zip File Visibility (FR-098)
 
-    @Test("zip の中を表示中に非表示へ切り替えても一覧・選択・プレビューは変わらず、設定だけを保存する")
+    @Test("Hiding zip files while browsing a zip preserves the listing, selection, and preview and only saves the setting")
     func hidingZipFilesInsideArchiveOnlySavesSetting() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -668,7 +668,7 @@ struct BrowserModelArchiveTests {
         #expect(env.model.selection.selected == [png])
     }
 
-    @Test("非表示に切り替えたあとに戻ると、zip の行は一覧になく、選択のない一覧でプレビューは空")
+    @Test("Returning after hiding zip files removes the zip row and leaves no selection or preview")
     func returningAfterHidingZipFilesSelectsNothing() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -689,7 +689,7 @@ struct BrowserModelArchiveTests {
         #expect(isEmptyPreview(env.model.preview))
     }
 
-    @Test("非表示のまま zip を含むフォルダを選ぶと zip の行が出ない")
+    @Test("Selecting a folder containing zip files while they are hidden shows no zip rows")
     func hiddenZipFilesAreAbsentFromFolderListing() async throws {
         let env = try makeEnv(showsZipFiles: false)
         defer { env.cleanup() }

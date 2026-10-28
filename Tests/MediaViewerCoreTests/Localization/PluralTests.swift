@@ -2,27 +2,27 @@ import Foundation
 import MediaViewerLocalization
 import Testing
 
-@Suite("複数形と件数の書式")
+@Suite("Plurals and Count Formatting")
 struct PluralTests {
     private let en = LocalizationTestSupport.localizer("en", localeIdentifier: "en_US")
     private let ja = LocalizationTestSupport.localizer("ja", localeIdentifier: "ja_JP")
 
-    @Test("英語は1件と2件以上（0件を含む）で語形が変わり、日本語は変わらない")
+    @Test("English uses different wording for one versus all other counts, including zero; Japanese does not")
     func pluralRules() {
         for key in TextKey.allCases where key.arguments.contains(.count) {
             let oneEN = normalized(en, key, 1)
             let twoEN = normalized(en, key, 2)
-            #expect(oneEN != twoEN, "\(key.rawValue): 英語の単数と複数が同じ")
-            #expect(normalized(en, key, 0) == twoEN, "\(key.rawValue): 0件は複数形")
-            #expect(normalized(en, key, 1000) == twoEN, "\(key.rawValue): 1000件は複数形")
+            #expect(oneEN != twoEN, "\(key.rawValue): English singular and plural are the same")
+            #expect(normalized(en, key, 0) == twoEN, "\(key.rawValue): zero uses the plural form")
+            #expect(normalized(en, key, 1000) == twoEN, "\(key.rawValue): 1000 uses the plural form")
 
-            #expect(normalized(ja, key, 1) == normalized(ja, key, 2), "\(key.rawValue): 日本語の語形が変わる")
-            #expect(normalized(ja, key, 0) == normalized(ja, key, 2), "\(key.rawValue): 日本語の語形が変わる")
+            #expect(normalized(ja, key, 1) == normalized(ja, key, 2), "\(key.rawValue): Japanese wording changed")
+            #expect(normalized(ja, key, 0) == normalized(ja, key, 2), "\(key.rawValue): Japanese wording changed")
         }
 
         for key in [TextKey.contextCopyMultiple, .searchBarCount, .searchBarCountLimited] {
-            #expect(value(en, key, 1000).contains("1,000"), "\(key.rawValue): 桁区切り")
-            #expect(value(ja, key, 1000).contains("1,000"), "\(key.rawValue): 桁区切り")
+            #expect(value(en, key, 1000).contains("1,000"), "\(key.rawValue): grouping separator")
+            #expect(value(ja, key, 1000).contains("1,000"), "\(key.rawValue): grouping separator")
         }
     }
 
@@ -43,7 +43,7 @@ struct PluralTests {
         return localizer.text(key, values)
     }
 
-    @Test("英語の件数の文")
+    @Test("English count sentences")
     func englishForms() {
         #expect(en.text(.contextCopyMultiple, .count(1)) == "Copy 1 Item")
         #expect(en.text(.contextCopyMultiple, .count(3)) == "Copy 3 Items")
@@ -58,7 +58,7 @@ struct PluralTests {
         #expect(en.text(.dialogConfirmMove, .count(3)) == "Move these items?")
     }
 
-    @Test("日本語の件数の文")
+    @Test("Japanese count sentences")
     func japaneseForms() {
         #expect(ja.text(.contextCopyMultiple, .count(3)) == "3 項目をコピー")
         #expect(ja.text(.searchBarCount, .count(1000)) == "1,000 件")
@@ -68,7 +68,7 @@ struct PluralTests {
         #expect(ja.text(.dialogConfirmMove, .count(3)) == "移動しますか？")
     }
 
-    @Test("語形が変わらない件数は整形済みの値を入れる")
+    @Test("Uses the formatted value for counts whose wording does not change")
     func numberArguments() {
         let keys: [TextKey] = [
             .dialogConfirmItems, .dialogConfirmMore, .dialogConflictItems, .dialogOperationMore,

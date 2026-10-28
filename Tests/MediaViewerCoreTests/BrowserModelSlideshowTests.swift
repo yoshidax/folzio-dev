@@ -4,9 +4,9 @@ import Testing
 @testable import MediaViewerCore
 import FixtureKit
 
-@Suite("BrowserModel のスライドショー")
+@Suite("BrowserModel Slideshow")
 struct BrowserModelSlideshowTests {
-    @Test("閲覧先の置換は listing と selection を変える前に同期で通知する")
+    @Test("Notifies synchronously before replacing listing and selection when the location changes")
     @MainActor
     func willReplaceLocationIsSynchronous() async {
         let first = folder("first")
@@ -37,7 +37,7 @@ struct BrowserModelSlideshowTests {
         #expect(model.selection.focused == nil)
     }
 
-    @Test("検索の開始も置換の直前に通知し、検索結果の状態へ変わる")
+    @Test("Starting a search also notifies immediately before replacement and changes to the search result state")
     @MainActor
     func willReplaceLocationOnSearch() async {
         let first = folder("search-first")
@@ -65,7 +65,7 @@ struct BrowserModelSlideshowTests {
         #expect(model.isShowingSearchResults)
     }
 
-    @Test("名前の付け替えは閲覧先の置換ではないので通知しない")
+    @Test("Renaming does not notify because it is not a location replacement")
     @MainActor
     func renameDoesNotNotifyReplacement() async {
         let first = folder("rename-old")
@@ -88,7 +88,7 @@ struct BrowserModelSlideshowTests {
         #expect(model.listing.folder == renamed)
     }
 
-    @Test("履歴の復元も一覧を置き換える前に同期で通知する")
+    @Test("Restoring history also notifies synchronously before replacing the listing")
     @MainActor
     func historyShowNotifiesReplacement() async throws {
         let root = FileManager.default.temporaryDirectory
@@ -116,7 +116,7 @@ struct BrowserModelSlideshowTests {
 
         let resolution = await model.resolveHistoryLocation(HistoryLocation(folder: second))
         guard case let .available(resolved) = resolution else {
-            Issue.record("履歴の場所を解決できませんでした: \(resolution)")
+            Issue.record("Could not resolve the history location: \(resolution)")
             return
         }
         model.showHistoryLocation(resolved, focusing: nil)
@@ -125,7 +125,7 @@ struct BrowserModelSlideshowTests {
         #expect(observed?.1 == nil)
     }
 
-    @Test("古い世代の再読み込みは、新しいフォルダの一覧を上書きしない")
+    @Test("A stale reload does not overwrite the new folder's listing")
     @MainActor
     func staleReloadDoesNotOverwriteNavigation() async {
         let first = folder("slow")
@@ -152,7 +152,7 @@ struct BrowserModelSlideshowTests {
         #expect(model.listing.files.map(\.name) == ["b.jpg"])
     }
 
-    @Test("同じ対象の同期はプレビューを読み直さず、選択だけを1件に整理する")
+    @Test("Synchronizing the same target does not reload the preview and narrows the selection to one item")
     @MainActor
     func synchronizeSameTargetDoesNotReload() async {
         let targetFolder = folder("same")
@@ -181,7 +181,7 @@ struct BrowserModelSlideshowTests {
         #expect(model.stopPlaybackSignal == signal)
     }
 
-    @Test("違う対象の同期は通常の選択としてプレビューを切り替える")
+    @Test("Synchronizing a different target switches the preview as a normal selection")
     @MainActor
     func synchronizeDifferentTargetSelects() async {
         let targetFolder = folder("different")
@@ -205,7 +205,7 @@ struct BrowserModelSlideshowTests {
         #expect(model.stopPlaybackSignal == signal + 1)
     }
 
-    @Test("同じ画像の同期ではデコードをやり直さない")
+    @Test("Synchronizing the same image does not decode again")
     @MainActor
     func synchronizeSameImageDoesNotDecodeAgain() async {
         let targetFolder = folder("one-image")

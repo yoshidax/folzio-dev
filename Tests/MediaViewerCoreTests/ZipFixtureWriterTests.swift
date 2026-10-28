@@ -4,13 +4,13 @@ import Testing
 
 @Suite("ZipFixtureWriter")
 struct ZipFixtureWriterTests {
-    @Test("CRC32 の既知値")
+    @Test("Known CRC32 values")
     func crcKnownValue() {
         #expect(CRC32.checksum(Data("123456789".utf8)) == 0xCBF4_3926)
         #expect(CRC32.checksum(Data()) == 0)
     }
 
-    @Test("CRC32 の追記は一括計算と同じ")
+    @Test("Incremental CRC32 matches one-shot computation")
     func crcIncremental() {
         let bytes = Array("123456789".utf8)
         let partial = bytes[0..<4].withUnsafeBytes { CRC32.update(0, $0) }
@@ -18,7 +18,7 @@ struct ZipFixtureWriterTests {
         #expect(full == 0xCBF4_3926)
     }
 
-    @Test("無圧縮の1項目の終端レコードに署名と項目数が入る")
+    @Test("The end record for one stored entry contains the signature and entry count")
     func singleStoredEntry() throws {
         let data = try ZipFixtureWriter.archiveData([
             ZipFixtureEntry(name: "a.txt", content: .bytes(Data("hello".utf8))),
@@ -31,7 +31,7 @@ struct ZipFixtureWriterTests {
         #expect(eocd[base + 10] == 1 && eocd[base + 11] == 0)
     }
 
-    @Test("forceZip64 は ZIP64 終端レコードとロケータを書く")
+    @Test("forceZip64 writes the ZIP64 end record and locator")
     func zip64Records() throws {
         let data = try ZipFixtureWriter.archiveData(
             [ZipFixtureEntry(name: "a.txt", content: .bytes(Data("hello".utf8)))],
@@ -41,7 +41,7 @@ struct ZipFixtureWriterTests {
         #expect(Array(locator) == [0x50, 0x4B, 0x06, 0x07])
     }
 
-    @Test("archiveData と write は同じバイト列になる")
+    @Test("archiveData and write produce the same bytes")
     func dataAndFileAreIdentical() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("zip-fixture-writer-\(UUID().uuidString)", isDirectory: true)

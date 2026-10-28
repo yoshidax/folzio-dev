@@ -74,7 +74,7 @@ struct InflateCursorTests {
         return Data(buffer[0..<total])
     }
 
-    @Test("先頭から順に展開すると元の内容になり、position が進む", arguments: [1, 7, 4096, 100_000, 1 << 20])
+    @Test("Inflating forward from the start reproduces the content and advances position", arguments: [1, 7, 4096, 100_000, 1 << 20])
     func sequentialRead(chunk: Int) throws {
         let fixture = try makeFixture(size: 1_500_000)
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
@@ -90,7 +90,7 @@ struct InflateCursorTests {
         }
     }
 
-    @Test("終わりを過ぎて読もうとすると、展開できた分だけを返し、その後は 0")
+    @Test("Reading past the end returns only what could be inflated, then 0")
     func readPastEnd() throws {
         let fixture = try makeFixture(size: 100_000)
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
@@ -103,7 +103,7 @@ struct InflateCursorTests {
         #expect(cursor.position == 100_000)
     }
 
-    @Test("skip(to:) は読み捨てて進み、続きを読める")
+    @Test("skip(to:) advances by discarding data and subsequent reads succeed")
     func skipForward() throws {
         let fixture = try makeFixture(size: 1_000_000)
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
@@ -118,7 +118,7 @@ struct InflateCursorTests {
         #expect(try read(cursor, length: 10) == fixture.content[900_000..<900_010])
     }
 
-    @Test("skip(to:) が終わりを超えるときは、展開できた分で止まる")
+    @Test("skip(to:) stops at the end when the target is beyond it")
     func skipPastEnd() throws {
         let fixture = try makeFixture(size: 50_000)
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
@@ -128,7 +128,7 @@ struct InflateCursorTests {
         #expect(try read(cursor, length: 10).isEmpty)
     }
 
-    @Test("reset() で先頭から展開し直す。前の位置への skip(to:) も同じ")
+    @Test("reset() inflates again from the start, as does skip(to:) to an earlier position")
     func resetAndSkipBackward() throws {
         let fixture = try makeFixture(size: 800_000)
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
@@ -149,7 +149,7 @@ struct InflateCursorTests {
         #expect(try readAll(cursor, chunk: 65_536) == fixture.content)
     }
 
-    @Test("maxLength が 0 なら何も読まない")
+    @Test("Reads nothing when maxLength is 0")
     func zeroLength() throws {
         let fixture = try makeFixture(size: 1000)
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
@@ -159,7 +159,7 @@ struct InflateCursorTests {
         #expect(cursor.position == 0)
     }
 
-    @Test("圧縮データが途中で終わる場合は展開できた分で止まり、クラッシュしない")
+    @Test("Stops at the inflated portion and does not crash when the compressed data ends early")
     func truncatedInput() throws {
         let fixture = try makeFixture(size: 500_000)
         defer { try? FileManager.default.removeItem(at: fixture.directory) }

@@ -16,7 +16,7 @@ struct FavoriteProbeTests {
         return results
     }
 
-    @Test("存在するフォルダは true")
+    @Test("True for an existing folder")
     func existingFolderExists() throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -24,7 +24,7 @@ struct FavoriteProbeTests {
         #expect(FavoriteProbe.folderExists(root))
     }
 
-    @Test("存在しないパスは false")
+    @Test("False for a missing path")
     func missingPathDoesNotExist() throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -33,7 +33,7 @@ struct FavoriteProbeTests {
         #expect(!FavoriteProbe.folderExists(missing))
     }
 
-    @Test("通常のファイルは false")
+    @Test("False for a regular file")
     func regularFileIsNotFolder() throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -43,7 +43,7 @@ struct FavoriteProbeTests {
         #expect(!FavoriteProbe.folderExists(file))
     }
 
-    @Test("権限のないフォルダも存在するので true")
+    @Test("True for a folder without permissions because it exists")
     func accessDeniedFolderExists() throws {
         let root = try makeTemporaryDirectory()
         let locked = root.appendingPathComponent("locked", isDirectory: true)
@@ -58,7 +58,7 @@ struct FavoriteProbeTests {
         #expect(FavoriteProbe.folderExists(locked))
     }
 
-    @Test("全 URL の結果を1回ずつ流し、同時実行数は上限を超えない")
+    @Test("Emits each URL result once and keeps concurrency within the limit")
     func yieldsEveryURLOnceWithinLimit() async {
         let urls = makeURLs(6)
         let checker = FakeExistenceChecker()
@@ -71,7 +71,7 @@ struct FavoriteProbeTests {
         #expect(await checker.maxInFlight <= 2)
     }
 
-    @Test("exists の結果がそのまま FavoriteProbeResult.exists になる")
+    @Test("The exists result becomes FavoriteProbeResult.exists unchanged")
     func passesThroughExistence() async {
         let urls = makeURLs(4)
         let missing: Set<URL> = [urls[1], urls[3]]
@@ -85,7 +85,7 @@ struct FavoriteProbeTests {
         }
     }
 
-    @Test("空の入力ではすぐに終わる")
+    @Test("Finishes immediately for empty input")
     func finishesForEmptyInput() async {
         let checker = FakeExistenceChecker()
         let results = await collect(FavoriteProbe.results(for: []) { await checker.exists($0) })
@@ -93,7 +93,7 @@ struct FavoriteProbeTests {
         #expect(await checker.started == 0)
     }
 
-    @Test("上限が 0 以下なら 1 として扱う")
+    @Test("Treats a limit of 0 or less as 1")
     func treatsNonPositiveLimitAsOne() async {
         let urls = makeURLs(6)
         let checker = FakeExistenceChecker()
@@ -104,7 +104,7 @@ struct FavoriteProbeTests {
         #expect(await checker.maxInFlight == 1)
     }
 
-    @Test("ストリームを抜けたら未実行の確認を始めない")
+    @Test("Does not start pending checks after leaving the stream")
     func stopsAfterTermination() async throws {
         let urls = makeURLs(20)
         let checker = FakeExistenceChecker()

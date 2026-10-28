@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import MediaViewerCore
 
-@Suite("SearchFolderInitialLocation の候補順")
+@Suite("SearchFolderInitialLocation Candidate Order")
 struct SearchFolderInitialLocationTests {
     private let home = URL(fileURLWithPath: "/Users/me", isDirectory: true)
 
@@ -10,7 +10,7 @@ struct SearchFolderInitialLocationTests {
         URL(fileURLWithPath: path, isDirectory: true)
     }
 
-    @Test("現在入力、開始時既定、ホームの順に最初の有効な候補を使う")
+    @Test("Uses the first valid candidate in the order: current input, startup default, home")
     func candidateOrder() async {
         let current = home.appendingPathComponent("current", isDirectory: true)
         let defaultFolder = home.appendingPathComponent("default", isDirectory: true)
@@ -23,7 +23,7 @@ struct SearchFolderInitialLocationTests {
             validate: recorder.validate
         )
         #expect(first == .success(current))
-        #expect(recorder.calls == [current], "最初の有効な候補で止める")
+        #expect(recorder.calls == [current], "Stops at the first valid candidate")
 
         let secondRecorder = ValidationRecorder(successes: [defaultFolder, home])
         let second = await SearchFolderInitialLocation.resolve(
@@ -46,7 +46,7 @@ struct SearchFolderInitialLocationTests {
         #expect(thirdRecorder.calls == [current, defaultFolder, home])
     }
 
-    @Test("全候補が無効なら理由を返し、入力を書き換えない")
+    @Test("Returns a reason when all candidates are invalid and does not rewrite the input")
     func allCandidatesFail() async {
         let recorder = ValidationRecorder(successes: [])
         let input = SearchRootInput.typed("/missing")
@@ -61,7 +61,7 @@ struct SearchFolderInitialLocationTests {
         #expect(input.displayText == "/missing")
     }
 
-    @Test("入力の解釈失敗は飛ばし、既定パスは trim せず文字どおり使う")
+    @Test("Skips a failed input parse and uses the default path verbatim without trimming")
     func skipsInvalidInputAndKeepsTrailingSpace() async {
         let spaced = directory("/Users/me/Photos ")
         let plain = directory("/Users/me/Photos")
@@ -75,11 +75,11 @@ struct SearchFolderInitialLocationTests {
         )
 
         #expect(result == .success(spaced))
-        #expect(recorder.calls == [spaced], "typed の解釈失敗と trim 後の別候補を試さない")
+        #expect(recorder.calls == [spaced], "Does not try another candidate after a typed parse failure and trim")
         #expect(spaced.path != plain.path)
     }
 
-    @Test("隠しフォルダは許可し、パッケージ・ファイル・読取不能は次候補へ進む")
+    @Test("Allows hidden folders and moves to the next candidate for packages, files, and unreadable paths")
     func acceptsHiddenAndSkipsInvalidKinds() async throws {
         let base = FileManager.default.temporaryDirectory
             .appendingPathComponent("SearchFolderInitialLocation-\(UUID().uuidString)", isDirectory: true)
@@ -111,7 +111,7 @@ struct SearchFolderInitialLocationTests {
         #expect(try packageResult.get().path == normal.resolvingSymlinksInPath().standardizedFileURL.path)
     }
 
-    @Test("EC-102 の一覧 F が無効なら既定の F も飛ばしてホームへ進み、ツリー候補を加えない")
+    @Test("When the EC-102 listing F is invalid, skips the default F, proceeds to home, and does not add a tree candidate")
     func ec102FallsBackToHome() async {
         let f = home.appendingPathComponent("F", isDirectory: true)
         let recorder = ValidationRecorder(successes: [home])
@@ -123,10 +123,10 @@ struct SearchFolderInitialLocationTests {
         )
 
         #expect(result == .success(home))
-        #expect(recorder.calls == [f, home], "同じ F を重複して試さず、追加のツリー候補も使わない")
+        #expect(recorder.calls == [f, home], "Does not try the same F twice or use the additional tree candidate")
     }
 
-    @Test("同じ候補は一度だけ検証する")
+    @Test("Validates each candidate only once")
     func deduplicatesCandidates() async {
         let recorder = ValidationRecorder(successes: [home])
         let result = await SearchFolderInitialLocation.resolve(

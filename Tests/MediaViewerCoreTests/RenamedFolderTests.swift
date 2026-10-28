@@ -9,7 +9,7 @@ struct RenamedFolderTests {
         to: URL(fileURLWithPath: "/tmp/r/Album/2025b")
     )
 
-    @Test("名前を変えたフォルダ自身を付け替える。ディレクトリを表す URL は結果もディレクトリ")
+    @Test("Rebases the renamed folder itself; a URL marked as a directory produces a directory result")
     func rebasesFolderItself() {
         #expect(renamed.rebase(URL(fileURLWithPath: "/tmp/r/Album/2025"))?.path == "/tmp/r/Album/2025b")
         let directory = renamed.rebase(URL(fileURLWithPath: "/tmp/r/Album/2025/", isDirectory: true))
@@ -17,7 +17,7 @@ struct RenamedFolderTests {
         #expect(directory?.hasDirectoryPath == true)
     }
 
-    @Test("配下の URL を付け替える")
+    @Test("Rebases URLs under the folder")
     func rebasesDescendants() {
         #expect(
             renamed.rebase(URL(fileURLWithPath: "/tmp/r/Album/2025/Trip/a.jpg"))?.path
@@ -25,7 +25,7 @@ struct RenamedFolderTests {
         )
     }
 
-    @Test("reversed は新しい場所から元の場所へ付け替える")
+    @Test("reversed rebases from the new location back to the original")
     func reversedRebasesBack() {
         let reversed = renamed.reversed
         #expect(reversed.from.path == "/tmp/r/Album/2025b")
@@ -39,7 +39,7 @@ struct RenamedFolderTests {
         #expect(renamed.reversed.reversed.from.path == renamed.from.path)
     }
 
-    @Test("名前の前方が同じ兄弟のフォルダは付け替えない", arguments: [
+    @Test("Does not rebase sibling folders whose names share a prefix", arguments: [
         "/tmp/r/Album/20250/a.jpg",
         "/tmp/r/Album/2025b/a.jpg",
     ])
@@ -47,7 +47,7 @@ struct RenamedFolderTests {
         #expect(renamed.rebase(URL(fileURLWithPath: path)) == nil)
     }
 
-    @Test("関係のない URL は nil で、rebaseOrSelf は元の URL を返す", arguments: [
+    @Test("Returns nil for unrelated URLs; rebaseOrSelf returns the original URL", arguments: [
         "/tmp/r/Album/Other",
         "/tmp/r/Album",
         "/tmp/x",
@@ -58,7 +58,7 @@ struct RenamedFolderTests {
         #expect(renamed.rebaseOrSelf(url) == url)
     }
 
-    @Test("表記の違い（. と ..）を含む URL も付け替える", arguments: [
+    @Test("Rebases URLs containing spelling differences (. and ..)", arguments: [
         "/tmp/r/Album/./2025/a.jpg",
         "/tmp/r/Album/x/../2025/a.jpg",
     ])
@@ -66,7 +66,7 @@ struct RenamedFolderTests {
         #expect(renamed.rebase(URL(fileURLWithPath: path))?.path == "/tmp/r/Album/2025b/a.jpg")
     }
 
-    @Test("zip の中の項目と .. は、zip の場所を付け替えて作り直す")
+    @Test("Rebuilds entries inside a zip and .. by rebasing the zip location")
     func rebasesArchiveURLs() {
         let oldArchive = URL(fileURLWithPath: "/tmp/r/Album/2025/t.zip")
         let newArchive = URL(fileURLWithPath: "/tmp/r/Album/2025b/t.zip")
@@ -82,13 +82,13 @@ struct RenamedFolderTests {
         #expect(renamed.rebase(ArchiveURL.entry(archive: unrelated, path: "a.jpg")) == nil)
     }
 
-    @Test("通常のフォルダの .. とファイル以外のスキームは nil")
+    @Test("Returns nil for .. of a regular folder and for non-file schemes")
     func ignoresOtherSchemes() {
         #expect(renamed.rebase(ParentLink.url(for: URL(fileURLWithPath: "/tmp/r/Album/2025"))) == nil)
         #expect(renamed.rebase(URL(string: "https://example.com/")!) == nil)
     }
 
-    @Test("from と to が同じなら、自身と配下はそのままの場所を返す")
+    @Test("Returns the same location for itself and descendants when from and to are equal")
     func sameLocationKeepsURLs() {
         let same = RenamedFolder(from: renamed.from, to: renamed.from)
         #expect(same.rebase(URL(fileURLWithPath: "/tmp/r/Album/2025"))?.path == "/tmp/r/Album/2025")

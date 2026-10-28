@@ -6,7 +6,7 @@ import Testing
 
 @Suite("VideoPlayback.seekTarget")
 struct VideoPlaybackSeekTargetTests {
-    @Test("5 秒の動画で ±15 秒・+5 秒は [0, duration] に丸める")
+    @Test("Clamps ±15 seconds and +5 seconds to [0, duration] for a 5-second video")
     func clampsToDuration() {
         #expect(VideoPlayback.seekTarget(from: 2, by: 15, duration: 5) == 5)
         #expect(VideoPlayback.seekTarget(from: 2, by: -15, duration: 5) == 0)
@@ -14,7 +14,7 @@ struct VideoPlaybackSeekTargetTests {
         #expect(VideoPlayback.seekTarget(from: 2, by: 1.5, duration: 5) == 3.5)
     }
 
-    @Test("位置か長さが定まらなければ nil")
+    @Test("Returns nil when the position or duration is not finite")
     func undefined() {
         #expect(VideoPlayback.seekTarget(from: .nan, by: 5, duration: 5) == nil)
         #expect(VideoPlayback.seekTarget(from: 0, by: 5, duration: .nan) == nil)
@@ -45,7 +45,7 @@ struct VideoPlaybackTests {
 
     /// bug: preview-skip-forward-frame-freeze. Seeking past the end continues playing from the start of the same
     /// item instead of switching to another item.
-    @Test("ループ再生で終端を越えてシークすると、同じアイテムの先頭から再生を続ける")
+    @Test("With looping, seeking past the end continues from the start of the same item")
     func loopSeekPastEndKeepsItem() async throws {
         let (directory, video) = try makeVideo(seconds: 2)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -69,7 +69,7 @@ struct VideoPlaybackTests {
         #expect(current > 0 && current < 2)
     }
 
-    @Test("ループ再生で先頭より前へシークしても、同じアイテムで再生を続ける")
+    @Test("With looping, seeking before the start continues with the same item")
     func loopSeekBeforeStartKeepsItem() async throws {
         let (directory, video) = try makeVideo(seconds: 2)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -91,7 +91,7 @@ struct VideoPlaybackTests {
         #expect(player.currentTime().seconds > 0)
     }
 
-    @Test("ループしない再生は、終端を越えてシークすると終端で止まる")
+    @Test("Without looping, seeking past the end stops at the end")
     func noLoopStopsAtEnd() async throws {
         let (directory, video) = try makeVideo(seconds: 2)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -113,7 +113,7 @@ struct VideoPlaybackTests {
 
     /// bug: slideshow-video-routing-context-crash. Recreating AVPlayer on every video switch repeatedly creates and
     /// destroys routing contexts during the slideshow, crashing due to a CoreMedia internal race.
-    @Test("動画を載せ替えても AVPlayer は同じインスタンスを使い続ける")
+    @Test("Keeps using the same AVPlayer instance when replacing videos")
     func reusesPlayerAcrossLoads() async throws {
         let (directory, video) = try makeVideo(seconds: 2)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -133,7 +133,7 @@ struct VideoPlaybackTests {
         #expect(second !== first)
     }
 
-    @Test("載せ替えたアイテムはその時のループ設定に従い、前のアイテムの終端通知で巻き戻らない")
+    @Test("A replaced item follows the loop setting at that time and is not rewound by the previous item's end notification")
     func reloadFollowsNewLoopSetting() async throws {
         let (directory, video) = try makeVideo(seconds: 2)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -160,7 +160,7 @@ struct VideoPlaybackTests {
         #expect(player.actionAtItemEnd == .none)
     }
 
-    @Test("unload で再生を止めてアイテムを外す")
+    @Test("unload stops playback and removes the item")
     func unloadStopsAndClearsItem() async throws {
         let (directory, video) = try makeVideo(seconds: 2)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -176,7 +176,7 @@ struct VideoPlaybackTests {
         #expect(player.rate == 0)
         #expect(player.currentItem == nil)
     }
-    @Test("フレーム出力はアイテムごとに1つ付き、載せ替えと unload で外れる")
+    @Test("Attaches one frame output per item and removes it on replacement and unload")
     func transitionOutputLifecycle() throws {
         let (directory, video) = try makeVideo(seconds: 1)
         defer { try? FileManager.default.removeItem(at: directory) }

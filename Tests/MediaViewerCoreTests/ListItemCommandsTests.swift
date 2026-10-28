@@ -7,7 +7,7 @@ struct ListItemCommandsTests {
 
     // MARK: - Regular Folders (Outside a Zip)
 
-    @Test("zip の外のメディアは操作できるが、中へは入れず上へも戻れない")
+    @Test("Media outside a zip supports operations but cannot be entered or navigated up from")
     func mediaOutsideArchive() {
         let commands = ListItemCommands(kind: .media(.jpeg), isBrowsingArchive: false)
         #expect(commands.canOpenContainer == false)
@@ -16,7 +16,7 @@ struct ListItemCommandsTests {
         #expect(commands.allowsPaste == true)
     }
 
-    @Test("zip の外の動画も画像と同じ")
+    @Test("Videos outside a zip behave the same as images")
     func videoOutsideArchive() {
         let commands = ListItemCommands(kind: .media(.mov), isBrowsingArchive: false)
         #expect(commands.canOpenContainer == false)
@@ -25,7 +25,7 @@ struct ListItemCommandsTests {
         #expect(commands.allowsPaste == true)
     }
 
-    @Test("zip の外の zip ファイルは中へ入れて、全操作も有効")
+    @Test("Zip files outside a zip can be entered and support all operations")
     func archiveOutsideArchive() {
         let commands = ListItemCommands(kind: .archive, isBrowsingArchive: false)
         #expect(commands.canOpenContainer == true)
@@ -34,7 +34,7 @@ struct ListItemCommandsTests {
         #expect(commands.allowsPaste == true)
     }
 
-    @Test("行が選ばれていないとき、zip の外ではファイル操作とペーストが有効で中へは入れない")
+    @Test("Without a selected row outside a zip, file operations and paste are enabled but entry is disabled")
     func noFocusOutsideArchive() {
         let commands = ListItemCommands(kind: nil, isBrowsingArchive: false)
         #expect(commands.canOpenContainer == false)
@@ -43,14 +43,14 @@ struct ListItemCommandsTests {
         #expect(commands.allowsPaste == true)
     }
 
-    @Test("zip の外ではどの行の種類でも canGoUp は false")
+    @Test("canGoUp is false for every row kind outside a zip")
     func canGoUpIsFalseOutsideArchive() {
         for kind in Self.allKinds {
             #expect(ListItemCommands(kind: kind, isBrowsingArchive: false).canGoUp == false, "kind=\(kind)")
         }
     }
 
-    @Test("通常のフォルダのフォルダの行は中へ入れて、全操作も有効")
+    @Test("Folder rows in regular folders can be entered and support all operations")
     func folderOutsideArchive() {
         let commands = ListItemCommands(kind: .folder, isBrowsingArchive: false)
         #expect(commands.canOpenContainer == true)
@@ -58,7 +58,7 @@ struct ListItemCommandsTests {
         #expect(commands.allowsPaste == true)
     }
 
-    @Test("通常のフォルダの .. の行は開けるが、ファイル操作の対象にならない。ペーストは表示中のフォルダへできる")
+    @Test("The .. row in a regular folder opens but cannot be operated on; paste targets the current folder")
     func parentOutsideArchive() {
         let commands = ListItemCommands(kind: .parent, isBrowsingArchive: false, hasEnclosingLevel: true)
         #expect(commands.canOpenContainer == true)
@@ -67,7 +67,7 @@ struct ListItemCommandsTests {
         #expect(commands.allowsPaste == true)
     }
 
-    @Test("hasEnclosingLevel を省略すると、canGoUp は isBrowsingArchive と同じ")
+    @Test("Omitting hasEnclosingLevel makes canGoUp equal isBrowsingArchive")
     func hasEnclosingLevelDefaultsToBrowsingArchive() {
         let kinds: [ListItemKind?] = Self.allKinds + [nil]
         for kind in kinds {
@@ -76,7 +76,7 @@ struct ListItemCommandsTests {
         }
     }
 
-    @Test("zip の外では、戻る先があればどの行の種類でも canGoUp が true、なければ false")
+    @Test("Outside a zip, canGoUp follows parent availability for every row kind")
     func canGoUpFollowsEnclosingLevel() {
         let kinds: [ListItemKind?] = Self.allKinds + [nil]
         for kind in kinds {
@@ -88,7 +88,7 @@ struct ListItemCommandsTests {
 
     // MARK: - Inside a Zip
 
-    @Test("zip の中のメディアは中へ入れず、上へは戻れて、ファイル操作とペーストは不可")
+    @Test("Media inside a zip cannot be entered, allows going up, and disables file operations and paste")
     func mediaInsideArchive() {
         for kind in [ListItemKind.media(.png), .media(.mp4)] {
             let commands = ListItemCommands(kind: kind, isBrowsingArchive: true)
@@ -99,7 +99,7 @@ struct ListItemCommandsTests {
         }
     }
 
-    @Test("zip の中のディレクトリは中へ入れる")
+    @Test("Directories inside a zip can be entered")
     func directoryInsideArchive() {
         let commands = ListItemCommands(kind: .directory, isBrowsingArchive: true)
         #expect(commands.canOpenContainer == true)
@@ -108,7 +108,7 @@ struct ListItemCommandsTests {
         #expect(commands.allowsPaste == false)
     }
 
-    @Test("zip の中の .. は上へ戻れる")
+    @Test("The .. row inside a zip allows going up")
     func parentInsideArchive() {
         let commands = ListItemCommands(kind: .parent, isBrowsingArchive: true)
         #expect(commands.canOpenContainer == true)
@@ -117,7 +117,7 @@ struct ListItemCommandsTests {
         #expect(commands.allowsPaste == false)
     }
 
-    @Test("行が選ばれていないとき、zip の中では上へ戻れるが、中へは入れず操作もできない")
+    @Test("Without a selected row inside a zip, going up is enabled but entry and operations are disabled")
     func noFocusInsideArchive() {
         let commands = ListItemCommands(kind: nil, isBrowsingArchive: true)
         #expect(commands.canOpenContainer == false)
@@ -126,7 +126,7 @@ struct ListItemCommandsTests {
         #expect(commands.allowsPaste == false)
     }
 
-    @Test("zip の中ではどの行の種類でも読み取り専用で、上へ戻れる")
+    @Test("Every row kind inside a zip is read-only and allows going up")
     func insideArchiveIsReadOnlyForEveryKind() {
         let kinds: [ListItemKind?] = Self.allKinds + [nil]
         for kind in kinds {
@@ -139,7 +139,7 @@ struct ListItemCommandsTests {
 
     // MARK: - Search Results (FR-087)
 
-    @Test("検索結果ではペーストと上の階層へが不可で、ほかのファイル操作は通常のフォルダと同じ")
+    @Test("Search results disable paste and going up; other file operations match regular folders")
     func searchResults() {
         let commands = ListItemCommands(
             kind: .media(.jpeg),
@@ -156,7 +156,7 @@ struct ListItemCommandsTests {
         #expect(noFocus.allowsPaste == false)
     }
 
-    @Test("isShowingSearchResults を省略した呼び出しの結果は変わらない")
+    @Test("Omitting isShowingSearchResults preserves existing results")
     func searchFlagDefaultsToFalse() {
         let kinds: [ListItemKind?] = Self.allKinds + [nil]
         for kind in kinds {

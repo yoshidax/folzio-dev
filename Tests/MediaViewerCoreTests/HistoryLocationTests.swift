@@ -30,7 +30,7 @@ struct HistoryLocationTests {
         )
     }
 
-    @Test("場所は末尾の /・.・.. を無視して比べ、別の場所とは違う")
+    @Test("Compares locations ignoring a trailing /, ., and .., and distinguishes different locations")
     func equalityNormalizesPaths() {
         #expect(HistoryLocation(folder: folder("/tmp/h/A")) == HistoryLocation(folder: folder("/tmp/h/A/")))
         #expect(HistoryLocation(folder: folder("/tmp/h/A")) == HistoryLocation(folder: folder("/tmp/h/./A")))
@@ -39,7 +39,7 @@ struct HistoryLocationTests {
         #expect(HistoryLocation(folder: folder("/tmp/h/A")) != HistoryLocation(folder: folder("/tmp/h/A2")))
     }
 
-    @Test("通常のフォルダと zip の中の場所は別物として比べる")
+    @Test("Treats a regular folder and a location inside a zip as different")
     func equalitySeparatesArchive() {
         let normal = HistoryLocation(folder: folder("/tmp/h/A"))
         let archive = HistoryLocation(
@@ -57,13 +57,13 @@ struct HistoryLocationTests {
         ))
     }
 
-    @Test("存在しないパスでも比べられる")
+    @Test("Compares paths that do not exist")
     func equalityDoesNotNeedExistingPaths() {
         #expect(HistoryLocation(folder: folder("/tmp/n/missing")) == HistoryLocation(folder: folder("/tmp/n/missing/")))
         #expect(HistoryLocation(folder: folder("/tmp/n/missing")) != HistoryLocation(folder: folder("/tmp/n/other")))
     }
 
-    @Test("isWithin は自身と配下だけを指し、兄弟の前方一致を取り違えない")
+    @Test("isWithin matches itself and descendants without confusing siblings with a shared prefix")
     func isWithinUsesPathComponents() {
         let photo = HistoryLocation(folder: folder("/tmp/h/Photo"))
         #expect(photo.isWithin(folder("/tmp/h/Photos")) == false)
@@ -75,7 +75,7 @@ struct HistoryLocationTests {
         #expect(HistoryLocation(folder: folder("/tmp/h/A")).isWithin(folder("/tmp/other")) == false)
     }
 
-    @Test("zip の中の場所は zip ファイルで配下を判断する")
+    @Test("For a location inside a zip, determines containment from the zip file")
     func isWithinArchiveUsesArchiveFile() {
         let location = HistoryLocation(
             folder: folder("/tmp/h/A"),
@@ -88,7 +88,7 @@ struct HistoryLocationTests {
         #expect(location.isWithin(folder("/")) == true)
     }
 
-    @Test("rebased はフォルダと zip の両方を付け替える")
+    @Test("rebased rebases both the folder and the zip")
     func rebasedFollowsRename() {
         let renamed = RenamedFolder(from: folder("/tmp/h/A"), to: folder("/tmp/h/A2"))
         #expect(HistoryLocation(folder: folder("/tmp/h/A")).rebased(by: renamed)
@@ -106,7 +106,7 @@ struct HistoryLocationTests {
         #expect(HistoryLocation(folder: folder("/tmp/h/A3")).rebased(by: renamed) == nil)
     }
 
-    @Test("hasSameState は場所と表示の状態だけを比べる")
+    @Test("hasSameState compares only the location and presentation state")
     func hasSameStateIgnoresFocus() {
         let location = HistoryLocation(folder: folder("/tmp/h/A"))
         let base = HistoryEntry(location: location, viewState: state())

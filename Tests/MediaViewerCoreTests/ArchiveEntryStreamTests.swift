@@ -40,7 +40,7 @@ struct ArchiveEntryStreamTests {
 
     private static let names = ["stored.mp4", "deflated.mp4"]
 
-    @Test("length は展開後のサイズと一致する", arguments: names)
+    @Test("length matches the inflated size", arguments: names)
     func length(name: String) async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -48,7 +48,7 @@ struct ArchiveEntryStreamTests {
         #expect(stream.length == UInt64(Self.size))
     }
 
-    @Test("先頭・境界またぎ・末尾の手前・末尾・末尾より先を読める", arguments: names)
+    @Test("Reads at the start, across a boundary, before the end, at the end, and past the end", arguments: names)
     func readsPositions(name: String) async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -69,7 +69,7 @@ struct ArchiveEntryStreamTests {
         #expect(try stream.read(offset: UInt64(Self.size + 5000), maxLength: 100).isEmpty)
     }
 
-    @Test("deflate は後ろ向きを含む順序で読んでも一致する")
+    @Test("deflate matches when read in an order that includes backward reads")
     func deflateBackwards() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -80,7 +80,7 @@ struct ArchiveEntryStreamTests {
         }
     }
 
-    @Test("deflate は離れた 2 か所を交互に 20 回読んでも一致する")
+    @Test("deflate matches when two distant ranges are read alternately 20 times")
     func deflateAlternating() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -91,7 +91,7 @@ struct ArchiveEntryStreamTests {
         }
     }
 
-    @Test("複数のタスクから別々の範囲を同時に読める", arguments: names)
+    @Test("Reads separate ranges concurrently from multiple tasks", arguments: names)
     func concurrentReads(name: String) async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -116,7 +116,7 @@ struct ArchiveEntryStreamTests {
         #expect(failures == 0)
     }
 
-    @Test("暗号化と方式 12 の項目は stream(for:) が失敗する")
+    @Test("stream(for:) fails for encrypted entries and method 12")
     func rejectsEncryptedAndUnsupported() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -125,19 +125,19 @@ struct ArchiveEntryStreamTests {
         _ = try await reader.open(zip)
         do {
             _ = try await reader.stream(for: ArchiveURL.entry(archive: zip, path: "secret.mp4"))
-            Issue.record("エラーが投げられなかった")
+            Issue.record("Expected an error to be thrown")
         } catch {
             #expect(error == .entryEncrypted)
         }
         do {
             _ = try await reader.stream(for: ArchiveURL.entry(archive: zip, path: "bzip2.mp4"))
-            Issue.record("エラーが投げられなかった")
+            Issue.record("Expected an error to be thrown")
         } catch {
             #expect(error == .unsupportedMethod(12))
         }
     }
 
-    @Test("MemoryLimits.archiveStreamCacheBytes は 32MB")
+    @Test("MemoryLimits.archiveStreamCacheBytes is 32 MB")
     func cacheLimit() {
         #expect(MemoryLimits.archiveStreamCacheBytes == 32 * 1024 * 1024)
     }

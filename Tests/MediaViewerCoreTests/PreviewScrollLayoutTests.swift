@@ -4,7 +4,7 @@ import Testing
 
 @Suite("Preview scroll layout")
 struct PreviewScrollLayoutTests {
-    @Test("片軸は中央に置き、はみ出す軸は両端に制限する")
+    @Test("Centers a single axis and clamps an overflowing axis to both ends")
     func singleAxis() {
         let left = PreviewScrollLayout(imageSize: CGSize(width: 400, height: 100), viewport: CGSize(width: 200, height: 200), center: CGPoint(x: 0, y: 0))
         #expect(left.frame == CGRect(x: 0, y: 50, width: 400, height: 100))
@@ -14,7 +14,7 @@ struct PreviewScrollLayoutTests {
         #expect(right.frame.origin == CGPoint(x: -200, y: 50))
     }
 
-    @Test("両軸の四隅とリサイズ時の相対中心")
+    @Test("Relative center at the four corners of both axes and after resizing")
     func bothAxes() {
         let a = PreviewScrollLayout(imageSize: CGSize(width: 800, height: 600), viewport: CGSize(width: 200, height: 200), center: CGPoint(x: 0.7, y: 0.6))
         #expect(a.horizontal && a.vertical)
@@ -25,7 +25,7 @@ struct PreviewScrollLayoutTests {
         #expect(abs(edge.frame.minX + 200) < 0.0001 && abs(edge.frame.minY + 100) < 0.0001)
     }
 
-    @Test("等しい寸法と不正寸法を安全に扱う")
+    @Test("Handles equal and invalid dimensions safely")
     func invalidAndFit() {
         let fit = PreviewScrollLayout(imageSize: CGSize(width: 200, height: 100), viewport: CGSize(width: 200, height: 200), center: CGPoint(x: 0, y: 0))
         #expect(!fit.horizontal && !fit.vertical && fit.center == CGPoint(x: 0.5, y: 0.5))

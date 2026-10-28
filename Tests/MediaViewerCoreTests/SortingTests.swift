@@ -4,7 +4,7 @@ import Testing
 
 @Suite("Sorting")
 struct SortingTests {
-    @Test("名前は自然順で比較する")
+    @Test("Compares names in natural order")
     func sortsNamesNaturally() {
         let files = [file("img10.jpg"), file("img2.jpg"), file("img1.jpg")]
         let result = sorted(files, by: SortOrder(column: .name, ascending: true))
@@ -14,7 +14,7 @@ struct SortingTests {
         #expect(descending.map(\.name) == ["img10.jpg", "img2.jpg", "img1.jpg"])
     }
 
-    @Test("作成日の nil は昇順でも降順でも最後に置く")
+    @Test("Nil creation dates sort last in both ascending and descending order")
     func placesMissingCreationDateLast() {
         let old = Date(timeIntervalSince1970: 100)
         let new = Date(timeIntervalSince1970: 200)
@@ -27,7 +27,7 @@ struct SortingTests {
         #expect(descending.map(\.name) == ["new.jpg", "old.jpg", "none.jpg"])
     }
 
-    @Test("同じ値のときは名前の自然順を第2キーにする")
+    @Test("Equal values use natural name order as the secondary key")
     func breaksTiesByName() {
         let sameDate = Date(timeIntervalSince1970: 100)
         let files = [file("b.jpg", created: sameDate), file("a10.jpg", created: sameDate), file("a2.jpg", created: sameDate)]
@@ -35,7 +35,7 @@ struct SortingTests {
         #expect(result.map(\.name) == ["a2.jpg", "a10.jpg", "b.jpg"])
     }
 
-    @Test("種類は表示名で並べる")
+    @Test("Sorts kinds by display name")
     func sortsByKindDescription() {
         let files = [
             file("c.mp4", typeDescription: "MPEG-4 ムービー"),
@@ -46,7 +46,7 @@ struct SortingTests {
         #expect(result.map(\.name) == ["b.jpg", "c.mp4", "a.png"])
     }
 
-    @Test(".. の行は並べ替えの列と向きに関わらず先頭に置く")
+    @Test("The .. row always sorts first regardless of column or direction")
     func keepsParentRowFirst() {
         let created = Date(timeIntervalSince1970: 100)
         let files = [
@@ -64,7 +64,7 @@ struct SortingTests {
         }
     }
 
-    @Test("ディレクトリとメディアは区別なく名前の自然順に混ざる")
+    @Test("Directories and media interleave in natural name order without distinction")
     func mixesDirectoriesAndMediaByName() {
         let files = [
             item("c.png", .media(.png)),
@@ -79,7 +79,7 @@ struct SortingTests {
         #expect(descending.map(\.name) == ["..", "c.png", "b", "a.jpg"])
     }
 
-    @Test("フォルダもファイルと区別なく並び、.. は常に先頭に置く")
+    @Test("Folders and files sort together and .. always comes first")
     func mixesFoldersWithFiles() {
         let created = Date(timeIntervalSince1970: 100)
         let files = [
@@ -105,7 +105,7 @@ struct SortingTests {
 
     // MARK: - Location and sortedMerge (FR-084, 085)
 
-    @Test("場所は親フォルダのパスの自然順で、同じ場所では名前の自然順")
+    @Test("Locations sort by natural parent-folder path order, then by natural name order within the same location")
     func sortsByLocation() {
         let files = ["/r/b/x.jpg", "/r/a/z.jpg", "/r/a/y.jpg", "/r/a10/w.jpg", "/r/a2/v.jpg"].map(located)
         let ascending = sorted(files, by: SortOrder(column: .location, ascending: true))
@@ -115,7 +115,7 @@ struct SortingTests {
         #expect(descending.map(\.url.path) == ["/r/b/x.jpg", "/r/a10/w.jpg", "/r/a2/v.jpg", "/r/a/y.jpg", "/r/a/z.jpg"])
     }
 
-    @Test("sortedMerge は sorted(a + b) と同じ配列になり、同順位は a の行が先")
+    @Test("sortedMerge matches sorted(a + b) with rows from a first on ties")
     func sortedMergeMatchesSorted() {
         var generator = SeededGenerator(seed: 0x5EA2C4)
         let dates: [Date?] = [nil, Date(timeIntervalSince1970: 100), Date(timeIntervalSince1970: 200), Date(timeIntervalSince1970: 300)]
@@ -156,7 +156,7 @@ struct SortingTests {
         }
     }
 
-    @Test("sortedMerge は片方が空でも一致する")
+    @Test("sortedMerge also matches when either input is empty")
     func sortedMergeWithEmptySide() {
         let order = SortOrder(column: .name, ascending: true)
         let files = sorted([file("b.jpg"), file("a.jpg")], by: order)

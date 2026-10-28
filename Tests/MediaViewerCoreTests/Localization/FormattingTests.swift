@@ -2,9 +2,9 @@ import Foundation
 import MediaViewerLocalization
 import Testing
 
-@Suite("地域の書式")
+@Suite("Regional Formatting")
 struct FormattingTests {
-    @Test("表示言語を切り替えても地域の数値と時刻の設定を保つ")
+    @Test("Preserves the region's number and time settings when the display language changes")
     func languageChangeKeepsRegionalFormatting() {
         for current in [Locale(identifier: "de_DE"), Locale(identifier: "ja_DE")] {
             let english = Localizer.forLanguage("en", currentLocale: current)
@@ -22,7 +22,7 @@ struct FormattingTests {
         }
     }
 
-    @Test("表示言語が同じなら現在のロケールをそのまま使う")
+    @Test("Uses the current locale unchanged when the display language is the same")
     func keepsCurrentLocale() {
         let current = Locale(identifier: "en_JP")
         #expect(FormattingLocale.resolve(current: current, displayLanguage: "en") == current)
@@ -30,7 +30,7 @@ struct FormattingTests {
         #expect(FormattingLocale.resolve(current: withKeyword, displayLanguage: "ja") == withKeyword)
     }
 
-    @Test("言語だけを置き換え、地域・24時間表示・暦・数字の体系を引き継ぐ")
+    @Test("Replaces only the language and keeps the region, 24-hour setting, calendar, and numbering system")
     func replacesOnlyLanguage() {
         let japan = Locale(identifier: "ja_JP")
         let englishInJapan = FormattingLocale.resolve(current: japan, displayLanguage: "en")
@@ -56,14 +56,14 @@ struct FormattingTests {
         #expect(japaneseForced24 == forced24)
     }
 
-    @Test("件数は地域の桁区切りで整形する")
+    @Test("Formats counts with the region's grouping separator")
     func counts() {
         #expect(FormattingLocale.count(1234, locale: Locale(identifier: "en_US")) == "1,234")
         #expect(FormattingLocale.count(1234, locale: Locale(identifier: "ja_JP")) == "1,234")
         #expect(FormattingLocale.count(1234, locale: Locale(identifier: "de_DE")) == "1.234")
     }
 
-    @Test("日時は地域の並びと12／24時間表示、語は表示言語に従う")
+    @Test("Dates follow the region's order and 12/24-hour display; words follow the display language")
     func dateTime() throws {
         let date = try #require(
             Calendar(identifier: .gregorian).date(
@@ -120,7 +120,7 @@ struct FormattingTests {
         #expect(forced24.locale.hourCycle == .zeroToTwentyThree)
     }
 
-    @Test("倍率は地域の割合の書式で整形する")
+    @Test("Formats percentages with the region's percent format")
     func percentages() {
         #expect(FormattingLocale.percent(125, locale: Locale(identifier: "en_US")) == "125%")
         #expect(FormattingLocale.percent(125, locale: Locale(identifier: "ja_JP")) == "125%")

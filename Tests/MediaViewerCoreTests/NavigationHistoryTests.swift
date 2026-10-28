@@ -71,7 +71,7 @@ struct NavigationHistoryTests {
         history.current?.location.folder.lastPathComponent
     }
 
-    @Test("初期状態は現在がなく、戻る・進むも使えない")
+    @Test("Initially has no current entry and cannot go back or forward")
     func emptyHistory() {
         let history = NavigationHistory()
         #expect(history.current == nil)
@@ -82,7 +82,7 @@ struct NavigationHistoryTests {
         #expect(history.forwardEntries.isEmpty)
     }
 
-    @Test("最初の記録は戻る側を作らず、戻る・進むは使えない（起動直後）")
+    @Test("The first record creates no back history and leaves Back and Forward unavailable after launch")
     func firstRecord() {
         var history = NavigationHistory()
         #expect(record(&history, "A"))
@@ -92,7 +92,7 @@ struct NavigationHistoryTests {
         #expect(history.canGoForward == false)
     }
 
-    @Test("A → B → C の記録は古い順の戻る側と現在を作る。同じ状態は記録しない")
+    @Test("Recording A, B, and C creates chronological back history and a current entry; identical state is not recorded")
     func recordsInOrder() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -115,7 +115,7 @@ struct NavigationHistoryTests {
         #expect(history.forwardEntries.isEmpty)
     }
 
-    @Test("記録の leavingFocus は戻る側へ移した直前の履歴に入り、新しい履歴は nil")
+    @Test("leavingFocus is stored in the departing back-history entry and the new entry has nil focus")
     func leavingFocusIsRecorded() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -124,7 +124,7 @@ struct NavigationHistoryTests {
         #expect(history.current?.focusedItem == nil)
     }
 
-    @Test("候補は戻る側の末尾と進む側の先頭")
+    @Test("Candidates are the last back entry and the first forward entry")
     func candidates() {
         var history = NavigationHistory()
         #expect(history.candidate(.back) == nil)
@@ -141,7 +141,7 @@ struct NavigationHistoryTests {
         #expect(history.candidate(.forward)?.location == location("C"))
     }
 
-    @Test("move は離れる履歴にフォーカスを記録し、反対側へ移す")
+    @Test("move stores focus in the departing entry and moves it to the opposite history")
     func movesBothWays() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -164,7 +164,7 @@ struct NavigationHistoryTests {
         #expect(history.backEntries.last?.focusedItem == folder("A/3.jpg"))
     }
 
-    @Test("候補がない方向の move は何も変えない")
+    @Test("move in a direction without a candidate changes nothing")
     func moveWithoutCandidateDoesNothing() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -174,7 +174,7 @@ struct NavigationHistoryTests {
         #expect(history.version == version)
     }
 
-    @Test("戻った後に新しい履歴を記録すると進む側を取り除く（分岐）")
+    @Test("Recording a new entry after Back removes forward history to create a branch")
     func branchClearsForward() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -190,7 +190,7 @@ struct NavigationHistoryTests {
         #expect(history.forwardEntries.isEmpty)
     }
 
-    @Test("150 件を記録すると 100 件になり、99 回戻れる（FR-110・SC-031）")
+    @Test("Recording 150 entries retains 100 and allows 99 Back steps (FR-110, SC-031)")
     func capacityKeepsNewestHundred() {
         var history = NavigationHistory()
         for index in 0..<150 {
@@ -208,7 +208,7 @@ struct NavigationHistoryTests {
         #expect(name(history) == "F50")
     }
 
-    @Test("進む側がある状態で記録しても 100 件を超えない")
+    @Test("Recording with forward history still retains at most 100 entries")
     func capacityWithForward() {
         var history = NavigationHistory()
         for index in 0..<100 {
@@ -223,7 +223,7 @@ struct NavigationHistoryTests {
         #expect(name(history) == "New")
     }
 
-    @Test("version は変更のたびに増え、変わらない操作では増えない")
+    @Test("version increments on changes and stays unchanged for no-ops")
     func versionChanges() {
         var history = NavigationHistory()
         let emptyVersion = history.version
@@ -238,7 +238,7 @@ struct NavigationHistoryTests {
         #expect(history.version == version)
     }
 
-    @Test("allEntries は戻る側・現在・進む側の順")
+    @Test("allEntries orders back history, current entry, and forward history")
     func allEntriesOrder() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -248,7 +248,7 @@ struct NavigationHistoryTests {
         #expect(history.allEntries.map(\.location.folder.lastPathComponent) == ["A", "B", "C"])
     }
 
-    @Test("dropCandidate は見つからない候補を取り除き、隣り合う同じ履歴をまとめる")
+    @Test("dropCandidate removes a missing candidate and coalesces adjacent identical entries")
     func dropCandidateConsolidates() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -267,7 +267,7 @@ struct NavigationHistoryTests {
         #expect(name(history) == "A")
     }
 
-    @Test("現在を含まない同じ状態の組は新しい方を残す")
+    @Test("Identical-state pairs not containing the current entry retain the newer entry")
     func consolidationKeepsNewerOutsideCurrent() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -279,7 +279,7 @@ struct NavigationHistoryTests {
         #expect(name(history) == "C")
     }
 
-    @Test("removeEntries は配下と zip の中を取り除き、兄弟の前方一致は残す")
+    @Test("removeEntries removes descendants and zip contents but preserves siblings sharing a path prefix")
     func removeEntriesWithin() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -302,7 +302,7 @@ struct NavigationHistoryTests {
         #expect(name(history) == "C")
     }
 
-    @Test("keepingCurrent が false なら現在も取り除く")
+    @Test("keepingCurrent set to false also removes the current entry")
     func removeEntriesRemovesCurrent() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -319,7 +319,7 @@ struct NavigationHistoryTests {
         #expect(name(keeping) == "B")
     }
 
-    @Test("removeEntries(at:) は allEntries の位置で取り除き、範囲外は無視する")
+    @Test("removeEntries(at:) removes by allEntries index and ignores out-of-range indices")
     func removeEntriesAtPositions() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -339,7 +339,7 @@ struct NavigationHistoryTests {
         #expect(history.backEntries.map(\.location.folder.lastPathComponent) == ["A"])
     }
 
-    @Test("renameFolder は現在を新しい場所に置き換え、ほかの履歴は取り除く")
+    @Test("renameFolder replaces the current location and removes other affected entries")
     func renameFolderReplacesCurrent() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -350,7 +350,7 @@ struct NavigationHistoryTests {
         #expect(history.backEntries.map(\.location.folder.lastPathComponent) == ["A"])
     }
 
-    @Test("renameFolder は戻る側・進む側の元の場所を取り除き、現在の配下は付け替える")
+    @Test("renameFolder removes old locations from back and forward history and remaps current descendants")
     func renameFolderRemovesOthers() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -378,7 +378,7 @@ struct NavigationHistoryTests {
         #expect(name(forward) == "A")
     }
 
-    @Test("関係のない名前の変更は version も変えない")
+    @Test("An unrelated rename also leaves version unchanged")
     func unrelatedRenameDoesNothing() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -388,7 +388,7 @@ struct NavigationHistoryTests {
         #expect(history.current?.location == location("A"))
     }
 
-    @Test("replaceCurrentLocation は場所だけを変え、進む側を残し、隣とまとめる")
+    @Test("replaceCurrentLocation changes only the location, preserves forward history, and coalesces neighbors")
     func replaceCurrentLocation() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -403,7 +403,7 @@ struct NavigationHistoryTests {
         #expect(history.forwardEntries.map(\.location.folder.lastPathComponent) == ["C"])
     }
 
-    @Test("detachCurrent は現在を戻る側へ移し、removeCurrent は取り除く")
+    @Test("detachCurrent moves the current entry to back history; removeCurrent removes it")
     func detachAndRemoveCurrent() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -421,7 +421,7 @@ struct NavigationHistoryTests {
         #expect(removed.backEntries.map(\.location.folder.lastPathComponent) == ["A"])
     }
 
-    @Test("現在がない状態でも候補へ移れ、記録すると現在になって進む側を消す")
+    @Test("Without a current entry, navigation still reaches candidates; recording sets current and clears forward history")
     func movesAndRecordsWithoutCurrent() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -444,7 +444,7 @@ struct NavigationHistoryTests {
         #expect(history.forwardEntries.isEmpty)
     }
 
-    @Test("updateCurrentViewState は現在だけを書き換え、1つ前と同じならまとめる")
+    @Test("updateCurrentViewState updates only the current entry and coalesces it with an identical previous entry")
     func updateCurrentViewState() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -463,7 +463,7 @@ struct NavigationHistoryTests {
         #expect(history.current?.viewState.presentation.displayMode == .list)
     }
 
-    @Test("サムネイルサイズの連続した変更は1件にまとめる（US8-AS2）")
+    @Test("Consecutive thumbnail size changes coalesce into one entry (US8-AS2)")
     func thumbnailSizeChangesMerge() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -477,7 +477,7 @@ struct NavigationHistoryTests {
         #expect(history.current?.viewState.presentation.thumbnailSize == 128)
     }
 
-    @Test("サムネイルサイズの間にほかの記録を挟むと別の履歴になる")
+    @Test("An intervening record separates thumbnail size changes into distinct entries")
     func thumbnailSizeMergeStops() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -493,7 +493,7 @@ struct NavigationHistoryTests {
         #expect(history.current?.viewState.presentation.thumbnailSize == 192)
     }
 
-    @Test("戻る・進むの直後のサイズ変更は新しい履歴になり、進む側を消す（US8-AS7）")
+    @Test("A size change immediately after Back or Forward creates a new entry and clears forward history (US8-AS7)")
     func thumbnailSizeAfterMoveIsNew() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -508,7 +508,7 @@ struct NavigationHistoryTests {
         #expect(history.current?.viewState.presentation.thumbnailSize == 176)
     }
 
-    @Test("元の大きさに戻したサイズ変更は1つにまとまり、その後の変更は新しい履歴になる")
+    @Test("Returning to the original size coalesces changes into one entry; subsequent changes create a new entry")
     func thumbnailSizeReturningToOriginalMerges() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -523,7 +523,7 @@ struct NavigationHistoryTests {
         #expect(history.current?.viewState.presentation.thumbnailSize == 176)
     }
 
-    @Test("現在を取り除いた後のサイズ変更は新しい履歴になる")
+    @Test("A size change after removing the current entry creates a new entry")
     func thumbnailSizeWithoutCurrent() {
         var history = NavigationHistory()
         record(&history, "A")
@@ -534,7 +534,7 @@ struct NavigationHistoryTests {
         #expect(history.current?.viewState.presentation.thumbnailSize == 160)
     }
 
-    @Test("説明の状態の遷移を順に再現する")
+    @Test("Reproduces the documented sequence of state transitions")
     func documentedTransitions() {
         var history = NavigationHistory()
         #expect(history.current == nil)

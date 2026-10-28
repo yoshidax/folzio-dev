@@ -3,7 +3,7 @@ import Testing
 
 @Suite("ThumbnailGridLayout")
 struct ThumbnailGridLayoutTests {
-    @Test("どの幅・サイズ・間隔でも横スクロールしない")
+    @Test("Never scrolls horizontally for any width, size, or spacing")
     func fitsWithinAvailableWidth() {
         let tolerance = 0.0001
         var firstFailure: String?
@@ -37,14 +37,14 @@ struct ThumbnailGridLayoutTests {
         #expect(firstFailure == nil, Comment(rawValue: firstFailure ?? ""))
     }
 
-    @Test("狭い幅では1列にしてセル幅を縮める")
+    @Test("Uses one column and shrinks cell width for narrow widths")
     func shrinksSingleCellToFitNarrowWidth() {
         let layout = ThumbnailGridLayout.columns(availableWidth: 10, thumbnailSize: 100, spacing: 20)
         #expect(layout.count == 1)
         #expect(layout.cellWidth == 10)
     }
 
-    @Test("間隔が幅より大きくても収まる")
+    @Test("Fits even when spacing exceeds the width")
     func handlesSpacingWiderThanAvailableWidth() {
         let layout = ThumbnailGridLayout.columns(availableWidth: 10, thumbnailSize: 10, spacing: 50)
         #expect(layout.count == 1)
@@ -52,7 +52,7 @@ struct ThumbnailGridLayoutTests {
         #expect(Double(layout.count) * layout.cellWidth <= 10)
     }
 
-    @Test("幅が0以下ならセル幅0")
+    @Test("Uses zero cell width for a width of 0 or less")
     func returnsZeroCellWidthForNonPositiveWidth() {
         let zero = ThumbnailGridLayout.columns(availableWidth: 0, thumbnailSize: 100, spacing: 8)
         #expect(zero.count == 1)
@@ -63,7 +63,7 @@ struct ThumbnailGridLayoutTests {
         #expect(negative.cellWidth == 0)
     }
 
-    @Test("サムネイルサイズが0以下なら1列で幅いっぱい")
+    @Test("Uses one full-width column for a thumbnail size of 0 or less")
     func returnsFullWidthForNonPositiveThumbnailSize() {
         let zero = ThumbnailGridLayout.columns(availableWidth: 300, thumbnailSize: 0, spacing: 8)
         #expect(zero.count == 1)
@@ -74,14 +74,14 @@ struct ThumbnailGridLayoutTests {
         #expect(negative.cellWidth == 300)
     }
 
-    @Test("負の間隔は0として扱う")
+    @Test("Treats negative spacing as 0")
     func treatsNegativeSpacingAsZero() {
         let layout = ThumbnailGridLayout.columns(availableWidth: 1000, thumbnailSize: 200, spacing: -10)
         #expect(layout.count == 5)
         #expect(layout.cellWidth == 200)
     }
 
-    @Test("間隔を含めた列数を計算する")
+    @Test("Computes the column count including spacing")
     func computesColumnCountWithSpacing() {
         let layout = ThumbnailGridLayout.columns(availableWidth: 1000, thumbnailSize: 200, spacing: 20)
         #expect(layout.count == 4)
@@ -89,14 +89,14 @@ struct ThumbnailGridLayoutTests {
         #expect(Double(layout.count) * layout.cellWidth + Double(layout.count - 1) * 20 <= 1000)
     }
 
-    @Test("ちょうど収まる幅では列数が最大になる")
+    @Test("Uses the maximum column count when the width fits exactly")
     func fitsExactColumns() {
         let layout = ThumbnailGridLayout.columns(availableWidth: 1000, thumbnailSize: 200, spacing: 0)
         #expect(layout.count == 5)
         #expect(layout.cellWidth == 200)
     }
 
-    @Test("非有限値でも安全な値を返す")
+    @Test("Returns safe values for non-finite inputs")
     func handlesNonFiniteValues() {
         let infinity = ThumbnailGridLayout.columns(availableWidth: .infinity, thumbnailSize: 100, spacing: 8)
         #expect(infinity.count == 1)
