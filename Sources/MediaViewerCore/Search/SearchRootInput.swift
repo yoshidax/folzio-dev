@@ -1,17 +1,19 @@
 import Foundation
 
-/// 検索起点欄の入力元（FR-081・142、data-model.md 1）。
+/// Source of the search root field input (FR-081, FR-142; data-model.md 1).
 ///
-/// - `typed` はユーザーが直接入力・編集した文字列で、既存の `SearchRoot.parse` の規則で解釈する
-/// - `picked` は標準フォルダ選択パネルで確定した絶対 file URL で、選択した URL をそのまま使う（trim しない）
+/// - `typed` is a string typed or edited directly by the user, parsed with the existing `SearchRoot.parse` rules.
+/// - `picked` is an absolute file URL confirmed in the standard folder selection panel; the selected URL is used
+///   as-is (not trimmed).
 ///
-/// 初期状態は `typed`。`picked` は確定後の検証成功からのみ作る。起点欄のユーザー編集は同じ文字列へ戻しても
-/// `typed` にし、キーワード編集・パネルの取消・失敗・再表示では変えない
+/// The initial state is `typed`. `picked` is created only after a successful validation following confirmation.
+/// User edits to the search root field produce `typed` even when the text returns to the same string, while keyword
+/// edits, panel cancellation, failures, and reopening do not change the source.
 public enum SearchRootInput: Sendable, Equatable {
     case typed(String)
     case picked(URL)
 
-    /// 起点欄に表示する文字列。`picked` は引用符・エスケープを加えない絶対パス
+    /// String shown in the search root field. `picked` returns an absolute path without quotes or escaping.
     public var displayText: String {
         switch self {
         case let .typed(text):
@@ -21,7 +23,8 @@ public enum SearchRootInput: Sendable, Equatable {
         }
     }
 
-    /// 検索と初期位置の両方が使う解釈。`picked` は選択 URL をそのまま返し、リンク解決は `SearchRoot.validate` に任せる
+    /// Interpretation used by both search and initial location. `picked` returns the selected URL as-is; link
+    /// resolution is left to `SearchRoot.validate`.
     public func resolvedInput(home: URL) -> Result<URL, SearchRootError> {
         switch self {
         case let .typed(text):
@@ -32,7 +35,7 @@ public enum SearchRootInput: Sendable, Equatable {
     }
 }
 
-/// 親の検索シートが持つ非同期処理の種別（FR-143、data-model.md 4）
+/// Kind of asynchronous operation owned by the parent search sheet (FR-143, data-model.md 4).
 public enum SearchPanelOperation: Sendable, Equatable {
     case idle
     case resolvingInitialLocation
@@ -40,7 +43,8 @@ public enum SearchPanelOperation: Sendable, Equatable {
     case validatingSearch
 }
 
-/// 非同期処理の開始時に捕捉する入力・選択 URL・世代。完了の採否はこの値と現在の状態だけで決める
+/// Input, selected URL, and generation captured when an asynchronous operation starts. Acceptance of completion
+/// depends only on this value and the current state.
 public struct SearchPanelOperationTicket: Sendable, Equatable {
     public let operation: SearchPanelOperation
     public let revision: Int
@@ -66,19 +70,22 @@ public struct SearchPanelOperationTicket: Sendable, Equatable {
     }
 }
 
-/// 検索シートの入力元と、初期位置の解決・確定後の検証・検索検証の競合を判断する小さな状態（data-model.md 4）。
+/// Small state that tracks the search sheet's input source and arbitrates between initial location resolution,
+/// post-confirmation validation, and search validation (data-model.md 4).
 ///
-/// MainActor 上の操作を直列に渡す前提の値型で、I/O を持たない。完了の採用は
-/// 「捕捉した revision・requestGeneration・処理種別が現在の値と一致し、`isActive` である」場合だけ行う
+/// A value type that assumes operations on the MainActor are passed serially and performs no I/O. A completion is
+/// accepted only when the captured revision, requestGeneration, and operation kind match the current values and
+/// `isActive` is true.
 public struct SearchPanelInputState: Sendable, Equatable {
     public private(set) var rootInput: SearchRootInput
     public private(set) var keyword: String
-    /// 入力元とキーワードの変更回数。古い検証結果の採否に使う
+    /// Number of changes to the input source and keyword. Used to accept or reject stale validation results.
     public private(set) var revision: Int
-    /// 検索シートが開いているか。終了後の完了を採用しない
+    /// Whether the search sheet is open. Completions after closing are not accepted.
     public private(set) var isActive: Bool
     public private(set) var pendingOperation: SearchPanelOperation
-    /// 処理開始・失効で進める依頼世代。同じ入力でも別の依頼を区別する
+    /// Request generation incremented on start and invalidation. Distinguishes different requests even with the same
+    /// input.
     public private(set) var requestGeneration: Int
 
     public init(rootInput: SearchRootInput, keyword: String = "") {
@@ -94,7 +101,8 @@ public struct SearchPanelInputState: Sendable, Equatable {
         rootInput.displayText
     }
 
-    /// 起点欄のユーザー編集。同じ文字列へ戻しても `typed` にし、保留中の処理を失効させる
+    /// User edit to the search root field. Produces `typed` even when the text returns to the same string and
+    /// invalidates pending work.
     public mutating func updateRootText(_ text: String) {
         guard isActive else { return }
         rootInput = .typed(text)
@@ -102,7 +110,7 @@ public struct SearchPanelInputState: Sendable, Equatable {
         invalidatePending()
     }
 
-    /// キーワードの編集。起点の入力元は変えず、保留中の処理を失効させる
+    /// Keyword edit. Leaves the search root source unchanged and invalidates pending work.
     public mutating func updateKeyword(_ text: String) {
         guard isActive else { return }
         keyword = text
@@ -110,7 +118,7 @@ public struct SearchPanelInputState: Sendable, Equatable {
         invalidatePending()
     }
 
-    /// 標準パネルの確定成功。選択 URL を `picked` として保持し、古い処理を失効させる
+    /// Successful confirmation in the standard panel. Stores the selected URL as `picked` and invalidates older work.
     public mutating func applyPickedRoot(_ url: URL) {
         guard isActive else { return }
         rootInput = .picked(url)
@@ -118,14 +126,15 @@ public struct SearchPanelInputState: Sendable, Equatable {
         invalidatePending()
     }
 
-    /// 検索シートの終了。以降の完了を採用しない
+    /// Closes the search sheet. Later completions are not accepted.
     public mutating func close() {
         isActive = false
         revision &+= 1
         invalidatePending()
     }
 
-    /// 標準パネルの初期位置解決の開始。パネル表示中の重複開始と検索検証中は受け付けない
+    /// Starts resolving the panel's initial location. Rejects duplicate starts while the panel is presented and while
+    /// search validation is in progress.
     public mutating func beginInitialLocationResolution(
         panelPresented: Bool
     ) -> SearchPanelOperationTicket? {
@@ -135,7 +144,8 @@ public struct SearchPanelInputState: Sendable, Equatable {
         return makeTicket(operation: .resolvingInitialLocation)
     }
 
-    /// 確定後の再検証の開始。選択 URL・入力・依頼世代を捕捉する。重複確定とパネル表示中は受け付けない
+    /// Starts revalidation after confirmation. Captures the selected URL, input, and request generation. Rejects
+    /// duplicate confirmations and starts while the panel is presented.
     public mutating func beginSelectionValidation(
         _ url: URL,
         panelPresented: Bool
@@ -146,8 +156,8 @@ public struct SearchPanelInputState: Sendable, Equatable {
         return makeTicket(operation: .validatingSelection, selection: url)
     }
 
-    /// 検索の受理。空キーワードは従来どおり無操作で、保留中の処理も失効させない。
-    /// 受理した場合は初期位置・選択の検証を先に失効させてから検索検証へ遷移する
+    /// Accepts a search. As before, an empty keyword is a no-op and does not invalidate pending work.
+    /// When accepted, invalidates initial location and selection validation first, then moves to search validation.
     public mutating func beginSearchValidation(
         panelPresented: Bool
     ) -> SearchPanelOperationTicket? {
@@ -159,8 +169,9 @@ public struct SearchPanelInputState: Sendable, Equatable {
         return makeTicket(operation: .validatingSearch)
     }
 
-    /// 捕捉した処理の完了を採用する。成功した検索検証だけが親を終了させる。
-    /// 一致しない完了（編集・終了・別の依頼・別種別）は状態を変えず `false` を返す
+    /// Accepts completion of the captured operation. Only a successful search validation closes the parent.
+    /// A completion that does not match (edit, close, different request, or different kind) leaves the state unchanged
+    /// and returns `false`.
     @discardableResult
     public mutating func complete(_ ticket: SearchPanelOperationTicket, succeeded: Bool) -> Bool {
         guard isActive,

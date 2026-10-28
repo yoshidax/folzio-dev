@@ -1,18 +1,19 @@
 import Foundation
 
-/// 表示中の検索の条件と進み具合（FR-084・085、research.md R37）。`FolderListing.search` に置き、保存しない
+/// Criteria and progress of the displayed search (FR-084, 085; research.md R37). Stored in
+/// `FolderListing.search` and not persisted.
 public struct SearchListing: Sendable, Equatable {
     public enum Phase: Sendable, Equatable {
         case searching
         case finished
     }
 
-    /// `SearchPattern.keyword`（検索バーに出す）
+    /// `SearchPattern.keyword` (shown in the search bar)
     public var keyword: String
-    /// 確かめた検索起点ディレクトリ
+    /// Search root directory that was validated
     public var root: URL
     public var phase: Phase
-    /// 見つかった件数（種類フィルタ適用前）。検索中は途中の件数
+    /// Number of matches (before applying the media type filter). While searching, the count so far.
     public var totalCount: Int
 
     public init(keyword: String, root: URL, phase: Phase, totalCount: Int) {
@@ -22,8 +23,9 @@ public struct SearchListing: Sendable, Equatable {
         self.totalCount = totalCount
     }
 
-    /// 「場所」列とサムネイルのツールチップの文字列。起点のフォルダ名に、ファイルを含むフォルダまでの相対パスを `/` でつなぐ。
-    /// 起点が `/` なら、ファイルを含むフォルダの絶対パス
+    /// String for the Location column and thumbnail tooltips. Joins the root folder name with the relative path
+    /// to the folder containing the file, separated by `/`. When the root is `/`, returns the absolute path of the
+    /// folder containing the file.
     public func location(of fileURL: URL) -> String {
         let rootComponents = root.standardizedFileURL.pathComponents
         let folder = fileURL.deletingLastPathComponent().standardizedFileURL

@@ -1,28 +1,32 @@
 import Foundation
 
-/// 検索起点以下のすべての階層から、名前が一致する対応メディアファイルとフォルダを探す（FR-083・085・139、research.md R1）
+/// Searches for supported media files and folders whose names match at every level below the search root
+/// (FR-083, 085, 139; research.md R1).
 public protocol FileNameSearching: Sendable {
-    /// 一致したメディアファイルとフォルダを小さな配列（バッチ）で流し、全階層を辿り終えたらストリームを終える。
-    /// ストリームの終了（取り消し）で列挙を止める
+    /// Yields matching media files and folders in small batches and finishes the stream after traversing every level.
+    /// Terminating the stream (including cancellation) stops enumeration.
     func search(_ request: SearchRequest) -> AsyncStream<[MediaFile]>
 }
 
 extension FileNameSearching {
-    /// 起点そのものを照合しない検索（`matchesRoot: false`）を、新しい記録で始める
+    /// Starts a search that does not match the root itself (`matchesRoot: false`) with a new visit log.
     public func search(in root: URL, matching pattern: SearchPattern) -> AsyncStream<[MediaFile]> {
         search(SearchRequest(root: root, pattern: pattern))
     }
 }
 
-/// `FileManager` の列挙器でファイル名とフォルダ名を検索する（FR-083・085・139）。
+/// Searches file and folder names with a `FileManager` enumerator (FR-083, 085, 139).
 ///
-/// - 隠しファイル・隠しフォルダ（とその中）・パッケージの中・シンボリックリンクのフォルダの中を辿らない。リンク先がフォルダのリンクも一致の対象にしない
-/// - ファイルへのシンボリックリンクは `DirectoryLister` と同じく通常のファイルとして扱い、URL はリンク自身のパスにする
-/// - フォルダは、隠し・パッケージ・フォルダへのリンクでなければ名前（「.」を含んでも全体）で照合し、`DirectoryLister` と同じ値の行を返す
-/// - ディレクトリは照合の直前に `SearchRequest.visits` へ記録する（ファイルは記録しない）。`matchesRoot` が true のときだけ
-///   起点そのものも記録して照合する（FR-105・EC-94）
-/// - 読み取り権限のないフォルダは飛ばして続ける。名前が一致すれば行として返す
-/// - UI スレッドで列挙しない。zip の中は開かない（`.zip` は対応メディアにもフォルダにも当たらない）
+/// - Does not descend into hidden files or folders (or their contents), packages, or folders reached through
+///   symbolic links. A link whose target is a folder is not a match.
+/// - Treats a symbolic link to a file as a regular file, as `DirectoryLister` does, and uses the link's own path
+///   as the URL.
+/// - Matches a folder by name (the whole name, even when it contains ".") unless it is hidden, a package, or a
+///   link to a folder, and returns a row with the same values as `DirectoryLister`.
+/// - Records a directory in `SearchRequest.visits` immediately before matching it (files are not recorded). When
+///   `matchesRoot` is true, also records and matches the root itself (FR-105, EC-94).
+/// - Skips folders without read permission and continues. Returns a row when the name matches.
+/// - Does not enumerate on the UI thread. Does not open zips (`.zip` is neither supported media nor a folder).
 public struct FileNameSearcher: FileNameSearching {
     private let kindNames: KindNames
     private let batchSize: Int
@@ -72,7 +76,7 @@ public struct FileNameSearcher: FileNameSearching {
 
                 let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
                 if values?.isDirectory == true, values?.isSymbolicLink != true {
-                    // 記録は照合の前に行う。記録がなければ、そのディレクトリはまだ照合されていない（R2）
+                    // Record before matching. Without a record, the directory has not been matched yet (R2).
                     request.visits.record(SearchPath.normalized(rebase(url)))
                     if let row = Self.matchedFolder(at: url, pattern: request.pattern, rebase: rebase, kindNames: kindNames) {
                         pending.append(row)
@@ -86,10 +90,12 @@ public struct FileNameSearcher: FileNameSearching {
                     pending.append(file)
                 }
 
-                // 経過時間は列挙の1項目ごとに確かめ、見つかった結果を次の一致や列挙の終わりまで待たせない
+                // Check elapsed time for each enumerated item so found results do not wait for the next match or the
+                // end of enumeration.
                 if pending.count >= batchSize || (!pending.isEmpty && clock.now - lastYield >= batchInterval) {
                     flush()
-                    // 長い列挙で協調スレッドを占有せず、受け取る側（取り消しを含む）を先に動かす
+                    // Do not occupy the cooperative thread during long enumeration; let the receiver (including
+                    // cancellation) run first.
                     await Task.yield()
                 }
             }
@@ -102,14 +108,16 @@ public struct FileNameSearcher: FileNameSearching {
         return stream
     }
 
-    /// 列挙器は起点と違う形（`/var/...` の起点に `/private/var/...`、またはその逆）の URL を返すことがあるため、
-    /// 結果の URL を渡された起点の形に組み直す。監視（`FileSystemWatching` の subtrees）が流す URL と同じ形に
-    /// そろえ、一覧から開いたときの場所を履歴や結果の整理で同じものとして比べられるようにする（R38）
+    /// The enumerator sometimes returns URLs in a different form from the root (for example, `/private/var/...`
+    /// for a `/var/...` root, or the reverse), so rebases result URLs to the form of the supplied root. This aligns
+    /// them with the URLs emitted by watching (`FileSystemWatching` subtrees) so a location opened from a listing
+    /// compares as the same place in history and result organization (R38).
     private static func rebaser(for root: URL) -> @Sendable (URL) -> URL {
         let rootPath = SearchPath.normalized(root)
         guard rootPath != "/" else { return { $0 } }
 
-        // 起点の形（`/var/...`）と、解決した形（`/private/var/...`）に加え、`/private` の有無を入れ替えた形も受け付ける
+        // Accept the original root form (`/var/...`), the resolved form (`/private/var/...`), and forms with
+        // `/private` added or removed.
         var prefixes: Set<String> = []
         func addForms(of path: String) {
             let variants = [path, path.hasPrefix("/private/") ? String(path.dropFirst("/private".count)) : "/private" + path]
@@ -135,7 +143,8 @@ public struct FileNameSearcher: FileNameSearching {
         }
     }
 
-    /// `matchesRoot` が true のときに、起点そのものを同じ規則で照合する。隠し属性とパッケージも確かめる（R3）
+    /// Matches the root itself with the same rules when `matchesRoot` is true. Also checks hidden and package
+    /// attributes (R3).
     private static func matchedRoot(request: SearchRequest, kindNames: KindNames) -> MediaFile? {
         let root = request.root
         let values = try? root.resourceValues(
@@ -149,8 +158,8 @@ public struct FileNameSearcher: FileNameSearching {
         return folderRow(at: root, kindNames: kindNames)
     }
 
-    /// 名前が一致したディレクトリの行。パッケージは行にしない（FR-083・A-78）。
-    /// 一致しないディレクトリには `isPackage` と作成日を問い合わせない（SC-054）
+    /// Row for a directory whose name matches. Packages do not produce a row (FR-083, A-78).
+    /// Does not query `isPackage` or the creation date for directories that do not match (SC-054).
     private static func matchedFolder(
         at url: URL,
         pattern: SearchPattern,
