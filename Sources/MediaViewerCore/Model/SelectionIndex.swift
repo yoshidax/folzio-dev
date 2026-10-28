@@ -1,13 +1,13 @@
 import Foundation
 
-/// 一覧の並びから選択 URL の行番号を作る。
+/// Builds row indexes for selected URLs from the listing order.
 ///
-/// 選択した URL ごとに一覧全体を線形探索すると、10,000 行・5,000 選択で
-/// 約5,000万回の比較になり UI が数十秒止まる。URL の対応表を1回だけ作り、
-/// 選択件数に比例する処理にする（FR-016・SC-003・SC-016）。
+/// A linear search of the whole listing for each selected URL would require about 50 million comparisons for
+/// 10,000 rows and 5,000 selections, freezing the UI for tens of seconds. Build the URL-to-index table once and
+/// make the work proportional to the number of selections (FR-016, SC-003, SC-016).
 public enum SelectionIndex {
-    /// 一覧に同じ URL が重複する場合は最初の行を選ぶ（`firstIndex(of:)` と同じ意味）。
-    /// 一覧にない選択 URL は無視する
+    /// When the same URL appears multiple times, uses the first row (the same behavior as `firstIndex(of:)`).
+    /// Selected URLs that are not in the listing are ignored.
     public static func indexes(of selected: Set<URL>, in urls: [URL]) -> IndexSet {
         guard !selected.isEmpty, !urls.isEmpty else { return IndexSet() }
 

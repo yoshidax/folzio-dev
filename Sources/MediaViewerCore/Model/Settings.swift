@@ -9,7 +9,7 @@ public struct ViewSettings: Sendable, Equatable {
     public var sortOrder: SortOrder
     public var lastFolder: URL?
     public var showsToolbar: Bool
-    /// zip ファイルの行をファイルリストに出すか（FR-095）。既定は非表示
+    /// Whether zip file rows appear in the file list (FR-095). Hidden by default.
     public var showsZipFiles: Bool
     private var storedThumbnailSize: Double
 
@@ -49,7 +49,7 @@ public enum SortColumn: String, Sendable, CaseIterable {
     case name
     case creationDate
     case kind
-    /// 検索結果の表示中だけ使う（FR-084）。保存しない
+    /// Used only while showing search results (FR-084). Not persisted.
     case location
 }
 
@@ -99,13 +99,13 @@ public struct SlideshowOptions: Sendable, Equatable {
                 ? newValue : Self.defaultIntervalSeconds
         }
     }
-    /// 動画のループ再生（PlaybackOptions.loop）とは独立した設定。
+    /// A setting independent of video loop playback (`PlaybackOptions.loop`).
     public var repeats: Bool
     public var transition: SlideshowTransitionEffect
 
     public var interval: Duration { .seconds(intervalSeconds) }
 
-    /// 範囲外の `intervalSeconds` は 3 秒にする
+    /// Uses 3 seconds for an out-of-range `intervalSeconds`.
     public init(
         intervalSeconds: Int = 3,
         repeats: Bool = true,
