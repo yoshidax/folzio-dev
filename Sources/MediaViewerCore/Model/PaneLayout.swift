@@ -1,24 +1,26 @@
-/// ペインの種類（FR-088〜094、research.md R40）。`Pane.allCases` の順は Tab の巡回順（ツリー → ファイルリスト → プレビュー）。
+/// Pane kind (FR-088–094, research.md R40). The order of `Pane.allCases` is the Tab cycle order
+/// (tree → file list → preview).
 public enum Pane: Sendable, Equatable, CaseIterable {
     case tree, fileList, preview
 }
 
-/// ツールバーのボタンとメニュー項目の対象（FR-088・089）。保存しない。状態の持ち主は `MainSplitViewController` だけ。
+/// Target of the toolbar buttons and menu items (FR-088, FR-089). Not persisted. The state is owned only by
+/// `MainSplitViewController`.
 public enum SoloPane: Sendable, Equatable {
     case fileList, preview
 }
 
-/// ペインの表示状態（FR-088〜093、research.md R40）。値を3つだけに保ち、ツリーだけを隠す状態などは持たない。
-/// 保存しない。状態の持ち主は `MainSplitViewController` だけ。起動のたびに `.all` で始まる。
+/// Pane layout (FR-088–093, research.md R40). Keeps only three values; there is no state that hides only the tree.
+/// Not persisted. The state is owned only by `MainSplitViewController`. Starts as `.all` on every launch.
 public enum PaneLayout: Sendable, Equatable {
-    /// 3ペイン表示（既定）
+    /// Three-pane layout (default)
     case all
-    /// ツリーとプレビューを隠す
+    /// Hides the tree and preview
     case fileListOnly
-    /// ツリーとファイルリストを隠す
+    /// Hides the tree and file list
     case previewOnly
 
-    /// `nil` は `.all`、それ以外はその側だけの表示（FR-088）
+    /// `nil` maps to `.all`; otherwise shows only that side (FR-088)
     public init(soloPane: SoloPane?) {
         switch soloPane {
         case .none:
@@ -30,7 +32,7 @@ public enum PaneLayout: Sendable, Equatable {
         }
     }
 
-    /// ツールバーの押下とメニューのチェックの対象。`.all` は `nil`（FR-089）
+    /// Target of the toolbar selection and menu checkmark. `.all` maps to `nil` (FR-089)
     public var soloPane: SoloPane? {
         switch self {
         case .all:
@@ -42,7 +44,8 @@ public enum PaneLayout: Sendable, Equatable {
         }
     }
 
-    /// メニュー・ショートカット。いまその側だけの表示なら `.all`、そうでなければその側だけの表示（FR-089・090）
+    /// Menu and keyboard shortcut. Returns `.all` when that side is currently shown alone; otherwise shows only
+    /// that side (FR-089, FR-090)
     public func toggling(_ pane: SoloPane) -> PaneLayout {
         switch (self, pane) {
         case (.fileListOnly, .fileList), (.previewOnly, .preview):
@@ -54,8 +57,9 @@ public enum PaneLayout: Sendable, Equatable {
         }
     }
 
-    /// ツールバーのボタングループ（`selectAny`）が報告した押下状態から次の状態を決める（FR-089）。
-    /// 両方 true なら直前に押されていなかった側だけを残す（直前が `.all` なら変えない）
+    /// Determines the next layout from the selection reported by the toolbar button group (`selectAny`) (FR-089).
+    /// When both are true, keeps only the side that was not pressed previously (leaves `.all` unchanged when it was
+    /// already `.all`).
     public func applyingToolbarSelection(fileListSelected: Bool, previewSelected: Bool) -> PaneLayout {
         switch (fileListSelected, previewSelected) {
         case (false, false):
@@ -76,7 +80,7 @@ public enum PaneLayout: Sendable, Equatable {
         }
     }
 
-    /// `layout` でそのペインを表示している（FR-088・092）
+    /// Whether this layout shows the given pane (FR-088, FR-092)
     public func isVisible(_ pane: Pane) -> Bool {
         switch self {
         case .all:
@@ -88,7 +92,7 @@ public enum PaneLayout: Sendable, Equatable {
         }
     }
 
-    /// 切り替え後にフォーカスを移す先。`nil` は移さない（FR-091）
+    /// Focus target after switching. `nil` leaves focus unchanged (FR-091)
     public func focusTarget(afterSwitchingFrom focused: Pane?) -> Pane? {
         switch self {
         case .all:
@@ -100,14 +104,14 @@ public enum PaneLayout: Sendable, Equatable {
         }
     }
 
-    /// プレビューのみ表示に切り替えたときに、最初のファイルを自動選択してよいか（FR-093）。
-    /// 通常の読み込み中と検索中の `.loading` では自動選択しない（読み込み完了後もやり直さない）
+    /// Whether the first file may be auto-selected when switching to preview-only (FR-093).
+    /// Does not auto-select during `.loading` for normal loading or search, and does not retry after loading completes.
     public static func shouldAutoSelectEntry(in listing: FolderListing) -> Bool {
         listing.state != .loading
     }
 
-    /// プレビューのみ表示で、読み込み中でなく、表示中の一覧にメディアが1件もないとき true（FR-093）。
-    /// プレビューに「表示するメディアファイルがありません」を出す
+    /// True in preview-only when not loading and the current listing has no media items (FR-093).
+    /// Shows "No media file to display" in the preview.
     public func showsNoMediaMessage(in listing: FolderListing) -> Bool {
         self == .previewOnly
             && listing.state != .loading
@@ -115,8 +119,8 @@ public enum PaneLayout: Sendable, Equatable {
     }
 }
 
-/// 表示状態とフルスクリーンから、実際に表示するペインを決める純粋計算（FR-094、research.md R41・R44）。
-/// 保存しない。状態の持ち主は `MainSplitViewController` だけ。
+/// Pure computation that determines the panes actually shown from the layout and full-screen state
+/// (FR-094, research.md R41, R44). Not persisted. The state is owned only by `MainSplitViewController`.
 public struct PanePresentation: Sendable, Equatable {
     public let layout: PaneLayout
     public let isFullScreen: Bool
@@ -126,7 +130,7 @@ public struct PanePresentation: Sendable, Equatable {
         self.isFullScreen = isFullScreen
     }
 
-    /// フルスクリーン中は `[.preview]`。それ以外は `layout` で表示するペイン（ツリー → ファイルリスト → プレビューの順）
+    /// Returns `[.preview]` in full screen; otherwise the panes shown by `layout` (tree → file list → preview).
     public var visiblePanes: [Pane] {
         if isFullScreen {
             return [.preview]
@@ -138,26 +142,28 @@ public struct PanePresentation: Sendable, Equatable {
         visiblePanes.contains(pane)
     }
 
-    /// 3つとも表示（ペイン幅の保持・復元と自動保存の再開に使う。FR-094）
+    /// Whether all three panes are shown (used to preserve and restore pane widths and resume autosave; FR-094)
     public var showsAllPanes: Bool {
         !isFullScreen && layout == .all
     }
 
-    /// ファイルリストが隠れていてプレビューが見えている（矢印キーで隠れたファイルリストの選択を動かす。FR-046・093）
+    /// Whether the file list is hidden while the preview is visible (arrow keys move the hidden file list's
+    /// selection; FR-046, FR-093)
     public var navigatesHiddenFileList: Bool {
         !isVisible(.fileList) && isVisible(.preview)
     }
 }
 
-/// 隠したペインに関わる操作の可否（FR-062・065・080・090・092・094、research.md R42）。
-/// 保存しない。状態の持ち主は `MainSplitViewController` だけ。
+/// Availability of commands related to hidden panes (FR-062, 065, 080, 090, 092, 094; research.md R42).
+/// Not persisted. The state is owned only by `MainSplitViewController`.
 public struct PaneCommands: Sendable, Equatable {
     public let layout: PaneLayout
     public let isFullScreen: Bool
     public let isEditingText: Bool
-    /// スライドショーの実行中。開始・終了の遷移中も含めて、ペイン切り替えと履歴移動を止める。
+    /// Whether the slideshow is active. Stops pane switching and history navigation, including during start and end
+    /// transitions.
     public let isSlideshowActive: Bool
-    /// スライドショー終了後の復帰処理中。開始し直しや切り替えを止める。
+    /// Whether the app is restoring state after the slideshow ends. Stops restarting and switching.
     public let isRestoring: Bool
 
     public init(
@@ -174,46 +180,47 @@ public struct PaneCommands: Sendable, Equatable {
         self.isRestoring = isRestoring
     }
 
-    /// ⌃⌘2・⌃⌘3・ツールバーのボタン（FR-090・094）
+    /// ⌃⌘2, ⌃⌘3, and toolbar buttons (FR-090, FR-094)
     public var canChangeLayout: Bool {
         !isFullScreen && !isEditingText && !isSlideshowActive && !isRestoring
     }
 
-    /// ⌥⌘1〜3（FR-092）
+    /// ⌥⌘1–3 (FR-092)
     public func canFocus(_ pane: Pane) -> Bool {
         layout.isVisible(pane)
     }
 
-    /// ⇧⌘F（FR-065・092）
+    /// ⇧⌘F (FR-065, FR-092)
     public var canGoToFavorites: Bool {
         !isFullScreen && !isEditingText && layout.isVisible(.tree)
     }
 
-    /// ⌃⌘T。ツリー側の判定と AND を取る（FR-062・092）
+    /// ⌃⌘T. Combined with the tree-side check using AND (FR-062, FR-092)
     public var allowsAddingFavorite: Bool {
         !isEditingText && layout.isVisible(.tree)
     }
 
-    /// ⌘F（FR-080・092）
+    /// ⌘F (FR-080, FR-092)
     public var canSearch: Bool {
         !isFullScreen && !isEditingText && layout.isVisible(.fileList)
     }
 
-    /// ⌘[・⌘]・「移動」メニュー・ツールバーの戻る・進む（FR-112）。
-    /// 履歴の有無は `HistoryNavigator` と AND を取る
+    /// ⌘[, ⌘], the Go menu, and the toolbar Back/Forward buttons (FR-112).
+    /// Combined with the history availability using AND in `HistoryNavigator`.
     public var canNavigateHistory: Bool {
         !isFullScreen && !isEditingText && !isSlideshowActive && !isRestoring
     }
 }
 
-/// スライドショー中に横取りしてよいキーの種類（FR-123）。
+/// Kinds of keys the slideshow may intercept (FR-123).
 public enum SlideshowKey: Sendable, Equatable {
     case escape
     case arrow
     case other
 }
 
-/// Esc・矢印を受け取る条件。modal・sheet・名前編集・復帰処理中は AppKit の入力先へ任せる（FR-105・123）。
+/// Conditions for accepting Esc and arrow keys. While a modal, sheet, name editing, or restore is active,
+/// input is left to AppKit's responder (FR-105, FR-123).
 public struct SlideshowInputPolicy: Sendable, Equatable {
     public let isActive: Bool
     public let isRestoring: Bool
@@ -221,7 +228,7 @@ public struct SlideshowInputPolicy: Sendable, Equatable {
     public let hasSheet: Bool
     public let hasAppModal: Bool
     public let isEditingText: Bool
-    /// メニュー追跡など、AppKit がキーを処理している間。App からは通常 false。
+    /// Whether AppKit is handling keys, such as during menu tracking. Normally false from the app.
     public let menuOwnsInput: Bool
 
     public init(
@@ -263,8 +270,9 @@ public struct SlideshowInputPolicy: Sendable, Equatable {
     }
 }
 
-/// 開始できるかの共通判断（FR-114・115）。読み込み中でも候補が表示されていれば開始でき、
-/// 全画面からも開始できる。編集中・シート・アプリモーダル・実行中・復帰中は不可。
+/// Shared decision for whether the slideshow can start (FR-114, FR-115). It can start while loading if a candidate
+/// is visible, and it can start from full screen. It cannot start while editing, with a sheet or app modal,
+/// while active, or while restoring.
 public struct SlideshowStartPolicy: Sendable, Equatable {
     public let hasCandidate: Bool
     public let isLoading: Bool
@@ -306,12 +314,13 @@ public struct SlideshowStartPolicy: Sendable, Equatable {
 }
 
 
-/// 3ペインへ戻すときの仕切りの位置（FR-088、research.md R41）。保存しない。状態の持ち主は `MainSplitViewController` だけ。
+/// Divider positions when returning to the three-pane layout (FR-088, research.md R41). Not persisted.
+/// The state is owned only by `MainSplitViewController`.
 public enum PaneWidths {
-    /// 3ペインへ戻すときの2本の仕切りの位置（FR-088）。`savedWidths`・`minimumWidths` は
-    /// ツリー・ファイルリスト・プレビューの3要素。
-    /// プレビューが最小幅に足りなければ、ファイルリスト → ツリーの順に最小幅まで詰める。
-    /// 不正な入力では初回の既定（220 / 360 / 残り）を使う
+    /// Positions of the two dividers when returning to the three-pane layout (FR-088). `savedWidths` and
+    /// `minimumWidths` contain three elements: tree, file list, and preview.
+    /// If the preview is below its minimum width, shrinks the file list and then the tree down to their minimums.
+    /// Uses the initial defaults (220 / 360 / remainder) for invalid input.
     public static func dividerPositions(
         savedWidths: [Double],
         totalWidth: Double,

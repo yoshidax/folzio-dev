@@ -1,17 +1,21 @@
 import Foundation
 
-/// ツリー最上部の「お気に入り」に並べるフォルダ。登録順で、同じ場所を重複して持たない（FR-061〜067）
+/// Folders listed under Favorites at the top of the tree. Kept in registration order without duplicate locations
+/// (FR-061–067).
 public struct FavoriteFolders: Sendable, Equatable {
     public private(set) var urls: [URL]
 
-    /// ユーザーが付けた表示名。キーは `key(_:)`（`standardizedFileURL.path`）。表示名を付けていない登録は載せない（R48）
-    /// 不変条件:
-    /// - キーは、すべて `urls` に登録されている場所のキー
-    /// - 値は `FavoriteName.normalized(_:)` を通した値で、1〜255 文字・改行なし・前後に空白なし
+    /// User-assigned display names. Keys are `key(_:)` (`standardizedFileURL.path`). Entries without a display name
+    /// are omitted (R48).
+    /// Invariants:
+    /// - Every key is a key for a location registered in `urls`.
+    /// - Every value has been normalized by `FavoriteName.normalized(_:)`: 1–255 characters, no newlines,
+    ///   and no leading or trailing whitespace.
     private var customNames: [String: String]
 
-    /// 重複は先勝ちで除き、順序を保つ。
-    /// `customNames` はキーを `key(_:)` に揃え、未登録のキーと、正規化して空になる値を捨てる（R48、R49）
+    /// Removes duplicates keeping the first occurrence and preserves the order.
+    /// Normalizes `customNames` keys with `key(_:)` and drops keys that are not registered and values that normalize to
+    /// empty (R48, R49).
     public init(urls: [URL] = [], customNames: [String: String] = [:]) {
         var seen = Set<String>()
         self.urls = urls.filter { seen.insert(Self.key($0)).inserted }
@@ -30,7 +34,7 @@ public struct FavoriteFolders: Sendable, Equatable {
         return urls.contains { Self.key($0) == key }
     }
 
-    /// 未登録なら末尾に追加して true。登録済みなら変更せず false（FR-062）
+    /// Appends the URL and returns true when it is not registered; returns false without changes when it is (FR-062).
     @discardableResult
     public mutating func add(_ url: URL) -> Bool {
         guard !contains(url) else { return false }
@@ -38,7 +42,8 @@ public struct FavoriteFolders: Sendable, Equatable {
         return true
     }
 
-    /// 登録だけを取り除く。実際のフォルダには触れない（FR-064）。表示名も一緒に破棄する（EC-44）
+    /// Removes only the registration. Does not touch the actual folder (FR-064). Also discards the display name
+    /// (EC-44).
     @discardableResult
     public mutating func remove(_ url: URL) -> Bool {
         let key = Self.key(url)
@@ -48,20 +53,22 @@ public struct FavoriteFolders: Sendable, Equatable {
         return true
     }
 
-    /// 付けた表示名。未登録・表示名なしは nil（FR-101）
+    /// The assigned display name, or nil when the URL is not registered or has no display name (FR-101).
     public func customName(for url: URL) -> String? {
         customNames[Self.key(url)]
     }
 
-    /// 表示名があればそれ、なければ `defaultName`（FR-101）
+    /// Returns the display name when present; otherwise returns `defaultName` (FR-101).
     public func displayName(for url: URL, defaultName: String) -> String {
         customName(for: url) ?? defaultName
     }
 
-    /// 編集で確定した入力を反映する（FR-099、R50）。未登録の場所なら false。
-    /// 正規化した結果が現在の表示名と同じなら何もせず false（表示名なしの項目で `defaultName` と同じ名前を
-    /// 確定しても表示名は付かない）。nil なら表示名を解除、それ以外は表示名にして true。
-    /// 表示名ありの項目では `defaultName` と同じ名前も表示名として残す（EC-41）
+    /// Applies the input committed from editing (FR-099, R50). Returns false for an unregistered location.
+    /// Does nothing and returns false when the normalized result equals the current display name (committing the same
+    /// name as `defaultName` for an item without a display name does not add one). A nil result clears the display
+    /// name;
+    /// any other result sets it and returns true. For an item that already has a display name, keeps a name equal to
+    /// `defaultName` as the display name (EC-41).
     @discardableResult
     public mutating func commitDisplayName(_ input: String, for url: URL, defaultName: String) -> Bool {
         let key = Self.key(url)
@@ -72,22 +79,22 @@ public struct FavoriteFolders: Sendable, Equatable {
         if let normalized {
             customNames[key] = normalized
         } else {
-            // 空で確定。解除する表示名がなければ変化なし
+            // Committed empty. No change when there is no display name to clear.
             guard customNames.removeValue(forKey: key) != nil else { return false }
         }
         return true
     }
 
-    /// 保存用。標準化した絶対パス → 表示名（R49）
+    /// Persistent form: standardized absolute path → display name (R49).
     public var customNamesByPath: [String: String] { customNames }
 
-    /// 同一性のキー。URL 同士の == は末尾の `/` の有無で一致しないため使わない
+    /// Identity key. URL equality is not used because it differs depending on a trailing `/`.
     private static func key(_ url: URL) -> String {
         url.standardizedFileURL.path
     }
 }
 
-/// お気に入りの項目が登録時の場所にフォルダとしてあるか。保存しない（FR-067）
+/// Whether a favorite item still exists as a folder at its registered location. Not persisted (FR-067).
 public enum FavoriteAvailability: Sendable, Equatable {
     case unknown, available, missing
 }
