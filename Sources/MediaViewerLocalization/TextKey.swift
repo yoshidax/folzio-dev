@@ -70,6 +70,8 @@ public enum TextKey: String, CaseIterable, Sendable {
     case emptyNoMatches = "empty.noMatches"
     case emptyAccessDenied = "empty.accessDenied"
 
+    case previewScrollHorizontal = "preview.scroll.horizontal"
+    case previewScrollVertical = "preview.scroll.vertical"
     case previewNoMedia = "preview.noMedia"
     case previewUnavailable = "preview.unavailable"
     case previewAnimationUnavailable = "preview.animationUnavailable"
@@ -320,6 +322,8 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "検索結果が0件のときの空状態"
         case .emptyAccessDenied:
             return "フォルダを読めないときの空状態"
+        case .previewScrollHorizontal, .previewScrollVertical:
+            return "プレビュー画像のスクロールバーのアクセシビリティラベル"
         case .previewNoMedia:
             return "表示するメディアファイルがないときのプレビュー"
         case .previewUnavailable:
