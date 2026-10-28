@@ -40,7 +40,8 @@ OSS として配布するため、ソースコードのコメントは英語で�
 
 1. `swift build`
 2. `swift test`
-3. `scripts/check-no-network.sh` と `scripts/check-readme-sync.sh master`
+3. `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、
+   `scripts/check-english-comments.sh`
 4. 起動スモーク（3ペインが表示されること）
    - `scripts/make-app.sh`
    - `open .build/MediaViewer.app`
