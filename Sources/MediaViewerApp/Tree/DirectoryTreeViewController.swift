@@ -3,6 +3,22 @@ import MediaViewerCore
 import MediaViewerLocalization
 
 @MainActor
+private final class DragAwareOutlineView: NSOutlineView {
+    var isTrackingMouse = false
+    var beganDrag = false
+    var trackingEnded: ((Bool, Int, Int) -> Void)?
+
+    override func mouseDown(with event: NSEvent) {
+        let previousRow = selectedRow
+        isTrackingMouse = true
+        beganDrag = false
+        super.mouseDown(with: event)
+        isTrackingMouse = false
+        trackingEnded?(beganDrag, previousRow, clickedRow)
+    }
+}
+
+@MainActor
 final class DirectoryTreeViewController: NSViewController {
     final class Node {
         var folder: FolderNode
@@ -46,7 +62,7 @@ final class DirectoryTreeViewController: NSViewController {
     weak var historyNavigator: HistoryNavigator?
     private let settings: SettingsStore
     private let confirmation: ConfirmationPresenter
-    private let outlineView = NSOutlineView()
+    private let outlineView = DragAwareOutlineView()
     private let scrollView = NSScrollView()
 
     private var roots: [Node] = []
@@ -612,6 +628,7 @@ final class DirectoryTreeViewController: NSViewController {
     /// 検索結果の表示中に、選択中のフォルダの行をクリックしたら、そのフォルダの一覧に戻す（FR-086）。
     /// 開閉の三角と「お気に入り」の見出しでは何もしない。選択が変わるクリックは outlineViewSelectionDidChange に任せる
     @objc private func clickedRow(_ sender: Any?) {
+        guard !outlineView.isTrackingMouse else { return }
         let event = NSApp.currentEvent
         defer { selectionChangeClickNumber = nil }
         guard model.isShowingSearchResults else { return }
@@ -679,7 +696,26 @@ final class DirectoryTreeViewController: NSViewController {
         outlineView.allowsEmptySelection = true
         outlineView.dataSource = self
         outlineView.delegate = self
+        outlineView.trackingEnded = { [weak self] dragged, previousRow, clickedRow in
+            guard let self else { return }
+            if dragged {
+                self.isRestoringSelection = true
+                if previousRow >= 0, previousRow < self.outlineView.numberOfRows {
+                    self.outlineView.selectRowIndexes(IndexSet(integer: previousRow), byExtendingSelection: false)
+                } else { self.outlineView.deselectAll(nil) }
+                self.isRestoringSelection = false
+                return
+            }
+            if previousRow != self.outlineView.selectedRow {
+                self.outlineViewSelectionDidChange(Notification(name: NSOutlineView.selectionDidChangeNotification, object: self.outlineView))
+            } else if clickedRow >= 0 {
+                self.clickedRow(self.outlineView)
+            }
+        }
         outlineView.registerForDraggedTypes([.fileURL])
+        outlineView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
+        outlineView.setDraggingSourceOperationMask(.copy, forLocal: false)
+        InternalDrag.register(outlineView)
         outlineView.menu = makeContextMenu()
         outlineView.target = self
         outlineView.doubleAction = #selector(toggleClickedFolder(_:))
@@ -1276,13 +1312,35 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
         return node.folder.isExpandable
     }
 
+    func outlineView(_ outlineView: NSOutlineView, draggingSession session: NSDraggingSession, willBeginAt screenPoint: NSPoint, forItems draggedItems: [Any]) {
+        self.outlineView.beganDrag = true
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> NSPasteboardWriting? {
+        guard let node = item as? Node,
+              FavoriteCommands.trashTarget(role(for: node), roots: rootURLs) != nil else { return nil }
+        return node.url as NSURL
+    }
+
     func outlineView(
         _ outlineView: NSOutlineView,
         validateDrop info: any NSDraggingInfo,
         proposedItem item: Any?,
         proposedChildIndex index: Int
     ) -> NSDragOperation {
-        // 見出し・お気に入りの項目はドロップ先にならない
+        if InternalDrag.urls(info) != nil {
+            guard index == NSOutlineViewDropOnItemIndex else { return [] }
+            let destination: URL
+            if let node = item as? Node, node.folder.accessState != .denied {
+                destination = node.url
+            } else if let favorite = item as? FavoriteEntry, favorite.availability == .available {
+                destination = favorite.url
+            } else { return [] }
+            let operation = InternalDrag.operation(info, destination: destination)
+            if !operation.isEmpty { outlineView.setDropItem(item, dropChildIndex: NSOutlineViewDropOnItemIndex) }
+            return operation
+        }
+        // 外部ドラッグの既存動作
         guard let role = role(for: item), FavoriteCommands.acceptsFiles(role) else { return [] }
         guard let node = item as? Node,
               node.folder.accessState != .denied,
@@ -1313,6 +1371,21 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
         item: Any?,
         childIndex index: Int
     ) -> Bool {
+        if let urls = InternalDrag.urls(info) {
+            guard index == NSOutlineViewDropOnItemIndex else { return false }
+            let destination: URL
+            if let node = item as? Node, node.folder.accessState != .denied {
+                destination = node.url
+            } else if let favorite = item as? FavoriteEntry, favorite.availability == .available {
+                destination = favorite.url
+            } else { return false }
+            guard !InternalDrag.operation(info, destination: destination).isEmpty else { return false }
+            let copy = NSEvent.modifierFlags.contains(.option)
+            Task { @MainActor in
+                await coordinator.internalDrop(urls, to: destination, copy: copy)
+            }
+            return true
+        }
         guard let role = role(for: item), FavoriteCommands.acceptsFiles(role) else { return false }
         guard let node = item as? Node,
               node.folder.accessState != .denied,
@@ -1448,7 +1521,7 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
-        guard !isRestoringSelection else { return }
+        guard !isRestoringSelection, !outlineView.isTrackingMouse else { return }
         if let event = NSApp.currentEvent, event.type == .leftMouseDown {
             selectionChangeClickNumber = event.eventNumber
         }

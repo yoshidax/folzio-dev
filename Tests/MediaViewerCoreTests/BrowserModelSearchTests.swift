@@ -6,6 +6,26 @@ import Testing
 @Suite("BrowserModel の検索")
 @MainActor
 struct BrowserModelSearchTests {
+    @Test("移動済みの検索結果と遅れて届く旧結果を外し、残りの選択を保つ")
+    func movedSearchResultsAreNotReintroduced() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.root)
+        let moved = try env.makeResult("trip/day1/cat.jpg")
+        let kept = try env.makeResult("trip/day2/dog.jpg")
+        env.model.startSearch(pattern(), root: env.root)
+        await send([moved, kept], env, expecting: 2)
+        env.model.select([moved.url, kept.url], focused: kept.url)
+        env.model.didMoveSearchItems([env.folder("trip/day1")])
+        #expect(env.model.isShowingSearchResults)
+        #expect(env.model.listing.files.map(\.url) == [kept.url])
+        #expect(env.model.selection.selected == [kept.url])
+        #expect(env.model.selection.focused == kept.url)
+        env.searcher.send([moved])
+        await finish(env)
+        #expect(env.model.listing.files.map(\.url) == [kept.url])
+    }
+
     // MARK: - フィクスチャ
 
     /// 一時フォルダ `root`。`cover.jpg`・`trip/day1/1.jpg`・`trip/day2/`・`empty/` を持つ。

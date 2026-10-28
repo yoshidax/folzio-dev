@@ -7,6 +7,23 @@ import Testing
 struct FileOperationServiceTests {
     private let service = FileOperationService()
 
+    @Test("同じ項目への置き換えは元を消さず拒否する")
+    func refusesReplaceOfSource() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let source = folder.appendingPathComponent("a.jpg")
+        let before = try Data(contentsOf: source)
+        let result = await service.execute(FileOperation(kind: .copy, sources: [source], destination: folder), resolution: .replace)
+        #expect(result.succeeded.isEmpty)
+        #expect(result.failed.count == 1)
+        #expect(try Data(contentsOf: source) == before)
+        let kept = await service.execute(FileOperation(kind: .copy, sources: [source], destination: folder), resolution: .keepBoth)
+        #expect(kept.failed.isEmpty)
+        #expect(kept.succeeded.count == 1)
+        #expect(try Data(contentsOf: source) == before)
+    }
+
     @Test("コピーすると元を残したまま操作先に複製される")
     func copiesFile() async throws {
         let root = try makeTemporaryDirectory()
