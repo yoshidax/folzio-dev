@@ -1,14 +1,15 @@
 import Foundation
 import MediaViewerCore
 
-/// 翻訳単位に入れる値
+/// Value passed to a translation unit.
 public enum TextValue: Sendable, Equatable {
     case text(String)
     case count(Int)
     case number(Int)
 }
 
-/// 文言と書式の窓口（data-model.md）。起動時に1つ作り、起動中は変えない
+/// Entry point for localized text and formatting (data-model.md). Create one at launch and do not change it
+/// while the app is running.
 public struct Localizer: @unchecked Sendable {
     public let language: String
     public let locale: Locale
@@ -18,7 +19,7 @@ public struct Localizer: @unchecked Sendable {
     private let fallbackTable: Bundle
     private let formatters = FormatterCache()
 
-    /// 保存した表示言語から文言と書式を準備する。
+    /// Prepares localized text and formatting from the saved display language.
     public static func forLanguage(_ language: String, currentLocale: Locale = .current) -> Localizer {
         let bundle = LocalizationBundle.resolve()
         let resolved = DisplayLanguage.resolve(
@@ -35,7 +36,8 @@ public struct Localizer: @unchecked Sendable {
         )
     }
 
-    /// テスト用にバンドル・表示言語・開発言語・書式のロケールを明示して作る
+    /// Creates an instance for tests with the bundle, display language, development language, existing locale,
+    /// and formatting locale given explicitly.
     public init(bundle: Bundle, language: String, development: String, locale: Locale, numericLocale: Locale? = nil) {
         self.language = language
         self.locale = locale
@@ -44,7 +46,7 @@ public struct Localizer: @unchecked Sendable {
         self.fallbackTable = LocalizationBundle.table(language: development, in: bundle) ?? bundle
     }
 
-    // MARK: - 文言
+    // MARK: - Text
 
     public func text(_ key: TextKey) -> String {
         text(key, [])
@@ -62,7 +64,8 @@ public struct Localizer: @unchecked Sendable {
         text(key, [first, second, third])
     }
 
-    /// 翻訳単位を引き、引数を位置指定の書式で入れる。表示言語に無ければ開発言語（英語）の訳を使う（EC-110）
+    /// Looks up the translation unit and substitutes arguments into its positional format. Uses the development
+    /// language (English) translation when the display language has none (EC-110).
     public func text(_ key: TextKey, _ values: [TextValue]) -> String {
         assert(argumentKindsMatch(values, key.arguments), "引数が TextKey.\(key) と一致しません")
         let format = formatString(for: key)
@@ -83,7 +86,7 @@ public struct Localizer: @unchecked Sendable {
         return String(format: format, locale: locale, arguments: arguments)
     }
 
-    // MARK: - 書式
+    // MARK: - Formatting
 
     public func count(_ value: Int) -> String {
         FormattingLocale.count(value, locale: numericLocale)
@@ -97,19 +100,19 @@ public struct Localizer: @unchecked Sendable {
         formatters.dateTime(date, locale: locale)
     }
 
-    /// 複数のラベルを、地域の区切りで並べる（アクセシビリティのラベル用）
+    /// Joins multiple labels using the region's list separator (for accessibility labels).
     public func list(_ items: [String]) -> String {
         let formatter = ListFormatter()
         formatter.locale = locale
         return formatter.string(from: items) ?? items.joined(separator: ", ")
     }
 
-    /// Core へ渡す種類名
+    /// Kind names passed to Core.
     public var kindNames: KindNames {
         KindNames(folder: text(.kindFolder), zipArchive: text(.kindZipArchive))
     }
 
-    // MARK: - 内部
+    // MARK: - Internals
 
     private static let missing = "\u{2026}"
 
@@ -135,7 +138,7 @@ public struct Localizer: @unchecked Sendable {
     }
 }
 
-/// `DateFormatter` を使い回す。呼び出しは `NSLock` で直列化する
+/// Reuses `DateFormatter` instances. Calls are serialized with an `NSLock`.
 private final class FormatterCache: @unchecked Sendable {
     private let lock = NSLock()
     private var formatters: [String: DateFormatter] = [:]

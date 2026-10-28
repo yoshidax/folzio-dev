@@ -1,6 +1,7 @@
 import Foundation
 
-/// 保存された値を対応言語に照合し、未設定・未知の値には開発言語を使う。
+/// Matches a saved value against the supported languages and falls back to the development language
+/// when the value is unset or unknown.
 public enum DisplayLanguage {
     public static func resolve(saved: String?, supported: [String], development: String = "en") -> String {
         guard let saved, supported.contains(saved) else { return development }

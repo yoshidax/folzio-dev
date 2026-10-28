@@ -1,19 +1,20 @@
 import Foundation
 import MediaViewerCore
 
-/// 翻訳単位の引数の種類（data-model.md）。位置指定の書式で入れる
+/// Kinds of arguments accepted by a translation unit (data-model.md). Arguments are inserted using positional
+/// format specifiers.
 public enum TextArgument: Sendable, Equatable {
-    /// ファイル名・パス・キーワード・OS の理由など。文字どおりに入れる（EC-109）
+    /// File names, paths, keywords, OS reasons, and similar values. Inserted verbatim (EC-109).
     case text
-    /// 件数。複数形の判定に使う整数と、地域の書式で整形した件数の2つを渡す（R6）
+    /// A count. Passes two values: the integer used for plural selection and the count formatted for the region (R6).
     case count
-    /// 語形が変わらないラベルの値としての件数（整形済みの文字列だけを渡す）
+    /// A count used as the value of a label whose wording does not change (passes only the formatted string).
     case number
 }
 
-/// 画面に表示する1つの文言（翻訳単位）。管理元は `Resources/{en,ja}.lproj/Localizable.strings(dict)`
+/// One user-visible string (translation unit). Defined in `Resources/{en,ja}.lproj/Localizable.strings(dict)`.
 public enum TextKey: String, CaseIterable, Sendable {
-    // MARK: - Core の値
+    // MARK: - Core Values
 
     case errorSearchRootEmpty = "error.searchRoot.empty"
     case errorSearchRootNotAbsolute = "error.searchRoot.notAbsolute"
@@ -82,7 +83,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case kindFolder = "kind.folder"
     case kindZipArchive = "kind.zipArchive"
 
-    // MARK: - メニューバー
+    // MARK: - Menu Bar
 
     case menuAppSettings = "menu.app.settings"
     case menuAppQuit = "menu.app.quit"
@@ -131,14 +132,14 @@ public enum TextKey: String, CaseIterable, Sendable {
     case menuGoBack = "menu.go.back"
     case menuGoForward = "menu.go.forward"
 
-    // MARK: - 右クリックメニュー
+    // MARK: - Context Menu
 
     case contextCopySingle = "context.copy.single"
     case contextCopyMultiple = "context.copy.multiple"
     case contextPasteHere = "context.pasteHere"
     case contextMovePasteHere = "context.movePasteHere"
 
-    // MARK: - ツールバー
+    // MARK: - Toolbar
 
     case toolbarHistory = "toolbar.history"
     case toolbarPanes = "toolbar.panes"
@@ -154,7 +155,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case toolbarThumbnails = "toolbar.thumbnails"
     case toolbarList = "toolbar.list"
 
-    // MARK: - 設定ウインドウ
+    // MARK: - Settings Window
 
     case settingsWindow = "settings.window"
     case settingsLanguage = "settings.language"
@@ -176,7 +177,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case settingsTransitionSlide = "settings.transition.slide"
     case settingsTransitionZoom = "settings.transition.zoom"
 
-    // MARK: - ファイルリスト・ツリー
+    // MARK: - File List and Tree
 
     case listColumnName = "list.column.name"
     case listColumnCreationDate = "list.column.creationDate"
@@ -193,7 +194,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case treeA11yFavoriteName = "tree.a11y.favoriteName"
     case treeA11yFolderName = "tree.a11y.folderName"
 
-    // MARK: - 検索
+    // MARK: - Search
 
     case searchKeyword = "search.keyword"
     case searchRoot = "search.root"
@@ -210,7 +211,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case searchBarCount = "search.bar.count"
     case searchBarCountLimited = "search.bar.countLimited"
 
-    // MARK: - 確認モーダル・ダイアログ
+    // MARK: - Confirmation Modals and Dialogs
 
     case dialogConfirmCopy = "dialog.confirm.copy"
     case dialogConfirmMove = "dialog.confirm.move"
@@ -246,11 +247,11 @@ public enum TextKey: String, CaseIterable, Sendable {
     case dialogCancel = "dialog.cancel"
     case dialogOK = "dialog.ok"
 
-    // MARK: - アクセシビリティ
+    // MARK: - Accessibility
 
     case a11yThumbnail = "a11y.thumbnail"
 
-    /// 引数の並び（位置指定の書式の位置と種類を決める）
+    /// Argument sequence (determines the positions and kinds of the positional format specifiers).
     public var arguments: [TextArgument] {
         switch self {
         case .errorZipCannotOpen, .errorOperationTrashExistingFailed, .errorOperationSystemFailure,
@@ -277,18 +278,18 @@ public enum TextKey: String, CaseIterable, Sendable {
         }
     }
 
-    /// 翻訳者向けの説明（使われる場所と各値の意味）
+    /// Translator-facing description (where the string is used and what each value means).
     public var comment: String {
         switch self {
         case .errorSearchRootEmpty, .errorSearchRootNotAbsolute, .errorSearchRootNotFound,
              .errorSearchRootNotAFolder, .errorSearchRootAccessDenied, .errorSearchRootNoUsableFolder:
-            return "検索シートの起点の検証で入力欄の下に出す理由"
+            return "Reason shown below the input field when the search sheet validates its search root"
         case .errorZipCannotOpen:
-            return "zip を開けない理由の前置き。値は理由の文"
+            return "Lead-in for the reason a zip cannot be opened. The value is the reason sentence"
         case .errorZipNotFound, .errorZipAccessDenied, .errorZipNotAZip, .errorZipMultiDisk:
-            return "zip を開けない理由（errorZipCannotOpen の値）"
+            return "Reason a zip cannot be opened (the value of errorZipCannotOpen)"
         case .errorZipEntryEncrypted, .errorZipUnsupportedMethod, .errorZipTooLarge:
-            return "zip の中の項目を表示できない理由"
+            return "Reason an entry in a zip cannot be displayed"
         case .errorZipCorruptedCannotStartInflate, .errorZipCorruptedCompressedDataDamaged,
              .errorZipCorruptedDataTruncated, .errorZipCorruptedCompressedDataTruncated,
              .errorZipCorruptedHeaderDamaged, .errorZipCorruptedInvalidOffset,
@@ -296,59 +297,59 @@ public enum TextKey: String, CaseIterable, Sendable {
              .errorZipCorruptedEntryNotFound, .errorZipCorruptedSizeMismatch,
              .errorZipCorruptedDataOutsideFile, .errorZipCorruptedReadCancelled,
              .errorZipCorruptedReadFailed, .errorZipCorruptedUnreadable:
-            return "zip の内容が壊れている理由（errorZipCannotOpen の値）"
+            return "Reason the contents of a zip are damaged (the value of errorZipCannotOpen)"
         case .errorNameEmpty, .errorNameForbiddenCharacter, .errorNameLeadingDot,
              .errorNameDuplicate, .errorNameBecomesPackage:
-            return "名前の変更で使えない名前の理由"
+            return "Reason a name cannot be used for renaming"
         case .errorOperationNoDestination, .errorOperationDestinationNotFound,
              .errorOperationSourceNotFound, .errorOperationIntoItself,
              .errorOperationSameNameExists, .errorOperationSameNameAtDestination:
-            return "ファイル操作の失敗の理由"
+            return "Reason a file operation failed"
         case .errorOperationTrashExistingFailed:
-            return "既存の項目をゴミ箱へ移動できなかったときの理由。値は OS が返す理由"
+            return "Reason an existing item could not be moved to the Trash. The value is the reason returned by the OS"
         case .errorOperationSystemFailure:
-            return "OS がファイル操作を拒否したときの理由。値は OS が返す理由（訳し直さない）"
+            return "Reason the OS rejected a file operation. The value is the reason returned by the OS (do not re-translate)"
         case .emptyFilterImages, .emptyFilterVideos:
-            return "種類フィルタで一覧が0件のときの空状態"
+            return "Empty state when the media type filter leaves no items"
         case .emptyFolderNotFound:
-            return "開こうとしたフォルダが見つからないときの空状態"
+            return "Empty state when the folder to open cannot be found"
         case .emptyLoading:
-            return "ファイルリストとプレビューの読み込み中の表示"
+            return "Loading state for the file list and preview"
         case .emptySearching:
-            return "検索中の空状態"
+            return "Empty state while searching"
         case .emptyNoMedia:
-            return "対応するメディアファイルがないフォルダの空状態"
+            return "Empty state for a folder with no supported media files"
         case .emptyNoMatches:
-            return "検索結果が0件のときの空状態"
+            return "Empty state when the search returns no results"
         case .emptyAccessDenied:
-            return "フォルダを読めないときの空状態"
+            return "Empty state when the folder cannot be read"
         case .previewScrollHorizontal, .previewScrollVertical:
-            return "プレビュー画像のスクロールバーのアクセシビリティラベル"
+            return "Accessibility label for the preview image's scroll bars"
         case .previewNoMedia:
-            return "表示するメディアファイルがないときのプレビュー"
+            return "Preview when there is no media file to display"
         case .previewUnavailable:
-            return "プレビューを表示できないときの見出し。値は理由"
+            return "Title shown when the preview cannot be displayed. The value is the reason"
         case .previewAnimationUnavailable:
-            return "アニメーション画像を表示できないときの理由"
+            return "Reason an animated image cannot be displayed"
         case .previewFailureUnreadable, .previewFailureUnsupportedFormat, .previewFailureCorrupted:
-            return "プレビューを表示できない理由"
+            return "Reason the preview cannot be displayed"
         case .kindFolder, .kindZipArchive:
-            return "種類名のフォールバック（OS が種類名を返さないとき）"
+            return "Fallback kind name (when the OS does not return a kind name)"
         case .menuAppSettings:
-            return "アプリケーションメニューの設定項目（ダイアログを開くので末尾に …）"
+            return "Settings item in the application menu (ends with … because it opens a dialog)"
         case .menuAppQuit:
-            return "アプリケーションメニューの終了項目。アプリ名は訳さない"
+            return "Quit item in the application menu. Do not translate the app name"
         case .menuFile, .menuEdit, .menuView, .menuGo:
-            return "メニューバーのメニュー名"
+            return "Menu bar menu names"
         case .menuFileOpen, .menuFileShowContents, .menuFileEnclosingFolder,
              .menuFileRevealInFinder, .menuFileAddToFavorites, .menuFileFind,
              .menuFileTrash, .menuFileRemoveFromFavorites:
-            return "ファイルメニューの項目（状態でゴミ箱とお気に入りから削除が入れ替わる）"
+            return "File menu items (the Trash and Remove from Favorites items swap depending on the state)"
         case .menuEditUndo, .menuEditRedo, .menuEditCut, .menuEditCopy, .menuEditPaste,
              .menuEditMovePaste, .menuEditDuplicate, .menuEditRename, .menuEditSelectAll:
-            return "編集メニューの項目"
+            return "Edit menu items"
         case .menuViewShowToolbar, .menuViewHideToolbar:
-            return "表示メニューのツールバーの表示切り替え（状態で入れ替わる）"
+            return "Toolbar visibility toggle in the View menu (the item swaps depending on the state)"
         case .menuViewFullScreen, .menuViewZoomIn, .menuViewZoomOut, .menuViewZoomToFit,
              .menuViewStartSlideshow, .menuViewShowFileListOnly, .menuViewShowPreviewOnly,
              .menuViewFocusTree, .menuViewFocusFileList, .menuViewFocusPreview,
@@ -356,121 +357,121 @@ public enum TextKey: String, CaseIterable, Sendable {
              .menuViewLargerThumbnails, .menuViewSmallerThumbnails,
              .menuViewShowImagesOnly, .menuViewShowVideosOnly, .menuViewShowZipFiles,
              .menuViewSortBy:
-            return "表示メニューの項目"
+            return "View menu items"
         case .menuGoBack, .menuGoForward:
-            return "移動メニューの履歴の項目"
+            return "History items in the Go menu"
         case .contextCopySingle:
-            return "右クリックメニューのコピー（1件）。値はファイル名"
+            return "Copy in the context menu (single item). The value is the file name"
         case .contextCopyMultiple:
-            return "右クリックメニューのコピー（複数件）。件数で語形が変わる"
+            return "Copy in the context menu (multiple items). The wording changes with the count"
         case .contextPasteHere, .contextMovePasteHere:
-            return "ツリーの右クリックメニューのペースト"
+            return "Paste in the directory tree's context menu"
         case .toolbarHistory, .toolbarPanes, .toolbarZoomGroup, .toolbarMediaType,
              .toolbarViewMode, .toolbarSize:
-            return "ツールバーのグループの名前"
+            return "Toolbar group names"
         case .toolbarThumbnailSize:
-            return "ツールバーとサイズバーのサムネイルのサイズ。ショートカットを含む"
+            return "Thumbnail size in the toolbar and size bar. Includes the shortcut"
         case .toolbarStartSlideshowHelp:
-            return "スライドショーのツールチップ。ショートカットを含む"
+            return "Slideshow tooltip. Includes the shortcut"
         case .toolbarZoomInHelp, .toolbarZoomToFitHelp, .toolbarZoomOutHelp:
-            return "拡大・縮小のツールチップ。ショートカットを含む"
+            return "Zoom in and out tooltips. Include the shortcuts"
         case .toolbarThumbnails, .toolbarList:
-            return "ツールバーの表示形式の選択肢"
+            return "View mode options in the toolbar"
         case .settingsWindow:
-            return "設定ウインドウの名前"
+            return "Settings window title"
         case .settingsLanguage:
-            return "設定ウインドウの表示言語のラベル"
+            return "Display language label in the Settings window"
         case .settingsLanguageEnglish, .settingsLanguageJapanese:
-            return "表示言語の選択肢。言語名はそれぞれの言語で表示する"
+            return "Display language options. Each language name is shown in that language"
         case .settingsVideo, .settingsFileOperations, .settingsSlideshow:
-            return "設定ウインドウの区分の見出し"
+            return "Section headings in the Settings window"
         case .settingsAutoplay, .settingsLoop, .settingsConfirm, .settingsRepeat:
-            return "設定ウインドウのチェックボックス"
+            return "Checkboxes in the Settings window"
         case .settingsInterval:
-            return "設定ウインドウの切り替え間隔のラベル"
+            return "Interval label in the Settings window"
         case .settingsSeconds:
-            return "切り替え間隔の単位（数値の後ろ）"
+            return "Interval unit (after the number)"
         case .settingsIntervalA11y:
-            return "切り替え間隔の入力欄のアクセシビリティのラベル"
+            return "Accessibility label for the interval field"
         case .settingsTransition:
-            return "設定ウインドウの切り替え効果のラベルとアクセシビリティのラベル"
+            return "Transition label and accessibility label in the Settings window"
         case .settingsTransitionNone, .settingsTransitionCrossfade,
              .settingsTransitionSlide, .settingsTransitionZoom:
-            return "切り替え効果の選択肢"
+            return "Transition options"
         case .listColumnName, .listColumnCreationDate, .listColumnKind, .listColumnLocation:
-            return "リスト形式の列見出し。並べ替えのメニューでも使う"
+            return "List view column headings. Also used in the sort menu"
         case .listSortAscending:
-            return "並べ替えメニューの選択中の列（昇順）。値は列名"
+            return "Selected column in the sort menu (ascending). The value is the column name"
         case .listSortDescending:
-            return "並べ替えメニューの選択中の列（降順）。値は列名"
+            return "Selected column in the sort menu (descending). The value is the column name"
         case .listParentRow:
-            return "一覧の .. の行のアクセシビリティのラベル"
+            return "Accessibility label for the `..` row in the list"
         case .treeColumn:
-            return "ツリーの列見出し"
+            return "Directory tree column heading"
         case .treeFavorites:
-            return "ツリーの固定の行（お気に入り）"
+            return "Fixed row in the directory tree (Favorites)"
         case .treeTooltipNotAccessible, .treeTooltipNotFound:
-            return "ツリーの行のツールチップ"
+            return "Tooltip for a directory tree row"
         case .treeA11yFavoriteName, .treeA11yFolderName:
-            return "ツリーの名前の編集欄のアクセシビリティのラベル"
+            return "Accessibility label for a name edit field in the directory tree"
         case .searchKeyword, .searchRoot, .searchChoose, .searchChooseHelp,
              .searchSearch, .searchError:
-            return "検索シートのラベル・ボタン・アクセシビリティ"
+            return "Labels, buttons, and accessibility text in the search sheet"
         case .searchPanelTitle, .searchPanelMessage, .searchPanelPrompt:
-            return "検索起点のフォルダ選択パネルの文言"
+            return "Text for the folder selection panel used to choose the search root"
         case .searchPanelFailed:
-            return "フォルダ選択パネルを開けなかったときの理由"
+            return "Reason the folder selection panel could not be opened"
         case .searchBarResults:
-            return "検索バーの完了時の文。値はキーワード・起点のフォルダ名・件数の句"
+            return "Completed-state sentence in the search bar. Values are the keyword, search root folder name, and count phrase"
         case .searchBarSearching:
-            return "検索バーの検索中の文。値はキーワード・起点のフォルダ名・件数の句"
+            return "Searching-state sentence in the search bar. Values are the keyword, search root folder name, and count phrase"
         case .searchBarCount:
-            return "検索バーの件数の句。件数で語形が変わる"
+            return "Count phrase in the search bar. The wording changes with the count"
         case .searchBarCountLimited:
-            return "検索バーの件数の句（上限で打ち切り）。件数で語形が変わり、表示件数を値で入れる"
+            return "Count phrase in the search bar (truncated at the limit). The wording changes with the count, and the displayed count is inserted as a value"
         case .dialogConfirmCopy, .dialogConfirmMove:
-            return "コピー・移動の確認の見出し。件数で語形が変わるが件数は表示しない"
+            return "Title for the copy or move confirmation. The wording changes with the count, but the count is not shown"
         case .dialogConfirmRename, .dialogConfirmTrash:
-            return "名前の変更・ゴミ箱の確認の見出し"
+            return "Title for the rename or Trash confirmation"
         case .dialogConfirmItems:
-            return "確認モーダルの対象の件数。値は整形済みの件数"
+            return "Number of items in the confirmation modal. The value is the formatted count"
         case .dialogConfirmBullet:
-            return "確認モーダルの対象の1行。値はファイル名"
+            return "One line per item in the confirmation modal. The value is the file name"
         case .dialogConfirmMore:
-            return "確認モーダルの残りの件数。値は整形済みの件数"
+            return "Remaining item count in the confirmation modal. The value is the formatted count"
         case .dialogConfirmFolderTrash, .dialogConfirmFolderProcess:
-            return "フォルダを中身ごと操作する旨の注記"
+            return "Note that folders are processed with their contents"
         case .dialogConfirmDestination, .dialogConfirmLocation:
-            return "確認モーダルのフォルダのパス。値はパス"
+            return "Folder path in the confirmation modal. The value is the path"
         case .dialogConfirmContinue, .dialogCancel, .dialogOK:
-            return "ダイアログのボタン"
+            return "Dialog buttons"
         case .dialogConfirmDontAsk:
-            return "確認モーダルの「今後この確認を表示しない」"
+            return "The \"Don't ask again\" option in the confirmation modal"
         case .dialogFavoriteRemoveTitle, .dialogFavoriteRemoveItems,
              .dialogFavoriteRemoveNote, .dialogFavoriteRemoveConfirm:
-            return "お気に入りの削除の確認"
+            return "Confirmation for removing from Favorites"
         case .dialogConflictTitle:
-            return "衝突ダイアログの見出し"
+            return "Conflict dialog title"
         case .dialogConflictItems:
-            return "衝突ダイアログの衝突する件数。値は整形済みの件数"
+            return "Conflicting item count in the conflict dialog. The value is the formatted count"
         case .dialogConflictReplace, .dialogConflictKeepBoth, .dialogConflictStop:
-            return "衝突ダイアログのボタン"
+            return "Conflict dialog buttons"
         case .dialogConflictApplyAll:
-            return "衝突ダイアログの「残りすべてに適用」"
+            return "The \"Apply to All\" option in the conflict dialog"
         case .dialogExtensionTitle, .dialogExtensionMessage, .dialogExtensionConfirm:
-            return "拡張子の変更の確認。値はファイル名と新しい拡張子"
+            return "Confirmation for changing the file extension. Values are the file name and the new extension"
         case .dialogRenameFailed:
-            return "名前の変更に失敗したときの見出し"
+            return "Title shown when renaming fails"
         case .dialogOperationFailed:
-            return "ファイル操作に失敗したときの見出し"
+            return "Title shown when a file operation fails"
         case .dialogOperationSummary:
-            return "ファイル操作の成功・失敗の件数。値は整形済みの件数"
+            return "Counts of successful and failed file operations. The values are formatted counts"
         case .dialogOperationFailureLine:
-            return "ファイル操作の失敗の1行。値は名前と理由"
+            return "One failure line for a file operation. The values are the name and the reason"
         case .dialogOperationMore:
-            return "ファイル操作の失敗の残りの件数。値は整形済みの件数"
+            return "Remaining failure count for file operations. The value is the formatted count"
         case .a11yThumbnail:
-            return "サムネイルの画像のアクセシビリティのラベル"
+            return "Accessibility label for a thumbnail image"
         }
     }
 }
