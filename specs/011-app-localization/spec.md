@@ -1,5 +1,8 @@
 # Feature Specification: 日本語・英語への国際化
 
+> **移行済み（2026-10-28）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは 011 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `011-app-localization`
 
 **Created**: 2026-10-28

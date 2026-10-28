@@ -14,13 +14,23 @@ MediaViewer.app/
     ├── MacOS/
     │   └── MediaViewer              # swift build -c release の実行ファイル
     └── Resources/
-        └── AppIcon.icns             # scripts/make-icon.sh の生成物
+        ├── AppIcon.icns             # scripts/make-icon.sh の生成物
+        ├── en.lproj/
+        │   ├── Localizable.strings
+        │   └── Localizable.stringsdict
+        └── ja.lproj/
+            ├── Localizable.strings
+            └── Localizable.stringsdict
 ```
+
+翻訳リソースは `Sources/MediaViewerLocalization/Resources/{ja,en}.lproj/` を管理元とし、Swift Package のリソースバンドルから `.app` 本体へコピーする。両言語の `Localizable.strings` と `Localizable.stringsdict` が揃わなければ `.app` を残さず失敗する。コピー後に署名する。`.app` をビルドディレクトリの外へ移しても両言語を表示できる（FR-155）。表示言語はアプリ設定で選び、OS が提供する文言は OS に従う（EC-111）。言語の追加時はリソース、アプリの選択肢、`CFBundleLocalizations` を更新する（FR-156）。
 
 ## Info.plist の必須キー
 
 | キー | 値 | 用途 |
 |------|----|------|
+| `CFBundleDevelopmentRegion` | `en` | 開発言語と翻訳欠落時のフォールバック |
+| `CFBundleLocalizations` | `ja`, `en` | 対応言語 |
 | `CFBundleExecutable` | `MediaViewer` | 実行ファイル名 |
 | `CFBundleIdentifier` | `local.my-img-viewer.MediaViewer` | アプリの同一性 |
 | `CFBundleName` | `MediaViewer` | 表示名 |
@@ -31,6 +41,8 @@ MediaViewer.app/
 | `LSMinimumSystemVersion` | `15.0` | 対象 OS |
 | `NSHighResolutionCapable` | `true` | Retina 対応 |
 | `NSPrincipalClass` | `NSApplication` | AppKit アプリ |
+
+`CFBundleAllowMixedLocalizations` は設定しない。OS の部品がアプリの設定言語と一致することは保証しない。
 
 ## アイコン生成の契約
 
@@ -68,3 +80,9 @@ MediaViewer.app/
 
 書類アイコン、メニューバー常駐アイコン、ウィンドウタイトルバーのアイコンは対象外（FR-045）。
 外観バリエーション（ライト/ダーク/ティント）は持たない（macOS 15 対象のため）。
+
+### 翻訳リソースの確認
+
+- `en.lproj`・`ja.lproj` に `Localizable.strings` と `Localizable.stringsdict` があり、Info.plist の開発言語が `en`、対応言語が `ja`・`en` である
+- `codesign --verify --deep --strict` が成功し、ビルドディレクトリの外にコピーした `.app` でも両言語を表示できる（SC-066）
+- アプリの設定で表示言語を切り替えると、再起動せずアプリ管理の文言が切り替わる

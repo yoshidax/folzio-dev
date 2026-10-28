@@ -5,8 +5,8 @@ English | [日本語](README.ja.md)
 A native three-pane media viewer for macOS. Browse images, animated GIF/WebP, and videos with a directory tree on the left,
 a file list (list / thumbnails) in the center, and a preview on the right, and organize files with Finder-like operations.
 
-The app's user interface is currently in Japanese only. Menu and button names in this README are English translations,
-with the Japanese label shown in the app given in parentheses where it helps you find it.
+The interface supports English and Japanese and defaults to English. Open Settings (⌘,) and choose Language to change it;
+the choice takes effect immediately and is saved for the next launch. macOS-provided interface text follows system settings.
 
 - **Stack**: Swift 6 + AppKit only. No external package dependencies. Built as a Swift Package (no Xcode project)
 - **Supported OS**: macOS 15 or later
@@ -23,7 +23,7 @@ with the Japanese label shown in the app given in parentheses where it helps you
   and press ⌘↑ or use the `..` row at the top to return to the parent (there is no `..` row at the top level of home or a volume). Navigating within the list keeps the tree selection
   in sync with that folder (keyboard focus stays on the file list). Folders can be copied, renamed, moved to the Trash, and moved just like files
 - Aspect-preserving fit display (images smaller than the pane are enlarged as far as they fit without overflowing. The same applies in full screen)
-- Zooming the preview image (the three magnifier buttons in the toolbar, "Zoom In" (拡大), "Fit to View" (表示領域に合わせる), and "Zoom Out" (縮小); the View menu; or ⌘+ / ⌘- / ⌘0.
+- Zooming the preview image (the three magnifier buttons in the toolbar, "Zoom In" (拡大), "Zoom to Fit" (表示領域に合わせる), and "Zoom Out" (縮小); the View menu; or ⌘+ / ⌘- / ⌘0.
   ⌘= also zooms in). The fit size counts as 100%, and the zoom ranges from 25% to 800% in 25% steps. Images zoom around their center,
   and parts that overflow are not shown (there is no scrolling, panning, pinching, or zoom-level readout)
   - Available in the three-pane layout, the preview-only layout, and full screen. Disabled for videos, an empty preview, images that cannot be displayed, and the file-list-only layout
@@ -33,11 +33,11 @@ with the Japanese label shown in the app given in parentheses where it helps you
 - Video playback, looping, an autoplay setting, and play/pause with the Space key
 - Switching between list and thumbnail views, adjustable thumbnail size, and sorting by column header
 - A toolbar with view-mode buttons and a thumbnail-size slider (hidden by default. Toggle it with ⇧⌘T; its state is restored on the next launch)
-- Pane layout switching (three panes / file list only / preview only). Switch with the "File List Only" and "Preview Only" buttons at the left end of the toolbar,
+- Pane layout switching (three panes / file list only / preview only). Switch with the "Show File List Only" and "Show Preview Only" buttons at the left end of the toolbar,
   ⌃⌘2 / ⌃⌘3, or the matching items in the View menu (表示). All three share the same state (the menu and shortcuts work even while the toolbar is hidden).
   The tree cannot be hidden on its own, so the layouts are three panes, file list only, and preview only
   - In the preview-only layout, the arrow keys move the selection in the hidden file list (up/down/left/right in thumbnail view, up/down in list view). For videos, `<` / `>` skip back / forward 5 seconds
-  - When the list has no media, the preview shows "No media files to display" (表示するメディアファイルがありません)
+  - When the list has no media, the preview shows "No media file to display" (表示するメディアファイルがありません)
   - Focusing a hidden pane, favorites, search, and similar actions are disabled
   - Full screen is available from either layout and returns to it on exit
   - The layout is not saved; every launch starts in the three-pane layout
@@ -53,7 +53,7 @@ with the Japanese label shown in the app given in parentheses where it helps you
     While macOS "Reduce motion" is on, "Slide" and "Zoom" are shown as "Crossfade" (the saved value is not changed)
   - Pane switching and history navigation are disabled during a slideshow. It ends automatically when the browsed location is replaced, when there are no items, or when the window is closed
   - The selection and preview changes made when it starts are not recorded in history; only changes to the view mode, size, filter, and sort made while it runs are recorded, as normal view state
-- A kind filter that shows only images or only videos (the "Images Only" (画像のみ表示) and "Videos Only" (動画のみ表示) toolbar buttons, the View menu, ⇧⌘I / ⇧⌘M. With only one of them on, only that kind is shown; with both on or both off, everything is shown. The state is not saved: each launch starts with both off, and the state persists across folder changes while the app is running)
+- A kind filter that shows only images or only videos (the "Show Images Only" (画像のみ表示) and "Show Videos Only" (動画のみ表示) toolbar buttons, the View menu, ⇧⌘I / ⇧⌘M. With only one of them on, only that kind is shown; with both on or both off, everything is shown. The state is not saved: each launch starts with both off, and the state persists across folder changes while the app is running)
 - Copy / move / duplicate / rename / move to Trash / drag and drop / clipboard operations (folders include their contents)
 - "Replace / Keep Both / Stop" choices on conflicts, and a confirmation dialog before operations (can be skipped in Settings)
 - Full-screen preview (double-click or ⌃⌘F; Esc to return)
@@ -67,7 +67,7 @@ with the Japanese label shown in the app given in parentheses where it helps you
   - Toggling it while viewing the inside of a zip does not change the list inside
 - Japanese file names inside zip files are displayed by auto-detecting the character encoding (UTF-8 / Shift_JIS, etc.) for each name
 - Videos inside zip files play without being extracted to a temporary file (they are read directly from the zip)
-- Name search (⌘F or File → "Search…" (検索…)). A modal asks for a "Search keyword" and a "Search start folder".
+- Name search (⌘F or File → "Find…" (検索…)). A modal asks for a "Keyword" and "Search In".
   The start folder defaults to the absolute path of the folder shown in the file list, and the keyword is pre-filled, fully selected, with the previous search from the same session.
   The start folder must be a path starting with `/` or `~`. If it does not exist, is not a folder (including zip files), or cannot be read, the modal shows the reason
   - "Choose…" (選択…) next to the start folder opens the standard macOS folder picker. Choosing one folder and pressing "Choose" changes only the start folder field,
@@ -213,8 +213,8 @@ scripts/make-webp-fixtures.sh
 | Show in Finder | Context menu / File menu |
 | Show the contents of a folder, a zip file, or a directory inside a zip | Double-click, ⌘↓, "Show Contents" in the context menu |
 | Go up one level (at the top of a zip, to the list of the folder containing it; does nothing at the top level of home or a volume) | ⌘↑, double-click the `..` row at the top, "Enclosing Folder" (上の階層へ) in the context menu |
-| Sort | Click a column header, View menu → Sort |
-| Search by name (file and folder names) | ⌘F, File menu → "Search…" |
+| Sort | Click a column header, View menu → Sort By |
+| Search by name (file and folder names) | ⌘F, File menu → "Find…" |
 | Choose the search start folder | "Choose…" in the search sheet (move to it with Tab, open it with Space). Return and Esc in the standard panel affect only the panel |
 | Close the search results | Select a folder in the tree (including clicking the selected row), Esc in the file list |
 | Open a folder row in the search results | Double-click, ⌘↓, "Show Contents" in the context menu |
@@ -263,6 +263,7 @@ Sources/
     Layout/               # Fit and thumbnail column calculations
     Operations/           # Name validation, file operation service
     Settings/             # Settings stored in UserDefaults
+  MediaViewerLocalization/ # Localized text and regional formatting
   MediaViewerApp/         # AppKit UI (drawing and input)
     App/                  # Launch, main window, menus, three panes
     Tree/                 # Directory tree

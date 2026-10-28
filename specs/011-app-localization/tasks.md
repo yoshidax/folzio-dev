@@ -48,14 +48,14 @@
 
 ## Phase 5: README・最終検証・仕様反映
 
-- [ ] T125 `README.md` と `README.ja.md` を同じ構成・内容で更新し、対応言語、英語の初期値、アプリ設定での切り替え・即時反映・保存を説明する。訳を契約の用語と合わせ、両方の差分を確認する。
-- [ ] T126 最終状態で `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/check-readme-sync.sh master` → `scripts/make-app.sh` → quickstart Q2 の非 GUI 確認を順に実行する。翻訳の一貫性・性能テスト・README の内容を確かめる。
-- [ ] T127 [MANUAL] 最終ビルドを `open .build/MediaViewer.app` で起動し、3ペインと設定、両言語の即時切り替えをユーザーに確認してもらう。
-- [ ] T128 T126・T127 と SC-061〜SC-069 の証拠・未確認項目を `specs/011-app-localization/quickstart.md` に記録する。GUI 未確認がある場合は完了としない。
-- [ ] T129 `speckit-converge` で `specs/011-app-localization/` の仕様・実装・タスクを照合し、残作業があれば追加して検証ループへ戻る。
-- [ ] T130 `specs/011-app-localization/spec.md` の反映先に従い `specs/product/` の各領域と契約を更新し、feature spec に移行済み・凍結を記す。コミットせず差分を提示する。
-- [ ] T131 [MANUAL] `specs/product/` への反映と凍結の差分をユーザーにレビューしてもらい、承認または修正点の報告を受ける。
-- [ ] T132 T125〜T131 完了後に文書・仕様の差分を確認してコミットする。feature の master へのマージと push は行わない。
+- [X] T125 `README.md` と `README.ja.md` を同じ構成・内容で更新し、対応言語、英語の初期値、アプリ設定での切り替え・即時反映・保存を説明する。訳を契約の用語と合わせ、両方の差分を確認する。
+- [X] T126 最終状態で `swift build` → `swift test` → `scripts/check-no-network.sh` → `scripts/check-readme-sync.sh master` → `scripts/make-app.sh` → quickstart Q2 の非 GUI 確認を順に実行する。翻訳の一貫性・性能テスト・README の内容を確かめる。
+- [X] T127 [MANUAL] 最終ビルドを `open .build/MediaViewer.app` で起動し、3ペインと設定、両言語の即時切り替えをユーザーに確認してもらう。
+- [X] T128 T126・T127 と SC-061〜SC-069 の証拠・未確認項目を `specs/011-app-localization/quickstart.md` に記録する。GUI 未確認がある場合は完了としない。
+- [X] T129 `speckit-converge` で `specs/011-app-localization/` の仕様・実装・タスクを照合し、残作業があれば追加して検証ループへ戻る。
+- [X] T130 `specs/011-app-localization/spec.md` の反映先に従い `specs/product/` の各領域と契約を更新し、feature spec に移行済み・凍結を記す。コミットせず差分を提示する。
+- [X] T131 [MANUAL] `specs/product/` への反映と凍結の差分をユーザーにレビューしてもらい、承認または修正点の報告を受ける。
+- [X] T132 T125〜T131 完了後に文書・仕様の差分を確認してコミットする。feature の master へのマージと push は行わない。
 
 ## 依存関係と検証
 
@@ -71,3 +71,7 @@ T097 → T098 → T099 → Phase 2 → Phase 3 → Phase 4 → Phase 5。各 Pha
 | FR-154、SC-068: アクセシビリティ | T110〜T112、T120 | T122 |
 | FR-155、SC-066: バンドルと開発起動 | T105、T115、T126 | T116 |
 | FR-156・157、EC-110、SC-069: 言語追加・翻訳の欠落検出 | T102〜T104、T113、T126 | T116 |
+
+## Phase 6: Convergence
+
+- [X] T133 [MANUAL] SC-063（partial）: Q7 で明示していなかった英語 UI・日本地域の倍率、日本語 UI・米国地域の件数と倍率、英語 UI・ドイツ地域の作成日をユーザーに確認してもらい、9 組の確認結果を quickstart に記録する。

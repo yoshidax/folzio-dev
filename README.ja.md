@@ -5,6 +5,9 @@
 macOS ネイティブの 3 ペイン型メディアビューア。左のディレクトリツリー、中央のファイル一覧（リスト／サムネイル）、
 右のプレビューで、画像・アニメーション GIF/WebP・動画を閲覧し、Finder に近い操作でファイルを整理できます。
 
+表示言語は英語と日本語に対応し、初期値は英語です。設定（⌘,）の「言語」で変更すると即時に反映され、
+次回起動時にも復元されます。macOS が提供する画面の文言はシステム設定に従います。
+
 - **技術構成**: Swift 6 + AppKit のみ。外部パッケージ依存なし。Swift Package で構成（Xcode プロジェクトなし）
 - **対応 OS**: macOS 15 以降
 - **ネットワーク**: 不使用（`URLSession` / `Network` / `NWConnection` を参照しない）
@@ -260,6 +263,7 @@ Sources/
     Layout/               # フィット計算、サムネイル列計算
     Operations/           # 名前検証、ファイル操作サービス
     Settings/             # UserDefaults による設定
+  MediaViewerLocalization/ # 表示文言と地域書式
   MediaViewerApp/         # AppKit UI（描画と入力）
     App/                  # 起動、メインウインドウ、メニュー、3 ペイン
     Tree/                 # ディレクトリツリー

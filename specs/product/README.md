@@ -7,8 +7,8 @@ MediaViewer の現在の仕様（Living spec）を領域ごとに分けたもの
 
 | ファイル | 領域 | 機能要件 |
 |---|---|---|
-| [overview.md](overview.md) | 概要と横断要件 | 保存と復元（1）、対応形式（2）、横断要件（3）、アプリアイコン（3） |
-| [window-layout.md](window-layout.md) | ウィンドウの構成 | 画面構成（2）、ツールバー（4）、ペインの表示切り替え（7） |
+| [overview.md](overview.md) | 概要と横断要件 | 保存と復元（1）、対応形式（2）、横断要件（3）、国際化（8）、アプリアイコン（3） |
+| [window-layout.md](window-layout.md) | ウィンドウの構成 | 画面構成（2）、国際化の配置（1）、ツールバー（4）、ペインの表示切り替え（7） |
 | [navigation-history.md](navigation-history.md) | 操作の履歴 | 戻る・進む（7） |
 | [directory-tree.md](directory-tree.md) | ディレクトリツリー | ディレクトリツリー（10）、お気に入り（12） |
 | [file-list.md](file-list.md) | ファイルリスト | ファイルリスト（10）、種類フィルタ（5）、ファイルリストのフォルダ（3） |
@@ -23,6 +23,7 @@ MediaViewer の現在の仕様（Living spec）を領域ごとに分けたもの
 |---|---|
 | [contracts/keyboard-and-menus.md](contracts/keyboard-and-menus.md) | キーボード操作とメニュー。ショートカットの衝突を1か所で確認するため、領域ごとには分けない |
 | [contracts/settings.md](contracts/settings.md) | 永続化する設定のキー |
+| [contracts/localization.md](contracts/localization.md) | 表示言語・翻訳・地域の書式 |
 | [contracts/app-bundle.md](contracts/app-bundle.md) | アプリバンドルの構成とアイコン |
 
 ## ID の付け方
