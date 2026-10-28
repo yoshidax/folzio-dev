@@ -30,7 +30,7 @@ Swift 6、macOS 15+、AppKit、Swift Package、外部依存なし。Core は App
 
 ## Design
 
-[research.md](research.md)、[data-model.md](data-model.md)、[contracts/drag-drop.md](contracts/drag-drop.md)、[quickstart.md](quickstart.md) に詳細を記す。ドラッグセッションを識別し内部操作だけに新規規則を適用する。パスの字面だけに依存せず、シンボリックリンクと既存項目の同一性を考慮し、ドロップ時と実行直前に再検証する。重いファイルシステム検証はバックグラウンドで行い、ドラッグ中はキャッシュされた安全な情報で保守的に判断する。既存の外部受け口の挙動を損なわない。
+[research.md](research.md)、[data-model.md](data-model.md)、[contracts/drag-drop.md](contracts/drag-drop.md)、[quickstart.md](quickstart.md) に詳細を記す。ドラッグセッションを識別し内部操作だけに新規規則を適用する。パスの字面だけに依存せず、シンボリックリンクと既存項目の同一性を考慮し、ドロップ時と実行直前に再検証する。重いファイルシステム検証はバックグラウンドで行い、ドラッグ中はキャッシュされた安全な情報で保守的に判断する。検索結果のフォルダ行も両方向で扱い、選択集合にフォルダと配下の項目が同時にある場合は拒否する。既存の外部受け口の挙動を損なわない。製品仕様への反映時に `specs/product/search.md` と実装済みの 009 の差異を照合する。
 
 ## Complexity Tracking
 
