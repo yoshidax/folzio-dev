@@ -89,13 +89,13 @@ struct SlideshowFixtureTests {
         for name in ["01-image.jpg", "04-image.png"] {
             let source = CGImageSourceCreateWithURL(folder.appendingPathComponent(name) as CFURL, nil)
             let image = source.flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }
-            #expect(image != nil, "\(name) はデコードできる")
+            #expect(image != nil, "\(name) can be decoded")
         }
         let brokenSource = CGImageSourceCreateWithURL(
             folder.appendingPathComponent("03-broken.jpg") as CFURL, nil
         )
         let brokenImage = brokenSource.flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }
-        #expect(brokenImage == nil, "03-broken.jpg はデコードできない")
+        #expect(brokenImage == nil, "03-broken.jpg cannot be decoded")
     }
 
     private func makeDirectory() throws -> URL {

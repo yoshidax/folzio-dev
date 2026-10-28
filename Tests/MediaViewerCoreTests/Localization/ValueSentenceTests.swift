@@ -19,7 +19,7 @@ struct ValueSentenceTests {
                         }
                     }
                     let output = localizer.text(key, values)
-                    #expect(output.contains(sample), "\(language): \(key.rawValue) に \(sample) が入らない: \(output)")
+                    #expect(output.contains(sample), "\(language): \(sample) is not in \(key.rawValue): \(output)")
                 }
             }
         }

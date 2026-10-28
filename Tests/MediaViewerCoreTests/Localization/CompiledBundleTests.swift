@@ -13,9 +13,9 @@ struct CompiledBundleTests {
             for key in TextKey.allCases {
                 let sentinel = "__MISSING_\(key.rawValue)__"
                 let value = table.localizedString(forKey: key.rawValue, value: sentinel, table: nil)
-                #expect(value != key.rawValue, "\(language): \(key.rawValue) がキーのまま")
-                #expect(value != sentinel, "\(language): \(key.rawValue) が無い")
-                #expect(!value.isEmpty, "\(language): \(key.rawValue) が空")
+                #expect(value != key.rawValue, "\(language): \(key.rawValue) is still the key")
+                #expect(value != sentinel, "\(language): \(key.rawValue) is missing")
+                #expect(!value.isEmpty, "\(language): \(key.rawValue) is empty")
             }
         }
     }

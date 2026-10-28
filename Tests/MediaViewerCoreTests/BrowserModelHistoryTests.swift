@@ -277,7 +277,7 @@ struct BrowserModelHistoryTests {
         if case .missing = await env.model.resolveHistoryLocation(HistoryLocation(folder: env.url("Missing"))) {
             // Expected.
         } else {
-            Issue.record("存在しないフォルダが missing になっていません")
+            Issue.record("A missing folder did not resolve to missing")
         }
     }
 
@@ -324,7 +324,7 @@ struct BrowserModelHistoryTests {
         if case .missing = await env.model.resolveHistoryLocation(missing) {
             // Expected.
         } else {
-            Issue.record("zip にないディレクトリが missing になっていません")
+            Issue.record("A directory not in the zip did not resolve to missing")
         }
     }
 
@@ -349,7 +349,7 @@ struct BrowserModelHistoryTests {
         if case let .failed(message) = env.model.listing.state {
             #expect(message == .archive(.notAZip))
         } else {
-            Issue.record("壊れた zip が .failed になっていません: \(env.model.listing.state)")
+            Issue.record("A corrupted zip did not become .failed: \(env.model.listing.state)")
         }
     }
 

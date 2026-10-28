@@ -101,7 +101,7 @@ struct HistoryNavigatorTests {
 
         func openArchiveDirectory(_ name: String) async {
             guard let row = model.listing.files.first(where: { $0.name == name && $0.kind == .directory }) else {
-                Issue.record("zip の中のフォルダがありません: \(name)")
+                Issue.record("Folder inside the zip is missing: \(name)")
                 return
             }
             await model.openItem(row.url)
@@ -109,7 +109,7 @@ struct HistoryNavigatorTests {
 
         func openZip(_ name: String) async {
             guard let row = model.listing.files.first(where: { $0.name == name }) else {
-                Issue.record("zip の行がありません: \(name)")
+                Issue.record("Zip row is missing: \(name)")
                 return
             }
             await model.openItem(row.url)
@@ -363,7 +363,7 @@ struct HistoryNavigatorTests {
         if case let .failed(message) = env.model.listing.state {
             #expect(message == .archive(.notAZip))
         } else {
-            Issue.record("壊れた zip が .failed になっていません: \(env.model.listing.state)")
+            Issue.record("A corrupted zip did not become .failed: \(env.model.listing.state)")
         }
 
         await env.goBack()
@@ -497,7 +497,7 @@ struct HistoryNavigatorTests {
         env.navigator.goBack()
         env.navigator.goBack()
         let enqueueElapsed = ContinuousClock.now - start
-        #expect(enqueueElapsed < .milliseconds(100), "要求の受付で UI を止めない (実測: \(enqueueElapsed))")
+        #expect(enqueueElapsed < .milliseconds(100), "Do not block the UI while accepting the request (measured: \(enqueueElapsed))")
 
         await env.navigator.waitUntilIdle()
         #expect(name(env.navigator) == "A")
@@ -518,7 +518,7 @@ struct HistoryNavigatorTests {
         let start = ContinuousClock.now
         env.navigator.goForward()
         let elapsed = ContinuousClock.now - start
-        #expect(elapsed < .milliseconds(100), "goForward の受付は 100ms 未満 (実測: \(elapsed))")
+        #expect(elapsed < .milliseconds(100), "Accepting goForward takes less than 100 ms (measured: \(elapsed))")
 
         await env.navigator.waitUntilIdle()
         #expect(env.navigator.history.current?.location.archive != nil)

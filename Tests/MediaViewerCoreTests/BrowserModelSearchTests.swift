@@ -155,7 +155,7 @@ struct BrowserModelSearchTests {
     private func send(_ batch: [MediaFile], _ env: Env, expecting count: Int) async {
         env.searcher.send(batch)
         let arrived = await waitUntil { env.model.listing.search?.totalCount == count }
-        #expect(arrived, "バッチが一覧に加わらなかった。totalCount: \(env.model.listing.search?.totalCount ?? -1)")
+        #expect(arrived, "Batch was not added to the listing. totalCount: \(env.model.listing.search?.totalCount ?? -1)")
     }
 
     private func finish(_ env: Env) async {
@@ -205,7 +205,7 @@ struct BrowserModelSearchTests {
         let clip = try #require(env.model.listing.files.first { $0.name == "clip.mp4" })
         env.model.select([clip.url], focused: clip.url)
         guard case .video = env.model.preview else {
-            Issue.record("動画のプレビューにならなかった")
+            Issue.record("Preview did not become a video")
             return
         }
         let signal = env.model.stopPlaybackSignal
@@ -240,7 +240,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.state == .loaded)
         #expect(env.model.selection.selected == [b.url])
         #expect(env.model.selection.focused == b.url)
-        #expect(isImagePreview(env.model.preview), "プレビューを読み直した: \(env.model.preview)")
+        #expect(isImagePreview(env.model.preview), "Preview was reloaded: \(env.model.preview)")
         #expect(!env.model.listing.files.contains { $0.kind == .parent || $0.kind == .folder })
         #expect(env.model.hasEnclosingLevel == false)
     }
@@ -334,7 +334,7 @@ struct BrowserModelSearchTests {
         #expect(await waitUntil { names(env.model) == ["b.jpg"] })
         env.searcher.send([a], to: 0)
         try await Task.sleep(for: .milliseconds(100))
-        #expect(names(env.model) == ["b.jpg"], "失効したバッチは捨てる (実際: \(names(env.model)))")
+        #expect(names(env.model) == ["b.jpg"], "Stale batches are discarded (actual: \(names(env.model)))")
     }
 
     @Test("zip の中で検索を始めると zip の状態を捨て、listing.folder は zip を含むフォルダのまま")
@@ -806,7 +806,7 @@ struct BrowserModelSearchTests {
 
         env.model.select([video.url], focused: video.url)
         guard case .video = env.model.preview else {
-            Issue.record("動画のプレビューにならなかった")
+            Issue.record("Preview did not become a video")
             return
         }
         let signal = env.model.stopPlaybackSignal
@@ -978,7 +978,7 @@ struct BrowserModelSearchTests {
         events.removeAll()
         let day1 = try #require(env.model.listing.files.first { $0.name == "day1" })
         await env.model.openItem(day1.url)
-        #expect(events.count == 1, "受け取った通知: \(events)")
+        #expect(events.count == 1, "Received events: \(events)")
         #expect(events.first == .navigated(leavingFocus: nil))
     }
 
@@ -1320,7 +1320,7 @@ struct BrowserModelSearchTests {
         await env.model.selectFolder(target)
         #expect(!env.model.isShowingSearchResults)
         // Report not found after the navigation notification.
-        #expect(events.last == .notFound(HistoryLocation(folder: day1)), "受け取った通知: \(events)")
+        #expect(events.last == .notFound(HistoryLocation(folder: day1)), "Received events: \(events)")
     }
 
     @Test("検索結果の一覧から検索前のフォルダの祖先をゴミ箱に入れた場合も、ツリーからの経路では親へ移る")
@@ -1372,7 +1372,7 @@ struct BrowserModelSearchTests {
 
         await env.model.selectFolder(env.model.listing.folder)
         // Report not found after the navigation notification.
-        #expect(events.last == .notFound(HistoryLocation(folder: day1)), "受け取った通知: \(events)")
+        #expect(events.last == .notFound(HistoryLocation(folder: day1)), "Received events: \(events)")
     }
 
     @Test("検索の起点がフォルダの行と中の結果ごと消えても、すべて外して表示を続ける（EC-36）")
@@ -1484,7 +1484,7 @@ struct BrowserModelSearchTests {
         let inside = new.appendingPathComponent("b-1.jpg")
         env.searcher.send([Env.result(old.appendingPathComponent("b-1.jpg"))], to: 0)
         #expect(await waitUntil { env.model.listing.search?.totalCount == 2 })
-        #expect(env.model.listing.files.contains { path($0.url) == path(inside) }, "一覧: \(names(env.model))")
+        #expect(env.model.listing.files.contains { path($0.url) == path(inside) }, "Listing: \(names(env.model))")
     }
 
     @Test("名前の変更の後に届いた照合済みのフォルダの行は、新しい URL と名前で加わる")

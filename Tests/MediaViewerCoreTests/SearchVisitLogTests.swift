@@ -23,7 +23,7 @@ struct SearchVisitLogTests {
             }
         }
         for index in 0 ..< 1_000 {
-            #expect(log.contains("/p/\(index)"), "記録が残っていない: \(index)")
+            #expect(log.contains("/p/\(index)"), "Record is missing: \(index)")
         }
     }
 }

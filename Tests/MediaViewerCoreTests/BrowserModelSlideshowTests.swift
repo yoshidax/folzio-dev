@@ -116,7 +116,7 @@ struct BrowserModelSlideshowTests {
 
         let resolution = await model.resolveHistoryLocation(HistoryLocation(folder: second))
         guard case let .available(resolved) = resolution else {
-            Issue.record("履歴の場所を解決できませんでした: \(resolution)")
+            Issue.record("Could not resolve the history location: \(resolution)")
             return
         }
         model.showHistoryLocation(resolved, focusing: nil)

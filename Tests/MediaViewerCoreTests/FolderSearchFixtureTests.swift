@@ -25,12 +25,12 @@ struct FolderSearchFixtureTests {
         func expectDirectory(_ path: String) {
             var isDirectory: ObjCBool = false
             let exists = fileManager.fileExists(atPath: kyoto.appendingPathComponent(path).path, isDirectory: &isDirectory)
-            #expect(exists && isDirectory.boolValue, "フォルダがない: \(path)")
+            #expect(exists && isDirectory.boolValue, "Folder is missing: \(path)")
         }
         func expectFile(_ path: String) {
             var isDirectory: ObjCBool = false
             let exists = fileManager.fileExists(atPath: kyoto.appendingPathComponent(path).path, isDirectory: &isDirectory)
-            #expect(exists && !isDirectory.boolValue, "ファイルがない: \(path)")
+            #expect(exists && !isDirectory.boolValue, "File is missing: \(path)")
         }
 
         expectFile("2024_Kyoto/IMG_0001.jpg")
@@ -51,7 +51,7 @@ struct FolderSearchFixtureTests {
 
         let link = kyoto.appendingPathComponent("kyoto_link")
         let destination = try fileManager.destinationOfSymbolicLink(atPath: link.path)
-        #expect(destination.hasSuffix("/2024_Kyoto"), "リンクの行き先: \(destination)")
+        #expect(destination.hasSuffix("/2024_Kyoto"), "Link destination: \(destination)")
         #expect(
             link.resolvingSymlinksInPath().lastPathComponent == "2024_Kyoto",
             "リンクがフォルダを指していない: \(link.resolvingSymlinksInPath().path)"

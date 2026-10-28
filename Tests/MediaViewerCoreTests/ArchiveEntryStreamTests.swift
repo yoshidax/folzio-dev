@@ -125,13 +125,13 @@ struct ArchiveEntryStreamTests {
         _ = try await reader.open(zip)
         do {
             _ = try await reader.stream(for: ArchiveURL.entry(archive: zip, path: "secret.mp4"))
-            Issue.record("エラーが投げられなかった")
+            Issue.record("Expected an error to be thrown")
         } catch {
             #expect(error == .entryEncrypted)
         }
         do {
             _ = try await reader.stream(for: ArchiveURL.entry(archive: zip, path: "bzip2.mp4"))
-            Issue.record("エラーが投げられなかった")
+            Issue.record("Expected an error to be thrown")
         } catch {
             #expect(error == .unsupportedMethod(12))
         }

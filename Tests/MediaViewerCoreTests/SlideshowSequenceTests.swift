@@ -153,7 +153,7 @@ struct SlideshowSequenceTests {
             if case .target(let target) = result {
                 #expect(target == focused)
             } else {
-                Issue.record("1件で繰り返す場合は同じ対象を維持する")
+                Issue.record("With one item and repeat, keep the same target")
             }
         } else {
             #expect(result == .finish)

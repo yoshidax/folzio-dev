@@ -14,15 +14,15 @@ struct CatalogConsistencyTests {
 
             let missing = expected.subtracting(all).sorted()
             let unused = all.subtracting(expected).sorted()
-            #expect(missing.isEmpty, "\(language): 訳が無いキー \(missing)")
-            #expect(unused.isEmpty, "\(language): TextKey に無いキー \(unused)")
+            #expect(missing.isEmpty, "\(language): keys without translations \(missing)")
+            #expect(unused.isEmpty, "\(language): keys not in TextKey \(unused)")
 
             for key in TextKey.allCases {
                 let inStrings = strings[key.rawValue] != nil
                 let inDict = dict[key.rawValue] != nil
-                #expect(inStrings != inDict, "\(language): \(key.rawValue) は strings と stringsdict のどちらか一方にだけ置く")
+                #expect(inStrings != inDict, "\(language): \(key.rawValue) must appear in only one of strings and stringsdict")
                 let usesPlural = key.arguments.contains(.count)
-                #expect(inDict == usesPlural, "\(language): 複数形のキーは stringsdict に置く (\(key.rawValue))")
+                #expect(inDict == usesPlural, "\(language): plural keys must be in stringsdict (\(key.rawValue))")
             }
         }
     }
@@ -37,9 +37,9 @@ struct CatalogConsistencyTests {
                 let value = try #require(entry["value"] as? [String: Any], "\(language): \(key.rawValue)")
                 #expect(value["NSStringFormatSpecTypeKey"] as? String == "NSStringPluralRuleType")
                 #expect(value["NSStringFormatValueTypeKey"] as? String == "lld")
-                #expect(value["other"] != nil, "\(language): \(key.rawValue) に other が無い")
+                #expect(value["other"] != nil, "\(language): \(key.rawValue) has no other")
                 if language == "en" {
-                    #expect(value["one"] != nil, "\(key.rawValue) に one が無い")
+                    #expect(value["one"] != nil, "\(key.rawValue) has no one")
                 }
             }
         }
@@ -55,14 +55,14 @@ struct CatalogConsistencyTests {
                 let expected = LocalizationTestSupport.expectedSpecifiers(for: key)
                 if let value = strings[key.rawValue] {
                     let actual = try #require(LocalizationTestSupport.specifiers(value), "\(language): \(key.rawValue) の書式が不正")
-                    #expect(Set(actual.map { $0.0 }) == Set(expected.map { $0.0 }), "\(language): \(key.rawValue) の位置")
-                    #expect(actual.map(\.1).sorted() == expected.map(\.1).sorted(), "\(language): \(key.rawValue) の種類")
+                    #expect(Set(actual.map { $0.0 }) == Set(expected.map { $0.0 }), "\(language): positions in \(key.rawValue)")
+                    #expect(actual.map(\.1).sorted() == expected.map(\.1).sorted(), "\(language): kinds in \(key.rawValue)")
                 } else if let entry = dict[key.rawValue],
                           let value = entry["value"] as? [String: String] {
                     for (form, translation) in value where form != "NSStringFormatSpecTypeKey" && form != "NSStringFormatValueTypeKey" {
                         let actual = try #require(LocalizationTestSupport.specifiers(translation), "\(language): \(key.rawValue).\(form) の書式が不正")
-                        #expect(Set(actual.map { $0.0 }) == Set(expected.map { $0.0 }), "\(language): \(key.rawValue).\(form) の位置")
-                        #expect(actual.map(\.1).sorted() == expected.map(\.1).sorted(), "\(language): \(key.rawValue).\(form) の種類")
+                        #expect(Set(actual.map { $0.0 }) == Set(expected.map { $0.0 }), "\(language): positions in \(key.rawValue).\(form)")
+                        #expect(actual.map(\.1).sorted() == expected.map(\.1).sorted(), "\(language): kinds in \(key.rawValue).\(form)")
                     }
                 }
             }
@@ -84,14 +84,14 @@ struct CatalogConsistencyTests {
         }
         for key in TextKey.allCases {
             let name = String(describing: key)
-            #expect(text.contains(".\(name)"), "\(name) が参照されていない")
+            #expect(text.contains(".\(name)"), "\(name) is not referenced")
         }
     }
 
     @Test("すべての翻訳単位に翻訳者向けの説明がある")
     func commentsExist() {
         for key in TextKey.allCases {
-            #expect(!key.comment.isEmpty, "\(key.rawValue) の説明が空")
+            #expect(!key.comment.isEmpty, "Description of \(key.rawValue) is empty")
         }
     }
 }

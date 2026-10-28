@@ -83,7 +83,7 @@ struct PaneLayoutTests {
 
             let fileListPushed = actual.soloPane == .fileList
             let previewPushed = actual.soloPane == .preview
-            #expect(!(fileListPushed && previewPushed), "両方が押された状態を返した: \(actual)")
+            #expect(!(fileListPushed && previewPushed), "Returned both sides pressed: \(actual)")
         }
     }
 

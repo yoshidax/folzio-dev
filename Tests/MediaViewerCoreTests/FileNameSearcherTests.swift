@@ -38,7 +38,7 @@ struct FileNameSearcherTests {
     /// Relative paths from the root (normalized to NFC). Also verifies that result URLs start with the root form.
     private func relativePaths(_ files: [MediaFile], root: URL) -> Set<String> {
         Set(files.map { file in
-            #expect(file.url.path.hasPrefix(root.path + "/"), "起点と違う形の URL: \(file.url.path)")
+            #expect(file.url.path.hasPrefix(root.path + "/"), "URL has a different form from the root: \(file.url.path)")
             return String(file.url.path.dropFirst(root.path.count + 1)).precomposedStringWithCanonicalMapping
         })
     }
@@ -206,7 +206,7 @@ struct FileNameSearcherTests {
         let root = try FixtureSets.folderSearchScale(in: base)
         let results = try await collect(in: root, "kyoto").flatMap { $0 }
 
-        #expect(results.count == 100, "一致は 100 件 (実際: \(results.count))")
+        #expect(results.count == 100, "Expected 100 matches (actual: \(results.count))")
         #expect(results.filter { $0.kind == .folder }.count == 50)
         #expect(results.filter { $0.kind.isMedia }.count == 50)
         #expect(!results.contains { $0.name.hasPrefix("kyoto-link-") })
@@ -237,12 +237,12 @@ struct FileNameSearcherTests {
         }
 
         for relative in ["a", "a/b", "a/b/deep", "b", "numbers", "kana", "cat-folder", "Viewer.app"] {
-            #expect(visits.contains(path(relative)), "記録がない: \(relative)")
+            #expect(visits.contains(path(relative)), "No record: \(relative)")
         }
         for relative in ["Cat01.jpg", ".hidden", "link", "Viewer.app/Contents", "cats.zip"] {
-            #expect(!visits.contains(path(relative)), "記録されている: \(relative)")
+            #expect(!visits.contains(path(relative)), "Recorded: \(relative)")
         }
-        #expect(!visits.contains(env.root.standardizedFileURL.path), "起点を記録している")
+        #expect(!visits.contains(env.root.standardizedFileURL.path), "The root was recorded")
 
         // The protocol extension search(in:matching:) returns the same results as search(_:).
         let shortcut = try await collect(in: env.root, "cat").flatMap { $0 }

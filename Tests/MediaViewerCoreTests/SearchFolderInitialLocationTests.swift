@@ -23,7 +23,7 @@ struct SearchFolderInitialLocationTests {
             validate: recorder.validate
         )
         #expect(first == .success(current))
-        #expect(recorder.calls == [current], "最初の有効な候補で止める")
+        #expect(recorder.calls == [current], "Stops at the first valid candidate")
 
         let secondRecorder = ValidationRecorder(successes: [defaultFolder, home])
         let second = await SearchFolderInitialLocation.resolve(
@@ -75,7 +75,7 @@ struct SearchFolderInitialLocationTests {
         )
 
         #expect(result == .success(spaced))
-        #expect(recorder.calls == [spaced], "typed の解釈失敗と trim 後の別候補を試さない")
+        #expect(recorder.calls == [spaced], "Does not try another candidate after a typed parse failure and trim")
         #expect(spaced.path != plain.path)
     }
 
@@ -123,7 +123,7 @@ struct SearchFolderInitialLocationTests {
         )
 
         #expect(result == .success(home))
-        #expect(recorder.calls == [f, home], "同じ F を重複して試さず、追加のツリー候補も使わない")
+        #expect(recorder.calls == [f, home], "Does not try the same F twice or use the additional tree candidate")
     }
 
     @Test("同じ候補は一度だけ検証する")

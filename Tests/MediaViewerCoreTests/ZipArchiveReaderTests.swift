@@ -230,7 +230,7 @@ struct ZipArchiveReaderTests {
             try data.prefix(length).write(to: url)
             do {
                 _ = try await reader.open(url)
-                Issue.record("長さ \(length) で失敗しなかった")
+                Issue.record("Did not fail at length \(length)")
             } catch {
                 #expect(error == .notAZip || { if case .corrupted = error { return true }; return false }())
             }
@@ -298,10 +298,10 @@ struct ZipArchiveReaderTests {
             let target = name.hasPrefix("stored") ? "b.png" : "a.png"
             do {
                 let result = try await reader.data(for: entryURL(zip, target), limit: 0x7FFF_FFFF)
-                Issue.record("\(name): 失敗しなかった (\(result.count) バイト)")
+                Issue.record("\(name): did not fail (\(result.count) bytes)")
             } catch {
                 if case .corrupted = error {} else if error == .tooLarge {} else {
-                    Issue.record("\(name): 想定外のエラー \(error)")
+                    Issue.record("\(name): unexpected error \(error)")
                 }
             }
         }
@@ -325,7 +325,7 @@ struct ZipArchiveReaderTests {
             let result = try await reader.data(for: entryURL(zip, "a.png"), limit: 1_000_000)
             #expect(result != content)
         } catch {
-            if case .corrupted = error {} else { Issue.record("想定外のエラー \(error)") }
+            if case .corrupted = error {} else { Issue.record("Unexpected error \(error)") }
         }
     }
 
@@ -416,7 +416,7 @@ struct ZipArchiveReaderTests {
     ) async {
         do {
             _ = try await body()
-            Issue.record("エラー \(expected) が投げられなかった", sourceLocation: sourceLocation)
+            Issue.record("Error \(expected) was not thrown", sourceLocation: sourceLocation)
         } catch {
             #expect(error as? ArchiveError == expected, sourceLocation: sourceLocation)
         }
@@ -428,10 +428,10 @@ struct ZipArchiveReaderTests {
     ) async {
         do {
             _ = try await body()
-            Issue.record("corrupted が投げられなかった", sourceLocation: sourceLocation)
+            Issue.record("corrupted was not thrown", sourceLocation: sourceLocation)
         } catch {
             if case .corrupted? = error as? ArchiveError { return }
-            Issue.record("想定外のエラー \(error)", sourceLocation: sourceLocation)
+            Issue.record("Unexpected error \(error)", sourceLocation: sourceLocation)
         }
     }
 }

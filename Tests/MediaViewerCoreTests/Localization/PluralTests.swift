@@ -12,17 +12,17 @@ struct PluralTests {
         for key in TextKey.allCases where key.arguments.contains(.count) {
             let oneEN = normalized(en, key, 1)
             let twoEN = normalized(en, key, 2)
-            #expect(oneEN != twoEN, "\(key.rawValue): 英語の単数と複数が同じ")
-            #expect(normalized(en, key, 0) == twoEN, "\(key.rawValue): 0件は複数形")
-            #expect(normalized(en, key, 1000) == twoEN, "\(key.rawValue): 1000件は複数形")
+            #expect(oneEN != twoEN, "\(key.rawValue): English singular and plural are the same")
+            #expect(normalized(en, key, 0) == twoEN, "\(key.rawValue): zero uses the plural form")
+            #expect(normalized(en, key, 1000) == twoEN, "\(key.rawValue): 1000 uses the plural form")
 
-            #expect(normalized(ja, key, 1) == normalized(ja, key, 2), "\(key.rawValue): 日本語の語形が変わる")
-            #expect(normalized(ja, key, 0) == normalized(ja, key, 2), "\(key.rawValue): 日本語の語形が変わる")
+            #expect(normalized(ja, key, 1) == normalized(ja, key, 2), "\(key.rawValue): Japanese wording changed")
+            #expect(normalized(ja, key, 0) == normalized(ja, key, 2), "\(key.rawValue): Japanese wording changed")
         }
 
         for key in [TextKey.contextCopyMultiple, .searchBarCount, .searchBarCountLimited] {
-            #expect(value(en, key, 1000).contains("1,000"), "\(key.rawValue): 桁区切り")
-            #expect(value(ja, key, 1000).contains("1,000"), "\(key.rawValue): 桁区切り")
+            #expect(value(en, key, 1000).contains("1,000"), "\(key.rawValue): grouping separator")
+            #expect(value(ja, key, 1000).contains("1,000"), "\(key.rawValue): grouping separator")
         }
     }
 

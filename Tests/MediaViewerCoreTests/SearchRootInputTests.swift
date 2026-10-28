@@ -136,8 +136,8 @@ struct SearchRootInputTests {
                     initialAdopted = state.complete(initial, succeeded: false)
                 }
 
-                #expect(!initialAdopted, "失効した初期位置を採用しない (initialFirst: \(initialFirst))")
-                #expect(searchAdopted, "受理した検索を採用する (initialFirst: \(initialFirst))")
+                #expect(!initialAdopted, "Does not accept a stale initial location (initialFirst: \(initialFirst))")
+                #expect(searchAdopted, "Accepts the accepted search (initialFirst: \(initialFirst))")
                 #expect(state.isActive == !searchSucceeds)
                 #expect(state.pendingOperation == .idle)
             }
@@ -158,7 +158,7 @@ struct SearchRootInputTests {
         #expect(adopted)
         #expect(state.isActive)
         #expect(state.pendingOperation == .idle)
-        #expect(state.rootInput == .typed("/start"), "完了だけでは欄を変更しない")
+        #expect(state.rootInput == .typed("/start"), "Completion alone does not change the field")
 
         state.applyPickedRoot(url)
         #expect(state.rootInput == .picked(url))
@@ -167,7 +167,7 @@ struct SearchRootInputTests {
         let failed = try requireValue(state.beginSelectionValidation(url, panelPresented: false))
         let failedAdopted = state.complete(failed, succeeded: false)
         #expect(failedAdopted)
-        #expect(state.rootInput == .picked(url), "失敗では選択を反映しない")
+        #expect(state.rootInput == .picked(url), "Failure does not apply the selection")
         #expect(state.pendingOperation == .idle)
 
         let edited = try requireValue(state.beginSelectionValidation(url, panelPresented: false))

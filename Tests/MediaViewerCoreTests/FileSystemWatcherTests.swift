@@ -157,7 +157,7 @@ struct FileSystemWatcherTests {
         await model.handleFileSystemEvent(event)
 
         let names = model.listing.files.map(\.name)
-        #expect(names == ["b.jpg", "c.jpg"], "一覧が更新されていない。actual: \(names)")
+        #expect(names == ["b.jpg", "c.jpg"], "Listing was not updated. actual: \(names)")
         #expect(
             model.selection.focused == nil,
             "削除したファイルがフォーカスに残っている。focused: \(model.selection.focused?.path ?? "nil")"
@@ -197,18 +197,18 @@ struct FileSystemWatcherTests {
         try Data("x".utf8).write(to: file)
         let observed1 = await recorder.waitForFolder(deep)
         let seen1 = await recorder.snapshot()
-        #expect(observed1, "作成: \(describe(seen1))")
+        #expect(observed1, "Create: \(describe(seen1))")
 
         let count = await recorder.snapshot().count
         try FileManager.default.removeItem(at: file)
         let observed2 = await recorder.waitForFolder(deep, after: count)
         let seen2 = await recorder.snapshot()
-        #expect(observed2, "削除: \(describe(seen2))")
+        #expect(observed2, "Delete: \(describe(seen2))")
 
         try Data("y".utf8).write(to: root.appendingPathComponent("y.jpg"))
         let observed3 = await recorder.waitForFolder(root)
         let seen3 = await recorder.snapshot()
-        #expect(observed3, "直下: \(describe(seen3))")
+        #expect(observed3, "Direct child: \(describe(seen3))")
 
         await stopCollector(collector)
     }
@@ -242,7 +242,7 @@ struct FileSystemWatcherTests {
         #expect(!subtreeEvents.contains { event in event.contains { $0.path.hasPrefix(other.path) } },
                 "subtrees の外: \(describe(subtreeEvents))")
         let folderEvents = await folderRecorder.snapshot()
-        #expect(folderEvents.isEmpty, "folders の孫: \(describe(folderEvents))")
+        #expect(folderEvents.isEmpty, "folders grandchild: \(describe(folderEvents))")
 
         await stopCollector(subtreeCollector)
         await stopCollector(folderCollector)
@@ -317,9 +317,9 @@ struct FileSystemWatcherTests {
             }
 
             let instants = await recorder.instants(containing: a)
-            #expect(instants.count >= 2, "subtrees=\(useSubtrees) 回数: \(instants.count)")
+            #expect(instants.count >= 2, "subtrees=\(useSubtrees) count: \(instants.count)")
             if let first = instants.first {
-                #expect(first - start < .milliseconds(1500), "subtrees=\(useSubtrees) 1回目: \(first - start)")
+                #expect(first - start < .milliseconds(1500), "subtrees=\(useSubtrees) first event: \(first - start)")
             }
             collector.cancel()
             await collector.value
@@ -330,7 +330,7 @@ struct FileSystemWatcherTests {
     func subtreeKeepsGivenPathForm() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
-        #expect(root.path.hasPrefix("/var/"), "一時ディレクトリが /var 以下でない: \(root.path)")
+        #expect(root.path.hasPrefix("/var/"), "Temporary directory is not under /var: \(root.path)")
         let ab = root.appendingPathComponent("a/b", isDirectory: true)
         try FileManager.default.createDirectory(at: ab, withIntermediateDirectories: true)
         try await Task.sleep(for: .milliseconds(200))
@@ -343,12 +343,12 @@ struct FileSystemWatcherTests {
         try Data("x".utf8).write(to: ab.appendingPathComponent("x.jpg"))
         let observed5 = await recorder.waitForPath(root.appendingPathComponent("a/b").path)
         let seen5 = await recorder.snapshot()
-        #expect(observed5, "作成: \(describe(seen5))")
+        #expect(observed5, "Create: \(describe(seen5))")
 
         try FileManager.default.removeItem(at: ab)
         let observed6 = await recorder.waitForPath(root.appendingPathComponent("a").path)
         let seen6 = await recorder.snapshot()
-        #expect(observed6, "フォルダの削除: \(describe(seen6))")
+        #expect(observed6, "Folder deletion: \(describe(seen6))")
         await stopCollector(collector)
 
         let privateRoot = URL(fileURLWithPath: "/private" + root.path, isDirectory: true)
@@ -360,7 +360,7 @@ struct FileSystemWatcherTests {
         try Data("y".utf8).write(to: root.appendingPathComponent("a/y.jpg"))
         let observed7 = await privateRecorder.waitForPath(privateRoot.appendingPathComponent("a").path)
         let seen7 = await privateRecorder.snapshot()
-        #expect(observed7, "/private の形: \(describe(seen7))")
+        #expect(observed7, "/private form: \(describe(seen7))")
         await stopCollector(privateCollector)
     }
 
@@ -392,7 +392,7 @@ struct FileSystemWatcherTests {
 
         // The GUI app limit is 256. WatchRoot would exceed 1,000 with 100 folders. Allow headroom for descriptors
         // opened by other tests.
-        #expect(increase < 100, "100 フォルダの監視で開いたディスクリプタ: +\(increase)")
+        #expect(increase < 100, "Descriptors opened by watching 100 folders: +\(increase)")
     }
 
     @Test("subtrees（WatchRoot）を足しても、増えるのは起点の分だけ")
@@ -413,7 +413,7 @@ struct FileSystemWatcherTests {
         let increase = openDescriptorCount() - before
         watcher.watch([], subtrees: [])
 
-        #expect(increase < 150, "100 フォルダと起点1つの監視で開いたディスクリプタ: +\(increase)")
+        #expect(increase < 150, "Descriptors opened by watching 100 folders and one root: +\(increase)")
     }
 
     @Test("起点自身・親フォルダの削除と移動は、起点の URL として流す。folders だけなら自身は流さない")
@@ -437,7 +437,7 @@ struct FileSystemWatcherTests {
         try fileManager.removeItem(at: removed)
         let observed8 = await r1.waitForPath(removed.path)
         let seen8 = await r1.snapshot()
-        #expect(observed8, "削除: \(describe(seen8))")
+        #expect(observed8, "Delete: \(describe(seen8))")
         await stopCollector(c1)
         _ = w1
 
@@ -449,7 +449,7 @@ struct FileSystemWatcherTests {
         try fileManager.moveItem(at: renamed, to: base.appendingPathComponent("renamed-2", isDirectory: true))
         let observed9 = await r2.waitForPath(renamed.path)
         let seen9 = await r2.snapshot()
-        #expect(observed9, "移動: \(describe(seen9))")
+        #expect(observed9, "Move: \(describe(seen9))")
         await stopCollector(c2)
         _ = w2
 
@@ -462,7 +462,7 @@ struct FileSystemWatcherTests {
         try fileManager.moveItem(at: parent, to: base.appendingPathComponent("parent-2", isDirectory: true))
         let observed10 = await r3.waitForPath(child.path)
         let seen10 = await r3.snapshot()
-        #expect(observed10, "親の移動: \(describe(seen10))")
+        #expect(observed10, "Parent move: \(describe(seen10))")
         await stopCollector(c3)
         _ = w3
 

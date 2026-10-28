@@ -64,7 +64,7 @@ struct PerformanceBaselineTests {
             "3 件が名前順に列挙されること (実際: \(model.listing.files.map(\.name)))"
         )
         guard model.listing.files.count == 3 else {
-            Issue.record("隣接ファイルの切替を計測するには 3 件必要です")
+            Issue.record("At least 3 items are required to measure adjacent file switching")
             return
         }
 
@@ -79,12 +79,12 @@ struct PerformanceBaselineTests {
             }
             return false
         }
-        #expect(middleVisible, "中央のファイルのプレビューが表示されること")
+        #expect(middleVisible, "The middle file's preview is displayed")
 
         let previousCached = await waitForCache(cache, previous.url, timeout: .seconds(10))
         let nextCached = await waitForCache(cache, next.url, timeout: .seconds(10))
-        #expect(previousCached, "前のファイルがキャッシュに先読みされていること")
-        #expect(nextCached, "次のファイルがキャッシュに先読みされていること")
+        #expect(previousCached, "The previous file is prefetched into the cache")
+        #expect(nextCached, "The next file is prefetched into the cache")
 
         let start = ContinuousClock.now
         model.moveFocus(.next)
@@ -96,8 +96,8 @@ struct PerformanceBaselineTests {
         }
         let elapsed = ContinuousClock.now - start
 
-        #expect(settled, "次のファイルのプレビューが表示されること")
-        #expect(model.selection.focused == next.url, "フォーカスが次のファイルに移ること")
+        #expect(settled, "The next file's preview is displayed")
+        #expect(model.selection.focused == next.url, "Focus moves to the next file")
         #expect(
             elapsed < .milliseconds(100),
             "キャッシュ済みの隣接ファイルへの切替は 0.1 秒以内 (実測: \(elapsed))"
@@ -118,8 +118,8 @@ struct PerformanceBaselineTests {
         let ordered = sorted(files, by: SortOrder())
         let elapsed = ContinuousClock.now - start
 
-        #expect(files.count == 10_000, "10,000 件が列挙されること (実際: \(files.count))")
-        #expect(ordered.count == 10_000, "10,000 件が並べ替えられること (実際: \(ordered.count))")
+        #expect(files.count == 10_000, "10,000 items are enumerated (actual: \(files.count))")
+        #expect(ordered.count == 10_000, "10,000 items are sorted (actual: \(ordered.count))")
         #expect(
             ordered.first?.name == "img_00001.jpg",
             "自然順の先頭が img_00001.jpg であること (実際: \(ordered.first?.name ?? "nil"))"
@@ -176,7 +176,7 @@ struct PerformanceBaselineTests {
         }
         let elapsed = ContinuousClock.now - start
 
-        #expect(ready, "10,000 ファイルの一覧が表示されること")
+        #expect(ready, "A listing of 10,000 files is displayed")
         #expect(
             model.listing.files.filter { $0.kind != .parent }.count == 10_000,
             "10,000 件が一覧にあること (実際: \(model.listing.files.filter { $0.kind != .parent }.count))"
@@ -204,8 +204,8 @@ struct PerformanceBaselineTests {
         let videos = MediaTypeFilter(videosOnly: true).apply(to: ordered)
         let elapsed = ContinuousClock.now - start
 
-        #expect(images.count == 10_000, "画像のみで 10,000 件 (実際: \(images.count))")
-        #expect(videos.isEmpty, "動画のみで 0 件 (実際: \(videos.count))")
+        #expect(images.count == 10_000, "Images only: 10,000 items (actual: \(images.count))")
+        #expect(videos.isEmpty, "Videos only: 0 items (actual: \(videos.count))")
         #expect(
             elapsed < .milliseconds(50),
             "種類フィルタの適用は 0.05 秒以内 (実測: \(elapsed))"
@@ -239,8 +239,8 @@ struct PerformanceBaselineTests {
         let shown = ZipFileVisibility(showsZipFiles: true).apply(to: mixed)
         let elapsed = ContinuousClock.now - start
 
-        #expect(hidden.count == 9_000, "非表示で 9,000 件 (実際: \(hidden.count))")
-        #expect(shown.count == 10_000, "表示で 10,000 件 (実際: \(shown.count))")
+        #expect(hidden.count == 9_000, "Hidden: 9,000 items (actual: \(hidden.count))")
+        #expect(shown.count == 10_000, "Shown: 10,000 items (actual: \(shown.count))")
         print("[perf] ZipFileVisibility.apply 10,000 (hide + show): \(elapsed)")
         #expect(
             elapsed < .milliseconds(50),
@@ -281,21 +281,21 @@ struct PerformanceBaselineTests {
         )
 
         await model.selectFolder(folder)
-        #expect(model.listing.files.count == 9_000, "非表示の既定で 9,000 件 (実際: \(model.listing.files.count))")
+        #expect(model.listing.files.count == 9_000, "Hidden by default: 9,000 items (actual: \(model.listing.files.count))")
 
         let showStart = ContinuousClock.now
         model.setShowsZipFiles(true)
         let showElapsed = ContinuousClock.now - showStart
-        #expect(model.listing.files.count == 10_000, "表示で 10,000 件 (実際: \(model.listing.files.count))")
+        #expect(model.listing.files.count == 10_000, "Shown: 10,000 items (actual: \(model.listing.files.count))")
 
         let hideStart = ContinuousClock.now
         model.setShowsZipFiles(false)
         let hideElapsed = ContinuousClock.now - hideStart
-        #expect(model.listing.files.count == 9_000, "非表示で 9,000 件 (実際: \(model.listing.files.count))")
+        #expect(model.listing.files.count == 9_000, "Hidden: 9,000 items (actual: \(model.listing.files.count))")
 
         print("[perf] setShowsZipFiles 10,000: show \(showElapsed), hide \(hideElapsed)")
-        #expect(showElapsed < .milliseconds(200), "表示への切り替えは 0.2 秒以内 (実測: \(showElapsed))")
-        #expect(hideElapsed < .milliseconds(200), "非表示への切り替えは 0.2 秒以内 (実測: \(hideElapsed))")
+        #expect(showElapsed < .milliseconds(200), "Switching to shown takes at most 0.2 seconds (measured: \(showElapsed))")
+        #expect(hideElapsed < .milliseconds(200), "Switching to hidden takes at most 0.2 seconds (measured: \(hideElapsed))")
     }
 
     @Test("10,000 件の検索結果での didRenameFolder が 0.1 秒以内（フォルダの行を含む）")
@@ -331,12 +331,12 @@ struct PerformanceBaselineTests {
         // Exclude waiting for the search to finish and the on-disk rename from measurement.
         model.startSearch(try #require(SearchPattern(keyword: "img")), root: directory)
         let finished = await waitUntil(timeout: .seconds(30)) { model.listing.search?.phase == .finished }
-        #expect(finished, "検索が終わること")
+        #expect(finished, "The search finishes")
         #expect(
             model.listing.search?.totalCount == expectedCount,
             "10,101 件 (実際: \(model.listing.search?.totalCount ?? -1))"
         )
-        #expect(model.listing.files.filter { $0.kind == .folder }.count == 101, "フォルダの行は 101 件")
+        #expect(model.listing.files.filter { $0.kind == .folder }.count == 101, "There are 101 folder rows")
         // To avoid outliers on loaded machines, alternate names and measure three times, using the median.
         let names = ["img-huge2", "img-huge", "img-huge2"]
         var current = folder
@@ -352,19 +352,19 @@ struct PerformanceBaselineTests {
             let mediaMoved = model.listing.files
                 .filter(\.kind.isMedia)
                 .allSatisfy { $0.url.deletingLastPathComponent().lastPathComponent == name }
-            #expect(mediaMoved, "すべてのメディアの行が新しい場所（\(name)）になること")
+            #expect(mediaMoved, "All media rows move to the new location (\(name))")
             // The renamed folder's own row gets the new URL and name.
             let renamedRow = model.listing.files.first {
                 $0.kind == .folder && $0.url.deletingLastPathComponent().standardizedFileURL == directory.standardizedFileURL
             }
-            #expect(renamedRow?.name == name, "フォルダの行の名前が \(name) になること")
+            #expect(renamedRow?.name == name, "The folder row name becomes \(name)")
             #expect(renamedRow?.url.standardizedFileURL.path == next.standardizedFileURL.path)
-            #expect(model.listing.files.filter { $0.kind == .folder }.count == 101, "ほかのフォルダの行は残ること")
+            #expect(model.listing.files.filter { $0.kind == .folder }.count == 101, "Other folder rows remain")
             current = next
         }
         let median = samples.sorted()[1]
         print("[perf] didRenameFolder 10,000 search results with folders: \(samples), median \(median)")
-        #expect(median < .milliseconds(100), "名前の変更の付け替えは 0.1 秒以内 (中央値: \(median)、実測: \(samples))")
+        #expect(median < .milliseconds(100), "Rebasing after rename takes at most 0.1 seconds (median: \(median), measured: \(samples))")
     }
 
     @Test("サブフォルダのない 10,000 ファイルのフォルダの hasSubfolders が 0.2 秒以内")
@@ -382,7 +382,7 @@ struct PerformanceBaselineTests {
         let hasSubfolders = try await lister.hasSubfolders(in: directory)
         let elapsed = ContinuousClock.now - start
 
-        #expect(!hasSubfolders, "サブフォルダがないこと")
+        #expect(!hasSubfolders, "There are no subfolders")
         #expect(
             elapsed < .milliseconds(200),
             "10,000 ファイルのフォルダのサブフォルダの有無の確認は 0.2 秒以内 (実測: \(elapsed))"
@@ -477,9 +477,9 @@ struct PerformanceBaselineTests {
         )
 
         await model.selectFolder(folder)
-        #expect(model.listing.files.count == 100, "100 件が列挙されること (実際: \(model.listing.files.count))")
+        #expect(model.listing.files.count == 100, "100 items are enumerated (actual: \(model.listing.files.count))")
         guard model.listing.files.count == 100 else {
-            Issue.record("フォーカス移動を計測するには 100 件必要です")
+            Issue.record("At least 100 items are required to measure focus movement")
             return
         }
 
@@ -496,7 +496,7 @@ struct PerformanceBaselineTests {
             }
             return false
         }
-        #expect(settled, "100 回の移動後にプレビューが画像として確定すること")
+        #expect(settled, "After 100 moves, the preview settles as an image")
 
         let isUnavailable: Bool
         if case .unavailable = model.preview {
@@ -504,7 +504,7 @@ struct PerformanceBaselineTests {
         } else {
             isUnavailable = false
         }
-        #expect(!isUnavailable, "プレビューがエラー状態のままにならないこと")
+        #expect(!isUnavailable, "The preview does not remain in an error state")
 
         let totalCost = await cache.totalCost
         #expect(
@@ -532,7 +532,7 @@ struct PerformanceBaselineTests {
         let elapsed = ContinuousClock.now - start
 
         print("ZipArchiveReader.open + items(in:) 10,000 件: \(elapsed)")
-        #expect(items.count == 10_000, "10,000 件が列挙されること (実際: \(items.count))")
+        #expect(items.count == 10_000, "10,000 items are enumerated (actual: \(items.count))")
         #expect(
             elapsed < .milliseconds(500),
             "10,000 項目の zip の open + items は 0.5 秒以内 (実測: \(elapsed))"
@@ -554,8 +554,8 @@ struct PerformanceBaselineTests {
         let elapsed = ContinuousClock.now - start
 
         print("ArchiveIndex.items(in:) 10,000 件: \(elapsed)")
-        #expect(items.count == 10_000, "10,000 件が列挙されること (実際: \(items.count))")
-        #expect(elapsed < .milliseconds(10), "items(in:) は 10ms 以内 (実測: \(elapsed))")
+        #expect(items.count == 10_000, "10,000 items are enumerated (actual: \(items.count))")
+        #expect(elapsed < .milliseconds(10), "items(in:) takes at most 10 ms (measured: \(elapsed))")
     }
 
     /// Zip of 10,000 small JPEGs (1 KB each, stored).
@@ -589,7 +589,7 @@ struct PerformanceBaselineTests {
         let reader = ZipArchiveReader(kindNames: FixtureKit.kindNames)
         _ = try await reader.open(zip)
         let stream = try await reader.stream(for: ArchiveURL.entry(archive: zip, path: "zeros.mp4"))
-        #expect(stream.length == length, "展開後のサイズが 1GB であること (実際: \(stream.length))")
+        #expect(stream.length == length, "The inflated size is 1 GB (actual: \(stream.length))")
 
         let chunk = 512 * 1024
         let mebibyte: UInt64 = 1 << 20
@@ -659,8 +659,8 @@ struct PerformanceBaselineTests {
         }
         let elapsed = ContinuousClock.now - start
 
-        #expect(count == 5_000, "半数の 5,000 件が見つかること (実際: \(count))")
-        #expect(elapsed < .seconds(3), "10,000 ファイルの階層の検索は 3 秒以内 (実測: \(elapsed))")
+        #expect(count == 5_000, "Half of the items, 5,000, are found (actual: \(count))")
+        #expect(elapsed < .seconds(3), "Searching a 10,000-file hierarchy takes at most 3 seconds (measured: \(elapsed))")
         print("[perf] search 10,000 files: \(elapsed)")
     }
 
@@ -706,11 +706,11 @@ struct PerformanceBaselineTests {
         }
         let elapsed = ContinuousClock.now - start
 
-        #expect(folderCount == 50, "一致するフォルダは 50 件 (実際: \(folderCount))")
-        #expect(fileCount == 5_000, "一致するファイルは 5,000 件 (実際: \(fileCount))")
+        #expect(folderCount == 50, "50 folders match (actual: \(folderCount))")
+        #expect(fileCount == 5_000, "5,000 files match (actual: \(fileCount))")
         // folder-%03d does not contain cat, so the SC-016 search (5,000 files only) is unchanged.
         #expect(!matchingFolderNames.contains { $0.hasPrefix("folder-") })
-        #expect(elapsed < .seconds(3), "フォルダも照合する 10,000 ファイルの検索は 3 秒以内 (実測: \(elapsed))")
+        #expect(elapsed < .seconds(3), "Searching 10,000 files including folders takes at most 3 seconds (measured: \(elapsed))")
         print("[perf] search 10,000 files with folders: \(elapsed), folders \(folderCount), files \(fileCount)")
     }
 
@@ -725,10 +725,10 @@ struct PerformanceBaselineTests {
         let merged = sortedMerge(existing, batch, by: order)
         let mergeElapsed = ContinuousClock.now - mergeStart
         #expect(merged.count == 10_256)
-        #expect(mergeElapsed < .milliseconds(50), "sortedMerge は 0.05 秒以内 (実測: \(mergeElapsed))")
+        #expect(mergeElapsed < .milliseconds(50), "sortedMerge takes at most 0.05 seconds (measured: \(mergeElapsed))")
 
         let modelElapsed = try await measureBatch(existing: existing, batch: batch)
-        #expect(modelElapsed < .milliseconds(50), "BrowserModel の1バッチの処理は 0.05 秒以内 (実測: \(modelElapsed))")
+        #expect(modelElapsed < .milliseconds(50), "BrowserModel processing one batch takes at most 0.05 seconds (measured: \(modelElapsed))")
         print("[perf] merge 256 into 10,000: sortedMerge \(mergeElapsed), BrowserModel \(modelElapsed)")
     }
 
@@ -740,7 +740,7 @@ struct PerformanceBaselineTests {
         let batch = sorted(syntheticResults(count: 256, folders: 500, prefix: "photo", offset: 50_000), by: order)
 
         let elapsed = try await measureBatch(existing: existing, batch: batch)
-        #expect(elapsed < .milliseconds(100), "50,000 件への1バッチの処理は 100ms 未満 (実測: \(elapsed))")
+        #expect(elapsed < .milliseconds(100), "Processing one batch into 50,000 items takes less than 100 ms (measured: \(elapsed))")
         print("[perf] batch 256 into 50,000: \(elapsed)")
     }
 
@@ -762,7 +762,7 @@ struct PerformanceBaselineTests {
         model.startSearch(try #require(SearchPattern(keyword: "*")), root: URL(fileURLWithPath: "/r", isDirectory: true))
         searcher.send(existing)
         let loaded = await waitUntil { model.listing.files.count == existing.count }
-        #expect(loaded, "既存の結果が一覧に入ること (実際: \(model.listing.files.count))")
+        #expect(loaded, "Existing results enter the listing (actual: \(model.listing.files.count))")
 
         let start = ContinuousClock.now
         searcher.send(batch)
@@ -810,7 +810,7 @@ func selectionIndexTenThousandRows() {
     #expect(indexes.count == 5_000)
     #expect(indexes.first == 0)
     #expect(indexes.last == 9_998)
-    #expect(elapsed < .milliseconds(100), "選択同期が 100ms 以上止まらないこと")
+    #expect(elapsed < .milliseconds(100), "Selection synchronization does not stall for 100 ms or more")
 }
 
 /// `phys_footprint` of the current process in bytes.
