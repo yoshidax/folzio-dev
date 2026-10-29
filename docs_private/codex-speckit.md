@@ -42,6 +42,21 @@ $speckit-converge
 `$speckit-bug-test`。仕様が未定義・誤りの場合は、AGENTS.md に従って feature に回す。
 `$speckit-git-feature` などの git 拡張も利用できる。
 
+## increment を対話で進める
+
+プロジェクトのスキルを使うと、要件から設計レビュー、実装・検証、製品仕様への反映まで
+現在の Codex セッションで進められる。Issue URL も指定できる。
+
+```text
+$folzio-sdd-increment 追加したい要件
+$folzio-sdd-increment https://linear.app/takyoshida/issue/TAK-123
+```
+
+既定の `clarify_mode` は `auto`。`manual` や `skip` を使う場合は依頼に明記する。
+設計レビュー、GUI などの手動確認、製品仕様への反映の確認では、ユーザーの判断や報告を待つ。
+スキルが候補に表示されない場合は新しいセッションを開く。
+以下の自動実行とは別の進め方なので、同じ feature で同時に実行しない。
+
 ## Linear に Issue を登録する
 
 やりたいことやバグを登録するときは、プロジェクトのスキルを使える。
