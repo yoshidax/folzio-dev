@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """001 の spec.md をドメイン別の specs/product/*.md へ機械的に移し、移動以外の変更がないことを確かめる。
 
-一回限りの移行用。対応表は docs/spec-restructure/domain-map.md。
+一回限りの移行用。対応表は docs_private/spec-restructure/domain-map.md。
 移行は 2026-10-24 に完了し、以後 specs/product/ は手で更新する。generate は既存のファイルを上書きするため --force を要する。
 verify は、移行直後の状態（specs/product/ が 001 の spec.md と一致すること）を確かめるためのもの。
 
@@ -24,7 +24,7 @@ def r(a, b):
     return list(range(a, b + 1))
 
 
-# docs/spec-restructure/domain-map.md の §1〜§6 をそのまま写したもの
+# docs_private/spec-restructure/domain-map.md の §1〜§6 をそのまま写したもの
 DOMAINS = {
     "overview": {
         "title": "概要と横断要件",

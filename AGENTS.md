@@ -118,7 +118,7 @@ lldb -b \
   `$speckit-tasks`、`$speckit-analyze`、`$speckit-implement`、`$speckit-converge` などで呼び出す
 - 標準・git・bug スキルは Spec Kit が生成する。共通のプロジェクト規約はこのファイルで管理する
 - Codex の自動実行は `scripts/sdd-run-codex.sh` を使う。run／resume／status と更新手順は
-  `docs/codex-speckit.md` を参照する。既定の integration は Claude のままとする
+  `docs_private/codex-speckit.md` を参照する。既定の integration は Claude のままとする
 - `.codex/config.toml` と `.codex/rules/` は Codex 用。Claude／Kilo の permissions 設定は Codex に適用されない
 - `git push`、`git reset --hard`、`git clean` は行わない。sandbox・承認・ルールを無効化して作業を継続しない
 - GUI の起動はユーザーに依頼する。非対話実行中は GUI タスクを未チェックのまま残す
@@ -155,11 +155,12 @@ open .build/MediaViewer.app
 ## 公開用リポジトリ
 
 - このリポジトリは非公開の開発用。公開用は `scripts/publish.sh` で `../my_img_viewer-oss` へ書き出し、1回の公開を1コミットにする
+- `docs/` は公開用のユーザーガイド・開発ガイド、`docs_private/` は非公開の運用手順・開発記録に使う
 - Spec Kit・AI エージェント・開発記録のファイルは `.gitattributes` の `export-ignore` で書き出しから外す。
   開発専用のファイルやディレクトリを足したら、`.gitattributes` にも追加する
-- 公開版の README・ソースのコメントから `specs/`・`.specify/`・`AGENTS.md` へのリンクを張らない
+- 公開版の README・ガイド・ソースのコメントから `specs/`・`.specify/`・`docs_private/`・`AGENTS.md` へのリンクを張らない
 - 公開用リポジトリへのコミットと push はユーザーが行う
-- 構成と公開の手順の詳細: `docs/repository-and-release.md`
+- 構成と公開の手順の詳細: `docs_private/repository-and-release.md`
 
 ## README の英語版と日本語版
 
@@ -174,7 +175,7 @@ open .build/MediaViewer.app
 
 ## 参照
 
-- 起動不具合の詳細な振り返り: `docs/retrospective/2026-10-19-startup-debugging.md`
-- リポジトリの構成と公開の手順: `docs/repository-and-release.md`
+- 起動不具合の詳細な振り返り: `docs_private/retrospective/2026-10-19-startup-debugging.md`
+- リポジトリの構成と公開の手順: `docs_private/repository-and-release.md`
 - 使い方・手動確認: `README.md`（日本語版は `README.ja.md`）
 - 検証手順: `specs/001-three-pane-media-viewer/quickstart.md`

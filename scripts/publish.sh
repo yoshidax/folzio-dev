@@ -27,7 +27,7 @@ trap 'rm -rf "$tmp"' EXIT
 git archive HEAD | tar -x -C "$tmp"
 
 # 開発用のファイルが混ざっていないか確かめる
-if (cd "$tmp" && find . | grep -E '^\./(\.specify|\.claude|\.agents|\.kilo|\.codex|\.vscode|specs|docs)(/|$)|^\./AGENTS\.md$|^\./\.gitattributes$|^\./scripts/(sdd-|spec-restructure|tests|publish\.sh)'); then
+if (cd "$tmp" && find . | grep -E '^\./(\.specify|\.claude|\.agents|\.kilo|\.codex|\.vscode|specs|docs_private)(/|$)|^\./AGENTS\.md$|^\./\.gitattributes$|^\./scripts/(sdd-|spec-restructure|tests|publish\.sh)'); then
     echo "書き出しに開発用のファイルが含まれています（.gitattributes を確認してください）" >&2
     exit 1
 fi

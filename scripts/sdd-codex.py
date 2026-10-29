@@ -214,7 +214,7 @@ def guard_resume(state, root):
     try:
         result = parse_delivery_result(implement.get("output", {}).get("stdout", ""))
     except (ValueError, TypeError):
-        raise ValueError("旧方式または不正な実装完了記録のため resume を停止しました。状態は変更しません。docs/codex-speckit.md の既存 run の扱いを確認してください") from None
+        raise ValueError("旧方式または不正な実装完了記録のため resume を停止しました。状態は変更しません。docs_private/codex-speckit.md の既存 run の扱いを確認してください") from None
     if result["status"] != "ready_for_verification" or result["blockers"]:
         raise ValueError("保存された実装結果が完了ではありません。resume を停止しました")
     if state.get("current_step_id") in ("verify", "notify_gui", "gui_smoke", "record"):
