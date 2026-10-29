@@ -83,6 +83,10 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
    git push
    ```
 
+   ソースだけの変更でも、必要に応じてこの手順で公開用リポジトリを更新する。アプリの配布物に
+   影響しない変更（README やガイドのみの変更など）では、アプリのバージョンを上げず、
+   GitHub Release の作成や配布物の再アップロードも行わない。
+
 ## 公開用リポジトリの方針
 
 - 作者は `yoshidax <takehiko.yoshida.z@gmail.com>`（global の git 設定）
@@ -103,6 +107,9 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
 複数の feature を開発用 master にマージしてから一度だけ書き出し、1つの公開コミットと Release にまとめられる。
 配布対象は macOS 15 以降の Apple silicon（arm64）のみ。Intel Mac は対象外。配布物は ad hoc 署名で、
 Developer ID 署名と Apple 公証は行わない。
+
+新しい配布物が必要な変更のときだけ、以下の手順でバージョンを更新して Release を作る。
+ソースのみの更新では、既存の Release とそのタグ・配布物を維持する。
 
 前提: Apple silicon Mac、Xcode の Swift ツールチェーン、Git、GitHub CLI と GitHub 認証。
 `folzio-oss` の `origin` は公開先 GitHub リポジトリを指し、`main` のクリーンな HEAD を push 済みとする。
