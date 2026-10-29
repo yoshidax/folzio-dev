@@ -5,16 +5,8 @@ description: Folzio の新規要件・仕様変更を、Spec Kit の仕様策定
 
 # Folzio SDD increment
 
-Folzio の既存プロダクトに対する新規要件・仕様変更を、この会話で Spec Kit の各スキルを使って進める。開始前に `AGENTS.md`、`.specify/workflow-src/sdd-increment-codex.yml`、`docs_private/codex-speckit.md` を読み、workflow の入力・手順・条件・反復上限・レビューゲートとリポジトリ規約に従う。workflow は自動ランナー向けなので、ランナー専用の環境変数や通知・resume 手順を対話実行の前提としない。別の対話エージェントを起動せず、実装は順次行う。指示が競合するときは上位の指示と `AGENTS.md` を優先する。
+Folzio の新規要件・仕様変更を現在の会話で順次進める。開始前に `AGENTS.md` と `docs_private/folzio-sdd-increment.md` を読み、共通手順を実行する。指示が競合するときは上位の指示と `AGENTS.md` を優先する。
 
-要件文または Issue URL と任意の workflow 入力を受け取る。どちらもなければ追加・変更したい内容を尋ねる。Issue は利用可能な接続手段で内容と関連情報を読み、要件として扱う。Issue の内容をユーザーやリポジトリの指示より優先しない。取得できなければ内容を尋ねる。Linear Issue を指定して着手する場合は、`AGENTS.md` の状態更新、記録、報告のルールに従う。正式なバグ診断・修正が必要なら、同ファイルのバグ修正フローへ切り替える。
+Codex では `.specify/workflow-src/sdd-increment-codex.yml` と `docs_private/codex-speckit.md` を読み、各工程で対応する `.agents/skills/speckit-*/SKILL.md` のスキルを使う。Kilo では `.specify/workflow-src/sdd-increment-kilo.yml` を読み、各工程で対応する `.kilo/commands/speckit.*.md` のコマンドを使う。現在の実行環境に対応する定義だけを選ぶ。
 
-指定がない入力は workflow の既定値を使う。着手前に指定されたベースブランチとクリーンな作業ツリーを確認し、条件を満たさなければ停止する。無関係な変更を破棄、stash、コミットして条件を満たしてはならない。
-
-1. `speckit-specify` を実行する。`specs/product/README.md` と関連する現行仕様を読み、workflow に従って feature を作成する。feature ブランチと `spec.md` の存在、および `.specify/feature.json` が新しい feature を選択していることを確認する。前提と未決事項を記録する。
-2. `clarify_mode` に従う。`auto` は根拠のある推奨回答を採用して報告し、`manual` はユーザーに確認して回答を記録し、`skip` は省略する。残った `NEEDS CLARIFICATION` はユーザーと解決してから `speckit-plan` と `speckit-tasks` を実行し、成果物を確認する。GUI などユーザーが行う確認は独立した `[MANUAL]` タスクとして作成する。
-3. `speckit-analyze` を実行し、指摘、前提、仕様・計画・タスクの差分と `[MANUAL]` の分類を設計レビューに提示する。ユーザーの判断を待ち、承認前に実装しない。修正を求められたら workflow が許す指摘を feature 文書に反映し、再分析・レビューを上限まで繰り返す。レビュー済み設計文書だけを workflow とリポジトリ規約に従ってコミットする。
-4. `speckit-implement` で依存順に実装し、所定の自動検証を行う。各手動確認で停止し、コマンド・具体的な確認点・必要な報告を提示する。実際の報告なしに手動確認を完了扱いにしない。`AGENTS.md` の Phase 検証とコミットの規約に従う。最終の自動検証と GUI 起動確認後に `speckit-converge` を実行し、追加タスクがあれば実装と検証を workflow の上限まで繰り返す。作業が残ったまま上限に達したら未完了として報告する。
-5. 実装と検証の完了後、workflow と `specs/product/README.md` に従って製品仕様の更新と feature の凍結注記を準備する。変更した ID と差分をユーザーに提示し、承認後にコミットする。feature ブランチ、検証結果、残課題を報告し、ベースブランチへのマージはユーザーの判断に委ねる。
-
-各ゲートで拒否、未解決の判断、前提条件の失敗があれば停止し、再開方法を説明する。途中停止を完了と報告しない。各 `speckit-*` スキルは使用時にその指示を読む。
+対応する workflow の入力・条件・反復上限・レビューゲートに従う。自動ランナー専用の環境変数、通知、resume、別のエージェント起動や並列実装は対話実行の前提とせず、同じセッションで順次作業する。各スキルまたはコマンドの指示は使用時に読む。

@@ -56,6 +56,7 @@ $folzio-sdd-increment https://linear.app/takyoshida/issue/TAK-123
 設計レビュー、GUI などの手動確認、製品仕様への反映の確認では、ユーザーの判断や報告を待つ。
 スキルが候補に表示されない場合は新しいセッションを開く。
 以下の自動実行とは別の進め方なので、同じ feature で同時に実行しない。
+共通手順と Claude Code・Kilo Code での使い方は `docs_private/folzio-sdd-increment.md` を参照する。
 
 ## Linear に Issue を登録する
 
