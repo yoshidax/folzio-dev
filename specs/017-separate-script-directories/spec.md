@@ -1,5 +1,8 @@
 # Feature Specification: 公開用と開発用スクリプトの分離
 
+> **移行済み（2026-10-30）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは 017 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `017-separate-script-directories`
 **Created**: 2026-10-30
 **Status**: Draft
