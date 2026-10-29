@@ -10,7 +10,16 @@ if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || ! "$build_number" =~ ^[0-9]+$ 
     exit 1
 fi
 
-swift build -c release --product FolzioApp
+if [[ -n "${FOLZIO_ARCH:-}" && "$FOLZIO_ARCH" != arm64 ]]; then
+    echo "Unsupported release architecture: $FOLZIO_ARCH" >&2
+    exit 1
+fi
+
+if [[ "${FOLZIO_ARCH:-}" == arm64 ]]; then
+    swift build -c release --arch arm64 --product FolzioApp
+else
+    swift build -c release --product FolzioApp
+fi
 
 app=".build/Folzio.app"
 
@@ -18,7 +27,11 @@ rm -rf "$app"
 
 scripts/make-icon.sh
 
-bin_dir="$(swift build -c release --product FolzioApp --show-bin-path)"
+if [[ "${FOLZIO_ARCH:-}" == arm64 ]]; then
+    bin_dir="$(swift build -c release --arch arm64 --product FolzioApp --show-bin-path)"
+else
+    bin_dir="$(swift build -c release --product FolzioApp --show-bin-path)"
+fi
 
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 

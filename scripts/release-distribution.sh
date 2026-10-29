@@ -43,7 +43,7 @@ if [[ "$operation" == prepare ]]; then
     trap 'rm -rf "$tmp"' EXIT
     mkdir "$tmp/source" "$tmp/result"
     git -C "$public_repo" archive "$commit" | tar -xf - -C "$tmp/source"
-    (cd "$tmp/source" && FOLZIO_VERSION="$version" FOLZIO_BUILD_NUMBER="$build_number" scripts/make-app.sh)
+    (cd "$tmp/source" && FOLZIO_VERSION="$version" FOLZIO_BUILD_NUMBER="$build_number" FOLZIO_ARCH=arm64 scripts/make-app.sh)
     app="$tmp/source/.build/Folzio.app"
     [[ "$(lipo -archs "$app/Contents/MacOS/Folzio")" == arm64 ]] || fail "App executable is not arm64-only"
     [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" == "$version" ]] || fail "App version mismatch"

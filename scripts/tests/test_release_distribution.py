@@ -127,6 +127,18 @@ exec "{real_git}" "${{args[@]}}"''')
         self.stub('gh', 'exit 1')
         self.assertNotEqual(self.draft().returncode, 0)
 
+    def test_existing_release_is_not_overwritten(self):
+        self.prepare()
+        self.tag()
+        self.stub('gh', 'printf "%s\\n" "$*" >> "$GH_LOG"; echo "release already exists" >&2; exit 1')
+        result = self.draft()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('release already exists', result.stderr)
+        calls = (self.base / 'gh.log').read_text().splitlines()
+        self.assertEqual(len(calls), 1)
+        self.assertIn('--draft', calls[0])
+        self.assertNotIn('--clobber', calls[0])
+
 
 if __name__ == '__main__':
     unittest.main()

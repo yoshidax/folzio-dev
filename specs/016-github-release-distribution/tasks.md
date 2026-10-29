@@ -20,3 +20,11 @@
 ## Dependencies & Execution Order
 
 T001 → T002 → T003 → T005。T004、T006、T007 は T003 までの設計に合わせて実施。T008 は T001〜T007 後。T009 → T010 → T011 → T012。実装は順次実行し、GUI の起動はユーザーが行う。
+
+## Phase 2: Convergence
+
+- [X] T013 `scripts/make-app.sh` と `scripts/release-distribution.sh` で配布時に arm64 を明示指定し、既定の開発ビルドを維持する（T001、plan: arm64 ビルド、partial）。
+- [X] T014 `scripts/tests/test_release_distribution.py` で同名 Release のエラーを明示的に検証し、上書きや公開に進まないことを確認する（T005、EC-125、partial）。
+- [X] T015 T013〜T014 の自動検証と Phase 検証ゲートを実施する。
+- [X] T016 [MANUAL] ユーザーが新しい通常ビルドと配布 ZIP を開き、3ペインと配布 ZIP の日英表示を確認する。
+- [X] T017 確認結果を記録し、Phase の変更をコミットする。
