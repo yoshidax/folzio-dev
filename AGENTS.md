@@ -15,6 +15,17 @@
 - 実装中に更新する仕様文書は、作業中の feature の `tasks.md` のチェックと、タスクで明示された追記（例: T077 の quickstart）だけにする
 - 進捗は作業中の feature の `tasks.md` を正とする
 
+## Issue 管理
+
+- やりたいことやバグは Linear の [Folzio プロジェクト](https://linear.app/takyoshida/project/folzio-968b9d447da8)（チーム TAK）で管理する
+- Linear Issue を指定して Spec Kit の feature またはバグ修正に着手するとき、対象を確認して `In Progress` に更新する。
+  Issue の URL または ID を作成時の feature 仕様書またはバグの assessment に記録し、作業ブランチとともにユーザーに知らせる
+- 詳細な実装タスクと進捗は引き続き feature の `tasks.md` を正とし、Linear に全タスクを複製しない
+- ユーザーが master へのマージ後に完了更新を依頼したら、Issue の対象となる変更が開発用 master に含まれることを確認してから
+  Issue を `Done` に更新する。マージや Linear の更新を確認できない場合は完了にせず、状況を報告する
+- Linear に接続できない場合は失敗を報告し、状態を更新できたと扱わない。ユーザーの明示的な指示でない限り、
+  `Done`、`Canceled`、`Duplicate` の Issue を自動的に再着手しない
+
 ## コードコメント（英語）
 
 OSS として配布するため、ソースコードのコメントは英語で書きます。日本語のコメントが残っているファイルは、
