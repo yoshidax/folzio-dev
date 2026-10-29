@@ -36,3 +36,12 @@ fi
 途中で失敗した場合は両ディレクトリの現在位置を確認し、残った方だけ移す。新しい `~/projects/folzio/folzio.code-workspace` をIDEで開き、Codexの書き込み対象も新ディレクトリで開始し直す。必要ならビルド生成物を再生成して、`swift build`、`swift test`、3つの検査スクリプト、`scripts/make-app.sh` とユーザーによるGUI起動を確認する。公開側のGit履歴と `.vscode/` の保持も確認する。
 
 実施日・OS・対象・確認結果はこの文書の末尾に追記する。凍結済みfeatureには追記しない。
+
+## 実施記録
+
+- 実施日: 2026-10-29。macOS 26.6.2（25G83）。
+- 設定移行: `.app` と `swift run` の両ドメインで移行を実施し、それぞれバックアップを保存。移動前に両起動方法の動作をユーザーが確認し、問題なし。
+- ディレクトリ移動: 開発用を `~/projects/folzio`、公開用を `~/projects/folzio-oss` に移動。公開用の Git 履歴と管理外 `.vscode/` の保持を確認。
+- 移動後の検証: `swift build`、`swift test`（Core 821 件、性能 27 件）、3 つの検査スクリプト、`scripts/make-app.sh` が成功。旧パスを参照するビルド生成物の警告が出たが、再ビルドは成功。
+- 移動後の GUI: 生成した `.build/Folzio.app` の動作確認をユーザーが完了。
+- 移動後に開発用の VS Code 設定に差分があり、既存の変更として保持。Kilo の追加 worktree は移動後の Git 共通ディレクトリを参照していることを確認。
