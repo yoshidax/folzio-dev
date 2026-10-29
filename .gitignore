@@ -6,3 +6,5 @@ DerivedData/
 *.code-workspace
 __pycache__/
 *.pyc
+
+/.vscode/settings.json
