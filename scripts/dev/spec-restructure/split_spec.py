@@ -5,8 +5,8 @@
 移行は 2026-10-24 に完了し、以後 specs/product/ は手で更新する。generate は既存のファイルを上書きするため --force を要する。
 verify は、移行直後の状態（specs/product/ が 001 の spec.md と一致すること）を確かめるためのもの。
 
-  python3 scripts/spec-restructure/split_spec.py generate --force [--only search]
-  python3 scripts/spec-restructure/split_spec.py verify
+  python3 scripts/dev/spec-restructure/split_spec.py generate --force [--only search]
+  python3 scripts/dev/spec-restructure/split_spec.py verify
 """
 
 import argparse
@@ -14,7 +14,7 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 SOURCE = ROOT / "specs/001-three-pane-media-viewer/spec.md"
 OUT = ROOT / "specs/product"
 SOURCE_REL = "specs/001-three-pane-media-viewer/spec.md"

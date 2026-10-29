@@ -6,8 +6,8 @@ import tempfile
 import unittest
 
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / 'scripts/release-distribution.sh'
+ROOT = pathlib.Path(__file__).resolve().parents[3]
+SCRIPT = ROOT / 'scripts/dev/release-distribution.sh'
 
 
 def run(*args, cwd=None, env=None, check=True):
@@ -22,9 +22,9 @@ class ReleaseDistributionTests(unittest.TestCase):
         self.public = self.base / 'public'
         self.remote = self.base / 'remote.git'
         self.bin = self.base / 'bin'
-        for path in (self.root / 'scripts', self.public / 'scripts', self.bin):
+        for path in (self.root / 'scripts/dev', self.public / 'scripts', self.bin):
             path.mkdir(parents=True)
-        shutil.copy2(SCRIPT, self.root / 'scripts')
+        shutil.copy2(SCRIPT, self.root / 'scripts/dev')
         run('git', 'init', '--bare', str(self.remote))
         run('git', 'init', '-b', 'main', str(self.public))
         run('git', 'config', 'user.name', 'Test', cwd=self.public)
@@ -71,7 +71,7 @@ exec "{real_git}" "${{args[@]}}"''')
         path.chmod(0o755)
 
     def invoke(self, *args):
-        return run(str(self.root / 'scripts/release-distribution.sh'), *args,
+        return run(str(self.root / 'scripts/dev/release-distribution.sh'), *args,
                    cwd=self.root, env=self.env, check=False)
 
     def prepare(self):

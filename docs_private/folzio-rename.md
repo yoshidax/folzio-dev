@@ -8,8 +8,8 @@ MediaViewerとFolzioの両方、および `swift run` で起動したアプリ�
 
 ```bash
 cd /Users/igachan/projects/my_img_viewer
-scripts/migrate-folzio-settings.sh app
-scripts/migrate-folzio-settings.sh swift-run
+scripts/dev/migrate-folzio-settings.sh app
+scripts/dev/migrate-folzio-settings.sh swift-run
 ```
 
 旧 `.app` の `local.my-img-viewer.MediaViewer` は `local.folzio.Folzio` に、旧 `swift run` の `MediaViewerApp` は `FolzioApp` に移される。旧ドメインは残る。アプリ設定、ウインドウの位置、3ペインの幅を含む旧ドメインをコピーし、保存パスは変えない。

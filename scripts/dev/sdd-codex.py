@@ -15,7 +15,7 @@ import uuid
 
 
 WORKFLOW = "sdd-increment-codex"
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 MANUAL_WAIT = 75
 
 
@@ -309,7 +309,7 @@ def execute_codex(arguments):
                         "GUI確認を設計レビューの承認で代替しないでください。"
                         f"\n受領済みの手動確認報告: {receipt_path}（存在するときだけ読む）。"
                         "報告転記タスクではこの記録を根拠にし、指定された記録先へ転記してください。")
-        args += ["--output-schema", str(ROOT / "scripts/sdd-codex-implementation.schema.json")]
+        args += ["--output-schema", str(ROOT / "scripts/dev/sdd-codex-implementation.schema.json")]
     # --approve-for-me selects workspace-write itself and conflicts with --sandbox.
     args += ["--json", "--approve-for-me"]
     model = os.environ.get("SDD_CODEX_MODEL")
@@ -408,7 +408,7 @@ def outcome_message(state):
 def run_workflow(arguments, root=ROOT):
     command = arguments[0] if arguments else ""
     if command not in ("run", "resume", "status"):
-        raise ValueError('使い方: scripts/sdd-run-codex.sh run "<追加要件>" [-i key=value ...] | resume <run_id> | status [<run_id>]')
+        raise ValueError('使い方: scripts/dev/sdd-run-codex.sh run "<追加要件>" [-i key=value ...] | resume <run_id> | status [<run_id>]')
     if command in ("run", "resume") and (len(arguments) < 2 or not arguments[1].strip()):
         raise ValueError("追加要件または run_id を指定してください")
     refresh = command == "resume" and len(arguments) == 3 and arguments[2] == "--refresh-manual"
@@ -461,7 +461,7 @@ def run_workflow(arguments, root=ROOT):
                 path.rename(attempt / "manual-pending-before-refresh.json")
                 path.with_name("review-invalidated.json").write_text(json.dumps({"attempt": str(attempt)}) + "\n")
                 print("古い確認要求をログへ退避しました。設計レビューの承認は再利用せず、実装で確認要求を再生成します。", flush=True)
-        env["SPECKIT_INTEGRATION_CODEX_EXECUTABLE"] = str(root / "scripts/sdd-codex.py")
+        env["SPECKIT_INTEGRATION_CODEX_EXECUTABLE"] = str(root / "scripts/dev/sdd-codex.py")
         # Used by the workflow preflight to reject execution without this runner.
         env["SDD_CODEX_WORKFLOW"] = WORKFLOW
         argv = [specify, "workflow", command]
@@ -516,7 +516,7 @@ def run_workflow(arguments, root=ROOT):
         with open(env["SDD_PROGRESS_LOG"], "a", encoding="utf-8") as log:
             log.write(time.strftime("%H:%M:%S ") + "[終了] " + message + "\n")
         if env.get("SDD_CODEX_NOTIFY") != "0":
-            subprocess.call([str(root / "scripts/sdd-notify.sh"), message, "SDD workflow (Codex)"], cwd=root, env=env)
+            subprocess.call([str(root / "scripts/dev/sdd-notify.sh"), message, "SDD workflow (Codex)"], cwd=root, env=env)
         return code if code >= 0 else 128 - code
     finally:
         lock.rmdir()

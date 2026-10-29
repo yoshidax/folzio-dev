@@ -80,17 +80,17 @@ Linear から直接登録するときも該当するテンプレートを選べ�
 同じリポジトリで Claude／Kilo／Codex の workflow を同時に run／resume しない。
 
 ```bash
-scripts/sdd-run-codex.sh run "追加したい要件"
+scripts/dev/sdd-run-codex.sh run "追加したい要件"
 # 小さな変更で clarify を省略する場合
-scripts/sdd-run-codex.sh run "追加したい要件" -i clarify_mode=skip
+scripts/dev/sdd-run-codex.sh run "追加したい要件" -i clarify_mode=skip
 # clarify に手動で回答する場合
-scripts/sdd-run-codex.sh run "追加したい要件" -i clarify_mode=manual
+scripts/dev/sdd-run-codex.sh run "追加したい要件" -i clarify_mode=manual
 
-scripts/sdd-run-codex.sh status
-scripts/sdd-run-codex.sh status <run_id>
-scripts/sdd-run-codex.sh resume <run_id>
+scripts/dev/sdd-run-codex.sh status
+scripts/dev/sdd-run-codex.sh status <run_id>
+scripts/dev/sdd-run-codex.sh resume <run_id>
 # 確認待ちの後に tasks.md や対象アプリを変更した場合、古い要求を退避して再生成する
-scripts/sdd-run-codex.sh resume <run_id> --refresh-manual
+scripts/dev/sdd-run-codex.sh resume <run_id> --refresh-manual
 ```
 
 別のターミナルで進捗を確認できる。
@@ -103,7 +103,7 @@ specify → clarify → plan → tasks → analyze／修正 → 設計レビュ�
 （Phase の実装・自動検証 → 手動確認・報告 → 記録・コミット）→ 最終の自動検証・起動確認 → converge → specs/product/ への反映確認
 の順で進む。Phase は tasks.md の依存順で繰り返す。GUI はユーザーが表示されたコマンドで
 起動し、3 ペインと作業中の quickstart のシナリオを確認する。確認報告前に GUI タスクは完了にしない。
-最後の master へのマージと push はユーザーが判断し、`scripts/merge-to-master.sh` を実行する。
+最後の master へのマージと push はユーザーが判断し、`scripts/dev/merge-to-master.sh` を実行する。
 AI エージェントはこのスクリプトを実行せず、master に直接マージしない。
 
 非 TTY ではゲートで一時停止する。通常のターミナルから `resume` して回答する。
@@ -131,7 +131,7 @@ run_id を省略した `status` は従来どおり Spec Kit の一覧表示に�
 ## モデル・権限・ログ
 
 - モデルは個人の Codex 設定を継承する。ワークフローだけ変える場合は
-  `SDD_CODEX_MODEL=<利用可能なモデルID> scripts/sdd-run-codex.sh run "要件"` とする。
+  `SDD_CODEX_MODEL=<利用可能なモデルID> scripts/dev/sdd-run-codex.sh run "要件"` とする。
   再開時にも同じ変数を渡す。Claude 固有の `sonnet`／`opus` は使わない。
 - 対話の既定は `.codex/config.toml` の `workspace-write`／`on-request`。
   workflow は `codex exec --approve-for-me`（workspace-write を含む）を使い、
@@ -139,7 +139,7 @@ run_id を省略した `status` は従来どおり Spec Kit の一覧表示に�
   ポリシーで拒否された操作は失敗として止まる。必要な対象・理由を確認して再開する。
 - `git push`、`git reset --hard`、`git clean` の禁止ルールを `.codex/rules/sdd.rules` に置く。
   ルールはコマンド接頭辞を判定するもので、OS のアクセス制御の代替ではない。
-- `scripts/sdd-codex.py` は公式 integration の実行ファイル差し替え機能を使う。
+- `scripts/dev/sdd-codex.py` は公式 integration の実行ファイル差し替え機能を使う。
   Codex JSONL のイベントを進捗ログへ、最終回答だけをレビュー用 stdout へ渡す。
   CLI の非 0 終了、失敗イベント、最終回答を取得できない場合は失敗にする。
 - グローバルな hook や認証設定は変更しない。実行時ファイルは既存の
@@ -147,7 +147,7 @@ run_id を省略した `status` は従来どおり Spec Kit の一覧表示に�
 
 ## 実装完了の判定と検証ログ
 
-- `$speckit-implement` の最終回答は `scripts/sdd-codex-implementation.schema.json` で検証する。
+- `$speckit-implement` の最終回答は `scripts/dev/sdd-codex-implementation.schema.json` で検証する。
   `status` が `ready_for_verification`、`blockers` が空、`tasks.md` の未チェックが
   すべて `[MANUAL]` のときだけ implement を成功にする。現在実施可能な手動確認は
   `waiting_for_manual` と `manual_requests`（task_id / kind / instructions）で返す。
@@ -162,7 +162,7 @@ run_id を省略した `status` は従来どおり Spec Kit の一覧表示に�
   更新後のブリッジで Phase 途中の確認を仲介するため、保存済み workflow の移行は不要。
   旧 workflow 末尾の GUI gate は残るので、そこに達した場合は表示された起動確認も行う。
   新 workflow も最終ビルドの起動 gate は維持するが、その承認で手動タスクをまとめてチェックしない。
-- verify は `python3 scripts/sdd-codex.py verify` で実行し、build／test／no-network／readme-sync／make-app の
+- verify は `python3 scripts/dev/sdd-codex.py verify` で実行し、build／test／no-network／readme-sync／make-app の
   各試行を `.specify/workflows/runs/attempts/<attempt>/verify-<id>/` に
   stdout／stderr／result.json として残す。再実行しても前回の失敗ログを上書きしない。
   失敗時は画面に段階とログのパスを表示する。
@@ -187,7 +187,7 @@ specify workflow add --dev .specify/workflow-src/sdd-increment-codex.yml
 ## 検証と問題の切り分け
 
 ```bash
-python3 -m unittest discover -s scripts/tests -v
+python3 -m unittest discover -s scripts/dev/tests -v
 codex execpolicy check --rules .codex/rules/sdd.rules -- git push origin master
 swift build
 swift test

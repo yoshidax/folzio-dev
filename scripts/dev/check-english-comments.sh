@@ -3,7 +3,7 @@
 # Covers Swift comments, localization resource comments, and published shell scripts.
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 japanese='[\p{Hiragana}\p{Katakana}\p{Han}]'
 status=0

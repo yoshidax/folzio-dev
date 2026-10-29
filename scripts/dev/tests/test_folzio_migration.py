@@ -6,8 +6,8 @@ import unittest
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts/migrate-folzio-settings.sh"
+ROOT = Path(__file__).resolve().parents[3]
+SCRIPT = ROOT / "scripts/dev/migrate-folzio-settings.sh"
 FAKE_DEFAULTS = '''#!/usr/bin/env python3
 import os, pathlib, shutil, sys
 root = pathlib.Path(os.environ["FOLZIO_TEST_DOMAINS"])

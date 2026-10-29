@@ -52,7 +52,7 @@ OSS として配布するため、ソースコードのコメントは英語で�
 1. `swift build`
 2. `swift test`
 3. `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、
-   `scripts/check-english-comments.sh`
+   `scripts/dev/check-english-comments.sh`
 4. 起動スモーク（3ペインが表示されること）
    - `scripts/make-app.sh`
    - `open .build/Folzio.app`
@@ -128,11 +128,11 @@ lldb -b \
 - Codex の Spec Kit スキルは `.agents/skills/`。CLI では `$speckit-specify`、`$speckit-plan`、
   `$speckit-tasks`、`$speckit-analyze`、`$speckit-implement`、`$speckit-converge` などで呼び出す
 - 標準・git・bug スキルは Spec Kit が生成する。共通のプロジェクト規約はこのファイルで管理する
-- Codex の自動実行は `scripts/sdd-run-codex.sh` を使う。run／resume／status と更新手順は
+- Codex の自動実行は `scripts/dev/sdd-run-codex.sh` を使う。run／resume／status と更新手順は
   `docs_private/codex-speckit.md` を参照する。既定の integration は Claude のままとする
 - `.codex/config.toml` と `.codex/rules/` は Codex 用。Claude／Kilo の permissions 設定は Codex に適用されない
 - `git push`、`git reset --hard`、`git clean` は行わない。sandbox・承認・ルールを無効化して作業を継続しない
-- 開発用 master へのマージと push はユーザーが `scripts/merge-to-master.sh` で行う。
+- 開発用 master へのマージと push はユーザーが `scripts/dev/merge-to-master.sh` で行う。
   AI エージェントはこのスクリプトを直接・間接に実行せず、master に直接マージしない
 - GUI の起動はユーザーに依頼する。非対話実行中は GUI タスクを未チェックのまま残す
 - Codex の初期ワークフローは順次実装する。内部 subagent による同じ作業ディレクトリでの並列編集は行わない。
@@ -167,10 +167,10 @@ open .build/Folzio.app
 
 ## 公開用リポジトリ
 
-- このリポジトリは非公開の開発用。公開用は `scripts/publish.sh` で `../folzio-oss` へ書き出し、1回の公開を1コミットにする
+- このリポジトリは非公開の開発用。公開用は `scripts/dev/publish.sh` で `../folzio-oss` へ書き出し、1回の公開を1コミットにする
 - `docs/` は公開用のユーザーガイド・開発ガイド、`docs_private/` は非公開の運用手順・開発記録に使う
 - Spec Kit・AI エージェント・開発記録のファイルは `.gitattributes` の `export-ignore` で書き出しから外す。
-  開発専用のファイルやディレクトリを足したら、`.gitattributes` にも追加する
+  開発専用スクリプトと補助ファイルは `scripts/dev/` に置く。その他の開発専用ファイルは `.gitattributes` で除外する
 - 公開版の README・ガイド・ソースのコメントから `specs/`・`.specify/`・`docs_private/`・`AGENTS.md` へのリンクを張らない
 - 公開用リポジトリへのコミットと push はユーザーが行う
 - 構成と公開の手順の詳細: `docs_private/repository-and-release.md`
@@ -184,7 +184,7 @@ open .build/Folzio.app
 - `scripts/check-readme-sync.sh [base]` で確かめる（Phase の検証ゲート 3）。base（既定は HEAD）との merge-base 以降の変更（未コミット・未追跡を含む）で
   片方だけが変わっていないかと、2つの構造（見出し・箇条書き・表の行・コードブロック）が一致するかを調べる
   - 訳の中身が一致しているかまでは調べない。差分を読み、両方に同じ内容が入っていることを確かめる
-- `scripts/publish.sh` も書き出しの前に同じ確認を行う
+- `scripts/dev/publish.sh` も書き出しの前に同じ確認を行う
 
 ## 参照
 

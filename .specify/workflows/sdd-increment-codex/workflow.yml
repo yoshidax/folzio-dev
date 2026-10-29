@@ -47,8 +47,8 @@ steps:
         echo "未コミットの変更があります。コミットするか stash してから実行してください" >&2; exit 1
       fi
       if [ "${SDD_CODEX_WORKFLOW:-}" != "sdd-increment-codex" ] ||
-         [ "${SPECKIT_INTEGRATION_CODEX_EXECUTABLE:-}" != "$PWD/scripts/sdd-codex.py" ]; then
-        echo "scripts/sdd-run-codex.sh から実行してください（Codex 実行ブリッジが必要です）" >&2; exit 1
+         [ "${SPECKIT_INTEGRATION_CODEX_EXECUTABLE:-}" != "$PWD/scripts/dev/sdd-codex.py" ]; then
+        echo "scripts/dev/sdd-run-codex.sh から実行してください（Codex 実行ブリッジが必要です）" >&2; exit 1
       fi
 
   # ── 1. 新しい feature の仕様 ─────────────────────────────────────
@@ -112,7 +112,7 @@ steps:
     then:
       - id: notify_clarify
         type: shell
-        run: scripts/sdd-notify.sh "clarify を対話で行ってください"
+        run: scripts/dev/sdd-notify.sh "clarify を対話で行ってください"
       - id: clarify_manual
         type: gate
         message: |
@@ -169,7 +169,7 @@ steps:
 
       - id: notify_review
         type: shell
-        run: scripts/sdd-notify.sh "設計レビュー待ち（analyze の結果を確認してください）"
+        run: scripts/dev/sdd-notify.sh "設計レビュー待ち（analyze の結果を確認してください）"
 
       - id: review_gate
         type: gate
@@ -247,13 +247,13 @@ steps:
       - id: verify
         type: shell
         timeout: 3600
-        run: python3 scripts/sdd-codex.py verify
+        run: python3 scripts/dev/sdd-codex.py verify
 
       # 各 Phase の GUI/VoiceOver/性能確認は implement の中断時にランナーが受領する。
       # 一括の approve で未実施の手動タスクをまとめて完了にしない。
       - id: notify_gui
         type: shell
-        run: scripts/sdd-notify.sh "最終ビルドの起動確認待ち"
+        run: scripts/dev/sdd-notify.sh "最終ビルドの起動確認待ち"
 
       - id: gui_smoke
         type: gate
@@ -294,7 +294,7 @@ steps:
 
   - id: notify_merge_back
     type: shell
-    run: scripts/sdd-notify.sh "specs/product/ への反映を確認してください"
+    run: scripts/dev/sdd-notify.sh "specs/product/ への反映を確認してください"
 
   - id: merge_back_gate
     type: gate
@@ -316,7 +316,7 @@ steps:
 
   - id: notify_summary
     type: shell
-    run: scripts/sdd-notify.sh "specs/product/ への反映まで終わりました。結果を確認してください"
+    run: scripts/dev/sdd-notify.sh "specs/product/ への反映まで終わりました。結果を確認してください"
 
   - id: summary
     type: gate

@@ -44,8 +44,8 @@
     ],
     "deny": [
       "Bash(git push *)",
-      "Bash(scripts/merge-to-master.sh *)",
-      "Bash(scripts/merge-to-master.sh)",
+      "Bash(scripts/dev/merge-to-master.sh *)",
+      "Bash(scripts/dev/merge-to-master.sh)",
       "Bash(git reset --hard *)",
       "Bash(git clean *)",
       "Edit(/.claude/settings.json)",

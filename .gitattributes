@@ -1,4 +1,4 @@
-# 公開用リポジトリへ書き出さないファイル（scripts/publish.sh の git archive が参照する）
+# 公開用リポジトリへ書き出さないファイル（scripts/dev/publish.sh の git archive が参照する）
 /.specify                 export-ignore
 /.claude                  export-ignore
 /.agents                  export-ignore
@@ -8,11 +8,5 @@
 /specs                    export-ignore
 /docs_private             export-ignore
 /AGENTS.md                export-ignore
-/scripts/sdd-*            export-ignore
-/scripts/spec-restructure export-ignore
-/scripts/tests            export-ignore
-/scripts/publish.sh       export-ignore
-/scripts/release-distribution.sh export-ignore
-/scripts/migrate-folzio-settings.sh export-ignore
-/scripts/merge-to-master.sh export-ignore
+/scripts/dev export-ignore
 /.gitattributes           export-ignore

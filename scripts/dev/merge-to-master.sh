@@ -2,10 +2,10 @@
 # Merge a branch into master and back it up to the private development repository.
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 fail() { echo "Error: $*" >&2; exit 1; }
-usage() { echo "Usage: scripts/merge-to-master.sh <branch> | --continue | --push-only" >&2; exit 2; }
+usage() { echo "Usage: scripts/dev/merge-to-master.sh <branch> | --continue | --push-only" >&2; exit 2; }
 [[ $# == 1 ]] || usage
 mode=$1
 [[ $(git branch --show-current) == master ]] || fail "Switch to master first."
@@ -61,7 +61,7 @@ esac
 
 commit=$(git rev-parse HEAD)
 if ! git push origin "$commit:refs/heads/master"; then
-    fail "Local master is at $commit, but push failed. After fixing the cause, run scripts/merge-to-master.sh --push-only."
+    fail "Local master is at $commit, but push failed. After fixing the cause, run scripts/dev/merge-to-master.sh --push-only."
 fi
 [[ $(git rev-parse refs/heads/master) == "$commit" ]] || fail "master changed during push; inspect its state and retry --push-only."
 echo "master backed up to origin/master: $commit"

@@ -3,10 +3,10 @@
 # 書き出し先でビルド・テスト・ネットワーク非依存の確認を行い、変更をステージするところまで進める。
 # コミットと push は内容を確認してから手で行う
 #
-#   scripts/publish.sh [書き出し先]   （既定: ../folzio-oss）
+#   scripts/dev/publish.sh [書き出し先]   （既定: ../folzio-oss）
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 dest="${1:-../folzio-oss}"
 
@@ -19,7 +19,7 @@ fi
 scripts/check-readme-sync.sh
 
 # ソースコードのコメントに日本語が残っていないか確かめる
-scripts/check-english-comments.sh
+scripts/dev/check-english-comments.sh
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -27,7 +27,7 @@ trap 'rm -rf "$tmp"' EXIT
 git archive HEAD | tar -x -C "$tmp"
 
 # 開発用のファイルが混ざっていないか確かめる
-if (cd "$tmp" && find . | grep -E '^\./(\.specify|\.claude|\.agents|\.kilo|\.codex|\.vscode|specs|docs_private)(/|$)|^\./AGENTS\.md$|^\./\.gitattributes$|^\./scripts/(sdd-|spec-restructure|tests|publish\.sh|release-distribution\.sh|migrate-folzio-settings\.sh)'); then
+if (cd "$tmp" && find . | grep -E '^\./(\.specify|\.claude|\.agents|\.kilo|\.codex|\.vscode|specs|docs_private)(/|$)|^\./AGENTS\.md$|^\./\.gitattributes$|^\./scripts/dev(/|$)'); then
     echo "書き出しに開発用のファイルが含まれています（.gitattributes を確認してください）" >&2
     exit 1
 fi

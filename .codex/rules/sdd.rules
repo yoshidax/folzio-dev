@@ -6,10 +6,10 @@ prefix_rule(
     match = ["git push", "git push origin master"],
 )
 prefix_rule(
-    pattern = ["scripts/merge-to-master.sh"],
+    pattern = ["scripts/dev/merge-to-master.sh"],
     decision = "forbidden",
     justification = "master へのマージと push はユーザーが実行する。",
-    match = ["scripts/merge-to-master.sh feature", "scripts/merge-to-master.sh --push-only"],
+    match = ["scripts/dev/merge-to-master.sh feature", "scripts/dev/merge-to-master.sh --push-only"],
 )
 prefix_rule(
     pattern = ["git", "reset", "--hard"],

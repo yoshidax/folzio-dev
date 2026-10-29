@@ -1,4 +1,4 @@
-"""Offline regression tests. Run: python3 -m unittest discover -s scripts/tests -v"""
+"""Offline regression tests. Run: python3 -m unittest discover -s scripts/dev/tests -v"""
 
 import importlib.util
 import json
@@ -11,8 +11,8 @@ import tempfile
 import unittest
 
 
-ROOT = Path(__file__).resolve().parents[2]
-BRIDGE = ROOT / "scripts/sdd-codex.py"
+ROOT = Path(__file__).resolve().parents[3]
+BRIDGE = ROOT / "scripts/dev/sdd-codex.py"
 spec = importlib.util.spec_from_file_location("sdd_codex", BRIDGE)
 sdd = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sdd)
@@ -96,8 +96,8 @@ class CodexBridgeTests(unittest.TestCase):
 
     def implementation(self, report, tasks_after=None):
         make_tasks(self.root)
-        scripts = self.root / "scripts"
-        scripts.mkdir(exist_ok=True)
+        scripts = self.root / "scripts/dev"
+        scripts.mkdir(parents=True, exist_ok=True)
         shutil.copy2(BRIDGE, scripts / BRIDGE.name)
         schema = BRIDGE.with_name("sdd-codex-implementation.schema.json")
         if schema.exists():
@@ -209,8 +209,8 @@ class WorkflowTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="sdd workflow ")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        scripts = self.root / "scripts"
-        scripts.mkdir()
+        scripts = self.root / "scripts/dev"
+        scripts.mkdir(parents=True)
         shutil.copy2(BRIDGE, scripts / BRIDGE.name)
         schema = BRIDGE.with_name("sdd-codex-implementation.schema.json")
         if schema.exists():
@@ -265,7 +265,7 @@ steps:
 
     def run_runner(self, *args):
         return subprocess.run(
-            [sys.executable, str(self.root / "scripts/sdd-codex.py"), *args],
+            [sys.executable, str(self.root / "scripts/dev/sdd-codex.py"), *args],
             cwd=self.root, env=self.env, stdin=subprocess.DEVNULL,
             text=True, capture_output=True, timeout=30,
         )
@@ -282,7 +282,7 @@ steps:
         import time
         master, slave = pty.openpty()
         proc = subprocess.Popen(
-            [sys.executable, str(self.root / "scripts/sdd-codex.py"), "resume", run_id],
+            [sys.executable, str(self.root / "scripts/dev/sdd-codex.py"), "resume", run_id],
             cwd=self.root, env=self.env, stdin=slave, stdout=slave, stderr=slave)
         os.close(slave)
         output = b""
@@ -439,7 +439,7 @@ steps:
         import select
         master, slave = pty.openpty()
         proc = subprocess.Popen(
-            [sys.executable, str(self.root / "scripts/sdd-codex.py"), "resume", state["run_id"]],
+            [sys.executable, str(self.root / "scripts/dev/sdd-codex.py"), "resume", state["run_id"]],
             cwd=self.root, env=self.env, stdin=slave, stdout=slave, stderr=slave,
         )
         os.close(slave)

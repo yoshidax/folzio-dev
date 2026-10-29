@@ -1,7 +1,7 @@
 #!/bin/bash
 # Prepare a release from the public repository, or create an unpublished GitHub release.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 root="$PWD"
 usage() {
     echo "Usage: $0 prepare VERSION BUILD_NUMBER OWNER/REPO [PUBLIC_REPO]" >&2

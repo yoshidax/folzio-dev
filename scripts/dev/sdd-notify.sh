@@ -2,7 +2,7 @@
 # spec-kit ワークフロー（sdd-increment）の通知。macOS の通知とターミナルのベルを出し、進捗ログにも残す。
 # 通知に失敗してもワークフローを止めないよう、常に 0 で終わる
 #
-#   scripts/sdd-notify.sh <メッセージ> [タイトル]
+#   scripts/dev/sdd-notify.sh <メッセージ> [タイトル]
 set -uo pipefail
 
 message="${1:-}"

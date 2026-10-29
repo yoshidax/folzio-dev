@@ -3,8 +3,8 @@
   "permission": {
     "bash": {
       "git push *": "deny",
-      "scripts/merge-to-master.sh *": "deny",
-      "scripts/merge-to-master.sh": "deny",
+      "scripts/dev/merge-to-master.sh *": "deny",
+      "scripts/dev/merge-to-master.sh": "deny",
       "git reset --hard *": "deny",
       "git clean *": "deny"
     }

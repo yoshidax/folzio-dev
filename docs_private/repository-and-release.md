@@ -25,12 +25,12 @@ AI エージェントはこのスクリプトを実行せず、master に直接�
 ```bash
 cd ~/projects/folzio
 git switch master
-scripts/merge-to-master.sh <作業ブランチ名>
+scripts/dev/merge-to-master.sh <作業ブランチ名>
 ```
 
-競合した場合は解消して変更をステージし、`scripts/merge-to-master.sh --continue` を実行する。
+競合した場合は解消して変更をステージし、`scripts/dev/merge-to-master.sh --continue` を実行する。
 マージを取り消す場合は `git merge --abort` を使う。マージ後に push が失敗した場合は、
-認証・ネットワーク・remote の状態を確認し、`scripts/merge-to-master.sh --push-only` で再試行する。
+認証・ネットワーク・remote の状態を確認し、`scripts/dev/merge-to-master.sh --push-only` で再試行する。
 remote が先に進んだ場合や履歴が分岐した場合は自動では統合せず、状態を確認してから対処する。
 push が成功するまで GitHub へのバックアップは未完了である。
 
@@ -57,14 +57,11 @@ Issue を `Done` にする。これはマージや push に連動する自動更
 | `specs/` | 仕様（`specs/product/`）と各 feature の記録 |
 | `docs_private/` | 開発用のドキュメント（このファイルを含む） |
 | `AGENTS.md` | エージェント向けのプロジェクト規約 |
-| `scripts/sdd-*` `scripts/spec-restructure/` `scripts/tests/` | Spec Kit の自動実行とその検証 |
-| `scripts/publish.sh` | 書き出しのスクリプト |
-| `scripts/merge-to-master.sh` | 開発用 master のマージとバックアップ |
+| `scripts/dev/` | 開発専用のスクリプト・補助ファイル・検証 |
 | `.vscode/` | エディタの個人設定 |
 | `.gitattributes` | この指定そのもの |
 
-開発専用のファイルやディレクトリを足したときは、`.gitattributes` にも追加する。
-ルート直下以外の場所に置く開発専用のファイルは、個別に指定が要る。
+開発専用スクリプトとその補助ファイルは `scripts/dev/` に置く。その他の開発専用ファイルは `.gitattributes` で除外する。
 
 公開版に出るファイルには、外したファイルへのリンクや参照を書かない（README・`.gitignore` を含む）。
 Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore` ではなく `.specify/.gitignore` に置く。
@@ -77,20 +74,21 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
 
    ```bash
    cd ~/projects/folzio
-   scripts/publish.sh
+   scripts/dev/publish.sh
    ```
 
-   `scripts/publish.sh` は次の順に行い、どれかが失敗するとそこで止まる。
+   `scripts/dev/publish.sh` は次の順に行い、どれかが失敗するとそこで止まる。
 
    1. `scripts/check-readme-sync.sh` で、`README.md` と `README.ja.md` の構造がそろっているか確かめる
-   2. `git archive HEAD` で、`export-ignore` を除いたファイルを一時ディレクトリへ取り出す
-   3. 外したはずのファイルが混ざっていないか確かめる
-   4. `$HOME` のパスとユーザー名が含まれていないか確かめる
-   5. `../folzio-oss` へ同期する（`.git`、`.build`、`.vscode` を保護し、それ以外は書き出し内容に合わせる）。
+   2. `scripts/dev/check-english-comments.sh` で公開対象のソースコメントを検査する
+   3. `git archive HEAD` で、`export-ignore` を除いたファイルを一時ディレクトリへ取り出す
+   4. 外したはずのファイルが混ざっていないか確かめる
+   5. `$HOME` のパスとユーザー名が含まれていないか確かめる
+   6. `../folzio-oss` へ同期する（`.git`、`.build`、`.vscode` を保護し、それ以外は書き出し内容に合わせる）。
       書き出し先がなければ `git init -b main` で作る
-   6. 書き出し先で `swift build`、Core のテスト、性能テスト、`scripts/check-no-network.sh` を行う。
+   7. 書き出し先で `swift build`、Core のテスト、性能テスト、`scripts/check-no-network.sh` を行う。
       テストは2つを順に流す（同時に流すと、Core の待ち時間のあるテストが CPU 不足で落ちることがある）
-   7. `git add -A` で変更をステージし、`git status` を表示する
+   8. `git add -A` で変更をステージし、`git status` を表示する
 
 3. 書き出し先で起動スモークを行う（3ペインが表示されること）
 
@@ -125,7 +123,7 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
 - 公開用で直接コミットしない。次の書き出しで開発用の内容に置き換わる
 - `.app` はアドホック署名（`codesign --sign -`）。配布物は Gatekeeper でブロックされるため、配布するなら
   Developer ID の署名と公証を行うか、開き方を README で案内する
-- 公開版に出るファイルに `$HOME` の絶対パスを書かない。`scripts/publish.sh` の確認で止まる
+- 公開版に出るファイルに `$HOME` の絶対パスを書かない。`scripts/dev/publish.sh` の確認で止まる
 - 公開前の全履歴は `~/projects/my_img_viewer-backup.bundle` にある（作者情報を書き換える前の状態）
 
 ## GitHub Releases の配布物
@@ -146,7 +144,7 @@ Developer ID 署名と Apple 公証は行わない。
 
    ```bash
    cd ~/projects/folzio
-   scripts/release-distribution.sh prepare 1.2.3 12 OWNER/REPO
+   scripts/dev/release-distribution.sh prepare 1.2.3 12 OWNER/REPO
    ```
 
    必要に応じて最後に公開用リポジトリのパスを指定できる。出力は `.build/releases/v1.2.3/` にある。
@@ -165,7 +163,7 @@ Developer ID 署名と Apple 公証は行わない。
 
    ```bash
    cd ~/projects/folzio
-   scripts/release-distribution.sh draft 1.2.3 OWNER/REPO /path/to/release-notes.md
+   scripts/dev/release-distribution.sh draft 1.2.3 OWNER/REPO /path/to/release-notes.md
    ```
 
    ZIP と `SHA256SUMS` を添付する。公開済みタグとコミット、ZIP のチェックサム・アーキテクチャ・
