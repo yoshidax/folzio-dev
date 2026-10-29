@@ -9,12 +9,17 @@ Spec Kit・AI エージェントの設定・仕様書・開発記録は公開し
 |---|---|---|
 | 場所 | `~/projects/my_img_viewer` | `~/projects/my_img_viewer-oss` |
 | remote | なし | GitHub（push はユーザーが行う） |
-| 管理対象 | すべてのファイル | アプリのソース・テスト・ビルド用スクリプト・README（英語の `README.md` と日本語の `README.ja.md`）・LICENSE |
+| 管理対象 | すべてのファイル | アプリのソース・テスト・ビルド用スクリプト・README（英語の `README.md` と日本語の `README.ja.md`）・公開用ガイド（`docs/`）・LICENSE |
 | 履歴 | 開発の履歴をそのまま残す | 1回の公開を1コミットにする |
 | ブランチ | master と feature・bugfix などの作業ブランチ | main |
 
 日々の開発・Spec Kit・worktree での並列実装は、すべて開発用で行う。公開用は手で編集しない。
 内容を変えるときは開発用で直してから書き出す。
+
+## ドキュメントの配置
+
+- `docs/`: 公開用のユーザーガイド・開発ガイド。README からリンクし、公開用リポジトリにも書き出す
+- `docs_private/`: 非公開の運用手順・用語集・開発記録。このファイルを含み、公開用リポジトリには書き出さない
 
 ## 公開版から外すファイル
 
@@ -25,7 +30,7 @@ Spec Kit・AI エージェントの設定・仕様書・開発記録は公開し
 | `.specify/` | Spec Kit 本体、憲章、拡張、workflow、バグ修正の記録（`.specify/bugs/`） |
 | `.claude/` `.agents/` `.kilo/` `.codex/` | 各 AI エージェントの設定・スキル・コマンド |
 | `specs/` | 仕様（`specs/product/`）と各 feature の記録 |
-| `docs/` | 開発用のドキュメント（このファイルを含む） |
+| `docs_private/` | 開発用のドキュメント（このファイルを含む） |
 | `AGENTS.md` | エージェント向けのプロジェクト規約 |
 | `scripts/sdd-*` `scripts/spec-restructure/` `scripts/tests/` | Spec Kit の自動実行とその検証 |
 | `scripts/publish.sh` | 書き出しのスクリプト |

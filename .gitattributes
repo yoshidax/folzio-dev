@@ -6,7 +6,7 @@
 /.codex                   export-ignore
 /.vscode                  export-ignore
 /specs                    export-ignore
-/docs                     export-ignore
+/docs_private             export-ignore
 /AGENTS.md                export-ignore
 /scripts/sdd-*            export-ignore
 /scripts/spec-restructure export-ignore
