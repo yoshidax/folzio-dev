@@ -71,7 +71,8 @@ specify → clarify → plan → tasks → analyze／修正 → 設計レビュ�
 （Phase の実装・自動検証 → 手動確認・報告 → 記録・コミット）→ 最終の自動検証・起動確認 → converge → specs/product/ への反映確認
 の順で進む。Phase は tasks.md の依存順で繰り返す。GUI はユーザーが表示されたコマンドで
 起動し、3 ペインと作業中の quickstart のシナリオを確認する。確認報告前に GUI タスクは完了にしない。
-最後の master へのマージと push はユーザーが判断する。
+最後の master へのマージと push はユーザーが判断し、`scripts/merge-to-master.sh` を実行する。
+AI エージェントはこのスクリプトを実行せず、master に直接マージしない。
 
 非 TTY ではゲートで一時停止する。通常のターミナルから `resume` して回答する。
 一時停止も終了コードは非 0 として報告するため、完了と取り違えない。

@@ -8,13 +8,34 @@ Spec Kit・AI エージェントの設定・仕様書・開発記録は公開し
 | | 開発用 | 公開用 |
 |---|---|---|
 | 場所 | `~/projects/folzio` | `~/projects/folzio-oss` |
-| remote | なし | GitHub（push はユーザーが行う） |
+| remote | GitHub の private リポジトリ `yoshidax/folzio-dev` | GitHub（push はユーザーが行う） |
 | 管理対象 | すべてのファイル | アプリのソース・テスト・ビルド用スクリプト・README（英語の `README.md` と日本語の `README.ja.md`）・公開用ガイド（`docs/`）・LICENSE |
 | 履歴 | 開発の履歴をそのまま残す | 1回の公開を1コミットにする |
 | ブランチ | master と feature・bugfix などの作業ブランチ | main |
 
 日々の開発・Spec Kit・worktree での並列実装は、すべて開発用で行う。公開用は手で編集しない。
 内容を変えるときは開発用で直してから書き出す。
+
+## 開発用 master へのマージとバックアップ
+
+検証と確認を終えた作業ブランチは、ユーザーが開発用 master に切り替えてから次を実行する。
+スクリプトは `origin/master` を取得して分岐を確認し、マージ後に private リポジトリへ push する。
+AI エージェントはこのスクリプトを実行せず、master に直接マージしない。
+
+```bash
+cd ~/projects/folzio
+git switch master
+scripts/merge-to-master.sh <作業ブランチ名>
+```
+
+競合した場合は解消して変更をステージし、`scripts/merge-to-master.sh --continue` を実行する。
+マージを取り消す場合は `git merge --abort` を使う。マージ後に push が失敗した場合は、
+認証・ネットワーク・remote の状態を確認し、`scripts/merge-to-master.sh --push-only` で再試行する。
+remote が先に進んだ場合や履歴が分岐した場合は自動では統合せず、状態を確認してから対処する。
+push が成功するまで GitHub へのバックアップは未完了である。
+
+この規則は同じ OS ユーザーで動く Agent を技術的に識別するアクセス制御ではない。
+スクリプトを通らない直接の master 更新も自動的には push されない。
 
 ## ドキュメントの配置
 
@@ -34,6 +55,7 @@ Spec Kit・AI エージェントの設定・仕様書・開発記録は公開し
 | `AGENTS.md` | エージェント向けのプロジェクト規約 |
 | `scripts/sdd-*` `scripts/spec-restructure/` `scripts/tests/` | Spec Kit の自動実行とその検証 |
 | `scripts/publish.sh` | 書き出しのスクリプト |
+| `scripts/merge-to-master.sh` | 開発用 master のマージとバックアップ |
 | `.vscode/` | エディタの個人設定 |
 | `.gitattributes` | この指定そのもの |
 

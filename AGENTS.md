@@ -121,6 +121,8 @@ lldb -b \
   `docs_private/codex-speckit.md` を参照する。既定の integration は Claude のままとする
 - `.codex/config.toml` と `.codex/rules/` は Codex 用。Claude／Kilo の permissions 設定は Codex に適用されない
 - `git push`、`git reset --hard`、`git clean` は行わない。sandbox・承認・ルールを無効化して作業を継続しない
+- 開発用 master へのマージと push はユーザーが `scripts/merge-to-master.sh` で行う。
+  AI エージェントはこのスクリプトを直接・間接に実行せず、master に直接マージしない
 - GUI の起動はユーザーに依頼する。非対話実行中は GUI タスクを未チェックのまま残す
 - Codex の初期ワークフローは順次実装する。内部 subagent による同じ作業ディレクトリでの並列編集は行わない。
   並列実装を明示的に行う場合も、上の worktree 規約に従って独立したセッションを使う
