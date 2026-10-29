@@ -7,7 +7,7 @@ English | [日本語](README.ja.md)
 Folzio is a native macOS app that brings folder navigation, thumbnails, and previews together in one window.
 Browse a folder of photos, animated images, and video clips, then organize files as you view them.
 
-macOS 15 or later · English and Japanese · Works locally without network communication · [MIT License](LICENSE)
+macOS 15 or later · Apple silicon only · English and Japanese · Works locally without network communication · [MIT License](LICENSE)
 
 ## Features
 
@@ -26,7 +26,14 @@ macOS 15 or later · English and Japanese · Works locally without network commu
 
 ## Download
 
-The macOS app is planned to be distributed through GitHub Releases.
+The app is available from GitHub Releases. It requires macOS 15 or later on an Apple silicon Mac;
+Intel Macs are not supported.
+
+1. Open this repository's **Releases** page and download `Folzio-vX.Y.Z-macos-arm64.zip` from the desired release.
+2. Unzip the file and move `Folzio.app` to Applications, then open it.
+3. The app is not signed with a Developer ID or notarized by Apple. If macOS blocks it, and you trust the download,
+   open System Settings → Privacy & Security and choose **Open Anyway**, then confirm. See
+   [Apple's instructions](https://support.apple.com/en-us/102445).
 
 To try it from source, see the [build and launch instructions](docs/development.md).
 Xcode with the Swift 6 toolchain is required to build the app.

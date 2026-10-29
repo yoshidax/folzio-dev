@@ -12,5 +12,6 @@
 /scripts/spec-restructure export-ignore
 /scripts/tests            export-ignore
 /scripts/publish.sh       export-ignore
+/scripts/release-distribution.sh export-ignore
 /scripts/migrate-folzio-settings.sh export-ignore
 /.gitattributes           export-ignore

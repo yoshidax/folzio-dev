@@ -7,7 +7,7 @@
 Folzio は、フォルダ移動・サムネイル一覧・プレビューをひとつのウインドウにまとめた macOS アプリです。
 写真・アニメーション画像・動画が混在するフォルダを開いて、内容を確かめながらファイルを整理できます。
 
-macOS 15 以降 · 英語・日本語対応 · ネットワーク通信なしでローカルで動作 · [MIT License](LICENSE)
+macOS 15 以降 · Apple silicon 専用 · 英語・日本語対応 · ネットワーク通信なしでローカルで動作 · [MIT License](LICENSE)
 
 ## 主な機能
 
@@ -26,7 +26,14 @@ macOS 15 以降 · 英語・日本語対応 · ネットワーク通信なしで
 
 ## ダウンロード
 
-macOS アプリは GitHub Releases で配布する予定です。
+アプリは GitHub Releases から入手できます。macOS 15 以降の Apple silicon Mac が必要です。
+Intel Mac は対象外です。
+
+1. このリポジトリの **Releases** ページを開き、目的のリリースから `Folzio-vX.Y.Z-macos-arm64.zip` をダウンロードします。
+2. ZIP を展開して `Folzio.app` をアプリケーションフォルダへ移動し、開きます。
+3. このアプリは Developer ID 署名と Apple の公証を受けていません。macOS にブロックされた場合、配布元を信頼できると判断したうえで、
+   システム設定 → プライバシーとセキュリティの **このまま開く** を選び、確認します。
+   [Apple の案内](https://support.apple.com/ja-jp/102445)も参照してください。
 
 ソースから試す場合は、[ビルドと起動の手順](docs/development.ja.md)を参照してください。
 ビルドには Swift 6 ツールチェーンを含む Xcode が必要です。

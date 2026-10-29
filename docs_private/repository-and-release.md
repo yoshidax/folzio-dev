@@ -97,3 +97,45 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
   Developer ID の署名と公証を行うか、開き方を README で案内する
 - 公開版に出るファイルに `$HOME` の絶対パスを書かない。`scripts/publish.sh` の確認で止まる
 - 公開前の全履歴は `~/projects/my_img_viewer-backup.bundle` にある（作者情報を書き換える前の状態）
+
+## GitHub Releases の配布物
+
+複数の feature を開発用 master にマージしてから一度だけ書き出し、1つの公開コミットと Release にまとめられる。
+配布対象は macOS 15 以降の Apple silicon（arm64）のみ。Intel Mac は対象外。配布物は ad hoc 署名で、
+Developer ID 署名と Apple 公証は行わない。
+
+前提: Apple silicon Mac、Xcode の Swift ツールチェーン、Git、GitHub CLI と GitHub 認証。
+`folzio-oss` の `origin` は公開先 GitHub リポジトリを指し、`main` のクリーンな HEAD を push 済みとする。
+バージョンは `X.Y.Z`、ビルド番号は数字で指定する。
+
+1. 上記の書き出しと公開用コミット・push をユーザーが行う。新たに開発した配布機能は、公開するソースに含める。
+2. 開発用リポジトリから公開済みコミットを確認し、隔離ビルドと ZIP の検証を行う。
+
+   ```bash
+   cd ~/projects/folzio
+   scripts/release-distribution.sh prepare 1.2.3 12 OWNER/REPO
+   ```
+
+   必要に応じて最後に公開用リポジトリのパスを指定できる。出力は `.build/releases/v1.2.3/` にある。
+   同じバージョンの出力が残っていると上書きせず停止する。失敗時の一時ファイルは削除される。
+3. ZIP を展開し、ユーザーが Apple silicon Mac で起動して3ペインと日英表示を確認する。
+   実際にダウンロードしたファイルで Gatekeeper の挙動を確認する場合は、その結果も記録する。
+4. ユーザーが公開用コミットにタグを作成・push する。既存タグは再利用・上書きしない。
+
+   ```bash
+   cd ~/projects/folzio-oss
+   git tag -a v1.2.3 -m "Folzio v1.2.3"
+   git push origin v1.2.3
+   ```
+
+5. リリースノートをファイルに用意し、開発用リポジトリからドラフトを作る。
+
+   ```bash
+   cd ~/projects/folzio
+   scripts/release-distribution.sh draft 1.2.3 OWNER/REPO /path/to/release-notes.md
+   ```
+
+   ZIP と `SHA256SUMS` を添付する。公開済みタグとコミット、ZIP のチェックサム・アーキテクチャ・
+   バージョン・署名を再確認する。ユーザーが GitHub でドラフトを確認してから公開する。
+   失敗時はエラーと GitHub のドラフト状態を確認する。途中でドラフトが作られた場合は、GitHub 上で
+   状態を確認して修復または削除してから再実行する。同名の Release を自動上書きしない。

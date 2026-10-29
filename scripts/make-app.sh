@@ -3,6 +3,13 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+version="${FOLZIO_VERSION:-0.1.0}"
+build_number="${FOLZIO_BUILD_NUMBER:-1}"
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || ! "$build_number" =~ ^[0-9]+$ ]]; then
+    echo "Invalid app version or build number" >&2
+    exit 1
+fi
+
 swift build -c release --product FolzioApp
 
 app=".build/Folzio.app"
@@ -55,9 +62,9 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>APP_VERSION_PLACEHOLDER</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>APP_BUILD_PLACEHOLDER</string>
     <key>LSMinimumSystemVersion</key>
     <string>15.0</string>
     <key>NSHighResolutionCapable</key>
@@ -68,6 +75,8 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" "$app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $build_number" "$app/Contents/Info.plist"
 codesign --force --sign - "$app"
 
 echo "created $app"
