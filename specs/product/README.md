@@ -1,6 +1,6 @@
 # プロダクト仕様
 
-MediaViewer の現在の仕様（Living spec）を領域ごとに分けたもの。
+Folzio の現在の仕様（Living spec）を領域ごとに分けたもの。
 `specs/001-three-pane-media-viewer/spec.md` から移行した。FR・SC の ID は元のまま引き継いでいる。
 
 ## 領域

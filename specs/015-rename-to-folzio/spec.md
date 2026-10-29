@@ -1,8 +1,11 @@
 # Feature Specification: Folzioへの改名
 
+> **移行済み（2026-10-29）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは 015 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `015-rename-to-folzio`
 **Created**: 2026-10-29
-**Status**: Draft
+**Status**: Migrated and frozen
 **Input**: プロジェクトと製品を Folzio に改名し、プロジェクトディレクトリと公開用ディレクトリも変更する。
 
 ## User Scenarios & Testing *(mandatory)*

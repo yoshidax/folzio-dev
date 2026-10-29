@@ -43,7 +43,7 @@
 - [X] T021 [MANUAL] 必要に応じ `docs_private/` の手順で旧 `.app` と `swift run` の設定をFolzio初回起動前にそれぞれ移行し、バックアップと結果を報告する
 - [X] T022 [MANUAL] `open .build/Folzio.app` と `swift run FolzioApp` を順にユーザーが起動し、`specs/015-rename-to-folzio/quickstart.md` の3ペイン・日英・画像・動画・zip・各起動方法の設定復元を確認して結果を報告する
 - [X] T023 T017〜T022の結果を `specs/015-rename-to-folzio/checklists/validation.md` に記録し、変更とfeatureの進捗をPhase単位でコミットする
-- [ ] T024 `specs/015-rename-to-folzio/` と現在のコードのconvergeを行い、残作業があれば追加し、同じ検証ゲートを再実施する
+- [X] T024 `specs/015-rename-to-folzio/` と現在のコードのconvergeを行い、残作業があれば追加し、同じ検証ゲートを再実施する
 
 ## Dependencies & Execution Order
 

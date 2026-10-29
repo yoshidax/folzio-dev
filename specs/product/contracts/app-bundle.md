@@ -3,16 +3,18 @@
 配布用 `.app` の外形と、アイコンの生成・同梱に関する契約。仕様は
 [overview.md](../overview.md) の FR-043〜045、SC-011、前提を参照。
 
+製品とSwift Packageの名称は `Folzio`。ターゲットは `FolzioCore`、`FolzioLocalization`、`FolzioApp`、`FolzioCoreTests`、`FolzioPerformanceTests` とし、`FixtureKit` と既存の補助ツールの名称は維持する（FR-166・168）。
+
 ## バンドル構成
 
-`scripts/make-app.sh` は `.build/MediaViewer.app` を次の構成で作る。
+`scripts/make-app.sh` は `.build/Folzio.app` を次の構成で作る。
 
 ```text
-MediaViewer.app/
+Folzio.app/
 └── Contents/
     ├── Info.plist
     ├── MacOS/
-    │   └── MediaViewer              # swift build -c release の実行ファイル
+    │   └── Folzio                   # swift build -c release の実行ファイル
     └── Resources/
         ├── AppIcon.icns             # scripts/make-icon.sh の生成物
         ├── en.lproj/
@@ -23,7 +25,7 @@ MediaViewer.app/
             └── Localizable.stringsdict
 ```
 
-翻訳リソースは `Sources/MediaViewerLocalization/Resources/{ja,en}.lproj/` を管理元とし、Swift Package のリソースバンドルから `.app` 本体へコピーする。両言語の `Localizable.strings` と `Localizable.stringsdict` が揃わなければ `.app` を残さず失敗する。コピー後に署名する。`.app` をビルドディレクトリの外へ移しても両言語を表示できる（FR-155）。表示言語はアプリ設定で選び、OS が提供する文言は OS に従う（EC-111）。言語の追加時はリソース、アプリの選択肢、`CFBundleLocalizations` を更新する（FR-156）。
+翻訳リソースは `Sources/FolzioLocalization/Resources/{ja,en}.lproj/` を管理元とし、Swift Package のリソースバンドルから `.app` 本体へコピーする。両言語の `Localizable.strings` と `Localizable.stringsdict` が揃わなければ `.app` を残さず失敗する。コピー後に署名する。`.app` をビルドディレクトリの外へ移しても両言語を表示できる（FR-155）。表示言語はアプリ設定で選び、OS が提供する文言は OS に従う（EC-111）。言語の追加時はリソース、アプリの選択肢、`CFBundleLocalizations` を更新する（FR-156）。
 
 ## Info.plist の必須キー
 
@@ -31,9 +33,9 @@ MediaViewer.app/
 |------|----|------|
 | `CFBundleDevelopmentRegion` | `en` | 開発言語と翻訳欠落時のフォールバック |
 | `CFBundleLocalizations` | `ja`, `en` | 対応言語 |
-| `CFBundleExecutable` | `MediaViewer` | 実行ファイル名 |
-| `CFBundleIdentifier` | `local.my-img-viewer.MediaViewer` | アプリの同一性 |
-| `CFBundleName` | `MediaViewer` | 表示名 |
+| `CFBundleExecutable` | `Folzio` | 実行ファイル名 |
+| `CFBundleIdentifier` | `local.folzio.Folzio` | アプリの同一性 |
+| `CFBundleName` | `Folzio` | 表示名 |
 | `CFBundleIconFile` | `AppIcon` | バンドルアイコン（拡張子なし） |
 | `CFBundlePackageType` | `APPL` | アプリケーションバンドル |
 | `CFBundleShortVersionString` | `0.1.0` | バージョン |
@@ -72,9 +74,9 @@ MediaViewer.app/
 
 | 確認 | 期待結果 |
 |------|----------|
-| `test -f MediaViewer.app/Contents/Resources/AppIcon.icns` | 存在する |
-| `plutil -extract CFBundleIconFile raw MediaViewer.app/Contents/Info.plist` | `AppIcon` |
-| `iconutil -c iconset MediaViewer.app/Contents/Resources/AppIcon.icns -o /tmp/AppIcon.iconset` | 全スロットが展開できる |
+| `test -f Folzio.app/Contents/Resources/AppIcon.icns` | 存在する |
+| `plutil -extract CFBundleIconFile raw Folzio.app/Contents/Info.plist` | `AppIcon` |
+| `iconutil -c iconset Folzio.app/Contents/Resources/AppIcon.icns -o /tmp/AppIcon.iconset` | 全スロットが展開できる |
 | Finder で `.app` を表示 | 汎用アイコンではなく3ペインのアイコン |
 | Dock / ⌘Tab / About | 同じアイコン |
 
