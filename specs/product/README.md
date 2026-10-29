@@ -10,10 +10,10 @@ Folzio の現在の仕様（Living spec）を領域ごとに分けたもの。
 | [overview.md](overview.md) | 概要と横断要件 | 保存と復元（1）、対応形式（2）、横断要件（3）、国際化（8）、アプリアイコン（3）、製品名と開発環境（3）、GitHub Releases での配布（8）、公開用と開発用スクリプト（4） |
 | [window-layout.md](window-layout.md) | ウィンドウの構成 | 画面構成（2）、国際化の配置（1）、ツールバー（4）、ペインの表示切り替え（7） |
 | [navigation-history.md](navigation-history.md) | 操作の履歴 | 戻る・進む（7） |
-| [directory-tree.md](directory-tree.md) | ディレクトリツリー | ディレクトリツリー（10）、お気に入り（12） |
-| [file-list.md](file-list.md) | ファイルリスト | ファイルリスト（10）、種類フィルタ（5）、ファイルリストのフォルダ（3） |
+| [directory-tree.md](directory-tree.md) | ディレクトリツリー | ディレクトリツリー（10）、お気に入り（13） |
+| [file-list.md](file-list.md) | ファイルリスト | ファイルリスト（10）、種類フィルタ（5）、ファイルリストのフォルダ（4） |
 | [zip.md](zip.md) | zip ファイル | zip ファイル（8）、zip ファイルの表示制御（4） |
-| [file-operations.md](file-operations.md) | ファイル操作 | ファイル操作（11） |
+| [file-operations.md](file-operations.md) | ファイル操作 | ファイル操作（14） |
 | [search.md](search.md) | 検索 | 検索（13） |
 | [preview.md](preview.md) | プレビュー | プレビュー（8）、フルスクリーン（4） |
 

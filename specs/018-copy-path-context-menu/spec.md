@@ -1,5 +1,8 @@
 # Feature Specification: パス名のコピー
 
+> **移行済み（2026-10-30）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは 018 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `018-copy-path-context-menu`
 **Created**: 2026-10-30
 **Status**: Draft
