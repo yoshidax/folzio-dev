@@ -1,4 +1,4 @@
-# MediaViewer ユーザーガイド
+# Folzio ユーザーガイド
 
 [English](usage.md) | 日本語 · [README に戻る](../README.ja.md)
 
@@ -187,13 +187,13 @@
 
 ```bash
 # .app の設定をリセット
-defaults delete local.my-img-viewer.MediaViewer
+defaults delete local.folzio.Folzio
 
 # swift run の設定をリセット
-defaults delete MediaViewerApp
+defaults delete FolzioApp
 ```
 
 ## ファイルが見えないとき
 
-システム設定 → プライバシーとセキュリティ → ファイルとフォルダで、MediaViewer にアクセスを許可してください。
+システム設定 → プライバシーとセキュリティ → ファイルとフォルダで、Folzio にアクセスを許可してください。
 ターミナルから起動している場合は、ターミナルへの許可を確認してください。

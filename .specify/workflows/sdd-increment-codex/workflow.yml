@@ -258,8 +258,8 @@ steps:
       - id: gui_smoke
         type: gate
         message: |
-          最終の自動検証で作成したアプリを確認します。古い MediaViewer を終了してから
-          `open .build/MediaViewer.app` を実行し、3ペインが表示されることを確認して approve してください。
+          最終の自動検証で作成したアプリを確認します。古い Folzio を終了してから
+          `open .build/Folzio.app` を実行し、3ペインが表示されることを確認して approve してください。
           Phase途中の手動タスクはランナーが個別に報告を受領します。この承認で未実施タスクを完了にしません。
           問題があれば reject で停止し、修正と自動検証後に resume してください。
         options: [approve, reject]

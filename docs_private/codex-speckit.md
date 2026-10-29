@@ -10,7 +10,7 @@ Claude／Kilo の設定と既定の Claude integration は維持する。
 別の Mac では Swift 6 と macOS 15 以降、Python 3、Codex CLI、Spec Kit が必要。
 
 ```bash
-cd /Users/igachan/projects/my_img_viewer
+cd /Users/igachan/projects/folzio
 export PATH="$HOME/.local/bin:$PATH"
 codex --version
 specify --version
@@ -162,7 +162,7 @@ scripts/check-no-network.sh
 scripts/check-readme-sync.sh master
 scripts/make-app.sh
 # ユーザーが起動して確認する
-open .build/MediaViewer.app
+open .build/Folzio.app
 ```
 
 - `specify` が見つからない: `~/.local/bin` を PATH に追加する。ランナー自身はこの場所も探す。

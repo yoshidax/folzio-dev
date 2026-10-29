@@ -7,7 +7,7 @@ Spec Kit・AI エージェントの設定・仕様書・開発記録は公開し
 
 | | 開発用 | 公開用 |
 |---|---|---|
-| 場所 | `~/projects/my_img_viewer` | `~/projects/my_img_viewer-oss` |
+| 場所 | `~/projects/folzio` | `~/projects/folzio-oss` |
 | remote | なし | GitHub（push はユーザーが行う） |
 | 管理対象 | すべてのファイル | アプリのソース・テスト・ビルド用スクリプト・README（英語の `README.md` と日本語の `README.ja.md`）・公開用ガイド（`docs/`）・LICENSE |
 | 履歴 | 開発の履歴をそのまま残す | 1回の公開を1コミットにする |
@@ -50,7 +50,7 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
 2. 書き出す
 
    ```bash
-   cd ~/projects/my_img_viewer
+   cd ~/projects/folzio
    scripts/publish.sh
    ```
 
@@ -60,7 +60,7 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
    2. `git archive HEAD` で、`export-ignore` を除いたファイルを一時ディレクトリへ取り出す
    3. 外したはずのファイルが混ざっていないか確かめる
    4. `$HOME` のパスとユーザー名が含まれていないか確かめる
-   5. `../my_img_viewer-oss` へ同期する（`.git` と `.build` 以外を置き換え、消えたファイルは消す）。
+   5. `../folzio-oss` へ同期する（`.git`、`.build`、`.vscode` を保護し、それ以外は書き出し内容に合わせる）。
       書き出し先がなければ `git init -b main` で作る
    6. 書き出し先で `swift build`、Core のテスト、性能テスト、`scripts/check-no-network.sh` を行う。
       テストは2つを順に流す（同時に流すと、Core の待ち時間のあるテストが CPU 不足で落ちることがある）
@@ -69,15 +69,15 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
 3. 書き出し先で起動スモークを行う（3ペインが表示されること）
 
    ```bash
-   cd ~/projects/my_img_viewer-oss
+   cd ~/projects/folzio-oss
    scripts/make-app.sh
-   open .build/MediaViewer.app
+   open .build/Folzio.app
    ```
 
 4. ステージされた内容を確認してコミットし、push する
 
    ```bash
-   cd ~/projects/my_img_viewer-oss
+   cd ~/projects/folzio-oss
    git diff --cached --stat
    git commit -m "Release vX.Y"
    git push

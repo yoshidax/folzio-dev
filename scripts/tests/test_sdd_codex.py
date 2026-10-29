@@ -35,7 +35,7 @@ if os.environ.get("FAKE_PHASED") and sys.argv[2].startswith("$speckit-implement"
             kind = "design_review" if "design review" in description else "gui"
             request = [{"task_id": task_id, "kind": kind,
                         "instructions": "Review task classification" if kind == "design_review" else
-                        "open .build/MediaViewer.app; check 3 panes; report build, OS and device"}]
+                        "open .build/Folzio.app; check 3 panes; report build, OS and device"}]
             break
         rows[i] = line.replace("[ ]", "[X]", 1)
     path.write_text("\\n".join(rows) + "\\n")
@@ -69,7 +69,7 @@ def delivery_result(status="ready_for_verification", completed=None, manual=None
 
 
 def manual_request(task_id="T002", kind="gui"):
-    return {"task_id": task_id, "kind": kind, "instructions": "open .build/MediaViewer.app; check 3 panes"}
+    return {"task_id": task_id, "kind": kind, "instructions": "open .build/Folzio.app; check 3 panes"}
 
 
 def make_tasks(root, text="- [ ] T001 Implement\n- [ ] T002 [MANUAL] GUI check\n"):
@@ -392,7 +392,7 @@ steps:
     def test_changed_app_cannot_consume_old_manual_confirmation(self):
         self.install_phased_workflow("- [ ] T001 Implement\n- [ ] T002 [MANUAL] GUI smoke\n- [ ] T003 Record\n")
         self.run_runner("run", "changed build")
-        binary = self.root / ".build/MediaViewer.app/Contents/MacOS/MediaViewer"
+        binary = self.root / ".build/Folzio.app/Contents/MacOS/Folzio"
         binary.parent.mkdir(parents=True)
         binary.write_bytes(b"new build")
         result = self.run_runner("resume", self.state()["run_id"])
@@ -401,7 +401,7 @@ steps:
         self.assertFalse(sdd.read_tasks(self.root)["T002"]["checked"])
 
     def test_review_approval_cannot_confirm_gui_disguised_as_design_review(self):
-        self.install_phased_workflow("- [ ] T001 [MANUAL] design review open .build/MediaViewer.app\n- [ ] T002 Record\n", review=True)
+        self.install_phased_workflow("- [ ] T001 [MANUAL] design review open .build/Folzio.app\n- [ ] T002 Record\n", review=True)
         self.run_runner("run", "GUI cannot use review approval")
         state = self.state()
         code, output = self.resume_tty(state["run_id"], approve_manual=False)

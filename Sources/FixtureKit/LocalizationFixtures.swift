@@ -1,5 +1,5 @@
 import Foundation
-import MediaViewerCore
+import FolzioCore
 
 extension FixtureKit {
     /// Fixed kind names injected into Core. Tests compare against these instead of Japanese strings.
@@ -15,7 +15,7 @@ public enum LocalizationFixtures {
         plural: [String: [String: [String: String]]] = [:]
     ) throws -> URL {
         let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("MediaViewerLocalizationFixture-\(UUID().uuidString).bundle", isDirectory: true)
+            .appendingPathComponent("FolzioLocalizationFixture-\(UUID().uuidString).bundle", isDirectory: true)
         let resources = root.appendingPathComponent("Contents/Resources", isDirectory: true)
         try FileManager.default.createDirectory(at: resources, withIntermediateDirectories: true)
         for (language, strings) in tables {

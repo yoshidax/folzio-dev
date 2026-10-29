@@ -250,7 +250,7 @@ steps:
       - id: gui_smoke
         type: gate
         message: |
-          古い MediaViewer を終了してから `open .build/MediaViewer.app` で起動し、tasks.md の未チェックの
+          古い Folzio を終了してから `open .build/Folzio.app` で起動し、tasks.md の未チェックの
           検証タスクが指す quickstart.md のシナリオを確認してください。問題がなければ approve してください。
           問題があれば reject で一時停止し、直して `scripts/make-app.sh` を実行してから resume してください（この確認からやり直します）。
         options: [approve, reject]

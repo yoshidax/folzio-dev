@@ -335,7 +335,7 @@ def render_readme(present):
     out = [
         "# プロダクト仕様",
         "",
-        "MediaViewer の現在の仕様（Living spec）を領域ごとに分けたもの。",
+        "Folzio の現在の仕様（Living spec）を領域ごとに分けたもの。",
         f"`{SOURCE_REL}` から移行した。FR・SC の ID は元のまま引き継いでいる。",
         "",
         "| ファイル | 領域 | 機能要件 |",

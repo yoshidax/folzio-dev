@@ -118,7 +118,7 @@ def task_digest(root):
 
 
 def app_digest(root):
-    binary = root / ".build/MediaViewer.app/Contents/MacOS/MediaViewer"
+    binary = root / ".build/Folzio.app/Contents/MacOS/Folzio"
     return hashlib.sha256(binary.read_bytes()).hexdigest() if binary.exists() else None
 
 

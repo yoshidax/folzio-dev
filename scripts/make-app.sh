@@ -3,24 +3,24 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-swift build -c release --product MediaViewerApp
+swift build -c release --product FolzioApp
 
-app=".build/MediaViewer.app"
+app=".build/Folzio.app"
 
 rm -rf "$app"
 
 scripts/make-icon.sh
 
-bin_dir="$(swift build -c release --product MediaViewerApp --show-bin-path)"
+bin_dir="$(swift build -c release --product FolzioApp --show-bin-path)"
 
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 
-cp "$bin_dir/MediaViewerApp" "$app/Contents/MacOS/MediaViewer"
-chmod +x "$app/Contents/MacOS/MediaViewer"
+cp "$bin_dir/FolzioApp" "$app/Contents/MacOS/Folzio"
+chmod +x "$app/Contents/MacOS/Folzio"
 
 cp .build/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 
-localization_bundle="$bin_dir/my_img_viewer_MediaViewerLocalization.bundle/Contents/Resources"
+localization_bundle="$bin_dir/Folzio_FolzioLocalization.bundle/Contents/Resources"
 for language in ja en; do
     source_dir="$localization_bundle/$language.lproj"
     if [ ! -f "$source_dir/Localizable.strings" ] || [ ! -f "$source_dir/Localizable.stringsdict" ]; then
@@ -38,9 +38,9 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>MediaViewer</string>
+    <string>Folzio</string>
     <key>CFBundleIdentifier</key>
-    <string>local.my-img-viewer.MediaViewer</string>
+    <string>local.folzio.Folzio</string>
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleLocalizations</key>
@@ -49,7 +49,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
         <string>en</string>
     </array>
     <key>CFBundleName</key>
-    <string>MediaViewer</string>
+    <string>Folzio</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundlePackageType</key>

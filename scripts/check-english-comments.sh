@@ -21,7 +21,7 @@ if rg -n --pcre2 "^\s*(/\*|\*).*$japanese" Sources Tests --glob '*.swift'; then
     report "Swift block comments"
 fi
 
-if rg -n --pcre2 "^\s*(/\*|<!--).*$japanese" Sources/MediaViewerLocalization/Resources; then
+if rg -n --pcre2 "^\s*(/\*|<!--).*$japanese" Sources/FolzioLocalization/Resources; then
     report "localization resource comments"
 fi
 

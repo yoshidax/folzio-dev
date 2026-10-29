@@ -1,4 +1,4 @@
-# MediaViewer — Agent Notes
+# Folzio — Agent Notes
 
 このリポジトリ固有のルールです。全体の原則はグローバルの `AGENTS.md` に従います。
 仕様の正本は `specs/product/`（領域別の Living spec）、仕様の運用ルールは `.specify/memory/constitution.md` の「仕様の管理」です。
@@ -7,7 +7,7 @@
 ## プロジェクト概要
 
 - macOS 15 以降 / Swift 6 / AppKit のみ / 外部パッケージ依存なし / Swift Package 構成
-- `MediaViewerCore` は AppKit を import しない。判断ロジックは Core、描画と入力は `MediaViewerApp` に置く
+- `FolzioCore` は AppKit を import しない。判断ロジックは Core、描画と入力は `FolzioApp` に置く
 - デコード・ディレクトリ列挙・ファイル操作を UI スレッドで行わない
 - `URLSession` / `Network` / `NWConnection` などのネットワーク API を使わない
 - 新しい要件は新しい feature ディレクトリ（`specs/NNN-xxx/`）で扱い、実装と検証が終わってから変更点を `specs/product/` へ反映する
@@ -32,7 +32,7 @@ OSS として配布するため、ソースコードのコメントは英語で�
   - 先頭から展開し直す: inflate again from the beginning
 - 型名・関数名・引数名・`FR-*` や `research.md` の R 番号などの ID は翻訳しない
 - 翻訳後もコメントのみの変更でも `swift build` と `swift test` を実行する
-- 基準とする書式の例: `Sources/MediaViewerCore/Archive/InflateCursor.swift`
+- 基準とする書式の例: `Sources/FolzioCore/Archive/InflateCursor.swift`
 
 ## Phase の検証ゲート
 
@@ -44,7 +44,7 @@ OSS として配布するため、ソースコードのコメントは英語で�
    `scripts/check-english-comments.sh`
 4. 起動スモーク（3ペインが表示されること）
    - `scripts/make-app.sh`
-   - `open .build/MediaViewer.app`
+   - `open .build/Folzio.app`
    - GUI の起動はユーザーに依頼する。依頼時は実行コマンドと確認ポイントを具体的に示す
 5. 問題がなければ Phase 単位でコミットする
 
@@ -60,7 +60,7 @@ bug 拡張の `/speckit-bug-assess` → `/speckit-bug-fix` → `/speckit-bug-tes
    - 実装が仕様に反している: fix へ進む
    - 仕様が誤っている、または定めていない: fix へ進まず、仕様の変更として sdd-increment（小さければ `clarify_mode=skip`）で扱う
 3. assess の判定と診断をユーザーに確認してもらってから fix へ進む
-4. fix: 再現を固定する回帰テストを足す（Core のロジックは `Tests/MediaViewerCoreTests`）
+4. fix: 再現を固定する回帰テストを足す（Core のロジックは `Tests/FolzioCoreTests`）
 5. test: 「Phase の検証ゲート」の 1〜4 を行う。GUI で再現を確かめていなければ判定は `partial` にする
 6. ソースの変更と `.specify/bugs/<slug>/` を1つのコミットにする（例: `fix: <内容> (bug: <slug>)`）
 
@@ -70,21 +70,21 @@ bug 拡張の `/speckit-bug-assess` → `/speckit-bug-fix` → `/speckit-bug-tes
 推測でコードを直す前に、まず lldb で例外を止めてください。GUI を起動するため、実行前にユーザーへ依頼します。
 
 ```bash
-cd /Users/igachan/projects/my_img_viewer
+cd /Users/igachan/projects/folzio
 lldb -b \
   -o 'breakpoint set -E objc' \
   -o 'run' \
   -o 'bt 30' \
   -o 'po $x0' \
   -o 'quit' \
-  -- .build/MediaViewer.app/Contents/MacOS/MediaViewer
+  -- .build/Folzio.app/Contents/MacOS/Folzio
 ```
 
 - 例外を1つ直したら、ユーザーに GUI 確認を戻さず、もう一度 lldb を実行して次の例外を確認する
 - 例外がなくなり、ウインドウが表示されてから、ユーザーに視覚確認を依頼する
-- 古いプロセスが残っていないか `pgrep -fl MediaViewer` で確認する
+- 古いプロセスが残っていないか `pgrep -fl Folzio` で確認する
 - ターミナルから直接実行すると、起動時の出力を確認できる
-  （`.build/MediaViewer.app/Contents/MacOS/MediaViewer`）
+  （`.build/Folzio.app/Contents/MacOS/Folzio`）
 
 ## AppKit UI の不変条件
 
@@ -127,7 +127,7 @@ lldb -b \
 
 ## テスト
 
-- Swift Testing を使う（`Tests/MediaViewerCoreTests`、`Tests/MediaViewerPerformanceTests`）
+- Swift Testing を使う（`Tests/FolzioCoreTests`、`Tests/FolzioPerformanceTests`）
 - Core のロジックと異常系にはテストを付ける
 - フィクスチャは `FixtureKit` で一時ディレクトリに生成し、テスト後に削除する
 - 性能テストの基準値は `specs/001-three-pane-media-viewer/quickstart.md` の「性能の検証」に従う
@@ -138,23 +138,23 @@ lldb -b \
 ```bash
 swift build
 swift test
-swift test --filter MediaViewerCoreTests
-swift test --filter MediaViewerPerformanceTests
+swift test --filter FolzioCoreTests
+swift test --filter FolzioPerformanceTests
 scripts/check-no-network.sh
 scripts/check-readme-sync.sh master
-scripts/make-fixtures.sh ~/MediaViewerFixtures
+scripts/make-fixtures.sh ~/FolzioFixtures
 scripts/make-app.sh
-open .build/MediaViewer.app
+open .build/Folzio.app
 ```
 
 - `scripts/make-fixtures.sh` は WebP 生成に `cwebp` / `img2webp` を使う。導入はユーザーに確認する
 - `.app` と `swift run` では UserDefaults のドメインが異なる
-  - `.app`: `local.my-img-viewer.MediaViewer`
-  - `swift run`: `MediaViewerApp`
+  - `.app`: `local.folzio.Folzio`
+  - `swift run`: `FolzioApp`
 
 ## 公開用リポジトリ
 
-- このリポジトリは非公開の開発用。公開用は `scripts/publish.sh` で `../my_img_viewer-oss` へ書き出し、1回の公開を1コミットにする
+- このリポジトリは非公開の開発用。公開用は `scripts/publish.sh` で `../folzio-oss` へ書き出し、1回の公開を1コミットにする
 - `docs/` は公開用のユーザーガイド・開発ガイド、`docs_private/` は非公開の運用手順・開発記録に使う
 - Spec Kit・AI エージェント・開発記録のファイルは `.gitattributes` の `export-ignore` で書き出しから外す。
   開発専用のファイルやディレクトリを足したら、`.gitattributes` にも追加する

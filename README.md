@@ -1,10 +1,10 @@
-# MediaViewer
+# Folzio
 
 English | [日本語](README.ja.md)
 
 **Browse and organize your images and videos, right in their folders.**
 
-MediaViewer is a native macOS app that brings folder navigation, thumbnails, and previews together in one window.
+Folzio is a native macOS app that brings folder navigation, thumbnails, and previews together in one window.
 Browse a folder of photos, animated images, and video clips, then organize files as you view them.
 
 macOS 15 or later · English and Japanese · Works locally without network communication · [MIT License](LICENSE)
@@ -33,13 +33,13 @@ Xcode with the Swift 6 toolchain is required to build the app.
 
 ## Get Started
 
-1. Launch MediaViewer and choose a folder in the tree on the left.
+1. Launch Folzio and choose a folder in the tree on the left.
 2. Select an image or video in the center to preview it on the right. Use the arrow keys to browse the list.
 3. Switch between thumbnails and list view with ⌘1 / ⌘2. Drag files onto a folder to move them;
    hold ⌥ when dropping to copy instead.
 
 To change the interface language, open Settings (⌘,) and choose Language. English is the default.
-If a folder is not accessible, allow MediaViewer access in System Settings → Privacy & Security → Files and Folders.
+If a folder is not accessible, allow Folzio access in System Settings → Privacy & Security → Files and Folders.
 
 ## Useful Shortcuts
 
@@ -71,7 +71,7 @@ See the [user guide](docs/usage.md) for more shortcuts, settings, and detailed b
 
 ## Project Policy
 
-MediaViewer is a personal project developed and maintained by its author.
+Folzio is a personal project developed and maintained by its author.
 External contributions, including pull requests, bug reports, and feature requests, are not accepted.
 Issues are reserved for the maintainer's own tracking.
 

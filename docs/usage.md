@@ -1,4 +1,4 @@
-# MediaViewer User Guide
+# Folzio User Guide
 
 English | [日本語](usage.ja.md) · [Back to README](../README.md)
 
@@ -187,13 +187,13 @@ Settings are stored in `UserDefaults`. The `.app` and `swift run` use different 
 
 ```bash
 # Reset the settings of the .app
-defaults delete local.my-img-viewer.MediaViewer
+defaults delete local.folzio.Folzio
 
 # Reset the settings of swift run
-defaults delete MediaViewerApp
+defaults delete FolzioApp
 ```
 
 ## When Files Are Not Visible
 
-In System Settings → Privacy & Security → Files and Folders, allow access for MediaViewer.
+In System Settings → Privacy & Security → Files and Folders, allow access for Folzio.
 If you launch from Terminal, check the permissions for Terminal instead.

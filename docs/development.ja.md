@@ -1,4 +1,4 @@
-# MediaViewer 開発・検証ガイド
+# Folzio 開発・検証ガイド
 
 [English](development.md) | 日本語 · [README に戻る](../README.ja.md)
 
@@ -27,16 +27,16 @@ swift --version
 
 ```bash
 scripts/make-app.sh
-open .build/MediaViewer.app
+open .build/Folzio.app
 ```
 
-`scripts/make-app.sh` は release ビルドを行い、`.build/MediaViewer.app` を組み立てて ad-hoc 署名します。
-TCC の許可は MediaViewer アプリに紐づきます。初回に許可ダイアログが出たら「許可」してください。
+`scripts/make-app.sh` は release ビルドを行い、`.build/Folzio.app` を組み立てて ad-hoc 署名します。
+TCC の許可は Folzio アプリに紐づきます。初回に許可ダイアログが出たら「許可」してください。
 
 ### 開発中の起動（ターミナル）
 
 ```bash
-swift run MediaViewerApp
+swift run FolzioApp
 ```
 
 ターミナルを占有します。終了は ⌘Q または Ctrl-C。TCC（デスクトップ・書類・ダウンロードへのアクセス許可）は
@@ -49,13 +49,13 @@ swift build
 swift test
 ```
 
-- `swift test` は `MediaViewerCoreTests`（Core のロジック・異常系・FSEvents）と
-  `MediaViewerPerformanceTests`（性能基準）を実行します
+- `swift test` は `FolzioCoreTests`（Core のロジック・異常系・FSEvents）と
+  `FolzioPerformanceTests`（性能基準）を実行します
 - 個別に実行する場合:
 
 ```bash
-swift test --filter MediaViewerCoreTests
-swift test --filter MediaViewerPerformanceTests
+swift test --filter FolzioCoreTests
+swift test --filter FolzioPerformanceTests
 ```
 
 - ネットワーク非依存の確認:
@@ -70,7 +70,7 @@ scripts/check-no-network.sh
 アプリ本体のビルドと実行には不要です。
 
 ```bash
-scripts/make-fixtures.sh ~/MediaViewerFixtures
+scripts/make-fixtures.sh ~/FolzioFixtures
 ```
 
 次のフォルダが生成されます（スクリプトは毎回作り直します）。
@@ -126,7 +126,7 @@ scripts/make-webp-fixtures.sh
 ```text
 Package.swift
 Sources/
-  MediaViewerCore/        # AppKit を import しないロジック層
+  FolzioCore/        # AppKit を import しないロジック層
     Model/                # MediaFile / FolderNode / FileOperation など
     Browser/              # BrowserModel（状態と非同期処理の調停）
     FileSystem/           # ディレクトリ列挙、ボリューム、FSEvents 監視
@@ -134,8 +134,8 @@ Sources/
     Layout/               # フィット計算、サムネイル列計算
     Operations/           # 名前検証、ファイル操作サービス
     Settings/             # UserDefaults による設定
-  MediaViewerLocalization/ # 表示文言と地域書式
-  MediaViewerApp/         # AppKit UI（描画と入力）
+  FolzioLocalization/ # 表示文言と地域書式
+  FolzioApp/         # AppKit UI（描画と入力）
     App/                  # 起動、メインウインドウ、メニュー、3 ペイン
     Tree/                 # ディレクトリツリー
     FileList/             # リスト／サムネイル／コンテキストメニュー
@@ -145,8 +145,8 @@ Sources/
   FixtureKit/             # テスト用メディア生成（画像・GIF・WebP・動画）
   make-fixtures/          # フィクスチャ生成 CLI
 Tests/
-  MediaViewerCoreTests/         # Swift Testing
-  MediaViewerPerformanceTests/  # 性能基準
+  FolzioCoreTests/         # Swift Testing
+  FolzioPerformanceTests/  # 性能基準
 scripts/
   make-app.sh              # .app の組み立てと署名
   make-fixtures.sh         # フィクスチャ生成
@@ -157,7 +157,7 @@ scripts/
 
 設計上のルール:
 
-- `MediaViewerCore` は AppKit を import しません。判断ロジックは Core、描画と入力は App に置きます
+- `FolzioCore` は AppKit を import しません。判断ロジックは Core、描画と入力は App に置きます
 - デコード・ディレクトリ列挙・ファイル操作は UI スレッドで行いません
 - Core のロジックと異常系には Swift Testing のテストを付けます
 
@@ -166,18 +166,18 @@ scripts/
 - **ウインドウが出ない／メニューだけ表示される**: 古いプロセスが残っていないか確認し、終了してから再起動します。
 
   ```bash
-  pgrep -fl MediaViewer
+  pgrep -fl Folzio
   scripts/make-app.sh
-  open .build/MediaViewer.app
+  open .build/Folzio.app
   ```
 
   ターミナルから直接実行すると、起動時のエラーがそのまま表示されます。
 
   ```bash
-  .build/MediaViewer.app/Contents/MacOS/MediaViewer
+  .build/Folzio.app/Contents/MacOS/Folzio
   ```
 
 - **ファイルが見えない**: システム設定 → プライバシーとセキュリティ → ファイルとフォルダ で、
-  起動方法に応じてターミナルまたは MediaViewer にアクセスを許可してください。
+  起動方法に応じてターミナルまたは Folzio にアクセスを許可してください。
 - **フィクスチャ生成に失敗する**: `cwebp` / `img2webp` が見つからない場合は `brew install webp` を実行してください。
-- **性能テストが失敗する**: `Tests/MediaViewerPerformanceTests` の基準値を確認してください。他の負荷が高い状態では一時的に超えることがあります。
+- **性能テストが失敗する**: `Tests/FolzioPerformanceTests` の基準値を確認してください。他の負荷が高い状態では一時的に超えることがあります。

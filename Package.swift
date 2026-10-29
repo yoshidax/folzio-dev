@@ -2,29 +2,29 @@
 import PackageDescription
 
 let package = Package(
-    name: "my_img_viewer",
+    name: "Folzio",
     defaultLocalization: "en",
     platforms: [.macOS(.v15)],
     products: [
-        .library(name: "MediaViewerCore", targets: ["MediaViewerCore"]),
-        .executable(name: "MediaViewerApp", targets: ["MediaViewerApp"]),
+        .library(name: "FolzioCore", targets: ["FolzioCore"]),
+        .executable(name: "FolzioApp", targets: ["FolzioApp"]),
         .executable(name: "make-fixtures", targets: ["make-fixtures"]),
         .executable(name: "make-icon", targets: ["make-icon"]),
     ],
     targets: [
-        .target(name: "MediaViewerCore"),
+        .target(name: "FolzioCore"),
         .target(
-            name: "MediaViewerLocalization",
-            dependencies: ["MediaViewerCore"],
+            name: "FolzioLocalization",
+            dependencies: ["FolzioCore"],
             resources: [.process("Resources")]
         ),
         .executableTarget(
-            name: "MediaViewerApp",
-            dependencies: ["MediaViewerCore", "MediaViewerLocalization"]
+            name: "FolzioApp",
+            dependencies: ["FolzioCore", "FolzioLocalization"]
         ),
         .target(
             name: "FixtureKit",
-            dependencies: ["MediaViewerCore"],
+            dependencies: ["FolzioCore"],
             resources: [.process("Resources")]
         ),
         .executableTarget(
@@ -33,12 +33,12 @@ let package = Package(
         ),
         .executableTarget(name: "make-icon"),
         .testTarget(
-            name: "MediaViewerCoreTests",
-            dependencies: ["MediaViewerCore", "MediaViewerLocalization", "FixtureKit"]
+            name: "FolzioCoreTests",
+            dependencies: ["FolzioCore", "FolzioLocalization", "FixtureKit"]
         ),
         .testTarget(
-            name: "MediaViewerPerformanceTests",
-            dependencies: ["MediaViewerCore", "FixtureKit"]
+            name: "FolzioPerformanceTests",
+            dependencies: ["FolzioCore", "FixtureKit"]
         ),
     ],
     swiftLanguageModes: [.v6]

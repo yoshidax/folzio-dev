@@ -9,7 +9,7 @@
 - コメントだけを変更し、コード・識別子・文字列リテラルは変更しない
   - 例外: `TextKey.comment`（翻訳者向け説明）と `Localizable.strings` のコメントは、承認済みの対象として翻訳する
 - `FR-*`、`EC-*`、`R*`、`SC-*`、`A-*` などの ID は翻訳せず、そのまま残す
-- UI の用語は `Sources/MediaViewerLocalization/Resources/en.lproj/Localizable.strings` の値を正とする
+- UI の用語は `Sources/FolzioLocalization/Resources/en.lproj/Localizable.strings` の値を正とする
 - 日本語の句読点（、。「」・）は ASCII（`,` `.` `"`）に置き換える
 - 識別子・型名・関数名・引数名はバッククォートで囲む
 - 1行は100〜120文字を目安に折り返す
