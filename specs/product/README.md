@@ -7,7 +7,7 @@ Folzio の現在の仕様（Living spec）を領域ごとに分けたもの。
 
 | ファイル | 領域 | 機能要件 |
 |---|---|---|
-| [overview.md](overview.md) | 概要と横断要件 | 保存と復元（1）、対応形式（2）、横断要件（3）、国際化（8）、アプリアイコン（3） |
+| [overview.md](overview.md) | 概要と横断要件 | 保存と復元（1）、対応形式（2）、横断要件（3）、国際化（8）、アプリアイコン（3）、製品名と開発環境（3）、GitHub Releases での配布（8） |
 | [window-layout.md](window-layout.md) | ウィンドウの構成 | 画面構成（2）、国際化の配置（1）、ツールバー（4）、ペインの表示切り替え（7） |
 | [navigation-history.md](navigation-history.md) | 操作の履歴 | 戻る・進む（7） |
 | [directory-tree.md](directory-tree.md) | ディレクトリツリー | ディレクトリツリー（10）、お気に入り（12） |

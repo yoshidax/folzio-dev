@@ -1,8 +1,11 @@
 # Feature Specification: GitHub Releases での配布
 
+> **移行済み（2026-10-29）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは 016 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `016-github-release-distribution`
 **Created**: 2026-10-29
-**Status**: Draft
+**Status**: Migrated and frozen
 **Input**: 公開用リポジトリの公開コミットから Apple silicon 専用アプリを作り、GitHub Release のドラフトとして配布する。
 
 ## User Scenarios & Testing
@@ -106,6 +109,6 @@
 | EC-124 | 追加 | overview.md |
 | EC-125 | 追加 | overview.md |
 | EC-126 | 追加 | overview.md |
-| A-095 | 追加 | overview.md |
-| A-096 | 追加 | overview.md |
-| A-097 | 追加 | overview.md |
+| A-95 | 追加 | overview.md |
+| A-96 | 追加 | overview.md |
+| A-97 | 追加 | overview.md |

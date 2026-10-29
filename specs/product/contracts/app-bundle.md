@@ -38,11 +38,13 @@ Folzio.app/
 | `CFBundleName` | `Folzio` | 表示名 |
 | `CFBundleIconFile` | `AppIcon` | バンドルアイコン（拡張子なし） |
 | `CFBundlePackageType` | `APPL` | アプリケーションバンドル |
-| `CFBundleShortVersionString` | `0.1.0` | バージョン |
-| `CFBundleVersion` | `1` | ビルド番号 |
+| `CFBundleShortVersionString` | 開発時の既定値 `0.1.0`、配布時は指定したバージョン | バージョン |
+| `CFBundleVersion` | 開発時の既定値 `1`、配布時は指定した数字 | ビルド番号 |
 | `LSMinimumSystemVersion` | `15.0` | 対象 OS |
 | `NSHighResolutionCapable` | `true` | Retina 対応 |
 | `NSPrincipalClass` | `NSApplication` | AppKit アプリ |
+
+配布時は公開用コミットから arm64 を明示してビルドし、アプリのバージョンを Release のタグと一致させる（FR-170・171）。署名は ad hoc とする（FR-172）。
 
 `CFBundleAllowMixedLocalizations` は設定しない。OS の部品がアプリの設定言語と一致することは保証しない。
 
