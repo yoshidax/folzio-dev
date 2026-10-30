@@ -131,7 +131,10 @@ lldb -b \
 - Codex の自動実行は `scripts/dev/sdd-run-codex.sh` を使う。run／resume／status と更新手順は
   `docs_private/codex-speckit.md` を参照する。既定の integration は Claude のままとする
 - `.codex/config.toml` と `.codex/rules/` は Codex 用。Claude／Kilo の permissions 設定は Codex に適用されない
-- `git push`、`git reset --hard`、`git clean` は行わない。sandbox・承認・ルールを無効化して作業を継続しない
+- `git push` は作業ブランチ（`claude/*`、`ci/*`、`chore/*`、`docs/*`、`feature/*`、`bugfix/*`、`agent/*`）への
+  push だけを行う。`master` / `main` への push、強制 push（`--force`、`-f`、`+` 付きの refspec）、
+  リモートブランチの削除は行わない。PR のマージはユーザーだけが行い、GitHub MCP ツールでも行わない
+- `git reset --hard`、`git clean` は行わない。sandbox・承認・ルールを無効化して作業を継続しない
 - 開発用 master へのマージと push はユーザーが `scripts/dev/merge-to-master.sh` で行う。
   AI エージェントはこのスクリプトを直接・間接に実行せず、master に直接マージしない
 - GUI の起動はユーザーに依頼する。非対話実行中は GUI タスクを未チェックのまま残す
