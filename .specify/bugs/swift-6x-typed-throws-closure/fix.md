@@ -20,6 +20,7 @@
 | `Tests/FolzioCoreTests/ArchiveEntryStreamTests.swift` | added tests | zip を開いた後に切り詰めたときの `ArchiveError` の伝播を固定する 2 件 |
 | `Sources/FolzioApp/Preview/VideoPreviewView.swift` | modified | `[AVAssetTrack]` が Swift 6.0 の SDK で `Sendable` でないため、トラックの有無を `Bool?` にする処理を `nonisolated` の補助関数 `loadHasVideoTrack(of:)` に出した（PR の CI で見つかった） |
 | `Sources/FolzioApp/App/MainToolbarController.swift` | modified | `NSToolbar.isVisible` が Swift 6.0 の SDK で `@MainActor` のため、KVO の通知の `change.newValue` を使うようにした（PR の CI で見つかった） |
+| `Sources/FixtureKit/ZipFixtureWriter.swift` | modified | `dosDateTime` の長い式が Swift 6.0 のコンパイラで「型の検査に時間がかかりすぎる」エラーになったため、型を付けた部分式に分けた（値は同じ。2 回目の CI で見つかった） |
 | `.github/workflows/macos-swift-ci.yml` | modified | `XCODE_VERSION` を `"26.3"` から `"16.0"` へ（最小の版でのビルドを確認するため） |
 
 ## Diff Highlights (optional)
