@@ -19,8 +19,8 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 30
     env:
-      # The code needs a newer Swift toolchain than the runner's default Xcode (16.4 / Swift 6.1.2).
-      XCODE_VERSION: "26.3"
+      # Build with the oldest supported toolchain (Xcode 16.0 / Swift 6.0), matching the documented minimum.
+      XCODE_VERSION: "16.0"
 
     steps:
       - name: Check out source
