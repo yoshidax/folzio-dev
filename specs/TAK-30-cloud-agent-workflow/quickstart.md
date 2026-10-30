@@ -11,6 +11,7 @@ Cloud のセッションと、保守者のローカルで実施する。`master`
    ないことを確かめる（SC-094、US30-AS3）。
 4. 変更前後の差分で、ローカル専用の規則（`merge-to-master.sh`、ローカルの検証ゲート、worktree）の意味が変わっていないことを確かめる
    （SC-093、US30-AS1）。
+5. `specs/product/` への反映の後に、`grep -rhoE '^\s*- \*\*(FR|SC|EC|A)-[0-9]+\*\*' specs/product | sed -E 's/^\s*- //' | sort | uniq -d` が何も出力しないこと（重複した ID が 0 件。EC-135、SC-091）。
 
 ## B. 既存の検査（Cloud で実施）
 

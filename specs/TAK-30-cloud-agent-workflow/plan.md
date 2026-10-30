@@ -56,12 +56,13 @@ specs/product/overview.md              # 検証後に反映する（ID は spec.
 
 `.claude/settings.json`、`.github/workflows/`、`Sources/`、`Tests/`、`.specify/` は変更しない。権限の設定を変える必要が見つかった場合は、Agent が編集できないため、保守者に依頼する（[MANUAL]）。
 
-**Structure Decision**: 手順書は、既存の運用手順（`docs_private/folzio-sdd-increment.md`、`docs_private/codex-speckit.md`）と同じ `docs_private/` に置く。公開版には含まれない（`AGENTS.md` と `docs_private/` は書き出しから除外されている）。
+**Structure Decision**: 手順書は、既存の運用手順（`docs_private/folzio-sdd-increment.md`、`docs_private/codex-speckit.md`）と同じ `docs_private/` に置く。公開版には含まれない（`AGENTS.md` と `docs_private/` は書き出しから除外されている）。`specs/product/contracts/scripts.md` は変更しない（スクリプトを変えないため）。
 
 ## Verification and impact
 
 - 分類表（data-model.md）に、変更前の `AGENTS.md` の全 14 節と、混在節の行の単位の分類を載せ、変更後の見出しと 1 対 1 で突き合わせる。
 - 同じ状況に対する規則（`git push`、検証ゲート、ブランチの切り方、完了の報告）を読み比べ、矛盾する指示が 0 件であることを確かめる（SC-094）。
+- `specs/product/` への反映の前に、`master` を取り込んで ID の衝突を確かめ（EC-135）、反映後に重複した ID が 0 件であることを確かめる（SC-091）。
 - ローカルの手順（`merge-to-master.sh`、ローカルの検証ゲート、worktree）の記述が、意味を変えずに残ることを差分で確かめる（SC-093）。
 - Cloud の実機確認は、この feature の PR で行う。PR の作成後に、Linear へのリンクと `In Review` の更新（FR-199）、CI の自動実行（US28-AS1）、手動実行の起動（US28-AS2）を確かめる。結果は quickstart.md に記録する。
 - 既存の `check-*.sh`、`scripts/dev/tests` の Python テストを実行する。公開版の README・ガイド・ソースのコメントは変更しない。
