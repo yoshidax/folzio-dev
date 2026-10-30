@@ -1,6 +1,8 @@
 name: macOS Swift CI
 
 on:
+  pull_request:
+    types: [opened]
   workflow_dispatch:
 
 permissions:
