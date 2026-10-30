@@ -54,7 +54,12 @@ private static func withMutableBytes(
 
 ## Local Verification
 
-- この環境（クラウド）には Swift がなく、`swift build`・`swift test` は**実行できていない**。コンパイルの確認は CI で行う
+- この環境（クラウド）には Swift がなく、`swift build`・`swift test` は手元では実行できない。確認は PR #3 の CI（macOS 15 / Xcode 16.0 / Swift 6.0）で行った
+- CI の結果（run 41102143791、コミット `867c0e6`）:
+  - `swift build` → 成功
+  - `swift test --no-parallel --skip FolzioPerformanceTests` → 成功
+  - `swift test --filter FolzioPerformanceTests` → 27 件すべて成功（91 秒）
+- Swift 6.1・6.2・6.4 でのビルドは、CI では確認していない。ローカル（Swift 6.4）での `swift build`・`swift test` は、ユーザーの確認が必要
 - 実行した検査:
   - `scripts/check-no-network.sh` → 通過
   - `scripts/dev/check-english-comments.sh` → 通過
@@ -73,6 +78,11 @@ private static func withMutableBytes(
 
 ## Follow-ups
 
-- CI が通ったら、`synchronize` を外す（TAK-25 の取り決め）
-- CI で別のモジュールの互換性のエラーが見つかった場合は、同じ bug の範囲で直すか、assessment をやり直す
-- `docs/development.md` ほかの「6.0 以上」は、Xcode 16.0 でのビルドが通ってから、正しいと確認できる
+- テストを並列で実行すると、3 コアのランナーで 10 分以上進まなくなった（CI の `swift test --skip FolzioPerformanceTests`。ログに
+  `IOServiceMatching failed for: AppleM2ScalerParavirtDriver` が出ていた）。CI は `--no-parallel` で通るようにした。
+  並列で止まる原因は未調査で、別の Issue として扱う
+- ワークフローに、テストのステップごとの `timeout-minutes: 10` を足した（止まったテストがランナーを占有しないようにするため）
+- 一時的な `synchronize` の trigger は外した。以後の push では CI が自動で動かないので、再確認は `workflow_dispatch` で行う
+- `docs/development.md` ほかの「6.0 以上」は、Xcode 16.0（Swift 6.0）でのビルドとテストが通ったので、正しいと確認できた
+- Swift 6.4 のローカル環境での確認（`swift build`・`swift test`・起動スモーク）は未実施。特に、ツールバーの表示・非表示の切り替え
+  （`MainToolbarController`）と、動画プレビューのトラック判定（`VideoPreviewView`）に触れている

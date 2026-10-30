@@ -2,8 +2,7 @@ name: macOS Swift CI
 
 on:
   pull_request:
-    # TEMPORARY: "synchronize" lets pushes to this PR re-run CI while the build is being fixed. Remove it before merging.
-    types: [opened, ready_for_review, synchronize]
+    types: [opened, ready_for_review]
   workflow_dispatch:
 
 permissions:
