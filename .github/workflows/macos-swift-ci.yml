@@ -40,11 +40,14 @@ jobs:
       - name: Build
         run: swift build
 
+      # A hung test would otherwise hold the macOS runner until the 30-minute job limit.
       - name: Test (excluding performance tests)
+        timeout-minutes: 10
         run: swift test --skip FolzioPerformanceTests
 
       # Performance thresholds are absolute times, so they can fail on a busy shared runner.
       # Keep the result visible without turning the job red until the variance is known.
       - name: Performance tests (non-blocking)
         continue-on-error: true
+        timeout-minutes: 10
         run: swift test --filter FolzioPerformanceTests
