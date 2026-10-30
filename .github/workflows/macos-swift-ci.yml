@@ -2,8 +2,7 @@ name: macOS Swift CI
 
 on:
   pull_request:
-    # TEMPORARY: "synchronize" lets pushes to this PR re-run CI while the build is being fixed. Remove it before merging.
-    types: [opened, ready_for_review, synchronize]
+    types: [opened, ready_for_review]
   workflow_dispatch:
 
 permissions:
@@ -19,8 +18,8 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 30
     env:
-      # The code needs a newer Swift toolchain than the runner's default Xcode (16.4 / Swift 6.1.2).
-      XCODE_VERSION: "26.3"
+      # Build with the oldest supported toolchain (Xcode 16.0 / Swift 6.0), matching the documented minimum.
+      XCODE_VERSION: "16.0"
 
     steps:
       - name: Check out source
@@ -40,11 +39,14 @@ jobs:
       - name: Build
         run: swift build
 
+      # A hung test would otherwise hold the macOS runner until the 30-minute job limit.
       - name: Test (excluding performance tests)
-        run: swift test --skip FolzioPerformanceTests
+        timeout-minutes: 10
+        run: swift test --no-parallel --skip FolzioPerformanceTests
 
       # Performance thresholds are absolute times, so they can fail on a busy shared runner.
       # Keep the result visible without turning the job red until the variance is known.
       - name: Performance tests (non-blocking)
         continue-on-error: true
+        timeout-minutes: 10
         run: swift test --filter FolzioPerformanceTests

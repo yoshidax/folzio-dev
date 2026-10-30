@@ -72,8 +72,9 @@ final class MainToolbarController: NSObject {
             self?.apply(showsZipFiles: shows)
         }
 
-        visibilityObservation = toolbar.observe(\.isVisible, options: [.new]) { [weak self] toolbar, _ in
-            let isVisible = toolbar.isVisible
+        visibilityObservation = toolbar.observe(\.isVisible, options: [.new]) { [weak self] _, change in
+            // Read the new value from the change, because `NSToolbar.isVisible` is main actor-isolated on older SDKs.
+            guard let isVisible = change.newValue else { return }
             MainActor.assumeIsolated {
                 self?.toolbarVisibilityChanged(isVisible)
             }
