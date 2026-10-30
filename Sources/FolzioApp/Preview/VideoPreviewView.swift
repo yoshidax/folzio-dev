@@ -46,6 +46,13 @@ final class VideoPreviewView: NSView {
         configure(asset: AVURLAsset(url: url), autoplay: autoplay, loop: loop, fileName: fileName)
     }
 
+    /// Returns whether `asset` has a video track, or nil if the tracks cannot be loaded.
+    /// Reduces the tracks to a `Bool` off the main actor, because `[AVAssetTrack]` is not `Sendable` on older SDKs.
+    private nonisolated static func loadHasVideoTrack(of asset: AVAsset) async -> Bool? {
+        guard let tracks = try? await asset.loadTracks(withMediaType: .video) else { return nil }
+        return !tracks.isEmpty
+    }
+
     func configure(asset: AVAsset, autoplay: Bool, loop: Bool, fileName: String) {
         stop()
 
@@ -61,9 +68,9 @@ final class VideoPreviewView: NSView {
             Task { @MainActor in self?.notifyTransitionReady(generation: generation) }
         }
         tracksTask = Task { [weak self] in
-            let tracks = try? await asset.loadTracks(withMediaType: .video)
+            let hasVideoTrack = await Self.loadHasVideoTrack(of: asset)
             guard !Task.isCancelled, let self, self.playbackGeneration == generation else { return }
-            self.hasVideoTrack = tracks.map { !$0.isEmpty }
+            self.hasVideoTrack = hasVideoTrack
             self.notifyTransitionReady(generation: generation)
         }
         timeControlObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] _, _ in
