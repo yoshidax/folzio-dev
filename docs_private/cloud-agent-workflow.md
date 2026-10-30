@@ -33,7 +33,7 @@ Cloud Agent（Claude / Codex）が、Cloud 環境で feature またはバグ修�
 | いつ | することを | 補足 |
 |---|---|---|
 | feature またはバグ修正に着手するとき | `save_issue` で `In Progress` に更新する | Issue の URL または ID を、feature の仕様書またはバグの assessment に記録し、作業ブランチとともに保守者へ知らせる |
-| 保守者の依頼で PR を作った後 | `save_issue` の `links` で PR のリンクを追加し、`In Review` に更新する | 結果を保守者へ知らせる |
+| 保守者の依頼で PR を作った後 | `save_issue` の `links` で PR のリンクを追加し、`In Review` に更新する | 1 回の呼び出しでできる（2026-10-30、TAK-30 で確認）。結果を保守者へ知らせる |
 | 保守者がマージ後に完了更新を依頼したとき | マージを確認してから `Done` に更新する | 確認できなければ完了にせず、状況を報告する |
 
 - Linear に接続できない場合は、失敗を報告する。更新できたとは扱わない。
@@ -45,7 +45,7 @@ Cloud Agent（Claude / Codex）が、Cloud 環境で feature またはバグ修�
 - **PR は、保守者が依頼したときだけ作る**。作業が終わっても、依頼なしには作らない。作成できる状態であること（作業ブランチが push 済みで、自己検査が通っている）を保守者に報告して、待つ。CI は PR の作成時に 1 回だけ自動で動くので、作業の途中で作ると、空に近い状態で動いてしまう。
 - PR のタイトルと本文に、Issue 番号（`TAK-<nn>`）を入れる。本文には、変更の概要、検証の結果、**確認していないこと**を正直に書く（2026-10-30 時点で、PR のテンプレートはない）。
 - PR を作った後、保守者に確認して、PR の購読（`subscribe_pr_activity`）をする。CI の結果とレビューのコメントが、セッションに届く。
-- **マージは保守者だけが行う**。Agent は、PR をマージしない（GitHub の MCP ツール `merge_pull_request` も拒否される）。
+- **マージは保守者だけが行う**。Agent は、PR をマージしない（GitHub の MCP ツール `merge_pull_request` も、権限の設定の拒否リストにある。誤ってマージされる恐れがあるため、実際に呼んで確かめてはいない）。
 - 保守者のローカルでの確認（起動スモークなど）が必要なことを、実行するコマンドと確認する点を具体的に示して知らせる。
 - マージ後に保守者が完了更新を依頼したら、PR が `merged` であることと、変更が `master` に含まれることを確認して、`Done` に更新する。
 
@@ -65,7 +65,7 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 4. **置き換える API は、使う前に、ヘッダーや文書で存在を確認する**。たとえば `mach_task_self()` は C のマクロで Swift から使えず、確認せずに置き換えたために CI を 1 回無駄にした。
 5. 同じ原因の失敗を 3 回直しても解決しない場合は、作業を止めて、状況を保守者へ報告する。
 
-**再確認**: 追加の push の後は、CI が自動では動かない。`actions_run_trigger` で `workflow_dispatch` を起動してみる（`ref` に作業ブランチ）。起動できなければ、保守者に、GitHub の Actions タブの「macOS Swift CI」→「Run workflow」で、作業ブランチを選んで実行するよう頼む。
+**再確認**: 追加の push の後は、CI が自動では動かない。GitHub の MCP ツール `actions_run_trigger` の `run_workflow`（`workflow_id` に `macos-swift-ci.yml`、`ref` に作業ブランチ）で、`workflow_dispatch` を起動できる（2026-10-30 に確認。`204` が返り、run が作られて PR に関連づけられ、約 5 分で成功した）。同じツールに `rerun_workflow_run`、`rerun_failed_jobs`、`cancel_workflow_run` もある（未試行）。起動に失敗したら、保守者に、GitHub の Actions タブの「macOS Swift CI」→「Run workflow」で、作業ブランチを選んで実行するよう頼む。手動実行も macOS の使用時間を消費するので、必要なときだけ 1 回行う。
 
 ## 5 検証ゲート（Cloud 版）
 
@@ -83,10 +83,11 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 
 ## 6 ブランチ
 
-- push してよいのは、作業ブランチだけ（`claude/*`、`ci/*`、`chore/*`、`docs/*`、`feature/*`、`bugfix/*`、`agent/*`）。`master` / `main` への push、強制 push（`--force`、`-f`、`+` 付きの refspec）、リモートブランチの削除は、行わない。権限の設定と `scripts/dev/check-git-push.py` が拒否する。
+- push してよいのは、作業ブランチだけ（`claude/*`、`ci/*`、`chore/*`、`docs/*`、`feature/*`、`bugfix/*`、`agent/*`）。`master` / `main` への push、強制 push（`--force`、`-f`、`+` 付きの refspec）、リモートブランチの削除は、行わない。権限の設定と `scripts/dev/check-git-push.py` が拒否する（`master` への push と、`--force` を付けた push を、副作用のない `--dry-run` で試して、拒否されることを 2026-10-30 に確認した）。
 - **マージ済みのブランチは再利用しない**。PR はスカッシュマージされるため、作業ブランチの履歴は `master` と一致しなくなる。同じ名前で作り直すには強制 push が要り、禁止されている。次の作業は、最新の `master` から新しい `claude/` のブランチを作る。Cloud が指定した名前と別の名前を使うときは、保守者の許可を得る。
 - 作業の途中で `master` が先に進んだら、`git merge origin/master` で取り込んでから、PR を更新する。履歴を書き換えない。
 - 権限の設定（`.claude/settings.json`）は、**セッションの起動時に読み込まれる**。途中で設定を変えても、実行中のセッションには反映されない。反映するには新しいセッションが要る。Agent は、この設定ファイルを編集できない。
+- push を検査するフック（`scripts/dev/check-git-push.py`）は、Bash のコマンドの文字列のどこかに push の呼び出しの記述があると（ヒアドキュメントや引用符の中も）、入れ子と見なして、コマンド全体を拒否する。文書の編集は Edit ツールで行うか、その記述を含めない別のコマンドに分ける。
 - 作業の前に、`git status` で作業ツリーがクリーンであることを確かめる。無関係な変更を、破棄したり、stash したり、コミットしたりして、条件を満たさない。
 
 ## 7 並行する作業と競合

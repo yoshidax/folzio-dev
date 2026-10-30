@@ -61,8 +61,8 @@
 
 - [X] T023 手順書と `AGENTS.md` を通読し、`spec.md` の `FR-186`〜`FR-199` と `EC-129`〜`EC-135` のすべてに、対応する記述があることを確認する。抜けがあれば追記する。結果を `quickstart.md` の末尾に記録する。（FR-196）
 - [X] T024 quickstart.md の B のコマンド（`scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py" -v`）を実行し、通過を確認する。
-- [ ] T025 [MANUAL] 保守者が「PR を作って」と依頼する。Agent が PR を作る（FR-198）。作成後、PR の CI の自動実行と成否を `get_check_runs` で確認し、追加の push の後に `actions_run_trigger` で `workflow_dispatch` を起動できるか確かめて、結果（起動できた／できなかった）を手順書の「4 CI の確認」に反映する。（quickstart.md の C2、C3、US28-AS1、AS2）
-- [ ] T026 PR の作成後、Agent が TAK-30 に PR のリンクを追加して `In Review` に更新し、Linear 上で状態の履歴とリンクを確認する。`master` への push、強制 push、PR のマージが拒否されることを、`git push --dry-run` などの無害な操作で確認する。結果を `quickstart.md` の末尾に記録する。（quickstart.md の C1、C4、SC-092、US27-AS4、US29-AS3）
+- [X] T025 [MANUAL] 保守者が「PR を作って」と依頼する。Agent が PR を作る（FR-198）。作成後、PR の CI の自動実行と成否を `get_check_runs` で確認し、追加の push の後に `actions_run_trigger` で `workflow_dispatch` を起動できるか確かめて、結果（起動できた／できなかった）を手順書の「4 CI の確認」に反映する。（quickstart.md の C2、C3、US28-AS1、AS2）
+- [X] T026 PR の作成後、Agent が TAK-30 に PR のリンクを追加して `In Review` に更新し、Linear 上で状態の履歴とリンクを確認する。`master` への push、強制 push、PR のマージが拒否されることを、`git push --dry-run` などの無害な操作で確認する。結果を `quickstart.md` の末尾に記録する。（quickstart.md の C1、C4、SC-092、US27-AS4、US29-AS3）
 - [ ] T027 [MANUAL] 保守者がローカルで、最新の `master` に PR のブランチを取り込み、`swift build`、`swift test`、`python3 -I -m unittest discover -s scripts/dev/tests -v`、`scripts/make-app.sh`、`open .build/Folzio.app`（3 ペインの表示）を実行し、結果を報告する。この feature はアプリのコードを変えないため、結果は変更前と同じになる。（quickstart.md の D）
 
 ## Phase 9: `specs/product/` への反映

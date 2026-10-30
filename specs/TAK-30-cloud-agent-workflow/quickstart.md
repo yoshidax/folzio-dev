@@ -57,3 +57,14 @@ PR は保守者の依頼で作る（FR-198）。作成後に、次を確かめ�
 | B `scripts/check-readme-sync.sh master` | 通過 |
 | B `scripts/dev/check-english-comments.sh` | 通過 |
 | B `test_check_git_push.py` | 3 件通過 |
+
+### 2026-10-30: Cloud の実機確認（T025、T026。PR #4）
+
+| 項目 | 結果 |
+|---|---|
+| C1 Linear への反映（FR-199、US27-AS4） | TAK-30 に PR #4 のリンクを追加して `In Review` に更新できた。Linear の attachments にリンクが付き、状態は `In Review` |
+| C2 CI の自動実行（US28-AS1） | PR の作成時に自動で動いた（run #10、19:31:56〜19:36:51、成功）。ステップ: ビルド 16 秒、通常のテスト 2 分 35 秒、性能テスト 1 分 52 秒 |
+| C3 CI の手動実行（US28-AS2、R4） | `actions_run_trigger` の `run_workflow`（`workflow_id`: `macos-swift-ci.yml`、`ref`: 作業ブランチ）が `204` を返し、run #11（`workflow_dispatch`）が作られて PR #4 に関連づけられた。19:37:22〜19:42:17、成功。**Agent が起動できる** |
+| C4 権限（US29-AS3） | `master` への push と、`--force` を付けた push を、副作用のない `--dry-run` で試した。前者は「master への push は禁止です」、後者は「オプション --force は許可リストにありません」で、どちらも `scripts/dev/check-git-push.py` が拒否した。`merge_pull_request` は拒否リストにあるが、誤ってマージされる恐れがあるため、呼んで確かめてはいない |
+| 補足 | `actions_run_trigger` には `rerun_workflow_run`、`rerun_failed_jobs`、`cancel_workflow_run` もある（未試行） |
+| 補足 | 上のフックは、コマンドの文字列のどこかに push の呼び出しの記述があると（ヒアドキュメントの文中も）、入れ子と見なしてコマンド全体を拒否する。文書の編集は、Edit ツールで行うか、その記述を含めない |
