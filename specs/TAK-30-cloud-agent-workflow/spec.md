@@ -23,7 +23,7 @@
 - Q: ビルドとテストの確認は？ → A: Cloud 環境には Swift がないため、macOS の CI（TAK-25）で確認する。CI は PR の作成時と Ready にしたときに自動で動き、以後の再確認は手動実行で行う。
 - Q: master を守る仕組みは？ → A: 無料プランの private リポジトリのため branch protection は使えない。Agent の権限設定（TAK-27）で、master への push、強制 push、PR のマージを止める。
 - Q: Agent が PR を作るタイミングは？ → A: 保守者が依頼したときだけ作る。CI が PR の作成時に 1 回だけ自動で動く設計のため、作業の途中で PR を作ると、空に近い状態で CI が動くことを避ける。
-- Q: PR を作ったときの Linear の `In Review` は誰が更新するか？ → A: Linear の GitHub 連携に任せ、Agent は更新しない。連携が動かない場合は、保守者が手で更新する。
+- Q: PR を作ったときの Linear の `In Review` への更新とリンクは誰が行うか？ → A: Agent が行う。Linear の GitHub 連携は PR の作成を検知しなかった（TAK-28 の PR #3 は、タイトルに Issue 番号を含んでいたのに、`In Review` にならずリンクも付かなかった）ため、連携には頼らない。当初は「連携に任せる」と決めたが、その前提（TAK-25 が連携で `In Review` になった）が誤りだったため、取り直した。
 - Q: マージ済みの作業ブランチは再利用できるか？ → A: 再利用しない。スカッシュマージで履歴が変わるため、同じ名前で作り直すには強制 push が要り、禁止されている。最新の master から新しい作業ブランチを作る。
 
 ## User Scenarios & Testing *(mandatory)*
@@ -41,6 +41,8 @@
 1. **US27-AS1**: **Given** Cloud の作業ブランチにいて Issue（`TAK-nn`）を指定された、**When** Agent が feature を始める、**Then** `specs/TAK-nn-<slug>/` ができ、Agent はブランチを新しく作らず、feature の状態ファイルがこのディレクトリを指す。
 2. **US27-AS2**: **Given** 着手する Issue が `Backlog` などの状態にある、**When** Agent が着手する、**Then** Agent は Issue を `In Progress` に更新し、Issue の URL または ID を feature の仕様書に記録して、作業ブランチとともに保守者へ知らせる。
 3. **US27-AS3**: **Given** Linear に接続できない、**When** Agent が Issue を読む、または状態を更新しようとする、**Then** Agent は失敗を報告し、更新できたとは扱わない。
+
+4. **US27-AS4**: **Given** 保守者の依頼で Agent が PR を作った、**When** PR の作成が終わる、**Then** Agent は対象の Issue に PR のリンクを追加して `In Review` に更新し、結果を保守者へ知らせる。Linear に接続できなければ、失敗を報告する。
 
 ---
 
@@ -132,6 +134,7 @@ Cloud 環境には Swift がないため、Agent は PR の CI の結果を読�
 - **FR-196**: Cloud Agent の作業の手順（feature の始め方、Linear の更新、PR の作成、CI の確認、完了の報告）は、Agent が `AGENTS.md` と手順書だけで進められる形でまとめなければならない。
 - **FR-197**: Agent は、Linear の `Done`、`Canceled`、`Duplicate` の Issue を、保守者の明示的な指示なしに再着手してはならない。`Done` への更新は、保守者がマージ後に依頼したときだけ、マージを確認した上で行う。
 - **FR-198**: Agent は、保守者が依頼したときだけ PR を作らなければならない。作業が終わっても、依頼なしには PR を作らず、作成できる状態であることを報告する。
+- **FR-199**: Agent は PR を作ったら、対象の Issue に PR のリンクを追加し、`In Review` に更新しなければならない。Linear に接続できない場合は失敗を報告し、更新できたと扱ってはならない。
 
 ### Key Entities *(include if feature involves data)*
 
@@ -163,15 +166,15 @@ Cloud 環境には Swift がないため、Agent は PR の CI の結果を読�
 - **A-112**: Claude と Codex の両方の Cloud Agent が `AGENTS.md` を読む。各 Agent に固有のスキルの差（`.claude/skills/` と `.agents/skills/`）は、この feature の対象外とする。
 - **A-113**: 憲章の「マージ前のゲート」（自動テストの通過）は、Cloud では CI の成功と、保守者のローカルでの確認で満たされると解釈する。憲章の文言は、この feature では改定しない。
 - **A-114**: `.specify/feature.json` は `.specify/.gitignore` で既に管理対象外である。この feature では追加の除外設定を要しない。
-- **A-115**: PR を作ったときの Linear の `In Review` への更新は、Linear の GitHub 連携が行う（TAK-25 で確認）。Agent は `In Review` に更新しない。連携が動かない場合は、保守者が手で更新する。
+- **A-115**: Linear の GitHub 連携は、PR の作成を検知して Issue にリンクを付けたり状態を変えたりしない（TAK-28 の PR #3 で確認した）。Agent が、PR を作った後に、Issue へ PR のリンクを追加して `In Review` に更新する。
 
 ## 反映先
 
 | ID | 種別 | 反映先 |
 |---|---|---|
-| US27-AS1〜AS3、US28-AS1〜AS4、US29-AS1〜AS3、US30-AS1〜AS3、US31-AS1、AS2 | 追加 | overview.md |
+| US27-AS1〜AS4、US28-AS1〜AS4、US29-AS1〜AS3、US30-AS1〜AS3、US31-AS1、AS2 | 追加 | overview.md |
 | EC-129〜EC-134 | 追加 | overview.md |
-| FR-186〜FR-198 | 追加 | overview.md |
+| FR-186〜FR-199 | 追加 | overview.md |
 | SC-090〜SC-095 | 追加 | overview.md |
 | A-105〜A-115 | 追加 | overview.md |
 

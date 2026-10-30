@@ -34,5 +34,6 @@
 - この feature の利用者は保守者と Cloud Agent で、対象は開発 workflow である。そのため、仕様書には CI、Linear、`AGENTS.md`、`master` などの
   運用上の名前が出てくる。これらは実装方法ではなく、保守者が観察できる運用の対象として扱っている。
   「No implementation details」と「Written for non-technical stakeholders」は、この前提で通過とした
-- 2026-10-30: 未決の 2 件（PR を作るタイミング、`In Review` の更新者）は、保守者の回答を受けて Clarifications と FR-198、A-115 に反映した
+- 2026-10-30: 未決の 2 件（PR を作るタイミング、`In Review` の更新者）は、保守者の回答を受けて Clarifications と FR-198、FR-199、A-115 に反映した
+- 2026-10-30: Linear の GitHub 連携が PR を検知しないことを確認し（TAK-28）、`In Review` とリンクの更新を Agent が行う決定に取り直した
 - 2026-10-30: `.specify/feature.json` の除外は、当初「追加が必要」と書いたが、`.specify/.gitignore` で既に除外されていたため、FR-187 と A-114 に訂正した
