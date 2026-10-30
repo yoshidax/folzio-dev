@@ -4,7 +4,7 @@
 仕様の正本は `specs/product/`（領域別の Living spec）、仕様の運用ルールは `.specify/memory/constitution.md` の「仕様の管理」です。
 `specs/001-three-pane-media-viewer/` は凍結した実装の記録です。
 
-## プロジェクト概要
+## プロジェクト概要【共通】
 
 - macOS 15 以降 / Swift 6 / AppKit のみ / 外部パッケージ依存なし / Swift Package 構成
 - `FolzioCore` は AppKit を import しない。判断ロジックは Core、描画と入力は `FolzioApp` に置く
@@ -15,7 +15,38 @@
 - 実装中に更新する仕様文書は、作業中の feature の `tasks.md` のチェックと、タスクで明示された追記（例: T077 の quickstart）だけにする
 - 進捗は作業中の feature の `tasks.md` を正とする
 
-## Issue 管理
+## 運用の区分
+
+このファイルの規則は、作業のしかたによって適用される範囲が違います。各節の見出しの【】が、その節の適用範囲を示します。
+
+- 【共通】: ローカルでも Cloud でも適用する
+- 【ローカル】: 保守者のローカル（macOS）でのセッションにだけ適用する。Cloud では適用しない
+- 【Cloud】: Cloud 環境（リモート実行環境）でのセッションにだけ適用する。ローカルでは適用しない
+
+Cloud のセッションかどうかは、セッションの指示（Cloud が作業ブランチを指定している、リモート実行環境である旨）で判断します。
+Cloud Agent の手順の詳細は [docs_private/cloud-agent-workflow.md](docs_private/cloud-agent-workflow.md) にあります。
+
+| 節 | 区分 | 補足 |
+|---|---|---|
+| プロジェクト概要 | 共通 | |
+| Issue 管理 | 共通 | PR を作った後の Linear の更新は「Cloud Agent の作業」 |
+| Git の規則 | 共通 | `git push`、master へのマージ、GUI の起動の依頼 |
+| コードコメント（英語） | 共通 | |
+| Phase の検証ゲート | ローカル | Cloud 版は「Cloud Agent の作業」の「検証ゲート」 |
+| バグ修正 | 共通 | 手順 1 と 5 は、ローカルと Cloud で違う（注記あり） |
+| 起動しないときの初動（AppKit / macOS） | ローカル | Cloud では保守者に依頼する |
+| AppKit UI の不変条件 | 共通 | |
+| 並列実装（worktree 標準） | ローカル | Cloud は Issue 単位で別のセッションが並行する |
+| Codex / Spec Kit | 共通 | スキルの場所と設定 |
+| Codex の自動実行 | ローカル | `scripts/dev/sdd-run-codex.sh` による実行 |
+| Cloud Agent の作業 | Cloud | feature の始め方、Linear、PR、CI、検証ゲート、並行する作業 |
+| テスト | 共通 | Cloud ではテストを CI で実行する |
+| 検証用コマンド | 共通 | Cloud では `swift` を使うコマンドを実行できない |
+| 公開用リポジトリ | 共通 | |
+| README の英語版と日本語版 | 共通 | |
+| 参照 | 共通 | |
+
+## Issue 管理【共通】
 
 - やりたいことやバグは Linear の [Folzio プロジェクト](https://linear.app/takyoshida/project/folzio-968b9d447da8)（チーム TAK）で管理する
 - Linear Issue を指定して Spec Kit の feature またはバグ修正に着手するとき、対象を確認して `In Progress` に更新する。
@@ -26,7 +57,17 @@
 - Linear に接続できない場合は失敗を報告し、状態を更新できたと扱わない。ユーザーの明示的な指示でない限り、
   `Done`、`Canceled`、`Duplicate` の Issue を自動的に再着手しない
 
-## コードコメント（英語）
+## Git の規則【共通】
+
+- `git push` は作業ブランチ（`claude/*`、`ci/*`、`chore/*`、`docs/*`、`feature/*`、`bugfix/*`、`agent/*`）への
+  push だけを行う。`master` / `main` への push、強制 push（`--force`、`-f`、`+` 付きの refspec）、
+  リモートブランチの削除は行わない。PR のマージはユーザーだけが行い、GitHub MCP ツールでも行わない
+- `git reset --hard`、`git clean` は行わない。sandbox・承認・ルールを無効化して作業を継続しない
+- 開発用 master へのマージと push はユーザーが `scripts/dev/merge-to-master.sh` で行う。
+  AI エージェントはこのスクリプトを直接・間接に実行せず、master に直接マージしない
+- GUI の起動はユーザーに依頼する。非対話実行中は GUI タスクを未チェックのまま残す
+
+## コードコメント（英語）【共通】
 
 OSS として配布するため、ソースコードのコメントは英語で書きます。日本語のコメントが残っているファイルは、
 コード・識別子・文字列リテラルを変えずにコメントだけを翻訳します。
@@ -45,9 +86,9 @@ OSS として配布するため、ソースコードのコメントは英語で�
 - 翻訳後もコメントのみの変更でも `swift build` と `swift test` を実行する
 - 基準とする書式の例: `Sources/FolzioCore/Archive/InflateCursor.swift`
 
-## Phase の検証ゲート
+## Phase の検証ゲート【ローカル】
 
-まとまった変更・Phase の終わりに、次をこの順で行います。
+まとまった変更・Phase の終わりに、次をこの順で行います。Cloud 版は「Cloud Agent の作業」の「検証ゲート」を参照します。
 
 1. `swift build`
 2. `swift test`
@@ -61,24 +102,26 @@ OSS として配布するため、ソースコードのコメントは英語で�
 
 起動スモークを省略して「テストが通ったから完了」にしないこと。
 
-## バグ修正
+## バグ修正【共通】
 
 bug 拡張の `/speckit-bug-assess` → `/speckit-bug-fix` → `/speckit-bug-test` で直す（Kilo では `/speckit.bug.*`、Codex CLI では `$speckit-bug-*`）。
 記録は `.specify/bugs/<slug>/` に残る。
 
-1. クリーンな master から `bugfix/<slug>` ブランチを切る
+1. クリーンな master から `bugfix/<slug>` ブランチを切る（ローカル。Cloud では Cloud が指定した作業ブランチをそのまま使う）
 2. assess: `assessment.md` の「Symptom」の後に「## 仕様との照合」を置き、該当する `specs/product/` の ID と、次のどちらかの判定を書く
    - 実装が仕様に反している: fix へ進む
    - 仕様が誤っている、または定めていない: fix へ進まず、仕様の変更として sdd-increment（小さければ `clarify_mode=skip`）で扱う
 3. assess の判定と診断をユーザーに確認してもらってから fix へ進む
 4. fix: 再現を固定する回帰テストを足す（Core のロジックは `Tests/FolzioCoreTests`）
-5. test: 「Phase の検証ゲート」の 1〜4 を行う。GUI で再現を確かめていなければ判定は `partial` にする
+5. test: 「Phase の検証ゲート」の 1〜4 を行う（Cloud では、ビルドとテストを CI で確認し、起動スモークを保守者に依頼する。
+   「Cloud Agent の作業」の「検証ゲート」）。GUI で再現を確かめていなければ判定は `partial` にする
 6. ソースの変更と `.specify/bugs/<slug>/` を1つのコミットにする（例: `fix: <内容> (bug: <slug>)`）
 
-## 起動しないときの初動（AppKit / macOS）
+## 起動しないときの初動（AppKit / macOS）【ローカル】
 
 クラッシュレポートがなく、終了コードが 0 でも、AppKit が Objective-C 例外を握りつぶしていることがあります。
 推測でコードを直す前に、まず lldb で例外を止めてください。GUI を起動するため、実行前にユーザーへ依頼します。
+Cloud では GUI を起動できないため、実行する内容と確認する点を示して、保守者に依頼します。
 
 ```bash
 cd /Users/igachan/projects/folzio
@@ -97,7 +140,7 @@ lldb -b \
 - ターミナルから直接実行すると、起動時の出力を確認できる
   （`.build/Folzio.app/Contents/MacOS/Folzio`）
 
-## AppKit UI の不変条件
+## AppKit UI の不変条件【共通】
 
 - `NSSplitViewController` では、次の `NSSplitViewDelegate` メソッドを override しない
   - `splitView(_:constrainMinCoordinate:ofSubviewAt:)`
@@ -110,7 +153,9 @@ lldb -b \
 - 異なる view hierarchy に属するアンカー同士を制約しない
 - ウインドウの表示・contentViewController の設定は MainActor で行う
 
-## 並列実装（worktree 標準）
+## 並列実装（worktree 標準）【ローカル】
+
+この規約はローカル用です。Cloud では、別の Issue を別のセッションが並行して担当し、サブエージェントによるタスク分割の並列実装は行いません。
 
 - 実装の並列化は、Agent Manager の worktree セッション、またはタスク専用の `git worktree` で行う
 - ベースは現在の Phase ブランチ（例: `001-three-pane-media-viewer`）。未コミット変更は先にコミットまたは stash する
@@ -123,33 +168,77 @@ lldb -b \
 - 内部の `task` サブエージェントは調査・レビュー向け。実装の並列化には使わない
 - マージ後に `git worktree remove` と作業ブランチの削除を行う
 
-## Codex / Spec Kit
+## Codex / Spec Kit【共通】
 
 - Codex の Spec Kit スキルは `.agents/skills/`。CLI では `$speckit-specify`、`$speckit-plan`、
   `$speckit-tasks`、`$speckit-analyze`、`$speckit-implement`、`$speckit-converge` などで呼び出す
 - 標準・git・bug スキルは Spec Kit が生成する。共通のプロジェクト規約はこのファイルで管理する
+- `.codex/config.toml` と `.codex/rules/` は Codex 用。Claude／Kilo の permissions 設定は Codex に適用されない
+
+## Codex の自動実行【ローカル】
+
 - Codex の自動実行は `scripts/dev/sdd-run-codex.sh` を使う。run／resume／status と更新手順は
   `docs_private/codex-speckit.md` を参照する。既定の integration は Claude のままとする
-- `.codex/config.toml` と `.codex/rules/` は Codex 用。Claude／Kilo の permissions 設定は Codex に適用されない
-- `git push` は作業ブランチ（`claude/*`、`ci/*`、`chore/*`、`docs/*`、`feature/*`、`bugfix/*`、`agent/*`）への
-  push だけを行う。`master` / `main` への push、強制 push（`--force`、`-f`、`+` 付きの refspec）、
-  リモートブランチの削除は行わない。PR のマージはユーザーだけが行い、GitHub MCP ツールでも行わない
-- `git reset --hard`、`git clean` は行わない。sandbox・承認・ルールを無効化して作業を継続しない
-- 開発用 master へのマージと push はユーザーが `scripts/dev/merge-to-master.sh` で行う。
-  AI エージェントはこのスクリプトを直接・間接に実行せず、master に直接マージしない
-- GUI の起動はユーザーに依頼する。非対話実行中は GUI タスクを未チェックのまま残す
 - Codex の初期ワークフローは順次実装する。内部 subagent による同じ作業ディレクトリでの並列編集は行わない。
   並列実装を明示的に行う場合も、上の worktree 規約に従って独立したセッションを使う
 
-## テスト
+## Cloud Agent の作業【Cloud】
+
+Cloud 環境で Agent が作業するときの規則です。手順の詳細は [docs_private/cloud-agent-workflow.md](docs_private/cloud-agent-workflow.md)
+（括弧内の番号は、その章）にあります。ローカルで作業するときは適用しません。
+
+### feature の始め方（手順書 1）
+
+- Cloud が指定した作業ブランチ上で作業する。git 拡張の `before_specify` フック（`speckit.git.feature`）は実行せず、feature 用のブランチを新しく作らない
+- feature ディレクトリは `specs/TAK-<nn>-<slug>`（`<nn>` は Linear の Issue 番号）。`SPECIFY_FEATURE_DIRECTORY` で明示する。ブランチ名とは独立している
+- 作業の前に `git fetch origin master` し、最新の master を取り込む（ローカルの `master` ブランチは古いことがある）
+
+### Linear（手順書 2）
+
+- 着手時に `In Progress` へ更新し、Issue の URL を仕様書に記録する（「Issue 管理」）
+- Linear の GitHub 連携は PR を検知しない。PR を作った後は、Agent が Issue に PR のリンクを追加して `In Review` に更新する
+- `Done` は、保守者がマージ後に依頼したときだけ、マージを確認して更新する
+
+### PR とマージ、ブランチ（手順書 3、6）
+
+- PR は、保守者が依頼したときだけ作る。作業が終わっても、依頼なしには作らず、作成できる状態であることを報告する
+- マージは保守者だけが行う。マージ済みの作業ブランチは再利用せず、最新の master から新しい `claude/` のブランチを作る
+  （Cloud が指定した名前と別の名前は、保守者の許可を得る）
+- 作業の途中で master が先に進んだら、`git merge origin/master` で取り込む。履歴を書き換えない
+- 権限の設定（`.claude/settings.json`）はセッションの起動時に読み込まれる。途中の変更は、新しいセッションまで反映されない
+
+### CI の確認（手順書 4）
+
+- Cloud には Swift がないため、ビルドとテストは macOS の CI で確認する。CI は PR の作成時と Ready にしたときだけ自動で動く
+- 結果とログは GitHub MCP で読む。実行中のジョブのログは取得できない。修正は、ログを読んでまとめてから push する
+- 置き換える API は、使う前にヘッダーや文書で存在を確認する。同じ原因の失敗を 3 回直しても解決しない場合は、作業を止めて報告する
+- 追加の push の後は、`workflow_dispatch` で再確認する（Agent が起動できなければ、保守者に実行を頼む）
+
+### 検証ゲート（手順書 5）
+
+- Cloud で行う: `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、
+  `test_check_git_push.py`
+- CI で行う: `swift build`、`swift test`
+- 保守者がローカルで行う: 起動スモーク、ローカルの最新の Swift でのビルド、`scripts/dev/tests` の公開・配布のテスト
+- 起動スモークを省略して「CI が通ったから完了」にしない。マージ前のゲート（自動テストの通過）は、CI の成功と保守者のローカルでの確認で満たす
+
+### 並行する作業と `specs/product/` の反映（手順書 7）
+
+- 並列の単位は Issue。サブエージェントによるタスク分割の並列実装は行わない
+- `specs/product/` への反映は PR の最後の作業にする。反映の直前に master を取り込み、同じ領域ファイルの競合は解消する
+- `specs/product/` の ID が別の feature と衝突したら、まだマージされていない側が自分の feature の ID を振り直してから反映する。
+  マージ済みの ID は振り直さない
+
+## テスト【共通】
 
 - Swift Testing を使う（`Tests/FolzioCoreTests`、`Tests/FolzioPerformanceTests`）
 - Core のロジックと異常系にはテストを付ける
 - フィクスチャは `FixtureKit` で一時ディレクトリに生成し、テスト後に削除する
 - 性能テストの基準値は `specs/001-three-pane-media-viewer/quickstart.md` の「性能の検証」に従う
 - テストの失敗を3回直しても解決しない場合は、作業を止めて状況を報告する
+- Cloud では `swift test` を実行できないため、CI で実行する（「Cloud Agent の作業」の「CI の確認」）
 
-## 検証用コマンド
+## 検証用コマンド【共通】
 
 ```bash
 swift build
@@ -167,8 +256,9 @@ open .build/Folzio.app
 - `.app` と `swift run` では UserDefaults のドメインが異なる
   - `.app`: `local.folzio.Folzio`
   - `swift run`: `FolzioApp`
+- Cloud では、`swift` を使うコマンドと `scripts/make-app.sh`、`open` を実行できない。ビルドとテストは CI で確認し、GUI は保守者に依頼する
 
-## 公開用リポジトリ
+## 公開用リポジトリ【共通】
 
 - このリポジトリは非公開の開発用。公開用は `scripts/dev/publish.sh` で `../folzio-oss` へ書き出し、1回の公開を1コミットにする
 - `docs/` は公開用のユーザーガイド・開発ガイド、`docs_private/` は非公開の運用手順・開発記録に使う
@@ -178,7 +268,7 @@ open .build/Folzio.app
 - 公開用リポジトリへのコミットと push はユーザーが行う
 - 構成と公開の手順の詳細: `docs_private/repository-and-release.md`
 
-## README の英語版と日本語版
+## README の英語版と日本語版【共通】
 
 - `README.md`（英語）と `README.ja.md`（日本語）は同じ内容の2言語版。片方だけを更新しない
   - 一方を変えたら、同じコミットでもう一方にも同じ変更を入れる。タスクや指示が `README.md` だけを挙げていても両方を直す
@@ -189,9 +279,10 @@ open .build/Folzio.app
   - 訳の中身が一致しているかまでは調べない。差分を読み、両方に同じ内容が入っていることを確かめる
 - `scripts/dev/publish.sh` も書き出しの前に同じ確認を行う
 
-## 参照
+## 参照【共通】
 
 - 起動不具合の詳細な振り返り: `docs_private/retrospective/2026-10-19-startup-debugging.md`
 - リポジトリの構成と公開の手順: `docs_private/repository-and-release.md`
 - 使い方・手動確認: `README.md`（日本語版は `README.ja.md`）
 - 検証手順: `specs/001-three-pane-media-viewer/quickstart.md`
+- Cloud Agent の作業手順: `docs_private/cloud-agent-workflow.md`

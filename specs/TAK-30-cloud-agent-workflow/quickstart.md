@@ -41,3 +41,19 @@ PR は保守者の依頼で作る（FR-198）。作成後に、次を確かめ�
 ## E. 完了の更新
 
 保守者が PR をマージし、完了更新を依頼したら、Agent がマージを確認して TAK-30 を `Done` にする（FR-197）。確認できなければ、完了にしない。
+
+## 実施記録
+
+### 2026-10-30: 文書の整合と既存の検査（T020、T023、T024）
+
+| 項目 | 結果 |
+|---|---|
+| A1 見出しの区分と一覧表 | `AGENTS.md` の `##` 見出し 18 のうち、「運用の区分」を除く 17 すべてに【共通】【ローカル】【Cloud】が付き、一覧表の 17 行と 1 対 1 で一致（区分の食い違い 0 件） |
+| A2 分類表との突き合わせ | `data-model.md` の変更前の 14 節の区分が、変更後の見出しと一致。「Codex / Spec Kit」の 9 行は、「Codex / Spec Kit」【共通】（4 行）、「Git の規則」【共通】（4 行）、「Codex の自動実行」【ローカル】（2 行）に置いた。抜けと二重の記載なし |
+| A3 矛盾の読み合わせ | `git push`（【共通】と【Cloud】）、検証ゲート（【ローカル】と【Cloud】）、ブランチの切り方（「バグ修正」の手順 1 の注記と【Cloud】）、完了の報告（「Issue 管理」と【Cloud】）を読み比べ、同じ状況に異なる指示を出す規則は 0 件 |
+| A4 ローカル専用の規則の差分 | 変更前に対して、`AGENTS.md` で消えた行は、見出し（区分の追加）、「Phase の検証ゲート」の導入文（Cloud 版への案内を追記）、「バグ修正」の手順 1 と 5（Cloud の注記を追記）だけ。移動した規則（`git push`、`reset --hard`、`merge-to-master.sh`、GUI の依頼）は、一字も変えずに残っている。`merge-to-master.sh`、ローカルの検証ゲート、worktree の規約の意味は変わっていない |
+| T023 要件の対応 | `FR-186`〜`FR-199` と `EC-129`〜`EC-135` のすべてに、`docs_private/cloud-agent-workflow.md` または `AGENTS.md` の記述が対応している（キーワードの検索で確認。`FR-191` は「タイムアウト」の記述） |
+| B `scripts/check-no-network.sh` | 通過 |
+| B `scripts/check-readme-sync.sh master` | 通過 |
+| B `scripts/dev/check-english-comments.sh` | 通過 |
+| B `test_check_git_push.py` | 3 件通過 |
