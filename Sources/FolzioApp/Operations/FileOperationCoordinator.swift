@@ -149,6 +149,46 @@ final class FileOperationCoordinator {
         guard await confirmation.confirm(operation, includesFolders: await containsFolder(urls)) else { return }
         if validateDrop, await !validateInternalDrop(urls, destination: destination, kind: kind) { return }
 
+        let (result, attemptedSources) = await Self.transferItems(
+            urls, to: destination, kind: kind, service: service,
+            resolveConflict: { [conflictPrompt] conflicts, destination, allowReplace in
+                await conflictPrompt.resolve(
+                    conflictingNames: conflicts.map(\.lastPathComponent),
+                    destination: destination,
+                    allowReplace: allowReplace
+                )
+            },
+            validate: { source in
+                if validateDrop {
+                    return await self.validateInternalDrop([source], destination: destination, kind: kind)
+                }
+                return true
+            }
+        )
+
+        await presentFailures(result)
+        var removed: [URL] = []
+        if case .move = kind {
+            // result.succeeded contains destination URLs, so remove history using the original locations that did not
+            // fail (FR-109).
+            let failedPaths = Set(result.failed.map { $0.url.standardizedFileURL.path })
+            removed = attemptedSources.filter { !failedPaths.contains($0.standardizedFileURL.path) }
+            model.didMoveSearchItems(removed)
+            historyNavigator?.didRemoveItems(removed)
+        }
+        let relocated = model.isShowingSearchResults ? false : await model.leaveTrashedFolders(removed, origin: .fileList)
+        if !relocated { await model.reloadCurrentFolder() }
+        notifyFoldersChanged(sources: urls, destination: destination)
+    }
+
+    static func transferItems(
+        _ urls: [URL],
+        to destination: URL,
+        kind: FileOperation.Kind,
+        service: any FileOperating,
+        resolveConflict: ([URL], URL, Bool) async -> ConflictPrompt.Choice,
+        validate: (URL) async -> Bool
+    ) async -> (FileOperationResult, [URL]) {
         var result = FileOperationResult()
         var sharedResolution: ConflictResolution?
         var attemptedSources: [URL] = []
@@ -169,18 +209,13 @@ final class FileOperationCoordinator {
             if let sharedResolution, !(sameCopyItem && { if case .replace = sharedResolution { true } else { false } }()) {
                 resolution = sharedResolution
             } else {
-                let service = service
                 let conflicts = await Task.detached(priority: .userInitiated) {
                     service.conflicts(for: itemOperation)
                 }.value
                 if conflicts.isEmpty {
                     resolution = .keepBoth
                 } else {
-                    let choice = await conflictPrompt.resolve(
-                        conflictingNames: conflicts.map(\.lastPathComponent),
-                        destination: destination,
-                        allowReplace: !sameCopyItem
-                    )
+                    let choice = await resolveConflict(conflicts, destination, !sameCopyItem)
                     if choice.applyToAll {
                         sharedResolution = choice.resolution
                     }
@@ -189,27 +224,15 @@ final class FileOperationCoordinator {
             }
 
             if case .abort = resolution {
-                continue
+                break
             }
-            if validateDrop, await !validateInternalDrop([source], destination: destination, kind: kind) { continue }
+            if await !validate(source) { continue }
             attemptedSources.append(source)
             let partial = await service.execute(itemOperation, resolution: resolution)
             result.merge(partial)
         }
 
-        await presentFailures(result)
-        var removed: [URL] = []
-        if case .move = kind {
-            // result.succeeded contains destination URLs, so remove history using the original locations that did not
-            // fail (FR-109).
-            let failedPaths = Set(result.failed.map { $0.url.standardizedFileURL.path })
-            removed = attemptedSources.filter { !failedPaths.contains($0.standardizedFileURL.path) }
-            model.didMoveSearchItems(removed)
-            historyNavigator?.didRemoveItems(removed)
-        }
-        let relocated = model.isShowingSearchResults ? false : await model.leaveTrashedFolders(removed, origin: .fileList)
-        if !relocated { await model.reloadCurrentFolder() }
-        notifyFoldersChanged(sources: urls, destination: destination)
+        return (result, attemptedSources)
     }
 
     private func validateInternalDrop(_ urls: [URL], destination: URL, kind: FileOperation.Kind) async -> Bool {
