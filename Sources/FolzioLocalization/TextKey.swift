@@ -59,6 +59,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case errorOperationIntoItself = "error.operation.intoItself"
     case errorOperationSameNameExists = "error.operation.sameNameExists"
     case errorOperationSameNameAtDestination = "error.operation.sameNameAtDestination"
+    case errorOperationReplacementContainsSource = "error.operation.replacementContainsSource"
     case errorOperationTrashExistingFailed = "error.operation.trashExistingFailed"
     case errorOperationSystemFailure = "error.operation.systemFailure"
 

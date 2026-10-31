@@ -123,6 +123,7 @@ public struct FileOperationService: FileOperating {
             for: source,
             in: destination,
             resolution: resolution,
+            protectedSources: operation.sources,
             createdNames: &createdNames,
             fileManager: fileManager
         )
@@ -199,6 +200,7 @@ public struct FileOperationService: FileOperating {
         for source: URL,
         in destination: URL,
         resolution: ConflictResolution,
+        protectedSources: [URL],
         createdNames: inout Set<String>,
         fileManager: FileManager
     ) throws -> URL {
@@ -211,6 +213,11 @@ public struct FileOperationService: FileOperating {
         case .abort:
             throw OperationFailure(reason: .sameNameAtDestination)
         case .replace:
+            guard !protectedSources.contains(where: {
+                isDescendant($0, of: target) || sameItem($0, target, fileManager: fileManager)
+            }) else {
+                throw OperationFailure(reason: .replacementContainsSource)
+            }
             _ = try moveToTrash(target, fileManager: fileManager)
             return target
         case .keepBoth:
