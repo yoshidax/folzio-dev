@@ -102,4 +102,5 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   コンパイルとテスト（T004 の先に失敗させる確認を含む）は未実行で、T021 の CI で確認する
 - 2026-10-31: T020 の Cloud の検査結果: `check-no-network.sh` 成功、`check-readme-sync.sh master` 成功、`check-english-comments.sh` 成功、
   `check-skill-sync.sh` 成功、`test_check_git_push.py` 3件成功
+- 2026-10-31: 報告した懸念1を修正。⌘クリックで主の行を外した後の ↑↓ が、残った行ではなく主の行を起点にするようにした（`handleArrowKey`。spec の Edge Cases・contracts・quickstart S3 に追記）
 - 2026-10-31: T023 で `docs/usage*.md` のツリーのゴミ箱の行にあった「設定で省略可」を、FR-079・FR-024 の「常に確認」に合わせて直した（既存の記述の誤り）

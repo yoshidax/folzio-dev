@@ -307,12 +307,15 @@ final class DirectoryTreeViewController: NSViewController {
     }
 
     /// Shift+↑↓ extends the range from the anchor to the moved lead row. ↑↓ without Shift selects the row before or
-    /// after the lead row; with a single visible selection, AppKit handles it as before (FR-005, FR-208, R4).
+    /// after the lead row, also when ⌘-click removed the lead row from the selection. Only when the selection is
+    /// exactly the visible lead row does AppKit handle ↑↓ as before (FR-005, FR-208, R4).
     private func handleArrowKey(offset: Int, extending: Bool) -> Bool {
         guard editingTarget == nil else { return false }
         let leadRow = keyboardOriginRow()
-        let leadIsVisible = leadItem.map { row(forStoredItem: $0) >= 0 } ?? false
-        if !extending, outlineView.numberOfSelectedRows <= 1, leadIsVisible { return false }
+        let leadVisibleRow = leadItem.map { row(forStoredItem: $0) } ?? -1
+        if !extending, leadVisibleRow >= 0, outlineView.selectedRowIndexes == IndexSet(integer: leadVisibleRow) {
+            return false
+        }
         guard leadRow >= 0 else { return false }
         let target = leadRow + offset
         guard target >= 0, target < outlineView.numberOfRows,
