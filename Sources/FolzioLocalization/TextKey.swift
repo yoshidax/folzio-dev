@@ -245,6 +245,8 @@ public enum TextKey: String, CaseIterable, Sendable {
     case dialogOperationSummary = "dialog.operation.summary"
     case dialogOperationFailureLine = "dialog.operation.failureLine"
     case dialogOperationMore = "dialog.operation.more"
+    case dialogTreeTrashOverlapTitle = "dialog.treeTrashOverlap.title"
+    case dialogTreeTrashOverlapMessage = "dialog.treeTrashOverlap.message"
     case dialogCancel = "dialog.cancel"
     case dialogOK = "dialog.ok"
 
@@ -756,6 +758,8 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "One failure line for a file operation. The values are the name and the reason"
         case .dialogOperationMore:
             return "Remaining failure count for file operations. The value is the formatted count"
+        case .dialogTreeTrashOverlapTitle, .dialogTreeTrashOverlapMessage:
+            return "Error shown when folders selected in the directory tree include a folder inside another selected folder, so nothing is moved to the Trash"
         case .a11yThumbnail:
             return "Accessibility label for a thumbnail image"
         }

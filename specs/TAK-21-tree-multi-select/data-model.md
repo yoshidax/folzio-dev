@@ -15,8 +15,9 @@
 |---|---|---|
 | targets | `[TreeItemRole]` | origin が nil か選択中なら selection、選択外なら `[origin]`（FR-210） |
 | isSingle | `Bool` | targets が1件。false なら名前の変更・パス名・お気に入り・Finder・ペーストは無効（FR-211（2）） |
-| trashURLs | `Result` | `.single(URL)`／`.multiple([URL])`／`.unavailable`（通常のフォルダ以外を含む・空）／`.overlapping`（親子を含む。EC-141） |
-| dragURLs | `[URL]?` | targets がすべて通常のフォルダなら URL の配列、そうでなければ nil（FR-211（1）） |
+| trashTargets(roots:) | `TrashTargets` | `.folders([URL])`（1件以上の通常のフォルダ）／`.unavailable`（通常のフォルダ以外を含む・空）／`.overlapping`（親子を含む。EC-141） |
+| contextMenu(roots:) | `[TreeContextMenuItem]` | 1件ならその role のメニュー、複数なら通常のフォルダのメニュー（FR-211（3）） |
+| dragURLs(roots:) | `[URL]?` | targets がすべて通常のフォルダなら URL の配列、そうでなければ nil（FR-211（1）） |
 
 - 単一の対象のときは、既存の `FavoriteCommands`（`trashTarget`・`removalTarget`・`renameTarget` など）の結果と一致させる。
 - 重なりの判定は `standardizedFileURL.pathComponents` の前方一致（R2）。ディスクを読まない。

@@ -17,6 +17,9 @@ final class FileOperationCoordinator {
     var onFolderRenamed: ((URL, URL) -> Void)?
     /// Removes locations that disappeared due to moves or renames from history (FR-109).
     weak var historyNavigator: HistoryNavigator?
+    /// Passes the original locations of items that a move or Move to Trash removed, after the file list has been
+    /// updated. Lets the tree update its selection after a tree operation (FR-212).
+    var onSourcesRemoved: (([URL]) -> Void)?
 
     init(model: BrowserModel, service: any FileOperating, settings: SettingsStore) {
         self.model = model
@@ -57,16 +60,19 @@ final class FileOperationCoordinator {
         notifyFoldersChanged(sources: urls, destination: nil)
     }
 
-    /// From the tree (`origin: .tree`), confirms with the target's absolute path regardless of the skip setting
-    /// (FR-079, R66).
+    /// From the tree (`origin: .tree`), confirms with each target's absolute path regardless of the skip setting
+    /// (FR-079, R66). A single folder shows its path after the list; multiple folders show the path below each name
+    /// (A-120).
     func trash(_ urls: [URL], origin: OperationOrigin = .fileList) async {
         guard !urls.isEmpty else { return }
         let operation = FileOperation(kind: .trash, sources: urls)
+        let showsEachLocation = origin == .tree && urls.count > 1
         guard await confirmation.confirm(
             operation,
             includesFolders: await containsFolder(urls),
             origin: origin,
-            location: origin == .tree ? urls.first?.path : nil
+            location: origin == .tree && !showsEachLocation ? urls.first?.path : nil,
+            itemLocations: showsEachLocation ? urls.map(\.path) : []
         ) else { return }
 
         let result = await service.execute(operation, resolution: .abort)
@@ -85,6 +91,18 @@ final class FileOperationCoordinator {
         if await !model.leaveTrashedFolders(trashedSources, origin: origin) {
             await model.reloadCurrentFolder()
         }
+        if !trashedSources.isEmpty {
+            onSourcesRemoved?(trashedSources)
+        }
+    }
+
+    /// Explains why folders selected in the tree together with their descendants are not moved to the Trash. Nothing
+    /// is changed (EC-141).
+    func presentOverlappingTreeTrash() async {
+        await showError(
+            message: { l10n.text(.dialogTreeTrashOverlapTitle) },
+            detail: { l10n.text(.dialogTreeTrashOverlapMessage) }
+        )
     }
 
     func paste(into destination: URL, move: Bool) async {
@@ -210,6 +228,9 @@ final class FileOperationCoordinator {
         let relocated = model.isShowingSearchResults ? false : await model.leaveTrashedFolders(removed, origin: .fileList)
         if !relocated { await model.reloadCurrentFolder() }
         notifyFoldersChanged(sources: urls, destination: destination)
+        if !removed.isEmpty {
+            onSourcesRemoved?(removed)
+        }
     }
 
     private func validateInternalDrop(_ urls: [URL], destination: URL, kind: FileOperation.Kind) async -> Bool {

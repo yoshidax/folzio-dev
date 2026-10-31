@@ -576,6 +576,12 @@
 /* Remaining failure count for file operations. %1$@ is the formatted count */
 "dialog.operation.more" = "ほか %1$@ 件";
 
+/* Error shown when folders selected in the directory tree include a folder inside another selected folder, so nothing is moved to the Trash */
+"dialog.treeTrashOverlap.title" = "ゴミ箱に入れられません";
+
+/* Error shown when folders selected in the directory tree include a folder inside another selected folder, so nothing is moved to the Trash */
+"dialog.treeTrashOverlap.message" = "選択したフォルダの中に、ほかの選択したフォルダの中にあるフォルダが含まれています。どのフォルダもゴミ箱に入れていません。";
+
 /* Accessibility label for a thumbnail image */
 "a11y.thumbnail" = "サムネイル";
 

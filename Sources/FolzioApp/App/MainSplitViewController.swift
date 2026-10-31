@@ -205,6 +205,10 @@ final class MainSplitViewController: NSSplitViewController {
                 await treeViewController?.refreshFolders(folders)
             }
         }
+        // After a tree drag or tree Move to Trash, select only the lead row (FR-212).
+        fileOperationCoordinator.onSourcesRemoved = { [weak treeViewController] removed in
+            treeViewController?.didRemoveSources(removed)
+        }
         // Rebase tree nodes synchronously before rebasing the listing (R64).
         fileOperationCoordinator.onFolderRenamed = { [weak treeViewController] oldURL, newURL in
             treeViewController?.didRenameFolder(from: oldURL, to: newURL)
