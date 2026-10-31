@@ -70,3 +70,5 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。US1/U
 - 保守者が feature/tak-16-case-only-rename への移動・push・CI を承認。PR 作成依頼により Draft PR #7 を作成、Linear は In Review と PR リンクを確認。最小実装の macOS CI (run 41182935774) はビルド成功、テスト実行中。CLI の API アクセスは Forbidden のため GitHub MCP を使用。T009 のファイル改名反映は SearchRenameLedger ではなく実際の担当である BrowserModelSearchTests に追加。
 
 - 最小実装 commit 9e6177a の macOS CI でビルド・通常テスト成功を MCP で確認。設計のファイル改名ゲートを通過し、フォルダ・子孫/zip パス・検索結果の case-only 反映テストを追加。T006/T007/T010/T011 はテスト追加完了を表し、追加後の実行結果は T014 で管理する。Cloud の全検査は成功（README 基準は origin/master）。保守者の GUI と両ボリュームでの実機検証、product 反映は未完了。
+
+- 保守者のローカル GUI で未改善との報告（画像の理由は sameNameExists）。CI の build/通常/性能テストは全成功だったが実機再現を解消したとは扱わない。改名前後の名前と確認した commit を照会し、DirectoryLister の実 URL を使う回帰テストも追加。PR は Draft を維持する。

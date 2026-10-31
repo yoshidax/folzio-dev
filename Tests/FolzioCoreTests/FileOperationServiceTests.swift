@@ -102,6 +102,27 @@ struct FileOperationServiceTests {
         #expect(try Data(contentsOf: folder.appendingPathComponent(newName)) == bytes)
     }
 
+    @Test("Case-only rename accepts the cached URL returned by directory enumeration", arguments: [
+        "Hans-veth-vyQgv-eURTU-unsplash.jpg", "hans-veth-vyQgv-eURTU-unsplash.JPG",
+    ])
+    func renamesEnumeratedFileCaseOnly(newName: String) async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let oldName = "hans-veth-vyQgv-eURTU-unsplash.jpg"
+        let bytes = Data("enumerated file".utf8)
+        try bytes.write(to: folder.appendingPathComponent(oldName))
+        let listed = try await DirectoryLister(kindNames: FixtureKit.kindNames).mediaFiles(in: folder)
+        let source = try #require(listed.first { $0.name == oldName }).url
+        let result = await service.execute(
+            FileOperation(kind: .rename(newName: newName), sources: [source]), resolution: .abort
+        )
+        #expect(result.failed.isEmpty)
+        #expect(result.succeeded.map(\.lastPathComponent) == [newName])
+        #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).contains(newName))
+        #expect(try Data(contentsOf: folder.appendingPathComponent(newName)) == bytes)
+    }
+
     @Test("Rename rejects a different entry for every conflict resolution", arguments: [
         ConflictResolution.abort, .replace, .keepBoth,
     ])
