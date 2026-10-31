@@ -70,6 +70,18 @@ final class MainMenu {
         fileMenu.identifier = NSUserInterfaceItemIdentifier("menu.file")
         fileMenuItem.submenu = fileMenu
 
+        // ⇧⌘N, as in Finder. Both FileListViewController and DirectoryTreeViewController implement newFolder(_:); the
+        // responder chain sends it to the focused pane, which decides the destination (FR-208, research.md R6).
+        let newFolderItem = NSMenuItem(
+            title: l10n.text(.menuFileNewFolder),
+            action: #selector(FileListViewController.newFolder(_:)),
+            keyEquivalent: "N"
+        )
+        newFolderItem.keyEquivalentModifierMask = [.command]
+        newFolderItem.target = nil
+        fileMenu.addItem(newFolderItem)
+        fileMenu.addItem(.separator())
+
         let openItem = NSMenuItem(
             title: l10n.text(.menuFileOpen),
             action: #selector(FileListViewController.open(_:)),
@@ -336,7 +348,7 @@ final class MainMenu {
 
         let bindings: [(NSMenuItem, TextKey)] = [
             (settingsItem, .menuAppSettings), (quitItem, .menuAppQuit),
-            (fileMenuItem, .menuFile), (openItem, .menuFileOpen),
+            (fileMenuItem, .menuFile), (newFolderItem, .menuFileNewFolder), (openItem, .menuFileOpen),
             (openContainerItem, .menuFileShowContents), (goUpItem, .menuFileEnclosingFolder),
             (revealItem, .menuFileRevealInFinder), (addFavoriteItem, .menuFileAddToFavorites),
             (searchItem, .menuFileFind), (fileTrashItem, .menuFileTrash),

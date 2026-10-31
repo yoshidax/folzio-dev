@@ -166,6 +166,38 @@ final class FileListViewController: NSViewController {
         }
     }
 
+    /// Commits the name of a folder created with New Folder, without the rename confirmation (FR-211).
+    var onRenameNewFolder: ((URL, String) async -> Void)? {
+        get { listModeView.onRenameNewFolder }
+        set {
+            listModeView.onRenameNewFolder = newValue
+            thumbnailModeView.onRenameNewFolder = newValue
+        }
+    }
+
+    /// Whether the last context click hit no row or item, so the context menu targets the displayed folder
+    /// (FR-213, research.md R7).
+    var isContextClickOnBackground: Bool {
+        switch displayMode {
+        case .list:
+            listModeView.isContextClickOnBackground
+        case .thumbnails:
+            thumbnailModeView.isContextClickOnBackground
+        }
+    }
+
+    /// Whether New Folder can create a folder in the displayed folder (FR-212). Unavailable inside a zip, while
+    /// showing search results, and when the displayed folder cannot be read.
+    var canCreateFolderInDisplayedFolder: Bool {
+        guard focusedItemCommands.allowsNewFolder else { return false }
+        switch model.listing.state {
+        case .denied, .failed:
+            return false
+        case .loading, .loaded, .empty, .noMatches:
+            return true
+        }
+    }
+
     func beginHiddenListNavigation(selectingEntry: Bool) {
         guard hiddenListNavigation == nil else { return }
         hiddenListNavigation = HiddenListNavigation(
@@ -931,6 +963,54 @@ final class FileListViewController: NSViewController {
         }
     }
 
+    /// New Folder from the background context menu, or ⇧⌘N and File > New Folder while the file list has focus.
+    /// Creates the folder in the displayed folder and starts naming it in its row (FR-208, FR-210).
+    @objc func newFolder(_ sender: Any?) {
+        guard !isEditingText, canCreateFolderInDisplayedFolder else { return }
+        let folder = model.listing.folder
+        Task { @MainActor [weak self] in
+            guard let self, let created = await self.coordinator.createFolder(in: folder) else { return }
+            await self.beginNamingNewFolder(created)
+        }
+    }
+
+    /// Selects only the new folder's row and starts naming it (FR-210). Does nothing when the file list no longer
+    /// shows the folder's parent as a regular listing, for example after the user moved elsewhere. The tree also
+    /// calls this for a favorite whose registered folder is displayed. Returns whether naming started.
+    @discardableResult
+    func beginNamingNewFolder(_ url: URL) async -> Bool {
+        let path = url.standardizedFileURL.path
+        let parentPath = url.deletingLastPathComponent().standardizedFileURL.path
+        guard model.listing.archive == nil,
+              model.listing.search == nil,
+              model.listing.folder.standardizedFileURL.path == parentPath,
+              let row = model.listing.files.first(where: { $0.url.standardizedFileURL.path == path }) else {
+            return false
+        }
+        model.select([row.url], focused: row.url)
+        // Let the views apply the reloaded listing and the selection before editing the row. Retry a few turns
+        // because the update arrives through an Observation task.
+        for _ in 0..<3 {
+            await Task.yield()
+            guard !isEditingText else { return false }
+            let started: Bool
+            switch displayMode {
+            case .list:
+                started = listModeView.beginRenaming(isNewFolder: true)
+            case .thumbnails:
+                started = thumbnailModeView.beginRenamingNewFolder(row.url)
+            }
+            if started { return true }
+        }
+        return false
+    }
+
+    /// Show in Finder from the background context menu. Reveals the displayed folder (FR-213).
+    @objc func revealDisplayedFolderInFinder(_ sender: Any?) {
+        guard focusedItemCommands.allowsNewFolder else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([model.listing.folder])
+    }
+
     @objc func moveToTrash(_ sender: Any?) {
         guard selectionItemCommands.allowsFileOperations else { return }
         guard !isEditingText else { return }
@@ -1046,6 +1126,13 @@ extension FileListViewController: NSMenuItemValidation {
             || menuItem.action == #selector(toggleVideosOnly(_:))
             || menuItem.action == #selector(toggleShowsZipFiles(_:)) {
             return !isEditingText
+        }
+
+        if menuItem.action == #selector(newFolder(_:)) {
+            return !isEditingText && canCreateFolderInDisplayedFolder
+        }
+        if menuItem.action == #selector(revealDisplayedFolderInFinder(_:)) {
+            return !isEditingText && focusedItemCommands.allowsNewFolder
         }
 
         if menuItem.action == #selector(openFocusedItem(_:)) {
