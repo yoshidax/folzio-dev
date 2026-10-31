@@ -72,3 +72,5 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。US1/U
 - 最小実装 commit 9e6177a の macOS CI でビルド・通常テスト成功を MCP で確認。設計のファイル改名ゲートを通過し、フォルダ・子孫/zip パス・検索結果の case-only 反映テストを追加。T006/T007/T010/T011 はテスト追加完了を表し、追加後の実行結果は T014 で管理する。Cloud の全検査は成功（README 基準は origin/master）。保守者の GUI と両ボリュームでの実機検証、product 反映は未完了。
 
 - 保守者のローカル GUI で未改善との報告（画像の理由は sameNameExists）。CI の build/通常/性能テストは全成功だったが実機再現を解消したとは扱わない。改名前後の名前と確認した commit を照会し、DirectoryLister の実 URL を使う回帰テストも追加。PR は Draft を維持する。
+
+- ローカル報告の確認: 変更は hans-veth-vyQgv-eURTU-unsplash → Hans-veth-vyQgv-eURTU-unsplash、commit a64cbbb。GitHub MCP compare_commits で a64cbbb は改修 9e6177a を含まない master と確認（共通祖先 bfe63d5）。実機で改修済みコードが失敗したという証拠にはならない。a64cbbb を作業ブランチに取り込み（merge 8a32b35）、新規 check-skill-sync も成功。最初の CI ログは通常 834 件・性能 27 件の全成功を確認。最新のフォルダ・検索・履歴・列挙 URL テストを含む変更は次の CI で検証する。
