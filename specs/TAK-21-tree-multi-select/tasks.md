@@ -72,7 +72,7 @@
 
 - [x] T020 Cloud で `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、
   `python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` を実行し、結果をこの tasks.md に記録する
-- [ ] T021 macOS CI で `swift build`・`swift test` を確認する（PR の作成時、または `workflow_dispatch`）。PR は保守者の依頼があったときだけ作る
+- [x] T021 macOS CI で `swift build`・`swift test` を確認する（PR の作成時、または `workflow_dispatch`）。PR は保守者の依頼があったときだけ作る
 - [ ] T022 [MANUAL] 保守者に、起動スモークと quickstart の S1〜S14 をローカルで実行してもらい（SC-102〜SC-104 の確認を含む）、結果を `checklists/validation.md` に記録する。S3・S5・S7 は R4・R5・R9 の設計どおりに動くことを確かめる
 - [x] T023 ユーザーガイド `docs/usage.ja.md`・`docs/usage.md` のツリーの操作の説明（お気に入り・⌘Delete の項）に、複数選択（⌘クリック・Shift クリック・Shift+↑↓）と
   一括の移動・コピー・ゴミ箱を両方に同じ構成で追記する。README は機能の概要だけで個別の操作を書いていないため変えない（`README.ja.md` 20〜21 行）
@@ -105,3 +105,7 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
 - 2026-10-31: 報告した懸念1を修正。⌘クリックで主の行を外した後の ↑↓ が、残った行ではなく主の行を起点にするようにした（`handleArrowKey`。spec の Edge Cases・contracts・quickstart S3 に追記）
 - 2026-10-31: 報告した懸念2を修正。FR-212 のためのツリーの操作の記録を、ドロップせずに終わったドラッグ（`draggingSession endedAt` の操作なし）と、同じ対象の操作の終了（キャンセル・検証での拒否・コピーを含む。`FileOperationCoordinator.onOperationFinished`）で必ず消すようにした。ツリーの操作かどうかは、対象の集合が記録と一致するかで判断する
 - 2026-10-31: T023 で `docs/usage*.md` のツリーのゴミ箱の行にあった「設定で省略可」を、FR-079・FR-024 の「常に確認」に合わせて直した（既存の記述の誤り）
+- 2026-10-31: T021 の CI（workflow_dispatch）。1回目 run 41233582341（f4fc424）: build 成功、通常のテスト 865 件中 1 件失敗
+  （`BrowserModelTests.swift:22` の言語変更中の列挙。100ms の遅延と 20ms の待機に依存する既存のテストで、この feature は `BrowserModel` に触れていない）。
+  2回目 run 41234498612（d658759）: build・通常のテスト・性能テスト（`Test run with 27 tests passed`）すべて成功。
+  新規の `TreeBatchTargetsTests` と `InternalDropValidationTests` の追加分は両方の実行で成功
