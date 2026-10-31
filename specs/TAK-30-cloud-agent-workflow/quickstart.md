@@ -77,3 +77,9 @@ PR は保守者の依頼で作る（FR-198）。作成後に、次を確かめ�
 | A5 ID の重複検査 | 反映後の `specs/product/` で重複した ID が 0 件（反映前の新しい ID の衝突も 0 件） |
 | 既存の検査 | `check-no-network.sh`、`check-readme-sync.sh master`、`check-english-comments.sh`、`test_check_git_push.py` が通過 |
 | 状態 | 保守者の承認（T029）を待っている。このコミットは未マージの専用ブランチにあり、PR は作っていない |
+
+### 2026-10-31: ローカルでの確認（T027）の状況
+
+保守者に、最新の `master` で `swift build && swift build --build-tests` の実行を依頼し、「問題なし」という報告を受けた（出力の行は受け取っていない）。
+`T027` に挙げた、`swift test`、`python3 -I -m unittest discover -s scripts/dev/tests -v`、`scripts/make-app.sh`、起動スモークの結果は、報告を受けていない。
+この feature はアプリのコードを変えないため、これらの結果は変更前と同じになる見込みだが、未確認のまま `T027` を完了にはしない。
