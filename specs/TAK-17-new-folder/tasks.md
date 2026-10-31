@@ -39,7 +39,7 @@
 ## Phase 4: Polish & Cross-Cutting
 
 - [x] T020 Cloud で `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` を実行し、結果をこの tasks.md に記録する。
-- [ ] T021 macOS CI（`.github/workflows/macos-swift-ci.yml`）で `swift build`・`swift test` を確認する。PR は保守者の依頼があるまで作らず、CI 未実行として記録する。
+- [x] T021 macOS CI（`.github/workflows/macos-swift-ci.yml`）で `swift build`・`swift test` を確認する。PR は保守者の依頼があるまで作らず、CI 未実行として記録する。
 - [ ] T022 [MANUAL] 保守者に quickstart.md の GUI 手順 1〜9 と起動スモーク（3ペインの表示）、ローカルの build/test を依頼し、結果を `checklists/validation.md` に記録する。A-121（背景の右クリックで選択が変わらない）が成り立たなければ修正タスクを追加する。報告がなければ未チェックのまま残す。
 - [ ] T023 検証完了後に最新 master を取り込み、spec.md の「反映先」の表のとおり `specs/product/file-operations.md`・`file-list.md`・`contracts/keyboard-and-menus.md`・`contracts/localization.md` への反映を用意する。FR-208〜214・SC-102〜104・EC-141〜145・A-119〜125・US35 の ID の衝突を確認し、衝突ならこの feature の ID を振り直す。保守者の承認後にコミットし、spec.md に凍結の注記を入れる。
 
@@ -67,3 +67,8 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
 - 実装中の追加の判断: ツリーで作成直後の名前を編集している間に親の読み直し（FSEvents・作成の通知）が届くと、既存の `applyListing` は
   編集を確定してしまう。作成直後の編集に限り、新しいフォルダが残っていれば読み直しを編集の終了まで遅らせる（research.md R9 の補足）。
 - T020（Cloud の検査）: check-no-network・check-readme-sync master・check-english-comments・check-skill-sync・test_check_git_push.py（3件）が成功。
+- T021: PR [yoshidax/folzio-dev#15](https://github.com/yoshidax/folzio-dev/pull/15) を作成し、Linear を In Review にして PR のリンクを追加。
+  macOS CI は workflow_dispatch の run 41232851823 と PR の run 41232985596（どちらも 78a19c8）が成功。ビルド成功、通常のテスト 863 件成功、
+  性能テスト 27 件成功（ログ末尾で確認）。
+- 並行する TAK-21（ツリーの複数選択）のコミットが FR-208〜212・EC-141 を使っている。T023 の反映時に master と照合し、TAK-21 が先にマージされていれば
+  この feature の ID を振り直す。
