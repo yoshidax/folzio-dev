@@ -6,7 +6,7 @@ import FolzioLocalization
 @MainActor
 final class ShortcutCheatSheetWindowController: NSWindowController {
     private let scrollView = NSScrollView()
-    private let document = ShortcutDocumentView(frame: .zero)
+    private let referenceView = ShortcutDocumentView(frame: .zero)
     private var languageObserver: LanguageChangeObserver?
 
     init(parent: NSWindow) {
@@ -25,10 +25,10 @@ final class ShortcutCheatSheetWindowController: NSWindowController {
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
         window.contentView = scrollView
-        document.autoresizingMask = [.width]
-        document.setFrameSize(NSSize(width: scrollView.contentSize.width, height: 1))
-        scrollView.documentView = document
-        window.initialFirstResponder = document
+        referenceView.autoresizingMask = [.width]
+        referenceView.setFrameSize(NSSize(width: scrollView.contentSize.width, height: 1))
+        scrollView.documentView = referenceView
+        window.initialFirstResponder = referenceView
         refreshLanguage()
         placeInitially(beside: parent)
         languageObserver = LanguageChangeObserver { [weak self] in self?.refreshLanguage() }
@@ -42,15 +42,15 @@ final class ShortcutCheatSheetWindowController: NSWindowController {
     func present() {
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
-        window?.makeFirstResponder(document)
+        window?.makeFirstResponder(referenceView)
     }
 
     private func refreshLanguage() {
-        let anchor = document.visibleAnchor()
+        let anchor = referenceView.visibleAnchor()
         window?.title = l10n.text(.shortcutsWindow)
         scrollView.setAccessibilityLabel(l10n.text(.shortcutsWindow))
-        document.refreshLanguage()
-        document.restore(anchor)
+        referenceView.refreshLanguage()
+        referenceView.restore(anchor)
     }
 
     private func placeInitially(beside parent: NSWindow) {

@@ -94,3 +94,11 @@ CI・ローカルのSwift実行・GUIのQ1〜Q14は引き続き未確認。
 
 追加したSwift Testingの5テストはCloudでは未実行。CIのbuild/test、VoiceOver・スクロール・ウィンドウの終了連動を含むGUI Q1〜Q14、保守者のローカルbuild/testは未確認。
 T011・T015・T018〜T020は未チェック。product仕様の反映・凍結・Linear Done更新は行っていない。
+
+### 2026-10-31 PR提出と初回CI（T018）
+
+保守者の「OK」を受け、ブランチを agent/TAK-22-shortcut-cheatsheet に変更して提出した。
+[PR #10](https://github.com/yoshidax/folzio-dev/pull/10) を作成し、TAK-22へリンクを追加してIn Reviewに更新した。
+[初回CI](https://github.com/yoshidax/folzio-dev/actions/runs/41190274601) はmacOS 15.8.2 / arm64 / Xcode16.0・Swift6.0で実行。
+NSWindowController.document と参照ビューの私有プロパティ名が衝突しビルド失敗、通常・性能テストは未実行。
+完了済みログを確認して参照ビューの名前をreferenceViewへ変更した。新しいAPIへの置換はない。
