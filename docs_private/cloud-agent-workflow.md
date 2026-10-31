@@ -73,7 +73,7 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 
 | 実行する者 | 検査 |
 |---|---|
-| Cloud（Agent） | `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` |
+| Cloud（Agent） | `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` |
 | CI | `swift build`、`swift test`（通常のテストと性能テスト） |
 | 保守者（ローカル） | 起動スモーク（`scripts/make-app.sh` の後に `open .build/Folzio.app` で 3 ペインの表示）、ローカルの最新の Swift でのビルドとテスト、`scripts/dev/tests` の公開・配布のテスト（Apple silicon の macOS と `rsync` を前提とし、Cloud では 6 件が失敗する） |
 
