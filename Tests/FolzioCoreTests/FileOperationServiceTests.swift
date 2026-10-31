@@ -81,6 +81,105 @@ struct FileOperationServiceTests {
         #expect(FileManager.default.fileExists(atPath: renamed.path))
     }
 
+    @Test("Case-only file renames preserve contents and store the requested spelling", arguments: [
+        "Photo.png", "photo.PNG",
+    ])
+    func renamesFileCaseOnly(newName: String) async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let source = folder.appendingPathComponent("photo.png")
+        let bytes = Data("case-only rename".utf8)
+        try bytes.write(to: source)
+        let result = await service.execute(
+            FileOperation(kind: .rename(newName: newName), sources: [source]), resolution: .abort
+        )
+        #expect(result.failed.isEmpty)
+        #expect(result.succeeded.map(\.lastPathComponent) == [newName])
+        let names = try FileManager.default.contentsOfDirectory(atPath: folder.path)
+        #expect(names.contains(newName))
+        #expect(!names.contains("photo.png"))
+        #expect(try Data(contentsOf: folder.appendingPathComponent(newName)) == bytes)
+    }
+
+    @Test("Rename rejects a different entry for every conflict resolution", arguments: [
+        ConflictResolution.abort, .replace, .keepBoth,
+    ])
+    func refusesRenameReplacement(resolution: ConflictResolution) async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let source = folder.appendingPathComponent("a.jpg")
+        let existing = folder.appendingPathComponent("taken.jpg")
+        let before = try Data(contentsOf: source)
+        try Data("other".utf8).write(to: existing)
+        let result = await service.execute(
+            FileOperation(kind: .rename(newName: "TAKEN.JPG"), sources: [source]), resolution: resolution
+        )
+        #expect(result.succeeded.isEmpty)
+        #expect(result.failed.first?.reason == .sameNameExists)
+        #expect(try Data(contentsOf: source) == before)
+        #expect(try Data(contentsOf: existing) == Data("other".utf8))
+    }
+
+    @Test("Rename treats links as separate entries, including dangling links", arguments: [
+        "hard", "symbolic", "dangling",
+    ], [ConflictResolution.abort, .replace, .keepBoth])
+    func refusesRenameOverLink(linkKind: String, resolution: ConflictResolution) async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let source = folder.appendingPathComponent("a.jpg")
+        let link = folder.appendingPathComponent("other.jpg")
+        let before = try Data(contentsOf: source)
+        if linkKind == "hard" {
+            try FileManager.default.linkItem(at: source, to: link)
+        } else {
+            try FileManager.default.createSymbolicLink(
+                at: link, withDestinationURL: linkKind == "dangling" ? folder.appendingPathComponent("missing") : source
+            )
+        }
+        let result = await service.execute(
+            FileOperation(kind: .rename(newName: "other.jpg"), sources: [source]), resolution: resolution
+        )
+        #expect(result.succeeded.isEmpty)
+        #expect(result.failed.first?.reason == .sameNameExists)
+        #expect(try Data(contentsOf: source) == before)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).contains("other.jpg"))
+        if linkKind != "hard" {
+            #expect(try FileManager.default.destinationOfSymbolicLink(atPath: link.path)
+                == (linkKind == "dangling" ? folder.appendingPathComponent("missing").path : source.path))
+        }
+    }
+
+    @Test("Renaming to the identical spelling is a no-op")
+    func identicalRenameKeepsSource() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let source = folder.appendingPathComponent("a.jpg")
+        let before = try Data(contentsOf: source)
+        let result = await service.execute(
+            FileOperation(kind: .rename(newName: "a.jpg"), sources: [source]), resolution: .replace
+        )
+        #expect(result.failed.isEmpty)
+        #expect(result.succeeded == [source])
+        #expect(try Data(contentsOf: source) == before)
+    }
+
+    @Test("Renaming a missing source reports sourceNotFound")
+    func refusesMissingRenameSource() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = root.appendingPathComponent("missing.png")
+        let result = await service.execute(
+            FileOperation(kind: .rename(newName: "Missing.png"), sources: [source]), resolution: .abort
+        )
+        #expect(result.succeeded.isEmpty)
+        #expect(result.failed.first?.reason == .sourceNotFound)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).isEmpty)
+    }
+
     @Test("Moving to Trash returns the URL in Trash and removes the item from its original location")
     func trashesFile() async throws {
         let root = try makeTemporaryDirectory()

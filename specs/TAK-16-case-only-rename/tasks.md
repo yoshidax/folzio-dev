@@ -8,21 +8,21 @@
 
 - [x] T001 `specs/TAK-16-case-only-rename/spec.md` と checklists/requirements.md を作成し、TAK-16 と現行仕様の変更点を検査する。
 - [x] T002 `specs/TAK-16-case-only-rename/plan.md`・research.md・data-model.md・contracts/rename.md・quickstart.md に設計と検証方法を記録する。
-- [ ] T003 `specs/TAK-16-case-only-rename/plan.md` の保守者レビューと実装承認を得る。未承認なら T004 以降に進まない。
+- [x] T003 `specs/TAK-16-case-only-rename/plan.md` の保守者レビューと実装承認を得る。未承認なら T004 以降に進まない。
 
 ## Phase 2: Foundational
 
-- [ ] T004 `Sources/FolzioCore/Operations/NameValidation.swift` の existingNames の契約を英語コメントで明記し、「元項目の保存名と完全一致するエントリだけを除外する」「別項目の競合比較は大文字小文字を無視する」を Coordinator と Service の実装に適用する準備をする。公開 API は変更しない。
+- [x] T004 `Sources/FolzioCore/Operations/NameValidation.swift` の existingNames の契約を英語コメントで明記し、「元項目の保存名と完全一致するエントリだけを除外する」「別項目の競合比較は大文字小文字を無視する」を Coordinator と Service の実装に適用する準備をする。公開 API は変更しない。
 
 ## Phase 3: User Story 1 — ファイル (P1)
 
 **Goal**: 自己ファイルの表記変更を許可し、別項目との競合を全 resolution で拒否する。
 **Independent Test**: photo.png → Photo.png / photo.PNG の成功と保存名・内容、別項目の競合拒否を確認する。
 
-- [ ] T005 [US1] `Tests/FolzioCoreTests/NameValidationTests.swift` に元項目を除いた集合での自己 case-only 許可と、別項目を含む集合での duplicate を別テストとして追加する。空入力・禁止文字・先頭ドット・拡張子の既存確認は維持する（FR-025・EC-14・SC-096）。
+- [x] T005 [US1] `Tests/FolzioCoreTests/NameValidationTests.swift` に元項目を除いた集合での自己 case-only 許可と、別項目を含む集合での duplicate を別テストとして追加する。空入力・禁止文字・先頭ドット・拡張子の既存確認は維持する（FR-025・EC-14・SC-096）。
 - [ ] T006 [US1] `Tests/FolzioCoreTests/FileOperationServiceTests.swift` に case-only と拡張子表記のみの改名を追加し、成功 URL・contentsOfDirectory の完全一致名・内容保存を確認する。host volume の性質を判定し記録する（SC-096）。
 - [ ] T007 [US1] `Tests/FolzioCoreTests/FileOperationServiceTests.swift` に別項目の同名/大小文字違い、hard link・symlink・dangling symlink、同じ表記の no-op、元消失・列挙不可・書き込み不可の異常系を追加する。競合は abort/replace/keepBoth の全値で双方を保持する（FR-025・EC-14・SC-097）。大小文字違いの別項目共存は case-sensitive volume で実施し、条件不足なら未検証として記録する。
-- [ ] T008 [US1] `Sources/FolzioCore/Operations/FileOperationService.swift` の rename に兄弟の完全一致による自己除外と比較を実装する。列挙失敗を握りつぶさず、競合は全 resolution で sameNameExists とする。自己 case-only の target 存在だけでは拒否しない。既存の moveItem で入力表記の成功 URL を返す。copy/move の解決規則を維持する（FR-025・EC-14）。
+- [x] T008 [US1] `Sources/FolzioCore/Operations/FileOperationService.swift` の rename に兄弟の完全一致による自己除外と比較を実装する。列挙失敗を握りつぶさず、競合は全 resolution で sameNameExists とする。自己 case-only の target 存在だけでは拒否しない。既存の moveItem で入力表記の成功 URL を返す。copy/move の解決規則を維持する（FR-025・EC-14）。
 - [ ] T009 [US1] `Tests/FolzioCoreTests/SearchRenameLedgerTests.swift` に case-only のファイル URL 更新を追加し、`Sources/FolzioApp/Operations/FileOperationCoordinator.swift` から既存の確認・検索結果・履歴の通知が通ることを確認する。必要な調整だけを行う（FR-027・SC-097）。
 
 ## Phase 4: User Story 2 — フォルダ (P1)
@@ -64,3 +64,5 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。US1/U
 - work は push 許可リストの接頭辞に一致しないため未 push。push 段階で保守者の許可を得て許可された名前へ移す。
 
 - 設計段階の Cloud 検査: check-no-network / check-english-comments / test_check_git_push.py (3 tests) / git diff --check は成功。README 同期はローカル master が未作成で既定コマンドが失敗し、取得済み origin/master を基準に再実行して成功。タスク形式・16 個の連番・文書内リンクを検査。T013 は実装後の再実行を要するため未チェック。
+
+- 保守者の ok により設計承認済み。speckit-implement 開始。ファイルの回帰テストと最小の Service 変更を追加。T006/T007 は macOS 実行および残る異常系の確認後にチェックする。
