@@ -376,7 +376,10 @@
 "settings.fileOperations" = "File Operations";
 
 /* Checkboxes in the Settings window */
-"settings.confirm" = "Confirm before copying, moving to the Trash, or removing from Favorites (renaming, moving, and moving tree folders to the Trash are always confirmed)";
+"settings.confirm" = "Confirm before copying, moving to the Trash, or removing from Favorites";
+
+/* Supplementary note under the confirmation checkbox in the Settings window. Also its accessibility help */
+"settings.confirm.note" = "Renaming, moving, and moving tree folders to the Trash are always confirmed";
 
 /* Section headings in the Settings window */
 "settings.slideshow" = "Slideshow";

@@ -167,6 +167,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case settingsLoop = "settings.loop"
     case settingsFileOperations = "settings.fileOperations"
     case settingsConfirm = "settings.confirm"
+    case settingsConfirmNote = "settings.confirm.note"
     case settingsSlideshow = "settings.slideshow"
     case settingsInterval = "settings.interval"
     case settingsSeconds = "settings.seconds"
@@ -673,6 +674,8 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Section headings in the Settings window"
         case .settingsAutoplay, .settingsLoop, .settingsConfirm, .settingsRepeat:
             return "Checkboxes in the Settings window"
+        case .settingsConfirmNote:
+            return "Supplementary note under the confirmation checkbox in the Settings window. Also its accessibility help"
         case .settingsInterval:
             return "Interval label in the Settings window"
         case .settingsSeconds:

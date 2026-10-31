@@ -3,8 +3,33 @@ import FolzioCore
 import FolzioLocalization
 
 /// Accepts Tab focus regardless of the system Keyboard Navigation setting.
-private final class KeyViewCheckbox: NSButton {
+private class KeyViewCheckbox: NSButton {
     override var canBecomeKeyView: Bool { true }
+}
+
+/// Wraps its title to the current width and reports the height of the wrapped lines as its intrinsic height.
+///
+/// A plain `NSButton` measures its intrinsic size on a single line, so a wrapped title would be clipped.
+private final class WrappingCheckbox: KeyViewCheckbox {
+    private var measuredWidth: CGFloat = 0
+
+    override var intrinsicContentSize: NSSize {
+        guard let cell, bounds.width > 0 else { return super.intrinsicContentSize }
+        let size = cell.cellSize(forBounds: NSRect(x: 0, y: 0, width: bounds.width, height: .greatestFiniteMagnitude))
+        return NSSize(width: NSView.noIntrinsicMetric, height: ceil(size.height))
+    }
+
+    override func layout() {
+        super.layout()
+        if bounds.width != measuredWidth {
+            measuredWidth = bounds.width
+            invalidateIntrinsicContentSize()
+        }
+    }
+
+    override var title: String {
+        didSet { invalidateIntrinsicContentSize() }
+    }
 }
 
 private final class KeyViewPopUpButton: NSPopUpButton {
@@ -18,6 +43,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
     private let autoplayCheckbox: NSButton
     private let loopCheckbox: NSButton
     private let confirmFileOperationsCheckbox: NSButton
+    private let confirmFileOperationsNote = NSTextField(wrappingLabelWithString: "")
     private let languagePopup = KeyViewPopUpButton(frame: .zero, pullsDown: false)
     private let languageLabel = NSTextField(labelWithString: "")
     private let videoHeader = NSTextField(labelWithString: "")
@@ -49,7 +75,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
             target: nil,
             action: nil
         )
-        let confirmFileOperationsCheckbox = KeyViewCheckbox(
+        let confirmFileOperationsCheckbox = WrappingCheckbox(
             checkboxWithTitle: l10n.text(.settingsConfirm),
             target: nil,
             action: nil
@@ -59,7 +85,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         self.confirmFileOperationsCheckbox = confirmFileOperationsCheckbox
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 620, height: 340),
+            contentRect: NSRect(x: 0, y: 0, width: Self.contentWidth, height: 340),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -71,8 +97,6 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         window.delegate = self
         let contentView = makeContentView()
         window.contentView = contentView
-        contentView.layoutSubtreeIfNeeded()
-        window.setContentSize(NSSize(width: 620, height: max(320, contentView.fittingSize.height)))
         window.autorecalculatesKeyViewLoop = false
         languagePopup.nextKeyView = autoplayCheckbox
         autoplayCheckbox.nextKeyView = loopCheckbox
@@ -119,6 +143,17 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         syncFromStore()
     }
 
+    private static let contentWidth: CGFloat = 620
+    private static let margin: CGFloat = 20
+    /// The spacing between items in a section, and between a heading and its first item (FR-208).
+    private static let itemSpacing: CGFloat = 8
+    /// The spacing before each section heading. It matches the window margin (FR-208).
+    private static let sectionSpacing: CGFloat = 20
+    /// The spacing between the confirmation checkbox and its supplementary note (FR-209).
+    private static let noteSpacing: CGFloat = 2
+    /// The indent used when the checkbox cell reports an unexpected title position.
+    private static let fallbackNoteIndent: CGFloat = 20
+
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) is not supported")
@@ -135,7 +170,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
 
     private func makeContentView() -> NSView {
         let contentView = NSView(
-            frame: NSRect(x: 0, y: 0, width: 620, height: 340)
+            frame: NSRect(x: 0, y: 0, width: Self.contentWidth, height: 340)
         )
 
         videoHeader.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
@@ -167,6 +202,18 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         confirmFileOperationsCheckbox.cell?.isScrollable = false
         confirmFileOperationsCheckbox.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
+        // The note is a dependent description of the checkbox: smaller, secondary, and not interactive (FR-209).
+        confirmFileOperationsNote.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        confirmFileOperationsNote.textColor = .secondaryLabelColor
+        confirmFileOperationsNote.isSelectable = false
+        confirmFileOperationsNote.isEditable = false
+        confirmFileOperationsNote.refusesFirstResponder = true
+        confirmFileOperationsNote.setAccessibilityElement(false)
+        confirmFileOperationsNote.translatesAutoresizingMaskIntoConstraints = false
+        let noteContainer = NSView()
+        noteContainer.translatesAutoresizingMaskIntoConstraints = false
+        noteContainer.addSubview(confirmFileOperationsNote)
+
         let stack = NSStackView(views: [
             languageRow,
             videoHeader,
@@ -174,6 +221,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
             loopCheckbox,
             fileOperationsHeader,
             confirmFileOperationsCheckbox,
+            noteContainer,
             slideshowHeader,
             intervalRow,
             repeatsCheckbox,
@@ -181,21 +229,54 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 8
+        stack.spacing = Self.itemSpacing
+        stack.setCustomSpacing(Self.sectionSpacing, after: languageRow)
+        stack.setCustomSpacing(Self.sectionSpacing, after: loopCheckbox)
+        stack.setCustomSpacing(Self.noteSpacing, after: confirmFileOperationsCheckbox)
+        stack.setCustomSpacing(Self.sectionSpacing, after: noteContainer)
         stack.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(stack)
 
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
-            stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -20),
+            stack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: Self.margin),
+            stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Self.margin),
+            stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Self.margin),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -Self.margin),
             confirmFileOperationsCheckbox.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            confirmFileOperationsCheckbox.heightAnchor.constraint(greaterThanOrEqualToConstant: 60),
+            noteContainer.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            confirmFileOperationsNote.topAnchor.constraint(equalTo: noteContainer.topAnchor),
+            confirmFileOperationsNote.bottomAnchor.constraint(equalTo: noteContainer.bottomAnchor),
+            confirmFileOperationsNote.leadingAnchor.constraint(
+                equalTo: noteContainer.leadingAnchor, constant: noteIndent()
+            ),
+            confirmFileOperationsNote.trailingAnchor.constraint(equalTo: noteContainer.trailingAnchor),
             intervalField.widthAnchor.constraint(equalToConstant: 80),
         ])
+        confirmFileOperationsNote.preferredMaxLayoutWidth =
+            Self.contentWidth - Self.margin * 2 - noteIndent()
 
         return contentView
+    }
+
+    /// Returns the x-coordinate where the confirmation checkbox draws its title, so the note lines up with it.
+    private func noteIndent() -> CGFloat {
+        guard let cell = confirmFileOperationsCheckbox.cell else { return Self.fallbackNoteIndent }
+        let size = cell.cellSize
+        let indent = cell.titleRect(forBounds: NSRect(origin: .zero, size: size)).minX
+        return (14...28).contains(indent) ? indent : Self.fallbackNoteIndent
+    }
+
+    /// Fits the window height to its content and keeps the top edge in place (FR-208).
+    private func resizeToFitContent() {
+        guard let window, let contentView = window.contentView else { return }
+        // The wrapping checkbox updates its height after it learns its width, so lay out twice.
+        contentView.layoutSubtreeIfNeeded()
+        contentView.layoutSubtreeIfNeeded()
+        let contentSize = NSSize(width: Self.contentWidth, height: contentView.fittingSize.height)
+        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: contentSize))
+        frame.origin.x = window.frame.minX
+        frame.origin.y = window.frame.maxY - frame.height
+        window.setFrame(frame, display: window.isVisible)
     }
 
     private func syncFromStore() {
@@ -235,6 +316,8 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         autoplayCheckbox.title = l10n.text(.settingsAutoplay)
         loopCheckbox.title = l10n.text(.settingsLoop)
         confirmFileOperationsCheckbox.title = l10n.text(.settingsConfirm)
+        confirmFileOperationsNote.stringValue = l10n.text(.settingsConfirmNote)
+        confirmFileOperationsCheckbox.setAccessibilityHelp(l10n.text(.settingsConfirmNote))
         intervalLabel.stringValue = l10n.text(.settingsInterval)
         secondsLabel.stringValue = l10n.text(.settingsSeconds)
         intervalField.setAccessibilityLabel(l10n.text(.settingsIntervalA11y))
@@ -246,7 +329,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
                              .settingsTransitionSlide, .settingsTransitionZoom].enumerated() {
             transitionPopup.item(at: index)?.title = l10n.text(key)
         }
-        window?.contentView?.layoutSubtreeIfNeeded()
+        resizeToFitContent()
     }
 
     @objc private func selectTransition(_ sender: NSPopUpButton) {

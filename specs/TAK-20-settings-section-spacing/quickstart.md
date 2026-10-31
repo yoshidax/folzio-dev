@@ -33,4 +33,10 @@ open .build/Folzio.app
 
 ## 結果の記録
 
-（実装・CI・保守者の確認の後に記入する）
+- 2026-10-31 設計レビュー: 保守者が spec / plan / tasks を承認（範囲は spec.md の FR-208・209 と tasks.md T002〜T013）
+- 2026-10-31 API の確認（T001）: research.md の API は AppKit の公開 API として知られている名前で使った。Cloud では SDK のヘッダーを読めないため、
+  CI の `swift build` で最終的に確かめる
+- 2026-10-31 Cloud の検査（T009）: `check-no-network.sh`・`check-readme-sync.sh master`・`check-english-comments.sh`・`check-skill-sync.sh`・
+  `test_check_git_push.py` がすべて成功
+- CI（T010）: 未実行（PR の作成時に動く）
+- GUI（T011）: 未実施（保守者に依頼する）
