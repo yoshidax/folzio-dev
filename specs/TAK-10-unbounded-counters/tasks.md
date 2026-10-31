@@ -8,7 +8,7 @@
 
 ## Phase 2: 検証
 
-- [ ] T004 Cloud の検証ゲートを実行し、結果を記録する。
+- [X] T004 Cloud の検証ゲートを実行し、結果を記録する。`origin/master` を基準とした README 同期、通信 API、英語コメント、スキル同期、push 制約テスト 3 件、`git diff --check` は成功。
 - [ ] T005 macOS CI で `swift build` / `swift test` を実行し結果を確認する。
 - [ ] T006 [MANUAL] 保守者が [quickstart.md](quickstart.md) の起動スモークと複製・「両方残す」を確認する。
 - [ ] T007 検証後、最新 master を取り込み、FR-018・FR-025 を `specs/product/file-operations.md` に反映してレビューを受ける。
