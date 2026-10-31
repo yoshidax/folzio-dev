@@ -168,6 +168,43 @@ struct FileOperationServiceTests {
         #expect(try Data(contentsOf: destination.appendingPathComponent("c 2.jpg")) == Data("existing-c".utf8))
     }
 
+    @Test("Large counters preserve existing files when duplicating and keeping both")
+    func keepsBothBeyondIntegerLimit() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let destination = folder.appendingPathComponent("dest", isDirectory: true)
+        let name = "photo 9223372036854775807.jpg"
+        let source = folder.appendingPathComponent(name)
+        let existing = destination.appendingPathComponent(name)
+        let occupied = destination.appendingPathComponent("photo 9223372036854775808.jpg")
+        let sourceData = Data("source".utf8)
+        let existingData = Data("existing".utf8)
+        let occupiedData = Data("occupied".utf8)
+        try sourceData.write(to: source)
+        try existingData.write(to: existing)
+        try occupiedData.write(to: occupied)
+
+        let duplicate = await service.execute(
+            FileOperation(kind: .copy, sources: [source], destination: folder), resolution: .keepBoth
+        )
+        let duplicateURL = folder.appendingPathComponent("photo 9223372036854775808.jpg")
+        #expect(duplicate.failed.isEmpty)
+        #expect(duplicate.succeeded == [duplicateURL])
+        #expect(try Data(contentsOf: duplicateURL) == sourceData)
+
+        let copy = await service.execute(
+            FileOperation(kind: .copy, sources: [source], destination: destination), resolution: .keepBoth
+        )
+        let copyURL = destination.appendingPathComponent("photo 9223372036854775809.jpg")
+        #expect(copy.failed.isEmpty)
+        #expect(copy.succeeded == [copyURL])
+        #expect(try Data(contentsOf: copyURL) == sourceData)
+        #expect(try Data(contentsOf: source) == sourceData)
+        #expect(try Data(contentsOf: existing) == existingData)
+        #expect(try Data(contentsOf: occupied) == occupiedData)
+    }
+
     @Test("Copying with abort fails on a destination name conflict and preserves the existing item")
     func abortsCopyOnConflict() async throws {
         let root = try makeTemporaryDirectory()

@@ -56,10 +56,10 @@ public func uniqueName(for name: String, existingNames: Set<String>) -> String {
     let stem = (name as NSString).deletingPathExtension
 
     var base = stem
-    var counter = 2
+    var counter = "2"
     if let match = trailingCounter(in: stem) {
         base = match.base
-        counter = match.number + 1
+        counter = incrementDecimal(match.number)
     }
 
     while true {
@@ -69,15 +69,30 @@ public func uniqueName(for name: String, existingNames: Set<String>) -> String {
         if !lowercasedNames.contains(candidate.lowercased()) {
             return candidate
         }
-        counter += 1
+        counter = incrementDecimal(counter)
     }
 }
 
-private func trailingCounter(in stem: String) -> (base: String, number: Int)? {
+private func trailingCounter(in stem: String) -> (base: String, number: String)? {
     guard let separator = stem.lastIndex(of: " ") else { return nil }
     let suffix = stem[stem.index(after: separator)...]
-    guard !suffix.isEmpty, suffix.allSatisfy(\.isNumber), let number = Int(suffix) else {
+    guard !suffix.isEmpty, suffix.utf8.allSatisfy({ (48...57).contains($0) }) else {
         return nil
     }
-    return (String(stem[..<separator]), number)
+    return (String(stem[..<separator]), String(suffix))
+}
+
+private func incrementDecimal(_ number: String) -> String {
+    var digits = Array(number.utf8.drop(while: { $0 == 48 }))
+    if digits.isEmpty { return "1" }
+
+    for index in digits.indices.reversed() {
+        if digits[index] < 57 {
+            digits[index] += 1
+            return String(decoding: digits, as: UTF8.self)
+        }
+        digits[index] = 48
+    }
+    digits.insert(49, at: 0)
+    return String(decoding: digits, as: UTF8.self)
 }
