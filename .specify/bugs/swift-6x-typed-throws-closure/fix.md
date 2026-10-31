@@ -86,3 +86,9 @@ private static func withMutableBytes(
 - `docs/development.md` ほかの「6.0 以上」は、Xcode 16.0（Swift 6.0）でのビルドとテストが通ったので、正しいと確認できた
 - Swift 6.4 のローカル環境での確認（`swift build`・`swift test`・起動スモーク）は未実施。特に、ツールバーの表示・非表示の切り替え
   （`MainToolbarController`）と、動画プレビューのトラック判定（`VideoPreviewView`）に触れている
+
+## 訂正（2026-10-31）
+
+`Sources/FolzioApp/Preview/VideoPreviewView.swift` の補助関数 `loadHasVideoTrack(of:)`（上の Changes の表）は、最新の SDK（macOS SDK 27.2）でビルドできず、
+[TAK-31](https://linear.app/takyoshida/issue/TAK-31) で取り除いた。代わりに、元のコードに戻して `@preconcurrency import AVFoundation` を使っている
+（`.specify/bugs/video-track-sendable-regression/`）。

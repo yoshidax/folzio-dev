@@ -48,3 +48,12 @@ Build complete! (13.58s)
 
 マージしてよい。Swift 6.1.2・6.2.4 での確認は、必要なら、マージ後でも `workflow_dispatch` で行える。
 並列テストが止まる問題は、別の Issue として追う。
+
+## 訂正（2026-10-31）
+
+この記録は、最新の版（Swift 6.4）での確認を、保守者の「確認は全て終了」という報告に基づいて「pass（ユーザーの報告）」とし、Result を `verified` としていた。
+その後、保守者の `swift build`（macOS SDK 27.2）が `VideoPreviewView.swift` で失敗することが分かった。TAK-28 で足した補助関数 `loadHasVideoTrack(of:)` が原因の回帰で、
+[TAK-31](https://linear.app/takyoshida/issue/TAK-31) で直した（`.specify/bugs/video-track-sendable-regression/`）。
+
+この記録の Swift 6.0（CI）の結果は正しい。一方、最新の版については、**実行したコマンドと出力の報告を受け取らずに**、「確認は全て終了」という一言を根拠に `verified` とした。これが、回帰を見逃した原因である（保守者の確認の内容は、この記録からは分からない）。
+以後、保守者のローカルでの確認は、実行したコマンドと結果（成功、またはエラーの行）の報告を受けてから、記録する。
