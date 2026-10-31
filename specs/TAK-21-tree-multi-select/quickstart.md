@@ -1,0 +1,48 @@
+# Quickstart: TAK-21 の検証
+
+## 自動（CI）
+
+```bash
+swift build
+swift test --filter FolzioCoreTests
+```
+
+`TreeBatchTargetsTests` と、既存の `FavoriteCommandsTests`・`InternalDropValidationTests`・`BrowserModelFolderTests` が通ること。
+
+## Cloud（Agent）
+
+```bash
+scripts/check-no-network.sh
+scripts/check-readme-sync.sh master
+scripts/dev/check-english-comments.sh
+scripts/dev/check-skill-sync.sh
+```
+
+## GUI（保守者のローカル）
+
+準備: `~/TAK21` に `A`・`B`・`C`・`D`・`P/Q`（それぞれ中にファイルを1つ以上）を作る。
+
+```bash
+scripts/make-app.sh
+```
+
+```bash
+open .build/Folzio.app
+```
+
+| # | 手順 | 期待する結果 | 要件 |
+|---|---|---|---|
+| S1 | 起動する | 3ペインが表示される | 起動スモーク |
+| S2 | ツリーで A をクリックし、⌘クリックで B、C を加える | 3行が選択され、リストは C の内容。⌘クリックで C を外すとリストは C のまま | FR-208・FR-209 |
+| S3 | A をクリックし、Shift+↓ を2回押す。続けて Shift クリックで別の行を選ぶ | 範囲が選択され、リストは最後に移動・クリックした行の内容 | FR-208・FR-209、R4 |
+| S4 | A・B・C を選択し、B から D へドラッグして確定する。元に戻して Option を押してドロップする | 移動は確認後に3件が D に入り、ツリーは主の行（表示の元）の1行の選択になる（主の行が移動した場合は元の親）。コピーは元が残り、選択は変わらない | US35-AS1、FR-212 |
+| S5 | A とホームを選択して A からドラッグする。P と P/Q を選択して D へドラッグする | 前者はドラッグが始まらない。後者は D が強調されず、ドロップしても変わらない | US35-AS3・AS4、R5 |
+| S6 | 確認モーダルの省略をオンにし、A・B・C を選択して ⌘⌫。キャンセル後、B を右クリックして「ゴミ箱に入れる」 | どちらも確認モーダルが出て、3件の名前と絶対パスを示す。確定で3件がゴミ箱に入る | US36-AS1・AS2、SC-104 |
+| S7 | P/Q と D を選択し、P を折りたたむ | P/Q が選択から外れ、リストの表示は変わらない | EC-143、R9 |
+| S8 | P と P/Q を選択して ⌘⌫ | エラーが表示され、何もゴミ箱に入らない | US36-AS4、EC-141 |
+| S9 | 2行を選択し、Return・⌥⌘C・⌃⌘T・⌘A と、右クリックメニュー・「編集」「ファイル」メニューを見る | Return・⌥⌘C・⌃⌘T・⌘A は何もせず、単一の対象の項目は淡色 | US37-AS3、A-119 |
+| S10 | A の内容を表示して A・B を選択し、⌘⌫ で確定する | ツリーは A の親の1行を選択し、リストは親の一覧、プレビューは空、フォーカスはツリー | US36-AS3、FR-079 |
+| S11 | A・B を選択し、ファイルリストのリスト形式とサムネイル形式のフォルダへ、それぞれ移動・Option コピーでドロップする | 各宛先で2件が一操作として移動・コピーされ、確認モーダルの件数は2 | SC-102、US23-AS1（変更） |
+| S12 | A・B・C を選択したまま、選択外の D を右クリックして「ゴミ箱に入れる」を確定する | D だけがゴミ箱に入り、確認モーダルは D の1件 | US36-AS2、FR-210 |
+
+結果は `checklists/validation.md` に記録する（実行日・OS・項目・合否）。

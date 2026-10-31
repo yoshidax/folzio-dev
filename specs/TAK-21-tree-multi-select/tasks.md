@@ -1,0 +1,95 @@
+# Tasks: TAK-21 ツリーでのフォルダの複数選択と一括操作
+
+**Input**: `specs/TAK-21-tree-multi-select/` の設計文書
+
+**Prerequisites**: spec.md / plan.md / research.md / data-model.md / contracts/tree-selection.md / quickstart.md
+
+**Tests**: Core の判断（対象・可否・重なり）に自動テストを付ける。GUI は保守者がローカルで確認する。実装は保守者の設計承認の後に行う。
+
+## Phase 1: Setup
+
+- [x] T001 `specs/TAK-21-tree-multi-select/spec.md` と `checklists/requirements.md` を作り、TAK-21 と現行仕様の変更点を記録する
+- [x] T002 `plan.md`・`research.md`・`data-model.md`・`contracts/tree-selection.md`・`quickstart.md` に設計と検証方法を記録する
+- [ ] T003 保守者の設計レビューと実装の承認を得る。承認がなければ T004 以降に進まない
+
+## Phase 2: Foundational（全ストーリーの前提）
+
+- [ ] T004 `Tests/FolzioCoreTests/TreeBatchTargetsTests.swift` を作り、FR-210 の対象の決定（キーボード／選択中の行の右クリック・ドラッグ／選択外の行）、FR-211 の可否
+  （通常のフォルダだけ／ホーム・ボリュームの最上位・お気に入り・見出しを含む／1件と複数）、EC-141 の親子の重なり（直接の子・孫・兄弟・同名の前方一致 `A` と `AB`）、
+  1件のときに `FavoriteCommands` の `trashTarget`・`removalTarget`・`renameTarget` と一致することをテストする（先に失敗させる）
+- [ ] T005 `Sources/FolzioCore/Model/TreeBatchTargets.swift` を実装して T004 を通す（data-model.md、R1・R2）。ディスクを読まない
+- [ ] T006 `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift` に、選択中の行の role の配列と、メニュー・ドラッグを始めた行から `TreeBatchTargets` を作る補助を加え、
+  `selectedItem` を使う判断を置き換える準備をする（R7）。この時点では `allowsMultipleSelection` を変えない
+
+## Phase 3: User Story 37 - 複数選択中の表示とメニュー (P2、P1 の前提)
+
+**Goal**: 複数選択でき、主の行のフォルダを表示し、単一の対象を前提とする操作を誤って実行しない
+
+**Independent Test**: quickstart の S2・S3・S7・S9
+
+- [ ] T007 [US37] `DirectoryTreeViewController.swift` の `DragAwareOutlineView` に主の行とアンカー（item で保持）を加え、Shift+↑↓ を処理する。`allowsMultipleSelection = true` にする
+  （FR-208、R4、data-model.md の TreeSelectionLead）
+- [ ] T008 [US37] `outlineViewSelectionDidChange` と `trackingEnded` を、主の行が変わったときだけ `model.selectFolder` を呼ぶように変える。⌘クリックで外したときは表示を変えない（FR-209）
+- [ ] T009 [US37] `validateMenuItem`・`menuNeedsUpdate`・`rename(_:)`・`paste(_:)`・`movePaste(_:)`・`copyPathname(_:)`・`revealInFinder(_:)`・`addToFavorites(_:)`・
+  `removeFavoriteFromMenu(_:)` を `TreeBatchTargets` の `isSingle` に従わせる。`Sources/FolzioApp/App/MainSplitViewController.swift` の `canAddSelectedFolderToFavorites` も複数選択で false にする
+  （FR-211（2）（3）・FR-183、R7）
+- [ ] T010 [US37] ツリーの `selectAll(_:)` を無効にする（A-119、R8）。折りたたみで隠れた選択の扱いを R9 のとおりにする（EC-143）
+- [ ] T011 [US37] 名前の編集中に ⌘クリック・Shift クリックで選択を変えたとき、編集を確定することを確かめ、必要なら `finishEditing` を呼ぶ（FR-103・FR-102）
+
+## Phase 4: User Story 35 - 複数のフォルダをまとめて移動・コピーする (P1)
+
+**Goal**: 複数選択からのドラッグで、まとめて移動・コピーする
+
+**Independent Test**: quickstart の S4・S5
+
+- [ ] T012 [US35] `pasteboardWriterForItem` を `TreeBatchTargets.dragURLs` に従わせ、通常のフォルダ以外を含む選択からのドラッグを始めない（FR-211（1）・FR-162、R5）
+- [ ] T013 [US35] ドラッグ後の選択の復元を、ドラッグ前の選択全体と主の行に広げる（FR-210（3）、R5）
+- [ ] T014 [US35] ツリーからの移動の完了で、1件以上が成功したらツリーを主の行の単一選択にする（FR-212、R6）。`Sources/FolzioApp/Operations/FileOperationCoordinator.swift` の
+  `internalDrop` からツリーへの通知を加える。コピー・キャンセル・すべて失敗では選択を変えない
+- [ ] T015 [US35] 宛先の検証が複数のツリーのフォルダで `InternalDropValidation`（EC-16・EC-121）に従うことを `Tests/FolzioCoreTests/InternalDropValidationTests.swift` で確かめ、
+  足りないケース（異なる親の複数フォルダ・親と子の同時選択・宛先が選択の1つの配下）を追加する
+
+## Phase 5: User Story 36 - 複数のフォルダをまとめてゴミ箱に入れる (P1)
+
+**Goal**: ⌘⌫ と「ゴミ箱に入れる」で、まとめてゴミ箱に入れる
+
+**Independent Test**: quickstart の S6・S8・S10
+
+- [ ] T016 [US36] `moveToTrash(_:)` と `trashFolderFromMenu(_:)` を `TreeBatchTargets.trashURLs` に従わせる。`.overlapping` はエラーを表示して何もしない（EC-141）。
+  `.unavailable` は何もしない。お気に入り1件の ⌘⌫ は従来どおり（FR-064）。一部の失敗・外部で消えた項目は既存の `presentFailures` で成功と区別して示す（EC-142）
+- [ ] T017 [US36] `Sources/FolzioLocalization/TextKey.swift` と `Resources/{ja,en}.lproj/Localizable.strings` に、EC-141 のエラーの見出し・説明と、複数の場所の行の文言を追加する。
+  既存の `Tests/FolzioCoreTests/Localization/CatalogConsistencyTests.swift` が通ること
+- [ ] T018 [US36] `FileOperationCoordinator.trash(_:origin:)` と `Sources/FolzioApp/Operations/ConfirmationPresenter.swift` で、ツリーからの複数のゴミ箱の確認モーダルに
+  各フォルダの名前と絶対パス（先頭5件と残りの件数）を示す。1件のときの表示は変えない（FR-079（変更）、A-120、R3）
+- [ ] T019 [US36] ゴミ箱の完了で FR-212 の選択の更新を行う（T014 と同じ経路）。表示中のフォルダまたは祖先を含む場合は既存の `leaveTrashedFolders` の同期に任せる（FR-079、R6）
+
+## Phase 6: Polish & Cross-Cutting
+
+- [ ] T020 Cloud で `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、
+  `python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` を実行し、結果をこの tasks.md に記録する
+- [ ] T021 macOS CI で `swift build`・`swift test` を確認する（PR の作成時、または `workflow_dispatch`）。PR は保守者の依頼があったときだけ作る
+- [ ] T022 [MANUAL] 保守者に、起動スモークと quickstart の S1〜S12 をローカルで実行してもらい（SC-102〜SC-104 の確認を含む）、結果を `checklists/validation.md` に記録する。R4・R5・R9 の想定と違えば該当の実装を調整する
+- [ ] T023 ユーザーガイド `docs/usage.ja.md`・`docs/usage.md` のツリーの操作の説明（お気に入り・⌘Delete の項）に、複数選択（⌘クリック・Shift クリック・Shift+↑↓）と
+  一括の移動・コピー・ゴミ箱を両方に同じ構成で追記する。README は機能の概要だけで個別の操作を書いていないため変えない（`README.ja.md` 20〜21 行）
+- [ ] T024 検証の完了後に最新の master を取り込み、spec.md の「反映先」の項目を `specs/product/` と `specs/product/contracts/keyboard-and-menus.md` へ反映する。
+  ID の衝突を確認し、衝突すればこの feature の ID を振り直す。差分を保守者に示し、承認後にコミットして spec.md を凍結する
+
+## Dependencies & Execution Order
+
+T001 → T002 → T003（承認）→ T004 → T005 → T006 → US37（T007〜T011）→ US35（T012〜T015）→ US36（T016〜T019）→ T020〜T024
+
+US37 は複数選択そのものを有効にするため、P2 だが US35・US36 の前に行う。US35 と US36 は同じ `DirectoryTreeViewController.swift` と `FileOperationCoordinator.swift` を編集するため直列にする。
+T014 と T019 は同じ選択の更新の経路を共有する。
+
+## Parallel Opportunities
+
+Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] は付けない。
+
+## Implementation Strategy
+
+承認 → Core のテストと実装（T004・T005）→ 複数選択と無効化（US37）→ 移動・コピー（US35）→ ゴミ箱（US36）→ 静的検査・CI → 保守者の GUI 確認 → `specs/product/` への反映。
+単一選択の振る舞い（既存の FR-079・FR-103・FR-064・FR-182）が変わらないことを、既存のテストと GUI 確認で確かめる。
+
+## Execution Notes
+
+- 2026-10-31: Linear TAK-21 を In Progress に更新。作業ブランチ `claude/youthful-brahmagupta-ocjb0d`（origin/master bc97861 を含む）
