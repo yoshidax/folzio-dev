@@ -51,6 +51,14 @@ struct NameValidationTests {
         #expect(validateNewName("a.jpg", for: file, existingNames: existingNames) == .invalid(.duplicate))
     }
 
+    @Test("Accepts a folder's case-only change but rejects another sibling")
+    func validatesCaseOnlyFolderRename() {
+        let folder = URL(fileURLWithPath: "/tmp/Album", isDirectory: true)
+        #expect(validateNewName("album", for: folder, existingNames: [], isDirectory: true) == .ok)
+        #expect(validateNewName("album", for: folder, existingNames: ["ALBUM"], isDirectory: true)
+            == .invalid(.duplicate))
+    }
+
     @Test("Folder renaming does not request extension confirmation")
     func folderSkipsExtensionConfirmation() {
         let folder = URL(fileURLWithPath: "/tmp/album", isDirectory: true)

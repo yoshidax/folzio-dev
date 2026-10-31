@@ -29,8 +29,8 @@ public struct FileOperationService: FileOperating {
         }
     }
 
-    /// Uses `resolution` for copy and move conflicts; renames always reject another entry with the same name. `.abort` returns conflicting items as
-    /// failures and executes non-conflicting items (such as moving to the Trash or renaming without a name conflict).
+    /// Uses `resolution` for copy and move conflicts; renames always reject another entry with the same name.
+    /// Returns conflicting items as failures with `.abort` and executes non-conflicting items.
     public func execute(_ operation: FileOperation, resolution: ConflictResolution) async -> FileOperationResult {
         await Task.detached(priority: .userInitiated) {
             Self.perform(operation, resolution: resolution)

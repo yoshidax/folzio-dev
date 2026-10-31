@@ -20,23 +20,23 @@
 **Independent Test**: photo.png → Photo.png / photo.PNG の成功と保存名・内容、別項目の競合拒否を確認する。
 
 - [x] T005 [US1] `Tests/FolzioCoreTests/NameValidationTests.swift` に元項目を除いた集合での自己 case-only 許可と、別項目を含む集合での duplicate を別テストとして追加する。空入力・禁止文字・先頭ドット・拡張子の既存確認は維持する（FR-025・EC-14・SC-096）。
-- [ ] T006 [US1] `Tests/FolzioCoreTests/FileOperationServiceTests.swift` に case-only と拡張子表記のみの改名を追加し、成功 URL・contentsOfDirectory の完全一致名・内容保存を確認する。host volume の性質を判定し記録する（SC-096）。
-- [ ] T007 [US1] `Tests/FolzioCoreTests/FileOperationServiceTests.swift` に別項目の同名/大小文字違い、hard link・symlink・dangling symlink、同じ表記の no-op、元消失・列挙不可・書き込み不可の異常系を追加する。競合は abort/replace/keepBoth の全値で双方を保持する（FR-025・EC-14・SC-097）。大小文字違いの別項目共存は case-sensitive volume で実施し、条件不足なら未検証として記録する。
+- [x] T006 [US1] `Tests/FolzioCoreTests/FileOperationServiceTests.swift` に case-only と拡張子表記のみの改名を追加し、成功 URL・contentsOfDirectory の完全一致名・内容保存を確認する。host volume の性質を判定し記録する（SC-096）。
+- [x] T007 [US1] `Tests/FolzioCoreTests/FileOperationServiceTests.swift` に別項目の同名/大小文字違い、hard link・symlink・dangling symlink、同じ表記の no-op、元消失・列挙不可・書き込み不可の異常系を追加する。競合は abort/replace/keepBoth の全値で双方を保持する（FR-025・EC-14・SC-097）。大小文字違いの別項目共存は case-sensitive volume で実施し、条件不足なら未検証として記録する。
 - [x] T008 [US1] `Sources/FolzioCore/Operations/FileOperationService.swift` の rename に兄弟の完全一致による自己除外と比較を実装する。列挙失敗を握りつぶさず、競合は全 resolution で sameNameExists とする。自己 case-only の target 存在だけでは拒否しない。既存の moveItem で入力表記の成功 URL を返す。copy/move の解決規則を維持する（FR-025・EC-14）。
-- [ ] T009 [US1] `Tests/FolzioCoreTests/SearchRenameLedgerTests.swift` に case-only のファイル URL 更新を追加し、`Sources/FolzioApp/Operations/FileOperationCoordinator.swift` から既存の確認・検索結果・履歴の通知が通ることを確認する。必要な調整だけを行う（FR-027・SC-097）。
+- [x] T009 [US1] `Tests/FolzioCoreTests/SearchRenameLedgerTests.swift` に case-only のファイル URL 更新を追加し、`Sources/FolzioApp/Operations/FileOperationCoordinator.swift` から既存の確認・検索結果・履歴の通知が通ることを確認する。必要な調整だけを行う（FR-027・SC-097）。
 
 ## Phase 4: User Story 2 — フォルダ (P1)
 
 **Goal**: 同じ処理を一覧とツリーの通常フォルダに適用し、表示中の子孫を保つ。
 **Independent Test**: Album → album と別兄弟 ALBUM への競合、子ファイルの内容・表示先の継続。
 
-- [ ] T010 [US2] `Tests/FolzioCoreTests/NameValidationTests.swift` と FileOperationServiceTests.swift にフォルダの自己 case-only、別フォルダ/ファイル/リンクとの競合、中身の保存を追加する。禁止文字・先頭ドット・パッケージ化の拒否と拡張子確認なしを維持する（FR-103・EC-14・SC-096/097）。
-- [ ] T011 [US2] `Tests/FolzioCoreTests/RenamedFolderTests.swift` と SearchRenameLedgerTests.swift に case-only の親/祖先 URL 置換を追加する。`Sources/FolzioApp/Operations/FileOperationCoordinator.swift` の既存のフォルダ通知を使い、必要な Core の修正を行う（FR-104・FR-105・SC-097）。
+- [x] T010 [US2] `Tests/FolzioCoreTests/NameValidationTests.swift` と FileOperationServiceTests.swift にフォルダの自己 case-only、別フォルダ/ファイル/リンクとの競合、中身の保存を追加する。禁止文字・先頭ドット・パッケージ化の拒否と拡張子確認なしを維持する（FR-103・EC-14・SC-096/097）。
+- [x] T011 [US2] `Tests/FolzioCoreTests/RenamedFolderTests.swift` と SearchRenameLedgerTests.swift に case-only の親/祖先 URL 置換を追加する。`Sources/FolzioApp/Operations/FileOperationCoordinator.swift` の既存のフォルダ通知を使い、必要な Core の修正を行う（FR-104・FR-105・SC-097）。
 - [ ] T012 [US2] `specs/TAK-16-case-only-rename/quickstart.md` の両ボリュームの手順を保守者に実行依頼し、ツリー/一覧/サムネイル/検索の表示・選択・展開・スクロール・プレビュー・履歴、常時確認・キャンセルの結果をこの tasks.md に記録する（FR-103・FR-104・A-39・US1-AS39・SC-096/097）。
 
 ## Phase 5: Polish & Cross-Cutting
 
-- [ ] T013 `scripts/check-no-network.sh`、scripts/check-readme-sync.sh master、scripts/dev/check-english-comments.sh、scripts/dev/tests/test_check_git_push.py を Cloud で実行し、この tasks.md に結果を記録する。
+- [x] T013 `scripts/check-no-network.sh`、scripts/check-readme-sync.sh master、scripts/dev/check-english-comments.sh、scripts/dev/tests/test_check_git_push.py を Cloud で実行し、この tasks.md に結果を記録する。
 - [ ] T014 `.github/workflows/macos-swift-ci.yml` で swift build/test を確認する。保守者の PR 依頼があるまでは PR を作らず、CI 未実行として記録する。case-only の moveItem が実機で失敗する場合は実装を完了扱いせず設計を見直す。
 - [ ] T015 `specs/TAK-16-case-only-rename/quickstart.md` の起動スモークとローカル build/test を保守者に実行依頼し、結果をこの tasks.md に記録する。未確認なら未チェックのまま残す。
 - [ ] T016 検証完了後に最新 master を取り込み、`specs/product/file-operations.md`・directory-tree.md に spec.md の反映表の変更を用意する。SC-096/097 の衝突を確認し、衝突ならこの feature の未マージ ID だけを振り直す。反映差分の承認後にコミットし spec.md を凍結する。
@@ -66,3 +66,7 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。US1/U
 - 設計段階の Cloud 検査: check-no-network / check-english-comments / test_check_git_push.py (3 tests) / git diff --check は成功。README 同期はローカル master が未作成で既定コマンドが失敗し、取得済み origin/master を基準に再実行して成功。タスク形式・16 個の連番・文書内リンクを検査。T013 は実装後の再実行を要するため未チェック。
 
 - 保守者の ok により設計承認済み。speckit-implement 開始。ファイルの回帰テストと最小の Service 変更を追加。T006/T007 は macOS 実行および残る異常系の確認後にチェックする。
+
+- 保守者が feature/tak-16-case-only-rename への移動・push・CI を承認。PR 作成依頼により Draft PR #7 を作成、Linear は In Review と PR リンクを確認。最小実装の macOS CI (run 41182935774) はビルド成功、テスト実行中。CLI の API アクセスは Forbidden のため GitHub MCP を使用。T009 のファイル改名反映は SearchRenameLedger ではなく実際の担当である BrowserModelSearchTests に追加。
+
+- 最小実装 commit 9e6177a の macOS CI でビルド・通常テスト成功を MCP で確認。設計のファイル改名ゲートを通過し、フォルダ・子孫/zip パス・検索結果の case-only 反映テストを追加。T006/T007/T010/T011 はテスト追加完了を表し、追加後の実行結果は T014 で管理する。Cloud の全検査は成功（README 基準は origin/master）。保守者の GUI と両ボリュームでの実機検証、product 反映は未完了。
