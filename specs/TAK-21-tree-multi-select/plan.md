@@ -63,7 +63,8 @@ AppKit UI の不変条件（AGENTS.md）を守る
 - `Sources/FolzioApp/Operations/ConfirmationPresenter.swift`: 複数の場所の表示（先頭5件と残りの件数）
 - `Sources/FolzioLocalization/TextKey.swift`、`Resources/{ja,en}.lproj/Localizable.strings`: EC-141 のエラーの見出しと説明、複数の場所の行の文言
 - `Tests/FolzioCoreTests/TreeBatchTargetsTests.swift`（新規）: FR-210・FR-211・EC-141 の全分岐と、単一の対象で `FavoriteCommands` と一致すること
-- `Tests/FolzioCoreTests/Localization/`: 追加したキーの ja・en の存在（既存のキー網羅テストがあればそれに従う）
+- `Tests/FolzioCoreTests/InternalDropValidationTests.swift`: 複数のツリーのフォルダを起点にした検証（異なる親・親子の同時選択・選択の1つの配下への宛先）を追加
+- `Tests/FolzioCoreTests/Localization/`: 追加したキーの ja・en の存在（既存の `CatalogConsistencyTests` に従う）
 
 **Structure Decision**: 既存の Core/App 分離を維持する。判断は Core の新しい値型に置き、AppKit 側は入力の収集と結果の適用だけを行う。
 

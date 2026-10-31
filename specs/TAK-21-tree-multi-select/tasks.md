@@ -45,7 +45,7 @@
 **Independent Test**: quickstart の S4・S5
 
 - [ ] T012 [US35] `pasteboardWriterForItem` を `TreeBatchTargets.dragURLs` に従わせ、通常のフォルダ以外を含む選択からのドラッグを始めない（FR-211（1）・FR-162、R5）
-- [ ] T013 [US35] ドラッグ後の選択の復元を、ドラッグ前の選択全体と主の行に広げる（FR-210（3）、R5）
+- [ ] T013 [US35] ドラッグ後の選択の復元を、ドラッグ前の選択全体と主の行に広げる。選択外の行からドラッグを中止したとき、ファイルリストの表示が変わらないことを確かめる（FR-210（3）・US35-AS2、R5）
 - [ ] T014 [US35] ツリーからの移動の完了で、1件以上が成功したらツリーを主の行の単一選択にする。表示中のフォルダが切り替わった場合は同期に任せる（FR-212、R6）。`Sources/FolzioApp/Operations/FileOperationCoordinator.swift` の
   `internalDrop` からツリーへの通知を加える。コピー・キャンセル・すべて失敗では選択を変えない
 - [ ] T015 [US35] 宛先の検証が複数のツリーのフォルダで `InternalDropValidation`（EC-16・EC-121）に従うことを `Tests/FolzioCoreTests/InternalDropValidationTests.swift` で確かめ、
@@ -58,7 +58,7 @@
 **Independent Test**: quickstart の S6・S8・S10
 
 - [ ] T016 [US36] `moveToTrash(_:)` と `trashFolderFromMenu(_:)` を `TreeBatchTargets.trashURLs` に従わせる。`.overlapping` はエラーを表示して何もしない（EC-141）。
-  `.unavailable` は何もしない。お気に入り1件の ⌘⌫ は従来どおり（FR-064）。一部の失敗・外部で消えた項目は既存の `presentFailures` で成功と区別して示す（EC-142）
+  `.unavailable` は何もしない。お気に入り1件の ⌘⌫ は従来どおり（FR-064）。複数の選択では、メニューの ⌘⌫ の項目の名前を「ゴミ箱に入れる」にする（現行は単一のお気に入りで「お気に入りから削除」に切り替えている）。一部の失敗・外部で消えた項目は既存の `presentFailures` で成功と区別して示す（EC-142）
 - [ ] T017 [US36] `Sources/FolzioLocalization/TextKey.swift` と `Resources/{ja,en}.lproj/Localizable.strings` に、EC-141 のエラーの見出し・説明と、複数の場所の行の文言を追加する。
   既存の `Tests/FolzioCoreTests/Localization/CatalogConsistencyTests.swift` が通ること
 - [ ] T018 [US36] `FileOperationCoordinator.trash(_:origin:)` と `Sources/FolzioApp/Operations/ConfirmationPresenter.swift` で、ツリーからの複数のゴミ箱の確認モーダルに
