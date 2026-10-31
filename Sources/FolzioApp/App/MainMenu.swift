@@ -122,6 +122,14 @@ final class MainMenu {
         searchItem.keyEquivalentModifierMask = [.command]
         searchItem.target = nil
         fileMenu.addItem(searchItem)
+        let shortcutsItem = NSMenuItem(
+            title: l10n.text(.menuFileShortcuts),
+            action: #selector(AppDelegate.showShortcuts(_:)),
+            keyEquivalent: "/"
+        )
+        shortcutsItem.keyEquivalentModifierMask = [.command]
+        shortcutsItem.target = zoomTarget
+        fileMenu.addItem(shortcutsItem)
         fileMenu.addItem(.separator())
 
         let fileTrashItem = NSMenuItem(
@@ -132,6 +140,14 @@ final class MainMenu {
         fileTrashItem.target = nil
         fileMenu.addItem(fileTrashItem)
         fileMenu.delegate = trashTitleReset
+        fileMenu.addItem(.separator())
+        let closeItem = NSMenuItem(
+            title: l10n.text(.menuFileClose),
+            action: #selector(NSWindow.performClose(_:)),
+            keyEquivalent: "w"
+        )
+        closeItem.target = nil
+        fileMenu.addItem(closeItem)
 
         let editMenuItem = NSMenuItem()
         mainMenu.addItem(editMenuItem)
@@ -324,6 +340,7 @@ final class MainMenu {
             (openContainerItem, .menuFileShowContents), (goUpItem, .menuFileEnclosingFolder),
             (revealItem, .menuFileRevealInFinder), (addFavoriteItem, .menuFileAddToFavorites),
             (searchItem, .menuFileFind), (fileTrashItem, .menuFileTrash),
+            (shortcutsItem, .menuFileShortcuts), (closeItem, .menuFileClose),
             (editMenuItem, .menuEdit), (redoItem, .menuEditRedo),
             (movePasteItem, .menuEditMovePaste), (copyPathnameItem, .menuEditCopyPathname), (duplicateItem, .menuEditDuplicate),
             (renameItem, .menuEditRename), (editTrashItem, .menuFileTrash),
