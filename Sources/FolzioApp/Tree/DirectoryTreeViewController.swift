@@ -1236,16 +1236,17 @@ final class DirectoryTreeViewController: NSViewController {
         refreshFavoriteAvailabilityIfNeeded(in: changed)
     }
 
-    /// Receives the original locations of items that a move or Move to Trash removed. When they include folders from
-    /// the latest tree drag or tree Move to Trash, selects only the lead row (FR-212). When the lead row's folder or
-    /// an ancestor was removed, the file list moves to its parent and the tree synchronization selects that row
-    /// instead (FR-079, EC-123).
-    func didRemoveSources(_ removed: [URL]) {
-        let removedPaths = removed.map(\.standardizedFileURL.pathComponents)
-        let pending = pendingOperationSources.map(\.standardizedFileURL.pathComponents)
-        guard pending.contains(where: { removedPaths.contains($0) }) else { return }
+    /// Receives the end of a copy, move, or Move to Trash. Only an operation on exactly the folders of the latest tree
+    /// drag or tree Move to Trash is the tree's own; it ends the pending record even when it was cancelled, rejected,
+    /// or a copy. When it removed folders, selects only the lead row (FR-212). When the lead row's folder or an
+    /// ancestor was removed, the file list moves to its parent and the tree synchronization selects that row instead
+    /// (FR-079, EC-123).
+    func didFinishOperation(sources: [URL], removed: [URL]) {
+        func paths(_ urls: [URL]) -> Set<String> { Set(urls.map(\.standardizedFileURL.path)) }
+        guard !pendingOperationSources.isEmpty, paths(sources) == paths(pendingOperationSources) else { return }
         pendingOperationSources = []
-        guard let lead = leadItem else { return }
+        guard !removed.isEmpty, let lead = leadItem else { return }
+        let removedPaths = removed.map(\.standardizedFileURL.pathComponents)
 
         let leadURL = (lead as? Node)?.url ?? (lead as? FavoriteEntry)?.url
         if let leadURL {
@@ -1654,6 +1655,19 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
         self.outlineView.beganDrag = true
         // Remember the dragged folders so a successful move updates the tree selection (FR-212).
         pendingOperationSources = draggedItems.compactMap { ($0 as? Node)?.url }
+    }
+
+    /// A drag that ends without a drop (cancelled or refused) starts no operation, so forget its folders. A drop is
+    /// finished by `didFinishOperation(sources:removed:)` (FR-212).
+    func outlineView(
+        _ outlineView: NSOutlineView,
+        draggingSession session: NSDraggingSession,
+        endedAt screenPoint: NSPoint,
+        operation: NSDragOperation
+    ) {
+        if operation.isEmpty {
+            pendingOperationSources = []
+        }
     }
 
     func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> NSPasteboardWriting? {

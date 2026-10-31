@@ -17,9 +17,11 @@ final class FileOperationCoordinator {
     var onFolderRenamed: ((URL, URL) -> Void)?
     /// Removes locations that disappeared due to moves or renames from history (FR-109).
     weak var historyNavigator: HistoryNavigator?
-    /// Passes the original locations of items that a move or Move to Trash removed, after the file list has been
-    /// updated. Lets the tree update its selection after a tree operation (FR-212).
-    var onSourcesRemoved: (([URL]) -> Void)?
+    /// Called when a copy, move, or Move to Trash ends, including when it is cancelled or rejected. Passes the
+    /// requested sources and the original locations of the items it removed (empty for a copy, a cancellation, or a
+    /// rejection), after the file list has been updated. Lets the tree finish its own operation and update its
+    /// selection (FR-212).
+    var onOperationFinished: ((_ sources: [URL], _ removed: [URL]) -> Void)?
 
     init(model: BrowserModel, service: any FileOperating, settings: SettingsStore) {
         self.model = model
@@ -65,6 +67,8 @@ final class FileOperationCoordinator {
     /// (A-120).
     func trash(_ urls: [URL], origin: OperationOrigin = .fileList) async {
         guard !urls.isEmpty else { return }
+        var trashedSources: [URL] = []
+        defer { onOperationFinished?(urls, trashedSources) }
         let operation = FileOperation(kind: .trash, sources: urls)
         let showsEachLocation = origin == .tree && urls.count > 1
         guard await confirmation.confirm(
@@ -82,7 +86,7 @@ final class FileOperationCoordinator {
         notifyFoldersChanged(sources: urls, destination: nil)
         // result.succeeded contains URLs inside the Trash, so pass the original locations that did not fail instead.
         let failedPaths = Set(result.failed.map { $0.url.standardizedFileURL.path })
-        let trashedSources = urls.filter { !failedPaths.contains($0.standardizedFileURL.path) }
+        trashedSources = urls.filter { !failedPaths.contains($0.standardizedFileURL.path) }
         historyNavigator?.didRemoveItems(trashedSources)
         // Move to the parent only when the displayed folder or an ancestor was trashed (FR-079). In search results, an
         // ancestor of the pre-search folder can be selected, so tree and file list operations behave differently. Leave
@@ -90,9 +94,6 @@ final class FileOperationCoordinator {
         // because reloading after moving would briefly show "Folder not found" for the vanished folder.
         if await !model.leaveTrashedFolders(trashedSources, origin: origin) {
             await model.reloadCurrentFolder()
-        }
-        if !trashedSources.isEmpty {
-            onSourcesRemoved?(trashedSources)
         }
     }
 
@@ -162,6 +163,8 @@ final class FileOperationCoordinator {
 
     private func transfer(_ urls: [URL], to destination: URL, kind: FileOperation.Kind, validateDrop: Bool = false) async {
         guard !urls.isEmpty else { return }
+        var removed: [URL] = []
+        defer { onOperationFinished?(urls, removed) }
         if validateDrop, await !validateInternalDrop(urls, destination: destination, kind: kind) { return }
         let operation = FileOperation(kind: kind, sources: urls, destination: destination)
         guard await confirmation.confirm(operation, includesFolders: await containsFolder(urls)) else { return }
@@ -216,7 +219,6 @@ final class FileOperationCoordinator {
         }
 
         await presentFailures(result)
-        var removed: [URL] = []
         if case .move = kind {
             // result.succeeded contains destination URLs, so remove history using the original locations that did not
             // fail (FR-109).
@@ -228,9 +230,6 @@ final class FileOperationCoordinator {
         let relocated = model.isShowingSearchResults ? false : await model.leaveTrashedFolders(removed, origin: .fileList)
         if !relocated { await model.reloadCurrentFolder() }
         notifyFoldersChanged(sources: urls, destination: destination)
-        if !removed.isEmpty {
-            onSourcesRemoved?(removed)
-        }
     }
 
     private func validateInternalDrop(_ urls: [URL], destination: URL, kind: FileOperation.Kind) async -> Bool {
