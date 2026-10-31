@@ -37,7 +37,7 @@
 ## Phase 5: Polish & Cross-Cutting
 
 - [x] T013 `scripts/check-no-network.sh`、scripts/check-readme-sync.sh master、scripts/dev/check-english-comments.sh、scripts/dev/tests/test_check_git_push.py を Cloud で実行し、この tasks.md に結果を記録する。
-- [ ] T014 `.github/workflows/macos-swift-ci.yml` で swift build/test を確認する。保守者の PR 依頼があるまでは PR を作らず、CI 未実行として記録する。case-only の moveItem が実機で失敗する場合は実装を完了扱いせず設計を見直す。
+- [x] T014 `.github/workflows/macos-swift-ci.yml` で swift build/test を確認する。保守者の PR 依頼があるまでは PR を作らず、CI 未実行として記録する。case-only の moveItem が実機で失敗する場合は実装を完了扱いせず設計を見直す。
 - [ ] T015 `specs/TAK-16-case-only-rename/quickstart.md` の起動スモークとローカル build/test を保守者に実行依頼し、結果をこの tasks.md に記録する。未確認なら未チェックのまま残す。
 - [ ] T016 検証完了後に最新 master を取り込み、`specs/product/file-operations.md`・directory-tree.md に spec.md の反映表の変更を用意する。SC-096/097 の衝突を確認し、衝突ならこの feature の未マージ ID だけを振り直す。反映差分の承認後にコミットし spec.md を凍結する。
 
@@ -76,3 +76,7 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。US1/U
 - ローカル報告の確認: 変更は hans-veth-vyQgv-eURTU-unsplash → Hans-veth-vyQgv-eURTU-unsplash、commit a64cbbb。GitHub MCP compare_commits で a64cbbb は改修 9e6177a を含まない master と確認（共通祖先 bfe63d5）。実機で改修済みコードが失敗したという証拠にはならない。a64cbbb を作業ブランチに取り込み（merge 8a32b35）、新規 check-skill-sync も成功。最初の CI ログは通常 834 件・性能 27 件の全成功を確認。最新のフォルダ・検索・履歴・列挙 URL テストを含む変更は次の CI で検証する。
 
 - 追加後 CI run 41211648634 は build 成功、通常852件中フォルダ改名1テストが2 assertionで失敗。FixtureSets.ops が既に小文字 album を作っていたため、case-insensitive volume では新規作成したつもりの Album が別表記の既存エントリを再利用していた。独立した CaseAlbum → casealbum に修正し、元の保存表記も assertion で確認。報告された hans-veth... の列挙 URL からの改名テストは成功。master 取り込みに伴う SC-096/097 の既存利用は確認済みで、product 反映タスク T016 時にこの feature の ID を振り直す。
+
+- 保守者から改修ブランチでの修正確認を受領（hans... → Hans... のファイル改名成功）。T012/T015 は詳細なフォルダ・両ボリューム・ローカルの全テストの報告がないため未チェックで残す。
+- 最新コード a8ffedd の CI run 41212154205 / job 124569203250 は build 成功、通常852件・性能27件の全成功をログで確認。フォルダ case-only と DirectoryLister の URL からのファイル改名も成功。case-sensitive 専用テストは CI のボリューム条件によりスキップ。Cloud のネットワーク/README/英語コメント/共有スキル/push制約3件/空白検査は成功。
+- T016 のレビュー用に product-spec-review.md に製品仕様へ反映する全文を用意。SC-100/101 を使用する提案。現行 specs/product と feature の ID は未変更。保守者の反映承認待ちで、凍結・完了更新・マージは行っていない。
