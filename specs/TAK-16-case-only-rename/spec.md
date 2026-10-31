@@ -1,10 +1,14 @@
 # Feature Specification: 同じ項目自身の大文字小文字だけの改名
 
-**Feature Branch**: `work`
+> **移行済み（2026-11-01）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-16 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> 検証結果と未確認の範囲は [tasks.md](tasks.md) を参照。
+
+**Feature Branch**: `feature/tak-16-case-only-rename`
 
 **Created**: 2026-10-31
 
-**Status**: Draft — 設計レビュー待ち
+**Status**: Approved — product へ移行済み（未確認の検証範囲は tasks.md を参照）
 
 **Input**: TAK-16 https://linear.app/takyoshida/issue/TAK-16 — photo.png → Photo.png、Album → album を許可し、別項目との競合は拒否する。
 
@@ -96,8 +100,8 @@
 
 ### Measurable Outcomes
 
-- **SC-096**: 両ボリューム種別で、ファイル・フォルダの大文字小文字だけの改名が受け入れシナリオの全ケースで入力表記どおりに保存され、中身の変更が 0 件。
-- **SC-097**: 別項目との競合・キャンセルの全ケースで、元項目と別項目の名前・内容の変更が 0 件。成功時の表示は FR-027・FR-104 と一致する。
+- **SC-100**: 両ボリューム種別で、ファイル・フォルダの大文字小文字だけの改名が受け入れシナリオの全ケースで入力表記どおりに保存され、中身の変更が 0 件。
+- **SC-101**: 別項目との競合・キャンセルの全ケースで、元項目と別項目の名前・内容の変更が 0 件。成功時の表示は FR-027・FR-104 と一致する。
 
 ## Assumptions
 
@@ -105,7 +109,7 @@
 - 新しい設定・確認モーダル・一括改名は追加しない。既存の Return とメニューを使う（FR-019・FR-103）。
 - ファイルの一覧・サムネイル・既存の検索結果の改名に適用する。zip 内の項目は引き続き読み取り専用（FR-073）。お気に入りの表示名は変更しない。
 - Core の判断・操作・異常系は自動テストを追加する。GUI と両ボリューム種別の実操作の確認をマージ前の条件にする。
-- 新規 ID は master 取り込み時に再確認する。現時点の SC 最大値は 095。
+- 新規 ID は master 取り込み時に再確認する。採番時の既存 SC 最大値は 099。SC-100/101 を使用する。
 
 ## 反映先
 
@@ -116,5 +120,5 @@
 | EC-14 | 変更 | file-operations.md |
 | US1-AS39 | 変更 | directory-tree.md |
 | A-39 | 変更 | directory-tree.md |
-| SC-096 | 追加 | file-operations.md |
-| SC-097 | 追加 | file-operations.md |
+| SC-100 | 追加 | file-operations.md |
+| SC-101 | 追加 | file-operations.md |
