@@ -86,5 +86,5 @@ AppKit UI の不変条件（AGENTS.md）を守る
 
 ## Delivery Gate
 
-設計レビューの承認後に実装する。Cloud の静的検査、macOS CI の build/test、保守者のローカルでの起動スモークと quickstart の S1〜S12 を終えてから `specs/product/` に反映する。
+設計レビューの承認後に実装する。Cloud の静的検査、macOS CI の build/test、保守者のローカルでの起動スモークと quickstart の S1〜S14 を終えてから `specs/product/` に反映する。
 PR は保守者の依頼があったときだけ作る。
