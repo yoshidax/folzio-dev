@@ -1,6 +1,6 @@
 # Validation Guide: TAK-22
 
-現時点は設計のみ。以下は実装後の検証手順で、実行済みの記録ではない。
+以下は実装後の検証手順。実行結果と未確認事項は第5章に記録する。
 
 ## 1 Cloud の静的検査
 
@@ -102,3 +102,12 @@ T011・T015・T018〜T020は未チェック。product仕様の反映・凍結・
 [初回CI](https://github.com/yoshidax/folzio-dev/actions/runs/41190274601) はmacOS 15.8.2 / arm64 / Xcode16.0・Swift6.0で実行。
 NSWindowController.document と参照ビューの私有プロパティ名が衝突しビルド失敗、通常・性能テストは未実行。
 完了済みログを確認して参照ビューの名前をreferenceViewへ変更した。新しいAPIへの置換はない。
+
+追加push後の再確認: GitHub接続ツールにworkflow_dispatchがなく、gh workflow runはAPIアクセス時にForbiddenを返したため、既存のready_for_reviewトリガーを使用した。PRを一時DraftにしReadyへ戻して修正済みコミットのCIを起動した。失敗したコミットの再実行はしていない。
+
+### 2026-10-31 修正後CIの結果と翻訳検査の調整
+
+[2回目CI](https://github.com/yoshidax/folzio-dev/actions/runs/41190672576)（6d1423b）: ビルド成功。通常テスト833件を実行し、追加したカタログ・翻訳の5件はすべて成功。既存CompiledBundleTestsの1テストだけが4件の失敗を報告した。
+失敗は倍率説明の25%、800%、100%を未置換書式とみなす一律のパーセント禁止検査が原因。実際の倍率表記とエスケープ解除は新規テストで成功している。
+CompiledBundleTestsを、翻訳元の%%の数と結果の%の数が一致し、未置換の%@・%lld・位置指定子・複数形参照が残らないことを検証する形に調整した。テスト用の値は文字列sample・件数2のため、複数形は両言語ともotherを参照する。
+性能テストは通常テストの失敗により未実行。調整後に再確認する。
