@@ -68,7 +68,8 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 
 - Video playback, looping, an autoplay setting, and play/pause with the Space key
 
-- Full-screen preview (double-click or ⌃⌘F; Esc to return)
+- Full-screen preview (double-click an image or video, including the margins around it, or press ⌃⌘F; Esc to return).
+  In full screen, double-clicking anywhere returns to the previous layout. The video playback controls and the image scroll bars do not toggle full screen
 
 ## Slideshow
 
@@ -163,7 +164,7 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 | Images only / videos only | ⇧⌘I / ⇧⌘M, View menu, toolbar |
 | Show / hide zip files (hidden by default. Saved and restored on relaunch. While off, zip files are excluded from the list, selection, file operations, and full-screen navigation. Toggling while viewing the inside of a zip does not change the list inside) | ⌃⌘Z, View menu → "Show Zip Files", toolbar (right of the kind filter, left of the view-mode buttons) |
 | Play / pause a video (from the list) | Space |
-| Full-screen preview / return | ⌃⌘F, double-click the image, Esc |
+| Full-screen preview / return | ⌃⌘F, double-click the image or video (anywhere in full screen), Esc |
 | Copy / paste / move-paste | ⌘C / ⌘V / ⌥⌘V |
 | Duplicate | ⌘D |
 | Rename (in place) | Return |

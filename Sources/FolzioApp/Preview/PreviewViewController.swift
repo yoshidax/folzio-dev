@@ -14,6 +14,8 @@ final class PreviewViewController: NSViewController {
     private let containerView = NSView()
     private let contentHostView = NSView()
     private let transitionOverlay = SlideshowTransitionOverlayView()
+    /// Recognizes double-clicks on images and videos alike, including the margins around the media (FR-208).
+    private let doubleClickRecognizer = NSClickGestureRecognizer()
     private var transitionState = SlideshowTransitionState()
     private var lastContainerSize: CGSize?
     private let transitionSignposter = OSSignposter(
@@ -83,10 +85,9 @@ final class PreviewViewController: NSViewController {
         return imageView
     }
 
-    var onDoubleClick: (() -> Void)? {
-        get { imageView.onDoubleClick }
-        set { imageView.onDoubleClick = newValue }
-    }
+    /// Called when the media display area is double-clicked outside any control (FR-035, FR-208).
+    /// The receiver decides whether the double-click toggles full screen (`PreviewDoubleClick`).
+    var onDoubleClick: (() -> Void)?
 
     func togglePlayback() {
         guard !videoView.isHidden else { return }
@@ -196,7 +197,21 @@ final class PreviewViewController: NSViewController {
             ])
         }
 
+        // A single recognizer on the common ancestor covers the image, the video, and the transition overlay,
+        // which passes clicks through (FR-131). In full screen the preview fills the whole screen (FR-208).
+        doubleClickRecognizer.numberOfClicksRequired = 2
+        doubleClickRecognizer.delaysPrimaryMouseButtonEvents = false
+        doubleClickRecognizer.target = self
+        doubleClickRecognizer.action = #selector(handleDoubleClick(_:))
+        doubleClickRecognizer.delegate = self
+        containerView.addGestureRecognizer(doubleClickRecognizer)
+
         view = containerView
+    }
+
+    @objc private func handleDoubleClick(_ recognizer: NSClickGestureRecognizer) {
+        guard recognizer.state == .ended else { return }
+        onDoubleClick?()
     }
 
     override func viewDidLoad() {
@@ -539,5 +554,33 @@ final class PreviewViewController: NSViewController {
             return
         }
         updateScreenMaxPixel()
+    }
+}
+
+extension PreviewViewController: NSGestureRecognizerDelegate {
+    /// Ignores double-clicks on controls, such as the video playback controls and the image scroll bars,
+    /// so that those controls keep their own behavior (FR-208, EC-142, research.md R2).
+    func gestureRecognizer(
+        _ gestureRecognizer: NSGestureRecognizer,
+        shouldAttemptToRecognizeWith event: NSEvent
+    ) -> Bool {
+        guard gestureRecognizer === doubleClickRecognizer else { return true }
+        // `hitTest(_:)` takes a point in the superview's coordinate system.
+        guard let superview = containerView.superview else { return true }
+        let point = superview.convert(event.locationInWindow, from: nil)
+        guard let hitView = containerView.hitTest(point) else { return true }
+        return !isInsideControl(hitView)
+    }
+
+    /// Returns whether the view or one of its ancestors below the container is a control.
+    private func isInsideControl(_ view: NSView) -> Bool {
+        var current: NSView? = view
+        while let candidate = current, candidate !== containerView {
+            if candidate is NSControl {
+                return true
+            }
+            current = candidate.superview
+        }
+        return false
     }
 }

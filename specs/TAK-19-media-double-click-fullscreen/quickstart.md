@@ -53,3 +53,7 @@ open .build/Folzio.app
 M2 または M3 が期待どおりでない場合は、推測で直さず、結果（OS のバージョン、操作した位置、起きたこと）を Cloud Agent に知らせる（research.md の R2・R3）。
 
 ## 5 結果の記録（実装の後に追記する）
+
+- 2026-10-31: 保守者が設計レビューを承認した（会話で「OKです」）。research.md の R2・R3 の実機での確認と、読み込み中・表示できない表示を対象に含める方針（EC-141）を含めて承認された（T001）。
+- 2026-10-31: Cloud の検査（T010）。`scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、
+  `scripts/dev/check-skill-sync.sh`、`test_check_git_push.py`（3件）、`git diff --check` がすべて成功した。Swift の build・test と GUI は未実施（CI と保守者の確認を待つ）。
