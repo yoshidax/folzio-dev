@@ -16,6 +16,8 @@ public enum NameValidationFailure: Error, Sendable, Equatable {
     case becomesPackage
 }
 
+/// Validates a name against sibling entries supplied in `existingNames`, excluding only the source's exact name.
+/// Treats every remaining entry as a conflict, even when it links to the source.
 /// When `isDirectory` is true (renaming a folder), does not treat the part after `.` as an extension and does not
 /// return `needsExtensionChangeConfirmation` (research.md R32). Rejects names that would make the folder a package
 /// (such as `.app`) because the folder would no longer be visible (EC-53, R57).

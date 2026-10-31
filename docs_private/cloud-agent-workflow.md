@@ -1,7 +1,7 @@
 # Cloud Agent の作業手順
 
 Cloud Agent（Claude / Codex）が、Cloud 環境で feature またはバグ修正を進め、GitHub の PR にまとめるための手順。ローカルでの開発の手順は
-[folzio-sdd-increment.md](folzio-sdd-increment.md) と `AGENTS.md` の【ローカル】の節にあり、この手順書とは別に、そのまま使える。
+[folzio-sdd-increment.md](../shared-skills/folzio-sdd-increment.md) と `AGENTS.md` の【ローカル】の節にあり、この手順書とは別に、そのまま使える。
 
 この手順書は、feature の仕様（`specs/TAK-30-cloud-agent-workflow/`）の要件 FR-186〜FR-199 を実装したもの。規則の全体と区分は `AGENTS.md` の「運用の区分」にある。
 

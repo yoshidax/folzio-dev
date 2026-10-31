@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 class PublishTests(unittest.TestCase):
-    def exercise_publish(self, exclude_dev):
+    def exercise_publish(self, exclude_dev=True, exclude_shared=True):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = root / "source"
@@ -26,10 +26,17 @@ class PublishTests(unittest.TestCase):
             shutil.copy2(ROOT / "scripts/dev/publish.sh", dev / "publish.sh")
             (dev / "new-private.sh").write_text("private helper\n")
             (dev / "nested/secret.txt").write_text("private nested file\n")
+            shared = source / "shared-skills"
+            (shared / "nested").mkdir(parents=True)
+            (shared / "folzio-sample.md").write_text("private skill instructions\n")
+            (shared / "future-skill.md").write_text("future private instructions\n")
+            (shared / "nested/context.md").write_text("private supporting context\n")
             (scripts / "public.sh").write_text("public helper\n")
             attributes = source / ".gitattributes"
             if not exclude_dev:
                 attributes.write_text(attributes.read_text().replace("/scripts/dev export-ignore", ""))
+            if not exclude_shared:
+                attributes.write_text(attributes.read_text().replace("/shared-skills            export-ignore", ""))
             for path in (scripts / "check-readme-sync.sh", dev / "check-english-comments.sh", scripts / "check-no-network.sh"):
                 path.write_text("#!/bin/sh\nexit 0\n")
                 path.chmod(0o755)
@@ -50,8 +57,9 @@ class PublishTests(unittest.TestCase):
             env["PATH"] = str(bin_dir) + os.pathsep + env["PATH"]
             result = subprocess.run(["bash", str(dev / "publish.sh"), str(target)],
                                     cwd=source, env=env, capture_output=True, text=True)
-            if not exclude_dev:
+            if not exclude_dev or not exclude_shared:
                 self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn(".gitattributes", result.stderr)
                 self.assertEqual((target / "obsolete.txt").read_text(), "old\n")
                 self.assertFalse((target / "README.md").exists())
                 return
@@ -60,6 +68,7 @@ class PublishTests(unittest.TestCase):
             self.assertEqual((target / "README.md").read_text(), "Folzio\n")
             self.assertFalse((target / "obsolete.txt").exists())
             self.assertFalse((target / "scripts/dev").exists())
+            self.assertFalse((target / "shared-skills").exists())
             self.assertEqual((target / "scripts/public.sh").read_text(), "public helper\n")
 
     def test_publish_excludes_all_dev_files(self):
@@ -67,6 +76,9 @@ class PublishTests(unittest.TestCase):
 
     def test_publish_rejects_included_dev_before_sync(self):
         self.exercise_publish(False)
+
+    def test_publish_rejects_included_shared_skills_before_sync(self):
+        self.exercise_publish(exclude_shared=False)
 
 
 if __name__ == "__main__":

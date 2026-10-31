@@ -173,9 +173,10 @@ lldb -b \
 - Codex の Spec Kit スキルは `.agents/skills/`。CLI では `$speckit-specify`、`$speckit-plan`、
   `$speckit-tasks`、`$speckit-analyze`、`$speckit-implement`、`$speckit-converge` などで呼び出す
 - 標準・git・bug スキルは Spec Kit が生成する。共通のプロジェクト規約はこのファイルで管理する
-- 手書きの `folzio-*` スキルは、手順の本文を `docs_private/<スキル名>.md` に置く。`.agents/skills/` と `.claude/skills/` の
+- 手書きの `folzio-*` スキルは、共通手順の本文を `shared-skills/<スキル名>.md` に置き、
+  運用手順・開発記録は `docs_private/` に置く。`.agents/skills/` と `.claude/skills/` の
   `SKILL.md` には、`name`、`description`（両方で同じ内容）、本文を読む指示、各ツール固有の注意だけを書く。
-  一致は `scripts/dev/check-skill-sync.sh` で確かめる
+  名前と説明の一致、共通本文の存在と参照先は `scripts/dev/check-skill-sync.sh` で確かめる
 - `.codex/config.toml` と `.codex/rules/` は Codex 用。Claude／Kilo の permissions 設定は Codex に適用されない
 
 ## Codex の自動実行【ローカル】
@@ -264,10 +265,11 @@ open .build/Folzio.app
 ## 公開用リポジトリ【共通】
 
 - このリポジトリは非公開の開発用。公開用は `scripts/dev/publish.sh` で `../folzio-oss` へ書き出し、1回の公開を1コミットにする
-- `docs/` は公開用のユーザーガイド・開発ガイド、`docs_private/` は非公開の運用手順・開発記録に使う
+- `docs/` は公開用のユーザーガイド・開発ガイド、`docs_private/` は非公開の運用手順・開発記録、
+  `shared-skills/` は各 AI エージェントで共有するスキル本文に使う
 - Spec Kit・AI エージェント・開発記録のファイルは `.gitattributes` の `export-ignore` で書き出しから外す。
   開発専用スクリプトと補助ファイルは `scripts/dev/` に置く。その他の開発専用ファイルは `.gitattributes` で除外する
-- 公開版の README・ガイド・ソースのコメントから `specs/`・`.specify/`・`docs_private/`・`AGENTS.md` へのリンクを張らない
+- 公開版の README・ガイド・ソースのコメントから `specs/`・`.specify/`・`docs_private/`・`shared-skills/`・`AGENTS.md` へのリンクを張らない
 - 公開用リポジトリへのコミットと push はユーザーが行う
 - 構成と公開の手順の詳細: `docs_private/repository-and-release.md`
 

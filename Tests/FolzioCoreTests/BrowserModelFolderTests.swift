@@ -534,28 +534,29 @@ struct BrowserModelFolderTests {
         return (old, new)
     }
 
-    @Test("Renaming an ancestor updates the listing, selection, and lastFolder to the new location and preserves the preview")
-    func renamingAncestorRebasesListing() async throws {
+    @Test("Renaming an ancestor updates the listing, selection, and lastFolder to the new location and preserves the preview",
+          arguments: ["trip2", "Trip"])
+    func renamingAncestorRebasesListing(newName: String) async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
         _ = try await showDay1Photo(env)
         let signal = env.model.stopPlaybackSignal
 
-        let (old, new) = try rename(env, "trip", to: "trip2")
+        let (old, new) = try rename(env, "trip", to: newName)
         env.model.didRenameFolder(from: old, to: new)
 
-        #expect(path(env.model.listing.folder) == path(env.url("trip2/day1")))
-        #expect(path(env.model.selection.focused) == path(env.url("trip2/day1/1.jpg")))
-        #expect(env.model.selection.selected.map { path($0) } == [path(env.url("trip2/day1/1.jpg"))])
-        #expect(env.row("trip2/day1/1.jpg") != nil)
-        #expect(env.model.listing.files.first?.url == ParentLink.url(for: env.url("trip2/day1")))
+        #expect(path(env.model.listing.folder) == path(env.url(newName + "/day1")))
+        #expect(path(env.model.selection.focused) == path(env.url(newName + "/day1/1.jpg")))
+        #expect(env.model.selection.selected.map { path($0) } == [path(env.url(newName + "/day1/1.jpg"))])
+        #expect(env.row(newName + "/day1/1.jpg") != nil)
+        #expect(env.model.listing.files.first?.url == ParentLink.url(for: env.url(newName + "/day1")))
         #expect(isImagePreview(env.model.preview))
         #expect(env.model.stopPlaybackSignal == signal)
-        #expect(path(env.lastFolder) == path(env.url("trip2/day1")))
+        #expect(path(env.lastFolder) == path(env.url(newName + "/day1")))
 
         // ⌘↑ returns to the folder under its new name (US1-AS40).
         await env.model.goToEnclosingLevel()
-        #expect(path(env.model.listing.folder) == path(env.url("trip2")))
+        #expect(path(env.model.listing.folder) == path(env.url(newName)))
     }
 
     @Test("An event for the old location after renaming the current folder does not navigate to the parent")

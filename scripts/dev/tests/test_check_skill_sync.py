@@ -8,17 +8,23 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 
 
-def skill_text(name="folzio-sample", description="Sample skill.", body="Body."):
-    return f"---\nname: {name}\ndescription: {description}\n---\n\n{body}\n"
+def skill_text(name="folzio-sample", description="Sample skill.", body="Body.",
+               reference="shared-skills/folzio-sample.md"):
+    return f"---\nname: {name}\ndescription: {description}\n---\n\n{body}\nRead `{reference}`.\n"
 
 
 class CheckSkillSyncTests(unittest.TestCase):
-    def run_check(self, agents=None, claude=None):
+    def run_check(self, agents=None, claude=None, shared=True, other_shared=False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             dev = root / "scripts/dev"
             dev.mkdir(parents=True)
             shutil.copy2(ROOT / "scripts/dev/check-skill-sync.sh", dev / "check-skill-sync.sh")
+            if shared:
+                (root / "shared-skills").mkdir()
+                (root / "shared-skills/folzio-sample.md").write_text("Shared instructions.\n")
+                if other_shared:
+                    (root / "shared-skills/folzio-other.md").write_text("Other instructions.\n")
             for base, text in ((".agents/skills", agents), (".claude/skills", claude)):
                 (root / base).mkdir(parents=True)
                 if text is not None:
@@ -45,6 +51,25 @@ class CheckSkillSyncTests(unittest.TestCase):
         result = self.run_check(skill_text(name="folzio-other"), skill_text(name="folzio-other"))
         self.assertEqual(result.returncode, 1)
         self.assertIn("name does not match", result.stderr)
+
+    def test_fails_when_shared_body_is_missing(self):
+        result = self.run_check(skill_text(), skill_text(), shared=False)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("shared-skills/folzio-sample.md not found", result.stderr)
+
+    def test_fails_when_either_entry_point_references_old_location(self):
+        old_reference = skill_text(reference="docs_private/folzio-sample.md")
+        for agents, claude in ((old_reference, skill_text()), (skill_text(), old_reference)):
+            with self.subTest(agents=agents, claude=claude):
+                result = self.run_check(agents, claude)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("missing reference to shared-skills/folzio-sample.md", result.stderr)
+
+    def test_fails_when_reference_points_to_another_existing_body(self):
+        other_reference = skill_text(reference="shared-skills/folzio-other.md")
+        result = self.run_check(other_reference, skill_text(), other_shared=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("missing reference to shared-skills/folzio-sample.md", result.stderr)
 
 
 if __name__ == "__main__":
