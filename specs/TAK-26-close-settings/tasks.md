@@ -2,7 +2,7 @@
 
 **Input**: `specs/TAK-26-close-settings/` の仕様・設計。
 
-**Status**: 2026-10-31 に保守者が設計を承認。実装済み。Cloud の4検査と差分検査は通過。macOS の build/test・GUI 確認、ブランチ名の確認、push、依頼後の PR と CI、product 反映は未完了。
+**Status**: 2026-10-31 に保守者が設計を承認。実装済み。Cloud の4検査と差分検査は通過。保守者承認により agent/tak-26-close-settings へ改名し、実装コミット bb0d0f0 を origin に push 済み。macOS の build/test・GUI 確認、依頼後の PR と CI、product 反映は未完了。
 
 ## Phase 1: Setup
 
@@ -27,7 +27,7 @@
 
 ## Phase 4: Polish & Delivery
 
-- [ ] T009 specs/TAK-26-close-settings/plan.md に記載した work の命名制限について保守者に確認し、許可された作業ブランチ名でコミット・push する。PR は依頼があったときだけ作成する。
+- [x] T009 specs/TAK-26-close-settings/plan.md に記載した work の命名制限について保守者に確認し、許可された作業ブランチ名でコミット・push する。PR は依頼があったときだけ作成する。
 - [ ] T010 PR 作成後に .github/workflows/macos-swift-ci.yml の macOS build/test 結果を確認し、specs/TAK-26-close-settings/quickstart.md に記録する。失敗時はログを読んで修正する。
 - [ ] T011 実装・検証後、PR 最後に最新 master を取り込み、ID の衝突を確認して specs/product/contracts/settings.md に spec.md の反映表の項目を反映する。差分の保守者承認後にコミットし、specs/TAK-26-close-settings/spec.md を凍結する。
 
