@@ -27,15 +27,17 @@
 
 **Independent Test**: quickstart の S2・S3・S7・S9
 
-- [ ] T007 [US37] `DirectoryTreeViewController.swift` の `DragAwareOutlineView` に主の行とアンカー（item で保持）を加え、Shift+↑↓ を処理する。`allowsMultipleSelection = true` にする
-  （FR-208、R4、data-model.md の TreeSelectionLead）
+- [ ] T007 [US37] `DirectoryTreeViewController.swift` の `DragAwareOutlineView` に主の行とアンカー（item で保持）を加え、⌘クリック・Shift クリック（`mouseDown`）と
+  ↑↓・Shift+↑↓（`keyDown`）を自前で処理する。Control クリック・開閉の三角・修飾キーなしのクリックは `super` に任せる。`allowsMultipleSelection = true` にする
+  （FR-208、R4、A-125、data-model.md の TreeSelectionLead）
 - [ ] T008 [US37] `outlineViewSelectionDidChange` と `trackingEnded` を、主の行が変わったときだけ `model.selectFolder` を呼ぶように変える。⌘クリックで外したときは表示を変えない。
   `syncSelection` で1行を選択したときはアンカーと主の行をその行にする。検索結果の表示中に複数選択の中の行を通常のクリックで選んだときは `clickedRow` と同じく検索結果の表示を終える
   （FR-209・FR-086、R4）
 - [ ] T009 [US37] `validateMenuItem`・`menuNeedsUpdate`・`rename(_:)`・`paste(_:)`・`movePaste(_:)`・`copyPathname(_:)`・`revealInFinder(_:)`・`addToFavorites(_:)`・
   `removeFavoriteFromMenu(_:)` を `TreeBatchTargets` の `isSingle` に従わせる。`Sources/FolzioApp/App/MainSplitViewController.swift` の `canAddSelectedFolderToFavorites` も複数選択で false にする
   （FR-211（2）（3）・FR-183、R7）。複数を対象にする右クリックメニューは、対象の種類に関わらず通常のフォルダの項目を出す（FR-211（3））
-- [ ] T010 [US37] ツリーの `selectAll(_:)` を無効にする（A-119、R8）。折りたたみで隠れた選択の扱いを R9 のとおりにする（EC-143）
+- [ ] T010 [US37] ツリーの `selectAll(_:)` を無効にする（A-119、R8）。2行以上の選択で、`outlineViewItemWillCollapse` で隠れる行の選択を外し、`outlineViewItemDidCollapse` で
+  結果を検査して戻す。隠れた主の行からのキーボードの移動は見える祖先の行を起点にする。1行の選択の折りたたみは変えない（EC-143・A-124、R9）
 - [ ] T011 [US37] 名前の編集中に ⌘クリック・Shift クリックで選択を変えたとき、編集を確定することを確かめ、必要なら `finishEditing` を呼ぶ（FR-103・FR-102）
 
 ## Phase 4: User Story 35 - 複数のフォルダをまとめて移動・コピーする (P1)
@@ -44,9 +46,10 @@
 
 **Independent Test**: quickstart の S4・S5
 
-- [ ] T012 [US35] `pasteboardWriterForItem` を `TreeBatchTargets.dragURLs` に従わせ、通常のフォルダ以外を含む選択からのドラッグを始めない（FR-211（1）・FR-162、R5）
+- [ ] T012 [US35] `DragAwareOutlineView` で `canDragRows(with:at:)` を override し、`rowIndexes` の行の role から作った `TreeBatchTargets.dragURLs` が nil、または対象と
+  `rowIndexes` が一致しないときは false を返す（FR-211（1）・FR-162、R5）。`pasteboardWriterForItem` は従来どおり通常のフォルダだけに URL を返す
 - [ ] T013 [US35] ドラッグ後の選択の復元を、ドラッグ前の選択全体と主の行に広げる。選択外の行からドラッグを中止したとき、ファイルリストの表示が変わらないことを確かめる（FR-210（3）・US35-AS2、R5）
-- [ ] T014 [US35] ツリーからの移動の完了で、1件以上が成功したらツリーを主の行の単一選択にする。表示中のフォルダが切り替わった場合は同期に任せる（FR-212、R6）。`Sources/FolzioApp/Operations/FileOperationCoordinator.swift` の
+- [ ] T014 [US35] ツリーからの移動の完了で、1件以上が成功したらツリーを主の行の単一選択にする。表示中のフォルダが切り替わった場合は同期に任せる。主の行が折りたたみで隠れていれば祖先を展開してから選択する（FR-212、R6）。`Sources/FolzioApp/Operations/FileOperationCoordinator.swift` の
   `internalDrop` からツリーへの通知を加える。コピー・キャンセル・すべて失敗では選択を変えない
 - [ ] T015 [US35] 宛先の検証が複数のツリーのフォルダで `InternalDropValidation`（EC-16・EC-121）に従うことを `Tests/FolzioCoreTests/InternalDropValidationTests.swift` で確かめ、
   足りないケース（異なる親の複数フォルダ・親と子の同時選択・宛先が選択の1つの配下）を追加する
@@ -70,7 +73,7 @@
 - [ ] T020 Cloud で `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、
   `python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` を実行し、結果をこの tasks.md に記録する
 - [ ] T021 macOS CI で `swift build`・`swift test` を確認する（PR の作成時、または `workflow_dispatch`）。PR は保守者の依頼があったときだけ作る
-- [ ] T022 [MANUAL] 保守者に、起動スモークと quickstart の S1〜S14 をローカルで実行してもらい（SC-102〜SC-104 の確認を含む）、結果を `checklists/validation.md` に記録する。R4・R5・R9 の想定と違えば該当の実装を調整する
+- [ ] T022 [MANUAL] 保守者に、起動スモークと quickstart の S1〜S14 をローカルで実行してもらい（SC-102〜SC-104 の確認を含む）、結果を `checklists/validation.md` に記録する。S3・S5・S7 は R4・R5・R9 の設計どおりに動くことを確かめる
 - [ ] T023 ユーザーガイド `docs/usage.ja.md`・`docs/usage.md` のツリーの操作の説明（お気に入り・⌘Delete の項）に、複数選択（⌘クリック・Shift クリック・Shift+↑↓）と
   一括の移動・コピー・ゴミ箱を両方に同じ構成で追記する。README は機能の概要だけで個別の操作を書いていないため変えない（`README.ja.md` 20〜21 行）
 - [ ] T024 検証の完了後に最新の master を取り込み、spec.md の「反映先」の項目を `specs/product/` と `specs/product/contracts/keyboard-and-menus.md` へ反映する。

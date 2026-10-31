@@ -28,24 +28,36 @@
 
 ## R4 主の行（FR-209）の追跡
 
-- **Decision**: `DragAwareOutlineView` で主の行を記録する。マウスは `clickedRow`（⌘クリックで外した場合は更新しない）、キーボードは Shift+↑↓ を
-  サブクラスで処理し、アンカーから主の行までの範囲を自分で選択する。`outlineViewSelectionDidChange` は、選択が1行のときは従来どおり、複数のときは主の行の role で
-  `model.selectFolder` を呼ぶ。主の行が変わらない選択の変化（⌘クリックで外す・折りたたみで外れる）では呼ばない。
-- **Rationale**: `NSTableView` は Shift の範囲選択の端（lead）を公開していない。Shift+↑↓ を自前で扱えば、主の行が決定的になりテストしやすい。
-  Shift クリックのアンカーは AppKit が最後のクリックの行を使うため、自前のアンカーも最後のクリックの行（⌘クリックを含む）に揃える。
-- **Alternatives**: 選択の差分から推定 → Shift で縮めたときの主の行が曖昧になるため不採用。
+- **Decision**: 選択を広げる操作（⌘クリック・Shift クリック・Shift+↑↓）は、すべて `DragAwareOutlineView` が自分で処理し、AppKit の範囲選択を使わない。
+  - `mouseDown(with:)`: 修飾キーが ⌘ または Shift だけ（Control・Option を含まない）で、行の上（開閉の三角を除く）を押したときは、`super` を呼ばずに選択を決める。
+    ⌘ は行の追加・除外、Shift はアンカーから押した行までの範囲を `selectRowIndexes(_:byExtendingSelection: false)` で選ぶ。それ以外のクリックは従来どおり `super`
+    （通常のクリック・ダブルクリック・ドラッグ・開閉の三角）。Control クリックは右クリックメニュー（`menu(for:)`）のままにする。
+  - `keyDown(with:)`: Shift+↑↓ を処理し、主の行を1行動かして、アンカーから主の行までを選ぶ。Shift なしの ↑↓ は主の行の前・次の1行を選ぶ（複数選択の解除を含む）。
+    ほかのキーは `super`（`ListModeView.keyDown` と同じ形）。
+  - 主の行とアンカーは item で持つ（data-model.md）。`outlineViewSelectionDidChange` は、主の行が変わったときだけ主の行の role で `model.selectFolder` を呼ぶ。
+- **Rationale**: `NSTableView` は Shift の範囲選択の起点（アンカー）と端（lead）を公開していない。AppKit の内部の起点に合わせる方式では、どちらの起点が使われるかを
+  コードから確定できない（前回まで「未検証」としていた点）。修飾キー付きのクリックと Shift+↑↓ を自前で扱えば、起点・主の行・選択の結果がこちらのコードだけで決まり、
+  AppKit の内部の状態に依存しない。通常のクリックとドラッグは `super` に任せるため、現行のドラッグ・ダブルクリック・開閉の振る舞いは変わらない。
+- **Alternatives**: AppKit の範囲選択を使い、選択の差分から主の行を推定 → Shift で縮めたときの主の行と、Shift クリックの起点が AppKit の内部の状態次第になるため不採用。
+- **制約**: ⌘・Shift を押しながらの行からのドラッグは始まらない（`super` を呼ばないため）。修飾キー付きのドラッグは現行の仕様にない操作で、Option（コピー）はドロップ時に
+  押すキーのため影響しない。
 - **同期による更新**: `syncSelection`（ファイルリストのフォルダを開く・親に戻る・履歴・検索結果から開く）で1行を選択したときは、アンカーと主の行をその行にする（FR-209）。
 - **検索結果の表示中のクリック**: 現行は `trackingEnded` で「選択が変わらなければ `clickedRow`（FR-086）」としている。複数選択の中の行の通常のクリックは選択を1行に縮めるため
   選択が変わる。主の行が変わらない場合も、クリックによる縮小なら `clickedRow` と同じく検索結果の表示を終える（FR-209）。
-- **未検証**: Shift クリックのアンカーが自前のアンカーと一致するか。GUI 確認（quickstart の S3）で確かめる。
 
 ## R5 ドラッグの対象と選択の復元
 
-- **Decision**: `pasteboardWriterForItem` で、ドラッグする行が選択中で、選択中の行に通常のフォルダ以外が含まれるときは、すべての行に nil を返してドラッグを始めない（FR-211）。
-  ドラッグ後の選択の復元（現行は `previousRow` の1行）を、ドラッグ前の選択全体（`IndexSet`）に広げる。
-- **Rationale**: 複数選択の `NSOutlineView` は、選択中の行からのドラッグで選択中の全項目について `pasteboardWriterForItem` を呼び、nil の項目を黙って除く。
-  除外を許すと EC-121 の「黙って除外しない」に反する。選択外の行からのドラッグは AppKit がその行だけを対象にし、現行は mouseDown で変わった選択を元に戻している。
-- **未検証**: 一部の項目に nil を返したときの AppKit の振る舞い（ドラッグが始まらないこと）。CI ではなく GUI 確認（S5）で確かめる。
+- **Decision**: `DragAwareOutlineView` で `canDragRows(with:at:)` を override し、ドラッグを始める前に可否を決める。`rowIndexes` の各行の role から `TreeBatchTargets` を作り、
+  `dragURLs` が nil（通常のフォルダ以外を含む）なら false を返してドラッグを始めない（FR-211（1））。可のときは `super` の結果を返す。
+  `pasteboardWriterForItem` は従来どおり通常のフォルダの行だけに URL を返す（`canDragRows` を通った後は全行が URL を返すので、除外は起きない）。
+  ドラッグ後の選択の復元（現行は `previousRow` の1行）を、ドラッグ前の選択全体（`IndexSet`）と主の行に広げる。
+- **Rationale**: Apple の文書で次を確認した（2026-10-31、developer.apple.com の JSON 版）。
+  `NSTableView.canDragRows(with rowIndexes: IndexSet, at mouseDownPoint: NSPoint) -> Bool` は「Return false to disallow the drag」。
+  `tableView(_:pasteboardWriterForRow:)` は「Returning nil excludes the row from being dragged」。つまり nil を返す方式は一部の行を黙って除くため、EC-121 の
+  「黙って除外しない」に反する。`canDragRows` ならドラッグ全体を開始前に拒否でき、AppKit の除外の振る舞いに依存しない。
+  `rowIndexes` は AppKit がドラッグしようとする行（選択中の行からなら選択全体、選択外の行ならその行）で、FR-210（3）の対象と一致する。一致しない場合に備え、
+  `TreeBatchTargets` の対象と `rowIndexes` の行の集合が異なるときも false を返す。
+- **Alternatives**: `pasteboardWriterForItem` で全行に nil を返す → 文書上の意味は「各行の除外」で、全行の除外でドラッグが始まらないことは文書に書かれていないため不採用。
 
 ## R6 操作後のツリーの選択（FR-212）
 
@@ -71,5 +83,10 @@
 
 ## R9 折りたたみで隠れる選択（EC-143）
 
-- **Decision**: 折りたたみで隠れた行は AppKit の既定どおり選択から外し、ファイルリストの表示は変えない（主の行が隠れた場合も変えない）。
-- **未検証**: `NSOutlineView` が隠れた子の選択を親に移すかどうか。移す場合は `outlineViewItemDidCollapse` で親の選択を外し、`isRestoringSelection` で `selectFolder` を抑止する。GUI 確認（S7）で確かめる。
+- **Decision**: 2行以上を選択しているとき、`outlineViewItemWillCollapse`（現行は編集の確定だけを行う）で、折りたたむフォルダの子孫に当たる選択中の行を、
+  `isRestoringSelection` の下で自分で選択から外す。`outlineViewItemDidCollapse` で、選択が外した後の集合と一致しなければ（AppKit が親を選んだ場合など）、
+  同じく `isRestoringSelection` の下で外した後の集合に戻す。どちらも `model.selectFolder` を呼ばない。主の行が隠れた場合も主の行（item）は保ち、表示を変えない。
+  隠れた主の行からのキーボードの移動は、主の行を隠したフォルダの行を起点にする（EC-143）。
+- **Rationale**: 隠れた子の選択を AppKit がどう扱うか（外す・親へ移す）は文書に書かれていない（`collapseItem(_:collapseChildren:)` の文書は折りたたみと通知だけを述べる）。
+  折りたたむ前に自分で外し、後で結果を検査して戻せば、AppKit の扱いに依存せずに EC-143 の結果が決まる。
+- **範囲**: 1行だけを選択しているときの折りたたみは、現行の振る舞い（AppKit の既定）を変えない。現行仕様にこの場合の規定がなく、この feature の目的の外のため（A-124）。

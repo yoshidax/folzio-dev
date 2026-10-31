@@ -54,7 +54,7 @@ AppKit UI の不変条件（AGENTS.md）を守る
 ### Source Code (repository root)
 
 - `Sources/FolzioCore/Model/TreeBatchTargets.swift`（新規）: 対象の決定（FR-210）、ゴミ箱・ドラッグの URL と可否（FR-211）、親子の重なり（EC-141）。R1・R2
-- `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift`: `allowsMultipleSelection = true`。`DragAwareOutlineView` で主の行とアンカーを追跡し、Shift+↑↓ を処理（R4）。
+- `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift`: `allowsMultipleSelection = true`。`DragAwareOutlineView` で主の行とアンカーを追跡し、⌘クリック・Shift クリック・Shift+↑↓ を自前で処理し、`canDragRows(with:at:)` を override する（R4・R5）。
   ドラッグ前の選択全体の復元と、通常のフォルダ以外を含むドラッグの抑止（R5）。`moveToTrash`・`trashFolderFromMenu`・`validateMenuItem`・`menuNeedsUpdate`・
   `rename`・`paste`・`movePaste`・`copyPathname`・`addToFavorites` を `TreeBatchTargets` 経由に変える（R7）。`selectAll(_:)` の無効化（R8）。折りたたみの扱い（R9）。
   操作後の選択（FR-212、R6）
@@ -70,8 +70,9 @@ AppKit UI の不変条件（AGENTS.md）を守る
 
 ## Phase 0: Research
 
-[research.md](research.md) の R1〜R9。AppKit の挙動に依存する R4（Shift クリックのアンカー）・R5（nil を返したときのドラッグ）・R9（折りたたみの選択）は
-静的調査では確定できないため、GUI 確認（quickstart の S3・S5・S7）を実装のゲートにする。想定と違えば、該当の箇所だけを調整し、仕様の振る舞いは変えない。
+[research.md](research.md) の R1〜R9。AppKit の内部の状態に依存していた3点は、こちらのコードで結果を決める設計に変えた。
+R4: 修飾キー付きのクリックと Shift+↑↓ を自前で処理する。R5: Apple の文書で確認した `canDragRows(with:at:)` でドラッグを開始前に拒否する。
+R9: 折りたたむ前に隠れる行の選択を外し、後で結果を検査して戻す。GUI 確認（quickstart の S3・S5・S7）は、仕様どおりに動くことの確認として行う（挙動の調査ではない）。
 
 ## Phase 1: Design
 
