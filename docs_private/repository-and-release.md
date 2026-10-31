@@ -45,6 +45,7 @@ Issue を `Done` にする。これはマージや push に連動する自動更
 
 - `docs/`: 公開用のユーザーガイド・開発ガイド。README からリンクし、公開用リポジトリにも書き出す
 - `docs_private/`: 非公開の運用手順・用語集・開発記録。このファイルを含み、公開用リポジトリには書き出さない
+- `shared-skills/`: Codex・Claude Code・Kilo Code で共有するスキルの手順本文。各ツールの `SKILL.md` から参照し、公開用リポジトリには書き出さない
 
 ## 公開版から外すファイル
 
@@ -56,6 +57,7 @@ Issue を `Done` にする。これはマージや push に連動する自動更
 | `.claude/` `.agents/` `.kilo/` `.codex/` | 各 AI エージェントの設定・スキル・コマンド |
 | `specs/` | 仕様（`specs/product/`）と各 feature の記録 |
 | `docs_private/` | 開発用のドキュメント（このファイルを含む） |
+| `shared-skills/` | 各 AI エージェントで共有するスキルの手順本文 |
 | `AGENTS.md` | エージェント向けのプロジェクト規約 |
 | `scripts/dev/` | 開発専用のスクリプト・補助ファイル・検証 |
 | `.vscode/` | エディタの個人設定 |

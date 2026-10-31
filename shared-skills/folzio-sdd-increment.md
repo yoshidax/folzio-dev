@@ -1,7 +1,7 @@
 # Folzio SDD increment の共通手順
 
 > この手順は、保守者のローカルでのセッション用です（着手前に、指定されたベースブランチとクリーンな作業ツリーを前提とします）。
-> Cloud 環境の Cloud Agent は、[cloud-agent-workflow.md](cloud-agent-workflow.md) に従います。
+> Cloud 環境の Cloud Agent は、[cloud-agent-workflow.md](../docs_private/cloud-agent-workflow.md) に従います。
 
 この手順は Codex、Claude Code、Kilo Code の対話スキルで共有する。自動 workflow の実行とは別の進め方であり、同じリポジトリで同時に実行しない。各環境の入口が指定する workflow を読み、手動確認とレビューのゲートを守る。
 

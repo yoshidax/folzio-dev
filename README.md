@@ -55,6 +55,8 @@ If a folder is not accessible, allow Folzio access in System Settings → Privac
 
 | Action | Shortcut |
 |--------|----------|
+| Open the shortcut reference | ⌘/ |
+| Close the key window | ⌘W |
 | Thumbnail view / list view | ⌘1 / ⌘2 |
 | Search file and folder names | ⌘F |
 | Open a folder / go up one level | ⌘↓ / ⌘↑ |
@@ -63,6 +65,10 @@ If a folder is not accessible, allow Folzio access in System Settings → Privac
 | Enter / exit full screen | ⌃⌘F |
 | Start / end a slideshow | ⇧⌘S / Esc |
 | Show / hide zip files | ⌃⌘Z |
+
+Open File → Keyboard Shortcuts… (ショートカット一覧…) for a reference grouped by purpose.
+It opens in a separate window so you can keep using the main window. Close the reference with ⌘W;
+closing its parent also closes the reference.
 
 See the [user guide](docs/usage.md) for more shortcuts, settings, and detailed behavior.
 
