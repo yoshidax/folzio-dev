@@ -68,3 +68,12 @@ PR は保守者の依頼で作る（FR-198）。作成後に、次を確かめ�
 | C4 権限（US29-AS3） | `master` への push と、`--force` を付けた push を、副作用のない `--dry-run` で試した。前者は「master への push は禁止です」、後者は「オプション --force は許可リストにありません」で、どちらも `scripts/dev/check-git-push.py` が拒否した。`merge_pull_request` は拒否リストにあるが、誤ってマージされる恐れがあるため、呼んで確かめてはいない |
 | 補足 | `actions_run_trigger` には `rerun_workflow_run`、`rerun_failed_jobs`、`cancel_workflow_run` もある（未試行） |
 | 補足 | 上のフックは、コマンドの文字列のどこかに push の呼び出しの記述があると（ヒアドキュメントの文中も）、入れ子と見なしてコマンド全体を拒否する。文書の編集は、Edit ツールで行うか、その記述を含めない |
+
+### 2026-10-31: `specs/product/` への反映（T028）
+
+| 項目 | 結果 |
+|---|---|
+| 反映した項目 | `overview.md` に、User Story 27〜31（受け入れシナリオ 16 件）、`FR-186`〜`FR-199`（14 件）、`EC-129`〜`EC-135`（7 件）、`SC-090`〜`SC-095`（6 件）、`A-105`〜`A-115`（11 件）を追加。削除と変更は 0 行 |
+| A5 ID の重複検査 | 反映後の `specs/product/` で重複した ID が 0 件（反映前の新しい ID の衝突も 0 件） |
+| 既存の検査 | `check-no-network.sh`、`check-readme-sync.sh master`、`check-english-comments.sh`、`test_check_git_push.py` が通過 |
+| 状態 | 保守者の承認（T029）を待っている。このコミットは未マージの専用ブランチにあり、PR は作っていない |

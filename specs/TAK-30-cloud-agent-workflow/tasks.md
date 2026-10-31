@@ -67,7 +67,7 @@
 
 ## Phase 9: `specs/product/` への反映
 
-- [ ] T028 `git merge origin/master` で最新の `master` を取り込み、`spec.md` の「反映先」の表に従って `specs/product/overview.md` に反映する（US27〜US31 の受け入れシナリオ、`EC-129`〜`EC-135`、`FR-186`〜`FR-199`、`SC-090`〜`SC-095`、`A-105`〜`A-115`）。`spec.md` の冒頭に移行済み・凍結の注記を入れる。ID の付け方は `specs/product/README.md` に従う。反映の後に、`quickstart.md` の A5 の ID の重複検査を実行する。コミットしない。反映した項目と差分を保守者へ示す。
+- [X] T028 `git merge origin/master` で最新の `master` を取り込み、`spec.md` の「反映先」の表に従って `specs/product/overview.md` に反映する（US27〜US31 の受け入れシナリオ、`EC-129`〜`EC-135`、`FR-186`〜`FR-199`、`SC-090`〜`SC-095`、`A-105`〜`A-115`）。`spec.md` の冒頭に移行済み・凍結の注記を入れる。ID の付け方は `specs/product/README.md` に従う。反映の後に、`quickstart.md` の A5 の ID の重複検査を実行する。コミットしない。反映した項目と差分を保守者へ示す。
 - [ ] T029 [MANUAL] 保守者が反映の差分を確認して承認する。承認後に反映をコミットして push する。
 - [ ] T030 [MANUAL] 保守者が PR をマージし、完了更新を依頼する。Agent がマージを確認して TAK-30 を `Done` にする。確認できなければ完了にしない。（FR-197、quickstart.md の E）
 - [ ] T031 [MANUAL] 次の実際の Cloud 作業（別の Issue）で、Agent が手順書と `AGENTS.md` だけで PR の作成まで進められたかを観察し、結果を `quickstart.md` の末尾に記録する。この観察は完了を妨げない。（SC-090、FR-196）

@@ -1,5 +1,8 @@
 # Feature Specification: Cloud Agent 向けの開発 workflow
 
+> **移行済み（2026-10-31）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-30 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `claude/tak-30-cloud-agent-workflow`（Cloud が指定する作業ブランチ。feature ディレクトリ名とは独立）
 **Created**: 2026-10-30
 **Status**: Draft
