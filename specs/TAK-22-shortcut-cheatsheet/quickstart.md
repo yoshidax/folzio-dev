@@ -61,3 +61,36 @@ open .build/Folzio.app
 Cloud: 未実施（実装前）。CI: 未実施。ローカル build/test: 未実施。GUI Q1〜Q14: 未実施。
 記録する項目: コミットSHA、macOS・Swift版、配列・表示言語、各Qの結果、CI URL、失敗・未確認事項。
 GUI未確認のまま feature 完了・凍結・Done更新をしない。
+
+### 2026-10-31 実装着手の記録（T001〜T002）
+
+保守者が会話で設計案に対して「続けて」と回答し、設計レビュー承認として実装を開始した。
+作業ブランチはCloud指定の work。最新origin/master（bfe63d5）をfetchし取り込み済みであることを確認。
+44項目を既存のメニューとペインの入力処理、キーボード契約と照合。既存のキー処理は変更しない。
+新規利用APIはAppleの公式文書で確認した:
+
+- [NSWindow](https://developer.apple.com/documentation/appkit/nswindow): performClose、willCloseNotification。
+- [NSTextField](https://developer.apple.com/documentation/appkit/nstextfield): wrappingLabelWithString、preferredMaxLayoutWidth。
+- [preferredMaxLayoutWidth](https://developer.apple.com/documentation/appkit/nstextfield/preferredmaxlayoutwidth): 指定幅で全文を表示する高さ。
+- [NSScrollView.documentView](https://developer.apple.com/documentation/appkit/nsscrollview/documentview): スクロール対象のビュー。
+- [NSView.isFlipped](https://developer.apple.com/documentation/appkit/nsview/isflipped): 上端起点のレイアウト。
+
+T003〜T010、T012〜T014、T016の実装を追加した。チェックは実装作業の完了を表し、Swiftのビルド・テスト成功やGUI確認を表さない。
+カタログは7区分44項目。翻訳は用途別のTextKeyで管理し、既存CatalogConsistencyTestsが追加キーも検査する。
+CI・ローカルのSwift実行・GUIのQ1〜Q14は引き続き未確認。
+
+### 2026-10-31 Cloud検査の結果（T017）
+
+- check-no-network.sh: 成功。SourcesにネットワークAPI参照なし。
+- check-readme-sync.sh origin/master: 成功。ローカルmaster参照がないため、fetch済みのorigin/masterを基準に使用。
+- check-english-comments.sh: 成功。
+- test_check_git_push.py: 3件成功。
+- git diff --check: 成功。
+- カタログ静的照合: 44項目・7区分のID、順序、キーを承認済み契約へ照合。
+- 翻訳静的照合: 各言語94個の追加キーが揃い、空欄・重複・未使用キーなし。パーセントは書式用にエスケープ。
+
+表示上の調整: 契約の「⇧ + 矢印」は翻訳しないキー列に日本語を混在させないため、同じ意味の「⇧↑ / ⇧↓ / ⇧← / ⇧→」で表示する。割り当て・掲載範囲は変更していない。
+互換性確認: 新しいSDKで追加されたHeadingRole定数は使用せず、標準の静的ラベルと翻訳されたアクセシビリティラベルで各見出しを公開する。
+
+追加したSwift Testingの5テストはCloudでは未実行。CIのbuild/test、VoiceOver・スクロール・ウィンドウの終了連動を含むGUI Q1〜Q14、保守者のローカルbuild/testは未確認。
+T011・T015・T018〜T020は未チェック。product仕様の反映・凍結・Linear Done更新は行っていない。

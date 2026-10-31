@@ -10,13 +10,13 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 `specs/TAK-22-shortcut-cheatsheet/plan.md` の設計レビュー承認を受け、実装開始の根拠を `specs/TAK-22-shortcut-cheatsheet/quickstart.md` の結果欄へ記録する。
-- [ ] T002 `specs/TAK-22-shortcut-cheatsheet/contracts/shortcut-cheatsheet.md` の44項目を既存 `specs/product/contracts/keyboard-and-menus.md` と各入力ハンドラーへ照合し、既存条件を変えないことを確認する（FR-203）。実装に必要な新規AppKit APIは公式ヘッダー・文書で利用前に確認する。
+- [x] T001 `specs/TAK-22-shortcut-cheatsheet/plan.md` の設計レビュー承認を受け、実装開始の根拠を `specs/TAK-22-shortcut-cheatsheet/quickstart.md` の結果欄へ記録する。
+- [x] T002 `specs/TAK-22-shortcut-cheatsheet/contracts/shortcut-cheatsheet.md` の44項目を既存 `specs/product/contracts/keyboard-and-menus.md` と各入力ハンドラーへ照合し、既存条件を変えないことを確認する（FR-203）。実装に必要な新規AppKit APIは公式ヘッダー・文書で利用前に確認する。
 
 ## Phase 2: Foundational
 
-- [ ] T003 `Sources/FolzioCore/Shortcuts/ShortcutCatalog.swift` に固定カタログを追加する。「7区分」「空区分は禁止」「IDは空でなく全体で一意」「keysは空でなく言語で変形しない」「各entryは1区分だけ」を満たし、契約の44項目を固定順で持たせる（FR-202〜203）。
-- [ ] T004 `Tests/FolzioCoreTests/ShortcutCatalogTests.swift` で区分の順序・空でないこと、44項目のIDとキーと所属、ID一意性を検証する。期待一覧は契約から照合し、実装の値をそのまま期待値にしない（FR-202〜203、SC-096）。
+- [x] T003 `Sources/FolzioCore/Shortcuts/ShortcutCatalog.swift` に固定カタログを追加する。「7区分」「空区分は禁止」「IDは空でなく全体で一意」「keysは空でなく言語で変形しない」「各entryは1区分だけ」を満たし、契約の44項目を固定順で持たせる（FR-202〜203）。
+- [x] T004 `Tests/FolzioCoreTests/ShortcutCatalogTests.swift` で区分の順序・空でないこと、44項目のIDとキーと所属、ID一意性を検証する。期待一覧は契約から照合し、実装の値をそのまま期待値にしない（FR-202〜203、SC-096）。
 
 ## Phase 3: US1 一覧を開いて目的から探す (P1 / MVP)
 
@@ -24,10 +24,10 @@
 
 **Independent Test**: quickstart Q1〜2。既存の入力条件はQ7〜8で確認する。
 
-- [ ] T005 [US1] `Sources/FolzioLocalization/ShortcutText.swift` と `Sources/FolzioLocalization/TextKey.swift`、`Sources/FolzioLocalization/Resources/{en,ja}.lproj/Localizable.strings` にタイトル、7見出し、44操作の説明と条件、起動・閉じるラベルを追加する。全IDを網羅して英語と日本語の完全な文を提供し、各翻訳キーの用途を英語コメントで説明する（FR-202・206）。
-- [ ] T006 [US1] `Sources/FolzioApp/Shortcuts/ShortcutCheatSheetWindowController.swift` に通常レベルの独立NSWindowと一覧を実装する。初期内容640×680pt、最小480×360pt、画面が小さい場合はvisibleFrame優先。キー列を区別し説明を折り返し、横スクロールなしの縦一覧とする。sheet/modal/child windowは使わず、既定言語でも全項目を表示する（FR-201〜202）。
-- [ ] T007 [US1] `Sources/FolzioApp/App/MainWindowController.swift` で一覧を遅延作成し、親の右→左→表示領域内の順で初期配置する。初回だけ配置し親のフレームは変えない（FR-201、EC-139）。
-- [ ] T008 [US1] `Sources/FolzioApp/App/AppDelegate.swift`、`Sources/FolzioApp/App/MainMenu.swift`、`Sources/FolzioApp/App/MainSplitViewController.swift` に起動入口と表示可否を追加する。⌘/とメニューを同じ明示targetへ送り、親終了・編集中・親sheet/app modal・全画面・slideshowを拒否する。既存の単独/を変えず、起動条件の参照を既存状態から得る（FR-200、EC-136〜138）。
+- [x] T005 [US1] `Sources/FolzioLocalization/ShortcutText.swift` と `Sources/FolzioLocalization/TextKey.swift`、`Sources/FolzioLocalization/Resources/{en,ja}.lproj/Localizable.strings` にタイトル、7見出し、44操作の説明と条件、起動・閉じるラベルを追加する。全IDを網羅して英語と日本語の完全な文を提供し、各翻訳キーの用途を英語コメントで説明する（FR-202・206）。
+- [x] T006 [US1] `Sources/FolzioApp/Shortcuts/ShortcutCheatSheetWindowController.swift` に通常レベルの独立NSWindowと一覧を実装する。初期内容640×680pt、最小480×360pt、画面が小さい場合はvisibleFrame優先。キー列を区別し説明を折り返し、横スクロールなしの縦一覧とする。sheet/modal/child windowは使わず、既定言語でも全項目を表示する（FR-201〜202）。
+- [x] T007 [US1] `Sources/FolzioApp/App/MainWindowController.swift` で一覧を遅延作成し、親の右→左→表示領域内の順で初期配置する。初回だけ配置し親のフレームは変えない（FR-201、EC-139）。
+- [x] T008 [US1] `Sources/FolzioApp/App/AppDelegate.swift`、`Sources/FolzioApp/App/MainMenu.swift`、`Sources/FolzioApp/App/MainSplitViewController.swift` に起動入口と表示可否を追加する。⌘/とメニューを同じ明示targetへ送り、親終了・編集中・親sheet/app modal・全画面・slideshowを拒否する。既存の単独/を変えず、起動条件の参照を既存状態から得る（FR-200、EC-136〜138）。
 
 **Checkpoint**: US32-AS1〜3 が実演可能。ただし終了・翻訳・全検証前は提出完了にしない。
 
@@ -37,8 +37,8 @@
 
 **Independent Test**: quickstart Q3〜6・Q14。
 
-- [ ] T009 [US2] `Sources/FolzioApp/App/MainWindowController.swift` と `Sources/FolzioApp/Shortcuts/ShortcutCheatSheetWindowController.swift` で既存controllerを再利用し、一覧を閉じても位置・サイズ・スクロールを親の生存中だけ保持する。親限定willClose通知で一覧を閉じ親終了済みにし、通知の寿命を管理する。既存window.delegateは置換しない（FR-204〜205、EC-136）。
-- [ ] T010 [US2] `Sources/FolzioApp/App/MainMenu.swift` に nil target の `NSWindow.performClose(_:)` と⌘Wを追加し、Closeの翻訳バインドを付ける。親を明示targetにしない。アプリ再起動への一覧復元は加えない（FR-204〜205）。
+- [x] T009 [US2] `Sources/FolzioApp/App/MainWindowController.swift` と `Sources/FolzioApp/Shortcuts/ShortcutCheatSheetWindowController.swift` で既存controllerを再利用し、一覧を閉じても位置・サイズ・スクロールを親の生存中だけ保持する。親限定willClose通知で一覧を閉じ親終了済みにし、通知の寿命を管理する。既存window.delegateは置換しない（FR-204〜205、EC-136）。
+- [x] T010 [US2] `Sources/FolzioApp/App/MainMenu.swift` に nil target の `NSWindow.performClose(_:)` と⌘Wを追加し、Closeの翻訳バインドを付ける。親を明示targetにしない。アプリ再起動への一覧復元は加えない（FR-204〜205）。
 - [ ] T011 [US2] `specs/TAK-22-shortcut-cheatsheet/quickstart.md` にQ3〜6・Q14の実機結果を保守者から受けて記録する。開く10回で1枚、一枚だけ閉じる、親終了連動、閉じた親への再表示拒否を確認する。実機確認前は未チェックのままにする（SC-097・099）。
 
 ## Phase 5: US3 言語・キーボード・読み上げ (P2)
@@ -47,15 +47,15 @@
 
 **Independent Test**: quickstart Q10〜12。
 
-- [ ] T012 [US3] `Sources/FolzioApp/Shortcuts/ShortcutCheatSheetWindowController.swift` にLanguageChangeObserverを追加し、タイトル・見出し・説明・条件を即時更新する。先頭可視entry IDと行内offsetをレイアウト後に復元・clampし、位置・サイズ・キー表記を保つ（FR-206）。
-- [ ] T013 [US3] `Sources/FolzioApp/Shortcuts/ShortcutCheatSheetWindowController.swift` でscroll viewを初期入力先にし、↑↓・Page Up/Down・Home/Endで全項目へ到達させる。不足分のみ専用ビューで処理し、Escを親へ流さない。見出しと行のキー・説明・条件に読み上げ用の意味を付け、system colorsを使う（FR-207、EC-140）。
-- [ ] T014 [US3] `Tests/FolzioCoreTests/Localization/ShortcutTextTests.swift` で全区分と44項目の両言語取得、空欄・欠落・内部キー表示がないこと、キー表記不変を検証する。既存の `Tests/FolzioCoreTests/Localization/CatalogConsistencyTests.swift` の整合性検査にも全TextKeyを含める（FR-206、SC-098）。
+- [x] T012 [US3] `Sources/FolzioApp/Shortcuts/ShortcutCheatSheetWindowController.swift` にLanguageChangeObserverを追加し、タイトル・見出し・説明・条件を即時更新する。先頭可視entry IDと行内offsetをレイアウト後に復元・clampし、位置・サイズ・キー表記を保つ（FR-206）。
+- [x] T013 [US3] `Sources/FolzioApp/Shortcuts/ShortcutCheatSheetWindowController.swift` でscroll viewを初期入力先にし、↑↓・Page Up/Down・Home/Endで全項目へ到達させる。不足分のみ専用ビューで処理し、Escを親へ流さない。見出しと行のキー・説明・条件に読み上げ用の意味を付け、system colorsを使う（FR-207、EC-140）。
+- [x] T014 [US3] `Tests/FolzioCoreTests/Localization/ShortcutTextTests.swift` で全区分と44項目の両言語取得、空欄・欠落・内部キー表示がないこと、キー表記不変を検証する。既存の `Tests/FolzioCoreTests/Localization/CatalogConsistencyTests.swift` の整合性検査にも全TextKeyを含める（FR-206、SC-098）。
 - [ ] T015 [US3] `specs/TAK-22-shortcut-cheatsheet/quickstart.md` に保守者によるQ10〜12の実機結果を記録する。両言語最小幅、参照項目維持、キーボード、VoiceOver、明暗モード、親への非伝播を確認する（SC-098〜099）。
 
 ## Phase 6: Polish & Verification
 
-- [ ] T016 `README.md` と `README.ja.md` に一覧の開き方・閉じ方・非モーダル表示を同内容で追記する（FR-200・205）。
-- [ ] T017 `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p 'test_check_git_push.py'`、`git diff --check` を実行し、結果を `specs/TAK-22-shortcut-cheatsheet/quickstart.md` に追記する。
+- [x] T016 `README.md` と `README.ja.md` に一覧の開き方・閉じ方・非モーダル表示を同内容で追記する（FR-200・205）。
+- [x] T017 `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p 'test_check_git_push.py'`、`git diff --check` を実行し、結果を `specs/TAK-22-shortcut-cheatsheet/quickstart.md` に追記する。
 - [ ] T018 許可された作業ブランチへの変更・pushが必要な場合は保守者に確認してから提出し、依頼時のみPRを作る。`.github/workflows/macos-swift-ci.yml` のbuild・全テスト・性能テスト結果を確認し、CI URLと結果を `specs/TAK-22-shortcut-cheatsheet/quickstart.md` に記録する。CIがない間は未確認とする。
 - [ ] T019 保守者のローカルbuild/testと3ペイン起動スモーク、Q1〜2・Q7〜9・Q13および44項目の契約と実動作の照合を `specs/TAK-22-shortcut-cheatsheet/quickstart.md` に記録する。US/JIS配列、通常表示・zip・検索結果・全画面・slideshowの条件を確認し、未確認事項を明記する（SC-096・099）。
 - [ ] T020 実装と検証後に最新masterを取り込み、`specs/product/window-layout.md`、`specs/product/overview.md`、`specs/product/contracts/keyboard-and-menus.md`、`specs/product/contracts/localization.md` へspecの反映表に従って追記する。ID衝突は未マージの本feature側で振り直す。差分を示し承認後コミットし、`specs/TAK-22-shortcut-cheatsheet/spec.md` に凍結注記を付ける。

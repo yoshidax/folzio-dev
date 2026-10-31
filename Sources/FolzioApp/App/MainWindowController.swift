@@ -6,6 +6,8 @@ import FolzioLocalization
 final class MainWindowController: NSWindowController {
     private let splitViewController: MainSplitViewController
     private let toolbarController: MainToolbarController
+    private var shortcutWindowController: ShortcutCheatSheetWindowController?
+    private var hasClosed = false
 
     init() {
         let window = NSWindow(
@@ -25,6 +27,10 @@ final class MainWindowController: NSWindowController {
         )
         self.toolbarController = toolbarController
         super.init(window: window)
+
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(parentWillClose(_:)), name: NSWindow.willCloseNotification, object: window
+        )
 
         window.contentViewController = splitViewController
         window.title = "Folzio"
@@ -49,6 +55,31 @@ final class MainWindowController: NSWindowController {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) is not supported")
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    /// Whether the existing parent can present its shortcut reference without disturbing another operation.
+    var canShowShortcuts: Bool {
+        !hasClosed && splitViewController.canShowShortcuts
+    }
+
+    func showShortcuts() {
+        guard canShowShortcuts, let window else { return }
+        if shortcutWindowController == nil {
+            shortcutWindowController = ShortcutCheatSheetWindowController(parent: window)
+        }
+        shortcutWindowController?.present()
+    }
+
+    @objc private func parentWillClose(_ notification: Notification) {
+        guard let closingWindow = notification.object as? NSWindow, closingWindow === window else { return }
+        hasClosed = true
+        shortcutWindowController?.close()
+        shortcutWindowController = nil
+        NotificationCenter.default.removeObserver(self, name: NSWindow.willCloseNotification, object: closingWindow)
     }
 
     /// Leaves no slideshow tasks, pending work, or restore state on termination.

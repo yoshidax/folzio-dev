@@ -111,6 +111,19 @@ final class MainSplitViewController: NSSplitViewController {
         )
     }
 
+    /// Whether presenting the shortcut reference leaves the current editing and presentation state intact.
+    var canShowShortcuts: Bool {
+        guard let window = view.window else { return false }
+        return !fileListViewController.isEditingText
+            && window.attachedSheet == nil
+            && NSApp.modalWindow == nil
+            && !isFullScreenPresentation
+            && !window.styleMask.contains(.fullScreen)
+            && !isAppInitiatedFullScreenTransition
+            && !slideshowCoordinator.isActive
+            && !slideshowCoordinator.isRestoring
+    }
+
     /// Shared condition for the menu, toolbar, and start action (FR-114, FR-115).
     var canStartSlideshow: Bool {
         guard let window = view.window else { return false }
