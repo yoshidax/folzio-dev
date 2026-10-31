@@ -5,4 +5,4 @@ description: Folzio の機能・改善・バグをコードベースに照らし
 
 # Folzio の Issue を登録する
 
-Folzio の機能・改善・バグを現在の会話で整理し、Linear に登録または更新する。開始前に `AGENTS.md` と `docs_private/folzio-register-issue.md` を読み、共通手順を実行する。指示が競合するときは上位の指示と `AGENTS.md` を優先する。
+Folzio の機能・改善・バグを現在の会話で整理し、Linear に登録または更新する。開始前に `AGENTS.md` と `shared-skills/folzio-register-issue.md` を読み、共通手順を実行する。指示が競合するときは上位の指示と `AGENTS.md` を優先する。
