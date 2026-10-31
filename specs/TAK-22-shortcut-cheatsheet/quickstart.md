@@ -58,7 +58,7 @@ open .build/Folzio.app
 
 ## 5 結果の記録（実装後、T016〜T019で追記）
 
-Cloud: 静的検査成功。CI: ビルド・通常833件・性能27件成功（下記の最終CI記録を参照）。ローカル build/test: 未実施。GUI Q1〜Q14: 未実施。
+Cloud: 静的検査成功。CI: ビルド・通常833件・性能27件成功（下記の最終CI記録を参照）。保守者から動作確認「問題なし」の報告あり。ローカルbuild/testの個別結果・GUI各Qの詳細は未報告。
 記録する項目: コミットSHA、macOS・Swift版、配列・表示言語、各Qの結果、CI URL、失敗・未確認事項。
 GUI未確認のまま feature 完了・凍結・Done更新をしない。
 
@@ -125,3 +125,19 @@ CompiledBundleTestsを、翻訳元の%%の数と結果の%の数が一致し、�
 残りはT011・T015・T019の保守者確認と、検証後のT020（product仕様反映と承認後の凍結）。
 GUI Q1〜Q14、ローカル最新Swiftのbuild/test、公開・配布用の開発スクリプト検証は未確認。CI成功だけで実機検証済みとは扱わない。
 Linear TAK-22はIn Review、PR #10を紐付け済み。
+
+### 2026-10-31 保守者の動作確認と文書の別PR
+
+保守者から会話で「動作確認は問題ありませんでした」と報告を受けた。Agent自身がGUIを実行したものではない。
+直前に依頼した主な確認点は一覧の起動（⌘/）、一覧だけを閉じる操作（⌘W）、親の終了連動。
+Q1〜Q14ごとの結果、VoiceOver、US/JIS両配列、両言語最小幅、反復10回、最新Swiftのbuild/test、公開・配布スクリプトの個別結果は示されていないため、個別に成功したとは記録しない。
+T011・T015・T019は詳細検証の未報告事項を残す。動作確認の報告自体は受領済み。
+
+実装PR #10がmasterの6a6a700へマージ済みであることをfetchで確認した。CI成功コミットe06a754とmasterのSources・Tests・READMEに差分なし。
+未提出の検証記録205c852は、保守者の別PR作成の依頼を受け、新しいdocs/TAK-22-shortcut-recordsブランチへcherry-pickした（新SHA:9ddfa10）。元の実装ブランチへの追加pushは行っていない。
+
+保守者が「追記分を残りの仕様反映とまとめた別の文書PR」に同意したため、承認済みfeature仕様のFR-200〜207・SC-096〜099・EC-136〜140・A-116〜118・US32〜34をproductへ反映する。
+反映先はwindow-layout.md、overview.md、contracts/keyboard-and-menus.md、contracts/localization.md。7区分44項目の固定一覧もキーボード契約へ移す。
+仕様IDは最新masterとの衝突なし。アプリ・テスト・README・CI設定の変更なし。
+
+文書PRの検査: productの29個の追加IDが各1回だけ定義され、既存IDにも重複なし。44項目のキー表記が実装カタログと一致。ローカルMarkdownリンクを確認し、git diff --check・通信禁止・英語コメント・README同期（origin/master基準）・push保護テスト3件は成功。変更はspecs配下の文書8ファイルだけである。
