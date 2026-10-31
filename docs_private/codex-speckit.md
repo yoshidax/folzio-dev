@@ -74,6 +74,7 @@ Issue の形式は Linear の TAK チームにある `Folzio -` で始まる4種
 Linear から直接登録するときも該当するテンプレートを選べる。未確認の項目は空欄でもよい。
 この段階の調査は概略であり、正式なバグ診断や新機能の詳細な仕様化は着手時に行う。
 スキルが候補に表示されない場合は新しいセッションを開く。
+共通手順と Claude Code・Kilo Code での使い方は `docs_private/folzio-register-issue.md` を参照する。
 
 ## increment を自動実行する
 

@@ -93,7 +93,7 @@ OSS として配布するため、ソースコードのコメントは英語で�
 1. `swift build`
 2. `swift test`
 3. `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、
-   `scripts/dev/check-english-comments.sh`
+   `scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`
 4. 起動スモーク（3ペインが表示されること）
    - `scripts/make-app.sh`
    - `open .build/Folzio.app`
@@ -173,6 +173,9 @@ lldb -b \
 - Codex の Spec Kit スキルは `.agents/skills/`。CLI では `$speckit-specify`、`$speckit-plan`、
   `$speckit-tasks`、`$speckit-analyze`、`$speckit-implement`、`$speckit-converge` などで呼び出す
 - 標準・git・bug スキルは Spec Kit が生成する。共通のプロジェクト規約はこのファイルで管理する
+- 手書きの `folzio-*` スキルは、手順の本文を `docs_private/<スキル名>.md` に置く。`.agents/skills/` と `.claude/skills/` の
+  `SKILL.md` には、`name`、`description`（両方で同じ内容）、本文を読む指示、各ツール固有の注意だけを書く。
+  一致は `scripts/dev/check-skill-sync.sh` で確かめる
 - `.codex/config.toml` と `.codex/rules/` は Codex 用。Claude／Kilo の permissions 設定は Codex に適用されない
 
 ## Codex の自動実行【ローカル】
@@ -217,7 +220,7 @@ Cloud 環境で Agent が作業するときの規則です。手順の詳細は 
 ### 検証ゲート（手順書 5）
 
 - Cloud で行う: `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、
-  `test_check_git_push.py`
+  `scripts/dev/check-skill-sync.sh`、`test_check_git_push.py`
 - CI で行う: `swift build`、`swift test`
 - 保守者がローカルで行う: 起動スモーク、ローカルの最新の Swift でのビルド、`scripts/dev/tests` の公開・配布のテスト
 - 起動スモークを省略して「CI が通ったから完了」にしない。マージ前のゲート（自動テストの通過）は、CI の成功と保守者のローカルでの確認で満たす
