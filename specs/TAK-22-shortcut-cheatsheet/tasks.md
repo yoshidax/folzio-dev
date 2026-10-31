@@ -2,7 +2,7 @@
 
 **Input**: `specs/TAK-22-shortcut-cheatsheet/` の spec.md、plan.md、research.md、data-model.md、contracts/、quickstart.md。
 
-**Prerequisites**: 設計レビューの承認前には実装しない。現時点は設計資料作成済み、実装タスク未着手。
+**Prerequisites**: 設計レビューの承認前には実装しない。設計承認済み。実装はPR #10でマージ済み。検証記録はquickstart.mdを参照。
 
 **Tests**: spec.md の検証方針に従いカタログ・翻訳の自動テストを追加。AppKit の確認は実機で記録する。
 
@@ -56,9 +56,9 @@
 
 - [x] T016 `README.md` と `README.ja.md` に一覧の開き方・閉じ方・非モーダル表示を同内容で追記する（FR-200・205）。
 - [x] T017 `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p 'test_check_git_push.py'`、`git diff --check` を実行し、結果を `specs/TAK-22-shortcut-cheatsheet/quickstart.md` に追記する。
-- [ ] T018 許可された作業ブランチへの変更・pushが必要な場合は保守者に確認してから提出し、依頼時のみPRを作る。`.github/workflows/macos-swift-ci.yml` のbuild・全テスト・性能テスト結果を確認し、CI URLと結果を `specs/TAK-22-shortcut-cheatsheet/quickstart.md` に記録する。CIがない間は未確認とする。
+- [x] T018 許可された作業ブランチへの変更・pushが必要な場合は保守者に確認してから提出し、依頼時のみPRを作る。`.github/workflows/macos-swift-ci.yml` のbuild・全テスト・性能テスト結果を確認し、CI URLと結果を `specs/TAK-22-shortcut-cheatsheet/quickstart.md` に記録する。CIがない間は未確認とする。
 - [ ] T019 保守者のローカルbuild/testと3ペイン起動スモーク、Q1〜2・Q7〜9・Q13および44項目の契約と実動作の照合を `specs/TAK-22-shortcut-cheatsheet/quickstart.md` に記録する。US/JIS配列、通常表示・zip・検索結果・全画面・slideshowの条件を確認し、未確認事項を明記する（SC-096・099）。
-- [ ] T020 実装と検証後に最新masterを取り込み、`specs/product/window-layout.md`、`specs/product/overview.md`、`specs/product/contracts/keyboard-and-menus.md`、`specs/product/contracts/localization.md` へspecの反映表に従って追記する。ID衝突は未マージの本feature側で振り直す。差分を示し承認後コミットし、`specs/TAK-22-shortcut-cheatsheet/spec.md` に凍結注記を付ける。
+- [x] T020 実装と検証後に最新masterを取り込み、`specs/product/window-layout.md`、`specs/product/overview.md`、`specs/product/contracts/keyboard-and-menus.md`、`specs/product/contracts/localization.md` へspecの反映表に従って追記する。ID衝突は未マージの本feature側で振り直す。差分を示し承認後コミットし、`specs/TAK-22-shortcut-cheatsheet/spec.md` に凍結注記を付ける。
 
 ## Dependencies & Execution Order
 

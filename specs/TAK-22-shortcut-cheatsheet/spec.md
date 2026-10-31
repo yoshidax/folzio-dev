@@ -1,10 +1,14 @@
 # Feature Specification: 目的別ショートカットチートシート
 
+> **移行済み（2026-10-31）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルはTAK-22の実装・設計の記録として凍結し、以後の要件追加は新しいfeatureで扱う。
+> CI結果、保守者の動作確認報告、詳細検証の報告範囲は [quickstart.md](quickstart.md) を参照。
+
 **Feature Branch**: `work`
 
 **Created**: 2026-10-31
 
-**Status**: Draft — 設計レビュー待ち
+**Status**: Approved — 実装PR #10マージ済み、productへ移行
 
 **Input**: [TAK-22](https://linear.app/takyoshida/issue/TAK-22)「目的別のショートカットチートシートを非モーダルの別ウィンドウで表示する」。会話で「作業を進めて」と依頼された。
 
@@ -101,7 +105,7 @@
 
 ## 反映先
 
-実装・検証後、PR の最後に最新 master と照合して反映する。今は反映しない。
+2026-10-31、最新masterと照合し、次の領域へ反映した。
 
 | ID | 種別 | 反映先 |
 |---|---|---|
