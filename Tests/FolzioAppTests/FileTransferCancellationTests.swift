@@ -6,8 +6,11 @@ import Testing
 @Suite("File transfer cancellation")
 @MainActor
 struct FileTransferCancellationTests {
-    @Test("Stops at a conflict and retains earlier results", arguments: [false, true], [false, true], [false, true])
-    func abortStopsTransfer(move: Bool, applyToAll: Bool, conflictFirst: Bool) async throws {
+    @Test("Stops at a conflict and retains earlier results", arguments: 0..<8)
+    func abortStopsTransfer(scenario: Int) async throws {
+        let move = scenario & 1 != 0
+        let applyToAll = scenario & 2 != 0
+        let conflictFirst = scenario & 4 != 0
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let sourceFolder = root.appendingPathComponent("source")
         let destination = root.appendingPathComponent("destination")
