@@ -145,6 +145,8 @@ public final class BrowserModel {
     private var archiveIndex: ArchiveIndex?
     /// Incremented on every folder or zip navigation and used to discard results from older asynchronous work.
     private var navigationGeneration = 0
+    /// Identifies the most recently requested regular folder enumeration.
+    private var folderListingGeneration = 0
     /// Sorted rows before applying the media type filter. Excludes `..`, which `rebuildListing()` adds once.
     private var allFiles: [MediaFile] = [] {
         didSet { kindFilesRevision &+= 1 }
@@ -281,9 +283,10 @@ public final class BrowserModel {
         notifyLocationChange(reason, leavingFocus: leavingFocus)
 
         let generation = navigationGeneration
+        let request = nextFolderListingGeneration()
         let task = Task { [weak self] in
             guard let self else { return }
-            await self.loadFolder(url, generation: generation)
+            await self.loadFolder(url, generation: generation, request: request)
         }
         listingTask = task
         await task.value
@@ -494,8 +497,9 @@ public final class BrowserModel {
                 listingTask?.cancel()
                 let generation = navigationGeneration
                 let folder = listing.folder
+                let request = nextFolderListingGeneration()
                 listingTask = Task { [weak self] in
-                    await self?.loadFolder(folder, generation: generation)
+                    await self?.loadFolder(folder, generation: generation, request: request)
                 }
             }
         }
@@ -740,9 +744,11 @@ public final class BrowserModel {
         guard listing.archive == nil else { return }
         let folder = listing.folder
         let generation = navigationGeneration
+        let request = nextFolderListingGeneration()
         do {
             let files = try await lister.mediaFiles(in: folder)
             guard generation == navigationGeneration,
+                  request == folderListingGeneration,
                   listing.folder == folder,
                   listing.archive == nil else { return }
 
@@ -762,6 +768,7 @@ public final class BrowserModel {
             }
         } catch {
             guard generation == navigationGeneration,
+                  request == folderListingGeneration,
                   listing.folder == folder,
                   listing.archive == nil else { return }
             allFiles = []
@@ -1051,30 +1058,38 @@ public final class BrowserModel {
         notifyLocationChange(reason, leavingFocus: leavingFocus)
 
         let generation = navigationGeneration
+        let request = nextFolderListingGeneration()
         let task = Task { [weak self] in
             guard let self else { return }
-            await self.loadFolder(folder, generation: generation)
+            await self.loadFolder(folder, generation: generation, request: request)
         }
         listingTask = task
         await task.value
 
-        guard generation == navigationGeneration, let target else { return }
+        guard generation == navigationGeneration, request == folderListingGeneration, let target else { return }
         let standardized = target.standardizedFileURL
         if let row = listing.files.first(where: { $0.url.standardizedFileURL == standardized }) {
             select([row.url], focused: row.url)
         }
     }
 
-    private func loadFolder(_ url: URL, generation: Int, notifyNotFound: Bool = true) async {
+    private func nextFolderListingGeneration() -> Int {
+        folderListingGeneration &+= 1
+        return folderListingGeneration
+    }
+
+    private func loadFolder(_ url: URL, generation: Int, request: Int, notifyNotFound: Bool = true) async {
         do {
             let files = try await lister.mediaFiles(in: url)
-            guard !Task.isCancelled, generation == navigationGeneration, listing.folder == url else { return }
+            guard !Task.isCancelled, generation == navigationGeneration,
+                  request == folderListingGeneration, listing.folder == url else { return }
 
             showsNotFound = false
             allFiles = sorted(files.map { $0.localizedKindName(using: kindNames) }, by: sortOrder)
             rebuildListing()
         } catch {
-            guard !Task.isCancelled, generation == navigationGeneration, listing.folder == url else { return }
+            guard !Task.isCancelled, generation == navigationGeneration,
+                  request == folderListingGeneration, listing.folder == url else { return }
 
             allFiles = []
             listing.files = unreadableFolderRows()
@@ -1204,10 +1219,12 @@ public final class BrowserModel {
         showsNotFound = false
         listing = FolderListing(folder: location.folder, files: [], state: .loading)
         let generation = navigationGeneration
+        let request = nextFolderListingGeneration()
         listingTask = Task { [weak self] in
             guard let self else { return }
-            await self.loadFolder(location.folder, generation: generation, notifyNotFound: false)
+            await self.loadFolder(location.folder, generation: generation, request: request, notifyNotFound: false)
             guard generation == self.navigationGeneration,
+                  request == self.folderListingGeneration,
                   self.listing.folder == location.folder,
                   self.listing.archive == nil else { return }
             self.selectHistoryFocus(focusing)

@@ -71,6 +71,78 @@ struct BrowserModelTests {
         #expect(defaults.string(forKey: "view.lastFolderPath") == second.path)
     }
 
+    @Test("Overlapping reloads keep the newest success or failure")
+    @MainActor
+    func overlappingReloads() async throws {
+        let folder = URL(fileURLWithPath: "/tmp/reload-\(UUID().uuidString)", isDirectory: true)
+        let old = file("old.jpg", in: folder)
+        let current = file("current.jpg", in: folder)
+
+        for scenario in 0..<3 {
+            let lister = ControlledLister()
+            let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+            defer { defaults.removePersistentDomain(forName: suite) }
+            let initial = Task { await model.selectFolder(folder) }
+            try await lister.waitForCalls(1)
+            await lister.complete(0, with: .success([old]))
+            await initial.value
+
+            let first = Task { await model.reloadCurrentFolder() }
+            try await lister.waitForCalls(2)
+            let second = Task { await model.reloadCurrentFolder() }
+            try await lister.waitForCalls(3)
+            if scenario == 2 {
+                await lister.complete(2, with: .failure(.accessDenied))
+            } else {
+                await lister.complete(2, with: .success([current]))
+            }
+            await second.value
+            if scenario != 2 {
+                model.select([current.url], focused: current.url)
+            }
+            if scenario == 1 {
+                await lister.complete(1, with: .failure(.notFound))
+            } else {
+                await lister.complete(1, with: .success([old]))
+            }
+            await first.value
+
+            if scenario == 2 {
+                #expect(model.listing.state == .denied)
+                #expect(model.listing.files.isEmpty)
+                #expect(model.selection.focused == nil)
+                if case .empty = model.preview {} else { Issue.record("Expected empty preview") }
+            } else {
+                #expect(model.listing.state == .loaded)
+                #expect(model.listing.files.map(\.url) == [current.url])
+                #expect(model.selection.focused == current.url)
+                #expect(model.selection.selected == [current.url])
+                if case .empty = model.preview { Issue.record("The selected preview was cleared") }
+            }
+        }
+    }
+
+    @Test("A reload supersedes a pending initial folder enumeration")
+    @MainActor
+    func reloadSupersedesInitialLoad() async throws {
+        let folder = URL(fileURLWithPath: "/tmp/reload-initial-\(UUID().uuidString)", isDirectory: true)
+        let old = file("old.jpg", in: folder)
+        let current = file("current.jpg", in: folder)
+        let lister = ControlledLister()
+        let (model, defaults, suite) = makeModel(lister: lister, decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let initial = Task { await model.selectFolder(folder) }
+        try await lister.waitForCalls(1)
+        let reload = Task { await model.reloadCurrentFolder() }
+        try await lister.waitForCalls(2)
+        await lister.complete(1, with: .success([current]))
+        await reload.value
+        await lister.complete(0, with: .success([old]))
+        await initial.value
+        #expect(model.listing.state == .loaded)
+        #expect(model.listing.files.map(\.url) == [current.url])
+    }
+
     @Test("Reflects empty-folder and access-denied states")
     @MainActor
     func reflectsEmptyAndDenied() async {
@@ -660,7 +732,7 @@ struct BrowserModelTests {
 
     @MainActor
     private func makeModel(
-        lister: FakeLister,
+        lister: any DirectoryListing,
         decoder: FakeDecoder,
         cache: DecodedImageCache = DecodedImageCache(costLimitBytes: 10_000_000)
     ) -> (BrowserModel, UserDefaults, String) {
@@ -717,6 +789,34 @@ struct BrowserModelTests {
             try? await Task.sleep(for: .milliseconds(10))
         }
         return false
+    }
+}
+
+private actor ControlledLister: DirectoryListing {
+    private var pending: [CheckedContinuation<Result<[MediaFile], ListingError>, Never>] = []
+
+    func mediaFiles(in folder: URL) async throws(ListingError) -> [MediaFile] {
+        let result = await withCheckedContinuation { continuation in
+            pending.append(continuation)
+        }
+        switch result {
+        case let .success(files): return files
+        case let .failure(error): throw error
+        }
+    }
+
+    func subfolders(of folder: URL) async throws(ListingError) -> [URL] { [] }
+
+    func complete(_ index: Int, with result: Result<[MediaFile], ListingError>) {
+        pending[index].resume(returning: result)
+    }
+
+    func waitForCalls(_ count: Int) async throws {
+        let deadline = ContinuousClock.now + .seconds(2)
+        while pending.count < count && ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        try #require(pending.count >= count)
     }
 }
 
