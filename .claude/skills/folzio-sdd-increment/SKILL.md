@@ -5,7 +5,7 @@ description: Folzio の新規要件・仕様変更を、Spec Kit の仕様策定
 
 # Folzio SDD increment
 
-Folzio の新規要件・仕様変更を現在の会話で順次進める。開始前に `AGENTS.md` と `docs_private/folzio-sdd-increment.md` を読み、共通手順を実行する。指示が競合するときは上位の指示と `AGENTS.md` を優先する。
+Folzio の新規要件・仕様変更を現在の会話で順次進める。開始前に `AGENTS.md` と `shared-skills/folzio-sdd-increment.md` を読み、共通手順を実行する。指示が競合するときは上位の指示と `AGENTS.md` を優先する。
 
 Claude Code では `.specify/workflow-src/sdd-increment.yml` を読み、各工程で対応する `.claude/skills/speckit-*/SKILL.md` のスキルを使う。
 
