@@ -63,13 +63,13 @@
 - [X] T024 quickstart.md の B のコマンド（`scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py" -v`）を実行し、通過を確認する。
 - [X] T025 [MANUAL] 保守者が「PR を作って」と依頼する。Agent が PR を作る（FR-198）。作成後、PR の CI の自動実行と成否を `get_check_runs` で確認し、追加の push の後に `actions_run_trigger` で `workflow_dispatch` を起動できるか確かめて、結果（起動できた／できなかった）を手順書の「4 CI の確認」に反映する。（quickstart.md の C2、C3、US28-AS1、AS2）
 - [X] T026 PR の作成後、Agent が TAK-30 に PR のリンクを追加して `In Review` に更新し、Linear 上で状態の履歴とリンクを確認する。`master` への push、強制 push、PR のマージが拒否されることを、`git push --dry-run` などの無害な操作で確認する。結果を `quickstart.md` の末尾に記録する。（quickstart.md の C1、C4、SC-092、US27-AS4、US29-AS3）
-- [ ] T027 [MANUAL] 保守者がローカルで、最新の `master` に PR のブランチを取り込み、`swift build`、`swift test`、`python3 -I -m unittest discover -s scripts/dev/tests -v`、`scripts/make-app.sh`、`open .build/Folzio.app`（3 ペインの表示）を実行し、結果を報告する。この feature はアプリのコードを変えないため、結果は変更前と同じになる。（quickstart.md の D）
+- [X] T027 [MANUAL] 保守者がローカルで、最新の `master` に PR のブランチを取り込み、`swift build`、`swift test`、`python3 -I -m unittest discover -s scripts/dev/tests -v`、`scripts/make-app.sh`、`open .build/Folzio.app`（3 ペインの表示）を実行し、結果を報告する。この feature はアプリのコードを変えないため、結果は変更前と同じになる。（quickstart.md の D） 2026-10-31 に保守者が「全て問題ないことを確認済み」と報告した（コマンドの出力と件数は受け取っていない）。
 
 ## Phase 9: `specs/product/` への反映
 
 - [X] T028 `git merge origin/master` で最新の `master` を取り込み、`spec.md` の「反映先」の表に従って `specs/product/overview.md` に反映する（US27〜US31 の受け入れシナリオ、`EC-129`〜`EC-135`、`FR-186`〜`FR-199`、`SC-090`〜`SC-095`、`A-105`〜`A-115`）。`spec.md` の冒頭に移行済み・凍結の注記を入れる。ID の付け方は `specs/product/README.md` に従う。反映の後に、`quickstart.md` の A5 の ID の重複検査を実行する。コミットしない。反映した項目と差分を保守者へ示す。
-- [ ] T029 [MANUAL] 保守者が反映の差分を確認して承認する。承認後に反映をコミットして push する。
-- [ ] T030 [MANUAL] 保守者が PR をマージし、完了更新を依頼する。Agent がマージを確認して TAK-30 を `Done` にする。確認できなければ完了にしない。（FR-197、quickstart.md の E）
+- [X] T029 [MANUAL] 保守者が反映の差分を確認して承認する。承認後に反映をコミットして push する。 2026-10-31 に保守者が差分を承認し、PR #6 をマージした。
+- [X] T030 [MANUAL] 保守者が PR をマージし、完了更新を依頼する。Agent がマージを確認して TAK-30 を `Done` にする。確認できなければ完了にしない。（FR-197、quickstart.md の E） PR #6 のマージを確認し、2026-10-31 に TAK-30 を `Done` に更新した。
 - [ ] T031 [MANUAL] 次の実際の Cloud 作業（別の Issue）で、Agent が手順書と `AGENTS.md` だけで PR の作成まで進められたかを観察し、結果を `quickstart.md` の末尾に記録する。この観察は完了を妨げない。（SC-090、FR-196）
 
 ## Dependencies & Execution Order
