@@ -270,19 +270,20 @@ struct FileOperationServiceTests {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
         let folder = try makeOps(in: root)
-        let source = folder.appendingPathComponent("Album", isDirectory: true)
+        let source = folder.appendingPathComponent("CaseAlbum", isDirectory: true)
         try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).contains("CaseAlbum"))
         let bytes = Data("child contents".utf8)
         try bytes.write(to: source.appendingPathComponent("child.png"))
         let result = await service.execute(
-            FileOperation(kind: .rename(newName: "album"), sources: [source]), resolution: .abort
+            FileOperation(kind: .rename(newName: "casealbum"), sources: [source]), resolution: .abort
         )
         #expect(result.failed.isEmpty)
-        #expect(result.succeeded.map(\.lastPathComponent) == ["album"])
+        #expect(result.succeeded.map(\.lastPathComponent) == ["casealbum"])
         let names = try FileManager.default.contentsOfDirectory(atPath: folder.path)
-        #expect(names.contains("album"))
-        #expect(!names.contains("Album"))
-        #expect(try Data(contentsOf: folder.appendingPathComponent("album/child.png")) == bytes)
+        #expect(names.contains("casealbum"))
+        #expect(!names.contains("CaseAlbum"))
+        #expect(try Data(contentsOf: folder.appendingPathComponent("casealbum/child.png")) == bytes)
     }
 
     @Test("A folder cannot be renamed over another file or folder", arguments: [false, true])
@@ -290,7 +291,7 @@ struct FileOperationServiceTests {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
         let folder = try makeOps(in: root)
-        let source = folder.appendingPathComponent("Album", isDirectory: true)
+        let source = folder.appendingPathComponent("CaseAlbum", isDirectory: true)
         let other = folder.appendingPathComponent("Taken", isDirectory: otherIsFolder)
         try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
         try Data("source".utf8).write(to: source.appendingPathComponent("child.png"))

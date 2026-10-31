@@ -74,3 +74,5 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。US1/U
 - 保守者のローカル GUI で未改善との報告（画像の理由は sameNameExists）。CI の build/通常/性能テストは全成功だったが実機再現を解消したとは扱わない。改名前後の名前と確認した commit を照会し、DirectoryLister の実 URL を使う回帰テストも追加。PR は Draft を維持する。
 
 - ローカル報告の確認: 変更は hans-veth-vyQgv-eURTU-unsplash → Hans-veth-vyQgv-eURTU-unsplash、commit a64cbbb。GitHub MCP compare_commits で a64cbbb は改修 9e6177a を含まない master と確認（共通祖先 bfe63d5）。実機で改修済みコードが失敗したという証拠にはならない。a64cbbb を作業ブランチに取り込み（merge 8a32b35）、新規 check-skill-sync も成功。最初の CI ログは通常 834 件・性能 27 件の全成功を確認。最新のフォルダ・検索・履歴・列挙 URL テストを含む変更は次の CI で検証する。
+
+- 追加後 CI run 41211648634 は build 成功、通常852件中フォルダ改名1テストが2 assertionで失敗。FixtureSets.ops が既に小文字 album を作っていたため、case-insensitive volume では新規作成したつもりの Album が別表記の既存エントリを再利用していた。独立した CaseAlbum → casealbum に修正し、元の保存表記も assertion で確認。報告された hans-veth... の列挙 URL からの改名テストは成功。master 取り込みに伴う SC-096/097 の既存利用は確認済みで、product 反映タスク T016 時にこの feature の ID を振り直す。
