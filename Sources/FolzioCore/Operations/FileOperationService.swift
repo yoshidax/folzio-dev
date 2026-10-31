@@ -29,8 +29,8 @@ public struct FileOperationService: FileOperating {
         }
     }
 
-    /// `resolution` is used only when an item with the same name conflicts. `.abort` returns conflicting items as
-    /// failures and executes non-conflicting items (such as moving to the Trash or renaming without a name conflict).
+    /// Uses `resolution` for copy and move conflicts; renames always reject another entry with the same name.
+    /// Returns conflicting items as failures with `.abort` and executes non-conflicting items.
     public func execute(_ operation: FileOperation, resolution: ConflictResolution) async -> FileOperationResult {
         await Task.detached(priority: .userInitiated) {
             Self.perform(operation, resolution: resolution)
@@ -59,7 +59,6 @@ public struct FileOperationService: FileOperating {
                     resultURL = try rename(
                         source,
                         to: newName,
-                        resolution: resolution,
                         fileManager: fileManager
                     )
                 case .trash:
@@ -152,7 +151,6 @@ public struct FileOperationService: FileOperating {
     private static func rename(
         _ source: URL,
         to newName: String,
-        resolution: ConflictResolution,
         fileManager: FileManager
     ) throws -> URL {
         guard !newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -169,22 +167,21 @@ public struct FileOperationService: FileOperating {
         }
 
         let parent = source.deletingLastPathComponent()
-        var target = parent.appendingPathComponent(newName)
+        let target = parent.appendingPathComponent(newName)
         if target.standardizedFileURL == source.standardizedFileURL {
             return source
         }
 
-        if fileManager.fileExists(atPath: target.path) {
-            switch resolution {
-            case .abort:
-                throw OperationFailure(reason: .sameNameExists)
-            case .replace:
-                _ = try moveToTrash(target, fileManager: fileManager)
-            case .keepBoth:
-                let names = Set((try? fileManager.contentsOfDirectory(atPath: parent.path)) ?? [])
-                let unique = uniqueName(for: newName, existingNames: names)
-                target = parent.appendingPathComponent(unique)
-            }
+        // Compare directory entries rather than file identities: separate hard links and symlinks still conflict.
+        let siblings = try fileManager.contentsOfDirectory(atPath: parent.path)
+        guard !siblings.contains(where: {
+            $0 != source.lastPathComponent && $0.caseInsensitiveCompare(newName) == .orderedSame
+        }) else {
+            throw OperationFailure(reason: .sameNameExists)
+        }
+        let isCaseOnly = source.lastPathComponent.caseInsensitiveCompare(newName) == .orderedSame
+        if !isCaseOnly, fileManager.fileExists(atPath: target.path) {
+            throw OperationFailure(reason: .sameNameExists)
         }
 
         do {
