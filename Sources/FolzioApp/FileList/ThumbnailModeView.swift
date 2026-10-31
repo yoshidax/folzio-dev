@@ -70,7 +70,7 @@ private final class RenameTextField: NSTextField {
 }
 
 @MainActor
-private final class ThumbnailItemView: NSCollectionViewItem {
+final class ThumbnailItemView: NSCollectionViewItem {
     private let thumbnailImageView = NSImageView()
     private let nameLabel = RenameTextField(wrappingLabelWithString: "")
 
@@ -247,9 +247,7 @@ private final class ThumbnailItemView: NSCollectionViewItem {
         if commit {
             let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty, newName != oldName, let url = representedURL {
-                nameLabel.stringValue = newName
-                nameLabel.setAccessibilityLabel(newName)
-                view.setAccessibilityLabel(newName)
+                // Keeps the original name until a successful operation updates the model and reloads the item.
                 onCommitRename?(url, newName)
             }
         }
