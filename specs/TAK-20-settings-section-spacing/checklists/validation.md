@@ -18,7 +18,8 @@
 | Cloud | `check-no-network.sh`・`check-readme-sync.sh master`・`check-english-comments.sh`・`check-skill-sync.sh`・`test_check_git_push.py` | PASS | 各コミットの前に実行 |
 | CI | `swift build`・`swift test`（b486d31、run 41233411198） | PASS | `pull_request` の実行 |
 | CI | 同上（369335f、run 41270900539） | PASS | `workflow_dispatch` の実行 |
-| CI | 同上（3ca1a7b、run 41271905665） | 実行中 | 結果を読んでから更新する |
+| CI | 同上（3ca1a7b、run 41271905665） | PASS | 通常のテストと性能テスト（ログの末尾「Test run with 27 tests passed」） |
+| CI | 同上（master を取り込んだ後、run を 2026-11-01 に起動） | 実行中 | 結果を読んでから更新する |
 
 ## converge（T012）
 
