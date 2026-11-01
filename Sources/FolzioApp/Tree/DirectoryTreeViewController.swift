@@ -1097,10 +1097,8 @@ final class DirectoryTreeViewController: NSViewController {
                 self.applyRoots(newRoots)
                 await self.historyNavigator?.revalidateAll()
                 // Remove search results that no longer exist when a volume containing the root is removed
-                // (Edge Cases, R38).
-                if self.model.isShowingSearchResults {
-                    await self.model.reloadCurrentFolder()
-                }
+                // (Edge Cases, R38). Show the displayed folder as not found when its volume is removed (EC-18, EC-65).
+                await self.model.handleVolumesChanged()
             }
         }
 

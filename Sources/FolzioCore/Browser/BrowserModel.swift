@@ -140,6 +140,9 @@ public final class BrowserModel {
 
     /// Tree roots (home and volumes). Determine the `..` and ⌘↑ enclosing folder for regular folders (R30).
     private var navigationRoots: [URL] = []
+    /// Every root passed to `setNavigationRoots`, including volumes that were removed later. Keeps the root of a
+    /// removed volume known so that its vanished folders are not replaced by a folder outside it (EC-18).
+    private var knownRoots: Set<URL> = []
     private var treeSyncCounter = 0
     /// ID of the tree synchronization request for a folder opened from search results. When synchronization
     /// completes, stores the location that could be selected as the last selected folder (EC-102, R10). Cleared on
@@ -535,6 +538,7 @@ public final class BrowserModel {
     /// Receives the tree roots. When they change, rebuilds `..` for loaded regular folder listings (does not read the
     /// disk).
     public func setNavigationRoots(_ urls: [URL]) {
+        knownRoots.formUnion(urls.map(\.standardizedFileURL))
         guard urls != navigationRoots else { return }
         navigationRoots = urls
         guard listing.archive == nil else { return }
@@ -801,21 +805,40 @@ public final class BrowserModel {
             await pruneMissingResults(under: folders)
             return
         }
-        let current = listing.folder.standardizedFileURL
-        guard folders.contains(where: { $0.standardizedFileURL == current }) else {
+        let folder = listing.folder
+        let current = folder.standardizedFileURL
+        let notifiesCurrent = folders.contains { $0.standardizedFileURL == current }
+        // A renamed, moved, or deleted displayed folder or ancestor is reported only as a change to its parent, so
+        // also check that the displayed folder still exists when an ancestor is reported (FR-042, EC-13).
+        guard notifiesCurrent || FolderNavigation.containsFolderOrAncestor(of: folder, in: folders) else {
             return
         }
+        // Keep the not-found display (FR-067, EC-65) when only an ancestor is reported.
+        guard notifiesCurrent || !showsNotFound else { return }
 
-        var isDirectory: ObjCBool = false
-        let exists = FileManager.default.fileExists(
-            atPath: listing.folder.path,
-            isDirectory: &isDirectory
-        )
-        guard exists, isDirectory.boolValue else {
-            let vanished = listing.folder
-            await selectFolder(vanished.deletingLastPathComponent(), reason: .relocated(vanished: [vanished]))
+        let generation = navigationGeneration
+        let relocation = await Task.detached(priority: .userInitiated) { () -> (folder: URL, vanished: URL)? in
+            guard !BrowserModel.isExistingFolder(folder) else { return nil }
+            return FolderNavigation.nearestExistingAncestor(of: folder, isFolder: BrowserModel.isExistingFolder)
+                ?? (folder.deletingLastPathComponent(), folder)
+        }.value
+        guard generation == navigationGeneration, listing.folder == folder, !isShowingSearchResults else { return }
+
+        if let relocation {
+            // A folder outside the vanished folder's root means that its volume was removed. Show the folder as not
+            // found instead of moving out of the volume, for example to `/Volumes` (EC-18, EC-65).
+            guard FolderNavigation.staysInsideRoot(from: folder, to: relocation.folder, roots: knownRoots) else {
+                if !showsNotFound {
+                    await showMissingFolder()
+                }
+                return
+            }
+            // Move to the nearest folder that still exists, not to a parent that vanished with it (FR-042, EC-13).
+            await selectFolder(relocation.folder, reason: .relocated(vanished: [relocation.vanished]))
             return
         }
+        // The displayed folder still exists. A change in an ancestor alone does not change its contents.
+        guard notifiesCurrent else { return }
 
         if let location = listing.archive {
             // While opening, there is no index to compare, so wait without comparing.
@@ -830,6 +853,42 @@ public final class BrowserModel {
         }
 
         await reloadCurrentFolder()
+    }
+
+    /// Receives a mount or unmount of a volume after the tree updated its roots. While showing search results,
+    /// removes results that no longer exist (Edge Cases, R38). Otherwise, when the displayed folder (the folder
+    /// containing the zip when inside a zip) no longer exists, shows it as not found and clears the selection and the
+    /// preview (EC-18, EC-65). Does nothing when the folder still exists or is already shown as not found.
+    public func handleVolumesChanged() async {
+        if isShowingSearchResults {
+            await reloadCurrentFolder()
+            return
+        }
+        guard !showsNotFound else { return }
+        let folder = listing.folder
+        let generation = navigationGeneration
+        let exists = await Task.detached(priority: .userInitiated) {
+            BrowserModel.isExistingFolder(folder)
+        }.value
+        guard !exists, generation == navigationGeneration, listing.folder == folder, !isShowingSearchResults,
+              !showsNotFound else { return }
+        await showMissingFolder()
+    }
+
+    /// Shows the displayed folder as not found. Inside a zip, closes the zip first. Loading the folder fails with
+    /// `.notFound`, which removes the current history entry (EC-65).
+    private func showMissingFolder() async {
+        if listing.archive != nil {
+            await returnToFolder(selecting: nil, reason: .relocated(vanished: [listing.folder]))
+        } else {
+            await reloadCurrentFolder()
+        }
+    }
+
+    /// Whether a directory exists at `url`. Reads the disk, so call this off the main thread.
+    nonisolated private static func isExistingFolder(_ url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
     }
 
     public func moveFocus(_ direction: FocusDirection) {
