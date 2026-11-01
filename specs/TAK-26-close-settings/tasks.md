@@ -16,14 +16,14 @@
 
 ## Phase 3: User Story 1 — 設定だけを残さず閲覧を終了する (P1 / MVP)
 
-**Goal**: FR-200〜203、EC-136〜138、A-116 を満たす一方向の終了連動。
+**Goal**: FR-224〜227、EC-156〜158、A-140 を満たす一方向の終了連動。
 
-**Independent Test**: quickstart.md の全8ケース。SC-096・097 の合否を記録する。
+**Independent Test**: quickstart.md の全9ケース。SC-113・114 の合否を記録する。
 
-- [x] T005 [US1] Sources/FolzioApp/App/AppDelegate.swift でメイン window に限定した終了通知を showWindow 前に登録し、通知元を確認して保持済み設定コントローラを close() する。設定未生成なら生成しない（FR-200・201、EC-136）。
-- [x] T006 [US1] Sources/FolzioApp/App/AppDelegate.swift の通知範囲と既存の最終 window 終了判定、Sources/FolzioApp/App/MainSplitViewController.swift の停止処理、Sources/FolzioApp/Settings/SettingsWindowController.swift の編集確定処理を静的レビューし、設定だけ閉じる操作・再表示を維持する（FR-202・203、EC-137・138、A-116）。
+- [x] T005 [US1] Sources/FolzioApp/App/AppDelegate.swift でメイン window に限定した終了通知を showWindow 前に登録し、通知元を確認して保持済み設定コントローラを close() する。設定未生成なら生成しない（FR-224・225、EC-156）。
+- [x] T006 [US1] Sources/FolzioApp/App/AppDelegate.swift の通知範囲と既存の最終 window 終了判定、Sources/FolzioApp/App/MainSplitViewController.swift の停止処理、Sources/FolzioApp/Settings/SettingsWindowController.swift の編集確定処理を静的レビューし、設定だけ閉じる操作・再表示を維持する（FR-226・227、EC-157・158、A-140）。
 - [x] T007 [US1] scripts/check-no-network.sh、scripts/check-readme-sync.sh master、scripts/dev/check-english-comments.sh、scripts/dev/tests/test_check_git_push.py の4検査を実行し、specs/TAK-26-close-settings/quickstart.md に結果を記録する。
-- [ ] T008 [US1] 保守者に specs/TAK-26-close-settings/quickstart.md の全 GUI ケースと最新 Swift の build/test を依頼し、結果を同ファイルに記録する。実施されるまで未チェックを保つ（SC-096・097）。
+- [ ] T008 [US1] 保守者に specs/TAK-26-close-settings/quickstart.md の全 GUI ケースと最新 Swift の build/test を依頼し、結果を同ファイルに記録する。実施されるまで未チェックを保つ（SC-113・114）。
 
 ## Phase 4: Polish & Delivery
 
@@ -44,3 +44,9 @@ US1 の独立した並列実装はない。Cloud の4検査は個別実行でき
 ## Implementation Strategy
 
 US1 が全体の MVP。設計承認後、AppDelegate の最小変更を実装し、既存終了処理と設定編集を確認してから配布へ進める。新しい抽象化・設定・テストターゲットは追加しない。
+
+## master 取り込みと影響確認（2026-11-01）
+
+- [x] T012 origin/master の 1dfccaa を作業ブランチへ merge し、AppDelegate・MainWindowController・SettingsWindowController・MainSplitViewController と product 仕様を確認する。TAK-22 と重複した feature 内の ID を振り直し、specs/TAK-26-close-settings/quickstart.md に影響・検査結果を記録する。
+
+PR は #9、Linear は In Review。GUI 確認・product 反映は未完了。新しい head の macOS CI 結果は quickstart.md に記録する。

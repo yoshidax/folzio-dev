@@ -35,6 +35,7 @@ open .build/Folzio.app
 | 設定を一度も開かずメインを閉じる | 設定が出現せず正常終了する |
 | 設定を開いて閉じ、その後メインを閉じる | 正常終了する |
 | 設定だけを閉じ、閲覧してから ⌘, を押す | メインが残り、設定を再表示できる |
+| 設定とショートカット一覧を開いてメインを閉じる | 両補助ウインドウが閉じ、プロセスが終了する |
 | 設定を開き、メインを最小化・復元する | 設定は閉じず、復元後に閲覧を継続できる |
 | 設定の間隔に 7 を入力し、未確定のままメインの閉じるボタンを押す | 終了後、再起動して設定を開くと 7 が保存されている |
 | 間隔の直前の保存値を確認し、0 を未確定入力してメインを閉じる | 再起動後、不正値は保存されず直前の有効値が残る |
@@ -67,3 +68,30 @@ open .build/Folzio.app
 | git diff --check | PASS |
 
 macOS CI の build/test と GUI シナリオは未実施。Cloud の検査通過はこれらの代替ではない。
+
+## master 取り込みによる影響（2026-11-01、T012）
+
+基準 bfe63d5 から origin/master の 1dfccaa まで12コミット・134ファイルの変更を取り込んだ。merge は競合なし。
+
+| 変更 | TAK-26 への影響・判断 |
+|---|---|
+| TAK-22: AppDelegate にショートカット表示・検証を追加 | 自動マージ後も両方の入口を維持。メイン終了監視の対象は同一の実 window |
+| TAK-22: MainWindowController が親終了時に一覧を閉じる | 設定は AppDelegate、一覧は MainWindowController が閉じる。delegate を置き換えず、通知の順番に依存する相互呼び出しもない。両方を開いた終了を GUI ケースに追加 |
+| TAK-20: 設定の間隔・補足説明・言語切替時の高さ調整 | 設定の所有・delegate・close 時の makeFirstResponder(nil)・入力解析は維持。終了連動の追加修正は不要と静的判断。言語切替後の編集確定もローカル確認対象 |
+| TAK-19、TAK-17、TAK-21、改名修正 | プレビュー操作・ファイル操作の変更。MainSplitViewController の windowWillClose によるスライドショー停止は維持 |
+| Package.swift: FolzioAppTests を新設 | 既存の通常 CI の対象が増える。旧 plan/research の「App テストターゲットなし」は作成当時の記録。今回、新しいテストターゲットや実装変更は加えない |
+| AGENTS.md: check-skill-sync.sh を検証ゲートに追加 | 今回の検査に追加 |
+| product に TAK-22 等の要件を反映 | ID が重複したため下表のとおり本 feature 内だけを振り直す。マージ済み product の ID と本文は変更しない |
+
+| 旧 ID | 新 ID |
+|---|---|
+| FR-200〜203 | FR-224〜227 |
+| SC-096〜097 | SC-113〜114 |
+| EC-136〜138 | EC-156〜158 |
+| A-116 | A-140 |
+
+仕様IDの変更は参照整合の修正であり、承認済みの振る舞いを変更しない。product 反映は T011 として引き続き未完了。
+
+### 取り込み後の Cloud 検査
+
+ネットワーク API 禁止、README 同期（origin/master 基準）、英語コメント、共有スキル同期、push 制約の3テスト、git diff --check がすべて通過。feature と product の定義 ID の重複も0件。TAK-26 の実行コードは master 取り込み後も AppDelegate.swift の13行追加・1行削除のみ。
