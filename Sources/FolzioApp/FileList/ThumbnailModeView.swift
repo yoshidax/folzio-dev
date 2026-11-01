@@ -304,6 +304,8 @@ final class ThumbnailModeView: NSView {
         let token: UUID
         let pointSize: Double
         let scale: Double
+        /// Content version of the file when requested (FR-228)
+        let version: FileContentVersion?
         let task: Task<Void, Never>
     }
 
@@ -319,6 +321,8 @@ final class ThumbnailModeView: NSView {
 
     private var storedThumbnailSize: Double
     private var lastURLs: [URL] = []
+    /// `BrowserModel.contentChangeGeneration` already applied to the items (FR-228).
+    private var lastContentChangeGeneration = 0
     private var isApplyingSelection = false
     private var lastSelectedURL: URL?
     private var selectionAnchor: Int?
@@ -588,6 +592,7 @@ final class ThumbnailModeView: NSView {
             _ = model.listing.files
             _ = model.selection.selected
             _ = model.selection.focused
+            _ = model.contentChangeGeneration
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.applyModel()
@@ -609,10 +614,17 @@ final class ThumbnailModeView: NSView {
 
         if urls != lastURLs {
             lastURLs = urls
+            lastContentChangeGeneration = model.contentChangeGeneration
             pruneRequests(keeping: Set(urls))
             collectionView.reloadData()
             flowLayout.invalidateLayout()
             needsLayout = true
+        } else if lastContentChangeGeneration != model.contentChangeGeneration {
+            // Several changes may have happened while hidden; then only the latest set is known, so refresh all
+            // visible items.
+            let missedChanges = model.contentChangeGeneration &- lastContentChangeGeneration != 1
+            lastContentChangeGeneration = model.contentChangeGeneration
+            refreshReplacedThumbnails(files: files, all: missedChanges)
         }
 
         let selectedPaths = Set(
@@ -660,7 +672,8 @@ final class ThumbnailModeView: NSView {
         let scale = Double(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2)
         if let existing = requests[file.url],
            existing.pointSize == pointSize,
-           existing.scale == scale {
+           existing.scale == scale,
+           existing.version == file.contentVersion {
             return
         }
         if let existing = requests[file.url] {
@@ -669,7 +682,8 @@ final class ThumbnailModeView: NSView {
             provider.cancel(
                 for: file.url,
                 pointSize: existing.pointSize,
-                scale: existing.scale
+                scale: existing.scale,
+                version: existing.version
             )
         }
 
@@ -677,11 +691,13 @@ final class ThumbnailModeView: NSView {
         let token = UUID()
         let provider = self.provider
         let url = file.url
+        let version = file.contentVersion
         let task = Task { [weak self] in
             let image = await provider.thumbnail(
                 for: url,
                 pointSize: pointSizeValue,
-                scale: scale
+                scale: scale,
+                version: version
             )
             guard !Task.isCancelled, let self else { return }
             guard self.requests[url]?.token == token else { return }
@@ -692,8 +708,22 @@ final class ThumbnailModeView: NSView {
             token: token,
             pointSize: pointSize,
             scale: scale,
+            version: version,
             task: task
         )
+    }
+
+    /// Requests new thumbnails for visible items whose content was replaced at the same URL, keeping the current
+    /// image until the new one arrives (FR-228). Does not reload items, so the selection and scroll position stay.
+    private func refreshReplacedThumbnails(files: [MediaFile], all: Bool) {
+        let changed = model.changedContentURLs
+        for url in Array(requests.keys) where all || changed.contains(url) {
+            cancelRequest(for: url)
+        }
+        for path in collectionView.indexPathsForVisibleItems()
+        where files.indices.contains(path.item) && (all || changed.contains(files[path.item].url)) {
+            requestThumbnail(for: files[path.item])
+        }
     }
 
     private func apply(_ image: CGImage?, for url: URL) {
@@ -711,7 +741,8 @@ final class ThumbnailModeView: NSView {
         provider.cancel(
             for: url,
             pointSize: request.pointSize,
-            scale: request.scale
+            scale: request.scale,
+            version: request.version
         )
     }
 

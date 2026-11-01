@@ -41,6 +41,8 @@ private final class FileListIconCell: NSTableCellView {
     let nameField = NSTextField(labelWithString: "")
     var iconTask: Task<Void, Never>?
     var representedURL: URL?
+    /// Content version of the file whose thumbnail is shown or requested (FR-228).
+    var representedVersion: FileContentVersion?
     var iconPointSize: Double = 0
     var iconScale: Double = 0
 
@@ -83,10 +85,12 @@ private final class FileListIconCell: NSTableCellView {
             provider.cancel(
                 for: url,
                 pointSize: iconPointSize,
-                scale: iconScale
+                scale: iconScale,
+                version: representedVersion
             )
         }
         representedURL = nil
+        representedVersion = nil
     }
 }
 
@@ -124,6 +128,8 @@ final class ListModeView: NSView {
     }
 
     private var lastURLs: [URL] = []
+    /// `BrowserModel.contentChangeGeneration` already applied to the rows (FR-228).
+    private var lastContentChangeGeneration = 0
     private var isApplyingSelection = false
     private var isSyncingSortDescriptors = false
     private var sortMenuInstalled = false
@@ -293,6 +299,7 @@ final class ListModeView: NSView {
             _ = model.selection.focused
             _ = model.sortOrder
             _ = model.listing.search
+            _ = model.contentChangeGeneration
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.applyModel()
@@ -324,7 +331,20 @@ final class ListModeView: NSView {
                 finishRenaming(commit: false)
             }
             lastURLs = urls
+            lastContentChangeGeneration = model.contentChangeGeneration
             tableView.reloadData()
+        } else if lastContentChangeGeneration != model.contentChangeGeneration {
+            // Several changes may have happened while hidden; then only the latest set is known, so reload all rows.
+            let missedChanges = model.contentChangeGeneration &- lastContentChangeGeneration != 1
+            lastContentChangeGeneration = model.contentChangeGeneration
+            if missedChanges {
+                if renamingURL != nil {
+                    finishRenaming(commit: false)
+                }
+                tableView.reloadData()
+            } else {
+                reloadReplacedRows(urls: urls)
+            }
         }
         if tableView.selectedRowIndexes != selected {
             tableView.selectRowIndexes(selected, byExtendingSelection: false)
@@ -338,6 +358,19 @@ final class ListModeView: NSView {
         syncSortDescriptors()
         updateSortMenuItems()
         refreshVisibleLocalizedCells()
+    }
+
+    /// Reloads only the rows whose content was replaced at the same URL, keeping the selection and scroll position
+    /// (FR-228, FR-229). Skips the row being renamed so the edit is not discarded.
+    private func reloadReplacedRows(urls: [URL]) {
+        let changed = model.changedContentURLs
+        guard !changed.isEmpty else { return }
+        var rows = IndexSet()
+        for (row, url) in urls.enumerated() where changed.contains(url) && url != renamingURL {
+            rows.insert(row)
+        }
+        guard !rows.isEmpty else { return }
+        tableView.reloadData(forRowIndexes: rows, columnIndexes: IndexSet(integersIn: 0..<tableView.numberOfColumns))
     }
 
     /// Shows the Location column only while search results are displayed.
@@ -656,6 +689,7 @@ extension ListModeView: NSTableViewDelegate {
             cell.iconPointSize = 0
             cell.iconScale = 0
             cell.representedURL = file.url
+            cell.representedVersion = nil
             cell.iconView.image = IconCatalog.listItemIcon(for: file.kind, pointSize: 16)
             cell.iconView.contentTintColor = .secondaryLabelColor
             if renamingURL != file.url {
@@ -673,9 +707,10 @@ extension ListModeView: NSTableViewDelegate {
         cell.iconView.contentTintColor = nil
         cell.nameField.setAccessibilityLabel(nil)
 
-        if cell.representedURL != file.url {
+        if cell.representedURL != file.url || cell.representedVersion != file.contentVersion {
             cell.cancelIconRequest(using: provider)
             cell.representedURL = file.url
+            cell.representedVersion = file.contentVersion
             cell.iconView.image = file.kind.mediaKind.flatMap { IconCatalog.fallbackIcon(for: $0) }
 
             let scale = Double(
@@ -689,15 +724,18 @@ extension ListModeView: NSTableViewDelegate {
 
             let provider = self.provider
             let url = file.url
+            let version = file.contentVersion
             cell.iconTask = Task { [weak cell] in
                 let image = await provider.thumbnail(
                     for: url,
                     pointSize: pointSize,
-                    scale: scale
+                    scale: scale,
+                    version: version
                 )
                 guard !Task.isCancelled,
                       let cell,
                       cell.representedURL == url,
+                      cell.representedVersion == version,
                       let image else {
                     return
                 }

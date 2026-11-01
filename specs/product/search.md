@@ -108,6 +108,9 @@
   同じ場合は EC-99、zip の中で始めた検索の場合は EC-100）。フォーカス行がファイルの行の
   ときの ⌘↓ は、従来どおり何もしない。検索結果の右クリックメニューでは、フォルダの行に「中を表示（⌘↓）」と区切り線をファイル操作の
   前に加え、「上の階層へ」は出さない
+- **FR-232**: 検索結果の一覧を表示中に変更が通知された場合、システムは、通知のあったフォルダの下にある検索結果について内容の置き換えを
+  確かめ、FR-228・FR-229（file-list.md）と FR-230（preview.md）をフォルダの一覧と同じく適用しなければならない。消えた結果を外す規則
+  （FR-087）と、結果の並びと選択は変えない
 
 ### 検索起点フォルダの選択
 
@@ -219,6 +222,11 @@
 - **US15-AS8**: **Given** 検索結果にフォルダの行 F と、F の中で一致したファイル g がある, **When** 一覧で F をゴミ箱に入れる, **Then** F の行と g が一覧から外れる。g をプレビュー中だった場合はプレビューが空になる
 - **US15-AS9**: **Given** 一致するフォルダ `kyoto` の中に、ファイル `kyoto_01.jpg` とフォルダ `kyoto_day2` と `IMG_0002.jpg` がある, **When** キーワード `kyoto` で検索する, **Then** `kyoto`・`kyoto_01.jpg`・`kyoto_day2` の3つが行として表示され、`IMG_0002.jpg` は表示されない
 - **US15-AS10**: **Given** フォルダ2件とファイル3件が一致する, **When** 検索が終わる, **Then** 検索バーの件数は「5 件」になる。一致がフォルダ1件だけの場合も、該当する項目がない旨のメッセージは出ない
+
+### US43 検索結果でも置き換え後の内容を見る（P3）
+
+- **US43-AS1**: **Given** 検索結果の一覧で画像 D をプレビュー中, **When** アプリの外で D を同じパスの別の内容の画像で上書きする,
+  **Then** 選択し直さなくても、D のプレビューとサムネイルが上書き後の内容に変わる。検索結果の並びと選択は変わらない
 
 ## エッジケース
 
@@ -351,9 +359,9 @@
 - [overview.md](overview.md): FR-003・FR-009・FR-039
 - [window-layout.md](window-layout.md): FR-092
 - [directory-tree.md](directory-tree.md): FR-007・FR-065・FR-103
-- [file-list.md](file-list.md): FR-010・FR-012・FR-016・FR-017・FR-056・FR-060・SC-004
+- [file-list.md](file-list.md): FR-010・FR-012・FR-016・FR-017・FR-056・FR-060・FR-228・FR-229・SC-004
 - [zip.md](zip.md): FR-068・FR-069
 - [file-operations.md](file-operations.md): FR-018・FR-027
-- [preview.md](preview.md): FR-028・FR-035・FR-037・FR-038・FR-046
+- [preview.md](preview.md): FR-028・FR-035・FR-037・FR-038・FR-046・FR-230
 - [contracts/keyboard-and-menus.md](contracts/keyboard-and-menus.md): FR-081・141〜144
 - [contracts/settings.md](contracts/settings.md): FR-142（検索条件を保存しない）

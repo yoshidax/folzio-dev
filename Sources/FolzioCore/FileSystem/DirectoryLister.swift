@@ -22,20 +22,20 @@ extension DirectoryListing {
 }
 
 public struct DirectoryLister: DirectoryListing {
-    private static let fileKeys: Set<URLResourceKey> = [
+    private static let fileKeys = Set<URLResourceKey>([
         .creationDateKey,
         .isDirectoryKey,
         .contentTypeKey,
         .fileSizeKey,
         .localizedTypeDescriptionKey,
-    ]
+    ]).union(FileContentVersion.resourceKeys)
 
     /// Keys used for media row values (used by search, which reads only matching files)
-    private static let mediaKeys: Set<URLResourceKey> = [
+    private static let mediaKeys = Set<URLResourceKey>([
         .creationDateKey,
         .fileSizeKey,
         .localizedTypeDescriptionKey,
-    ]
+    ]).union(FileContentVersion.resourceKeys)
 
     private static let archiveExtension = "zip"
 
@@ -127,7 +127,8 @@ public struct DirectoryLister: DirectoryListing {
             kind: .media(kind),
             typeDescription: values?.localizedTypeDescription ?? kind.rawValue.uppercased(),
             creationDate: values?.creationDate,
-            fileSize: Int64(values?.fileSize ?? 0)
+            fileSize: Int64(values?.fileSize ?? 0),
+            contentVersion: FileContentVersion(resourceValues: values)
         )
     }
 

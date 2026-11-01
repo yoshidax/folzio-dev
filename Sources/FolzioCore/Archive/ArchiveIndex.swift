@@ -145,7 +145,13 @@ public struct ArchiveIndex: Sendable {
         }
         self.entries = entries
         self.children = children
-        self.rows = Self.makeRows(archive: archive, entries: entries, children: children, kindNames: kindNames)
+        self.rows = Self.makeRows(
+            archive: archive,
+            version: FileContentVersion(archiveIdentity: identity),
+            entries: entries,
+            children: children,
+            kindNames: kindNames
+        )
     }
 
     public func entry(at path: String) -> ArchiveEntry? {
@@ -167,8 +173,10 @@ public struct ArchiveIndex: Sendable {
 
     // MARK: - Helpers
 
+    /// `version` is the content version of the zip file, shared by all media rows inside it (FR-231).
     private static func makeRows(
         archive: URL,
+        version: FileContentVersion,
         entries: [String: ArchiveEntry],
         children: [String: [String]],
         kindNames: KindNames
@@ -200,7 +208,8 @@ public struct ArchiveIndex: Sendable {
                     result.append(MediaFile(
                         url: url, name: entry.name, kind: .media(kind), typeDescription: description,
                         creationDate: entry.modificationDate,
-                        fileSize: Int64(clamping: entry.uncompressedSize)
+                        fileSize: Int64(clamping: entry.uncompressedSize),
+                        contentVersion: version
                     ))
                 }
             }
