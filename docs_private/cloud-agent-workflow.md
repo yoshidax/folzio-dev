@@ -26,6 +26,24 @@ Cloud Agent（Claude / Codex）が、Cloud 環境で feature またはバグ修�
 6. `.specify/feature.json` が、作った feature を指す。このファイルは `.specify/.gitignore` で管理対象外になっているため、コミットされず、並行する PR の間で競合しない。以後の `speckit-plan`、`speckit-tasks`、`speckit-analyze` は、このファイルから feature を見つける。
 7. 作業の区切りでコミットし、作業ブランチに push する（`git push -u origin <ブランチ>`。6 章）。
 
+### Codex Cloud の Git 通信
+
+GitHub 連携、Cloud 環境のネットワーク設定、コマンドのサンドボックス権限は別々に確認する。GitHub MCP が使えても、
+シェルの `git fetch` が同じ通信権限を持つとは限らない。Cloud で適用される指示やネットワーク設定を先に確認する。
+
+- `Failed to connect to proxy port 8080` が出た場合、プロキシや GitHub の障害と決めつけず、コマンドにネットワークアクセスが
+  許可されているかを確認する。`github.com` の許可とリポジトリへの権限も別途確認する。
+- Codex のコマンド実行でネットワークが制限されている場合、サポートされるコマンド単位のネットワーク権限を要求し、
+  まず読み取り専用の `git ls-remote origin HEAD` で再確認する。利用できる権限や承認手順は実行環境の指示に従う。
+  その後、必要な `git fetch` を実行し、`push` は `AGENTS.md` の Git の規則に従う。
+- プロキシ設定の解除、TLS 検証の無効化、サンドボックスや承認の回避は行わない。権限を指定しても失敗した場合は、
+  実際のエラーと Cloud のネットワーク設定を確認し、未解決の事実を報告する。認証情報を出力しない。
+- 2026-11-01 の TAK-9 では、通常の `git ls-remote` が上記エラーで失敗し、コマンド単位のネットワーク権限を指定すると
+  成功した。これは一例であり、同じエラーの原因が常に同じとは限らない。
+
+参照: [Agent approvals & security](https://learn.chatgpt.com/docs/agent-approvals-security)、
+[Cloud environments](https://developers.openai.com/codex/environments/cloud-environments)。
+
 ## 2 Linear
 
 使うのは Linear の MCP（`get_issue`、`save_issue`）。**Linear の GitHub 連携は、PR を検知しない**（TAK-28 で、PR のタイトルに Issue 番号があっても、`In Review` にもリンクにもならなかったことを確認した）。そのため、Agent が自分で更新する。

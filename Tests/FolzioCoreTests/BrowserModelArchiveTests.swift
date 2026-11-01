@@ -441,9 +441,9 @@ struct BrowserModelArchiveTests {
         var cached = false
         let deadline = ContinuousClock.now + .seconds(3)
         while ContinuousClock.now < deadline {
-            let a = await cache.get(env.entry("a.jpg"))
-            let c = await cache.get(env.entry("c.jpg"))
-            if a != nil, c != nil { cached = true; break }
+            let a = await cache.containsEntry(for: env.entry("a.jpg"))
+            let c = await cache.containsEntry(for: env.entry("c.jpg"))
+            if a, c { cached = true; break }
             try? await Task.sleep(for: .milliseconds(10))
         }
         #expect(cached)
