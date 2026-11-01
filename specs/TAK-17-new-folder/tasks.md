@@ -36,6 +36,7 @@
 - [x] T019 [US35] 変更した Swift ファイルのコメントを英語で書く（AGENTS.md「コードコメント（英語）」）。
 - [x] T024 [US35] `docs/usage.md` と `docs/usage.ja.md` の操作の表に新規フォルダ（⇧⌘N・ファイルメニュー・右クリック）の行を両言語で追加する（README の英語版と日本語版の規則に準じる）。
 - [x] T025 [US35] 保守者の GUI 確認での指摘（作成直後の名前の編集が一瞬で解除され、既定名のまま残る。FR-210・FR-211 に反する）を直す。`Sources/FolzioApp/FileList/FileListViewController.swift` の `beginNamingNewFolder` で、`ListModeView.hasAppliedRow(for:)`・`ThumbnailModeView.hasAppliedItem(for:)` によりビューが新しい行を反映したことを確かめてから編集を始める。
+- [x] T026 [US35] 保守者の GUI 確認での指摘（ツリーでも作成直後の名前の編集が一瞬で解除される）を直す。`Sources/FolzioApp/Tree/DirectoryTreeViewController.swift` の `startProbes` で、サブフォルダの確認の結果が編集中の行に届いたときは行を読み直さず、編集の終了時に反映する（お気に入りの表示の更新と同じ扱い。R51）。
 
 ## Phase 4: Polish & Cross-Cutting
 
@@ -78,3 +79,8 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   原因: ビューへの一覧の反映は Observation の後のターンに行われ、URL が変わった一覧の反映は表を作り直して編集を取り消す
   （`ListModeView.applyModel` の `finishRenaming(commit: false)`、サムネイルのセル再利用時の `endRenaming(commit: false)`）。
   実装は反映を待たずに編集を始めていた。T025 で、新しい行の反映を確かめてから編集を始めるように直した。
+- 2026-11-01 保守者の GUI 確認: ファイルリスト（T025）は期待どおり。ツリーは改善せず。
+  原因: 新しい子の行を作ると、サブフォルダの有無の確認（`SubfolderProbe`）がその行に対して非同期で走る。空のフォルダなので結果がすぐ届き、
+  `startProbes` が `reloadItem(node)` で行を読み直す。行を読み直すとセルが作り直されて編集欄が消え、`controlTextDidEndEditing` で
+  新しいセルの元の名前のまま確定（変更なし）になっていた。T026 で、編集中の行への結果は `needsReloadAfterEdit` にして、編集の終了時の
+  `reloadItem` で反映するようにした。T025 の原因（一覧の反映待ち）とは別の経路。

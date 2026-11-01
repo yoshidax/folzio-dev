@@ -1272,7 +1272,12 @@ final class DirectoryTreeViewController: NSViewController {
                 guard let self, !Task.isCancelled else { return }
                 guard let node = lookup[result.url.standardizedFileURL] else { continue }
                 node.folder.applySubfolderProbe(result.result)
-                if self.outlineView.row(forItem: node) >= 0 {
+                if node === self.editingTarget?.item {
+                    // Reloading the row would replace the edit field and end renaming with the old name. A new folder
+                    // is probed right after it appears, usually while the user is still typing its name. Show the
+                    // result when editing ends, as for favorites (R51, FR-211).
+                    self.needsReloadAfterEdit = true
+                } else if self.outlineView.row(forItem: node) >= 0 {
                     self.outlineView.reloadItem(node, reloadChildren: false)
                 }
             }
