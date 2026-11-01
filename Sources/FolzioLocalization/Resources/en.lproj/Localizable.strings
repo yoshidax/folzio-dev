@@ -181,6 +181,9 @@
 "menu.file" = "File";
 
 /* File menu items */
+"menu.file.newFolder" = "New Folder";
+
+/* File menu items */
 "menu.file.open" = "Open";
 
 /* File menu items */
@@ -450,6 +453,9 @@
 /* Accessibility label for a name edit field in the directory tree */
 "tree.a11y.folderName" = "Folder name";
 
+/* Default name of a folder created with New Folder, before the user renames it. Use Finder's wording */
+"folder.defaultName" = "untitled folder";
+
 /* Search sheet keyword label, placeholder, and accessibility text */
 "search.keyword" = "Keyword";
 
@@ -578,6 +584,12 @@
 
 /* Remaining failure count for file operations. %1$@ is the formatted count */
 "dialog.operation.more" = "and %1$@ more";
+
+/* Error shown when folders selected in the directory tree include a folder inside another selected folder, so nothing is moved to the Trash */
+"dialog.treeTrashOverlap.title" = "Can’t move the folders to the Trash";
+
+/* Error shown when folders selected in the directory tree include a folder inside another selected folder, so nothing is moved to the Trash */
+"dialog.treeTrashOverlap.message" = "The selection includes a folder that is inside another selected folder. No folders were moved to the Trash.";
 
 /* Accessibility label for a thumbnail image */
 "a11y.thumbnail" = "Thumbnail";
@@ -771,6 +783,12 @@
 
 /* Availability note below a shortcut reference action */
 "shortcuts.condition.duplicate" = "In the file list; unavailable inside a zip.";
+
+/* Action description in the shortcut reference */
+"shortcuts.entry.newFolder" = "Create a new folder";
+
+/* Availability note below a shortcut reference action */
+"shortcuts.condition.newFolder" = "Creates it in the displayed folder (file list) or the selected folder (tree; a favorite’s registered folder). Unavailable inside a zip, in search results, on the Favorites heading or a missing favorite, or while renaming.";
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.trash" = "Move to Trash or remove from Favorites";
