@@ -52,3 +52,4 @@ open .build/Folzio.app
   操作として読めず、設定との関係も示していないため、案 A「名前の変更・移動と、ツリーのフォルダをゴミ箱に入れる操作は、この設定に関わらず常に確認します」
   （英語: Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless of this setting）に変更した。
   英語は2行に折り返す見込みのため、Q4 で折り返しと揃えも確認する
+- 2026-11-01 GUI（T011、3ca1a7b）: 保守者が「動作確認問題ありませんでした」と報告。記録は checklists/validation.md
