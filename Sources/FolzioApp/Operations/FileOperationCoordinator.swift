@@ -409,4 +409,3 @@ private extension FileOperationResult {
         failed.append(contentsOf: other.failed)
     }
 }
-
