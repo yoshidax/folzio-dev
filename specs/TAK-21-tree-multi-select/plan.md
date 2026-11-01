@@ -8,8 +8,8 @@
 
 ツリーの `NSOutlineView` を複数選択可能にし、操作の対象（選択全体か、右クリック・ドラッグを始めた1行か）と、その対象での各操作の可否を Core の
 `TreeBatchTargets` で決める。一括のゴミ箱は既存の `FileOperationCoordinator.trash(_:origin: .tree)` に URL の配列を渡し、確認モーダルの場所の表示だけを複数に対応させる。
-移動・コピーは既存のアプリ内ドラッグ（`InternalDrag`・`InternalDropValidation`）がそのまま URL の配列を扱う。主の行（FR-209）はツリーのサブクラスで追跡し、
-操作後の選択は表示中のフォルダの単一選択に揃える（FR-212）。
+移動・コピーは既存のアプリ内ドラッグ（`InternalDrag`・`InternalDropValidation`）がそのまま URL の配列を扱う。主の行（FR-216）はツリーのサブクラスで追跡し、
+操作後の選択は表示中のフォルダの単一選択に揃える（FR-219）。
 
 ## Technical Context
 
@@ -30,7 +30,7 @@
 **Constraints**: ネットワーク API を使わない。ファイル操作と移動・コピーの検証は UI スレッドで行わない（既存の detached task を使う）。
 AppKit UI の不変条件（AGENTS.md）を守る
 
-**Scale/Scope**: ツリーの通常のフォルダの複数選択からの移動・コピー・ゴミ箱。お気に入りの一括削除・⌘A・アプリ外へのドラッグは対象外（A-119・A-122・A-123）
+**Scale/Scope**: ツリーの通常のフォルダの複数選択からの移動・コピー・ゴミ箱。お気に入りの一括削除・⌘A・アプリ外へのドラッグは対象外（A-126・A-129・A-130）
 
 ## Constitution Check
 
@@ -53,16 +53,16 @@ AppKit UI の不変条件（AGENTS.md）を守る
 
 ### Source Code (repository root)
 
-- `Sources/FolzioCore/Model/TreeBatchTargets.swift`（新規）: 対象の決定（FR-210）、ゴミ箱・ドラッグの URL と可否（FR-211）、親子の重なり（EC-141）。R1・R2
+- `Sources/FolzioCore/Model/TreeBatchTargets.swift`（新規）: 対象の決定（FR-217）、ゴミ箱・ドラッグの URL と可否（FR-218）、親子の重なり（EC-146）。R1・R2
 - `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift`: `allowsMultipleSelection = true`。`DragAwareOutlineView` で主の行とアンカーを追跡し、⌘クリック・Shift クリック・Shift+↑↓ を自前で処理し、`canDragRows(with:at:)` を override する（R4・R5）。
   ドラッグ前の選択全体の復元と、通常のフォルダ以外を含むドラッグの抑止（R5）。`moveToTrash`・`trashFolderFromMenu`・`validateMenuItem`・`menuNeedsUpdate`・
   `rename`・`paste`・`movePaste`・`copyPathname`・`addToFavorites` を `TreeBatchTargets` 経由に変える（R7）。`selectAll(_:)` の無効化（R8）。折りたたみの扱い（R9）。
-  操作後の選択（FR-212、R6）
+  操作後の選択（FR-219、R6）
 - `Sources/FolzioApp/App/MainSplitViewController.swift`: `canAddSelectedFolderToFavorites` を複数選択で false にする（R7）
-- `Sources/FolzioApp/Operations/FileOperationCoordinator.swift`: ツリーからのゴミ箱の確認モーダルに各フォルダのパスを渡す（R3）。ツリーからの移動・ゴミ箱の完了をツリーへ通知（FR-212）
+- `Sources/FolzioApp/Operations/FileOperationCoordinator.swift`: ツリーからのゴミ箱の確認モーダルに各フォルダのパスを渡す（R3）。ツリーからの移動・ゴミ箱の完了をツリーへ通知（FR-219）
 - `Sources/FolzioApp/Operations/ConfirmationPresenter.swift`: 複数の場所の表示（先頭5件と残りの件数）
-- `Sources/FolzioLocalization/TextKey.swift`、`Resources/{ja,en}.lproj/Localizable.strings`: EC-141 のエラーの見出しと説明、複数の場所の行の文言
-- `Tests/FolzioCoreTests/TreeBatchTargetsTests.swift`（新規）: FR-210・FR-211・EC-141 の全分岐と、単一の対象で `FavoriteCommands` と一致すること
+- `Sources/FolzioLocalization/TextKey.swift`、`Resources/{ja,en}.lproj/Localizable.strings`: EC-146 のエラーの見出しと説明、複数の場所の行の文言
+- `Tests/FolzioCoreTests/TreeBatchTargetsTests.swift`（新規）: FR-217・FR-218・EC-146 の全分岐と、単一の対象で `FavoriteCommands` と一致すること
 - `Tests/FolzioCoreTests/InternalDropValidationTests.swift`: 複数のツリーのフォルダを起点にした検証（異なる親・親子の同時選択・選択の1つの配下への宛先）を追加
 - `Tests/FolzioCoreTests/Localization/`: 追加したキーの ja・en の存在（既存の `CatalogConsistencyTests` に従う）
 
@@ -80,7 +80,7 @@ R9: 折りたたむ前に隠れる行の選択を外し、後で結果を検査�
 
 - 単一選択のときの振る舞いは変えない（既存の FR-079・FR-103・FR-064・FR-182 の経路を通す）。`TreeBatchTargets` は1件のとき既存の `FavoriteCommands` の結果を返す
 - `outlineViewSelectionDidChange` は、主の行が変わったときだけ `model.selectFolder` を呼ぶ。複数選択中にファイルリストの表示をほかの経路で変えない
-- 一括のゴミ箱の失敗（一部の失敗・外部で消えた項目）は既存の `presentFailures` に任せる（EC-142）
+- 一括のゴミ箱の失敗（一部の失敗・外部で消えた項目）は既存の `presentFailures` に任せる（EC-147）
 
 ## Complexity Tracking
 

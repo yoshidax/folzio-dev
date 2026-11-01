@@ -12,7 +12,7 @@ final class ConfirmationPresenter {
 
     /// When `includesFolders` is true, notes that folders are processed with their contents (R32). When `location` is
     /// present, includes the target's absolute path (R58). When `itemLocations` is not empty, shows each listed item's
-    /// absolute path below its name (FR-079, A-120). `ConfirmationPolicy` decides whether confirmation can be
+    /// absolute path below its name (FR-079, A-127). `ConfirmationPolicy` decides whether confirmation can be
     /// skipped. Confirmations that cannot be skipped (rename, move, and Trash from the tree) always appear regardless
     /// of the setting and do not show "Don't ask again" (FR-024, FR-079).
     func confirm(

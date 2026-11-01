@@ -10,9 +10,9 @@ struct TreeBatchTargetsTests {
     private let c = URL(fileURLWithPath: "/Volumes/Ext/c")
     private let home = URL(fileURLWithPath: "/Users/me")
 
-    // MARK: Targets (FR-210)
+    // MARK: Targets (FR-217)
 
-    @Test("Keyboard and menu bar commands act on the whole selection (FR-210 (1))")
+    @Test("Keyboard and menu bar commands act on the whole selection (FR-217 (1))")
     func keyboardUsesSelection() {
         let targets = TreeBatchTargets(selection: [.folder(a), .folder(b)])
         #expect(targets.targets == [.folder(a), .folder(b)])
@@ -21,13 +21,13 @@ struct TreeBatchTargetsTests {
         #expect(targets.singleTarget == nil)
     }
 
-    @Test("A right-click or drag on a selected row acts on the whole selection (FR-210 (2), (3))")
+    @Test("A right-click or drag on a selected row acts on the whole selection (FR-217 (2), (3))")
     func selectedOriginUsesSelection() {
         let targets = TreeBatchTargets(selection: [.folder(a), .folder(b)], origin: .folder(b), originIsSelected: true)
         #expect(targets.targets == [.folder(a), .folder(b)])
     }
 
-    @Test("A right-click or drag on an unselected row acts on that row only (FR-210 (2), (3), A-21)")
+    @Test("A right-click or drag on an unselected row acts on that row only (FR-217 (2), (3), A-21)")
     func unselectedOriginUsesOriginOnly() {
         let targets = TreeBatchTargets(selection: [.folder(a), .folder(b)], origin: .folder(c), originIsSelected: false)
         #expect(targets.targets == [.folder(c)])
@@ -46,9 +46,9 @@ struct TreeBatchTargetsTests {
         #expect(targets.contextMenu(roots: roots).isEmpty)
     }
 
-    // MARK: Availability (FR-211)
+    // MARK: Availability (FR-218)
 
-    @Test("Multiple regular folders can be moved to the Trash and dragged (FR-211 (1))")
+    @Test("Multiple regular folders can be moved to the Trash and dragged (FR-218 (1))")
     func regularFoldersAreAvailable() {
         let targets = TreeBatchTargets(selection: [.folder(a), .folder(b), .folder(c)])
         #expect(targets.trashTargets(roots: roots) == .folders([a, b, c]))
@@ -56,7 +56,7 @@ struct TreeBatchTargetsTests {
     }
 
     @Test(
-        "Any root, favorite, or heading among multiple targets makes Trash and drag unavailable (FR-211 (1))",
+        "Any root, favorite, or heading among multiple targets makes Trash and drag unavailable (FR-218 (1))",
         arguments: [
             TreeItemRole.folder(URL(fileURLWithPath: "/Users/me")),
             .folder(URL(fileURLWithPath: "/")),
@@ -90,7 +90,7 @@ struct TreeBatchTargetsTests {
         #expect(targets.contextMenu(roots: roots) == FavoriteCommands.contextMenu(for: role, roots: roots))
     }
 
-    @Test("Multiple targets use the regular folder menu regardless of their roles (FR-211 (3))")
+    @Test("Multiple targets use the regular folder menu regardless of their roles (FR-218 (3))")
     func multipleTargetsUseFolderMenu() {
         let folderMenu = FavoriteCommands.contextMenu(for: .folder(a), roots: roots)
         #expect(TreeBatchTargets(selection: [.folder(a), .folder(b)]).contextMenu(roots: roots) == folderMenu)
@@ -98,9 +98,16 @@ struct TreeBatchTargetsTests {
         #expect(TreeBatchTargets(selection: [.folder(home), .folder(a)]).contextMenu(roots: roots) == folderMenu)
     }
 
-    // MARK: Overlap (EC-141)
+    @Test("The multiple-target menu starts with New Folder like a regular folder menu, which the UI disables (FR-218)")
+    func multipleTargetMenuStartsWithNewFolder() {
+        let menu = TreeBatchTargets(selection: [.folder(a), .folder(b)]).contextMenu(roots: roots)
+        #expect(Array(menu.prefix(2)) == [.newFolder, .separator])
+        #expect(menu.contains(.moveToTrash))
+    }
 
-    @Test("A folder and its child or grandchild are rejected as a whole (EC-141)")
+    // MARK: Overlap (EC-146)
+
+    @Test("A folder and its child or grandchild are rejected as a whole (EC-146)")
     func parentAndDescendantOverlap() {
         let child = a.appendingPathComponent("child")
         let grandchild = child.appendingPathComponent("grandchild")
@@ -109,7 +116,7 @@ struct TreeBatchTargetsTests {
         #expect(TreeBatchTargets(selection: [.folder(b), .folder(grandchild), .folder(a)]).trashTargets(roots: roots) == .overlapping)
     }
 
-    @Test("Siblings and names that share a prefix do not overlap (EC-141)")
+    @Test("Siblings and names that share a prefix do not overlap (EC-146)")
     func siblingsDoNotOverlap() {
         let ab = URL(fileURLWithPath: "/Users/me/ab")
         #expect(TreeBatchTargets(selection: [.folder(a), .folder(ab)]).trashTargets(roots: roots) == .folders([a, ab]))

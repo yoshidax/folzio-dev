@@ -205,7 +205,7 @@ final class MainSplitViewController: NSSplitViewController {
                 await treeViewController?.refreshFolders(folders)
             }
         }
-        // After a tree drag or tree Move to Trash, select only the lead row (FR-212).
+        // After a tree drag or tree Move to Trash, select only the lead row (FR-219).
         fileOperationCoordinator.onOperationFinished = { [weak treeViewController] sources, removed in
             treeViewController?.didFinishOperation(sources: sources, removed: removed)
         }

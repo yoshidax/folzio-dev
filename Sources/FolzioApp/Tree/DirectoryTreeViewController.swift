@@ -13,7 +13,7 @@ private final class DragAwareOutlineView: NSOutlineView {
     /// Handles ↑↓ and Shift+↑↓. Receives the row offset and whether the selection is extended. Returns true when
     /// handled; otherwise AppKit moves the selection (R4).
     var arrowKey: ((Int, Bool) -> Bool)?
-    /// Decides whether the rows can be dragged before the drag starts (FR-211, R5).
+    /// Decides whether the rows can be dragged before the drag starts (FR-218, R5).
     var canDragRowsHandler: ((IndexSet, NSPoint) -> Bool)?
 
     override func mouseDown(with event: NSEvent) {
@@ -54,7 +54,7 @@ private final class DragAwareOutlineView: NSOutlineView {
         return super.canDragRows(with: rowIndexes, at: mouseDownPoint)
     }
 
-    /// The tree does not select all rows (A-119, R8).
+    /// The tree does not select all rows (A-126, R8).
     override func selectAll(_ sender: Any?) {}
 }
 
@@ -124,7 +124,7 @@ final class DirectoryTreeViewController: NSViewController {
     private var activationObserver: NSObjectProtocol?
     private var didReveal = false
     private var isRestoringSelection = false
-    /// Row whose folder the file list shows in a multiple selection (the lead row, FR-209). Kept as the row's item
+    /// Row whose folder the file list shows in a multiple selection (the lead row, FR-216). Kept as the row's item
     /// because row numbers change when folders expand or collapse.
     private var leadItem: AnyObject?
     /// Start of the range for Shift-click and Shift+↑↓ (R4).
@@ -133,10 +133,10 @@ final class DirectoryTreeViewController: NSViewController {
     private var shownLeadItem: AnyObject?
     /// Whether the selection is being changed by this controller's ⌘-click, Shift-click, or arrow key handling.
     private var isApplyingOwnSelection = false
-    /// Rows to keep selected while a folder collapses in a multiple selection (EC-143, R9).
+    /// Rows to keep selected while a folder collapses in a multiple selection (EC-148, R9).
     private var collapseSelection: [AnyObject]?
     /// Regular folders that the latest tree drag or Move to Trash acts on. Used to update the selection after the
-    /// operation (FR-212).
+    /// operation (FR-219).
     private var pendingOperationSources: [URL] = []
     /// Whether to scroll a renamed folder (or a descendant) into view after the parent reload changes its position,
     /// when that folder was selected (FR-104).
@@ -230,7 +230,7 @@ final class DirectoryTreeViewController: NSViewController {
         outlineView.selectedRowIndexes.compactMap { outlineView.item(atRow: $0) as AnyObject? }
     }
 
-    /// Targets of a command (FR-210). A context menu item targets the right-clicked row, or the whole selection when
+    /// Targets of a command (FR-217). A context menu item targets the right-clicked row, or the whole selection when
     /// that row is selected. Keyboard shortcuts and menu bar commands target the whole selection.
     private func batchTargets(for sender: Any?) -> TreeBatchTargets {
         let selection = selectedItems.compactMap { role(for: $0) }
@@ -273,7 +273,7 @@ final class DirectoryTreeViewController: NSViewController {
     }
 
     /// Visible row from which keyboard movement starts: the lead row, or the nearest visible ancestor when a
-    /// collapsed folder hides it (EC-143).
+    /// collapsed folder hides it (EC-148).
     private func keyboardOriginRow() -> Int {
         var item: Any? = leadItem
         while let current = item {
@@ -284,8 +284,8 @@ final class DirectoryTreeViewController: NSViewController {
         return outlineView.selectedRow
     }
 
-    /// ⌘-click adds or removes a row; Shift-click selects the range from the anchor (FR-208, R4). Removing a row does
-    /// not change the file list (FR-209).
+    /// ⌘-click adds or removes a row; Shift-click selects the range from the anchor (FR-215, R4). Removing a row does
+    /// not change the file list (FR-216).
     private func handleModifiedClick(clicked: Int, modifiers: NSEvent.ModifierFlags) -> Bool {
         guard let clickedItem = outlineView.item(atRow: clicked) as AnyObject? else { return false }
         // Commit a name being edited, as a click elsewhere does (FR-103).
@@ -316,7 +316,7 @@ final class DirectoryTreeViewController: NSViewController {
 
     /// Shift+↑↓ extends the range from the anchor to the moved lead row. ↑↓ without Shift selects the row before or
     /// after the lead row, also when ⌘-click removed the lead row from the selection. Only when the selection is
-    /// exactly the visible lead row does AppKit handle ↑↓ as before (FR-005, FR-208, R4).
+    /// exactly the visible lead row does AppKit handle ↑↓ as before (FR-005, FR-215, R4).
     private func handleArrowKey(offset: Int, extending: Bool) -> Bool {
         guard editingTarget == nil else { return false }
         let leadRow = keyboardOriginRow()
@@ -344,7 +344,7 @@ final class DirectoryTreeViewController: NSViewController {
         return true
     }
 
-    /// Decides whether a drag can start (FR-162, FR-211, R5). Refuses the whole drag when a target is not a regular
+    /// Decides whether a drag can start (FR-162, FR-218, R5). Refuses the whole drag when a target is not a regular
     /// folder, or when AppKit's rows differ from the targets, so no row is excluded silently.
     private func canDragRows(_ rows: IndexSet, at point: NSPoint) -> Bool {
         let roles = rows.compactMap { role(for: outlineView.item(atRow: $0)) }
@@ -399,7 +399,7 @@ final class DirectoryTreeViewController: NSViewController {
     private var rootURLs: [URL] { roots.map(\.url) }
 
     /// Item of the selected row when exactly one row is selected. Nil for no selection and for multiple rows, so
-    /// commands that assume a single row do nothing in a multiple selection (FR-211).
+    /// commands that assume a single row do nothing in a multiple selection (FR-218).
     private var selectedItem: Any? {
         guard outlineView.numberOfSelectedRows == 1 else { return nil }
         let row = outlineView.selectedRow
@@ -415,7 +415,7 @@ final class DirectoryTreeViewController: NSViewController {
     }
 
     /// Returns the right-clicked row for a context menu item, or the selected row for a keyboard command. Returns nil
-    /// when the command targets multiple rows (FR-210, FR-211).
+    /// when the command targets multiple rows (FR-217, FR-218).
     private func targetItem(for sender: Any?) -> Any? {
         guard batchTargets(for: sender).isSingle else { return nil }
         if let menuItem = sender as? NSMenuItem, let represented = menuItem.representedObject {
@@ -543,13 +543,13 @@ final class DirectoryTreeViewController: NSViewController {
     }
 
     /// Move to Trash in the context menu. Targets the right-clicked row, or the whole selection when that row is
-    /// selected, and does not move keyboard focus (R33, FR-210).
+    /// selected, and does not move keyboard focus (R33, FR-217).
     @objc private func trashFolderFromMenu(_ sender: Any?) {
         trash(batchTargets(for: sender))
     }
 
     /// Moves the target folders to the Trash as one operation. Trash from the tree always confirms, regardless of the
-    /// skip setting (FR-079, R66). Rejects a folder selected with its descendant as a whole (EC-141).
+    /// skip setting (FR-079, R66). Rejects a folder selected with its descendant as a whole (EC-146).
     private func trash(_ targets: TreeBatchTargets) {
         switch targets.trashTargets(roots: rootURLs) {
         case .unavailable:
@@ -619,7 +619,7 @@ final class DirectoryTreeViewController: NSViewController {
     /// New Folder in the context menu. Creates the folder in the right-clicked row's folder without changing the tree
     /// selection (FR-208 (1), A-21).
     @objc private func newFolderFromMenu(_ sender: Any?) {
-        guard editingTarget == nil else { return }
+        guard editingTarget == nil, batchTargets(for: sender).isSingle else { return }
         createFolder(for: (sender as? NSMenuItem)?.representedObject)
     }
 
@@ -1016,7 +1016,7 @@ final class DirectoryTreeViewController: NSViewController {
         outlineView.trackingEnded = { [weak self] dragged, previousRows, clickedRow in
             guard let self else { return }
             if dragged {
-                // Restore the whole selection from before the drag; the lead row is unchanged (FR-210 (3), R5).
+                // Restore the whole selection from before the drag; the lead row is unchanged (FR-217 (3), R5).
                 self.isRestoringSelection = true
                 let rows = previousRows.filteredIndexSet { $0 < self.outlineView.numberOfRows }
                 if rows.isEmpty {
@@ -1031,7 +1031,7 @@ final class DirectoryTreeViewController: NSViewController {
                 let shownBefore = self.shownLeadItem
                 self.outlineViewSelectionDidChange(Notification(name: NSOutlineView.selectionDidChangeNotification, object: self.outlineView))
                 // A click inside a multiple selection narrows it to the clicked row without changing the lead row.
-                // While showing search results, end them as a click on the selected row does (FR-209, FR-086).
+                // While showing search results, end them as a click on the selected row does (FR-216, FR-086).
                 if clickedRow >= 0, self.shownLeadItem === shownBefore {
                     self.clickedRow(self.outlineView)
                 }
@@ -1198,7 +1198,7 @@ final class DirectoryTreeViewController: NSViewController {
         let headerWasExpanded = outlineView.isItemExpanded(favoritesHeader)
         let selected = selectedItem
         let keepsFavoriteSelection = selected is FavoritesHeader || selected is FavoriteEntry
-        // A multiple selection is restored by item, or by location for recreated root nodes (FR-208).
+        // A multiple selection is restored by item, or by location for recreated root nodes (FR-215).
         let multipleSelection = outlineView.numberOfSelectedRows > 1 ? selectedItems : nil
         isRestoringSelection = keepsFavoriteSelection || multipleSelection != nil
         outlineView.reloadData()
@@ -1318,7 +1318,7 @@ final class DirectoryTreeViewController: NSViewController {
 
     /// Receives the end of a copy, move, or Move to Trash. Only an operation on exactly the folders of the latest tree
     /// drag or tree Move to Trash is the tree's own; it ends the pending record even when it was cancelled, rejected,
-    /// or a copy. When it removed folders, selects only the lead row (FR-212). When the lead row's folder or an
+    /// or a copy. When it removed folders, selects only the lead row (FR-219). When the lead row's folder or an
     /// ancestor was removed, the file list moves to its parent and the tree synchronization selects that row instead
     /// (FR-079, EC-123).
     func didFinishOperation(sources: [URL], removed: [URL]) {
@@ -1352,7 +1352,7 @@ final class DirectoryTreeViewController: NSViewController {
         }
     }
 
-    /// Selects only the lead row without changing the file list (FR-212).
+    /// Selects only the lead row without changing the file list (FR-219).
     private func selectLeadRow(_ row: Int) {
         isRestoringSelection = true
         outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
@@ -1442,7 +1442,7 @@ final class DirectoryTreeViewController: NSViewController {
             self.isRestoringSelection = true
             self.outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
             self.isRestoringSelection = false
-            // The synchronized row ends a multiple selection and becomes the lead row and the anchor (FR-209).
+            // The synchronized row ends a multiple selection and becomes the lead row and the anchor (FR-216).
             self.leadItem = node
             self.anchorItem = node
             self.shownLeadItem = node
@@ -1662,7 +1662,7 @@ final class DirectoryTreeViewController: NSViewController {
         applyListing(result, to: node)
 
         // Keep the rows of a multiple selection that still exist. Child nodes for the same location are reused
-        // (FR-208).
+        // (FR-215).
         if previousItems.count > 1 {
             let rows = IndexSet(previousItems.map { outlineView.row(forItem: $0) }.filter { $0 >= 0 })
             if !rows.isEmpty {
@@ -1745,12 +1745,12 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
 
     func outlineView(_ outlineView: NSOutlineView, draggingSession session: NSDraggingSession, willBeginAt screenPoint: NSPoint, forItems draggedItems: [Any]) {
         self.outlineView.beganDrag = true
-        // Remember the dragged folders so a successful move updates the tree selection (FR-212).
+        // Remember the dragged folders so a successful move updates the tree selection (FR-219).
         pendingOperationSources = draggedItems.compactMap { ($0 as? Node)?.url }
     }
 
     /// A drag that ends without a drop (cancelled or refused) starts no operation, so forget its folders. A drop is
-    /// finished by `didFinishOperation(sources:removed:)` (FR-212).
+    /// finished by `didFinishOperation(sources:removed:)` (FR-219).
     func outlineView(
         _ outlineView: NSOutlineView,
         draggingSession session: NSDraggingSession,
@@ -1966,7 +1966,7 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
         }
     }
 
-    /// Shows the lead row's folder (FR-007, FR-209). A selection changed by AppKit to a single row makes that row the
+    /// Shows the lead row's folder (FR-007, FR-216). A selection changed by AppKit to a single row makes that row the
     /// lead row. ⌘-click, Shift-click, and arrow key handling set the lead row themselves. The file list changes only
     /// when the lead row changes, so removing rows from the selection does not change it.
     func outlineViewSelectionDidChange(_ notification: Notification) {
@@ -2006,8 +2006,8 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
     func outlineViewItemWillCollapse(_ notification: Notification) {
         guard let collapsing = notification.userInfo?["NSObject"] as AnyObject? else { return }
         // In a multiple selection, remove the rows that the collapse hides before AppKit handles them, so the parent
-        // row is not added and the file list does not change (EC-143, R9). A single selection keeps the AppKit
-        // behavior (A-124).
+        // row is not added and the file list does not change (EC-148, R9). A single selection keeps the AppKit
+        // behavior (A-131).
         if outlineView.numberOfSelectedRows > 1 {
             let remaining = selectedItems.filter { !isDescendant($0, of: collapsing) }
             collapseSelection = remaining
@@ -2111,7 +2111,7 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
             if case .favorite = editingTarget(for: menuItem.representedObject) { return true }
             return false
         case #selector(renameFolderFromMenu(_:)):
-            // Disabled when the menu targets multiple rows (FR-211 (2)).
+            // Disabled when the menu targets multiple rows (FR-218 (2)).
             guard batchTargets(for: menuItem).isSingle else { return false }
             if case .folder = editingTarget(for: menuItem.representedObject) { return true }
             return false
@@ -2125,7 +2125,8 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
         case #selector(newFolder(_:)):
             return newFolderTarget(for: selectedItem) != nil
         case #selector(newFolderFromMenu(_:)):
-            return newFolderTarget(for: menuItem.representedObject) != nil
+            // New Folder needs a single destination, so a menu that targets multiple rows disables it (FR-218 (2)).
+            return batchTargets(for: menuItem).isSingle && newFolderTarget(for: menuItem.representedObject) != nil
         case #selector(moveToTrash(_:)):
             // For a favorite item, ⌘⌫ is Remove from Favorites (FR-064); for a non-root folder, it is Move to Trash
             // (FR-079).
@@ -2134,7 +2135,7 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
                 return true
             }
             // A multiple selection always shows Move to Trash. It is enabled when every selected row is a regular
-            // folder; folders that contain one another stay enabled so the error explains why (FR-211, EC-141).
+            // folder; folders that contain one another stay enabled so the error explains why (FR-218, EC-146).
             menuItem.title = l10n.text(.menuFileTrash)
             return batchTargets(for: menuItem).trashTargets(roots: rootURLs) != .unavailable
         case #selector(trashFolderFromMenu(_:)):
@@ -2166,7 +2167,7 @@ extension DirectoryTreeViewController: NSMenuDelegate {
             return
         }
         // A selected row targets the whole selection, which uses the regular folder menu when it has multiple rows
-        // (FR-210, FR-211 (3)). No items for the heading alone (do not show a menu).
+        // (FR-217, FR-218 (3)). No items for the heading alone (do not show a menu).
         let targets = TreeBatchTargets(
             selection: selectedItems.compactMap { self.role(for: $0) },
             origin: role,

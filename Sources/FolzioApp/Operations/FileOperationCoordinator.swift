@@ -20,7 +20,7 @@ final class FileOperationCoordinator {
     /// Called when a copy, move, or Move to Trash ends, including when it is cancelled or rejected. Passes the
     /// requested sources and the original locations of the items it removed (empty for a copy, a cancellation, or a
     /// rejection), after the file list has been updated. Lets the tree finish its own operation and update its
-    /// selection (FR-212).
+    /// selection (FR-219).
     var onOperationFinished: ((_ sources: [URL], _ removed: [URL]) -> Void)?
 
     init(model: BrowserModel, service: any FileOperating, settings: SettingsStore) {
@@ -64,7 +64,7 @@ final class FileOperationCoordinator {
 
     /// From the tree (`origin: .tree`), confirms with each target's absolute path regardless of the skip setting
     /// (FR-079, R66). A single folder shows its path after the list; multiple folders show the path below each name
-    /// (A-120).
+    /// (A-127).
     func trash(_ urls: [URL], origin: OperationOrigin = .fileList) async {
         guard !urls.isEmpty else { return }
         var trashedSources: [URL] = []
@@ -98,7 +98,7 @@ final class FileOperationCoordinator {
     }
 
     /// Explains why folders selected in the tree together with their descendants are not moved to the Trash. Nothing
-    /// is changed (EC-141).
+    /// is changed (EC-146).
     func presentOverlappingTreeTrash() async {
         await showError(
             message: { l10n.text(.dialogTreeTrashOverlapTitle) },
