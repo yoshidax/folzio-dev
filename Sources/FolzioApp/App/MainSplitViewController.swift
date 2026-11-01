@@ -282,7 +282,7 @@ final class MainSplitViewController: NSSplitViewController {
             self?.previewViewController.togglePlayback()
         }
         previewViewController.onDoubleClick = { [weak self] in
-            self?.togglePreviewFullScreen()
+            self?.handlePreviewDoubleClick()
         }
         // Pane visibility changes also arrive here through PreviewViewController.isPaneVisible.
         previewViewController.onZoomAvailabilityChange = { [weak self] in
@@ -794,6 +794,17 @@ final class MainSplitViewController: NSSplitViewController {
         enterFullScreenPresentation()
         isAppInitiatedFullScreenTransition = true
         window.toggleFullScreen(nil)
+    }
+
+    /// Toggles full screen for a double-click in the preview. Does nothing on an empty preview outside full screen
+    /// (FR-035, EC-149). Controls were already excluded by the preview (EC-150).
+    private func handlePreviewDoubleClick() {
+        guard PreviewDoubleClick.togglesFullScreen(
+            isFullScreen: isFullScreenPresentation,
+            hasMedia: model.preview.hasMedia,
+            isOverControl: false
+        ) else { return }
+        togglePreviewFullScreen()
     }
 
     func exitPreviewFullScreenIfNeeded() {
