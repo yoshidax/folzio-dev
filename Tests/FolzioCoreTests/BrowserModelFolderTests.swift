@@ -455,6 +455,68 @@ struct BrowserModelFolderTests {
         #expect(path(env.model.listing.folder) == path(env.url("trip/day1")))
     }
 
+    @Test("A vanished folder is shown as not found instead of moving out of its removed volume root")
+    func vanishedVolumeRootShowsNotFound() async throws {
+        // `trip` stands for a volume root whose mount point disappears when the volume is removed.
+        let env = try makeEnv(roots: ["", "trip"])
+        defer { env.cleanup() }
+        _ = try await showDay1Photo(env)
+        try FileManager.default.removeItem(at: env.url("trip"))
+
+        await env.model.handleFileSystemEvent([env.root])
+
+        #expect(path(env.model.listing.folder) == path(env.url("trip/day1")))
+        #expect(env.model.listing.state == .failed(.folderNotFound))
+        #expect(env.row("trip/day1/1.jpg") == nil)
+        #expect(isEmptyPreview(env.model.preview))
+    }
+
+    @Test("A change in an ancestor keeps the not-found display of a missing folder")
+    func ancestorChangeKeepsNotFoundDisplay() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.url("trip/missing"))
+        #expect(env.model.listing.state == .failed(.folderNotFound))
+
+        await env.model.handleFileSystemEvent([env.url("trip")])
+
+        #expect(path(env.model.listing.folder) == path(env.url("trip/missing")))
+        #expect(env.model.listing.state == .failed(.folderNotFound))
+    }
+
+    // MARK: - Removed Volume (EC-18, EC-65)
+
+    @Test("Removing the volume of the displayed folder shows it as not found and clears the listing and preview")
+    func volumeRemovalShowsNotFound() async throws {
+        let env = try makeEnv(roots: ["", "trip"])
+        defer { env.cleanup() }
+        _ = try await showDay1Photo(env)
+        try FileManager.default.removeItem(at: env.url("trip"))
+        env.model.setNavigationRoots([env.root])
+
+        await env.model.handleVolumesChanged()
+
+        #expect(path(env.model.listing.folder) == path(env.url("trip/day1")))
+        #expect(env.model.listing.state == .failed(.folderNotFound))
+        #expect(env.row("trip/day1/1.jpg") == nil)
+        #expect(env.model.selection.selected.isEmpty)
+        #expect(isEmptyPreview(env.model.preview))
+        #expect(env.model.historyLocation == nil)
+    }
+
+    @Test("A volume change keeps the displayed folder, its selection, and its preview when it still exists")
+    func volumeChangeKeepsExistingFolder() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let photo = try await showDay1Photo(env)
+
+        await env.model.handleVolumesChanged()
+
+        #expect(path(env.model.listing.folder) == path(env.url("trip/day1")))
+        #expect(env.model.selection.focused == photo)
+        #expect(isImagePreview(env.model.preview))
+    }
+
     // MARK: - Leaving Trashed Folders (FR-079)
 
     @Test("Deleting the current folder shows its parent, clears selection and preview, and increments the synchronization request")

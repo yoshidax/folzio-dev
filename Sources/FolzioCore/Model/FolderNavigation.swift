@@ -79,6 +79,19 @@ public enum FolderNavigation {
         return nil
     }
 
+    /// Whether `candidate` is inside, or is, the deepest root in `roots` that contains `folder`. Returns true when no
+    /// root contains `folder`. Used to keep a vanished folder from being replaced by a folder outside its volume, such
+    /// as `/Volumes` after the volume is removed (EC-18). Compares path components.
+    public static func staysInsideRoot(from folder: URL, to candidate: URL, roots: some Sequence<URL>) -> Bool {
+        let folderComponents = pathComponents(of: folder)
+        let deepest = roots
+            .map { pathComponents(of: $0) }
+            .filter { folderComponents.starts(with: $0) }
+            .max { $0.count < $1.count }
+        guard let deepest else { return true }
+        return pathComponents(of: candidate).starts(with: deepest)
+    }
+
     /// Path components of `standardizedFileURL`. Because `standardizedFileURL` removes `/private` from paths such as
     /// `/private/var` only for existing paths, this normalizes the form so a folder moved to the Trash still matches
     /// the roots.

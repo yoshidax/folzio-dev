@@ -137,4 +137,18 @@ struct FolderNavigationTests {
         #expect(parent.vanished.standardizedFileURL.path == "/a/b")
         #expect(FolderNavigation.nearestExistingAncestor(of: folder("/a/b")) { _ in false } == nil)
     }
+
+    @Test("Keeps a vanished folder inside the deepest root that contains it")
+    func staysInsideRoot() {
+        let roots = [folder("/"), folder("/Users/me"), folder("/Volumes/Ext")]
+        func stays(_ from: String, _ to: String, roots custom: [URL]? = nil) -> Bool {
+            FolderNavigation.staysInsideRoot(from: folder(from), to: folder(to), roots: custom ?? roots)
+        }
+        #expect(stays("/Volumes/Ext/a/b", "/Volumes/Ext"))
+        #expect(stays("/Volumes/Ext/a/b", "/Volumes/Ext/a"))
+        #expect(!stays("/Volumes/Ext/a/b", "/Volumes"))
+        #expect(!stays("/Users/me/a", "/Users"))
+        #expect(stays("/opt/a", "/opt"))
+        #expect(stays("/a/b", "/a", roots: []))
+    }
 }

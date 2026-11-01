@@ -13,11 +13,12 @@
 
 | File | Change | Notes |
 |------|--------|-------|
-| `Sources/FolzioCore/Model/FolderNavigation.swift` | modified | `containsFolderOrAncestor(of:in:)` と `nearestExistingAncestor(of:isFolder:)` を追加 |
-| `Sources/FolzioCore/Browser/BrowserModel.swift` | modified | `handleFileSystemEvent` が祖先の通知でも存在を確かめ、最も近い祖先へ移る。stat を `Task.detached` に移す |
-| `Tests/FolzioCoreTests/BrowserModelFolderTests.swift` | modified | 回帰テスト5件 |
-| `Tests/FolzioCoreTests/BrowserModelArchiveTests.swift` | modified | zip を含むフォルダの改名の回帰テスト |
-| `Tests/FolzioCoreTests/FolderNavigationTests.swift` | modified | 追加した純粋関数のテスト4件 |
+| `Sources/FolzioCore/Model/FolderNavigation.swift` | modified | `containsFolderOrAncestor(of:in:)`、`nearestExistingAncestor(of:isFolder:)`、`staysInsideRoot(from:to:roots:)` を追加 |
+| `Sources/FolzioCore/Browser/BrowserModel.swift` | modified | `handleFileSystemEvent` が祖先の通知でも存在を確かめ、最も近い祖先へ移る。stat を `Task.detached` に移す。根の外へは移らず「見つかりません」にする（`knownRoots`）。`handleVolumesChanged()` を追加 |
+| `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift` | modified | ボリュームの変更で、検索中に限らず `handleVolumesChanged()` を呼ぶ |
+| `Tests/FolzioCoreTests/BrowserModelFolderTests.swift` | modified | 回帰テスト9件 |
+| `Tests/FolzioCoreTests/BrowserModelArchiveTests.swift` | modified | zip を含むフォルダの改名、zip の中でのボリュームの取り外しの回帰テスト |
+| `Tests/FolzioCoreTests/FolderNavigationTests.swift` | modified | 追加した純粋関数のテスト5件 |
 
 ## Tests Added or Updated
 
@@ -26,8 +27,13 @@
 - `BrowserModelFolderTests.deletingAncestorWithContentsSkipsVanishedParents` — `rm -rf` 相当で消えた親を飛ばす。
 - `BrowserModelFolderTests.ancestorChangeKeepsExistingFolder` — 祖先の変更だけでは場所・選択・プレビューを保つ。
 - `BrowserModelFolderTests.siblingWithSharedPrefixIsIgnored` — 前方一致だけの兄弟を祖先と誤認しない。
+- `BrowserModelFolderTests.vanishedVolumeRootShowsNotFound` — 根（ボリューム）ごと消えたとき、根の外（`/Volumes` 相当）へ移らず「見つかりません」にする（E4 の退行）。
+- `BrowserModelFolderTests.ancestorChangeKeepsNotFoundDisplay` — 「見つかりません」の表示中は、祖先の通知で移らない。
+- `BrowserModelFolderTests.volumeRemovalShowsNotFound` — ボリュームの取り外しで「見つかりません」にし、選択・プレビュー・履歴の場所を空にする（E1〜E3）。
+- `BrowserModelFolderTests.volumeChangeKeepsExistingFolder` — 表示中のフォルダが残っていれば、ボリュームの変更で表示を変えない。
 - `BrowserModelArchiveTests.renamedContainingFolderLeavesArchive` — zip を含むフォルダの改名で zip から出る（C）。
-- `FolderNavigationTests` — 祖先の判定（path components、`/private`）と最も近い祖先の探索。
+- `BrowserModelArchiveTests.volumeRemovalInsideArchiveShowsNotFound` — zip の中でボリュームが外れたら、zip を閉じて「見つかりません」にする。
+- `FolderNavigationTests` — 祖先の判定（path components、`/private`）、最も近い祖先の探索、根の内側の判定。
 
 ## Local Verification
 
@@ -35,8 +41,8 @@
 
 ## Deviations from Assessment
 
-- なし。
+- 保守者の確認により、E（外部ボリュームの取り外し）をこの Issue で扱い、最初の修正による `/Volumes` への移動（退行）を直した（assessment の「追記」）。
 
 ## Follow-ups
 
-- E（外部ボリュームの取り外し中に表示しているとき）は別の Issue で扱う。
+- 再マウント後に「フォルダが見つかりません」から元の表示へ自動で戻すかは、保守者の判断を待つ。
