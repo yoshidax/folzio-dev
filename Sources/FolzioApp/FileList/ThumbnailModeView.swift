@@ -69,6 +69,16 @@ private final class RenameTextField: NSTextField {
         return true
     }
 
+    override func textDidEndEditing(_ notification: Notification) {
+        super.textDidEndEditing(notification)
+        // The field editor takes the left alignment used while editing, and ending the edit can write it back to the
+        // cell after `ThumbnailItemView.endRenaming` has already restored `.center`. Restore it once the editor is
+        // detached. `isEditable` is false once `endRenaming` has run, on every path that ends a rename.
+        if !isEditable {
+            alignment = .center
+        }
+    }
+
     func selectBaseName() {
         guard let editor = currentEditor() as? NSTextView else { return }
         let baseName = (stringValue as NSString).deletingPathExtension
@@ -265,6 +275,10 @@ final class ThumbnailItemView: NSCollectionViewItem {
         if restoreFocus, let collectionView {
             collectionView.window?.makeFirstResponder(collectionView)
         }
+
+        // Restoring the string and moving focus can end the edit inside AppKit, which may write the field editor's left
+        // alignment back to the cell after `setRenamingAppearance` restored `.center`. Restore it once more last.
+        nameLabel.alignment = .center
     }
 
     private func updateSelectionAppearance() {
