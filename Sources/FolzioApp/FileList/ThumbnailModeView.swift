@@ -97,6 +97,9 @@ final class ThumbnailItemView: NSCollectionViewItem {
         thumbnailImageView.imageScaling = .scaleProportionallyUpOrDown
         thumbnailImageView.imageAlignment = .alignCenter
         thumbnailImageView.setAccessibilityLabel(l10n.text(.a11yThumbnail))
+        // NSImageView accepts drags itself and would hide drops on the thumbnail from the collection view,
+        // so in-app drops onto folder items would never be validated (FR-163, bug: tak-44).
+        thumbnailImageView.unregisterDraggedTypes()
         NotificationCenter.default.addObserver(
             self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
         )
@@ -968,12 +971,16 @@ final class ThumbnailModeView: NSView {
 
 extension ThumbnailModeView: NSCollectionViewDataSource {
     func collectionView(_ collectionView: NSCollectionView, validateDrop info: any NSDraggingInfo, proposedIndexPath: AutoreleasingUnsafeMutablePointer<NSIndexPath>, dropOperation: UnsafeMutablePointer<NSCollectionView.DropOperation>) -> NSDragOperation {
-        let index = proposedIndexPath.pointee.item
-        guard dropOperation.pointee == .on, !model.isBrowsingArchive,
-              model.listing.files.indices.contains(index), model.listing.files[index].kind == .folder else { return [] }
-        let operation = InternalDrag.operation(info, destination: model.listing.files[index].url)
-        if !operation.isEmpty { dropOperation.pointee = .on }
-        return operation
+        // The flow layout may propose `.before` near item edges, so resolve the target from the item under the
+        // pointer instead. Gaps and the background stay invalid (FR-163).
+        let location = collectionView.convert(info.draggingLocation, from: nil)
+        guard !model.isBrowsingArchive,
+              let indexPath = collectionView.indexPathForItem(at: location) else { return [] }
+        let index = indexPath.item
+        guard model.listing.files.indices.contains(index), model.listing.files[index].kind == .folder else { return [] }
+        proposedIndexPath.pointee = indexPath as NSIndexPath
+        dropOperation.pointee = .on
+        return InternalDrag.operation(info, destination: model.listing.files[index].url)
     }
 
     func collectionView(_ collectionView: NSCollectionView, acceptDrop info: any NSDraggingInfo, indexPath: IndexPath, dropOperation: NSCollectionView.DropOperation) -> Bool {
