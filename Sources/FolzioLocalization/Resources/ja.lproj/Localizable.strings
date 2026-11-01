@@ -171,6 +171,9 @@
 /* Fallback kind name (when the OS does not return a kind name) */
 "kind.zipArchive" = "ZIP アーカイブ";
 
+/* About item in the application menu (the first item). Do not translate the app name */
+"menu.app.about" = "Folzio について";
+
 /* Settings item in the application menu (ends with … because it opens a dialog) */
 "menu.app.settings" = "設定…";
 
@@ -891,3 +894,15 @@
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.quit" = "Folzioを終了する";
+
+/* Name of the About window. Not drawn on screen; used as the window title for accessibility */
+"about.window" = "Folzio について";
+
+/* Version line in the About window. %1$@ is the version number, for example 1.0.0 */
+"about.version" = "バージョン %1$@";
+
+/* Accessibility description of the app icon in the About window */
+"about.icon" = "Folzio のアイコン";
+
+/* Accessibility help of the repository link in the About window */
+"about.link" = "Folzio のリポジトリを既定の Web ブラウザで開きます";

@@ -85,6 +85,7 @@ public enum TextKey: String, CaseIterable, Sendable {
 
     // MARK: - Menu Bar
 
+    case menuAppAbout = "menu.app.about"
     case menuAppSettings = "menu.app.settings"
     case menuAppQuit = "menu.app.quit"
     case menuFile = "menu.file"
@@ -253,6 +254,13 @@ public enum TextKey: String, CaseIterable, Sendable {
     case dialogCancel = "dialog.cancel"
     case dialogOK = "dialog.ok"
 
+    // MARK: - About Dialog
+
+    case aboutWindow = "about.window"
+    case aboutVersion = "about.version"
+    case aboutIcon = "about.icon"
+    case aboutLink = "about.link"
+
     // MARK: - Shortcut Reference
 
     case menuFileShortcuts = "menu.file.shortcuts"
@@ -362,7 +370,7 @@ public enum TextKey: String, CaseIterable, Sendable {
         case .errorZipCannotOpen, .errorOperationTrashExistingFailed, .errorOperationSystemFailure,
              .listSortAscending, .listSortDescending,
              .dialogConfirmBullet, .dialogConfirmDestination, .dialogConfirmLocation,
-             .dialogFavoriteRemoveItems, .previewUnavailable:
+             .dialogFavoriteRemoveItems, .previewUnavailable, .aboutVersion:
             return [.text]
         case .contextCopySingle:
             return [.text]
@@ -632,6 +640,16 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Reason the preview cannot be displayed"
         case .kindFolder, .kindZipArchive:
             return "Fallback kind name (when the OS does not return a kind name)"
+        case .menuAppAbout:
+            return "About item in the application menu (the first item). Do not translate the app name"
+        case .aboutWindow:
+            return "Name of the About window. Not drawn on screen; used as the window title for accessibility"
+        case .aboutVersion:
+            return "Version line in the About window. %1$@ is the version number, for example 1.0.0"
+        case .aboutIcon:
+            return "Accessibility description of the app icon in the About window"
+        case .aboutLink:
+            return "Accessibility help of the repository link in the About window"
         case .menuAppSettings:
             return "Settings item in the application menu (ends with … because it opens a dialog)"
         case .menuAppQuit:

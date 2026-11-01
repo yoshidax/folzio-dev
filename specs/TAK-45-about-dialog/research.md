@@ -9,7 +9,7 @@
 ## R2 バージョンの取得元
 
 - **Decision**: `Bundle.main` の `CFBundleShortVersionString` を実行時に読む。取得できない（`swift run`、値が空・文字列以外）ときはバージョン行を作らない。
-- **Rationale**: `.app` は `scripts/make-app.sh` が Info.plist にこの値を書き（既定 0.1.0、配布時は Release のタグと一致。FR-171）、コードに版を重複して持たないで済む。`swift run` では `Bundle.main` に Info.plist がなく nil になる。誤った版（固定の 0.1.0 など）を見せるより、行を省くほうが安全（保守者が決定）。
+- **Rationale**: `.app` は `scripts/make-app.sh` が Info.plist にこの値を書き（既定 1.0.0、配布時は Release のタグと一致。FR-171）、コードに版を重複して持たないで済む。`swift run` では `Bundle.main` に Info.plist がなく nil になる。誤った版（固定の 1.0.0 など）を見せるより、行を省くほうが安全（保守者が決定）。
 - **Alternatives**: コードに版の定数を持つ — `make-app.sh` と食い違う危険がある。「開発ビルド」などの固定文言 — 保守者が不採用。
 
 ## R3 リンクを開く方法と FR-041 / 憲章原則 I
@@ -38,5 +38,9 @@
 
 ## R7 版の文言
 
-- **Decision**: 「Version 0.1.0」／「バージョン 0.1.0」の形にし、`about.version` に `%@` で数値を渡す。
+- **Decision**: 「Version 1.0.0」／「バージョン 1.0.0」の形にし、`about.version` に `%@` で数値を渡す。
 - **Rationale**: 既存の `TextKey` の引数付き文言の仕組みを使え、数値は翻訳・変形されない（FR-147）。
+
+## R8 AppKit API の確認（T002）
+
+Cloud には macOS SDK がなく、ヘッダーを直接読めない。使う API は `NSWindow.titleVisibility`、`NSWindow.standardWindowButton(_:)`、`NSWindow.frameRect(forContentRect:)`、`NSApplication.applicationIconImage`、`NSButton.attributedTitle`・`performClick(_:)`、`NSView.canBecomeKeyView`・`resetCursorRects()`、`NSAccessibilityProtocol.setAccessibilityRole(_:)`、`NSWorkspace.open(_:)` で、いずれも既存コード（`SettingsWindowController`、`ShortcutCheatSheetWindowController`、`FileListViewController`）に同じ呼び出しがあるか、macOS 10.x から変わらない標準 API。ヘッダーでの確認は行えていないため、ビルドの成否は macOS CI で確認する（確認前は未確認と報告する）。

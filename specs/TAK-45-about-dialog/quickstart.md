@@ -52,3 +52,10 @@ open .build/Folzio.app
 ## 5 結果の記録
 
 実装後に、Cloud の検査、CI、保守者の確認を分けて記録する。未確認の項目は未確認と書く。
+
+### 実装時の記録（2026-11-01、Cloud）
+
+- 保守者が設計を承認（会話での回答）。次の 2 点が確定した: メインウィンドウを閉じるとダイアログも閉じる（FR-238）、`make-app.sh` の既定の版を `1.0.0` にする（FR-241）。
+- 実装後の Cloud の静的検査: 下の「静的検査の結果」を参照。
+- 未確認: `swift build`・`swift test`（CI で確認）、GUI の全シナリオ（保守者）、`swift run` で版が取得できないこと（シナリオ 13）。
+- 静的検査の結果（Cloud）: `check-readme-sync.sh master`、`check-english-comments.sh`、`check-skill-sync.sh`、`test_check_git_push.py`（3 件）、`git diff --check` は成功。`check-no-network.sh` は、URL のリテラルが `Sources` の禁止パターン（`https?://`）に一致したため、URL を `URLComponents` で組み立てるように直して成功した（ガードは変更していない）。
