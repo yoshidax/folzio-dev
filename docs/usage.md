@@ -23,7 +23,9 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 ## Folders and Favorites
 
 - Folder navigation from the directory tree (home and mounted volumes). Double-click a folder row to expand or collapse it.
-  The disclosure triangle appears only on folders that have subfolders (excluding hidden folders and packages)
+  The disclosure triangle appears only on folders that have subfolders (excluding hidden folders and packages).
+  Select several folders with ⌘-click, Shift-click, or Shift+↑↓; the file list shows the folder you clicked (or moved to with the keyboard) last.
+  Drag the selected folders to move them together (hold Option to copy), or move them to the Trash together with ⌘Delete or "Move to Trash" (ゴミ箱に入れる) in the context menu
 
 - Register frequently used folders under "Favorites" (お気に入り) at the top of the tree (right-click in the tree → "Add to Favorites" (お気に入りに追加), or ⌃⌘T). Remove an entry with right-click → "Remove from Favorites" (お気に入りから削除) or ⌘Delete after a confirmation (on a regular folder, ⌘Delete means "Move to Trash" instead); the actual folder is not changed. The confirmation shows the display name and the absolute path.
   Rename an entry with Return, right-click → "Rename" (名前を変更), or Edit → "Rename" (edited in place; Return commits, Esc cancels, and clearing the name restores the original folder name. There is no confirmation dialog, and the actual folder is not renamed). ⇧⌘F jumps to the heading. Favorites are saved and restored on the next launch, and folders that cannot be found stay in the list, dimmed
@@ -68,7 +70,8 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 
 - Video playback, looping, an autoplay setting, and play/pause with the Space key
 
-- Full-screen preview (double-click or ⌃⌘F; Esc to return)
+- Full-screen preview (double-click an image or video, including the margins around it, or press ⌃⌘F; Esc to return).
+  In full screen, double-clicking anywhere returns to the previous layout. The video playback controls and the image scroll bars do not toggle full screen
 
 ## Slideshow
 
@@ -154,7 +157,8 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 | Add to Favorites | ⌃⌘T, tree context menu |
 | Rename a favorite (edited in place. Return commits, Esc cancels, clearing the name restores the original folder name. No confirmation. The actual folder is not renamed) | Return, "Rename" in the favorite's context menu, Edit menu → "Rename" |
 | Remove from Favorites (with a confirmation that shows the display name and the absolute path. The actual folder is not changed) | ⌘Delete, the favorite's context menu |
-| Move a folder in the tree to the Trash (with its contents. Asks for confirmation, which can be skipped in Settings. Not available for home or the top level of a volume. Trashing the folder being shown shows its parent) | ⌘Delete, "Move to Trash" in the tree folder's context menu |
+| Select several folders in the tree (the file list shows the folder clicked or moved to last) | ⌘-click, Shift-click, Shift+↑ / ↓ |
+| Move folders in the tree to the Trash (with their contents. A multiple selection is one operation. Always asks for confirmation regardless of Settings, showing each folder's name and absolute path. Not available when the selection includes home, the top level of a volume, or a favorite, or both a folder and a folder inside it. Trashing the folder being shown shows its parent) | ⌘Delete, "Move to Trash" in the tree folder's context menu |
 | Jump to the "Favorites" heading | ⇧⌘F |
 | Thumbnail view / list view | ⌘1 / ⌘2 |
 | Larger / smaller thumbnails | ⌃⌘. / ⌃⌘,, View menu |
@@ -163,9 +167,10 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 | Images only / videos only | ⇧⌘I / ⇧⌘M, View menu, toolbar |
 | Show / hide zip files (hidden by default. Saved and restored on relaunch. While off, zip files are excluded from the list, selection, file operations, and full-screen navigation. Toggling while viewing the inside of a zip does not change the list inside) | ⌃⌘Z, View menu → "Show Zip Files", toolbar (right of the kind filter, left of the view-mode buttons) |
 | Play / pause a video (from the list) | Space |
-| Full-screen preview / return | ⌃⌘F, double-click the image, Esc |
+| Full-screen preview / return | ⌃⌘F, double-click the image or video (anywhere in full screen), Esc |
 | Copy / paste / move-paste | ⌘C / ⌘V / ⌥⌘V |
 | Duplicate | ⌘D |
+| Create a folder named "untitled folder" and rename it in place (no confirmation. In the file list, inside the displayed folder; in the tree, inside the selected or right-clicked folder, or a favorite's folder. Not available inside a zip, in search results, on the "Favorites" heading, or for a missing favorite) | ⇧⌘N, File menu → "New Folder" (新規フォルダ), the tree folder's context menu, the context menu on the file list's background |
 | Rename (in place) | Return |
 | Move to Trash | ⌘Delete |
 | Open the selected item | ⌘O |
