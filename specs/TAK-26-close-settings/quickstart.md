@@ -109,3 +109,7 @@ open .build/Folzio.app
 - 通常テスト: ログで `Test run with 881 tests passed` を確認。
 - 性能テスト: continue-on-error のステップ表示だけで判断せず、ログで `Test run with 27 tests passed` を確認。
 - CI 後の変更はこの検証記録と tasks.md の進捗だけで、実行コードの追加変更なし。GUI・ローカル最新 Swift の確認と product 反映は引き続き未完了。
+
+### 保守者の動作確認（2026-11-01、JST）
+
+保守者から「動作確認し意図通り動作することを確認しました」と報告を受けた。TAK-26 の意図する終了連動について確認済みとして記録する。個別の9ケースの実施内訳とローカル最新 Swift での build/test の結果は明示されていないため、それらを全件実施済みとは記録しない。
