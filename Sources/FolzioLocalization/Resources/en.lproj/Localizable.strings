@@ -755,6 +755,12 @@
 "shortcuts.condition.openDefault" = "For selected files or folders in the file list; unavailable inside a zip.";
 
 /* Action description in the shortcut reference */
+"shortcuts.entry.quickLook" = "Preview the selected media with Quick Look";
+
+/* Availability note below a shortcut reference action */
+"shortcuts.condition.quickLook" = "In the file list; press Space again to close. Arrow keys move the selection while Quick Look is open. Unavailable inside a zip. Double-clicking media opens it in its default app.";
+
+/* Action description in the shortcut reference */
 "shortcuts.entry.rename" = "Rename the selected item";
 
 /* Availability note below a shortcut reference action */
@@ -842,7 +848,7 @@
 "shortcuts.entry.videoPlay" = "Play or pause the video";
 
 /* Availability note below a shortcut reference action */
-"shortcuts.condition.videoPlay" = "Uses the standard video controls; also available from the file list.";
+"shortcuts.condition.videoPlay" = "Uses the standard video controls while the video in the preview has the focus. In the file list, Space opens Quick Look instead.";
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.videoControls" = "Seek or change the volume";

@@ -278,8 +278,14 @@ final class MainSplitViewController: NSSplitViewController {
 
         splitView.autosaveName = "MainSplit"
         observeCollapseChanges()
-        fileListViewController.onTogglePlayback = { [weak self] in
-            self?.previewViewController.togglePlayback()
+        fileListViewController.isQuickLookBlocked = { [weak self] in
+            guard let self else { return true }
+            return self.isFullScreenPresentation
+                || self.slideshowCoordinator.isActive
+                || self.slideshowCoordinator.isRestoring
+        }
+        fileListViewController.onQuickLookActiveChange = { [weak self] active in
+            self?.previewViewController.setQuickLookActive(active)
         }
         previewViewController.onDoubleClick = { [weak self] in
             self?.handlePreviewDoubleClick()

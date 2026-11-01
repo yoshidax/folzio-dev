@@ -1,9 +1,25 @@
 import AppKit
 import FolzioCore
 import FolzioLocalization
+import Quartz
 
 @MainActor
 private final class ThumbnailCollectionView: NSCollectionView {
+    var onSpace: ((NSEvent) -> Bool)?
+    /// Takes control of the Quick Look panel while this view has the focus (FR-233, research.md R2).
+    var quickLook: QuickLookCoordinator?
+
+    override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool {
+        quickLook != nil
+    }
+
+    override func beginPreviewPanelControl(_ panel: QLPreviewPanel!) {
+        quickLook?.attach(to: panel)
+    }
+
+    override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
+        quickLook?.detach(from: panel)
+    }
     var onArrowKey: ((NSEvent.SpecialKey, NSEvent.ModifierFlags) -> Bool)?
     var onReturnKey: (() -> Bool)?
     var onEscape: (() -> Bool)?
@@ -43,6 +59,10 @@ private final class ThumbnailCollectionView: NSCollectionView {
 
         // Do not pass to the default action when the menu item is disabled (R26).
         if event.isCommandOnlyVerticalArrow {
+            return
+        }
+
+        if event.charactersIgnoringModifiers == " ", onSpace?(event) == true {
             return
         }
 
@@ -89,6 +109,9 @@ private final class RenameTextField: NSTextField {
 @MainActor
 final class ThumbnailItemView: NSCollectionViewItem {
     private let thumbnailImageView = NSImageView()
+
+    /// The view Quick Look zooms from and back to (FR-233).
+    var quickLookSourceView: NSView { thumbnailImageView }
     private let nameLabel = RenameTextField(wrappingLabelWithString: "")
 
     private(set) var representedURL: URL?
@@ -391,6 +414,29 @@ final class ThumbnailModeView: NSView {
         return collectionView.indexPathForItem(at: location) == nil
     }
     var onOpenItem: ((URL) -> Void)?
+    /// Coordinator of the Quick Look panel, set by the file list controller (FR-233).
+    var quickLook: QuickLookCoordinator? {
+        didSet {
+            collectionView.quickLook = quickLook
+            collectionView.onSpace = { [weak self] event in
+                self?.quickLook?.handleSpace(event) ?? false
+            }
+        }
+    }
+
+    /// On-screen frame of the thumbnail for `url`, where Quick Look zooms from and back to. `.zero` when the item is
+    /// not visible (FR-233, EC-167).
+    func quickLookSourceFrame(for url: URL) -> NSRect {
+        guard let window = collectionView.window,
+              let index = model.listing.files.firstIndex(where: { $0.url == url }),
+              let item = collectionView.item(at: IndexPath(item: index, section: 0)) as? ThumbnailItemView else {
+            return .zero
+        }
+        let source = item.quickLookSourceView
+        guard source.window != nil else { return .zero }
+        return window.convertToScreen(source.convert(source.bounds, to: nil))
+    }
+
     var onInternalDrop: (([URL], URL, Bool) -> Void)?
     /// Esc. Returns true when handled (ends search results; FR-086).
     var onEscape: (() -> Bool)? {

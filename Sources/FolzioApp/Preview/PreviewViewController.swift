@@ -94,6 +94,18 @@ final class PreviewViewController: NSViewController {
         videoView.togglePlayPause()
     }
 
+    /// Whether the Quick Look panel is showing the file list's items. While it is, a playing video is paused and
+    /// videos do not start by themselves, so sounds do not overlap. Closing the panel does not resume playback
+    /// (EC-169).
+    private var isQuickLookActive = false
+
+    func setQuickLookActive(_ active: Bool) {
+        isQuickLookActive = active
+        if active, !videoView.isHidden, videoView.isPlaying {
+            videoView.togglePlayPause()
+        }
+    }
+
     @discardableResult
     func seekVideo(by seconds: Double) -> Bool {
         guard case .video = model.preview else { return false }
@@ -349,14 +361,14 @@ final class PreviewViewController: NSViewController {
             // Play videos inside a zip with an AVURLAsset created through ArchiveAssetFactory.
             videoView.configure(
                 asset: ArchiveAssetFactory.makeAsset(for: url, reader: archiveReader),
-                autoplay: playback.autoplay,
+                autoplay: playback.autoplay && !isQuickLookActive,
                 loop: playback.loop,
                 fileName: url.lastPathComponent
             )
         } else {
             videoView.configure(
                 url: url,
-                autoplay: playback.autoplay,
+                autoplay: playback.autoplay && !isQuickLookActive,
                 loop: playback.loop,
                 fileName: url.lastPathComponent
             )

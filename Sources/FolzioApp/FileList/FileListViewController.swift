@@ -30,6 +30,8 @@ final class FileListViewController: NSViewController {
     private var messageBandHeightConstraint: NSLayoutConstraint?
     private var displayMode: DisplayMode
     private let initialThumbnailSize: Double
+    /// Opens and closes the Quick Look panel for the selected media (FR-233).
+    private let quickLook: QuickLookCoordinator
     private struct HiddenListNavigation {
         let width: Double
     }
@@ -97,7 +99,26 @@ final class FileListViewController: NSViewController {
         self.initialThumbnailSize = ViewSettings.clampThumbnailSize(
             viewSettings.thumbnailSize
         )
+        self.quickLook = QuickLookCoordinator(model: model)
         super.init(nibName: nil, bundle: nil)
+        listModeView.quickLook = quickLook
+        thumbnailModeView.quickLook = quickLook
+        quickLook.prepareToOpen = { [weak self] in
+            self?.scrollFocusedItemIntoView()
+        }
+        quickLook.sourceFrame = { [weak self] url in
+            guard let self else { return .zero }
+            switch self.displayMode {
+            case .list:
+                return self.listModeView.quickLookSourceFrame(for: url)
+            case .thumbnails:
+                return self.thumbnailModeView.quickLookSourceFrame(for: url)
+            }
+        }
+        // Arrow keys typed in the panel move the file list selection, as in Finder (FR-240).
+        quickLook.forwardKey = { [weak self] event in
+            self?.primaryFocusView.keyDown(with: event)
+        }
         thumbnailModeView.thumbnailSize = initialThumbnailSize
         fileContextMenu.install(
             listModeView: listModeView,
@@ -153,9 +174,16 @@ final class FileListViewController: NSViewController {
             : listModeView.focusView
     }
 
-    var onTogglePlayback: (() -> Void)? {
-        get { listModeView.onTogglePlayback }
-        set { listModeView.onTogglePlayback = newValue }
+    /// Whether Space must not open Quick Look: full screen and slideshow (EC-164). Set by the main controller.
+    var isQuickLookBlocked: () -> Bool {
+        get { quickLook.isBlocked }
+        set { quickLook.isBlocked = newValue }
+    }
+
+    /// Called when Quick Look starts or stops showing the file list's items (EC-169).
+    var onQuickLookActiveChange: (Bool) -> Void {
+        get { quickLook.onActiveChange }
+        set { quickLook.onActiveChange = newValue }
     }
 
     var onRename: ((URL, String) async -> Void)? {
@@ -1053,8 +1081,16 @@ final class FileListViewController: NSViewController {
         openItem(focused)
     }
 
-    /// Called from double-click and ⌘↓. Does nothing for media rows (Core decides).
+    /// Called from double-click and ⌘↓. Media rows outside a zip open in the default app (FR-237); containers open
+    /// their contents (Core decides).
     func openItem(_ url: URL) {
+        if let file = model.listing.files.first(where: { $0.url == url }),
+           file.kind.opensInDefaultApp(isBrowsingArchive: model.listing.archive != nil) {
+            quickLook.close()
+            // A failure to open is ignored, as with ⌘O (EC-170).
+            _ = NSWorkspace.shared.open(url)
+            return
+        }
         Task { @MainActor [weak self] in
             guard let self else { return }
             await self.model.openItem(url)
@@ -1070,6 +1106,16 @@ final class FileListViewController: NSViewController {
             guard let self else { return }
             await self.model.goToEnclosingLevel()
             await self.scrollFocusedItemIntoViewAfterModelUpdate()
+        }
+    }
+
+    /// Scrolls the focused row of the visible display mode into view (EC-167).
+    private func scrollFocusedItemIntoView() {
+        switch displayMode {
+        case .list:
+            listModeView.scrollToFocused()
+        case .thumbnails:
+            thumbnailModeView.scrollToFocused()
         }
     }
 

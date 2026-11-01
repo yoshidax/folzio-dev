@@ -45,6 +45,7 @@ Cloud では Swift と GUI を実行できないため、以下は SDK の文書
 ## R6 ビルド設定
 
 - **Decision**: `import Quartz`（または `import QuickLookUI`）を `FolzioApp` に追加する。Package.swift は変えない想定。
+- **対応**: `QLPreviewPanelDataSource` / `QLPreviewPanelDelegate` への準拠は `@preconcurrency` にし、SDK が MainActor を付けていなくても Swift 6 の言語モードで通るようにした。
 - **要確認**: Swift 6 の言語モードで `QLPreviewPanel` の API が `@MainActor` として扱えるか、`NSObject` の `acceptsPreviewPanelControl` を override できるか。
   Cloud ではビルドできないため CI で確認する。失敗したらログを読んでまとめて直す（`docs_private/cloud-agent-workflow.md` の 4 章）。
 

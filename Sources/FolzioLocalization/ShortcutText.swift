@@ -37,6 +37,7 @@ public enum ShortcutText {
         case .selection: return .shortcutSelection
         case .extendSelection: return .shortcutExtendSelection
         case .openDefault: return .shortcutOpenDefault
+        case .quickLook: return .shortcutQuickLook
         case .rename: return .shortcutRename
         case .copy: return .shortcutCopy
         case .paste: return .shortcutPaste
@@ -87,6 +88,7 @@ public enum ShortcutText {
         case .selection: return .shortcutSelectionCondition
         case .extendSelection: return .shortcutExtendSelectionCondition
         case .openDefault: return .shortcutOpenDefaultCondition
+        case .quickLook: return .shortcutQuickLookCondition
         case .rename: return .shortcutRenameCondition
         case .copy: return .shortcutCopyCondition
         case .paste: return .shortcutPasteCondition

@@ -1,10 +1,25 @@
 import AppKit
 import FolzioCore
 import FolzioLocalization
+import Quartz
 
 @MainActor
 private final class FileListTableView: NSTableView {
-    var onSpace: (() -> Bool)?
+    var onSpace: ((NSEvent) -> Bool)?
+    /// Takes control of the Quick Look panel while this table has the focus (FR-233, research.md R2).
+    var quickLook: QuickLookCoordinator?
+
+    override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool {
+        quickLook != nil
+    }
+
+    override func beginPreviewPanelControl(_ panel: QLPreviewPanel!) {
+        quickLook?.attach(to: panel)
+    }
+
+    override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
+        quickLook?.detach(from: panel)
+    }
     var onReturn: (() -> Bool)?
     var onEscape: (() -> Bool)?
 
@@ -28,7 +43,7 @@ private final class FileListTableView: NSTableView {
             return
         }
 
-        if event.charactersIgnoringModifiers == " ", onSpace?() == true {
+        if event.charactersIgnoringModifiers == " ", onSpace?(event) == true {
             return
         }
         super.keyDown(with: event)
@@ -101,7 +116,10 @@ final class ListModeView: NSView {
     private let scrollView = NSScrollView()
     private let tableView = FileListTableView()
 
-    var onTogglePlayback: (() -> Void)?
+    /// Coordinator of the Quick Look panel, set by the file list controller (FR-233).
+    var quickLook: QuickLookCoordinator? {
+        didSet { tableView.quickLook = quickLook }
+    }
     var onRename: ((URL, String) async -> Void)?
     /// Commits the name of a folder created with New Folder, without the rename confirmation (FR-211).
     var onRenameNewFolder: ((URL, String) async -> Void)?
@@ -212,15 +230,9 @@ final class ListModeView: NSView {
         InternalDrag.register(tableView)
         tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
         tableView.setDraggingSourceOperationMask(.copy, forLocal: false)
-        tableView.onSpace = { [weak self] in
-            guard let self,
-                  let focused = self.model.selection.focused,
-                  let file = self.model.listing.files.first(where: { $0.url == focused }),
-                  file.kind.isVideo else {
-                return false
-            }
-            self.onTogglePlayback?()
-            return true
+        // Space toggles the Quick Look panel instead of video playback (FR-233, FR-234).
+        tableView.onSpace = { [weak self] event in
+            self?.quickLook?.handleSpace(event) ?? false
         }
         tableView.onReturn = { [weak self] in
             guard let self else { return false }
@@ -258,6 +270,21 @@ final class ListModeView: NSView {
             tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         }
         onOpenItem?(url)
+    }
+
+    /// On-screen frame of the icon of the row for `url`, where Quick Look zooms from and back to. `.zero` when the
+    /// row is not visible (FR-233, EC-167).
+    func quickLookSourceFrame(for url: URL) -> NSRect {
+        guard let window = tableView.window,
+              let row = model.listing.files.firstIndex(where: { $0.url == url }) else {
+            return .zero
+        }
+        let rowRect = tableView.rect(ofRow: row)
+        guard tableView.visibleRect.intersects(rowRect) else { return .zero }
+        let column = tableView.column(withIdentifier: NSUserInterfaceItemIdentifier("name"))
+        let cellRect = column >= 0 ? tableView.frameOfCell(atColumn: column, row: row) : rowRect
+        let iconRect = NSRect(x: cellRect.minX + 2, y: cellRect.midY - 8, width: 16, height: 16)
+        return window.convertToScreen(tableView.convert(iconRect, to: nil))
     }
 
     /// Scrolls the focused row into view (following after going back; FR-070).
