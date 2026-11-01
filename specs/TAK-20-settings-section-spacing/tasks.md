@@ -39,10 +39,10 @@
 ## Phase 5: Polish & 検証
 
 - [x] T009 Cloud の検査（quickstart.md「自動の検証」の Cloud の行）を実行し、結果を quickstart.md に記録する
-- [ ] T010 作業ブランチに push し、保守者の依頼で PR を作ったら CI（`swift build`・`swift test`）の結果を GitHub MCP で確認して quickstart.md に記録する。性能テストはログの末尾で合否を確かめる
+- [x] T010 作業ブランチに push し、保守者の依頼で PR を作ったら CI（`swift build`・`swift test`）の結果を GitHub MCP で確認して quickstart.md に記録する。性能テストはログの末尾で合否を確かめる
 - [x] T011 [MANUAL] 保守者が quickstart.md の GUI の確認 Q1〜Q7 を日本語・英語で行い、結果（実行日・OS・合否）を報告する。報告を `specs/TAK-20-settings-section-spacing/checklists/validation.md` に記録する（SC-110・111）
 - [x] T012 `speckit-converge` を実行し、追加のタスクがあれば実装と検証を繰り返す
-- [ ] T013 PR の最後の作業として `git merge origin/master` で最新の master を取り込み、ID の衝突を確かめてから、spec.md の「反映先」を `specs/product/window-layout.md`・`contracts/settings.md`・`contracts/localization.md` へ反映し、spec.md の冒頭に移行済み・凍結の注記を入れる。差分を保守者に示し、承認後にコミットする
+- [x] T013 PR の最後の作業として `git merge origin/master` で最新の master を取り込み、ID の衝突を確かめてから、spec.md の「反映先」を `specs/product/window-layout.md`・`contracts/settings.md`・`contracts/localization.md` へ反映し、spec.md の冒頭に移行済み・凍結の注記を入れる。差分を保守者に示し、承認後にコミットする
 
 ## Dependencies
 

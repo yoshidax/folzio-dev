@@ -33,7 +33,7 @@ open .build/Folzio.app
 
 ## 結果の記録
 
-- 2026-10-31 設計レビュー: 保守者が spec / plan / tasks を承認（範囲は spec.md の FR-222・209 と tasks.md T002〜T013）
+- 2026-10-31 設計レビュー: 保守者が spec / plan / tasks を承認（範囲は spec.md の FR-222・223 と tasks.md T002〜T013）
 - 2026-10-31 API の確認（T001）: research.md の API は AppKit の公開 API として知られている名前で使った。Cloud では SDK のヘッダーを読めないため、
   CI の `swift build` で最終的に確かめる
 - 2026-10-31 Cloud の検査（T009）: `check-no-network.sh`・`check-readme-sync.sh master`・`check-english-comments.sh`・`check-skill-sync.sh`・
@@ -53,3 +53,6 @@ open .build/Folzio.app
   （英語: Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless of this setting）に変更した。
   英語は2行に折り返す見込みのため、Q4 で折り返しと揃えも確認する
 - 2026-11-01 GUI（T011、3ca1a7b）: 保守者が「動作確認問題ありませんでした」と報告。記録は checklists/validation.md
+- 2026-11-01 CI（T010）: master を取り込んだ後の 9c6a436（run 41272250034）で `swift build`・`swift test`・性能テスト（27 件）が成功
+- 2026-11-01 GUI（取り込み後）: 保守者が「問題ありませんでした」と報告
+- 2026-11-01 `specs/product/` への反映（T013）: 保守者が差分と FR-024 の文言の変更を承認（612a236・6e97056）
