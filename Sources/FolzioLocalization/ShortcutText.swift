@@ -42,6 +42,7 @@ public enum ShortcutText {
         case .paste: return .shortcutPaste
         case .copyPath: return .shortcutCopyPath
         case .duplicate: return .shortcutDuplicate
+        case .newFolder: return .shortcutNewFolder
         case .trash: return .shortcutTrash
         case .find: return .shortcutFind
         case .searchSubmit: return .shortcutSearchSubmit
@@ -91,6 +92,7 @@ public enum ShortcutText {
         case .paste: return .shortcutPasteCondition
         case .copyPath: return .shortcutCopyPathCondition
         case .duplicate: return .shortcutDuplicateCondition
+        case .newFolder: return .shortcutNewFolderCondition
         case .trash: return .shortcutTrashCondition
         case .find: return .shortcutFindCondition
         case .searchSubmit: return .shortcutSearchSubmitCondition

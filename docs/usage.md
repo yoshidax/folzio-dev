@@ -169,6 +169,7 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 | Full-screen preview / return | ⌃⌘F, double-click the image, Esc |
 | Copy / paste / move-paste | ⌘C / ⌘V / ⌥⌘V |
 | Duplicate | ⌘D |
+| Create a folder named "untitled folder" and rename it in place (no confirmation. In the file list, inside the displayed folder; in the tree, inside the selected or right-clicked folder, or a favorite's folder. Not available inside a zip, in search results, on the "Favorites" heading, or for a missing favorite) | ⇧⌘N, File menu → "New Folder" (新規フォルダ), the tree folder's context menu, the context menu on the file list's background |
 | Rename (in place) | Return |
 | Move to Trash | ⌘Delete |
 | Open the selected item | ⌘O |

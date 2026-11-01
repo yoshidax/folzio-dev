@@ -181,6 +181,9 @@
 "menu.file" = "ファイル";
 
 /* File menu items */
+"menu.file.newFolder" = "新規フォルダ";
+
+/* File menu items */
 "menu.file.open" = "開く";
 
 /* File menu items */
@@ -446,6 +449,9 @@
 
 /* Accessibility label for a name edit field in the directory tree */
 "tree.a11y.folderName" = "フォルダの名前";
+
+/* Default name of a folder created with New Folder, before the user renames it. Use Finder's wording */
+"folder.defaultName" = "名称未設定フォルダ";
 
 /* Search sheet keyword label, placeholder, and accessibility text */
 "search.keyword" = "検索キーワード";
@@ -774,6 +780,12 @@
 
 /* Availability note below a shortcut reference action */
 "shortcuts.condition.duplicate" = "ファイルリストで使えます。zipの中では使えません。";
+
+/* Action description in the shortcut reference */
+"shortcuts.entry.newFolder" = "新規フォルダを作る";
+
+/* Availability note below a shortcut reference action */
+"shortcuts.condition.newFolder" = "ファイルリストでは表示中のフォルダ、ツリーでは選択中のフォルダ（お気に入りは登録先）に作ります。zipの中、検索結果のファイルリスト、「お気に入り」の見出し、見つからないお気に入り、名前の変更中は使えません。";
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.trash" = "ゴミ箱に入れる・お気に入りから削除する";

@@ -41,6 +41,7 @@ public enum ShortcutID: String, CaseIterable, Sendable {
     case paste
     case copyPath
     case duplicate
+    case newFolder
     case trash
     case find
     case searchSubmit
@@ -97,6 +98,7 @@ public enum ShortcutCatalog {
         ShortcutEntry(id: .paste, keys: "⌘V / ⌥⌘V", section: .files),
         ShortcutEntry(id: .copyPath, keys: "⌥⌘C", section: .files),
         ShortcutEntry(id: .duplicate, keys: "⌘D", section: .files),
+        ShortcutEntry(id: .newFolder, keys: "⇧⌘N", section: .files),
         ShortcutEntry(id: .trash, keys: "⌘Delete", section: .files),
         ShortcutEntry(id: .find, keys: "⌘F", section: .search),
         ShortcutEntry(id: .searchSubmit, keys: "Return / Esc", section: .search),

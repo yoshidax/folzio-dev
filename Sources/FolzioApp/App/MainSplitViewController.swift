@@ -217,6 +217,15 @@ final class MainSplitViewController: NSSplitViewController {
             guard let self else { return }
             await self.fileOperationCoordinator.rename(url, to: newName)
         }
+        // Naming a folder right after New Folder skips the rename confirmation (FR-211).
+        fileListViewController.onRenameNewFolder = { [weak self] url, newName in
+            guard let self else { return }
+            await self.fileOperationCoordinator.rename(url, to: newName, confirms: false)
+        }
+        // New Folder on a favorite names the folder in the file list when it shows the registered folder (FR-210 (3)).
+        treeViewController.onBeginNamingInFileList = { [weak fileListViewController] url in
+            await fileListViewController?.beginNamingNewFolder(url) ?? false
+        }
         historyNavigator.presentationHost = self
         coordinator.historyNavigator = historyNavigator
         treeViewController.historyNavigator = historyNavigator

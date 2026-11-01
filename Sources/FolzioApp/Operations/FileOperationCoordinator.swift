@@ -116,8 +116,29 @@ final class FileOperationCoordinator {
         }
     }
 
+    /// Creates a folder with the default name (or the next numbered name) in `parent` without confirmation, because it
+    /// does not change existing items (FR-209). On success, reloads the listing when it shows `parent` and notifies the
+    /// tree, then returns the new folder. On failure, shows the destination name and the reason and returns nil
+    /// (FR-026, EC-141). Does not change history or the last selected folder (FR-214).
+    func createFolder(in parent: URL) async -> URL? {
+        let result = await service.createFolder(in: parent, baseName: l10n.text(.folderDefaultName))
+        switch result {
+        case .success(let created):
+            if model.listing.folder.standardizedFileURL.path == parent.standardizedFileURL.path {
+                await model.reloadCurrentFolder()
+            }
+            onFoldersChanged?([parent.standardizedFileURL])
+            return created
+        case .failure(let reason):
+            await presentFailures(FileOperationResult(failed: [(url: parent, reason: reason)]))
+            return nil
+        }
+    }
+
     /// From the tree (`origin: .tree`), includes the target's absolute path in the confirmation modal (FR-103, R58).
-    func rename(_ file: URL, to newName: String, origin: OperationOrigin = .fileList) async {
+    /// Passing `confirms: false` skips the confirmation modal; only naming a folder right after New Folder does this
+    /// (FR-211, research.md R4). Validation, failure display, and updates stay the same.
+    func rename(_ file: URL, to newName: String, origin: OperationOrigin = .fileList, confirms: Bool = true) async {
         let parent = file.deletingLastPathComponent()
         let existingNames = await siblingNames(in: parent).subtracting([file.lastPathComponent])
 
@@ -133,12 +154,14 @@ final class FileOperationCoordinator {
         }
 
         let operation = FileOperation(kind: .rename(newName: newName), sources: [file])
-        guard await confirmation.confirm(
-            operation,
-            includesFolders: isDirectory,
-            origin: origin,
-            location: origin == .tree ? file.path : nil
-        ) else { return }
+        if confirms {
+            guard await confirmation.confirm(
+                operation,
+                includesFolders: isDirectory,
+                origin: origin,
+                location: origin == .tree ? file.path : nil
+            ) else { return }
+        }
 
         let result = await service.execute(operation, resolution: .abort)
         await presentFailures(result)
