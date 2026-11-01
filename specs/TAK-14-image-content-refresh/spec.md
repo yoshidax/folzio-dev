@@ -1,10 +1,14 @@
 # Feature Specification: 同一パスのファイルの内容更新をサムネイルとプレビューに反映する
 
+> **移行済み（2026-11-01）**: 現在の仕様は [specs/product/](../product/README.md) の file-list.md・preview.md・zip.md・search.md・overview.md
+> を正とする（末尾の「反映先」の表）。このファイルは TAK-14 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> CI と保守者の動作確認の結果は [quickstart.md](quickstart.md) を参照。
+
 **Feature Branch**: `claude/admiring-allen-cf97f7`
 
 **Created**: 2026-11-01
 
-**Status**: Draft
+**Status**: 仕様反映済み・凍結
 
 **Input**: [TAK-14](https://linear.app/takyoshida/issue/TAK-14)「同一パスの画像の内容更新をプレビューとサムネイルに反映する」
 
@@ -150,7 +154,8 @@ FR-028（preview.md））に反映する規則を追加する。
   と時機に従う。表示していないフォルダのファイルは、そのフォルダを表示したとき、または選択したときに、置き換え後の内容を表示する
 - 表示の確認（GUI）は保守者がローカルで行う。Cloud では Swift のビルドとテストを CI で確認する
 - 新しい設定・保存キー・メニュー・ショートカットは追加しない
-- 現行の最大値（origin/master 4ec25c0 時点）FR-227・SC-114・EC-158・A-140・US40 の次から採番した。`specs/product/` への反映の前に再照合する
+- 現行の最大値（origin/master 4ec25c0 時点）FR-227・SC-114・EC-158・A-140・US40 の次から採番した。`specs/product/` への反映の直前（2026-11-01）に
+  origin/master を再照合し、master は 4ec25c0 から進んでおらず、ID の衝突がないことを確かめた
 
 ## 反映先
 

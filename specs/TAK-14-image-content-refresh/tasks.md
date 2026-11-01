@@ -50,9 +50,9 @@
 
 - [x] T018 Cloud の検査を実行する: scripts/check-no-network.sh、scripts/check-readme-sync.sh master、scripts/dev/check-english-comments.sh、scripts/dev/check-skill-sync.sh、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"`。結果を quickstart.md に記録する
 - [x] T019 作業ブランチに push し、PR の作成を保守者の依頼まで待つ。PR を作ったら Linear に PR のリンクを追加して In Review にする
-- [ ] T020 macOS CI の結果（通常のテストと性能テストのログの末尾）を確認し、quickstart.md に記録する。失敗したらログを読んでまとめて直す
+- [x] T020 macOS CI の結果（通常のテストと性能テストのログの末尾）を確認し、quickstart.md に記録する。失敗したらログを読んでまとめて直す
 - [ ] T021 [MANUAL] 保守者に、ローカルの最新 Swift での build/test、起動スモーク、quickstart.md の Q1〜Q9 を依頼し、結果を quickstart.md に記録する。報告があるまで未チェックのままにする（SC-115・116）
-- [ ] T022 実装と検証の後、PR の最後に最新の master を取り込み、ID の衝突を確かめてから、spec.md の「反映先」の項目を specs/product/ へ反映する。差分を保守者が承認した後にコミットし、spec.md を凍結する
+- [x] T022 実装と検証の後、PR の最後に最新の master を取り込み、ID の衝突を確かめてから、spec.md の「反映先」の項目を specs/product/ へ反映する。差分を保守者が承認した後にコミットし、spec.md を凍結する
 - [ ] T023 TAK-43 の再現手順（quickstart.md の Q4）の結果を TAK-43 の判断材料として保守者に報告する（TAK-43 の作業はこの feature では行わない）
 
 ## Dependencies & Execution Order
@@ -72,4 +72,4 @@ US1 が MVP（報告された症状と TAK-43 の症状を対象にする）。C
 ## GUI 確認の結果への対応（2026-11-01）
 
 - [x] T024 [US3] Q8 の NG（検索結果で何も更新されない）を調べ、URL オブジェクトが資源値を保持するため置き換え前の版が返ることを特定した。Sources/FolzioCore/Model/FileContentVersion.swift の `current(of:)` を新しい URL で読むように直し、Tests/FolzioCoreTests/FileContentVersionTests.swift に回帰テストを足す（FR-232、research.md R6）
-- [ ] T025 [MANUAL] 修正後の CI の成功と、保守者による Q8 の再確認を記録する
+- [x] T025 [MANUAL] 修正後の CI の成功と、保守者による Q8 の再確認を記録する

@@ -71,6 +71,7 @@ sips -s format png -z 160 320 "$SRC" --out ~/FolzioTAK14/b/photo.png
 
 | 日付 | コミット | 結果 |
 |---|---|---|
+| 2026-11-01 | 18a5634（workflow_dispatch） | 成功。ビルド、通常のテスト、性能テスト（`Test run with 27 tests passed`） |
 | 2026-11-01 | dab57c8 | 失敗。ビルドは成功し、通常のテスト 899 件のうち 3 件の issue（ログの取得は Cloud のネットワーク設定で拒否され、該当箇所を読めていない）。Q8 と同じ原因（URL の資源値のキャッシュ）で、検索結果のテストと `FileContentVersionTests.readsCurrentValue` が失敗したと推定 |
 
 ### 保守者の確認（ローカル、2026-11-01）
@@ -78,4 +79,4 @@ sips -s format png -z 160 320 "$SRC" --out ~/FolzioTAK14/b/photo.png
 | # | 結果 | 備考 |
 |---|---|---|
 | Q1〜Q7、Q9 | OK | Q2 で QuickLook の古い縮小画像の問題は見られなかった。Q4 で TAK-43 の手順も解消 |
-| Q8 | NG → 修正 | 検索結果では何も更新されなかった。原因は research.md R6 の注意。修正後に再確認を依頼する |
+| Q8 | NG → 修正 → OK | 検索結果では何も更新されなかった。原因は research.md R6 の注意。18a5634 で修正し、再確認で OK |
