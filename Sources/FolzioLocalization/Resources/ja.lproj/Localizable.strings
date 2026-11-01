@@ -379,7 +379,7 @@
 "settings.confirm" = "コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する";
 
 /* Supplementary note under the confirmation checkbox in the Settings window. Also its accessibility help */
-"settings.confirm.note" = "名前の変更・移動・ツリーのフォルダのゴミ箱は常に確認する";
+"settings.confirm.note" = "名前の変更・移動と、ツリーのフォルダをゴミ箱に入れる操作は、この設定に関わらず常に確認します";
 
 /* Section headings in the Settings window */
 "settings.slideshow" = "スライドショー";

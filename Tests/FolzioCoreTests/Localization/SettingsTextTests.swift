@@ -10,9 +10,9 @@ struct SettingsTextTests {
         let en = LocalizationTestSupport.localizer("en")
 
         #expect(ja.text(.settingsConfirm) == "コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する")
-        #expect(ja.text(.settingsConfirmNote) == "名前の変更・移動・ツリーのフォルダのゴミ箱は常に確認する")
+        #expect(ja.text(.settingsConfirmNote) == "名前の変更・移動と、ツリーのフォルダをゴミ箱に入れる操作は、この設定に関わらず常に確認します")
         #expect(en.text(.settingsConfirm) == "Confirm before copying, moving to the Trash, or removing from Favorites")
-        #expect(en.text(.settingsConfirmNote) == "Renaming, moving, and moving tree folders to the Trash are always confirmed")
+        #expect(en.text(.settingsConfirmNote) == "Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless of this setting")
     }
 
     @Test("The confirmation checkbox no longer carries the always-confirmed operations in parentheses")

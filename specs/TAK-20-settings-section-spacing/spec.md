@@ -19,6 +19,11 @@ clarify は `auto`（workflow の既定値）で行い、推奨回答を採用�
 - Q: 設定ウインドウの高さの下限（現在は内容によらず最小 320pt）を残すか → A: 残さず、内容に合わせる。根拠: 下限が残ると最後の項目の下に空白が出て「余白の統一」に反する（FR-208（4））
 - Q: 区分を区切り線や枠で囲むか → A: 囲まない。間隔の統一だけで区分を示す。根拠: Issue は間隔と補足説明の分離だけを求めており、見た目の変更を最小にする（A-119）
 - Q: 補足説明の末尾に句点・ピリオドを付けるか → A: 付けない。根拠: Issue が示した日本語の文に句点がなく、両言語の構造を揃える（A-120）
+- Q: 補足説明の文言（2026-11-01、保守者のレビュー）→ A: 「名前の変更・移動と、ツリーのフォルダをゴミ箱に入れる操作は、この設定に関わらず常に確認します」
+  （英語: Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless of this setting）。
+  根拠: 旧案の「ツリーのフォルダのゴミ箱」は操作として読めず、ほかの2つと並列にならない。「この設定に関わらず」でチェックボックスとの関係を示し、
+  説明文として「〜ます」の形にして主文の設定項目と区別する（既存の日本語訳の説明・エラーの文の形に合わせる）。英語の tree は既存の用語 directory tree に揃えた。
+  FR-024（file-operations.md）の本文の同じ言い回しを直すかは、`specs/product/` への反映（T013）の確認で保守者に諮る
 - Q: Tab の移動順を変えるか → A: 変えない。補足説明はフォーカスの対象にしない（US36-AS4、FR-209（3））
 
 ## User Scenarios & Testing *(mandatory)*
@@ -50,7 +55,7 @@ clarify は `auto`（workflow の既定値）で行い、推奨回答を採用�
 ### User Story 2 - 変えられる設定と常に適用される説明を見分ける (Priority: P1)
 
 利用者は「ファイル操作」の確認の項目で、チェックボックスで変えられる範囲（コピー・ゴミ箱に入れる・お気に入りからの削除）と、
-設定に関わらず常に確認される操作（名前の変更・移動・ツリーのフォルダのゴミ箱）を、別の行として読み分けられる。
+設定に関わらず常に確認される操作（名前の変更・移動・ツリーのフォルダをゴミ箱に入れる操作）を、別の行として読み分けられる。
 
 **Why this priority**: 長い1文が折り返されて読みにくく、変えられる設定と変えられない説明の区別がつかないことが Issue の第二の不満。
 
@@ -60,11 +65,11 @@ clarify は `auto`（workflow の既定値）で行い、推奨回答を採用�
 **Acceptance Scenarios**:
 
 - **US36-AS1**: **Given** 日本語表示, **When** 設定ウインドウの「ファイル操作」を見る, **Then** 1行目にチェックボックスと
-  「コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する」、その下に「名前の変更・移動・ツリーのフォルダのゴミ箱は常に確認する」が
+  「コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する」、その下に「名前の変更・移動と、ツリーのフォルダをゴミ箱に入れる操作は、この設定に関わらず常に確認します」が
   チェックボックスの文言より小さく淡い文字で、チェックボックスの文言の先頭に揃えて表示される
 - **US36-AS2**: **Given** 英語表示, **When** 同じ箇所を見る, **Then** US36-AS1 と同じ構造で、1行目に
   「Confirm before copying, moving to the Trash, or removing from Favorites」、2行目に
-  「Renaming, moving, and moving tree folders to the Trash are always confirmed」が表示される
+  「Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless of this setting」が表示される
 - **US36-AS3**: **Given** 確認の設定がオン, **When** 補足説明の文字をクリックする, **Then** チェックボックスの状態も保存値も変わらず、
   補足説明は選択・編集・キーボードフォーカスの対象にならない。チェックボックスの文言をクリックしたときは従来どおり切り替わる
 - **US36-AS4**: **Given** VoiceOver を使用中, **When** Tab で確認のチェックボックスへ移る, **Then** チェックボックスの名前（1行目の文言）と状態に加えて、
@@ -94,7 +99,7 @@ clarify は `auto`（workflow の既定値）で行い、推奨回答を採用�
   （5）区分の並び・項目・保存のタイミングは `contracts/settings.md` の「設定ウインドウ（⌘,）」のとおりで変えない
 - **FR-209**: 「ファイル操作」の確認の項目は、チェックボックスの行と補足説明の行の2つに分けて表示しなければならない。
   （1）チェックボックスの文言は「コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する」（英語: Confirm before copying, moving to the Trash, or removing from Favorites）とする。
-  （2）補足説明は「名前の変更・移動・ツリーのフォルダのゴミ箱は常に確認する」（英語: Renaming, moving, and moving tree folders to the Trash are always confirmed）とし、
+  （2）補足説明は「名前の変更・移動と、ツリーのフォルダをゴミ箱に入れる操作は、この設定に関わらず常に確認します」（英語: Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless of this setting）とし、
   チェックボックスの直下に、チェックボックスの文言の先頭に揃えて置く。チェックボックスとの間隔は、同じ区分の中の項目どうしの間隔より狭くし、主文に従属する説明として見せる。
   （3）補足説明は、チェックボックスの文言より小さい文字と、OS の標準の淡い（二次的な）文字色で表示する。クリック・選択・編集・キーボードフォーカスの対象にしない。
   （4）補足説明の文は、チェックボックスのアクセシビリティの説明（ヘルプ）としても提供し、読み上げでチェックボックスと結び付ける。

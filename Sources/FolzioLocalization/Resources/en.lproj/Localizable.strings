@@ -379,7 +379,7 @@
 "settings.confirm" = "Confirm before copying, moving to the Trash, or removing from Favorites";
 
 /* Supplementary note under the confirmation checkbox in the Settings window. Also its accessibility help */
-"settings.confirm.note" = "Renaming, moving, and moving tree folders to the Trash are always confirmed";
+"settings.confirm.note" = "Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless of this setting";
 
 /* Section headings in the Settings window */
 "settings.slideshow" = "Slideshow";
