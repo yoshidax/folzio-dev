@@ -428,6 +428,12 @@ final class ListModeView: NSView {
         updateSortMenuItems()
     }
 
+    /// Whether the rows on screen already include `url`. A listing change reloads the table and cancels any rename, so
+    /// naming a new folder waits until its row has been applied (FR-210).
+    func hasAppliedRow(for url: URL) -> Bool {
+        !isHidden && lastURLs.contains(url)
+    }
+
     /// Whether the last context click hit no row, so the file list shows the background menu (FR-213, R7).
     var isContextClickOnBackground: Bool {
         tableView.clickedRow < 0

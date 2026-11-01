@@ -974,6 +974,9 @@ final class FileListViewController: NSViewController {
         }
     }
 
+    /// Upper bound on waiting for the views to show a new folder's row (about 0.5 seconds).
+    private static let newFolderNamingAttempts = 50
+
     /// Selects only the new folder's row and starts naming it (FR-210). Does nothing when the file list no longer
     /// shows the folder's parent as a regular listing, for example after the user moved elsewhere. The tree also
     /// calls this for a favorite whose registered folder is displayed. Returns whether naming started.
@@ -988,19 +991,23 @@ final class FileListViewController: NSViewController {
             return false
         }
         model.select([row.url], focused: row.url)
-        // Let the views apply the reloaded listing and the selection before editing the row. Retry a few turns
-        // because the update arrives through an Observation task.
-        for _ in 0..<3 {
+        // The views apply the reloaded listing in a later Observation task, and applying a changed listing reloads the
+        // rows and cancels any rename in progress. Start editing only after the new row is on screen; otherwise the
+        // field would close right away and leave the default name (FR-210, FR-211).
+        for _ in 0..<Self.newFolderNamingAttempts {
             await Task.yield()
             guard !isEditingText else { return false }
             let started: Bool
             switch displayMode {
             case .list:
-                started = listModeView.beginRenaming(isNewFolder: true)
+                started = listModeView.hasAppliedRow(for: row.url)
+                    && listModeView.beginRenaming(isNewFolder: true)
             case .thumbnails:
-                started = thumbnailModeView.beginRenamingNewFolder(row.url)
+                started = thumbnailModeView.hasAppliedItem(for: row.url)
+                    && thumbnailModeView.beginRenamingNewFolder(row.url)
             }
             if started { return true }
+            try? await Task.sleep(for: .milliseconds(10))
         }
         return false
     }

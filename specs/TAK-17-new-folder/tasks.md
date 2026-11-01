@@ -35,6 +35,7 @@
 - [x] T018 [US35] `Sources/FolzioApp/App/MainSplitViewController.swift` で、ファイルリストの名前の確定の「作成直後」の印を `coordinator.rename` の確認の省略に結び、ツリーのお気に入りの項目からファイルリストへの編集の依頼とフォーカスの移動を結線する（FR-210 の（3））。
 - [x] T019 [US35] 変更した Swift ファイルのコメントを英語で書く（AGENTS.md「コードコメント（英語）」）。
 - [x] T024 [US35] `docs/usage.md` と `docs/usage.ja.md` の操作の表に新規フォルダ（⇧⌘N・ファイルメニュー・右クリック）の行を両言語で追加する（README の英語版と日本語版の規則に準じる）。
+- [x] T025 [US35] 保守者の GUI 確認での指摘（作成直後の名前の編集が一瞬で解除され、既定名のまま残る。FR-210・FR-211 に反する）を直す。`Sources/FolzioApp/FileList/FileListViewController.swift` の `beginNamingNewFolder` で、`ListModeView.hasAppliedRow(for:)`・`ThumbnailModeView.hasAppliedItem(for:)` によりビューが新しい行を反映したことを確かめてから編集を始める。
 
 ## Phase 4: Polish & Cross-Cutting
 
@@ -72,3 +73,8 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   性能テスト 27 件成功（ログ末尾で確認）。
 - 並行する TAK-21（ツリーの複数選択）のコミットが FR-208〜212・EC-141 を使っている。T023 の反映時に master と照合し、TAK-21 が先にマージされていれば
   この feature の ID を振り直す。
+- 2026-11-01 保守者の GUI 確認: 作成直後に名前の編集が一瞬始まり、「名称未設定フォルダ」のまま解除される。仕様（FR-211 は FR-103 と同じく
+  Return・ほかの場所のクリックで確定、Esc で取り消し）どおりではなく、実装の不具合と判断（仕様は変更しない）。
+  原因: ビューへの一覧の反映は Observation の後のターンに行われ、URL が変わった一覧の反映は表を作り直して編集を取り消す
+  （`ListModeView.applyModel` の `finishRenaming(commit: false)`、サムネイルのセル再利用時の `endRenaming(commit: false)`）。
+  実装は反映を待たずに編集を始めていた。T025 で、新しい行の反映を確かめてから編集を始めるように直した。

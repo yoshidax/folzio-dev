@@ -349,6 +349,12 @@ final class ThumbnailModeView: NSView {
     /// rename starts, so a later rename of the same folder still confirms.
     private var newFolderRenamingURL: URL?
 
+    /// Whether the items on screen already include `url`. A listing change reloads the collection view and cancels any
+    /// rename, so naming a new folder waits until its item has been applied (FR-210).
+    func hasAppliedItem(for url: URL) -> Bool {
+        !isHidden && lastURLs.contains(url)
+    }
+
     /// Whether the last context click hit no item, so the file list shows the background menu (FR-213, R7).
     var isContextClickOnBackground: Bool {
         guard let location = collectionView.lastMenuLocation else { return true }
