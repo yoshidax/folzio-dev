@@ -196,6 +196,8 @@ Cloud 環境で Agent が作業するときの規則です。手順の詳細は 
 - Cloud が指定した作業ブランチ上で作業する。git 拡張の `before_specify` フック（`speckit.git.feature`）は実行せず、feature 用のブランチを新しく作らない
 - feature ディレクトリは `specs/TAK-<nn>-<slug>`（`<nn>` は Linear の Issue 番号）。`SPECIFY_FEATURE_DIRECTORY` で明示する。ブランチ名とは独立している
 - 作業の前に `git fetch origin master` し、最新の master を取り込む（ローカルの `master` ブランチは古いことがある）
+- Codex Cloud で Git の通信が失敗したら、Cloud のネットワーク設定に加えてコマンドのサンドボックス権限を確認する。詳細は
+  [Cloud Agent の作業手順](docs_private/cloud-agent-workflow.md) の「Codex Cloud の Git 通信」を参照する
 
 ### Linear（手順書 2）
 
