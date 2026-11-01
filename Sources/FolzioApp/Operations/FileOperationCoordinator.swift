@@ -17,6 +17,11 @@ final class FileOperationCoordinator {
     var onFolderRenamed: ((URL, URL) -> Void)?
     /// Removes locations that disappeared due to moves or renames from history (FR-109).
     weak var historyNavigator: HistoryNavigator?
+    /// Called when a copy, move, or Move to Trash ends, including when it is cancelled or rejected. Passes the
+    /// requested sources and the original locations of the items it removed (empty for a copy, a cancellation, or a
+    /// rejection), after the file list has been updated. Lets the tree finish its own operation and update its
+    /// selection (FR-219).
+    var onOperationFinished: ((_ sources: [URL], _ removed: [URL]) -> Void)?
 
     init(model: BrowserModel, service: any FileOperating, settings: SettingsStore) {
         self.model = model
@@ -57,16 +62,21 @@ final class FileOperationCoordinator {
         notifyFoldersChanged(sources: urls, destination: nil)
     }
 
-    /// From the tree (`origin: .tree`), confirms with the target's absolute path regardless of the skip setting
-    /// (FR-079, R66).
+    /// From the tree (`origin: .tree`), confirms with each target's absolute path regardless of the skip setting
+    /// (FR-079, R66). A single folder shows its path after the list; multiple folders show the path below each name
+    /// (A-127).
     func trash(_ urls: [URL], origin: OperationOrigin = .fileList) async {
         guard !urls.isEmpty else { return }
+        var trashedSources: [URL] = []
+        defer { onOperationFinished?(urls, trashedSources) }
         let operation = FileOperation(kind: .trash, sources: urls)
+        let showsEachLocation = origin == .tree && urls.count > 1
         guard await confirmation.confirm(
             operation,
             includesFolders: await containsFolder(urls),
             origin: origin,
-            location: origin == .tree ? urls.first?.path : nil
+            location: origin == .tree && !showsEachLocation ? urls.first?.path : nil,
+            itemLocations: showsEachLocation ? urls.map(\.path) : []
         ) else { return }
 
         let result = await service.execute(operation, resolution: .abort)
@@ -76,7 +86,7 @@ final class FileOperationCoordinator {
         notifyFoldersChanged(sources: urls, destination: nil)
         // result.succeeded contains URLs inside the Trash, so pass the original locations that did not fail instead.
         let failedPaths = Set(result.failed.map { $0.url.standardizedFileURL.path })
-        let trashedSources = urls.filter { !failedPaths.contains($0.standardizedFileURL.path) }
+        trashedSources = urls.filter { !failedPaths.contains($0.standardizedFileURL.path) }
         historyNavigator?.didRemoveItems(trashedSources)
         // Move to the parent only when the displayed folder or an ancestor was trashed (FR-079). In search results, an
         // ancestor of the pre-search folder can be selected, so tree and file list operations behave differently. Leave
@@ -85,6 +95,15 @@ final class FileOperationCoordinator {
         if await !model.leaveTrashedFolders(trashedSources, origin: origin) {
             await model.reloadCurrentFolder()
         }
+    }
+
+    /// Explains why folders selected in the tree together with their descendants are not moved to the Trash. Nothing
+    /// is changed (EC-146).
+    func presentOverlappingTreeTrash() async {
+        await showError(
+            message: { l10n.text(.dialogTreeTrashOverlapTitle) },
+            detail: { l10n.text(.dialogTreeTrashOverlapMessage) }
+        )
     }
 
     func paste(into destination: URL, move: Bool) async {
@@ -167,6 +186,8 @@ final class FileOperationCoordinator {
 
     private func transfer(_ urls: [URL], to destination: URL, kind: FileOperation.Kind, validateDrop: Bool = false) async {
         guard !urls.isEmpty else { return }
+        var removed: [URL] = []
+        defer { onOperationFinished?(urls, removed) }
         if validateDrop, await !validateInternalDrop(urls, destination: destination, kind: kind) { return }
         let operation = FileOperation(kind: kind, sources: urls, destination: destination)
         guard await confirmation.confirm(operation, includesFolders: await containsFolder(urls)) else { return }
@@ -221,7 +242,6 @@ final class FileOperationCoordinator {
         }
 
         await presentFailures(result)
-        var removed: [URL] = []
         if case .move = kind {
             // result.succeeded contains destination URLs, so remove history using the original locations that did not
             // fail (FR-109).

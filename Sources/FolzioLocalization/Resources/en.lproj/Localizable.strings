@@ -582,6 +582,12 @@
 /* Remaining failure count for file operations. %1$@ is the formatted count */
 "dialog.operation.more" = "and %1$@ more";
 
+/* Error shown when folders selected in the directory tree include a folder inside another selected folder, so nothing is moved to the Trash */
+"dialog.treeTrashOverlap.title" = "Can’t move the folders to the Trash";
+
+/* Error shown when folders selected in the directory tree include a folder inside another selected folder, so nothing is moved to the Trash */
+"dialog.treeTrashOverlap.message" = "The selection includes a folder that is inside another selected folder. No folders were moved to the Trash.";
+
 /* Accessibility label for a thumbnail image */
 "a11y.thumbnail" = "Thumbnail";
 
