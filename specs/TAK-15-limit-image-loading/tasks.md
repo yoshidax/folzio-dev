@@ -10,7 +10,7 @@
 
 - [x] T001 origin/master（22e0a3c）が作業ブランチの祖先であることを確かめ、TAK-15 を In Progress にし、spec.md に Issue の URL と保守者の回答（Clarifications）を記録する
 - [x] T002 spec.md・plan.md・research.md・data-model.md・contracts/core-api.md・quickstart.md を作る
-- [ ] T003 [MANUAL] 設計レビュー（analyze の結果を含む）の承認を保守者から受ける。承認前にソースを実装しない。特に FR-236（保守者への確認になかった追加）の要否を確認する
+- [ ] T003 [MANUAL] 設計レビュー（analyze の結果を含む）の承認を保守者から受ける。承認前にソースを実装しない。FR-236 の採用、F1・F3・F4・F5・F7 の反映は承認済み（2026-11-01）。F6 と上限の値（合計 2、先読み 1）は未確認
 
 ## Phase 2: Foundational（全ストーリーの前提）
 
@@ -34,12 +34,14 @@
 
 - [ ] T008 [US1] Sources/FolzioCore/Browser/BrowserModel.swift の `decodedImage(for:version:)` に `priority` を足し、「キャッシュ参照 → 枠の取得（`false` なら取り消しとして終了）→
   取得後にもう一度キャッシュ参照 → デコード → 格納 → 枠の返却」にする。キャッシュ参照だけで済む場合は枠を通さない（FR-233、EC-165、EC-166）。
-  プレビューは `.preview`、先読みは `.prefetch`。取り消し後に終わった結果は、キャッシュにだけ入れる（EC-164）
+  プレビューは `.preview`、先読みは `.prefetch`。取り消し後に終わった結果は、キャッシュにだけ入れる（EC-164）。取り消し（`Task.isCancelled`）で投げられた `DecodeError` は失敗として扱わない:
+  「表示できません」を出さず、失敗をキャッシュせず、枠だけ返す
 - [ ] T009 [US1] Sources/FolzioCore/Browser/BrowserModel.swift の `prefetchTasks` を `[URL: PrefetchEntry]` にする（`PrefetchEntry` は `task` と、枠を取得した時点で立てる `isRunning`。data-model.md）。
   `schedulePrefetch(around:)` は、前後 1 件（次の画像、前の画像の順）に入らない項目を `cancel()` して外し、すでにある項目は作り直さない（FR-234）。
   `noteReplacedContent` と `resetForNavigation` を新しい型に合わせる（EC-167）
 - [ ] T010 [US1] Sources/FolzioCore/Browser/BrowserModel.swift の `loadPreview(for:)` が、フォーカスする URL の `PrefetchEntry` を `prefetchTasks` から取り出す（FR-234、FR-236、R3）。
-  実行中ならプレビューのタスクがその完了を待ってからキャッシュを参照する（得られなければ通常の読み込みに進む）。待機中なら先読みを取り消して、プレビューの優先度で読み込む。
+  実行中なら、`startImagePreview` と `loadArchivePreview` が作るプレビューのタスクの中でその完了を待ってからキャッシュを参照する
+  （`loadPreview` 本体では待たない。待った後も `previewGeneration` を照合する。得られなければ通常の読み込みに進む）。待機中なら先読みを取り消して、プレビューの優先度で読み込む。
   `select` で `loadPreview` の後に `schedulePrefetch` が呼ばれる順序を保つ
 - [ ] T011 [US1] Tests/FolzioCoreTests/BrowserModelImageLoadTests.swift を作る。完了を制御し、同時実行数の最大値を記録する偽の decoder（`ImageDecoding`）を使い、次を確かめる:
   40 回の連続選択で最大が 2 以下（SC-117、US44-AS1）／最後に選択した画像だけが `preview` に反映される（FR-237、US44-AS2）／
@@ -85,7 +87,7 @@
 
 - T003 → T004 以降（承認前に実装しない）
 - T004 → T005、T008（T006 は独立）、T007 → T008
-- T008 → T009 → T010 → T011 → T012。US2（T013・T014）は T009・T010 の後。US3（T015・T016）は T011 の後
+- T008 → T009 → T010 → T011 → T012。US2（T013・T014）は T009・T010 の後（T013 は T010 の引き継ぎ処理を使う）。US3（T015・T016）は T011 の後
 - T017〜T020 は実装の後。T019 は CI の成功の後
 
 ## Parallel Opportunities
