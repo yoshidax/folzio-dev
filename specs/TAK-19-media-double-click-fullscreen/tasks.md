@@ -55,9 +55,9 @@
 - [x] T009 `docs/usage.md`・`docs/usage.ja.md` の全画面の記述（機能一覧と操作の表）と、`docs/development.md`・`docs/development.ja.md` の起動スモークの全画面の項目を、
   画像と動画を含むメディアのダブルクリックに改める。英語版と日本語版を同じコミットで直す（research.md の R5）。
 - [x] T010 Cloud の検査（quickstart.md の第1章）を実行し、結果を quickstart.md の第5章に記録する。
-- [ ] T011 [MANUAL] 保守者の依頼で PR を作った後、macOS CI の `swift build`・`swift test`（性能テストのログを含む）の結果を確認し、quickstart.md の第5章に記録する。
-- [ ] T012 [MANUAL] 保守者に起動スモークと quickstart.md の M1〜M8 を依頼し、報告を受けて quickstart.md の第5章に記録する。M2・M3 が期待どおりでなければ、作業を止めて方式を相談する。
-- [ ] T013 実装と検証の後、最新の master を取り込み、spec.md の「反映先」の項目を `specs/product/preview.md` と `specs/product/contracts/keyboard-and-menus.md` へ反映し、
+- [x] T011 [MANUAL] 保守者の依頼で PR を作った後、macOS CI の `swift build`・`swift test`（性能テストのログを含む）の結果を確認し、quickstart.md の第5章に記録する。
+- [x] T012 [MANUAL] 保守者に起動スモークと quickstart.md の M1〜M8 を依頼し、報告を受けて quickstart.md の第5章に記録する。M2・M3 が期待どおりでなければ、作業を止めて方式を相談する。
+- [x] T013 実装と検証の後、最新の master を取り込み、spec.md の「反映先」の項目を `specs/product/preview.md` と `specs/product/contracts/keyboard-and-menus.md` へ反映し、
   ID の重複がないことを確かめ、feature の spec.md に移行済み・凍結の注記を入れる。差分を保守者に示し、承認を得てからコミットする。
 
 ## Dependencies

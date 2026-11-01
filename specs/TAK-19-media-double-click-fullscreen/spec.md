@@ -1,10 +1,14 @@
 # Feature Specification: メディア表示区画のダブルクリックによる全画面の切り替え
 
+> **移行済み（2026-11-01）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-19 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> CI の結果と保守者の動作確認の報告は [quickstart.md](quickstart.md) を参照。
+
 **Feature Branch**: `claude/zen-goodall-wtxkca`
 
 **Created**: 2026-10-31
 
-**Status**: Draft
+**Status**: Approved — PR #18、product へ移行
 
 **Input**: [TAK-19](https://linear.app/takyoshida/issue/TAK-19)「メディア表示区画のダブルクリックで全画面化し、全画面のどこからでもダブルクリックで戻せるようにする」。
 会話で、動画の再生コントロールは反応領域から除くこと、通常表示の反応領域はメディアの周りの余白を含むプレビュー領域全体とすることを確認した（2026-10-31）。
@@ -118,6 +122,8 @@ Swift Testing で自動検証する。マウスの位置による反応領域、
 Cloud の静的検査、macOS CI の build/test、保守者の起動スモークと実機確認を分けて記録する。
 
 ## 反映先
+
+2026-11-01、最新の master（5b6988b）と照合し、次の領域へ反映した。
 
 | ID | 種別 | 反映先 |
 |---|---|---|

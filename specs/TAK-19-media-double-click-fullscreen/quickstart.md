@@ -64,3 +64,8 @@ M2 または M3 が期待どおりでない場合は、推測で直さず、結�
     本 feature が使う `isFullScreenPresentation`・`model.preview`・`togglePreviewFullScreen()` は変わっていない。`PreviewContent` の case も変わっていない
   - 文書: `docs/usage*.md` の master の追記は別の行で、全画面の行は本 feature の変更のまま。`specs/product/contracts/keyboard-and-menus.md` の変更対象の3行は master でも同じ文言
   - Cloud の検査を再実行し、すべて成功した。Swift の build・test は CI で確認する
+- 2026-11-01: macOS CI（T011）。PR #18 のヘッド 8b8db0f で「Build and test (macOS 15 / arm64)」が成功した。ログの末尾で、通常のテスト
+  「Test run with 879 tests passed」、性能テスト「Test run with 27 tests passed」を確かめた（run 41270426547）。
+- 2026-11-01: 保守者がローカルで起動スモークと M1〜M8 を確認し、問題ないと報告した（会話で「問題ないことを確認しました」）（T012）。
+  research.md の R2・R3（再生コントロールの除外、映像のシングルクリックで再生状態が変わらないこと）と、全画面中の画面の左端の反応も、この報告に含まれるものとして扱う。
+- 2026-11-01: spec.md の「反映先」の項目を `specs/product/preview.md` と `specs/product/contracts/keyboard-and-menus.md` へ反映した（T013）。
