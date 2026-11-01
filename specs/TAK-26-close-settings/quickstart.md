@@ -95,3 +95,7 @@ macOS CI の build/test と GUI シナリオは未実施。Cloud の検査通過
 ### 取り込み後の Cloud 検査
 
 ネットワーク API 禁止、README 同期（origin/master 基準）、英語コメント、共有スキル同期、push 制約の3テスト、git diff --check がすべて通過。feature と product の定義 ID の重複も0件。TAK-26 の実行コードは master 取り込み後も AppDelegate.swift の13行追加・1行削除のみ。
+
+### CI 再実行の状況
+
+2026-11-01、取り込み・仕様ID修正を push 後、gh workflow run macos-swift-ci.yml --ref agent/tak-26-close-settings を実行したが GitHub API のワークフロー取得が Forbidden で失敗し、dispatch はできなかった。現行の接続ツールには workflow_dispatch の起動機能がない。保守者が Actions → macOS Swift CI → Run workflow で agent/tak-26-close-settings を指定して実行する必要がある。最新 head の build/test は未確認。GUI 確認も未実施。
