@@ -88,6 +88,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case menuAppSettings = "menu.app.settings"
     case menuAppQuit = "menu.app.quit"
     case menuFile = "menu.file"
+    case menuFileNewFolder = "menu.file.newFolder"
     case menuFileOpen = "menu.file.open"
     case menuFileShowContents = "menu.file.showContents"
     case menuFileEnclosingFolder = "menu.file.enclosingFolder"
@@ -194,6 +195,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case treeTooltipNotFound = "tree.tooltip.notFound"
     case treeA11yFavoriteName = "tree.a11y.favoriteName"
     case treeA11yFolderName = "tree.a11y.folderName"
+    case folderDefaultName = "folder.defaultName"
 
     // MARK: - Search
 
@@ -245,6 +247,8 @@ public enum TextKey: String, CaseIterable, Sendable {
     case dialogOperationSummary = "dialog.operation.summary"
     case dialogOperationFailureLine = "dialog.operation.failureLine"
     case dialogOperationMore = "dialog.operation.more"
+    case dialogTreeTrashOverlapTitle = "dialog.treeTrashOverlap.title"
+    case dialogTreeTrashOverlapMessage = "dialog.treeTrashOverlap.message"
     case dialogCancel = "dialog.cancel"
     case dialogOK = "dialog.ok"
 
@@ -310,6 +314,8 @@ public enum TextKey: String, CaseIterable, Sendable {
     case shortcutCopyPathCondition = "shortcuts.condition.copyPath"
     case shortcutDuplicate = "shortcuts.entry.duplicate"
     case shortcutDuplicateCondition = "shortcuts.condition.duplicate"
+    case shortcutNewFolder = "shortcuts.entry.newFolder"
+    case shortcutNewFolderCondition = "shortcuts.condition.newFolder"
     case shortcutTrash = "shortcuts.entry.trash"
     case shortcutTrashCondition = "shortcuts.condition.trash"
     case shortcutFind = "shortcuts.entry.find"
@@ -499,6 +505,10 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Action description in the shortcut reference"
         case .shortcutDuplicateCondition:
             return "Availability note below a shortcut reference action"
+        case .shortcutNewFolder:
+            return "Action description in the shortcut reference"
+        case .shortcutNewFolderCondition:
+            return "Availability note below a shortcut reference action"
         case .shortcutTrash:
             return "Action description in the shortcut reference"
         case .shortcutTrashCondition:
@@ -627,7 +637,7 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Quit item in the application menu. Do not translate the app name"
         case .menuFile, .menuEdit, .menuView, .menuGo:
             return "Menu bar menu names"
-        case .menuFileOpen, .menuFileShowContents, .menuFileEnclosingFolder,
+        case .menuFileNewFolder, .menuFileOpen, .menuFileShowContents, .menuFileEnclosingFolder,
              .menuFileRevealInFinder, .menuFileAddToFavorites, .menuFileFind,
              .menuFileTrash, .menuFileRemoveFromFavorites:
             return "File menu items (the Trash and Remove from Favorites items swap depending on the state)"
@@ -700,6 +710,8 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Tooltip for a directory tree row"
         case .treeA11yFavoriteName, .treeA11yFolderName:
             return "Accessibility label for a name edit field in the directory tree"
+        case .folderDefaultName:
+            return "Default name of a folder created with New Folder, before the user renames it. Use Finder's wording"
         case .searchKeyword, .searchRoot, .searchChoose, .searchChooseHelp,
              .searchSearch, .searchError:
             return "Labels, buttons, and accessibility text in the search sheet"
@@ -756,6 +768,8 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "One failure line for a file operation. The values are the name and the reason"
         case .dialogOperationMore:
             return "Remaining failure count for file operations. The value is the formatted count"
+        case .dialogTreeTrashOverlapTitle, .dialogTreeTrashOverlapMessage:
+            return "Error shown when folders selected in the directory tree include a folder inside another selected folder, so nothing is moved to the Trash"
         case .a11yThumbnail:
             return "Accessibility label for a thumbnail image"
         }

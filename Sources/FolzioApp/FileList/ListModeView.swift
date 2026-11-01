@@ -99,6 +99,8 @@ final class ListModeView: NSView {
 
     var onTogglePlayback: (() -> Void)?
     var onRename: ((URL, String) async -> Void)?
+    /// Commits the name of a folder created with New Folder, without the rename confirmation (FR-211).
+    var onRenameNewFolder: ((URL, String) async -> Void)?
     var onOpenItem: ((URL) -> Void)?
     var onInternalDrop: (([URL], URL, Bool) -> Void)?
     /// Esc. Returns true when handled (ends search results; FR-086).
@@ -128,6 +130,8 @@ final class ListModeView: NSView {
     private var sortMenuItems: [NSMenuItem] = []
     private var renamingURL: URL?
     private var renamingOriginalName: String?
+    /// Whether the current rename names a folder just created with New Folder (FR-211, research.md R8).
+    private var renamingIsNewFolder = false
     private var isFinishingRename = false
 
     init(model: BrowserModel, provider: any ThumbnailProviding) {
@@ -424,8 +428,21 @@ final class ListModeView: NSView {
         updateSortMenuItems()
     }
 
+    /// Whether the rows on screen already include `url`. A listing change reloads the table and cancels any rename, so
+    /// naming a new folder waits until its row has been applied (FR-210).
+    func hasAppliedRow(for url: URL) -> Bool {
+        !isHidden && lastURLs.contains(url)
+    }
+
+    /// Whether the last context click hit no row, so the file list shows the background menu (FR-213, R7).
+    var isContextClickOnBackground: Bool {
+        tableView.clickedRow < 0
+    }
+
+    /// Starts renaming the single selected row. Pass `isNewFolder: true` only right after New Folder, so the commit
+    /// skips the rename confirmation (FR-211).
     @discardableResult
-    func beginRenaming() -> Bool {
+    func beginRenaming(isNewFolder: Bool = false) -> Bool {
         guard renamingURL == nil else { return false }
 
         let selected = model.selection.selected
@@ -450,6 +467,7 @@ final class ListModeView: NSView {
 
         renamingURL = focused
         renamingOriginalName = field.stringValue
+        renamingIsNewFolder = isNewFolder
         field.stringValue = focused.lastPathComponent
         setEditingAppearance(field, editing: true)
 
@@ -476,6 +494,8 @@ final class ListModeView: NSView {
 
         renamingURL = nil
         renamingOriginalName = nil
+        let isNewFolder = renamingIsNewFolder
+        renamingIsNewFolder = false
 
         var newName = oldName
         if let row = model.listing.files.firstIndex(where: { $0.url == url }),
@@ -497,7 +517,7 @@ final class ListModeView: NSView {
         }
 
         guard commit, !newName.isEmpty, newName != oldName else { return }
-        let handler = onRename
+        let handler = isNewFolder ? onRenameNewFolder : onRename
         Task { @MainActor in
             await handler?(url, newName)
         }
