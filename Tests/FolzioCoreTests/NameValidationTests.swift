@@ -140,4 +140,28 @@ struct NameValidationTests {
         #expect(uniqueName(for: "notes", existingNames: ["notes"]) == "notes 2")
         #expect(uniqueName(for: "notes", existingNames: ["NOTES", "notes 2"]) == "notes 3")
     }
+    @Test("newFolderName keeps the base name when it is free")
+    func keepsFreeNewFolderName() {
+        #expect(newFolderName(baseName: "untitled folder", existingNames: []) == "untitled folder")
+        #expect(newFolderName(baseName: "untitled folder", existingNames: ["a.jpg", "Album"]) == "untitled folder")
+    }
+
+    @Test("newFolderName numbers from 2 when the base name is taken by any entry")
+    func numbersTakenNewFolderName() {
+        #expect(newFolderName(baseName: "untitled folder", existingNames: ["untitled folder"]) == "untitled folder 2")
+        // A file, a hidden-looking name, and a case-only match all count as taken (FR-209).
+        #expect(newFolderName(baseName: "untitled folder", existingNames: ["Untitled Folder"]) == "untitled folder 2")
+        #expect(
+            newFolderName(
+                baseName: "untitled folder",
+                existingNames: ["untitled folder", "untitled folder 2", ".hidden"]
+            ) == "untitled folder 3"
+        )
+        #expect(newFolderName(baseName: "名称未設定フォルダ", existingNames: ["名称未設定フォルダ"]) == "名称未設定フォルダ 2")
+    }
+
+    @Test("newFolderName does not change uniqueName")
+    func leavesUniqueNameUnchanged() {
+        #expect(uniqueName(for: "untitled folder", existingNames: []) == "untitled folder 2")
+    }
 }

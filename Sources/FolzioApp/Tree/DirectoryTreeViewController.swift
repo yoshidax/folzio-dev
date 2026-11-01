@@ -62,6 +62,9 @@ final class DirectoryTreeViewController: NSViewController {
     private let watcher: any FileSystemWatching
     /// Removes locations that disappeared due to external changes from history (FR-109).
     weak var historyNavigator: HistoryNavigator?
+    /// Asks the file list to start naming a folder created from a favorite item, when the file list displays the
+    /// registered folder. Returns whether naming started (FR-210 (3), research.md R9).
+    var onBeginNamingInFileList: ((URL) async -> Bool)?
     private let settings: SettingsStore
     private let confirmation: ConfirmationPresenter
     private let outlineView = DragAwareOutlineView()
@@ -111,6 +114,11 @@ final class DirectoryTreeViewController: NSViewController {
     private var editingOriginalName: String?
     private var isFinishingEdit = false
     private var needsReloadAfterEdit = false
+    /// Whether the folder being renamed was just created with New Folder; its commit skips the confirmation (FR-211).
+    private var editingIsNewFolder = false
+    /// Listing that arrived for the parent of a new folder while it is being named. Reloading the parent would remove
+    /// the edit field and commit the name mid-typing, so the listing is applied when editing ends (R9).
+    private var deferredListing: (node: Node, result: Result<[URL], ListingError>)?
     private let favoriteNameFormatter = FavoriteNameFormatter()
 
     private enum ProbeKey: Hashable {
@@ -300,6 +308,13 @@ final class DirectoryTreeViewController: NSViewController {
                 keyEquivalent: "\r"
             )
             menuItem.keyEquivalentModifierMask = []
+        case .newFolder:
+            menuItem = NSMenuItem(
+                title: l10n.text(.menuFileNewFolder),
+                action: #selector(newFolderFromMenu(_:)),
+                keyEquivalent: "N"
+            )
+            menuItem.keyEquivalentModifierMask = [.command]
         case .separator:
             return .separator()
         }
@@ -384,6 +399,62 @@ final class DirectoryTreeViewController: NSViewController {
         view.window?.makeFirstResponder(outlineView)
     }
 
+    /// Folder in which New Folder creates a folder for a row: a regular folder (including the roots) or a favorite's
+    /// registered folder. Nil for the heading, no row, and a favorite whose folder was found missing (FR-212).
+    private func newFolderTarget(for item: Any?) -> URL? {
+        if let entry = item as? FavoriteEntry, entry.availability == .missing { return nil }
+        return FavoriteCommands.newFolderTarget(role(for: item))
+    }
+
+    /// ⇧⌘N and File > New Folder while the tree has focus. Creates the folder in the selected folder (FR-208 (3)).
+    @objc func newFolder(_ sender: Any?) {
+        guard editingTarget == nil else { return }
+        createFolder(for: selectedItem)
+    }
+
+    /// New Folder in the context menu. Creates the folder in the right-clicked row's folder without changing the tree
+    /// selection (FR-208 (1), A-21).
+    @objc private func newFolderFromMenu(_ sender: Any?) {
+        guard editingTarget == nil else { return }
+        createFolder(for: (sender as? NSMenuItem)?.representedObject)
+    }
+
+    private func createFolder(for item: Any?) {
+        guard let parent = newFolderTarget(for: item) else { return }
+        let node = item as? Node
+        Task { @MainActor [weak self] in
+            guard let self, let created = await self.coordinator.createFolder(in: parent) else { return }
+            if let node {
+                await self.beginNamingNewFolder(created, in: node)
+            } else {
+                // A favorite has no child rows (FR-063). Name the folder in the file list only when it shows the
+                // registered folder; otherwise keep the default name (FR-210 (3)).
+                _ = await self.onBeginNamingInFileList?(created)
+            }
+        }
+    }
+
+    /// Expands `node`, which now contains `created`, and starts naming the new row. Does not change the tree
+    /// selection, the file list, or the preview (FR-210 (2), EC-144).
+    private func beginNamingNewFolder(_ created: URL, in node: Node) async {
+        if node.children != nil {
+            await reloadChildren(of: node)
+        } else {
+            await loadChildrenIfNeeded(node)
+        }
+        if node.folder.isExpandable, !outlineView.isItemExpanded(node) {
+            outlineView.expandItem(node)
+        }
+        let path = created.standardizedFileURL.path
+        guard let child = node.children?.first(where: { $0.url.standardizedFileURL.path == path }) else { return }
+        // makeFirstResponder can fail while a menu is still tracking, so retry on the next turns (R52).
+        for _ in 0..<3 {
+            guard editingTarget == nil else { return }
+            if beginEditing(.folder(child), isNewFolder: true) { return }
+            await Task.yield()
+        }
+    }
+
     /// Return and Edit > Rename when the tree has focus. Starts editing the display name for a favorite item
     /// (FR-099), or the actual folder name for a non-root regular folder (FR-103).
     /// Does not inspect `BrowserModel` state while inside a zip or showing search results (EC-46).
@@ -428,7 +499,7 @@ final class DirectoryTreeViewController: NSViewController {
     }
 
     @discardableResult
-    private func beginEditing(_ target: EditingTarget) -> Bool {
+    private func beginEditing(_ target: EditingTarget, isNewFolder: Bool = false) -> Bool {
         guard editingTarget == nil else { return false }
         guard let window = outlineView.window else { return false }
         let row = outlineView.row(forItem: target.item)
@@ -448,6 +519,7 @@ final class DirectoryTreeViewController: NSViewController {
         let name = target.name
         editingTarget = target
         editingOriginalName = name
+        editingIsNewFolder = isNewFolder
         needsReloadAfterEdit = false
         field.stringValue = name
         configureEditingField(field, for: target)
@@ -455,6 +527,7 @@ final class DirectoryTreeViewController: NSViewController {
         guard window.makeFirstResponder(field) else {
             editingTarget = nil
             editingOriginalName = nil
+            editingIsNewFolder = false
             resetEditingState(of: cell)
             field.stringValue = name
             return false
@@ -481,8 +554,10 @@ final class DirectoryTreeViewController: NSViewController {
         defer { isFinishingEdit = false }
 
         let originalName = editingOriginalName ?? target.name
+        let isNewFolder = editingIsNewFolder
         editingTarget = nil
         editingOriginalName = nil
+        editingIsNewFolder = false
 
         let row = outlineView.row(forItem: target.item)
         var field: NSTextField?
@@ -520,10 +595,11 @@ final class DirectoryTreeViewController: NSViewController {
                 // Do nothing for an empty name or the same name as before editing (EC-48). The coordinator handles
                 // validation, confirmation, and failure display as in the file list (R60).
                 let name = input.trimmingCharacters(in: .whitespacesAndNewlines)
+                // A folder just created with New Folder is named without confirmation (FR-211).
                 if !name.isEmpty, name != originalName {
                     let url = node.url
                     Task { @MainActor [coordinator] in
-                        await coordinator.rename(url, to: name, origin: .tree)
+                        await coordinator.rename(url, to: name, origin: .tree, confirms: !isNewFolder)
                     }
                 }
             }
@@ -533,6 +609,10 @@ final class DirectoryTreeViewController: NSViewController {
             outlineView.reloadItem(target.item)
         }
         needsReloadAfterEdit = false
+        if let deferred = deferredListing {
+            deferredListing = nil
+            applyListing(deferred.result, to: deferred.node)
+        }
     }
 
     /// Checks whether the edit field had focus when the tree commits editing (R51).
@@ -1123,6 +1203,13 @@ final class DirectoryTreeViewController: NSViewController {
         case .success(let urls):
             // Recreating rows removes the edit field, so commit any child being edited first (R51).
             if case .folder(let editing) = editingTarget, node.children?.contains(where: { $0 === editing }) == true {
+                // While naming a new folder, the listing that reports its creation usually arrives mid-typing. Apply
+                // it when editing ends instead of committing early, as long as the folder still exists (R9).
+                let editingPath = editing.url.standardizedFileURL.path
+                if editingIsNewFolder, urls.contains(where: { $0.standardizedFileURL.path == editingPath }) {
+                    deferredListing = (node, result)
+                    return
+                }
                 finishEditing(commit: true, restoresFocus: editingFieldHasFocus)
             }
             let previous = Dictionary(
@@ -1185,7 +1272,12 @@ final class DirectoryTreeViewController: NSViewController {
                 guard let self, !Task.isCancelled else { return }
                 guard let node = lookup[result.url.standardizedFileURL] else { continue }
                 node.folder.applySubfolderProbe(result.result)
-                if self.outlineView.row(forItem: node) >= 0 {
+                if node === self.editingTarget?.item {
+                    // Reloading the row would replace the edit field and end renaming with the old name. A new folder
+                    // is probed right after it appears, usually while the user is still typing its name. Show the
+                    // result when editing ends, as for favorites (R51, FR-211).
+                    self.needsReloadAfterEdit = true
+                } else if self.outlineView.row(forItem: node) >= 0 {
                     self.outlineView.reloadItem(node, reloadChildren: false)
                 }
             }
@@ -1656,7 +1748,9 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
                  #selector(revealInFinder(_:)),
                  #selector(copyPathname(_:)),
                  #selector(addToFavorites(_:)),
-                 #selector(removeFavoriteFromMenu(_:)):
+                 #selector(removeFavoriteFromMenu(_:)),
+                 #selector(newFolder(_:)),
+                 #selector(newFolderFromMenu(_:)):
                 return false
             default:
                 break
@@ -1681,6 +1775,10 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
             return fileTargetNode(for: menuItem) != nil
         case #selector(copyPathname(_:)):
             return pathnameTarget(for: menuItem) != nil
+        case #selector(newFolder(_:)):
+            return newFolderTarget(for: selectedItem) != nil
+        case #selector(newFolderFromMenu(_:)):
+            return newFolderTarget(for: menuItem.representedObject) != nil
         case #selector(moveToTrash(_:)):
             // For a favorite item, ⌘⌫ is Remove from Favorites (FR-064); for a non-root folder, it is Move to Trash
             // (FR-079).
