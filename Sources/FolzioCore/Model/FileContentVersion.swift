@@ -42,7 +42,11 @@ public struct FileContentVersion: Hashable, Sendable {
     ]
 
     /// Reads the current value of a file. Performs file system access; do not call on the main thread.
+    /// A URL object caches resource values once read, so a URL kept from an earlier listing (such as a search result)
+    /// would return the values from before the replacement. Reads through a new URL with an empty cache instead.
     public static func current(of url: URL) -> FileContentVersion? {
-        FileContentVersion(resourceValues: try? url.resourceValues(forKeys: resourceKeys))
+        var fresh = URL(fileURLWithPath: url.path)
+        fresh.removeAllCachedResourceValues()
+        return FileContentVersion(resourceValues: try? fresh.resourceValues(forKeys: resourceKeys))
     }
 }

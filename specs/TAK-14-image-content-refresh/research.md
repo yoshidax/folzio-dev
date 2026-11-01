@@ -70,6 +70,10 @@
 - **Decision**: `pruneMissingResults(under:)` の、通知のあったフォルダの下の結果を調べる処理で、存在の確認と一緒に版も取り直す
   （バックグラウンドで `resourceValues`）。版が変わった結果は `allFiles` の値を差し替え、R4 と同じ通知と読み込み直しを行う。
 - **Rationale**: 検索結果は一覧を作り直さない（R38、FR-087）。既にあるバックグラウンドの確認に相乗りし、対象を通知のあったフォルダの下に限る。
+- **注意（2026-11-01 の GUI 確認 Q8 で判明）**: `URL.resourceValues(forKeys:)` は、URL オブジェクトが値を保持していればそれを返す
+  （Apple の文書の Discussion）。検索結果の行の URL は、見つけたときに値を読んでいるため、同じ URL で読み直すと置き換え前の値が返り、
+  変更を検出できなかった。`FileContentVersion.current(of:)` は、パスから作った新しい URL（`removeAllCachedResourceValues()` 済み）で読む。
+  フォルダの一覧は毎回列挙し直した新しい URL で読むため、この問題は起きない。
 
 ## R7 zip
 

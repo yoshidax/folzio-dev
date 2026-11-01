@@ -35,6 +35,25 @@ struct FileContentVersionTests {
         #expect(after != before)
     }
 
+    @Test("Reads the new value through a URL that cached resource values before the overwrite (Q8, FR-232)")
+    func ignoresResourceValuesCachedByTheURL() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("FileContentVersionTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent("a.png")
+
+        try ImageFixtures.png(at: url, width: 40, height: 20)
+        // Search results keep the URL objects that read their values when found.
+        let cached = try #require(FileContentVersion(resourceValues: try url.resourceValues(
+            forKeys: FileContentVersion.resourceKeys
+        )))
+
+        try ImageFixtures.png(at: url, width: 200, height: 100)
+        let after = try #require(FileContentVersion.current(of: url))
+        #expect(after != cached)
+    }
+
     @Test("Returns nil for a missing file")
     func returnsNilForMissingFile() {
         let url = URL(fileURLWithPath: "/tmp/FileContentVersionTests-missing-\(UUID().uuidString).png")
