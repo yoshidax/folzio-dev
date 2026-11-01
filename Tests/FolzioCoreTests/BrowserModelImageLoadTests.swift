@@ -151,7 +151,8 @@ struct BrowserModelImageLoadTests {
     @Test("Videos are not prefetched and do not use a load slot")
     func videosAreNotPrefetched() async {
         let folder = makeFolderURL()
-        let files = [file("img0.jpg", in: folder), file("clip.mp4", in: folder), file("img2.jpg", in: folder)]
+        // The list is sorted by name, so both neighbors of img0.jpg are videos.
+        let files = [file("clip.mp4", in: folder), file("img0.jpg", in: folder), file("zzz.mp4", in: folder)]
         let gate = DecodeGate()
         await gate.releaseAll()
         let scheduler = ImageLoadScheduler()
@@ -160,7 +161,8 @@ struct BrowserModelImageLoadTests {
         let model = env.model
 
         await model.selectFolder(folder)
-        model.select([files[0].url], focused: files[0].url)
+        #expect(model.listing.files.map(\.name) == ["clip.mp4", "img0.jpg", "zzz.mp4"])
+        model.select([files[1].url], focused: files[1].url)
         #expect(await eventually { self.previewWidth(of: model) == 1 })
         #expect(await eventually { await scheduler.runningCount == 0 })
 
