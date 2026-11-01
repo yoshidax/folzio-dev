@@ -33,5 +33,5 @@
 |---|---|---|
 | Cloud の検査（ネットワーク API・README の同期・英語のコメント・スキルの同期・`test_check_git_push.py`） | PASS | tasks.md の T020 |
 | macOS CI の build・通常のテスト・性能テスト | PASS | run 41234498612（d658759）。tasks.md の T021 |
-| ローカルの最新の Swift での `swift build`・`swift test` | 未回答 | 保守者からの報告なし |
-| `scripts/dev/tests` の公開・配布のテスト | 未回答 | 保守者からの報告なし |
+| ローカルの最新の Swift での `swift build`・`swift test` | 完了（保守者の報告） | 2026-11-01 に「実行は完了しています」と報告 |
+| `scripts/dev/tests` の公開・配布のテスト | 完了（保守者の報告） | 2026-11-01 に「実行は完了しています」と報告 |

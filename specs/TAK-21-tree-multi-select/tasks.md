@@ -109,4 +109,4 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   （`BrowserModelTests.swift:22` の言語変更中の列挙。100ms の遅延と 20ms の待機に依存する既存のテストで、この feature は `BrowserModel` に触れていない）。
   2回目 run 41234498612（d658759）: build・通常のテスト・性能テスト（`Test run with 27 tests passed`）すべて成功。
   新規の `TreeBatchTargetsTests` と `InternalDropValidationTests` の追加分は両方の実行で成功
-- 2026-11-01: T022 の GUI の確認。保守者が S1〜S14 をすべて確認し、期待どおりと報告（`checklists/validation.md`）。OS とローカルの swift build・test、`scripts/dev/tests` の実行は未回答
+- 2026-11-01: T022 の GUI の確認。保守者が S1〜S14 をすべて確認し、期待どおりと報告（`checklists/validation.md`）。OS は未回答。ローカルの swift build・swift test と `scripts/dev/tests` は、保守者から実行完了の報告あり
