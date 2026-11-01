@@ -1,10 +1,14 @@
 # Feature Specification: メインウインドウと設定ウインドウの終了連動
 
-**Feature Branch**: `work`
+> **移行済み（2026-11-01）**: 現在の仕様は [specs/product/contracts/settings.md](../product/contracts/settings.md) を正とする。
+> このファイルは TAK-26 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> CI と保守者の動作確認の結果は [quickstart.md](quickstart.md) を参照。
+
+**Feature Branch**: `agent/tak-26-close-settings`
 
 **Created**: 2026-10-31
 
-**Status**: Draft — 設計レビュー待ち
+**Status**: 仕様反映済み・凍結
 
 **Input**: [TAK-26](https://linear.app/takyoshida/issue/TAK-26)「メインウインドウを閉じたときに設定ウインドウも閉じる」
 

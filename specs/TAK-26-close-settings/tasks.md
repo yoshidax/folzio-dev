@@ -2,7 +2,7 @@
 
 **Input**: `specs/TAK-26-close-settings/` の仕様・設計。
 
-**Status**: 2026-10-31 に保守者が設計を承認。実装済み。Cloud の4検査と差分検査は通過。保守者承認により agent/tak-26-close-settings へ改名し、実装コミット bb0d0f0 を origin に push 済み。PR #9 作成済み。master 取り込み後の macOS CI は build・通常881件・性能27件が成功。保守者から意図通りの動作を確認したとの報告あり。ローカル最新 Swift の build/test の実施結果は未報告。product 反映は未完了。
+**Status**: 2026-10-31 に保守者が設計を承認。実装済み。Cloud の4検査と差分検査は通過。保守者承認により agent/tak-26-close-settings へ改名し、実装コミット bb0d0f0 を origin に push 済み。PR #9 作成済み。master 取り込み後の macOS CI は build・通常881件・性能27件が成功。保守者から意図通りの動作を確認したとの報告あり。ローカル最新 Swift の build/test の実施結果は未報告。product の10項目の反映差分は保守者承認済み。spec.md を凍結した。
 
 ## Phase 1: Setup
 
@@ -29,7 +29,7 @@
 
 - [x] T009 specs/TAK-26-close-settings/plan.md に記載した work の命名制限について保守者に確認し、許可された作業ブランチ名でコミット・push する。PR は依頼があったときだけ作成する。
 - [x] T010 PR 作成後に .github/workflows/macos-swift-ci.yml の macOS build/test 結果を確認し、specs/TAK-26-close-settings/quickstart.md に記録する。失敗時はログを読んで修正する。
-- [ ] T011 実装・検証後、PR 最後に最新 master を取り込み、ID の衝突を確認して specs/product/contracts/settings.md に spec.md の反映表の項目を反映する。差分の保守者承認後にコミットし、specs/TAK-26-close-settings/spec.md を凍結する。
+- [x] T011 実装・検証後、PR 最後に最新 master を取り込み、ID の衝突を確認して specs/product/contracts/settings.md に spec.md の反映表の項目を反映する。差分の保守者承認後にコミットし、specs/TAK-26-close-settings/spec.md を凍結する。
 
 ## Dependencies & Execution Order
 
@@ -49,9 +49,9 @@ US1 が全体の MVP。設計承認後、AppDelegate の最小変更を実装し
 
 - [x] T012 origin/master の 1dfccaa を作業ブランチへ merge し、AppDelegate・MainWindowController・SettingsWindowController・MainSplitViewController と product 仕様を確認する。TAK-22 と重複した feature 内の ID を振り直し、specs/TAK-26-close-settings/quickstart.md に影響・検査結果を記録する。
 
-PR は #9、Linear は In Review。保守者の動作確認は報告済み。product 反映は未完了。master 取り込み後の head de19cec の macOS CI 成功を quickstart.md に記録済み。
+PR は #9、Linear は In Review。保守者の動作確認は報告済み。product の10項目の反映差分は保守者承認済み。spec.md を凍結した。master 取り込み後の head de19cec の macOS CI 成功を quickstart.md に記録済み。
 
 ## 保守者確認（2026-11-01）
 
 - 動作確認で意図通り動くとの報告を quickstart.md に記録した。T008 の GUI 確認部分は報告済み。個別ケースの内訳とローカル最新 Swift の build/test が未報告のため、T008 全体のチェックは保留する。
-- T011 の product 反映差分を準備し、承認後にコミット・凍結する。
+- T011 の product 反映差分は保守者の「OK」で承認済み。FR-224〜227・EC-156〜158・SC-113〜114・A-140 を settings.md へ反映し、feature の spec.md を凍結した。
