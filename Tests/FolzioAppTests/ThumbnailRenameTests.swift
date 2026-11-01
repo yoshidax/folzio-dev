@@ -83,6 +83,41 @@ struct ThumbnailRenameTests {
         }
     }
 
+    /// Ways a rename ends (TAK-37).
+    enum EndingPath: CaseIterable {
+        case returnKey
+        case escapeKey
+        case focusLoss
+    }
+
+    @Test("Centers the name again after the field editor is detached", arguments: EndingPath.allCases, [false, true])
+    func alignmentAfterEditing(path: EndingPath, isFolder: Bool) throws {
+        try withItem(isFolder: isFolder) { item, field, file in
+            #expect(field.alignment == .center)
+            item.onCommitRename = { _, _ in }
+            #expect(item.beginRenaming())
+            #expect(field.alignment == .left)
+            let editor = try #require(field.currentEditor() as? NSTextView)
+            editor.string = "changed.jpg"
+
+            switch path {
+            case .returnKey:
+                #expect(item.control(field, textView: editor, doCommandBy: #selector(NSResponder.insertNewline(_:))))
+            case .escapeKey:
+                #expect(item.control(field, textView: editor, doCommandBy: #selector(NSResponder.cancelOperation(_:))))
+            case .focusLoss:
+                break
+            }
+
+            // Ends the edit the way AppKit does, so the field editor writes its state back to the cell.
+            #expect(field.window?.makeFirstResponder(nil) == true)
+
+            #expect(field.currentEditor() == nil)
+            #expect(field.alignment == .center)
+            expectName(file.name, item: item, field: field)
+        }
+    }
+
     private func finishEditing(_ item: ThumbnailItemView, field: NSTextField, name: String) throws {
         #expect(item.beginRenaming())
         let editor = try #require(field.currentEditor() as? NSTextView)
