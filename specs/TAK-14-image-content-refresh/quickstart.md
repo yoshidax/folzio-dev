@@ -57,4 +57,20 @@ sips -s format png -z 160 320 "$SRC" --out ~/FolzioTAK14/b/photo.png
 
 ## 結果
 
-（実施後に、日付・OS・合否を記録する）
+### Cloud の検査（2026-11-01、Linux の Cloud 環境）
+
+| 検査 | 結果 |
+|---|---|
+| `scripts/check-no-network.sh` | 成功（no network API references in Sources） |
+| `scripts/check-readme-sync.sh master` | 成功（README は変更なし） |
+| `scripts/dev/check-english-comments.sh` | 成功 |
+| `scripts/dev/check-skill-sync.sh` | 成功 |
+| `test_check_git_push.py` | 成功（3 件） |
+
+### macOS CI
+
+未実施（PR の作成を保守者が依頼した後に動く）。
+
+### 保守者の確認（ローカル）
+
+未実施。ローカルの最新 Swift での build/test、起動スモーク、上の Q1〜Q9 を依頼する。

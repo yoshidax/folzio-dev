@@ -684,7 +684,9 @@ struct BrowserModelTests {
             kind: .media(MediaKind(fileExtension: (name as NSString).pathExtension) ?? .jpeg),
             typeDescription: "JPEG イメージ",
             creationDate: nil,
-            fileSize: 0
+            fileSize: 0,
+            // Rows from DirectoryLister always carry a content version; the cache keys images by it (FR-230).
+            contentVersion: FileContentVersion(fileSize: 0, modificationDate: nil, fileIdentifier: 1)
         )
     }
 
@@ -713,7 +715,7 @@ struct BrowserModelTests {
     private func waitForCache(_ cache: DecodedImageCache, _ url: URL) async -> Bool {
         let deadline = ContinuousClock.now + .seconds(2)
         while ContinuousClock.now < deadline {
-            if await cache.get(url) != nil { return true }
+            if await cache.containsEntry(for: url) { return true }
             try? await Task.sleep(for: .milliseconds(10))
         }
         return false

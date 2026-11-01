@@ -60,6 +60,11 @@ public final class BrowserModel {
     public private(set) var selection: SelectionState
     public private(set) var preview: PreviewContent
     public private(set) var stopPlaybackSignal = 0
+    /// Incremented each time rows keep their URL but their content is found to be replaced (FR-228, research.md R4).
+    /// The file list reloads only the rows in `changedContentURLs` when the URL order is unchanged.
+    public private(set) var contentChangeGeneration = 0
+    /// URLs whose content version changed at the latest `contentChangeGeneration`.
+    public private(set) var changedContentURLs: Set<URL> = []
     public private(set) var mediaTypeFilter = MediaTypeFilter()
     /// Whether zip file rows appear in the list (FR-095). The source of truth for persistence is
     /// `SettingsStore`'s `view.showsZipFiles`.
@@ -747,7 +752,9 @@ public final class BrowserModel {
                   listing.archive == nil else { return }
 
             showsNotFound = false
-            allFiles = sorted(files.map { $0.localizedKindName(using: kindNames) }, by: sortOrder)
+            let newFiles = sorted(files.map { $0.localizedKindName(using: kindNames) }, by: sortOrder)
+            let changed = Self.replacedContentURLs(old: allFiles, new: newFiles)
+            allFiles = newFiles
             rebuildListing()
 
             let available = Set(listing.files.map(\.url))
@@ -760,6 +767,7 @@ public final class BrowserModel {
                 previewGeneration += 1
                 preview = .empty
             }
+            noteReplacedContent(changed)
         } catch {
             guard generation == navigationGeneration,
                   listing.folder == folder,
@@ -1323,11 +1331,42 @@ public final class BrowserModel {
         guard !targets.isEmpty else { return }
 
         let generation = navigationGeneration
-        let missing = await Task.detached(priority: .userInitiated) {
-            Set(targets.filter { !FileManager.default.fileExists(atPath: $0.path) })
+        // Reads the content version together with the existence check, so results replaced at the same path are
+        // refreshed like rows of a folder listing (FR-232, research.md R6).
+        let (missing, versions) = await Task.detached(priority: .userInitiated) {
+            var missing = Set<URL>()
+            var versions: [URL: FileContentVersion] = [:]
+            for url in targets {
+                if FileManager.default.fileExists(atPath: url.path) {
+                    versions[url] = FileContentVersion.current(of: url)
+                } else {
+                    missing.insert(url)
+                }
+            }
+            return (missing, versions)
         }.value
-        guard generation == navigationGeneration, !missing.isEmpty else { return }
-        removeSearchResults(missing)
+        guard generation == navigationGeneration else { return }
+
+        var changed = Set<URL>()
+        var updatedFiles = allFiles
+        for index in updatedFiles.indices {
+            let file = updatedFiles[index]
+            guard file.kind.isMedia,
+                  let version = versions[file.url],
+                  version != file.contentVersion else { continue }
+            updatedFiles[index].contentVersion = version
+            changed.insert(file.url)
+        }
+        if !changed.isEmpty {
+            allFiles = updatedFiles
+        }
+
+        if !missing.isEmpty {
+            removeSearchResults(missing)
+        } else if !changed.isEmpty {
+            rebuildListing()
+        }
+        noteReplacedContent(changed)
     }
 
     /// Removes results from the source of a move and delayed results from an old location that is still being
@@ -1385,12 +1424,14 @@ public final class BrowserModel {
 
         // Check the listing row kind first. Do not preview non-media rows (zip files, directories, and `..`) (FR-075).
         let kind: MediaKind
+        var version: FileContentVersion?
         if let file = listing.files.first(where: { $0.url == url }) {
             guard case let .media(mediaKind) = file.kind else {
                 preview = .empty
                 return
             }
             kind = mediaKind
+            version = file.contentVersion
         } else if let mediaKind = MediaKind(fileExtension: url.pathExtension) {
             kind = mediaKind
         } else {
@@ -1404,7 +1445,7 @@ public final class BrowserModel {
         }
 
         if let parsed = ArchiveURL.parse(url) {
-            loadArchivePreview(for: url, path: parsed.path, generation: generation)
+            loadArchivePreview(for: url, path: parsed.path, version: version, generation: generation)
             return
         }
 
@@ -1414,9 +1455,14 @@ public final class BrowserModel {
         }
 
         preview = .loading(url)
+        startImagePreview(for: url, version: version, generation: generation)
+    }
+
+    /// Decodes a still image for the preview and shows the result unless a newer preview request started.
+    private func startImagePreview(for url: URL, version: FileContentVersion?, generation: Int) {
         previewTask = Task { [weak self] in
             guard let self else { return }
-            let result = await self.decodedImage(for: url)
+            let result = await self.decodedImage(for: url, version: version)
             guard !Task.isCancelled, self.previewGeneration == generation else { return }
 
             switch result {
@@ -1431,7 +1477,7 @@ public final class BrowserModel {
         }
     }
 
-    private func loadArchivePreview(for url: URL, path: String, generation: Int) {
+    private func loadArchivePreview(for url: URL, path: String, version: FileContentVersion?, generation: Int) {
         if let entry = archiveIndex?.entry(at: path) {
             switch entry.readability {
             case .readable:
@@ -1452,7 +1498,7 @@ public final class BrowserModel {
         let maxPixelSize = max(1, screenMaxPixel)
         previewTask = Task { [weak self] in
             guard let self else { return }
-            let result = await self.archiveImage(for: url, maxPixelSize: maxPixelSize)
+            let result = await self.archiveImage(for: url, version: version, maxPixelSize: maxPixelSize)
             guard !Task.isCancelled, self.previewGeneration == generation else { return }
 
             switch result {
@@ -1467,8 +1513,12 @@ public final class BrowserModel {
     }
 
     /// Obtains an image inside a zip in this order: cache, read `Data`, decode. Returns animated images as `Data`.
-    private func archiveImage(for url: URL, maxPixelSize: Int) async -> ArchiveImageResult {
-        if let cached = await cache.get(url) {
+    private func archiveImage(
+        for url: URL,
+        version: FileContentVersion?,
+        maxPixelSize: Int
+    ) async -> ArchiveImageResult {
+        if let cached = await cache.get(url, version: version) {
             return .image(cached)
         }
 
@@ -1486,24 +1536,85 @@ public final class BrowserModel {
 
         do {
             let image = try await decoder.decode(data: data, maxPixelSize: maxPixelSize)
-            await cache.put(image, for: url)
+            await cache.put(image, for: url, version: version)
             return .image(image)
         } catch {
             return .failure(Self.reason(for: error))
         }
     }
 
-    private func decodedImage(for url: URL) async -> Result<DecodedImage, DecodeError> {
-        if let cached = await cache.get(url) {
+    /// Decodes an image file, using the cache only for the same content version (FR-230). A result decoded after the
+    /// content was replaced is stored under the old version and is never returned for the new one (EC-161).
+    private func decodedImage(for url: URL, version: FileContentVersion?) async -> Result<DecodedImage, DecodeError> {
+        if let cached = await cache.get(url, version: version) {
             return .success(cached)
         }
 
         do {
             let image = try await decoder.decode(url, maxPixelSize: max(1, screenMaxPixel))
-            await cache.put(image, for: url)
+            await cache.put(image, for: url, version: version)
             return .success(image)
         } catch {
             return .failure(error)
+        }
+    }
+
+    // MARK: - Replaced Content
+
+    /// URLs of media rows present in both listings whose content version differs (FR-228, research.md R4).
+    nonisolated static func replacedContentURLs(old: [MediaFile], new: [MediaFile]) -> Set<URL> {
+        guard !old.isEmpty else { return [] }
+        var oldVersions: [URL: FileContentVersion?] = [:]
+        oldVersions.reserveCapacity(old.count)
+        for file in old where file.kind.isMedia {
+            oldVersions[file.url] = file.contentVersion
+        }
+        var changed = Set<URL>()
+        for file in new where file.kind.isMedia {
+            guard let previous = oldVersions[file.url], previous != file.contentVersion else { continue }
+            changed.insert(file.url)
+        }
+        return changed
+    }
+
+    /// Publishes replaced rows to the file list, drops their running prefetches, and reloads the preview when the
+    /// focused file is among them (FR-228, FR-229).
+    private func noteReplacedContent(_ changed: Set<URL>) {
+        guard !changed.isEmpty else { return }
+        changedContentURLs = changed
+        contentChangeGeneration &+= 1
+        for url in changed {
+            prefetchTasks.removeValue(forKey: url)?.cancel()
+        }
+        if let focused = selection.focused, changed.contains(focused) {
+            reloadPreviewForReplacedContent(focused)
+        }
+        schedulePrefetch(around: selection.focused)
+    }
+
+    /// Reloads the preview of the focused file after its content was replaced (FR-229, research.md R5).
+    /// Keeps showing a still image until the new one is decoded (EC-162). Videos and entries inside a zip are not
+    /// reloaded (A-142, EC-26).
+    private func reloadPreviewForReplacedContent(_ url: URL) {
+        guard ArchiveURL.parse(url) == nil,
+              let file = listing.files.first(where: { $0.url == url }),
+              case let .media(kind) = file.kind,
+              !kind.isVideo else { return }
+
+        switch preview {
+        case .image:
+            if decoder.isAnimated(url) {
+                loadPreview(for: url)
+                return
+            }
+            previewGeneration += 1
+            previewTask?.cancel()
+            previewTask = nil
+            startImagePreview(for: url, version: file.contentVersion, generation: previewGeneration)
+        case .loading, .animatedImage, .unavailable:
+            loadPreview(for: url)
+        case .empty, .animatedImageData, .video:
+            break
         }
     }
 
@@ -1525,7 +1636,7 @@ public final class BrowserModel {
                 let maxPixelSize = max(1, screenMaxPixel)
                 let task = Task { [weak self] in
                     guard let self else { return }
-                    _ = await self.archiveImage(for: file.url, maxPixelSize: maxPixelSize)
+                    _ = await self.archiveImage(for: file.url, version: file.contentVersion, maxPixelSize: maxPixelSize)
                     self.prefetchTasks[file.url] = nil
                 }
                 prefetchTasks[file.url] = task
@@ -1535,7 +1646,7 @@ public final class BrowserModel {
             guard !decoder.isAnimated(file.url) else { continue }
             let task = Task { [weak self] in
                 guard let self else { return }
-                _ = await self.decodedImage(for: file.url)
+                _ = await self.decodedImage(for: file.url, version: file.contentVersion)
                 self.prefetchTasks[file.url] = nil
             }
             prefetchTasks[file.url] = task

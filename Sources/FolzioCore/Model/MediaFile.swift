@@ -13,6 +13,9 @@ public struct MediaFile: Identifiable, Hashable, Sendable {
     public var fileSize: Int64
     /// Nil means a kind name obtained from the OS or the format that the app does not translate.
     public var kindNameSource: KindNameSource?
+    /// Identifies the content of a media file. Nil for folders, zip files, `..`, and when unavailable (FR-228).
+    /// Not part of `==` or `hash`, which compare only the URL.
+    public var contentVersion: FileContentVersion?
 
     public init(
         url: URL,
@@ -21,7 +24,8 @@ public struct MediaFile: Identifiable, Hashable, Sendable {
         typeDescription: String,
         creationDate: Date?,
         fileSize: Int64,
-        kindNameSource: KindNameSource? = nil
+        kindNameSource: KindNameSource? = nil,
+        contentVersion: FileContentVersion? = nil
     ) {
         self.url = url
         self.name = name
@@ -30,6 +34,7 @@ public struct MediaFile: Identifiable, Hashable, Sendable {
         self.creationDate = creationDate
         self.fileSize = fileSize
         self.kindNameSource = kindNameSource
+        self.contentVersion = contentVersion
     }
 
     public var id: URL { url }
