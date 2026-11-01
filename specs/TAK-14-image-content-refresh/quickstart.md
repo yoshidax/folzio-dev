@@ -80,3 +80,4 @@ sips -s format png -z 160 320 "$SRC" --out ~/FolzioTAK14/b/photo.png
 |---|---|---|
 | Q1〜Q7、Q9 | OK | Q2 で QuickLook の古い縮小画像の問題は見られなかった。Q4 で TAK-43 の手順も解消 |
 | Q8 | NG → 修正 → OK | 検索結果では何も更新されなかった。原因は research.md R6 の注意。18a5634 で修正し、再確認で OK |
+| `swift build` / `swift test`（ローカルの最新 Swift） | 成功 | 保守者の報告による |
