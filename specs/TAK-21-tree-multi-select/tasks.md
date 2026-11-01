@@ -118,3 +118,4 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   この変更の CI と GUI（S9 の ⇧⌘N と、TAK-17 の quickstart の手順 1・4・6）は未確認
 - 2026-11-01: T024 の `specs/product/` への反映を保守者が承認。directory-tree.md・file-operations.md・contracts/keyboard-and-menus.md・README.md に反映し、spec.md に移行済み・凍結の注記を入れた。反映後に ID の重複がないことを確かめた
 - 2026-11-01: TAK-17 の取り込み後の CI（workflow_dispatch、run 41269079421、06cc02b）: build・通常のテスト・性能テスト（`Test run with 27 tests passed`）すべて成功。以後のコミット（16d70bd・2d62b87）は文書だけの変更。新規フォルダとの相互作用の GUI（S9 の ⇧⌘N、TAK-17 の quickstart の手順 1・4・6）は保守者の確認待ち
+- 2026-11-01: PR yoshidax/folzio-dev#22 がマージされた（master 3234494）。保守者が新規フォルダとの相互作用の GUI（S9 の ⇧⌘N、TAK-17 の quickstart の手順 1・4・6）を確認し、期待どおりと報告（`checklists/validation.md`）。Linear の TAK-21 を Done に更新
