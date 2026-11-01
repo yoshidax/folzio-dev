@@ -2,7 +2,7 @@
 
 ## 前提
 
-2026-10-31 に設計承認後、AppDelegate に終了通知の監視と設定の close() を実装した。Cloud は GUI を起動しない。macOS のビルド・テスト・GUI 動作確認は未実施。
+2026-10-31 に設計承認後、AppDelegate に終了通知の監視と設定の close() を実装した。Cloud は GUI を起動しない。macOS CI の結果は末尾に記録。保守者のローカルビルド・テスト・GUI 動作確認は未実施。
 
 ## Cloud の検査
 
@@ -67,7 +67,7 @@ open .build/Folzio.app
 | python3 -I -m unittest discover -s scripts/dev/tests -p 'test_check_git_push.py' | PASS（3 tests） |
 | git diff --check | PASS |
 
-macOS CI の build/test と GUI シナリオは未実施。Cloud の検査通過はこれらの代替ではない。
+この時点では macOS CI の build/test と GUI シナリオは未実施。後日の CI 結果は末尾に記録。Cloud の検査通過は GUI 確認の代替ではない。
 
 ## master 取り込みによる影響（2026-11-01、T012）
 
@@ -98,4 +98,14 @@ macOS CI の build/test と GUI シナリオは未実施。Cloud の検査通過
 
 ### CI 再実行の状況
 
-2026-11-01、取り込み・仕様ID修正を push 後、gh workflow run macos-swift-ci.yml --ref agent/tak-26-close-settings を実行したが GitHub API のワークフロー取得が Forbidden で失敗し、dispatch はできなかった。現行の接続ツールには workflow_dispatch の起動機能がない。保守者が Actions → macOS Swift CI → Run workflow で agent/tak-26-close-settings を指定して実行する必要がある。最新 head の build/test は未確認。GUI 確認も未実施。
+2026-11-01、CLI の workflow_dispatch は Forbidden で失敗した。手順書の actions_run_trigger はこのセッションには公開されていないが、GitHub MCP の convert_pull_request_to_draft → mark_pull_request_ready_for_review により ready_for_review イベントで CI を起動できた。保守者の手動実行が必要とした先の記録を訂正する。PR は Ready に復元済み。
+
+対象コミット: de19cecebbd3de8c467054f444d3f391923d8710。実行: [macOS Swift CI #41276591741](https://github.com/yoshidax/folzio-dev/actions/runs/41276591741)。GUI 確認は未実施。
+
+### CI 結果（2026-11-01、T010）
+
+- 実行 #41276591741: success。対象 head は de19cec、master 1dfccaa 取り込み後。
+- macOS 15 / arm64、Xcode 16.0（Swift 6.0）で build 成功。
+- 通常テスト: ログで `Test run with 881 tests passed` を確認。
+- 性能テスト: continue-on-error のステップ表示だけで判断せず、ログで `Test run with 27 tests passed` を確認。
+- CI 後の変更はこの検証記録と tasks.md の進捗だけで、実行コードの追加変更なし。GUI・ローカル最新 Swift の確認と product 反映は引き続き未完了。

@@ -2,7 +2,7 @@
 
 **Input**: `specs/TAK-26-close-settings/` の仕様・設計。
 
-**Status**: 2026-10-31 に保守者が設計を承認。実装済み。Cloud の4検査と差分検査は通過。保守者承認により agent/tak-26-close-settings へ改名し、実装コミット bb0d0f0 を origin に push 済み。macOS の build/test・GUI 確認、依頼後の PR と CI、product 反映は未完了。
+**Status**: 2026-10-31 に保守者が設計を承認。実装済み。Cloud の4検査と差分検査は通過。保守者承認により agent/tak-26-close-settings へ改名し、実装コミット bb0d0f0 を origin に push 済み。PR #9 作成済み。master 取り込み後の macOS CI は build・通常881件・性能27件が成功。保守者のローカル build/test・GUI 確認と product 反映は未完了。
 
 ## Phase 1: Setup
 
@@ -28,7 +28,7 @@
 ## Phase 4: Polish & Delivery
 
 - [x] T009 specs/TAK-26-close-settings/plan.md に記載した work の命名制限について保守者に確認し、許可された作業ブランチ名でコミット・push する。PR は依頼があったときだけ作成する。
-- [ ] T010 PR 作成後に .github/workflows/macos-swift-ci.yml の macOS build/test 結果を確認し、specs/TAK-26-close-settings/quickstart.md に記録する。失敗時はログを読んで修正する。
+- [x] T010 PR 作成後に .github/workflows/macos-swift-ci.yml の macOS build/test 結果を確認し、specs/TAK-26-close-settings/quickstart.md に記録する。失敗時はログを読んで修正する。
 - [ ] T011 実装・検証後、PR 最後に最新 master を取り込み、ID の衝突を確認して specs/product/contracts/settings.md に spec.md の反映表の項目を反映する。差分の保守者承認後にコミットし、specs/TAK-26-close-settings/spec.md を凍結する。
 
 ## Dependencies & Execution Order
@@ -49,4 +49,4 @@ US1 が全体の MVP。設計承認後、AppDelegate の最小変更を実装し
 
 - [x] T012 origin/master の 1dfccaa を作業ブランチへ merge し、AppDelegate・MainWindowController・SettingsWindowController・MainSplitViewController と product 仕様を確認する。TAK-22 と重複した feature 内の ID を振り直し、specs/TAK-26-close-settings/quickstart.md に影響・検査結果を記録する。
 
-PR は #9、Linear は In Review。GUI 確認・product 反映は未完了。新しい head の macOS CI 結果は quickstart.md に記録する。
+PR は #9、Linear は In Review。GUI 確認・product 反映は未完了。master 取り込み後の head de19cec の macOS CI 成功を quickstart.md に記録済み。
