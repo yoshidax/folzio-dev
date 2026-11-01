@@ -14,7 +14,7 @@ final class PreviewViewController: NSViewController {
     private let containerView = NSView()
     private let contentHostView = NSView()
     private let transitionOverlay = SlideshowTransitionOverlayView()
-    /// Recognizes double-clicks on images and videos alike, including the margins around the media (FR-208).
+    /// Recognizes double-clicks on images and videos alike, including the margins around the media (FR-220).
     private let doubleClickRecognizer = NSClickGestureRecognizer()
     private var transitionState = SlideshowTransitionState()
     private var lastContainerSize: CGSize?
@@ -85,7 +85,7 @@ final class PreviewViewController: NSViewController {
         return imageView
     }
 
-    /// Called when the media display area is double-clicked outside any control (FR-035, FR-208).
+    /// Called when the media display area is double-clicked outside any control (FR-035, FR-220).
     /// The receiver decides whether the double-click toggles full screen (`PreviewDoubleClick`).
     var onDoubleClick: (() -> Void)?
 
@@ -198,7 +198,7 @@ final class PreviewViewController: NSViewController {
         }
 
         // A single recognizer on the common ancestor covers the image, the video, and the transition overlay,
-        // which passes clicks through (FR-131). In full screen the preview fills the whole screen (FR-208).
+        // which passes clicks through (FR-131). In full screen the preview fills the whole screen (FR-220).
         doubleClickRecognizer.numberOfClicksRequired = 2
         doubleClickRecognizer.delaysPrimaryMouseButtonEvents = false
         doubleClickRecognizer.target = self
@@ -559,7 +559,7 @@ final class PreviewViewController: NSViewController {
 
 extension PreviewViewController: NSGestureRecognizerDelegate {
     /// Ignores double-clicks on controls, such as the video playback controls and the image scroll bars,
-    /// so that those controls keep their own behavior (FR-208, EC-142, research.md R2).
+    /// so that those controls keep their own behavior (FR-220, EC-150, research.md R2).
     func gestureRecognizer(
         _ gestureRecognizer: NSGestureRecognizer,
         shouldAttemptToRecognizeWith event: NSEvent

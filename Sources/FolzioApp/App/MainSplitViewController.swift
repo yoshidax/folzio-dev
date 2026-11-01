@@ -797,7 +797,7 @@ final class MainSplitViewController: NSSplitViewController {
     }
 
     /// Toggles full screen for a double-click in the preview. Does nothing on an empty preview outside full screen
-    /// (FR-035, EC-141). Controls were already excluded by the preview (EC-142).
+    /// (FR-035, EC-149). Controls were already excluded by the preview (EC-150).
     private func handlePreviewDoubleClick() {
         guard PreviewDoubleClick.togglesFullScreen(
             isFullScreen: isFullScreenPresentation,

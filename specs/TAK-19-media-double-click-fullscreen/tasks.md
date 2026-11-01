@@ -15,9 +15,9 @@
 ## Phase 2: Foundational
 
 - [x] T002 `Sources/FolzioCore/Model/PreviewDoubleClick.swift` に `PreviewContent.hasMedia` と `PreviewDoubleClick.togglesFullScreen(isFullScreen:hasMedia:isOverControl:)` を追加する。
-  data-model.md の表のとおりとし、doc comment は英語で書く（FR-035・208、EC-141・142）。
+  data-model.md の表のとおりとし、doc comment は英語で書く（FR-035・220、EC-149・150）。
 - [x] T003 `Tests/FolzioCoreTests/PreviewDoubleClickTests.swift` で、`PreviewContent` の全 case の `hasMedia` と、判断の表の全組み合わせを検証する。
-  期待値は data-model.md の表から書き、実装の値をそのまま期待値にしない（EC-141・142）。
+  期待値は data-model.md の表から書き、実装の値をそのまま期待値にしない（EC-149・150）。
 
 ## Phase 3: US1 通常表示で画像・動画をダブルクリックして全画面にする (P1 / MVP)
 
@@ -27,10 +27,10 @@
 
 - [x] T004 [US1] `Sources/FolzioApp/Preview/PreviewViewController.swift` で、`containerView` に `NSClickGestureRecognizer`（2回、`delaysPrimaryMouseButtonEvents = false`）を取り付け、
   `onDoubleClick` を `imageView` への転送から自身のプロパティに改める。`NSGestureRecognizerDelegate` の `gestureRecognizer(_:shouldAttemptToRecognizeWith:)` で、
-  ヒットしたビューから `containerView` までに `NSControl` があれば認識しない（FR-208、EC-142、research.md の R1・R2）。
+  ヒットしたビューから `containerView` までに `NSControl` があれば認識しない（FR-220、EC-150、research.md の R1・R2）。
 - [x] T005 [US1] `Sources/FolzioApp/Preview/ImagePreviewView.swift` から `doubleClickRecognizer`・`onDoubleClick`・`handleDoubleClick(_:)` を削除する（plan.md の Phase 1 の 5）。
 - [x] T006 [US1] `Sources/FolzioApp/App/MainSplitViewController.swift` の `onDoubleClick` の処理で、`PreviewDoubleClick.togglesFullScreen(isFullScreen: isFullScreenPresentation, hasMedia: model.preview.hasMedia, isOverControl: false)`
-  が true のときだけ `togglePreviewFullScreen()` を呼ぶ。⌃⌘F・メニュー・Esc の経路は変えない（EC-141、A-121）。
+  が true のときだけ `togglePreviewFullScreen()` を呼ぶ。⌃⌘F・メニュー・Esc の経路は変えない（EC-149、A-135）。
 
 **Checkpoint**: US5-AS7〜9 を実機で示せる状態。CI と実機の確認の前は完了にしない。
 
@@ -41,12 +41,12 @@
 **Independent Test**: quickstart.md の M1・M2・M5・M6。
 
 - [x] T007 [US2] T004〜T006 の変更で、全画面中にプレビューが画面全体を占め、メディアの周りの余白・四隅でも認識されることを、`MainSplitViewController` の全画面の表示
-  （`PanePresentation` の全画面でツリーとファイルリストを隠す）と `PreviewViewController` の制約から確かめる。覆わない領域が見つかれば、その領域を認識の対象に加える（FR-208（2））。
+  （`PanePresentation` の全画面でツリーとファイルリストを隠す）と `PreviewViewController` の制約から確かめる。覆わない領域が見つかれば、その領域を認識の対象に加える（FR-220（2））。
   結果: 全画面ではツリーとファイルリストの項目を折りたたみ（`MainSplitViewController.swift` の `canCollapse = true`・`isCollapsed = true`）、プレビューが残る。
   折りたたんだペインの細い仕切り（`dividerStyle = .thin`）が画面の端に残るかは実機でしか分からないため、quickstart.md の M1（画面の四隅）で確かめる。
   AGENTS.md の不変条件により split view の delegate には手を加えない。
 - [x] T008 [US2] スライドショー中の全画面の切り替えと切り替え効果の表示中のダブルクリックが、既存の `togglePreviewFullScreen()` と全画面の通知の処理を通ることを、
-  `SlideshowTransitionOverlayView` のヒットテストと `MainSplitViewController` の処理から確かめる（US5-AS12、EC-143、FR-122・131）。
+  `SlideshowTransitionOverlayView` のヒットテストと `MainSplitViewController` の処理から確かめる（US5-AS12、EC-151、FR-122・131）。
   結果: `SlideshowTransitionOverlayView.hitTest(_:)` は nil を返すため、ヒットテストは下のプレビューに届き、認識は共通の祖先の `containerView` で受ける。
   切り替えは従来と同じ `togglePreviewFullScreen()` を通る。
 

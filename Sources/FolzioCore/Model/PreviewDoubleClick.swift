@@ -2,7 +2,7 @@ import Foundation
 
 extension PreviewContent {
     /// Whether the preview is showing a selected media file, including while it loads or when it cannot be displayed.
-    /// Only `.empty` (no selection, or a folder, zip file, directory inside a zip, or `..` row) returns false (EC-141).
+    /// Only `.empty` (no selection, or a folder, zip file, directory inside a zip, or `..` row) returns false (EC-149).
     public var hasMedia: Bool {
         switch self {
         case .empty:
@@ -13,8 +13,8 @@ extension PreviewContent {
     }
 }
 
-/// Decides whether a double-click in the preview toggles full screen (FR-035, FR-208, EC-141, EC-142).
-/// The keyboard shortcut, the menu item, and Esc do not use this rule (A-121).
+/// Decides whether a double-click in the preview toggles full screen (FR-035, FR-220, EC-149, EC-150).
+/// The keyboard shortcut, the menu item, and Esc do not use this rule (A-135).
 public enum PreviewDoubleClick {
     /// Returns whether a double-click toggles full screen.
     ///
