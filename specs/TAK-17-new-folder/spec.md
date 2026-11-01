@@ -1,10 +1,14 @@
 # Feature Specification: フォルダの新規作成
 
+> **移行済み（2026-11-01）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-17 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> 検証結果は [tasks.md](tasks.md) と [checklists/validation.md](checklists/validation.md) を参照。
+
 **Feature Branch**: `claude/epic-cray-f3r720`（Cloud の作業ブランチ。feature ディレクトリとは独立）
 
 **Created**: 2026-10-31
 
-**Status**: Draft
+**Status**: Approved — product へ移行済み
 
 **Input**: TAK-17 https://linear.app/takyoshida/issue/TAK-17 — 右クリック・ショートカット・ファイルメニューからフォルダを作成する。
 ツリーのフォルダ行、ファイルリストの背景、お気に入りの項目（登録先の実フォルダ）から作成できるようにする。

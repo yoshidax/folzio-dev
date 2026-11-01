@@ -42,7 +42,7 @@
 
 - [x] T020 Cloud で `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` を実行し、結果をこの tasks.md に記録する。
 - [x] T021 macOS CI（`.github/workflows/macos-swift-ci.yml`）で `swift build`・`swift test` を確認する。PR は保守者の依頼があるまで作らず、CI 未実行として記録する。
-- [ ] T022 [MANUAL] 保守者に quickstart.md の GUI 手順 1〜9 と起動スモーク（3ペインの表示）、ローカルの build/test を依頼し、結果を `checklists/validation.md` に記録する。A-121（背景の右クリックで選択が変わらない）が成り立たなければ修正タスクを追加する。報告がなければ未チェックのまま残す。
+- [x] T022 [MANUAL] 保守者に quickstart.md の GUI 手順 1〜9 と起動スモーク（3ペインの表示）、ローカルの build/test を依頼し、結果を `checklists/validation.md` に記録する。A-121（背景の右クリックで選択が変わらない）が成り立たなければ修正タスクを追加する。報告がなければ未チェックのまま残す。
 - [ ] T023 検証完了後に最新 master を取り込み、spec.md の「反映先」の表のとおり `specs/product/file-operations.md`・`file-list.md`・`contracts/keyboard-and-menus.md`・`contracts/localization.md` への反映を用意する。FR-208〜214・SC-102〜104・EC-141〜145・A-119〜125・US35 の ID の衝突を確認し、衝突ならこの feature の ID を振り直す。保守者の承認後にコミットし、spec.md に凍結の注記を入れる。
 
 ## Dependencies & Execution Order
@@ -86,3 +86,7 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   `reloadItem` で反映するようにした。T025 の原因（一覧の反映待ち）とは別の経路。
 - 修正後の macOS CI: 2773048（T025）は run 41267321726、9b4c309（T026）は run 41267822219 で、どちらもビルド・通常のテスト・性能テスト 27 件が成功
   （性能テストはログ末尾で確認）。ツリーの修正の GUI 確認は保守者の報告待ち。
+- 2026-11-01 保守者の報告「動作確認は完了しました。期待通り動作しました」で T022 を完了とし、checklists/validation.md に記録した。
+- T023: origin/master（bc97861）は作業開始時から進んでおらず、取り込む変更はなかった。FR-208〜214・SC-102〜104・EC-141〜145・A-119〜125・US35 は
+  master と重複しない（`grep ... | uniq -d` で重複なし）。並行する TAK-21 の PR が同じ番号を使っているため、先にマージされた側に合わせて
+  後からマージする側が振り直す。反映の差分を保守者に提示し、承認を待つ。

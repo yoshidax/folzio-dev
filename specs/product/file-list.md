@@ -95,6 +95,11 @@
   行の右クリックメニューの「パス名をコピー」で文字列としてクリップボードにコピーできなければならない。コピーする文字列は引用符・エスケープ・
   末尾スラッシュを加えない絶対パスとし、クリップボードの既存の内容は置き換える。無効にする条件は FR-183（file-operations.md）、キーボード手段は
   FR-184（file-operations.md）に従う
+- **FR-213**: ファイルリストの背景を右クリックしたとき、システムは選択中の項目向けのメニューの代わりに、表示中のフォルダ向けの
+  メニューを次の順で表示しなければならない。1. 新規フォルダ（⇧⌘N）、2. ─、3. ペースト（⌘V）／ 移動ペースト（⌥⌘V）、4. ─、
+  5. Finder に表示。ペースト・移動ペーストの対象と有効条件は従来のペースト（表示中のフォルダへ。FR-019・FR-073・FR-087）と同じとし、
+  「Finder に表示」は表示中のフォルダを Finder で表示する（zip の中・検索結果の表示中は淡色）。背景の右クリックではファイルリストの
+  選択・プレビューを変えない。項目の右クリックメニューは変えず、「新規フォルダ」を出さない
 
 ## 主なエンティティ
 
@@ -197,6 +202,6 @@
 - [window-layout.md](window-layout.md): FR-051
 - [directory-tree.md](directory-tree.md): FR-055・FR-063・FR-103
 - [zip.md](zip.md): FR-068・FR-070・FR-075・FR-095
-- [file-operations.md](file-operations.md): FR-018・FR-027・FR-079
+- [file-operations.md](file-operations.md): FR-018・FR-027・FR-079・FR-208・FR-212
 - [preview.md](preview.md): FR-034・FR-046
 - [navigation-history.md](navigation-history.md): FR-107・FR-108・FR-113
