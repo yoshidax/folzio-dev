@@ -21,19 +21,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
 
         let controller = MainWindowController()
+        mainWindowController = controller
+        if let window = controller.window {
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(mainWindowWillClose(_:)), name: NSWindow.willCloseNotification,
+                object: window
+            )
+        }
         if let splitViewController = controller.window?.contentViewController as? MainSplitViewController {
             splitViewController.onInitialListingDisplayed = { [weak self] in
                 self?.endLaunchToListInterval()
             }
         }
         controller.showWindow(nil)
-        mainWindowController = controller
 
         NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc private func displayLanguageDidChange() {
         MainMenu.refreshTitles()
+    }
+
+    @objc private func mainWindowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              window === mainWindowController?.window else { return }
+        settingsWindowController?.close()
     }
 
     private func endLaunchToListInterval() {
