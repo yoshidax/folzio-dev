@@ -109,6 +109,11 @@ struct ThumbnailRenameTests {
                 break
             }
 
+            if path != .focusLoss {
+                // The rename has ended by now, whether or not the field editor is still attached.
+                #expect(field.alignment == .center)
+            }
+
             // Ends the edit the way AppKit does, so the field editor writes its state back to the cell.
             #expect(field.window?.makeFirstResponder(nil) == true)
 

@@ -54,6 +54,19 @@ override func textDidEndEditing(_ notification: Notification) {
 - 原因の仮説は未検証のまま。新しいテストが変更前に失敗するかは、CI で確かめていない。
   変更前に失敗しない（修正の有無によらず通る）場合は、仮説が誤りなので、`$speckit-bug-assess` をやり直す。
 
+## CI での確認と追加の修正
+
+- 1回目（`df50965`、macOS CI）: 既存テストはすべて通過。新しい回帰テストだけが失敗した。
+  Return・Escape の経路（ファイル・フォルダ）の4ケースで、編集を終えた後の `field.alignment` が `.left` のままだった
+  （`ThumbnailRenameTests.swift:116`）。フォーカス移動の経路は、`textDidEndEditing` の override で `.center` になり通過した。
+  回帰テストは、この不具合の症状を捉えている。ただし、修正前に失敗するかは確かめていない。
+- 推測される理由: Return・Escape では、`endRenaming` の中での編集の終了が `textDidEndEditing` を経由せず、override が呼ばれない。
+  書き戻しは `setRenamingAppearance(false)` の `.center` より後に起きる。
+- 2回目の変更: `endRenaming` の最後（文字列とフォーカスの復元の後）にも `alignment = .center` を設定した。
+  回帰テストには、Return・Escape で編集を終えた直後の配置の検証を足し、どの段階で `.left` になるかを切り分けられるようにした。
+- 2回目でも同じテストが失敗する場合は、`makeFirstResponder(nil)` による切り離しの時点で書き戻されている可能性がある。
+  その場合は、assessment の仮説を見直す。
+
 ## Follow-ups
 
 - macOS CI で、新しいテストと既存の `ThumbnailRenameTests` が通ること。

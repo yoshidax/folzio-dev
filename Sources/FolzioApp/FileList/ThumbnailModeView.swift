@@ -272,6 +272,10 @@ final class ThumbnailItemView: NSCollectionViewItem {
         if restoreFocus, let collectionView {
             collectionView.window?.makeFirstResponder(collectionView)
         }
+
+        // Restoring the string and moving focus can end the edit inside AppKit, which may write the field editor's left
+        // alignment back to the cell after `setRenamingAppearance` restored `.center`. Restore it once more last.
+        nameLabel.alignment = .center
     }
 
     private func updateSelectionAppearance() {
