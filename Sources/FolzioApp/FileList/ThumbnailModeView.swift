@@ -268,6 +268,15 @@ final class ThumbnailItemView: NSCollectionViewItem {
     }
 
     private func updateSelectionAppearance() {
+        // A valid in-app drop target is filled like the drop target rows of the list and the tree,
+        // and returns to its normal appearance when the pointer leaves (FR-164, bug: tak-44).
+        if highlightState == .asDropTarget {
+            view.layer?.backgroundColor = NSColor.selectedContentBackgroundColor.cgColor
+            view.layer?.borderWidth = 0
+            if !isRenaming { nameLabel.textColor = .alternateSelectedControlTextColor }
+            return
+        }
+        if !isRenaming { nameLabel.textColor = .labelColor }
         let isHighlighted = isSelected || highlightState == .forSelection
         view.layer?.backgroundColor = isHighlighted
             ? NSColor.controlAccentColor.withAlphaComponent(0.25).cgColor

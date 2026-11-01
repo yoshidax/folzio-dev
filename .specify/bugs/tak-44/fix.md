@@ -22,7 +22,7 @@
 | File | Change | Notes |
 |------|--------|-------|
 | `Sources/FolzioApp/FileList/ThumbnailModeView.swift` | modified | `ThumbnailItemView.loadView` で `thumbnailImageView.unregisterDraggedTypes()`。`validateDrop` でポインタの下の項目を宛先にし、`.on` に付け替える |
-| `Tests/FolzioAppTests/ThumbnailDropTargetTests.swift` | added test | 項目の画像ビューにドラッグの受け付け先の登録がないこと |
+| `Tests/FolzioAppTests/ThumbnailDropTargetTests.swift` | added test | 項目の画像ビューにドラッグの受け付け先の登録がないこと。ドロップ先の強調と復帰（追加の修正） |
 
 ## Diff Highlights
 
@@ -64,6 +64,18 @@ return InternalDrag.operation(info, destination: model.listing.files[index].url)
   AppKit が登録する時点（初期化時か、ウインドウへの追加時か）に依存して CI が誤って失敗する恐れがあることから、この前提の検査は置かなかった。
   そのため、追加したテストは、AppKit が既定で登録しない環境では、`unregisterDraggedTypes()` を消しても失敗しない。
 - assessment の手順 3（仮説 B への対処）は、保守者の確認により不要と判断し、行っていない。
+
+## 追加の修正: ドロップ先の強調（2026-11-01）
+
+保守者が GUI で、フォルダ項目の範囲へのドロップができることを確認した。そのうえで、ツリー・リスト形式と同じく、ドロップ先のフォルダ項目の
+背景を青く塗りつぶし、ポインタが離れたら元に戻すよう依頼を受けた（FR-164「有効なフォルダ行・項目を視覚的に強調する」との一貫性）。
+
+- `ThumbnailItemView.updateSelectionAppearance` が `highlightState == .asDropTarget` を扱っていなかった。`NSCollectionView` は、
+  `validateDrop` が `.on` で有効な操作を返した項目にこの状態を設定し、ポインタが離れると戻す。
+- ドロップ先の間は、背景を `selectedContentBackgroundColor` で塗りつぶし、枠線を消し、名前を `alternateSelectedControlTextColor` にする。
+  それ以外の状態では、従来の選択の表示（と名前の `labelColor`）に戻す。名前の変更中は名前の色を変えない。
+- テスト: `ThumbnailDropTargetTests.dropTargetHighlight`（選択あり・なし）— ドロップ先で塗りつぶされ、`.none` に戻すと元の背景・枠線・名前の色に戻ること。
+- 色は、リスト形式・ツリーのドロップ先の行の見た目に合わせた。実際の色の一致は GUI で確かめる。
 
 ## Follow-ups
 
