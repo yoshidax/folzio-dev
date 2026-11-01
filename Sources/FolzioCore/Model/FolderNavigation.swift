@@ -51,6 +51,34 @@ public enum FolderNavigation {
         return enclosingFolder(of: URL(fileURLWithPath: shallowest, isDirectory: true), roots: roots)
     }
 
+    /// Whether `folders` contains `folder` itself or one of its ancestors (FR-042, EC-13). The file system watcher
+    /// reports a renamed, moved, or deleted folder as a change to its parent, so a vanished displayed folder or
+    /// ancestor arrives only as one of these folders. Compares path components so that `/a/b2` is not mistaken for a
+    /// child of `/a/b`.
+    public static func containsFolderOrAncestor(of folder: URL, in folders: Set<URL>) -> Bool {
+        let target = pathComponents(of: folder)
+        return folders.contains { target.starts(with: pathComponents(of: $0)) }
+    }
+
+    /// Returns the nearest ancestor of a vanished `folder` for which `isFolder` is true, together with the shallowest
+    /// vanished folder on the way (the folder itself or an ancestor). Returns nil when no ancestor is a folder.
+    /// `isFolder` reads the disk, so call this off the main thread.
+    public static func nearestExistingAncestor(
+        of folder: URL,
+        isFolder: (URL) -> Bool
+    ) -> (folder: URL, vanished: URL)? {
+        var vanished = folder
+        var candidate = folder.deletingLastPathComponent()
+        while candidate.standardizedFileURL.path != vanished.standardizedFileURL.path {
+            if isFolder(candidate) {
+                return (candidate, vanished)
+            }
+            vanished = candidate
+            candidate = candidate.deletingLastPathComponent()
+        }
+        return nil
+    }
+
     /// Path components of `standardizedFileURL`. Because `standardizedFileURL` removes `/private` from paths such as
     /// `/private/var` only for existing paths, this normalizes the form so a folder moved to the Trash still matches
     /// the roots.

@@ -801,21 +801,30 @@ public final class BrowserModel {
             await pruneMissingResults(under: folders)
             return
         }
-        let current = listing.folder.standardizedFileURL
-        guard folders.contains(where: { $0.standardizedFileURL == current }) else {
+        let folder = listing.folder
+        let current = folder.standardizedFileURL
+        let notifiesCurrent = folders.contains { $0.standardizedFileURL == current }
+        // A renamed, moved, or deleted displayed folder or ancestor is reported only as a change to its parent, so
+        // also check that the displayed folder still exists when an ancestor is reported (FR-042, EC-13).
+        guard notifiesCurrent || FolderNavigation.containsFolderOrAncestor(of: folder, in: folders) else {
             return
         }
 
-        var isDirectory: ObjCBool = false
-        let exists = FileManager.default.fileExists(
-            atPath: listing.folder.path,
-            isDirectory: &isDirectory
-        )
-        guard exists, isDirectory.boolValue else {
-            let vanished = listing.folder
-            await selectFolder(vanished.deletingLastPathComponent(), reason: .relocated(vanished: [vanished]))
+        let generation = navigationGeneration
+        let relocation = await Task.detached(priority: .userInitiated) { () -> (folder: URL, vanished: URL)? in
+            guard !BrowserModel.isExistingFolder(folder) else { return nil }
+            return FolderNavigation.nearestExistingAncestor(of: folder, isFolder: BrowserModel.isExistingFolder)
+                ?? (folder.deletingLastPathComponent(), folder)
+        }.value
+        guard generation == navigationGeneration, listing.folder == folder, !isShowingSearchResults else { return }
+
+        if let relocation {
+            // Move to the nearest folder that still exists, not to a parent that vanished with it (FR-042, EC-13).
+            await selectFolder(relocation.folder, reason: .relocated(vanished: [relocation.vanished]))
             return
         }
+        // The displayed folder still exists. A change in an ancestor alone does not change its contents.
+        guard notifiesCurrent else { return }
 
         if let location = listing.archive {
             // While opening, there is no index to compare, so wait without comparing.
@@ -830,6 +839,12 @@ public final class BrowserModel {
         }
 
         await reloadCurrentFolder()
+    }
+
+    /// Whether a directory exists at `url`. Reads the disk, so call this off the main thread.
+    nonisolated private static func isExistingFolder(_ url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
     }
 
     public func moveFocus(_ direction: FocusDirection) {
