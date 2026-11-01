@@ -8,7 +8,7 @@
 
 設定ウインドウ（`SettingsWindowController`）の縦の `NSStackView` に、区分の前だけ広い間隔（20pt）を個別に設定し、区分の中の間隔（8pt）と分ける。
 確認のチェックボックスに付けていた最小の高さ 60pt の制約（大きな空白の原因）を外し、確認の文言を主文と補足説明の2つの翻訳キーに分ける。
-補足説明は小さい文字・二次的な文字色の折り返しラベルとして、チェックボックスの直下（2pt）にチェックボックスの文言の先頭へ揃えて置き、
+補足説明は小さい文字・二次的な文字色の折り返しラベルとして、チェックボックスの直下（4pt）にチェックボックスの文言の先頭へ揃えて置き、
 読み上げではチェックボックスのヘルプとして結び付ける。ウインドウの高さの下限（320pt）を外し、内容と表示言語の切り替えに合わせて高さを合わせ直す。
 確認の設定の保存・判定（Core の `SettingsStore`・`ConfirmationPolicy`）は変えない。
 
@@ -83,7 +83,7 @@ Tests/FolzioCoreTests/Localization/SettingsTextTests.swift   # 主文と補足�
 3. **折り返し**（R3）: 確認のチェックボックスは、幅に合わせて高さを計算する小さな subclass（`WrappingCheckbox`）にして、将来の長い訳でも欠けずに折り返す（EC-141）。
    補足説明は `NSTextField(wrappingLabelWithString:)` で、幅の制約から高さが決まる
 4. **補足説明の見た目と揃え**（R4）: `NSFont.smallSystemFontSize` のシステムフォント、`NSColor.secondaryLabelColor`。選択不可・編集不可。
-   チェックボックスの直後の間隔は `setCustomSpacing(2, after:)`。先頭の位置はチェックボックスのセルの文言の位置（`titleRect(forBounds:)`）から求めた字下げ
+   チェックボックスの直後の間隔は `setCustomSpacing(4, after:)`。先頭の位置はチェックボックスのセルの文言の位置（`titleRect(forBounds:)`）から求めた字下げ
 5. **アクセシビリティ**（R5）: `confirmFileOperationsCheckbox.setAccessibilityHelp(補足説明)`、補足説明のラベルは `setAccessibilityElement(false)`。言語の切り替えで両方を更新する
 6. **ウインドウの高さ**（R6）: 初期化と `updateLocalizedLabels()` の最後で `fittingSize.height` に合わせ、上端の位置を保って高さだけを変える。下限 320pt は外す
 

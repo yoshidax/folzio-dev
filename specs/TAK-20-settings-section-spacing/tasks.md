@@ -32,7 +32,7 @@
 
 **Independent Test**: quickstart.md Q2〜Q7
 
-- [x] T006 [US2] `Sources/FolzioApp/Settings/SettingsWindowController.swift` に補足説明のラベル（折り返し・11pt・`secondaryLabelColor`・選択不可・フォーカス不可）をコンテナに入れて確認のチェックボックスの直下に置き、`setCustomSpacing(2, after:)` とチェックボックスの文言の位置から求めた字下げ（範囲外は 20pt）で配置する。補足説明の後に区分の前の間隔 20pt を設定する（FR-209（2）（3）、R4）
+- [x] T006 [US2] `Sources/FolzioApp/Settings/SettingsWindowController.swift` に補足説明のラベル（折り返し・11pt・`secondaryLabelColor`・選択不可・フォーカス不可）をコンテナに入れて確認のチェックボックスの直下に置き、`setCustomSpacing(4, after:)` とチェックボックスの文言の位置から求めた字下げ（範囲外は 20pt）で配置する。補足説明の後に区分の前の間隔 20pt を設定する（FR-209（2）（3）、R4）
 - [x] T007 [US2] 同じファイルに `WrappingCheckbox`（`KeyViewCheckbox` の subclass。幅から高さを計算する）を追加して確認のチェックボックスに使う（EC-141、R3）
 - [x] T008 [US2] 同じファイルの `updateLocalizedLabels()` で補足説明の文言と、確認のチェックボックスの `setAccessibilityHelp` を更新し、補足説明のラベルを `setAccessibilityElement(false)` にする。Tab の鎖（`nextKeyView`）は変えない（FR-209（4）、US36-AS4、R5）
 

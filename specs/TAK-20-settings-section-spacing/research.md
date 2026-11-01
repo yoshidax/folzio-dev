@@ -31,6 +31,8 @@ GUI は Cloud で実行できないため、空白の原因は静的な読み取
 - **Rationale**: 標準の `NSButton` の `intrinsicContentSize` は1行の幅で計算され、折り返した行数を高さに反映しない。これが従来 60pt の固定の下限を
   必要とした理由と考えられる。幅から高さを計算すれば、余分な空白なしに必要な行数だけ高くなる。現在の主文は、日本語（30字前後・13pt）でも
   英語（約70字）でも幅 580pt（620 − 余白 40）に1行で収まる見込みで、折り返しは将来の訳に対する保険（GUI で1行であることを確認する）
+- **2026-11-01 の修正**: GUI で四角が縮み文言がはみ出したため、高さを「1行のチェックボックスの高さ（`cell.cellSize.height`）」以上にし、
+  `cellSize(forBounds:)` に渡す高さを有限の値（10,000pt）にした（quickstart.md の結果の記録）
 - **Alternatives considered**: `wraps = false` で1行に固定する（訳が長くなると欠ける。FR-153 に反する）。チェックボックスの文言を空にして
   隣にラベルを置く（文言のクリックで切り替わる標準の動作と読み上げの名前を失う）
 
@@ -38,7 +40,7 @@ GUI は Cloud で実行できないため、空白の原因は静的な読み取
 
 - **Decision**: `NSTextField(wrappingLabelWithString:)`、フォントは `NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)`（11pt）、文字色は
   `NSColor.secondaryLabelColor`。`isSelectable = false`、`isEditable = false`、`refusesFirstResponder = true`。
-  チェックボックスとの間隔は `setCustomSpacing(2, after: confirmFileOperationsCheckbox)`。
+  チェックボックスとの間隔は `setCustomSpacing(4, after: confirmFileOperationsCheckbox)`。
   字下げは、チェックボックスのセルの `titleRect(forBounds:)` の `minX`（文言の先頭の x 座標）とする。補足説明はコンテナの view に入れ、
   `leading = container.leading + 字下げ`、`trailing = container.trailing` で配置する。求めた値が 14〜28pt の範囲にない場合は 20pt を使う
 - **Rationale**: macOS の標準の設定画面は、チェックボックスの説明を小さい二次的な文字でチェックボックスの文言の下に揃えて置く（Issue の dl/dd の参考に相当）。

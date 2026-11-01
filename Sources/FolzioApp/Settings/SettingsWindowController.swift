@@ -15,8 +15,10 @@ private final class WrappingCheckbox: KeyViewCheckbox {
 
     override var intrinsicContentSize: NSSize {
         guard let cell, bounds.width > 0 else { return super.intrinsicContentSize }
-        let size = cell.cellSize(forBounds: NSRect(x: 0, y: 0, width: bounds.width, height: .greatestFiniteMagnitude))
-        return NSSize(width: NSView.noIntrinsicMetric, height: ceil(size.height))
+        // Never shorter than a single-line checkbox; a shorter frame shrinks the box and lets the title overflow.
+        let singleLine = cell.cellSize.height
+        let wrapped = cell.cellSize(forBounds: NSRect(x: 0, y: 0, width: bounds.width, height: 10_000)).height
+        return NSSize(width: NSView.noIntrinsicMetric, height: ceil(max(singleLine, wrapped)))
     }
 
     override func layout() {
@@ -150,7 +152,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
     /// The spacing before each section heading. It matches the window margin (FR-208).
     private static let sectionSpacing: CGFloat = 20
     /// The spacing between the confirmation checkbox and its supplementary note (FR-209).
-    private static let noteSpacing: CGFloat = 2
+    private static let noteSpacing: CGFloat = 4
     /// The indent used when the checkbox cell reports an unexpected title position.
     private static let fallbackNoteIndent: CGFloat = 20
 
