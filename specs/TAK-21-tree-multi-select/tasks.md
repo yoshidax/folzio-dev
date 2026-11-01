@@ -73,7 +73,7 @@
 - [x] T020 Cloud で `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、
   `python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` を実行し、結果をこの tasks.md に記録する
 - [x] T021 macOS CI で `swift build`・`swift test` を確認する（PR の作成時、または `workflow_dispatch`）。PR は保守者の依頼があったときだけ作る
-- [ ] T022 [MANUAL] 保守者に、起動スモークと quickstart の S1〜S14 をローカルで実行してもらい（SC-102〜SC-104 の確認を含む）、結果を `checklists/validation.md` に記録する。S3・S5・S7 は R4・R5・R9 の設計どおりに動くことを確かめる
+- [x] T022 [MANUAL] 保守者に、起動スモークと quickstart の S1〜S14 をローカルで実行してもらい（SC-102〜SC-104 の確認を含む）、結果を `checklists/validation.md` に記録する。S3・S5・S7 は R4・R5・R9 の設計どおりに動くことを確かめる
 - [x] T023 ユーザーガイド `docs/usage.ja.md`・`docs/usage.md` のツリーの操作の説明（お気に入り・⌘Delete の項）に、複数選択（⌘クリック・Shift クリック・Shift+↑↓）と
   一括の移動・コピー・ゴミ箱を両方に同じ構成で追記する。README は機能の概要だけで個別の操作を書いていないため変えない（`README.ja.md` 20〜21 行）
 - [ ] T024 検証の完了後に最新の master を取り込み、spec.md の「反映先」の項目を `specs/product/` と `specs/product/contracts/keyboard-and-menus.md` へ反映する。
@@ -109,3 +109,4 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   （`BrowserModelTests.swift:22` の言語変更中の列挙。100ms の遅延と 20ms の待機に依存する既存のテストで、この feature は `BrowserModel` に触れていない）。
   2回目 run 41234498612（d658759）: build・通常のテスト・性能テスト（`Test run with 27 tests passed`）すべて成功。
   新規の `TreeBatchTargetsTests` と `InternalDropValidationTests` の追加分は両方の実行で成功
+- 2026-11-01: T022 の GUI の確認。保守者が S1〜S14 をすべて確認し、期待どおりと報告（`checklists/validation.md`）。OS とローカルの swift build・test、`scripts/dev/tests` の実行は未回答
