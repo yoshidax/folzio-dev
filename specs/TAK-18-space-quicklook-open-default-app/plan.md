@@ -59,7 +59,7 @@ Sources/FolzioCore/Shortcuts/ShortcutCatalog.swift         # 変更: quickLook �
 Sources/FolzioLocalization/ShortcutText.swift / TextKey.swift / Resources/{en,ja}.lproj/Localizable.strings  # 変更: 文言
 Tests/FolzioCoreTests/QuickLookTargetsTests.swift          # 新規
 Tests/FolzioCoreTests/ShortcutCatalogTests 相当             # 変更: 既存の整合テストが新しい項目を満たすこと
-Sources/FolzioApp/FileList/QuickLookCoordinator.swift      # 新規: QLPreviewPanel の dataSource / delegate、起点の矩形、閉じる条件
+Sources/FolzioApp/FileList/QuickLookCoordinator.swift      # 新規: QLPreviewPanel の dataSource / delegate、起点の矩形、矢印キーの転送、選択変更での更新、閉じる条件
 Sources/FolzioApp/FileList/ListModeView.swift              # 変更: Space で toggle、レスポンダチェーンに Quick Look の制御を追加
 Sources/FolzioApp/FileList/ThumbnailModeView.swift         # 変更: 同上（サムネイルの Space と起点）
 Sources/FolzioApp/FileList/FileListViewController.swift    # 変更: openItem でメディアを既定のアプリで開く、Coordinator の保持、一覧変更で閉じる
@@ -85,7 +85,8 @@ docs/usage.md / docs/usage.ja.md                           # 変更: Space と�
 3. `ListModeView` の `NSTableView` と `ThumbnailModeView` の `NSCollectionView` のサブクラスで `acceptsPreviewPanelControl` / `beginPreviewPanelControl` / `endPreviewPanelControl`
    を実装し、Coordinator を dataSource / delegate に設定する。`keyDown` の Space で Coordinator の `toggle()` を呼ぶ（開いている間はパネルが first responder になり、パネル自身の Space で閉じる）。
 4. `toggle()` は Core の判断で対象が空なら何もしない。開く前にプレビューペインの動画を一時停止し（EC-169）、起点の行が見えなければスクロールする（EC-167）。
-5. 一覧の更新（選択中のファイルの消失・フォルダの切り替え）で、Coordinator が `reloadData()` するか閉じる（EC-166）。
+5. 一覧の更新（選択中のファイルの消失・フォルダの切り替え）と選択の変更で、Coordinator が項目を再計算して `reloadData()` するか、0件なら閉じる（EC-166、FR-240）。
+   矢印キー（⌘ なし）は `previewPanel(_:handle:)` でファイルリストの `keyDown` へ転送する（research.md R8）。パネルの表示中は、プレビューペインの動画の自動再生を抑える（EC-169）。
 6. `FileListViewController.openItem(_:)` で、一覧から URL の行を引き、Core の判断が「既定のアプリで開く」なら `NSWorkspace.shared.open(url)` を呼ぶ。それ以外は従来の `model.openItem`。
 7. `onTogglePlayback` の Space 経路（`ListModeView` の `onSpace`）を外す。プレビューの動画へのフォーカス時の Space はプレビュー側のコントロールが処理する（変更なし）。
 8. ショートカット一覧（Core のカタログ・文言）を更新する。

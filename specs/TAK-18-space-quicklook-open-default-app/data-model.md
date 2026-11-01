@@ -28,8 +28,10 @@ Space で Quick Look に渡す対象を選ぶ（FR-235・236、EC-165）。
 
 | 名前 | 場所 | 内容 |
 |---|---|---|
-| `QuickLookCoordinator.items` | App | 現在パネルに渡している URL の並び（`QuickLookTargets.urls` の結果） |
+| `QuickLookCoordinator.items` | App | 現在パネルに渡している URL の並び（`QuickLookTargets.urls` の結果）。ファイルリストの選択が変わるたびに再計算する（FR-240） |
+| `isQuickLookVisible` | App | パネルの表示中か。プレビューペインの動画の自動再生を抑える判断に使う（EC-169） |
 | パネルの表示状態 | `QLPreviewPanel` | 開閉は OS が持つ。Folzio は `isVisible` を見るだけ |
 
-状態遷移: 閉 → (Space、対象あり、フォーカスがファイルリスト) → 開 → (Space / Esc / 閉じるボタン / EC-166 / ダブルクリック) → 閉。
+状態遷移: 閉 → (Space、対象あり、フォーカスがファイルリスト) → 開 → (矢印キーで選択が変わる → 項目を再計算 → 対象ありなら開のまま / 0件なら閉) →
+(Space / Esc / 閉じるボタン / EC-166 / ダブルクリック) → 閉。
 ショートカット一覧のカタログには `ShortcutID.quickLook`（keys: "Space"、section: files）を追加する。

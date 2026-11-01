@@ -6,7 +6,7 @@
 
 ## Phase 1: 技術検証（FR-238 の判定。保守者の実機）
 
-- [ ] T001 最小の `QuickLookCoordinator`（リスト形式の1項目のみ）と Space の入口を実装し、`swift build` が通ることを CI で確認する。保守者が quickstart.md の M1〜M3 を行い、
+- [ ] T001 最小の `QuickLookCoordinator`（リスト形式。単一選択と、矢印キーの転送 `previewPanel(_:handle:)` を含む）と Space の入口を実装し、`swift build` が通ることを CI で確認する。保守者が quickstart.md の M1〜M3 と M16 を行い、
       起点からの拡大・縮小が標準部品だけで成り立つかを判定する。成り立たなければ Phase 3・4 を中止し、（A）だけを仕上げる（FR-238）
   - Sources/FolzioApp/FileList/QuickLookCoordinator.swift、ListModeView.swift
 
@@ -28,7 +28,11 @@
 - [ ] T011 `ThumbnailModeView` の `NSCollectionView` に同じ実装と Space の入口を追加する — ThumbnailModeView.swift
 - [ ] T012 Space を使わない状態（名前の変更中・フルスクリーン中・スライドショー実行中。EC-164）を、`MainSplitViewController` から `FileListViewController` へ渡す — MainSplitViewController.swift、FileListViewController.swift
 - [ ] T013 開く前にプレビューの動画を一時停止する（EC-169）。既存の再生制御に pause がなければ最小の API を足す — PreviewViewController.swift、MainSplitViewController.swift
-- [ ] T014 一覧の更新（選択中のファイルの消失・フォルダの切り替え・検索の開始と終了）で `refreshOrClose()` を呼ぶ — FileListViewController.swift
+- [ ] T014 一覧の更新（選択中のファイルの消失・フォルダの切り替え・検索の開始と終了）と選択の変更で `refreshOrClose()` を呼ぶ — FileListViewController.swift
+- [ ] T022 `previewPanel(_:handle:)` で矢印キー（⌘ なし）をファイルリストの first responder の `keyDown` へ転送し、それ以外のキーは `false` を返す（FR-240、US3-AS35・37）。
+      選択変更の通知で項目と起点を更新し、0件なら閉じる（US3-AS36）— QuickLookCoordinator.swift
+- [ ] T023 [P] 選択が変わったときの項目の再計算（1件→複数→1件、メディアでない行への移動で0件）のテストを `QuickLookTargetsTests` に足す — Tests/FolzioCoreTests/QuickLookTargetsTests.swift
+- [ ] T024 パネルの表示中は、選択が動画に移ってもプレビューペインの動画を自動再生しない状態を追加する（EC-169）— PreviewViewController.swift、MainSplitViewController.swift
 
 ## Phase 4: ショートカット一覧と文書
 
