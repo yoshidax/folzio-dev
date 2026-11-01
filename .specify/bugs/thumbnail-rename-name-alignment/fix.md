@@ -4,7 +4,7 @@
 - **Fixed**: 2026-11-01
 - **Assessment**: ./assessment.md
 - **Issue**: TAK-37
-- **Status**: applied（ビルド・テストは未実行。macOS CI で確認する）
+- **Status**: applied（macOS CI は成功。GUI の確認は保守者が行う）
 
 ## Summary
 
@@ -39,7 +39,7 @@ override func textDidEndEditing(_ notification: Notification) {
 
 ## Local Verification
 
-- `swift build` / `swift test`: Cloud に Swift がないため未実行。macOS CI で確認する（CI は PR の作成時に動く）。
+- `swift build` / `swift test`: Cloud に Swift がないため、macOS CI で確認した。`5edf692` で成功（下の「CI での確認と追加の修正」）。
 - `scripts/check-no-network.sh` → 通過
 - `scripts/dev/check-english-comments.sh` → 通過
 - `scripts/dev/check-skill-sync.sh` → 通過
@@ -64,8 +64,10 @@ override func textDidEndEditing(_ notification: Notification) {
   書き戻しは `setRenamingAppearance(false)` の `.center` より後に起きる。
 - 2回目の変更: `endRenaming` の最後（文字列とフォーカスの復元の後）にも `alignment = .center` を設定した。
   回帰テストには、Return・Escape で編集を終えた直後の配置の検証を足し、どの段階で `.left` になるかを切り分けられるようにした。
-- 2回目でも同じテストが失敗する場合は、`makeFirstResponder(nil)` による切り離しの時点で書き戻されている可能性がある。
-  その場合は、assessment の仮説を見直す。
+- 2回目（`5edf692`、macOS CI、run 55、`workflow_dispatch`）: ビルドとテストがすべて成功した。
+  Return・Escape・フォーカス移動の3経路で、編集を終えた直後と、フィールドエディタを外した後のどちらも `.center` だった。
+- 未確認: 修正前（変更なし）のコードで新しいテストが失敗するか。1回目の失敗は override だけを入れた状態のもので、修正前の状態ではない。
+  また、どの追加の設定が効いたのか（`endRenaming` の最後の設定か、override か）は、単独では切り分けていない。
 
 ## Follow-ups
 
