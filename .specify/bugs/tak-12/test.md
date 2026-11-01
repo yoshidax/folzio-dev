@@ -4,18 +4,24 @@
 - **Tested**: 2026-11-01
 - **Assessment**: ./assessment.md
 - **Fix**: ./fix.md
-- **Result**: partial
+- **Result**: pass
 
 ## Summary
 
-Core の回帰テストを追加し、Cloud で実行できる静的チェックは通過した。Swift のビルド・テストと GUI での再現の解消は未確認。
+macOS CI でビルドとテストが成功し、保守者が GUI で再現手順の解消と起動スモークを確認した（2026-11-01）。
 
 ## Checks Performed
 
 | Check | Command / Action | Result | Notes |
 |-------|------------------|--------|-------|
-| GUI 再現 | 祖先の Finder での削除、表示中のフォルダの改名、`rm -rf` | not-run | Cloud では GUI と FSEvents を使用できない |
-| Swift build / test | `swift build`, `swift test` | not-run | macOS CI が必要 |
+| GUI: 祖先の削除 | 中身のあるフォルダを表示中に、Finder で親をゴミ箱に入れる | pass | 保守者が確認。リストとツリーが同じ祖先を表示する |
+| GUI: 表示中のフォルダの改名 | Finder で改名 | pass | 保守者が確認 |
+| GUI: `rm -rf` | ターミナルで祖先ごと削除 | pass | 保守者が確認 |
+| GUI: ボリュームの取り出し | ディスクイメージの中のフォルダを表示中に取り出す | pass | 保守者が確認。「フォルダが見つかりません」になり、プレビューが空になる |
+| GUI: お気に入りがあるときの取り出し | ボリュームの最上位をお気に入りに登録して取り出す | pass | 保守者が確認。`/Volumes` に移らない（`e6e6d4c` の退行が解消） |
+| GUI: zip の中での取り出し | zip の中を表示中に取り出す | not-run | OS が使用中として取り出しを拒否するため、通常の取り出しでは起きない。回帰テストで確認 |
+| 起動スモーク | `scripts/make-app.sh`、`open .build/Folzio.app` | pass | 保守者が確認 |
+| Swift build / test | macOS CI（`swift build`, `swift test`） | pass | `e6e6d4c`: run 41327142026、`eaee3a7`: run 41331325157（`workflow_dispatch`） |
 | Network API | `scripts/check-no-network.sh` | pass | |
 | README | `scripts/check-readme-sync.sh origin/master` | pass | README の変更なし |
 | Comments | `scripts/dev/check-english-comments.sh` | pass | |
@@ -25,17 +31,9 @@ Core の回帰テストを追加し、Cloud で実行できる静的チェック
 
 ## Residual Risks
 
-- 回帰テストは watcher の通知を `handleFileSystemEvent` に直接渡す。FSEvents が実際に親・祖先を通知することは GUI で確かめる必要がある。
-- ボリュームの取り外しで FSEvents と `didUnmountNotification` が届く順序は実機で確かめていない（どちらが先でも同じ結果になるように実装した）。
+- 再マウント後に「フォルダが見つかりません」から元の表示へ自動で戻すかは未決（assessment の「未決」）。この修正では戻さない。
+- 強制的な取り出し・ケーブルの抜去で zip の中を表示しているときは、GUI で確かめていない（回帰テストのみ）。
 
 ## Recommendation
 
-macOS CI でビルドとテストを確認し、保守者が GUI で次を確認してから判定する。
-
-1. 親のある、中身のあるフォルダをツリーで選び、Finder で親フォルダをゴミ箱に入れる。リストとツリーが同じ祖先を表示すること。
-2. 表示中のフォルダを Finder で改名する。リストが親へ移ること。
-3. ターミナルで `rm -rf` により祖先ごと削除する。「フォルダが見つかりません」ではなく、存在する祖先が表示されること。
-4. zip の中を表示中に、zip を含むフォルダを Finder で改名する。zip から出て親が表示されること。
-5. 外部ボリューム（ディスクイメージ）の中のフォルダを表示中に取り出す。リストが「フォルダが見つかりません」になり、プレビューが空になること。
-   ボリュームの最上位をお気に入りに登録した状態でも、`/Volumes` に移らないこと。zip の中を表示中でも同じこと。
-6. 起動スモーク（3ペインが表示されること）。
+マージしてよい。再マウント後の表示は、必要なら別の仕様の変更として扱う。
