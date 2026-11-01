@@ -147,11 +147,11 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
 
     private static let contentWidth: CGFloat = 620
     private static let margin: CGFloat = 20
-    /// The spacing between items in a section, and between a heading and its first item (FR-208).
+    /// The spacing between items in a section, and between a heading and its first item (FR-222).
     private static let itemSpacing: CGFloat = 8
-    /// The spacing before each section heading. It matches the window margin (FR-208).
+    /// The spacing before each section heading. It matches the window margin (FR-222).
     private static let sectionSpacing: CGFloat = 20
-    /// The spacing between the confirmation checkbox and its supplementary note (FR-209).
+    /// The spacing between the confirmation checkbox and its supplementary note (FR-223).
     private static let noteSpacing: CGFloat = 4
     /// The indent used when the checkbox cell reports an unexpected title position.
     private static let fallbackNoteIndent: CGFloat = 20
@@ -204,7 +204,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         confirmFileOperationsCheckbox.cell?.isScrollable = false
         confirmFileOperationsCheckbox.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        // The note is a dependent description of the checkbox: smaller, secondary, and not interactive (FR-209).
+        // The note is a dependent description of the checkbox: smaller, secondary, and not interactive (FR-223).
         confirmFileOperationsNote.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         confirmFileOperationsNote.textColor = .secondaryLabelColor
         confirmFileOperationsNote.isSelectable = false
@@ -268,7 +268,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         return (14...28).contains(indent) ? indent : Self.fallbackNoteIndent
     }
 
-    /// Fits the window height to its content and keeps the top edge in place (FR-208).
+    /// Fits the window height to its content and keeps the top edge in place (FR-222).
     private func resizeToFitContent() {
         guard let window, let contentView = window.contentView else { return }
         // The wrapping checkbox updates its height after it learns its width, so lay out twice.

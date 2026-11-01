@@ -4,7 +4,7 @@ import Testing
 
 @Suite("Settings Window Text")
 struct SettingsTextTests {
-    @Test("The confirmation checkbox and its note are separate sentences in both languages (FR-209)")
+    @Test("The confirmation checkbox and its note are separate sentences in both languages (FR-223)")
     func confirmationCheckboxAndNote() {
         let ja = LocalizationTestSupport.localizer("ja")
         let en = LocalizationTestSupport.localizer("en")

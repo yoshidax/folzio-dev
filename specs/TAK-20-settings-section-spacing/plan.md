@@ -44,8 +44,8 @@
 | II 体感性能 | PASS / PASS。設定ウインドウの配置だけ。UI スレッドで重い処理を追加しない |
 | III キーボード・アクセシビリティ | PASS / PASS。Tab の移動順は変えない。補足説明はチェックボックスのアクセシビリティのヘルプとして読み上げる。OS の標準の二次的な文字色で、外観とコントラストの設定に従う |
 | IV テスト必須 | PASS / PASS。翻訳の値と欠けを自動テストで検証。GUI は quickstart.md の手順で保守者が確認し、確認前は完了にしない |
-| V YAGNI | PASS / PASS。汎用の「説明付き設定行」部品は作らず、確認の項目だけに補足説明を付ける（A-121） |
-| 仕様管理 | PASS / PASS。新しい feature ディレクトリだけを作る。`specs/product/` への反映は実装・検証の後、PR の最後に行う。ID は最新の product の最大値 FR-207 / SC-101 / EC-140 / A-118 / US34 の次から採った |
+| V YAGNI | PASS / PASS。汎用の「説明付き設定行」部品は作らず、確認の項目だけに補足説明を付ける（A-138） |
+| 仕様管理 | PASS / PASS。新しい feature ディレクトリだけを作る。`specs/product/` への反映は実装・検証の後、PR の最後に行う。ID は最新の product の最大値 FR-221 / SC-109 / EC-152 / A-135 / US38 の次から採った（2026-11-01 に master を取り込み、TAK-17・19・21 との衝突を避けて振り直した） |
 
 ## Project Structure
 
@@ -80,7 +80,7 @@ Tests/FolzioCoreTests/Localization/SettingsTextTests.swift   # 主文と補足�
 1. **間隔**（R1）: 縦の stack の `spacing` は 8pt のまま（区分の中の間隔・見出しと最初の項目の間隔）。区分の前（言語の行・ループのチェックボックス・補足説明の後）に
    `setCustomSpacing(20, after:)` を設定する。ウインドウの上下左右の余白 20pt と同じ値にする
 2. **空白の原因の除去**（R2）: `confirmFileOperationsCheckbox.heightAnchor >= 60` を削除する。主文が短くなり、両言語とも1行に収まる
-3. **折り返し**（R3）: 確認のチェックボックスは、幅に合わせて高さを計算する小さな subclass（`WrappingCheckbox`）にして、将来の長い訳でも欠けずに折り返す（EC-141）。
+3. **折り返し**（R3）: 確認のチェックボックスは、幅に合わせて高さを計算する小さな subclass（`WrappingCheckbox`）にして、将来の長い訳でも欠けずに折り返す（EC-153）。
    補足説明は `NSTextField(wrappingLabelWithString:)` で、幅の制約から高さが決まる
 4. **補足説明の見た目と揃え**（R4）: `NSFont.smallSystemFontSize` のシステムフォント、`NSColor.secondaryLabelColor`。選択不可・編集不可。
    チェックボックスの直後の間隔は `setCustomSpacing(4, after:)`。先頭の位置はチェックボックスのセルの文言の位置（`titleRect(forBounds:)`）から求めた字下げ

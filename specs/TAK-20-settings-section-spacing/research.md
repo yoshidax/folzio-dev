@@ -12,7 +12,7 @@ GUI は Cloud で実行できないため、空白の原因は静的な読み取
 - **Rationale**: 現在は全項目が 8pt の等間隔で、見出しの前後が同じ間隔のため区分の切れ目が弱い。20pt はウインドウの余白（stack の上下左右 20pt）と同じで、
   値の種類を増やさない。`NSStackView.setCustomSpacing(_:after:)` は macOS 10.13 以降の公開 API（AppKit `NSStackView.h`）
 - **Alternatives considered**: 区分ごとに入れ子の stack を作る（構造が深くなり、Tab の移動順の手書きの設定はそのままなので利点が小さい）。
-  見出しの前に空の view を挟む（読み上げや Tab に影響しうる）。区切り線（`NSBox`）を加える（A-119 で範囲外）
+  見出しの前に空の view を挟む（読み上げや Tab に影響しうる）。区切り線（`NSBox`）を加える（A-136 で範囲外）
 
 ## R2 「ファイル操作」の大きな空白の原因
 
@@ -22,7 +22,7 @@ GUI は Cloud で実行できないため、空白の原因は静的な読み取
   最小の高さは不要になる。さらに、ウインドウの高さの下限 `max(320, fittingSize.height)` も、内容が低いときに最後の項目の下へ空白を作る（R6）
 - **Alternatives considered**: 60pt を小さい値へ変える（言語・フォントの大きさに依存し、同じ問題が再発する）
 
-## R3 長い文の折り返し（EC-141）
+## R3 長い文の折り返し（EC-153）
 
 - **Decision**: 確認のチェックボックスを `KeyViewCheckbox` を継承した `WrappingCheckbox` にする。`intrinsicContentSize` を、現在の幅
   （0 のときは stack の幅の制約による幅）で `cell.cellSize(forBounds:)` を求めた高さにし、`layout()` で幅が変わったら `invalidateIntrinsicContentSize()` する。
@@ -44,7 +44,7 @@ GUI は Cloud で実行できないため、空白の原因は静的な読み取
   字下げは、チェックボックスのセルの `titleRect(forBounds:)` の `minX`（文言の先頭の x 座標）とする。補足説明はコンテナの view に入れ、
   `leading = container.leading + 字下げ`、`trailing = container.trailing` で配置する。求めた値が 14〜28pt の範囲にない場合は 20pt を使う
 - **Rationale**: macOS の標準の設定画面は、チェックボックスの説明を小さい二次的な文字でチェックボックスの文言の下に揃えて置く（Issue の dl/dd の参考に相当）。
-  `secondaryLabelColor` はライト／ダーク・「コントラストを上げる」に OS が合わせる（EC-142）。字下げをセルから求めると、OS の版でチェックボックスの
+  `secondaryLabelColor` はライト／ダーク・「コントラストを上げる」に OS が合わせる（EC-154）。字下げをセルから求めると、OS の版でチェックボックスの
   四角の大きさが変わっても揃う。範囲外の値の保険は、セルの値が想定外の場合に補足説明が大きくずれることを防ぐ
 - **Alternatives considered**: 固定の 18 / 20pt（OS の版による差に追従しない）。`NSFont.labelFontSize`（10pt。読みにくい）。
   独自の灰色（ダーク表示とコントラストの設定に追従しない）
@@ -53,7 +53,7 @@ GUI は Cloud で実行できないため、空白の原因は静的な読み取
 
 - **Decision**: 確認のチェックボックスに `setAccessibilityHelp(補足説明)` を設定し、補足説明のラベルは `setAccessibilityElement(false)` にする。
   `updateLocalizedLabels()` で両方を新しい言語の文言に更新する。Tab の移動順（`nextKeyView` の手書きの鎖）は変えない
-- **Rationale**: VoiceOver はチェックボックスの名前・状態の後にヘルプを読むため、補足説明が主文に従属して読まれる（FR-209（4））。ラベルも
+- **Rationale**: VoiceOver はチェックボックスの名前・状態の後にヘルプを読むため、補足説明が主文に従属して読まれる（FR-223（4））。ラベルも
   要素として残すと同じ文を二重に読む。ラベルは `refusesFirstResponder` で Tab の対象にならない
 - **Alternatives considered**: ラベルを残して `setAccessibilityTitleUIElement` などで結び付ける（チェックボックスの名前が補足説明に置き換わるおそれ）
 
@@ -61,8 +61,8 @@ GUI は Cloud で実行できないため、空白の原因は静的な読み取
 
 - **Decision**: 高さの下限 320pt を外し、`contentView.fittingSize.height` に合わせる。初期化時と `updateLocalizedLabels()` の最後に
   `resizeToFitContent()` を呼び、ウインドウの上端（`frame.maxY`）を保って高さだけを変える。幅は 620pt のまま
-- **Rationale**: stack の下端の制約は `lessThanOrEqualTo(bottom − 20)` のため、ウインドウが内容より高いと最後の項目の下に空白が残る（FR-208（4））。
-  表示言語の切り替えで行数が変わった場合も合わせ直す（EC-143）。上端を保つと、開いているウインドウの見出しの位置が動かない
+- **Rationale**: stack の下端の制約は `lessThanOrEqualTo(bottom − 20)` のため、ウインドウが内容より高いと最後の項目の下に空白が残る（FR-222（4））。
+  表示言語の切り替えで行数が変わった場合も合わせ直す（EC-155）。上端を保つと、開いているウインドウの見出しの位置が動かない
 - **Alternatives considered**: 下端の制約を `equalTo` にして高さを内容で固定する（初期化の順序で制約の衝突が起きやすい。`fittingSize` を使う既存の方法を保つ）
 
 ## API の存在の確認（CI の前に）

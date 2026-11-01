@@ -32,4 +32,4 @@
 ## Notes
 
 - 保存キー名（`fileOps.confirmBeforeExecuting`）は既存の契約の参照として spec に残した（変更しないことの明示）。
-- 具体的な間隔の値・部品の選択は plan（research.md）で決める（A-119）。
+- 具体的な間隔の値・部品の選択は plan（research.md）で決める（A-136）。
