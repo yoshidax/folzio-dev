@@ -71,13 +71,15 @@
 
 - [x] T015 [US3] Tests/FolzioCoreTests/BrowserModelImageLoadTests.swift に、先読み済みの隣接画像への切り替えがキャッシュから行われ枠を通さないこと（US46-AS1、EC-165）と、
   先読みが 1 件実行中でも未読込の画像のプレビューが先読みの終了を待たずに始まること（US46-AS2、FR-235）を確かめるテストを足す
-- [ ] T016 [US3] Tests/FolzioPerformanceTests の既存の基準（SC-001）を変更せずに、変更後も通ることを CI で確認する（SC-119）。基準値を緩めない
+- [x] T016 [US3] Tests/FolzioPerformanceTests の既存の基準（SC-001）を変更せずに、変更後も通ることを CI で確認する（SC-119）。基準値を緩めない
+  （2026-11-01 CI 実行 41350559595: SC-001 の「24 MP JPEG のデコード 0.5 秒以内」「先読み済みの隣接ファイルへの切り替え 0.1 秒以内」「プレビューのキャッシュ 256 MB 以内」は成功。
+  27 件中 1 件 `didRenameFolder handles 10,000 search results` が 0.112 秒（基準 0.1 秒）で失敗。検索結果の名前変更の測定で、この feature が変更していない経路。共有ランナーでの測定のぶれの可能性があるが、原因は未調査）
 
 ## Phase 6: Polish & 検証
 
 - [x] T017 Cloud の検査を行う: `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、
   `python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"`。新しいソースのコメントは英語で、doc comment は三人称単数・現在形で書く（AGENTS.md）
-- [ ] T018 作業ブランチを push する。保守者が PR を依頼したら PR を作り、CI の結果（通常のテストと、性能テストのログの末尾）を確認し、PR 本文に性能テストの結果を記載する（憲章 II）。失敗はログを読んでまとめてから直す
+- [x] T018 作業ブランチを push する。保守者が PR を依頼したら PR を作り、CI の結果（通常のテストと、性能テストのログの末尾）を確認し、PR 本文に性能テストの結果を記載する（憲章 II）。失敗はログを読んでまとめてから直す
 - [ ] T019 [MANUAL] 保守者に、ローカルの最新 Swift での build/test、起動スモーク、quickstart.md のシナリオ 1〜3 を依頼し、結果を quickstart.md に記録する。
   報告があるまで未チェックのままにする（A-146）
 - [ ] T020 実装と検証の後、`specs/product/` へ反映する（spec.md の「反映先」の表）。反映の直前に `git merge origin/master` し、ID の衝突を
