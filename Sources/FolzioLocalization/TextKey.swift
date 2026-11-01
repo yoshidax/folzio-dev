@@ -88,6 +88,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case menuAppSettings = "menu.app.settings"
     case menuAppQuit = "menu.app.quit"
     case menuFile = "menu.file"
+    case menuFileNewFolder = "menu.file.newFolder"
     case menuFileOpen = "menu.file.open"
     case menuFileShowContents = "menu.file.showContents"
     case menuFileEnclosingFolder = "menu.file.enclosingFolder"
@@ -167,6 +168,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case settingsLoop = "settings.loop"
     case settingsFileOperations = "settings.fileOperations"
     case settingsConfirm = "settings.confirm"
+    case settingsConfirmNote = "settings.confirm.note"
     case settingsSlideshow = "settings.slideshow"
     case settingsInterval = "settings.interval"
     case settingsSeconds = "settings.seconds"
@@ -194,6 +196,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case treeTooltipNotFound = "tree.tooltip.notFound"
     case treeA11yFavoriteName = "tree.a11y.favoriteName"
     case treeA11yFolderName = "tree.a11y.folderName"
+    case folderDefaultName = "folder.defaultName"
 
     // MARK: - Search
 
@@ -245,8 +248,109 @@ public enum TextKey: String, CaseIterable, Sendable {
     case dialogOperationSummary = "dialog.operation.summary"
     case dialogOperationFailureLine = "dialog.operation.failureLine"
     case dialogOperationMore = "dialog.operation.more"
+    case dialogTreeTrashOverlapTitle = "dialog.treeTrashOverlap.title"
+    case dialogTreeTrashOverlapMessage = "dialog.treeTrashOverlap.message"
     case dialogCancel = "dialog.cancel"
     case dialogOK = "dialog.ok"
+
+    // MARK: - Shortcut Reference
+
+    case menuFileShortcuts = "menu.file.shortcuts"
+    case menuFileClose = "menu.file.close"
+    case shortcutsWindow = "shortcuts.window"
+    case shortcutsSectionPanes = "shortcuts.section.panes"
+    case shortcutsSectionNavigation = "shortcuts.section.navigation"
+    case shortcutsSectionFiles = "shortcuts.section.files"
+    case shortcutsSectionSearch = "shortcuts.section.search"
+    case shortcutsSectionImages = "shortcuts.section.images"
+    case shortcutsSectionPlayback = "shortcuts.section.playback"
+    case shortcutsSectionApplication = "shortcuts.section.application"
+    case shortcutPaneCycle = "shortcuts.entry.paneCycle"
+    case shortcutPaneCycleCondition = "shortcuts.condition.paneCycle"
+    case shortcutPaneFocus = "shortcuts.entry.paneFocus"
+    case shortcutPaneFocusCondition = "shortcuts.condition.paneFocus"
+    case shortcutListOnly = "shortcuts.entry.listOnly"
+    case shortcutListOnlyCondition = "shortcuts.condition.listOnly"
+    case shortcutPreviewOnly = "shortcuts.entry.previewOnly"
+    case shortcutPreviewOnlyCondition = "shortcuts.condition.previewOnly"
+    case shortcutToolbar = "shortcuts.entry.toolbar"
+    case shortcutListStyle = "shortcuts.entry.listStyle"
+    case shortcutThumbnailSize = "shortcuts.entry.thumbnailSize"
+    case shortcutThumbnailSizeCondition = "shortcuts.condition.thumbnailSize"
+    case shortcutImageFilter = "shortcuts.entry.imageFilter"
+    case shortcutImageFilterCondition = "shortcuts.condition.imageFilter"
+    case shortcutMovieFilter = "shortcuts.entry.movieFilter"
+    case shortcutMovieFilterCondition = "shortcuts.condition.movieFilter"
+    case shortcutZipVisibility = "shortcuts.entry.zipVisibility"
+    case shortcutZipVisibilityCondition = "shortcuts.condition.zipVisibility"
+    case shortcutTreeSelect = "shortcuts.entry.treeSelect"
+    case shortcutTreeSelectCondition = "shortcuts.condition.treeSelect"
+    case shortcutTreeExpand = "shortcuts.entry.treeExpand"
+    case shortcutTreeExpandCondition = "shortcuts.condition.treeExpand"
+    case shortcutTreeExpandAll = "shortcuts.entry.treeExpandAll"
+    case shortcutTreeExpandAllCondition = "shortcuts.condition.treeExpandAll"
+    case shortcutOpenContainer = "shortcuts.entry.openContainer"
+    case shortcutOpenContainerCondition = "shortcuts.condition.openContainer"
+    case shortcutEnclosingFolder = "shortcuts.entry.enclosingFolder"
+    case shortcutEnclosingFolderCondition = "shortcuts.condition.enclosingFolder"
+    case shortcutHistory = "shortcuts.entry.history"
+    case shortcutHistoryCondition = "shortcuts.condition.history"
+    case shortcutFavorites = "shortcuts.entry.favorites"
+    case shortcutFavoritesCondition = "shortcuts.condition.favorites"
+    case shortcutAddFavorite = "shortcuts.entry.addFavorite"
+    case shortcutAddFavoriteCondition = "shortcuts.condition.addFavorite"
+    case shortcutSelection = "shortcuts.entry.selection"
+    case shortcutSelectionCondition = "shortcuts.condition.selection"
+    case shortcutExtendSelection = "shortcuts.entry.extendSelection"
+    case shortcutExtendSelectionCondition = "shortcuts.condition.extendSelection"
+    case shortcutOpenDefault = "shortcuts.entry.openDefault"
+    case shortcutOpenDefaultCondition = "shortcuts.condition.openDefault"
+    case shortcutRename = "shortcuts.entry.rename"
+    case shortcutRenameCondition = "shortcuts.condition.rename"
+    case shortcutCopy = "shortcuts.entry.copy"
+    case shortcutCopyCondition = "shortcuts.condition.copy"
+    case shortcutPaste = "shortcuts.entry.paste"
+    case shortcutPasteCondition = "shortcuts.condition.paste"
+    case shortcutCopyPath = "shortcuts.entry.copyPath"
+    case shortcutCopyPathCondition = "shortcuts.condition.copyPath"
+    case shortcutDuplicate = "shortcuts.entry.duplicate"
+    case shortcutDuplicateCondition = "shortcuts.condition.duplicate"
+    case shortcutNewFolder = "shortcuts.entry.newFolder"
+    case shortcutNewFolderCondition = "shortcuts.condition.newFolder"
+    case shortcutTrash = "shortcuts.entry.trash"
+    case shortcutTrashCondition = "shortcuts.condition.trash"
+    case shortcutFind = "shortcuts.entry.find"
+    case shortcutFindCondition = "shortcuts.condition.find"
+    case shortcutSearchSubmit = "shortcuts.entry.searchSubmit"
+    case shortcutSearchSubmitCondition = "shortcuts.condition.searchSubmit"
+    case shortcutEndSearch = "shortcuts.entry.endSearch"
+    case shortcutEndSearchCondition = "shortcuts.condition.endSearch"
+    case shortcutImageZoom = "shortcuts.entry.imageZoom"
+    case shortcutImageZoomCondition = "shortcuts.condition.imageZoom"
+    case shortcutImageFit = "shortcuts.entry.imageFit"
+    case shortcutImageFitCondition = "shortcuts.condition.imageFit"
+    case shortcutImageScroll = "shortcuts.entry.imageScroll"
+    case shortcutImageScrollCondition = "shortcuts.condition.imageScroll"
+    case shortcutFullScreen = "shortcuts.entry.fullScreen"
+    case shortcutFullScreenCondition = "shortcuts.condition.fullScreen"
+    case shortcutVideoPlay = "shortcuts.entry.videoPlay"
+    case shortcutVideoPlayCondition = "shortcuts.condition.videoPlay"
+    case shortcutVideoControls = "shortcuts.entry.videoControls"
+    case shortcutVideoControlsCondition = "shortcuts.condition.videoControls"
+    case shortcutVideoSeek = "shortcuts.entry.videoSeek"
+    case shortcutVideoSeekCondition = "shortcuts.condition.videoSeek"
+    case shortcutSlideshowStart = "shortcuts.entry.slideshowStart"
+    case shortcutSlideshowStartCondition = "shortcuts.condition.slideshowStart"
+    case shortcutSlideshowNavigate = "shortcuts.entry.slideshowNavigate"
+    case shortcutSlideshowNavigateCondition = "shortcuts.condition.slideshowNavigate"
+    case shortcutSlideshowStop = "shortcuts.entry.slideshowStop"
+    case shortcutSlideshowStopCondition = "shortcuts.condition.slideshowStop"
+    case shortcutSettings = "shortcuts.entry.settings"
+    case shortcutCheatsheet = "shortcuts.entry.cheatsheet"
+    case shortcutCheatsheetCondition = "shortcuts.condition.cheatsheet"
+    case shortcutClose = "shortcuts.entry.close"
+    case shortcutCloseCondition = "shortcuts.condition.close"
+    case shortcutQuit = "shortcuts.entry.quit"
 
     // MARK: - Accessibility
 
@@ -282,6 +386,198 @@ public enum TextKey: String, CaseIterable, Sendable {
     /// Translator-facing description (where the string is used and what each value means).
     public var comment: String {
         switch self {
+        case .menuFileShortcuts:
+            return "File menu item that opens the shortcut reference"
+        case .menuFileClose:
+            return "File menu item that closes the key window"
+        case .shortcutsWindow:
+            return "Shortcut reference window title"
+        case .shortcutsSectionPanes:
+            return "Purpose heading in the shortcut reference"
+        case .shortcutsSectionNavigation:
+            return "Purpose heading in the shortcut reference"
+        case .shortcutsSectionFiles:
+            return "Purpose heading in the shortcut reference"
+        case .shortcutsSectionSearch:
+            return "Purpose heading in the shortcut reference"
+        case .shortcutsSectionImages:
+            return "Purpose heading in the shortcut reference"
+        case .shortcutsSectionPlayback:
+            return "Purpose heading in the shortcut reference"
+        case .shortcutsSectionApplication:
+            return "Purpose heading in the shortcut reference"
+        case .shortcutPaneCycle:
+            return "Action description in the shortcut reference"
+        case .shortcutPaneCycleCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutPaneFocus:
+            return "Action description in the shortcut reference"
+        case .shortcutPaneFocusCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutListOnly:
+            return "Action description in the shortcut reference"
+        case .shortcutListOnlyCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutPreviewOnly:
+            return "Action description in the shortcut reference"
+        case .shortcutPreviewOnlyCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutToolbar:
+            return "Action description in the shortcut reference"
+        case .shortcutListStyle:
+            return "Action description in the shortcut reference"
+        case .shortcutThumbnailSize:
+            return "Action description in the shortcut reference"
+        case .shortcutThumbnailSizeCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutImageFilter:
+            return "Action description in the shortcut reference"
+        case .shortcutImageFilterCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutMovieFilter:
+            return "Action description in the shortcut reference"
+        case .shortcutMovieFilterCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutZipVisibility:
+            return "Action description in the shortcut reference"
+        case .shortcutZipVisibilityCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutTreeSelect:
+            return "Action description in the shortcut reference"
+        case .shortcutTreeSelectCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutTreeExpand:
+            return "Action description in the shortcut reference"
+        case .shortcutTreeExpandCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutTreeExpandAll:
+            return "Action description in the shortcut reference"
+        case .shortcutTreeExpandAllCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutOpenContainer:
+            return "Action description in the shortcut reference"
+        case .shortcutOpenContainerCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutEnclosingFolder:
+            return "Action description in the shortcut reference"
+        case .shortcutEnclosingFolderCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutHistory:
+            return "Action description in the shortcut reference"
+        case .shortcutHistoryCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutFavorites:
+            return "Action description in the shortcut reference"
+        case .shortcutFavoritesCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutAddFavorite:
+            return "Action description in the shortcut reference"
+        case .shortcutAddFavoriteCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutSelection:
+            return "Action description in the shortcut reference"
+        case .shortcutSelectionCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutExtendSelection:
+            return "Action description in the shortcut reference"
+        case .shortcutExtendSelectionCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutOpenDefault:
+            return "Action description in the shortcut reference"
+        case .shortcutOpenDefaultCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutRename:
+            return "Action description in the shortcut reference"
+        case .shortcutRenameCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutCopy:
+            return "Action description in the shortcut reference"
+        case .shortcutCopyCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutPaste:
+            return "Action description in the shortcut reference"
+        case .shortcutPasteCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutCopyPath:
+            return "Action description in the shortcut reference"
+        case .shortcutCopyPathCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutDuplicate:
+            return "Action description in the shortcut reference"
+        case .shortcutDuplicateCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutNewFolder:
+            return "Action description in the shortcut reference"
+        case .shortcutNewFolderCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutTrash:
+            return "Action description in the shortcut reference"
+        case .shortcutTrashCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutFind:
+            return "Action description in the shortcut reference"
+        case .shortcutFindCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutSearchSubmit:
+            return "Action description in the shortcut reference"
+        case .shortcutSearchSubmitCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutEndSearch:
+            return "Action description in the shortcut reference"
+        case .shortcutEndSearchCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutImageZoom:
+            return "Action description in the shortcut reference"
+        case .shortcutImageZoomCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutImageFit:
+            return "Action description in the shortcut reference"
+        case .shortcutImageFitCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutImageScroll:
+            return "Action description in the shortcut reference"
+        case .shortcutImageScrollCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutFullScreen:
+            return "Action description in the shortcut reference"
+        case .shortcutFullScreenCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutVideoPlay:
+            return "Action description in the shortcut reference"
+        case .shortcutVideoPlayCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutVideoControls:
+            return "Action description in the shortcut reference"
+        case .shortcutVideoControlsCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutVideoSeek:
+            return "Action description in the shortcut reference"
+        case .shortcutVideoSeekCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutSlideshowStart:
+            return "Action description in the shortcut reference"
+        case .shortcutSlideshowStartCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutSlideshowNavigate:
+            return "Action description in the shortcut reference"
+        case .shortcutSlideshowNavigateCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutSlideshowStop:
+            return "Action description in the shortcut reference"
+        case .shortcutSlideshowStopCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutSettings:
+            return "Action description in the shortcut reference"
+        case .shortcutCheatsheet:
+            return "Action description in the shortcut reference"
+        case .shortcutCheatsheetCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutClose:
+            return "Action description in the shortcut reference"
+        case .shortcutCloseCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutQuit:
+            return "Action description in the shortcut reference"
         case .errorSearchRootEmpty, .errorSearchRootNotAbsolute, .errorSearchRootNotFound,
              .errorSearchRootNotAFolder, .errorSearchRootAccessDenied, .errorSearchRootNoUsableFolder:
             return "Reason shown below the input field when the search sheet validates its search root"
@@ -342,7 +638,7 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Quit item in the application menu. Do not translate the app name"
         case .menuFile, .menuEdit, .menuView, .menuGo:
             return "Menu bar menu names"
-        case .menuFileOpen, .menuFileShowContents, .menuFileEnclosingFolder,
+        case .menuFileNewFolder, .menuFileOpen, .menuFileShowContents, .menuFileEnclosingFolder,
              .menuFileRevealInFinder, .menuFileAddToFavorites, .menuFileFind,
              .menuFileTrash, .menuFileRemoveFromFavorites:
             return "File menu items (the Trash and Remove from Favorites items swap depending on the state)"
@@ -388,6 +684,8 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Section headings in the Settings window"
         case .settingsAutoplay, .settingsLoop, .settingsConfirm, .settingsRepeat:
             return "Checkboxes in the Settings window"
+        case .settingsConfirmNote:
+            return "Supplementary note under the confirmation checkbox in the Settings window. Also its accessibility help"
         case .settingsInterval:
             return "Interval label in the Settings window"
         case .settingsSeconds:
@@ -415,6 +713,8 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Tooltip for a directory tree row"
         case .treeA11yFavoriteName, .treeA11yFolderName:
             return "Accessibility label for a name edit field in the directory tree"
+        case .folderDefaultName:
+            return "Default name of a folder created with New Folder, before the user renames it. Use Finder's wording"
         case .searchKeyword, .searchRoot, .searchChoose, .searchChooseHelp,
              .searchSearch, .searchError:
             return "Labels, buttons, and accessibility text in the search sheet"
@@ -471,6 +771,8 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "One failure line for a file operation. The values are the name and the reason"
         case .dialogOperationMore:
             return "Remaining failure count for file operations. The value is the formatted count"
+        case .dialogTreeTrashOverlapTitle, .dialogTreeTrashOverlapMessage:
+            return "Error shown when folders selected in the directory tree include a folder inside another selected folder, so nothing is moved to the Trash"
         case .a11yThumbnail:
             return "Accessibility label for a thumbnail image"
         }

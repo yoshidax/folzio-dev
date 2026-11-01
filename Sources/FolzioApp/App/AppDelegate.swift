@@ -76,6 +76,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    @objc func showShortcuts(_ sender: Any?) {
+        mainWindowController?.showShortcuts()
+    }
+
     // MARK: - Preview Zoom (FR-135)
     // Set an explicit target so the actions arrive even when a sheet, the Settings window, or a rename is key (A-73).
 
@@ -95,6 +99,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 extension AppDelegate: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
+        case #selector(showShortcuts(_:)):
+            return mainWindowController?.canShowShortcuts ?? false
         case #selector(previewZoomIn(_:)):
             return mainWindowController?.zoomAvailability.canZoomIn ?? false
         case #selector(previewZoomOut(_:)):

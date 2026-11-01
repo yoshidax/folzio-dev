@@ -8,8 +8,15 @@ private final class ThumbnailCollectionView: NSCollectionView {
     var onReturnKey: (() -> Bool)?
     var onEscape: (() -> Bool)?
     var onDoubleClickItem: ((Int) -> Void)?
+    /// Location of the last context click, in this view's coordinates (FR-213, research.md R7).
+    private(set) var lastMenuLocation: NSPoint?
 
     override var acceptsFirstResponder: Bool { true }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        lastMenuLocation = convert(event.locationInWindow, from: nil)
+        return super.menu(for: event)
+    }
 
     override func mouseDown(with event: NSEvent) {
         super.mouseDown(with: event)
@@ -70,7 +77,7 @@ private final class RenameTextField: NSTextField {
 }
 
 @MainActor
-private final class ThumbnailItemView: NSCollectionViewItem {
+final class ThumbnailItemView: NSCollectionViewItem {
     private let thumbnailImageView = NSImageView()
     private let nameLabel = RenameTextField(wrappingLabelWithString: "")
 
@@ -247,9 +254,7 @@ private final class ThumbnailItemView: NSCollectionViewItem {
         if commit {
             let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty, newName != oldName, let url = representedURL {
-                nameLabel.stringValue = newName
-                nameLabel.setAccessibilityLabel(newName)
-                view.setAccessibilityLabel(newName)
+                // Keeps the original name until a successful operation updates the model and reloads the item.
                 onCommitRename?(url, newName)
             }
         }
@@ -338,6 +343,23 @@ final class ThumbnailModeView: NSView {
     var focusView: NSView { collectionView }
 
     var onRename: ((URL, String) async -> Void)?
+    /// Commits the name of a folder created with New Folder, without the rename confirmation (FR-211).
+    var onRenameNewFolder: ((URL, String) async -> Void)?
+    /// Folder whose rename was started right after New Folder (FR-211, research.md R8). Cleared whenever another
+    /// rename starts, so a later rename of the same folder still confirms.
+    private var newFolderRenamingURL: URL?
+
+    /// Whether the items on screen already include `url`. A listing change reloads the collection view and cancels any
+    /// rename, so naming a new folder waits until its item has been applied (FR-210).
+    func hasAppliedItem(for url: URL) -> Bool {
+        !isHidden && lastURLs.contains(url)
+    }
+
+    /// Whether the last context click hit no item, so the file list shows the background menu (FR-213, R7).
+    var isContextClickOnBackground: Bool {
+        guard let location = collectionView.lastMenuLocation else { return true }
+        return collectionView.indexPathForItem(at: location) == nil
+    }
     var onOpenItem: ((URL) -> Void)?
     var onInternalDrop: (([URL], URL, Bool) -> Void)?
     /// Esc. Returns true when handled (ends search results; FR-086).
@@ -733,10 +755,28 @@ final class ThumbnailModeView: NSView {
         // Do not start renaming inside a zip (FR-073). Consume the key.
         guard model.focusedItemCommands.allowsFileOperations else { return true }
         guard onRename != nil else { return false }
+        newFolderRenamingURL = nil
         let selected = model.selection.selected
         guard selected.count == 1,
-              let url = selected.first,
-              let index = model.listing.files.firstIndex(where: { $0.url == url }) else {
+              let url = selected.first else {
+            return false
+        }
+        return beginRenamingItem(url)
+    }
+
+    /// Starts renaming the selected folder right after New Folder; the commit skips the rename confirmation
+    /// (FR-210, FR-211).
+    @discardableResult
+    func beginRenamingNewFolder(_ url: URL) -> Bool {
+        guard onRenameNewFolder != nil else { return false }
+        newFolderRenamingURL = nil
+        guard beginRenamingItem(url) else { return false }
+        newFolderRenamingURL = url
+        return true
+    }
+
+    private func beginRenamingItem(_ url: URL) -> Bool {
+        guard let index = model.listing.files.firstIndex(where: { $0.url == url }) else {
             return false
         }
 
@@ -751,9 +791,11 @@ final class ThumbnailModeView: NSView {
     }
 
     private func commitRename(url: URL, newName: String) {
-        guard let onRename else { return }
+        let isNewFolder = newFolderRenamingURL == url
+        newFolderRenamingURL = nil
+        guard let handler = isNewFolder ? onRenameNewFolder : onRename else { return }
         Task { @MainActor in
-            await onRename(url, newName)
+            await handler(url, newName)
         }
     }
 

@@ -466,6 +466,26 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.search?.totalCount == 1)
     }
 
+    @Test("A case-only file rename updates the search row and its selection")
+    func caseOnlyFileRenameInSearch() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let photo = try env.makeResult("s/photo.jpg")
+        env.model.startSearch(pattern(), root: env.root)
+        await send([photo], env, expecting: 1)
+        env.model.select([photo.url], focused: photo.url)
+        let target = env.url("s/Photo.jpg")
+        let result = await FileOperationService().execute(
+            FileOperation(kind: .rename(newName: "Photo.jpg"), sources: [photo.url]), resolution: .abort
+        )
+        #expect(result.failed.isEmpty)
+        env.model.didRenameItem(at: photo.url, to: target)
+        #expect(names(env.model) == ["Photo.jpg"])
+        #expect(env.model.listing.files.first?.url.path == target.path)
+        #expect(env.model.selection.selected == [target])
+        #expect(env.model.selection.focused?.path == target.path)
+    }
+
     @Test("didRenameItem replaces and resorts the row, updates selected URLs, and removes unsupported media")
     func renamingResults() async throws {
         let env = try makeEnv()

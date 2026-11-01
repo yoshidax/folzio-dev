@@ -111,6 +111,19 @@ final class MainSplitViewController: NSSplitViewController {
         )
     }
 
+    /// Whether presenting the shortcut reference leaves the current editing and presentation state intact.
+    var canShowShortcuts: Bool {
+        guard let window = view.window else { return false }
+        return !fileListViewController.isEditingText
+            && window.attachedSheet == nil
+            && NSApp.modalWindow == nil
+            && !isFullScreenPresentation
+            && !window.styleMask.contains(.fullScreen)
+            && !isAppInitiatedFullScreenTransition
+            && !slideshowCoordinator.isActive
+            && !slideshowCoordinator.isRestoring
+    }
+
     /// Shared condition for the menu, toolbar, and start action (FR-114, FR-115).
     var canStartSlideshow: Bool {
         guard let window = view.window else { return false }
@@ -192,6 +205,10 @@ final class MainSplitViewController: NSSplitViewController {
                 await treeViewController?.refreshFolders(folders)
             }
         }
+        // After a tree drag or tree Move to Trash, select only the lead row (FR-219).
+        fileOperationCoordinator.onOperationFinished = { [weak treeViewController] sources, removed in
+            treeViewController?.didFinishOperation(sources: sources, removed: removed)
+        }
         // Rebase tree nodes synchronously before rebasing the listing (R64).
         fileOperationCoordinator.onFolderRenamed = { [weak treeViewController] oldURL, newURL in
             treeViewController?.didRenameFolder(from: oldURL, to: newURL)
@@ -199,6 +216,15 @@ final class MainSplitViewController: NSSplitViewController {
         fileListViewController.onRename = { [weak self] url, newName in
             guard let self else { return }
             await self.fileOperationCoordinator.rename(url, to: newName)
+        }
+        // Naming a folder right after New Folder skips the rename confirmation (FR-211).
+        fileListViewController.onRenameNewFolder = { [weak self] url, newName in
+            guard let self else { return }
+            await self.fileOperationCoordinator.rename(url, to: newName, confirms: false)
+        }
+        // New Folder on a favorite names the folder in the file list when it shows the registered folder (FR-210 (3)).
+        treeViewController.onBeginNamingInFileList = { [weak fileListViewController] url in
+            await fileListViewController?.beginNamingNewFolder(url) ?? false
         }
         historyNavigator.presentationHost = self
         coordinator.historyNavigator = historyNavigator
@@ -256,7 +282,7 @@ final class MainSplitViewController: NSSplitViewController {
             self?.previewViewController.togglePlayback()
         }
         previewViewController.onDoubleClick = { [weak self] in
-            self?.togglePreviewFullScreen()
+            self?.handlePreviewDoubleClick()
         }
         // Pane visibility changes also arrive here through PreviewViewController.isPaneVisible.
         previewViewController.onZoomAvailabilityChange = { [weak self] in
@@ -768,6 +794,17 @@ final class MainSplitViewController: NSSplitViewController {
         enterFullScreenPresentation()
         isAppInitiatedFullScreenTransition = true
         window.toggleFullScreen(nil)
+    }
+
+    /// Toggles full screen for a double-click in the preview. Does nothing on an empty preview outside full screen
+    /// (FR-035, EC-149). Controls were already excluded by the preview (EC-150).
+    private func handlePreviewDoubleClick() {
+        guard PreviewDoubleClick.togglesFullScreen(
+            isFullScreen: isFullScreenPresentation,
+            hasMedia: model.preview.hasMedia,
+            isOverControl: false
+        ) else { return }
+        togglePreviewFullScreen()
     }
 
     func exitPreviewFullScreenIfNeeded() {

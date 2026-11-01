@@ -27,7 +27,7 @@
 ## 2. 翻訳の対象と対象外
 
 - **対象**（FR-146）: アプリが管理し画面に表示する文言すべて。メニューバー・右クリックメニュー・ツールバー（項目名・パレットの名前・ツールチップ）・設定ウインドウ・
-  列見出しと並べ替え・ツリーの固定の行（「お気に入り」）とツールチップ・検索シートと検索バー・空状態・プレビューのエラー・確認モーダル・衝突ダイアログ・お気に入りの削除の確認・
+  ショートカット一覧（タイトル・目的別見出し・説明・条件）・列見出しと並べ替え・ツリーの固定の行（「お気に入り」）とツールチップ・検索シートと検索バー・空状態・プレビューのエラー・確認モーダル・衝突ダイアログ・お気に入りの削除の確認・
   拡張子の変更の確認・操作の失敗・名前の検証・zip のエラー・Core の値の文言・種類名のフォールバック・アクセシビリティのラベル・値・ヘルプ・読み上げ
 - **翻訳・変形しない**（FR-147）: ファイル名・フォルダ名・パス・お気に入りの表示名・検索キーワード・zip の中の名前・アプリ名「Folzio」・キーボードショートカットの表記・
   OS が返す種類名と理由
@@ -81,12 +81,15 @@
 | アプリ | 設定… | Settings… |
 | アプリ | 終了 | Quit Folzio |
 | — | ファイル | File |
+| ファイル | 新規フォルダ | New Folder |
 | ファイル | 開く | Open |
 | ファイル | 中を表示 | Show Contents |
 | ファイル | 上の階層へ | Enclosing Folder |
 | ファイル | Finder に表示 | Show in Finder |
 | ファイル | お気に入りに追加 | Add to Favorites |
 | ファイル | 検索… | Find… |
+| ファイル | ショートカット一覧… | Keyboard Shortcuts… |
+| ファイル | 閉じる | Close |
 | ファイル・編集 | ゴミ箱に入れる | Move to Trash |
 | ファイル・編集（ツリーでお気に入りを選択中） | お気に入りから削除 | Remove from Favorites |
 | — | 編集 | Edit |
@@ -127,6 +130,24 @@
 | 移動 | 戻る | Back |
 | 移動 | 進む | Forward |
 
+### ショートカット一覧（FR-206）
+
+ウィンドウタイトルは「ショートカット一覧」/「Keyboard Shortcuts」。
+キーの記号表記と安定した操作IDを変えず、言語の変更で見出し・説明・条件・読み上げ文言を更新する。
+先頭可視項目を保持し、ウィンドウの位置・サイズを作り直さない。
+
+| 日本語の区分 | 英語の区分 |
+|---|---|
+| ペインと表示 | Panes and View |
+| フォルダと履歴 | Folders and History |
+| 選択とファイル操作 | Selection and Files |
+| 検索 | Search |
+| 画像 | Images |
+| 動画とスライドショー | Video and Slideshow |
+| アプリとウィンドウ | App and Windows |
+
+各操作の掲載範囲と条件は [keyboard-and-menus.md](keyboard-and-menus.md) の「ショートカット一覧」を参照する。
+
 ### 右クリックメニュー
 
 | 場所 | 日本語 | 英語 |
@@ -136,7 +157,8 @@
 | ファイルリスト | コピー・ペースト・移動ペースト・パス名をコピー・複製・名前を変更・ゴミ箱に入れる・開く・中を表示・上の階層へ・Finder に表示 | メニューバーと同じ |
 | ツリー | ここにペースト | Paste Here |
 | ツリー | ここに移動ペースト | Move Item Here |
-| ツリー | お気に入りに追加・お気に入りから削除・Finder に表示・パス名をコピー・ゴミ箱に入れる・名前を変更 | メニューバーと同じ |
+| ツリー | お気に入りに追加・お気に入りから削除・Finder に表示・パス名をコピー・ゴミ箱に入れる・名前を変更・新規フォルダ | メニューバーと同じ |
+| ファイルリスト（背景） | 新規フォルダ・ペースト・移動ペースト・Finder に表示 | メニューバーと同じ |
 
 ### ツールバー
 
@@ -162,7 +184,8 @@
 | 動画を自動再生する | Play videos automatically |
 | 動画をループ再生する | Loop videos |
 | ファイル操作 | File Operations |
-| コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する（名前の変更・移動・ツリーのフォルダのゴミ箱は常に確認する） | Confirm before copying, moving to the Trash, or removing from Favorites (renaming, moving, and moving tree folders to the Trash are always confirmed) |
+| コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する | Confirm before copying, moving to the Trash, or removing from Favorites |
+| 名前の変更・移動と、ツリーのフォルダをゴミ箱に入れる操作は、この設定に関わらず常に確認します（確認の補足説明。アクセシビリティのヘルプにも使う） | Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless of this setting |
 | スライドショー | Slideshow |
 | 切り替え間隔 / 秒 | Interval / seconds |
 | 切り替え間隔（秒）（アクセシビリティ） | Interval (seconds) |
@@ -191,6 +214,7 @@
 | 種類名のフォールバック | フォルダ / ZIP アーカイブ | Folder / ZIP archive |
 | サムネイルの画像（アクセシビリティ） | サムネイル | Thumbnail |
 | ツリーの名前の編集欄（アクセシビリティ） | お気に入りの名前 / フォルダの名前 | Favorite name / Folder name |
+| 新規フォルダの既定名（作成時の表示言語で決め、作成後に言語を変えても名前は変えない） | 名称未設定フォルダ | untitled folder |
 
 ### 検索
 

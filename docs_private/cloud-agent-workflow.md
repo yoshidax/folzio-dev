@@ -1,7 +1,7 @@
 # Cloud Agent の作業手順
 
 Cloud Agent（Claude / Codex）が、Cloud 環境で feature またはバグ修正を進め、GitHub の PR にまとめるための手順。ローカルでの開発の手順は
-[folzio-sdd-increment.md](folzio-sdd-increment.md) と `AGENTS.md` の【ローカル】の節にあり、この手順書とは別に、そのまま使える。
+[folzio-sdd-increment.md](../shared-skills/folzio-sdd-increment.md) と `AGENTS.md` の【ローカル】の節にあり、この手順書とは別に、そのまま使える。
 
 この手順書は、feature の仕様（`specs/TAK-30-cloud-agent-workflow/`）の要件 FR-186〜FR-199 を実装したもの。規則の全体と区分は `AGENTS.md` の「運用の区分」にある。
 
@@ -59,7 +59,7 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 
 **結果の確認と修正**:
 
-1. 成否は、GitHub の MCP の `pull_request_read`（`get_check_runs`）で確認する。ジョブのステップごとの状態は `actions_list`（`list_workflow_jobs`）で見られる。
+1. 成否は、GitHub の MCP の `pull_request_read`（`get_check_runs`）で確認する。ジョブのステップごとの状態は `actions_list`（`list_workflow_jobs`）で見られる。**ただし、性能テストのステップは `continue-on-error` のため、失敗しても check もステップも `success` と表示される**。性能テストの結果は、`get_job_logs` でログの末尾を読み、`Test run with 27 tests passed` か `failed` かを確かめてから報告する（2026-10-31 に、同じコミットで 27 件中 3 件が失敗した実行と、全件成功した実行があった。共有ランナーでの測定のぶれと考えられる）。
 2. 失敗したら、`get_job_logs`（`job_id`、`return_content`、`tail_lines`）でログを読み、原因を判断する。**実行中のジョブのログは取得できない**（404）。完了またはタイムアウトを待ち、推測で修正しない。
 3. 修正は、ログを読んで原因をまとめてから行い、まとめて push する。macOS の使用時間（無料枠が小さい）を、無駄な再実行で消費しない。
 4. **置き換える API は、使う前に、ヘッダーや文書で存在を確認する**。たとえば `mach_task_self()` は C のマクロで Swift から使えず、確認せずに置き換えたために CI を 1 回無駄にした。
@@ -73,7 +73,7 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 
 | 実行する者 | 検査 |
 |---|---|
-| Cloud（Agent） | `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` |
+| Cloud（Agent） | `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` |
 | CI | `swift build`、`swift test`（通常のテストと性能テスト） |
 | 保守者（ローカル） | 起動スモーク（`scripts/make-app.sh` の後に `open .build/Folzio.app` で 3 ペインの表示）、ローカルの最新の Swift でのビルドとテスト、`scripts/dev/tests` の公開・配布のテスト（Apple silicon の macOS と `rsync` を前提とし、Cloud では 6 件が失敗する） |
 

@@ -3,6 +3,8 @@ import Foundation
 public protocol FileOperating: Sendable {
     func conflicts(for operation: FileOperation) -> [URL]
     func execute(_ operation: FileOperation, resolution: ConflictResolution) async -> FileOperationResult
+    /// Creates an empty folder in `parent` named `baseName`, or the next free numbered name (FR-208, FR-209).
+    func createFolder(in parent: URL, baseName: String) async -> Result<URL, OperationFailureReason>
 }
 
 public struct FileOperationService: FileOperating {
@@ -29,12 +31,52 @@ public struct FileOperationService: FileOperating {
         }
     }
 
-    /// `resolution` is used only when an item with the same name conflicts. `.abort` returns conflicting items as
-    /// failures and executes non-conflicting items (such as moving to the Trash or renaming without a name conflict).
+    /// Uses `resolution` for copy and move conflicts; renames always reject another entry with the same name.
+    /// Returns conflicting items as failures with `.abort` and executes non-conflicting items.
     public func execute(_ operation: FileOperation, resolution: ConflictResolution) async -> FileOperationResult {
         await Task.detached(priority: .userInitiated) {
             Self.perform(operation, resolution: resolution)
         }.value
+    }
+
+    /// Never overwrites or changes an existing entry. When an entry with the chosen name appears between listing
+    /// and creating, retries with the next numbered name (EC-142, research.md R3).
+    public func createFolder(in parent: URL, baseName: String) async -> Result<URL, OperationFailureReason> {
+        await Task.detached(priority: .userInitiated) {
+            Self.makeFolder(in: parent, baseName: baseName)
+        }.value
+    }
+
+    /// Upper bound on retries when a name collides at creation time.
+    private static let createFolderAttempts = 100
+
+    private static func makeFolder(in parent: URL, baseName: String) -> Result<URL, OperationFailureReason> {
+        let fileManager = FileManager.default
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(atPath: parent.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+            return .failure(.destinationNotFound)
+        }
+
+        var takenNames: Set<String>
+        do {
+            takenNames = Set(try fileManager.contentsOfDirectory(atPath: parent.path))
+        } catch {
+            return .failure(.systemFailure(systemReason: error.localizedDescription))
+        }
+
+        for _ in 0..<createFolderAttempts {
+            let name = newFolderName(baseName: baseName, existingNames: takenNames)
+            let target = parent.appendingPathComponent(name, isDirectory: true)
+            do {
+                try fileManager.createDirectory(at: target, withIntermediateDirectories: false)
+                return .success(target)
+            } catch let error as CocoaError where error.code == .fileWriteFileExists {
+                takenNames.insert(name)
+            } catch {
+                return .failure(.systemFailure(systemReason: error.localizedDescription))
+            }
+        }
+        return .failure(.sameNameAtDestination)
     }
 
     private static func perform(_ operation: FileOperation, resolution: ConflictResolution) -> FileOperationResult {
@@ -59,7 +101,6 @@ public struct FileOperationService: FileOperating {
                     resultURL = try rename(
                         source,
                         to: newName,
-                        resolution: resolution,
                         fileManager: fileManager
                     )
                 case .trash:
@@ -152,7 +193,6 @@ public struct FileOperationService: FileOperating {
     private static func rename(
         _ source: URL,
         to newName: String,
-        resolution: ConflictResolution,
         fileManager: FileManager
     ) throws -> URL {
         guard !newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -169,22 +209,21 @@ public struct FileOperationService: FileOperating {
         }
 
         let parent = source.deletingLastPathComponent()
-        var target = parent.appendingPathComponent(newName)
+        let target = parent.appendingPathComponent(newName)
         if target.standardizedFileURL == source.standardizedFileURL {
             return source
         }
 
-        if fileManager.fileExists(atPath: target.path) {
-            switch resolution {
-            case .abort:
-                throw OperationFailure(reason: .sameNameExists)
-            case .replace:
-                _ = try moveToTrash(target, fileManager: fileManager)
-            case .keepBoth:
-                let names = Set((try? fileManager.contentsOfDirectory(atPath: parent.path)) ?? [])
-                let unique = uniqueName(for: newName, existingNames: names)
-                target = parent.appendingPathComponent(unique)
-            }
+        // Compare directory entries rather than file identities: separate hard links and symlinks still conflict.
+        let siblings = try fileManager.contentsOfDirectory(atPath: parent.path)
+        guard !siblings.contains(where: {
+            $0 != source.lastPathComponent && $0.caseInsensitiveCompare(newName) == .orderedSame
+        }) else {
+            throw OperationFailure(reason: .sameNameExists)
+        }
+        let isCaseOnly = source.lastPathComponent.caseInsensitiveCompare(newName) == .orderedSame
+        if !isCaseOnly, fileManager.fileExists(atPath: target.path) {
+            throw OperationFailure(reason: .sameNameExists)
         }
 
         do {

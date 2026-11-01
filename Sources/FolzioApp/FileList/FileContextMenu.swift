@@ -12,6 +12,13 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
     private let openContainerItem = NSMenuItem()
     private let goUpItem = NSMenuItem()
     private let copyPathnameItem = NSMenuItem()
+    private let newFolderItem = NSMenuItem()
+    private let revealFolderItem = NSMenuItem()
+    /// Items for a context click on a row or item, in display order (separators included).
+    private var itemMenuItems: [NSMenuItem] = []
+    /// Items for a context click on the background, targeting the displayed folder (FR-213).
+    private var backgroundMenuItems: [NSMenuItem] = []
+    private var showsBackgroundItems: Bool?
 
     init(host: FileListViewController) {
         self.host = host
@@ -37,6 +44,15 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        // A click on the background shows the displayed folder's menu instead of the selection's (FR-213, R7).
+        let isBackground = host?.isContextClickOnBackground ?? false
+        if showsBackgroundItems != isBackground {
+            showsBackgroundItems = isBackground
+            menu.removeAllItems()
+            for item in isBackground ? backgroundMenuItems : itemMenuItems {
+                menu.addItem(item)
+            }
+        }
         MainMenu.refreshTitles(in: menu)
         let urls = host?.selectedFileURLs ?? []
         if urls.count == 1, let name = urls.first?.lastPathComponent {
@@ -145,6 +161,25 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
             keyEquivalent: "",
             modifiers: [.command]
         )
+        itemMenuItems = menu.items
+
+        newFolderItem.title = l10n.text(.menuFileNewFolder)
+        MainMenu.bind(newFolderItem, .menuFileNewFolder)
+        newFolderItem.action = #selector(FileListViewController.newFolder(_:))
+        newFolderItem.keyEquivalent = "N"
+        newFolderItem.keyEquivalentModifierMask = [.command]
+        newFolderItem.target = host
+
+        revealFolderItem.title = l10n.text(.menuFileRevealInFinder)
+        MainMenu.bind(revealFolderItem, .menuFileRevealInFinder)
+        revealFolderItem.action = #selector(FileListViewController.revealDisplayedFolderInFinder(_:))
+        revealFolderItem.target = host
+
+        // Paste and Move Item Here are shared with the item menu; only one of the two lists is in the menu at a time.
+        backgroundMenuItems = [
+            newFolderItem, .separator(), pasteItem, movePasteItem, .separator(), revealFolderItem,
+        ]
+        showsBackgroundItems = false
     }
 
     private func addItem(

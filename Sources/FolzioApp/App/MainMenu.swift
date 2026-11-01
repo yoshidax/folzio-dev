@@ -70,6 +70,18 @@ final class MainMenu {
         fileMenu.identifier = NSUserInterfaceItemIdentifier("menu.file")
         fileMenuItem.submenu = fileMenu
 
+        // ⇧⌘N, as in Finder. Both FileListViewController and DirectoryTreeViewController implement newFolder(_:); the
+        // responder chain sends it to the focused pane, which decides the destination (FR-208, research.md R6).
+        let newFolderItem = NSMenuItem(
+            title: l10n.text(.menuFileNewFolder),
+            action: #selector(FileListViewController.newFolder(_:)),
+            keyEquivalent: "N"
+        )
+        newFolderItem.keyEquivalentModifierMask = [.command]
+        newFolderItem.target = nil
+        fileMenu.addItem(newFolderItem)
+        fileMenu.addItem(.separator())
+
         let openItem = NSMenuItem(
             title: l10n.text(.menuFileOpen),
             action: #selector(FileListViewController.open(_:)),
@@ -122,6 +134,14 @@ final class MainMenu {
         searchItem.keyEquivalentModifierMask = [.command]
         searchItem.target = nil
         fileMenu.addItem(searchItem)
+        let shortcutsItem = NSMenuItem(
+            title: l10n.text(.menuFileShortcuts),
+            action: #selector(AppDelegate.showShortcuts(_:)),
+            keyEquivalent: "/"
+        )
+        shortcutsItem.keyEquivalentModifierMask = [.command]
+        shortcutsItem.target = zoomTarget
+        fileMenu.addItem(shortcutsItem)
         fileMenu.addItem(.separator())
 
         let fileTrashItem = NSMenuItem(
@@ -132,6 +152,14 @@ final class MainMenu {
         fileTrashItem.target = nil
         fileMenu.addItem(fileTrashItem)
         fileMenu.delegate = trashTitleReset
+        fileMenu.addItem(.separator())
+        let closeItem = NSMenuItem(
+            title: l10n.text(.menuFileClose),
+            action: #selector(NSWindow.performClose(_:)),
+            keyEquivalent: "w"
+        )
+        closeItem.target = nil
+        fileMenu.addItem(closeItem)
 
         let editMenuItem = NSMenuItem()
         mainMenu.addItem(editMenuItem)
@@ -320,10 +348,11 @@ final class MainMenu {
 
         let bindings: [(NSMenuItem, TextKey)] = [
             (settingsItem, .menuAppSettings), (quitItem, .menuAppQuit),
-            (fileMenuItem, .menuFile), (openItem, .menuFileOpen),
+            (fileMenuItem, .menuFile), (newFolderItem, .menuFileNewFolder), (openItem, .menuFileOpen),
             (openContainerItem, .menuFileShowContents), (goUpItem, .menuFileEnclosingFolder),
             (revealItem, .menuFileRevealInFinder), (addFavoriteItem, .menuFileAddToFavorites),
             (searchItem, .menuFileFind), (fileTrashItem, .menuFileTrash),
+            (shortcutsItem, .menuFileShortcuts), (closeItem, .menuFileClose),
             (editMenuItem, .menuEdit), (redoItem, .menuEditRedo),
             (movePasteItem, .menuEditMovePaste), (copyPathnameItem, .menuEditCopyPathname), (duplicateItem, .menuEditDuplicate),
             (renameItem, .menuEditRename), (editTrashItem, .menuFileTrash),
