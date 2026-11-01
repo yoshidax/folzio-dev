@@ -21,7 +21,7 @@
 - [x] T006 `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift` に、選択中の行の role の配列と、メニュー・ドラッグを始めた行から `TreeBatchTargets` を作る補助を加え、
   `selectedItem` を使う判断を置き換える準備をする（R7）。この時点では `allowsMultipleSelection` を変えない
 
-## Phase 3: User Story 37 - 複数選択中の表示とメニュー (P2、P1 の前提)
+## Phase 3: User Story 38 - 複数選択中の表示とメニュー (P2、P1 の前提)
 
 **Goal**: 複数選択でき、主の行のフォルダを表示し、単一の対象を前提とする操作を誤って実行しない
 
@@ -40,7 +40,7 @@
   結果を検査して戻す。隠れた主の行からのキーボードの移動は見える祖先の行を起点にする。1行の選択の折りたたみは変えない（EC-148・A-131、R9）
 - [x] T011 [US38] 名前の編集中に ⌘クリック・Shift クリックで選択を変えたとき、編集を確定することを確かめ、必要なら `finishEditing` を呼ぶ（FR-103・FR-102）
 
-## Phase 4: User Story 35 - 複数のフォルダをまとめて移動・コピーする (P1)
+## Phase 4: User Story 36 - 複数のフォルダをまとめて移動・コピーする (P1)
 
 **Goal**: 複数選択からのドラッグで、まとめて移動・コピーする
 
@@ -54,7 +54,7 @@
 - [x] T015 [US36] 宛先の検証が複数のツリーのフォルダで `InternalDropValidation`（EC-16・EC-121）に従うことを `Tests/FolzioCoreTests/InternalDropValidationTests.swift` で確かめ、
   足りないケース（異なる親の複数フォルダ・親と子の同時選択・宛先が選択の1つの配下）を追加する
 
-## Phase 5: User Story 36 - 複数のフォルダをまとめてゴミ箱に入れる (P1)
+## Phase 5: User Story 37 - 複数のフォルダをまとめてゴミ箱に入れる (P1)
 
 **Goal**: ⌘⌫ と「ゴミ箱に入れる」で、まとめてゴミ箱に入れる
 
