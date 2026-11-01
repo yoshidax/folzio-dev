@@ -1,0 +1,68 @@
+# Validation: TAK-15
+
+## 前提
+
+Cloud は GUI を起動せず、Swift も実行できない。ビルドとテストは macOS CI で、GUI の確認は保守者がローカルで行う。
+実メモリの数値は受け入れ基準にしない（A-146）。
+
+## Cloud の検査
+
+```bash
+scripts/check-no-network.sh
+scripts/check-readme-sync.sh master
+scripts/dev/check-english-comments.sh
+scripts/dev/check-skill-sync.sh
+python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"
+```
+
+## macOS CI とローカル
+
+CI で `swift build`・`swift test`（通常のテストと性能テスト）の成功を確認する。性能テストのステップは失敗しても成功と表示されるため、
+ログの末尾で `Test run with 27 tests passed` を確かめる（cloud-agent-workflow.md の「CI の確認」）。保守者は最新のローカル Swift でも次を実行する。
+
+```bash
+swift build
+swift test
+swift test --filter ImageLoadSchedulerTests
+swift test --filter BrowserModelImageLoadTests
+scripts/make-app.sh
+open .build/Folzio.app
+```
+
+## 自動テストで確かめること
+
+| 確認 | 対応 |
+|---|---|
+| 40 回の連続選択で同時実行数の最大値が 2 以下（通常画像） | FR-233、SC-117、US44-AS1 |
+| 同上（zip の中の画像） | FR-233、SC-117、US45-AS1 |
+| 連続選択の後に開始された先読みが最後の選択の前後 1 件だけ | FR-234、SC-118、US44-AS3・AS4 |
+| 最後に選択した画像だけがプレビューに反映される | FR-237、US44-AS2 |
+| 枠が埋まった先読みがあっても、新しいプレビューが先に枠を得る | FR-235、US46-AS2 |
+| 先読みは同時に 1 件まで | FR-235 |
+| 先読み中の画像を選択しても、デコードは 1 回 | FR-236 |
+| 失敗・取り消しの後も枠が戻り、次の画像を表示できる | EC-166 |
+| フォルダの移動で待機中の先読みが取り消される | EC-167、US45-AS2 |
+| 既存の先読み済みの切り替え・性能テストが同じ基準で通る | US46-AS1、SC-119 |
+
+## 目視の確認（保守者、GUI）
+
+### 準備
+
+大きな画像（例: 24 メガピクセル以上の JPEG）を 30 枚以上入れたフォルダと、同様の画像を入れた zip を用意する。
+
+### シナリオ 1: 通常の画像の連続送り（US44）
+
+1. `open .build/Folzio.app` で起動し、フォルダを開いて先頭の画像を選ぶ
+2. ↓ キーを数秒間押し続けて画像を連続して送り、離す
+3. 期待: アプリが固まらず、離した後に最後の画像が表示される。途中の画像が後から表示に割り込まない
+4. Activity Monitor で Folzio のメモリを見て、送っている間に極端に増え続けない（目安。数値の基準は設けない）
+
+### シナリオ 2: zip の中の画像の連続送り（US45）
+
+1. zip を開いて先頭の画像を選び、シナリオ 1 と同じように連続して送る
+2. 期待: シナリオ 1 と同じ。zip から出てフォルダに戻っても、すぐに画像を選んで表示できる
+
+### シナリオ 3: 通常の操作（US46）
+
+1. 画像を 1 枚ずつ ↓ で送る
+2. 期待: 先読み済みの画像は一瞬で切り替わる。初めて開く大きな画像も、従来と体感で変わらない時間で表示される
