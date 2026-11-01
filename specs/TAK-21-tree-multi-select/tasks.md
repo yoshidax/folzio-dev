@@ -76,7 +76,7 @@
 - [x] T022 [MANUAL] 保守者に、起動スモークと quickstart の S1〜S14 をローカルで実行してもらい（SC-105〜SC-107 の確認を含む）、結果を `checklists/validation.md` に記録する。S3・S5・S7 は R4・R5・R9 の設計どおりに動くことを確かめる
 - [x] T023 ユーザーガイド `docs/usage.ja.md`・`docs/usage.md` のツリーの操作の説明（お気に入り・⌘Delete の項）に、複数選択（⌘クリック・Shift クリック・Shift+↑↓）と
   一括の移動・コピー・ゴミ箱を両方に同じ構成で追記する。README は機能の概要だけで個別の操作を書いていないため変えない（`README.ja.md` 20〜21 行）
-- [ ] T024 検証の完了後に最新の master を取り込み、spec.md の「反映先」の項目を `specs/product/` と `specs/product/contracts/keyboard-and-menus.md` へ反映する。
+- [x] T024 検証の完了後に最新の master を取り込み、spec.md の「反映先」の項目を `specs/product/` と `specs/product/contracts/keyboard-and-menus.md` へ反映する。
   ID の衝突を確認し、衝突すればこの feature の ID を振り直す。差分を保守者に示し、承認後にコミットして spec.md を凍結する
 
 ## Dependencies & Execution Order
@@ -116,4 +116,4 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
 - 2026-11-01: TAK-17 との相互作用を修正。複数を対象にする右クリックメニューの先頭に「新規フォルダ」を加え（`TreeBatchTargets.contextMenu`）、
   複数を対象にするときは右クリックの「新規フォルダ」を無効にした。⇧⌘N・「ファイル > 新規フォルダ」は単一選択でだけ有効（保守者の決定、spec の Clarifications）。
   この変更の CI と GUI（S9 の ⇧⌘N と、TAK-17 の quickstart の手順 1・4・6）は未確認
-
+- 2026-11-01: T024 の `specs/product/` への反映を保守者が承認。directory-tree.md・file-operations.md・contracts/keyboard-and-menus.md・README.md に反映し、spec.md に移行済み・凍結の注記を入れた。反映後に ID の重複がないことを確かめた
