@@ -42,13 +42,13 @@ App 側は、割り当ての変更通知を受けて、メインメニュー・�
 |---|---|
 | I ローカル完結 | PASS / PASS。通信なし。保存はアプリの `UserDefaults` のみ |
 | II 体感性能 | PASS / PASS。UI スレッドの重い処理なし。起動時の読み込みは辞書 1 つ |
-| III キーボード・アクセシビリティ | PASS / PASS。コマンドは常に 1 つのキーを持ち（FR-240）、記録 UI は Tab / Space で操作でき、状態を読み上げる（FR-242）。「すべて既定値に戻す」で全操作が既定のキーに戻る |
+| III キーボード・アクセシビリティ | PASS / PASS。コマンドは常に 1 つのキーを持ち（FR-255）、記録 UI は Tab / Space で操作でき、状態を読み上げる（FR-257）。「すべて既定値に戻す」で全操作が既定のキーに戻る |
 | IV テスト必須 | PASS / PASS。検証・保存・整合は Core で自動テスト。異常系（不正な保存値、重複、予約キー）を含める。GUI は quickstart.md の手順で保守者が確認し、確認前は完了にしない |
-| V YAGNI | PASS / PASS。エクスポート、プロファイル、複数キー、グローバルショートカットは作らない（A-151）。「なし」の割り当ても作らない。汎用の設定フレームワークは作らず、割り当ての表 1 つに集約する |
-| 仕様管理 | PASS / PASS。新しい feature ディレクトリだけを作る。`specs/product/` への反映は実装・検証の後、PR の最後に行う。ID は product と他の feature の最大値 FR-232 / SC-116 / EC-163 / A-143 / US43 の次から採った |
+| V YAGNI | PASS / PASS。エクスポート、プロファイル、複数キー、グローバルショートカットは作らない（A-156）。「なし」の割り当ても作らない。汎用の設定フレームワークは作らず、割り当ての表 1 つに集約する |
+| 仕様管理 | PASS / PASS。新しい feature ディレクトリだけを作る。`specs/product/` への反映は実装・検証の後、PR の最後に行う。ID は product と他の feature の最大値 FR-247 / SC-116 / EC-163 / A-143 / US43 の次から採った |
 
 Complexity Tracking: 追加の複雑さはない。ただし「メニュー項目を組み立てる 4 か所とコンテキストメニューが、キーを直書きしている」点は、
-個別に直すと割り当ての元が分散して FR-238 を満たせないため、割り当ての表から読む 1 つの経路に置き換える（research.md R2）。
+個別に直すと割り当ての元が分散して FR-253 を満たせないため、割り当ての表から読む 1 つの経路に置き換える（research.md R2）。
 
 ## Project Structure
 
@@ -99,7 +99,7 @@ Sources/FolzioApp/
 Tests/FolzioCoreTests/Shortcuts/
 ├── KeyCombinationTests.swift
 ├── ShortcutAssignmentsTests.swift
-├── ShortcutCommandConsistencyTests.swift   # 既定値どうし・既定値と固定/予約キーの整合（FR-244）
+├── ShortcutCommandConsistencyTests.swift   # 既定値どうし・既定値と固定/予約キーの整合（FR-259）
 └── ShortcutOverridesStoreTests.swift
 Tests/FolzioCoreTests/Localization/ShortcutSettingsTextTests.swift
 ```

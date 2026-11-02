@@ -111,7 +111,7 @@
 
 | キー | 型 | 既定値 | 対応 |
 |------|----|--------|------|
-| `shortcuts.overrides` | [String: String]（コマンド ID → 組み合わせ） | （未設定 = すべて既定値） | FR-239 |
+| `shortcuts.overrides` | [String: String]（コマンド ID → 組み合わせ） | （未設定 = すべて既定値） | FR-254 |
 
 読み込み時の不正な値の扱いは data-model.md と research.md R9。
 

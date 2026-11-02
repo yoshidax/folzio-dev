@@ -16,7 +16,7 @@
 - 比較は `key` と `modifiers` の等価。大文字の `key`（例 `"N"`）は読み込み時に小文字と `shift` へ正規化する
 - 記録時は、押した結果の文字（`charactersIgnoringModifiers`）をそのまま `key` にし、⇧は `modifiers` に残す。記号キーは、メニューのキー等価と同じく
   **⇧が必要な文字を ⇧なしの表記で扱う**: 既存の `⌘+`（`key = "+"`、`modifiers = [command]`）は、押下 ⇧⌘= を同じ組み合わせとして解釈する。
-  正規化は Core の関数 `KeyCombination.normalized(key:modifiers:)` に集め、判定する対象は US 配列の ⇧記号（`+ ? < > : " { } | ~ ! @ # $ % ^ & * ( ) _`）に限る（A-145）。
+  正規化は Core の関数 `KeyCombination.normalized(key:modifiers:)` に集め、判定する対象は US 配列の ⇧記号（`+ ? < > : " { } | ~ ! @ # $ % ^ & * ( ) _`）に限る（A-150）。
   文字キー（a〜z）の ⇧は `shift` として残す（⇧⌘N と ⌘N は別）
 - 表記: 修飾キーの記号 + キー（例 `⇧⌘N`、`⌘↓`、`⌘Delete`、`⌥⌘J`）。既存のショートカット一覧と同じ記号を使う
 - 保存形式: 修飾キーを `ctrl,opt,shift,cmd` の順に `+` でつなぎ、最後に key（例 `ctrl+opt+cmd+j`、`shift+cmd+n`）。解釈できない文字列は不正とする
