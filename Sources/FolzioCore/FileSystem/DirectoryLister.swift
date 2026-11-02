@@ -24,6 +24,7 @@ extension DirectoryListing {
 public struct DirectoryLister: DirectoryListing {
     private static let fileKeys = Set<URLResourceKey>([
         .creationDateKey,
+        .contentModificationDateKey,
         .isDirectoryKey,
         .contentTypeKey,
         .fileSizeKey,
@@ -33,6 +34,7 @@ public struct DirectoryLister: DirectoryListing {
     /// Keys used for media row values (used by search, which reads only matching files)
     private static let mediaKeys = Set<URLResourceKey>([
         .creationDateKey,
+        .contentModificationDateKey,
         .fileSizeKey,
         .localizedTypeDescriptionKey,
     ]).union(FileContentVersion.resourceKeys)
@@ -80,7 +82,10 @@ public struct DirectoryLister: DirectoryListing {
                     // As in the tree, do not show packages (such as .app) as folders (R29).
                     // isPackage is expensive, so query it only for directories.
                     guard (try? url.resourceValues(forKeys: [.isPackageKey]))?.isPackage != true else { return nil }
-                    return Self.folderRow(at: url, creationDate: values?.creationDate, kindNames: kindNames)
+                    return Self.folderRow(
+                        at: url, creationDate: values?.creationDate,
+                        modificationDate: values?.contentModificationDate, kindNames: kindNames
+                    )
                 }
 
                 if url.pathExtension.lowercased() == Self.archiveExtension {
@@ -90,6 +95,7 @@ public struct DirectoryLister: DirectoryListing {
                         kind: .archive,
                         typeDescription: values?.localizedTypeDescription ?? kindNames.zipArchive,
                         creationDate: values?.creationDate,
+                        modificationDate: values?.contentModificationDate,
                         fileSize: Int64(values?.fileSize ?? 0),
                         kindNameSource: values?.localizedTypeDescription == nil ? .zipArchive : nil
                     )
@@ -102,13 +108,16 @@ public struct DirectoryLister: DirectoryListing {
 
     /// Builds a folder row. Shared with `FileNameSearcher` so listings and search results use the same values
     /// (FR-139, R1).
-    static func folderRow(at url: URL, creationDate: Date?, kindNames: KindNames) -> MediaFile {
+    static func folderRow(
+        at url: URL, creationDate: Date?, modificationDate: Date? = nil, kindNames: KindNames
+    ) -> MediaFile {
         MediaFile(
             url: url,
             name: url.lastPathComponent,
             kind: .folder,
             typeDescription: kindNames.folder,
             creationDate: creationDate,
+            modificationDate: modificationDate,
             fileSize: 0,
             kindNameSource: .folder
         )
@@ -127,6 +136,7 @@ public struct DirectoryLister: DirectoryListing {
             kind: .media(kind),
             typeDescription: values?.localizedTypeDescription ?? kind.rawValue.uppercased(),
             creationDate: values?.creationDate,
+            modificationDate: values?.contentModificationDate,
             fileSize: Int64(values?.fileSize ?? 0),
             contentVersion: FileContentVersion(resourceValues: values)
         )

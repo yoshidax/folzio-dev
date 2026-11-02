@@ -13,6 +13,8 @@ public struct SettingsStore {
         static let thumbnailSize = "view.thumbnailSize"
         static let sortColumn = "view.sort.column"
         static let sortAscending = "view.sort.ascending"
+        static let nameSortAscending = "view.sort.nameAscending"
+        static let visibleColumns = "view.list.visibleColumns"
         static let lastFolderPath = "view.lastFolderPath"
         static let showsToolbar = "view.showsToolbar"
         static let showsZipFiles = "view.showsZipFiles"
@@ -57,6 +59,7 @@ public struct SettingsStore {
                 .flatMap(SortColumn.init(rawValue:))
                 .flatMap { $0 == .location ? nil : $0 } ?? .name
             let ascending = storedBool(forKey: Keys.sortAscending) ?? true
+            let nameAscending = column == .name ? ascending : (storedBool(forKey: Keys.nameSortAscending) ?? true)
             let lastFolder = (defaults.object(forKey: Keys.lastFolderPath) as? String)
                 .flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
             let showsToolbar = storedBool(forKey: Keys.showsToolbar) ?? false
@@ -68,7 +71,9 @@ public struct SettingsStore {
                 sortOrder: SortOrder(column: column, ascending: ascending),
                 lastFolder: lastFolder,
                 showsToolbar: showsToolbar,
-                showsZipFiles: showsZipFiles
+                showsZipFiles: showsZipFiles,
+                visibleColumns: ListColumn.visibleColumns(fromStored: defaults.object(forKey: Keys.visibleColumns)),
+                nameSortAscending: nameAscending
             )
         }
         nonmutating set {
@@ -85,6 +90,11 @@ public struct SettingsStore {
             }
             defaults.set(newValue.showsToolbar, forKey: Keys.showsToolbar)
             defaults.set(newValue.showsZipFiles, forKey: Keys.showsZipFiles)
+            defaults.set(ListColumn.storedValue(of: newValue.visibleColumns), forKey: Keys.visibleColumns)
+            defaults.set(
+                newValue.sortOrder.column == .name ? newValue.sortOrder.ascending : newValue.nameSortAscending,
+                forKey: Keys.nameSortAscending
+            )
         }
     }
 
