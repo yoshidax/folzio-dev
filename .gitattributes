@@ -5,6 +5,7 @@
 /.kilo                    export-ignore
 /.codex                   export-ignore
 /.vscode                  export-ignore
+/.github/pull_request_template.md export-ignore
 /specs                    export-ignore
 /docs_private             export-ignore
 /shared-skills            export-ignore
