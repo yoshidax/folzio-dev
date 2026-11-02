@@ -166,7 +166,17 @@ public final class BrowserModel {
     private var listingTask: Task<Void, Never>?
     private var previewTask: Task<Void, Never>?
     private var previewGeneration = 0
-    private var prefetchTasks: [URL: Task<Void, Never>] = [:]
+    private var prefetchTasks: [URL: PrefetchEntry] = [:]
+    /// Shares the load slots between the preview and the prefetch (FR-282, FR-284).
+    private let loadScheduler: ImageLoadScheduler
+
+    /// One prefetch of a neighbor image. `isRunning` is set once the prefetch holds a load slot, which tells the
+    /// preview whether it can wait for the result instead of starting the same load again (FR-285).
+    @MainActor
+    private final class PrefetchEntry {
+        var task: Task<Void, Never>?
+        var isRunning = false
+    }
     private var isRevertingSortOrder = false
 
     /// Running search enumerations (the original and any added for renames). Cancelled by a new search or folder
@@ -211,8 +221,10 @@ public final class BrowserModel {
         cache: DecodedImageCache,
         settings: SettingsStore,
         archiveReader: (any ArchiveReading)? = nil,
-        searcher: (any FileNameSearching)? = nil
+        searcher: (any FileNameSearching)? = nil,
+        loadScheduler: ImageLoadScheduler = ImageLoadScheduler()
     ) {
+        self.loadScheduler = loadScheduler
         self.lister = lister
         self.kindNames = kindNames
         self.decoder = decoder
@@ -1075,8 +1087,8 @@ public final class BrowserModel {
         previewGeneration += 1
         previewTask?.cancel()
         previewTask = nil
-        for task in prefetchTasks.values {
-            task.cancel()
+        for entry in prefetchTasks.values {
+            entry.task?.cancel()
         }
         prefetchTasks.removeAll()
 
@@ -1572,8 +1584,18 @@ public final class BrowserModel {
             return
         }
 
+        // The focused image is no longer a neighbor to prefetch. Take over its prefetch instead of loading it twice
+        // (FR-283, FR-285).
+        let inheritedPrefetch = claimPrefetch(for: url)
+
         if let parsed = ArchiveURL.parse(url) {
-            loadArchivePreview(for: url, path: parsed.path, version: version, generation: generation)
+            loadArchivePreview(
+                for: url,
+                path: parsed.path,
+                version: version,
+                generation: generation,
+                inheriting: inheritedPrefetch
+            )
             return
         }
 
@@ -1583,13 +1605,32 @@ public final class BrowserModel {
         }
 
         preview = .loading(url)
-        startImagePreview(for: url, version: version, generation: generation)
+        startImagePreview(for: url, version: version, generation: generation, inheriting: inheritedPrefetch)
+    }
+
+    /// Removes the prefetch of `url` and returns it when it already holds a load slot, so that the preview can wait
+    /// for its result. A prefetch that still waits for a slot is cancelled and the preview loads the image itself.
+    private func claimPrefetch(for url: URL) -> Task<Void, Never>? {
+        guard let entry = prefetchTasks.removeValue(forKey: url) else { return nil }
+        if entry.isRunning {
+            return entry.task
+        }
+        entry.task?.cancel()
+        return nil
     }
 
     /// Decodes a still image for the preview and shows the result unless a newer preview request started.
-    private func startImagePreview(for url: URL, version: FileContentVersion?, generation: Int) {
+    private func startImagePreview(
+        for url: URL,
+        version: FileContentVersion?,
+        generation: Int,
+        inheriting inheritedPrefetch: Task<Void, Never>? = nil
+    ) {
         previewTask = Task { [weak self] in
             guard let self else { return }
+            // The result of the inherited prefetch is in the cache when it succeeds (FR-285).
+            await inheritedPrefetch?.value
+            guard !Task.isCancelled, self.previewGeneration == generation else { return }
             let result = await self.decodedImage(for: url, version: version)
             guard !Task.isCancelled, self.previewGeneration == generation else { return }
 
@@ -1605,7 +1646,13 @@ public final class BrowserModel {
         }
     }
 
-    private func loadArchivePreview(for url: URL, path: String, version: FileContentVersion?, generation: Int) {
+    private func loadArchivePreview(
+        for url: URL,
+        path: String,
+        version: FileContentVersion?,
+        generation: Int,
+        inheriting inheritedPrefetch: Task<Void, Never>? = nil
+    ) {
         if let entry = archiveIndex?.entry(at: path) {
             switch entry.readability {
             case .readable:
@@ -1626,6 +1673,8 @@ public final class BrowserModel {
         let maxPixelSize = max(1, screenMaxPixel)
         previewTask = Task { [weak self] in
             guard let self else { return }
+            await inheritedPrefetch?.value
+            guard !Task.isCancelled, self.previewGeneration == generation else { return }
             let result = await self.archiveImage(for: url, version: version, maxPixelSize: maxPixelSize)
             guard !Task.isCancelled, self.previewGeneration == generation else { return }
 
@@ -1641,11 +1690,33 @@ public final class BrowserModel {
     }
 
     /// Obtains an image inside a zip in this order: cache, read `Data`, decode. Returns animated images as `Data`.
+    /// The read and the decode run while holding a load slot (FR-282). A request cancelled while waiting for the
+    /// slot returns a failure that the caller discards because its task is cancelled.
     private func archiveImage(
+        for url: URL,
+        version: FileContentVersion?,
+        maxPixelSize: Int,
+        priority: ImageLoadPriority = .preview,
+        entry: PrefetchEntry? = nil
+    ) async -> ArchiveImageResult {
+        if let cached = await cache.get(url, version: version) {
+            return .image(cached)
+        }
+
+        guard await loadScheduler.acquire(priority) else { return .failure(.unreadable) }
+        entry?.isRunning = true
+        let result = await readAndDecodeArchiveImage(for: url, version: version, maxPixelSize: maxPixelSize)
+        await loadScheduler.release(priority)
+        return result
+    }
+
+    /// Reads and decodes a zip entry. The caller holds a load slot.
+    private func readAndDecodeArchiveImage(
         for url: URL,
         version: FileContentVersion?,
         maxPixelSize: Int
     ) async -> ArchiveImageResult {
+        // Another load may have stored the image while this request waited for the slot.
         if let cached = await cache.get(url, version: version) {
             return .image(cached)
         }
@@ -1664,6 +1735,7 @@ public final class BrowserModel {
 
         do {
             let image = try await decoder.decode(data: data, maxPixelSize: maxPixelSize)
+            // A result that finishes after the request was cancelled is kept for later (EC-196).
             await cache.put(image, for: url, version: version)
             return .image(image)
         } catch {
@@ -1673,13 +1745,35 @@ public final class BrowserModel {
 
     /// Decodes an image file, using the cache only for the same content version (FR-230). A result decoded after the
     /// content was replaced is stored under the old version and is never returned for the new one (EC-161).
-    private func decodedImage(for url: URL, version: FileContentVersion?) async -> Result<DecodedImage, DecodeError> {
+    /// The decode runs while holding a load slot (FR-282). A request cancelled while waiting for the slot returns
+    /// a failure that the caller discards because its task is cancelled.
+    private func decodedImage(
+        for url: URL,
+        version: FileContentVersion?,
+        priority: ImageLoadPriority = .preview,
+        entry: PrefetchEntry? = nil
+    ) async -> Result<DecodedImage, DecodeError> {
+        if let cached = await cache.get(url, version: version) {
+            return .success(cached)
+        }
+
+        guard await loadScheduler.acquire(priority) else { return .failure(.unreadable) }
+        entry?.isRunning = true
+        let result = await decodeFile(url, version: version)
+        await loadScheduler.release(priority)
+        return result
+    }
+
+    /// Decodes an image file. The caller holds a load slot.
+    private func decodeFile(_ url: URL, version: FileContentVersion?) async -> Result<DecodedImage, DecodeError> {
+        // Another load may have stored the image while this request waited for the slot.
         if let cached = await cache.get(url, version: version) {
             return .success(cached)
         }
 
         do {
             let image = try await decoder.decode(url, maxPixelSize: max(1, screenMaxPixel))
+            // A result that finishes after the request was cancelled is kept for later (EC-196).
             await cache.put(image, for: url, version: version)
             return .success(image)
         } catch {
@@ -1712,7 +1806,7 @@ public final class BrowserModel {
         changedContentURLs = changed
         contentChangeGeneration &+= 1
         for url in changed {
-            prefetchTasks.removeValue(forKey: url)?.cancel()
+            prefetchTasks.removeValue(forKey: url)?.task?.cancel()
         }
         if let focused = selection.focused, changed.contains(focused) {
             reloadPreviewForReplacedContent(focused)
@@ -1746,38 +1840,70 @@ public final class BrowserModel {
         }
     }
 
+    /// Prefetches the neighbors of the focused row, the next image first. Cancels the prefetches of images that are no
+    /// longer neighbors (FR-283). Prefetches run through the load scheduler, one at a time (FR-284).
     private func schedulePrefetch(around url: URL?) {
-        guard let url, let index = listing.files.firstIndex(where: { $0.url == url }) else {
+        var wanted: [MediaFile] = []
+        if let url, let index = listing.files.firstIndex(where: { $0.url == url }) {
+            for neighborIndex in [index + 1, index - 1] where listing.files.indices.contains(neighborIndex) {
+                let file = listing.files[neighborIndex]
+                // Do not prefetch videos or non-media rows (zip files, directories, and `..`).
+                guard file.kind.isMedia, !file.kind.isVideo else { continue }
+                wanted.append(file)
+            }
+        }
+
+        let wantedURLs = Set(wanted.map(\.url))
+        for (staleURL, entry) in prefetchTasks where !wantedURLs.contains(staleURL) {
+            entry.task?.cancel()
+            prefetchTasks.removeValue(forKey: staleURL)
+        }
+
+        for file in wanted {
+            guard prefetchTasks[file.url] == nil else { continue }
+            startPrefetch(of: file)
+        }
+    }
+
+    private func startPrefetch(of file: MediaFile) {
+        let url = file.url
+        let version = file.contentVersion
+
+        if let parsed = ArchiveURL.parse(url) {
+            if let entry = archiveIndex?.entry(at: parsed.path), entry.readability != .readable {
+                return
+            }
+            let maxPixelSize = max(1, screenMaxPixel)
+            let entry = PrefetchEntry()
+            entry.task = Task { [weak self, entry] in
+                guard let self else { return }
+                _ = await self.archiveImage(
+                    for: url,
+                    version: version,
+                    maxPixelSize: maxPixelSize,
+                    priority: .prefetch,
+                    entry: entry
+                )
+                self.finishPrefetch(entry, of: url)
+            }
+            prefetchTasks[url] = entry
             return
         }
 
-        for neighborIndex in [index - 1, index + 1] where listing.files.indices.contains(neighborIndex) {
-            let file = listing.files[neighborIndex]
-            // Do not prefetch videos or non-media rows (zip files, directories, and `..`).
-            guard file.kind.isMedia, !file.kind.isVideo else { continue }
-            guard prefetchTasks[file.url] == nil else { continue }
+        guard !decoder.isAnimated(url) else { return }
+        let entry = PrefetchEntry()
+        entry.task = Task { [weak self, entry] in
+            guard let self else { return }
+            _ = await self.decodedImage(for: url, version: version, priority: .prefetch, entry: entry)
+            self.finishPrefetch(entry, of: url)
+        }
+        prefetchTasks[url] = entry
+    }
 
-            if let parsed = ArchiveURL.parse(file.url) {
-                if let entry = archiveIndex?.entry(at: parsed.path), entry.readability != .readable {
-                    continue
-                }
-                let maxPixelSize = max(1, screenMaxPixel)
-                let task = Task { [weak self] in
-                    guard let self else { return }
-                    _ = await self.archiveImage(for: file.url, version: file.contentVersion, maxPixelSize: maxPixelSize)
-                    self.prefetchTasks[file.url] = nil
-                }
-                prefetchTasks[file.url] = task
-                continue
-            }
-
-            guard !decoder.isAnimated(file.url) else { continue }
-            let task = Task { [weak self] in
-                guard let self else { return }
-                _ = await self.decodedImage(for: file.url, version: file.contentVersion)
-                self.prefetchTasks[file.url] = nil
-            }
-            prefetchTasks[file.url] = task
+    /// Removes a finished prefetch unless a newer prefetch of the same URL replaced it.
+    private func finishPrefetch(_ entry: PrefetchEntry, of url: URL) {
+        if prefetchTasks[url] === entry {
+            prefetchTasks[url] = nil
         }
     }
 
