@@ -346,7 +346,7 @@
 "toolbar.size" = "Size";
 
 /* Tooltip and accessibility text for the toolbar and size bar. Include the shortcut */
-"toolbar.thumbnailSize" = "Thumbnail Size (⌃⌘. / ⌃⌘,)";
+"toolbar.thumbnailSize" = "Thumbnail Size (%1$@)";
 
 /* Toolbar group name. Also shown in the customization palette and the text display mode */
 "toolbar.slideshowLabel" = "Slideshow";
@@ -358,43 +358,43 @@
 "toolbar.thumbnailSizeLabel" = "Thumbnail Size";
 
 /* Toolbar button tooltip and accessibility text. Includes the shortcut */
-"toolbar.goBackHelp" = "Back (⌘[)";
+"toolbar.goBackHelp" = "Back (%1$@)";
 
 /* Toolbar button tooltip and accessibility text. Includes the shortcut */
-"toolbar.goForwardHelp" = "Forward (⌘])";
+"toolbar.goForwardHelp" = "Forward (%1$@)";
 
 /* Toolbar button tooltip and accessibility text. Includes the shortcut */
-"toolbar.showFileListOnlyHelp" = "Show File List Only (⌃⌘2)";
+"toolbar.showFileListOnlyHelp" = "Show File List Only (%1$@)";
 
 /* Toolbar button tooltip and accessibility text. Includes the shortcut */
-"toolbar.showPreviewOnlyHelp" = "Show Preview Only (⌃⌘3)";
+"toolbar.showPreviewOnlyHelp" = "Show Preview Only (%1$@)";
 
 /* Toolbar button tooltip and accessibility text. Includes the shortcut */
-"toolbar.showImagesOnlyHelp" = "Show Images Only (⇧⌘I)";
+"toolbar.showImagesOnlyHelp" = "Show Images Only (%1$@)";
 
 /* Toolbar button tooltip and accessibility text. Includes the shortcut */
-"toolbar.showVideosOnlyHelp" = "Show Videos Only (⇧⌘M)";
+"toolbar.showVideosOnlyHelp" = "Show Videos Only (%1$@)";
 
 /* Toolbar button tooltip and accessibility text. Includes the shortcut */
-"toolbar.zipFilesHelp" = "Show Zip Files (⌃⌘Z)";
+"toolbar.zipFilesHelp" = "Show Zip Files (%1$@)";
 
 /* Slideshow tooltip. Includes the shortcut */
-"toolbar.startSlideshowHelp" = "Start Slideshow (⇧⌘S)";
+"toolbar.startSlideshowHelp" = "Start Slideshow (%1$@)";
 
 /* Zoom in tooltip. Includes the shortcut */
-"toolbar.zoomInHelp" = "Zoom In (⌘+)";
+"toolbar.zoomInHelp" = "Zoom In (%1$@)";
 
 /* Zoom to Fit tooltip. Includes the shortcut */
-"toolbar.zoomToFitHelp" = "Zoom to Fit (⌘0)";
+"toolbar.zoomToFitHelp" = "Zoom to Fit (%1$@)";
 
 /* Zoom out tooltip. Includes the shortcut */
-"toolbar.zoomOutHelp" = "Zoom Out (⌘-)";
+"toolbar.zoomOutHelp" = "Zoom Out (%1$@)";
 
 /* View mode options in the toolbar */
-"toolbar.thumbnails" = "Thumbnails (⌘1)";
+"toolbar.thumbnails" = "Thumbnails (%1$@)";
 
 /* View mode options in the toolbar */
-"toolbar.list" = "List (⌘2)";
+"toolbar.list" = "List (%1$@)";
 
 /* Settings window title */
 "settings.window" = "Settings";
@@ -446,6 +446,48 @@
 
 /* Transition options */
 "settings.transition.zoom" = "Zoom";
+
+/* Settings window tab name for the general settings */
+"settings.tab.general" = "General";
+
+/* Settings window tab name for the shortcut assignments */
+"settings.tab.shortcuts" = "Shortcuts";
+
+/* Accessibility label of the shortcut assignment list in the Settings window */
+"settings.shortcuts.list" = "Shortcuts";
+
+/* Button that starts recording a new shortcut for a command */
+"settings.shortcuts.record" = "Record";
+
+/* Prompt shown in place of the key while a shortcut is being recorded */
+"settings.shortcuts.recording" = "Type shortcut…";
+
+/* Button that returns one command to its default shortcut */
+"settings.shortcuts.reset" = "Reset";
+
+/* Button that returns every command to its default shortcut */
+"settings.shortcuts.resetAll" = "Reset All";
+
+/* Marker for a command whose shortcut differs from the default */
+"settings.shortcuts.changed" = "Changed";
+
+/* Accessibility label of the Record button. The value is the command name */
+"settings.shortcuts.recordFor" = "Record shortcut for %1$@";
+
+/* Accessibility label of the Reset button. The value is the command name */
+"settings.shortcuts.resetFor" = "Reset shortcut for %1$@";
+
+/* Error when the typed shortcut has none of Command, Control, or Option */
+"settings.shortcuts.error.modifier" = "Combine with ⌘, ⌃, or ⌥.";
+
+/* Error when the typed shortcut is reserved or fixed */
+"settings.shortcuts.error.fixed" = "This shortcut can’t be changed.";
+
+/* Error when another command uses the typed shortcut. The value is that command name */
+"settings.shortcuts.error.conflict" = "Already used by “%1$@”.";
+
+/* Error when the default shortcut of a command is used by another command. The value is that command name */
+"settings.shortcuts.error.defaultConflict" = "The default shortcut is used by “%1$@”.";
 
 /* List view column headings. Also used in the sort menu */
 "list.column.name" = "Name";

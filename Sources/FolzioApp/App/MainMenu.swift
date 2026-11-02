@@ -1,4 +1,5 @@
 import AppKit
+import FolzioCore
 import FolzioLocalization
 
 /// Resets the item title that the tree changed to Remove from Favorites during validation back to Move to Trash
@@ -372,6 +373,21 @@ final class MainMenu {
             (navigateMenuItem, .menuGo), (backItem, .menuGoBack), (forwardItem, .menuGoForward),
         ]
         for (item, key) in bindings { bind(item, key) }
+
+        // Keys come from the shortcut assignments, not from the literals above (FR-253). Return (Rename) and the
+        // app and system keys (⌘Q, ⌘W, ⌘,, and the Edit menu basics) are not customizable (FR-248).
+        let shortcutBindings: [(NSMenuItem, ShortcutCommandID)] = [
+            (newFolderItem, .newFolder), (openItem, .open), (openContainerItem, .showContents),
+            (goUpItem, .enclosingFolder), (addFavoriteItem, .addToFavorites), (searchItem, .find),
+            (shortcutsItem, .shortcuts), (fileTrashItem, .trash), (editTrashItem, .trash),
+            (movePasteItem, .movePaste), (copyPathnameItem, .copyPathname), (duplicateItem, .duplicate),
+            (toolbarItem, .toolbar), (fullScreenItem, .fullScreen), (zoomInItem, .zoomIn), (zoomOutItem, .zoomOut),
+            (zoomToFitItem, .zoomToFit), (slideshowItem, .startSlideshow), (backItem, .back), (forwardItem, .forward),
+        ]
+        for (item, command) in shortcutBindings {
+            MenuShortcutApplier.shared.register(item, for: command)
+        }
+        MenuShortcutApplier.shared.register(zoomInAlternateItem, for: .zoomIn, isAlternate: true)
         let editBindings: [(Selector, TextKey)] = [
             (Selector(("undo:")), .menuEditUndo), (#selector(NSText.cut(_:)), .menuEditCut),
             (#selector(NSText.copy(_:)), .menuEditCopy), (#selector(NSText.paste(_:)), .menuEditPaste),

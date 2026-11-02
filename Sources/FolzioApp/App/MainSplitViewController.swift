@@ -945,23 +945,28 @@ final class MainSplitViewController: NSSplitViewController {
         previewOnlyItem.target = self
         MainMenu.bind(previewOnlyItem, .menuViewShowPreviewOnly)
         viewMenu.addItem(previewOnlyItem)
+        MenuShortcutApplier.shared.register(fileListOnlyItem, for: .fileListOnly)
+        MenuShortcutApplier.shared.register(previewOnlyItem, for: .previewOnly)
 
         addFocusItem(
             to: viewMenu,
             key: .menuViewFocusTree,
             keyEquivalent: "1",
+            command: .focusTree,
             action: #selector(focusTreePane(_:))
         )
         addFocusItem(
             to: viewMenu,
             key: .menuViewFocusFileList,
             keyEquivalent: "2",
+            command: .focusFileList,
             action: #selector(focusFileListPane(_:))
         )
         addFocusItem(
             to: viewMenu,
             key: .menuViewFocusPreview,
             keyEquivalent: "3",
+            command: .focusPreview,
             action: #selector(focusPreviewPane(_:))
         )
 
@@ -975,12 +980,14 @@ final class MainSplitViewController: NSSplitViewController {
         favoritesItem.target = self
         MainMenu.bind(favoritesItem, .menuViewGoToFavorites)
         viewMenu.addItem(favoritesItem)
+        MenuShortcutApplier.shared.register(favoritesItem, for: .goToFavorites)
     }
 
     private func addFocusItem(
         to menu: NSMenu,
         key: TextKey,
         keyEquivalent: String,
+        command: ShortcutCommandID,
         action: Selector
     ) {
         let item = NSMenuItem(title: l10n.text(key), action: action, keyEquivalent: keyEquivalent)
@@ -988,6 +995,7 @@ final class MainSplitViewController: NSSplitViewController {
         item.keyEquivalentModifierMask = [.command, .option]
         item.target = self
         menu.addItem(item)
+        MenuShortcutApplier.shared.register(item, for: command)
     }
 
     @objc private func toggleFileListOnly(_ sender: Any?) {
