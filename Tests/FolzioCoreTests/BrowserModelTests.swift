@@ -19,6 +19,11 @@ struct BrowserModelTests {
         try? await Task.sleep(for: .milliseconds(20))
         model.setKindNames(KindNames(folder: "フォルダ", zipArchive: "ZIP アーカイブ"))
         await load.value
+        // If the sleep above overshoots on a busy runner, the language changes after the listing has loaded. The
+        // kind names are then applied asynchronously, so wait for the update instead of reading right after the load.
+        for _ in 0..<100 where model.listing.files.first?.typeDescription != "フォルダ" {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
         #expect(model.listing.files.first?.typeDescription == "フォルダ")
     }
 
