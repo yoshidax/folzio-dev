@@ -34,3 +34,10 @@
 ## 結果の記録
 
 設計の承認と GUI 確認の結果（実行日・OS・合否）は `checklists/validation.md` に記録する。
+
+## 実装の記録
+
+- **設計の承認**: 2026-11-02。保守者が analyze の指摘 F1〜F6 の修正と、master（TAK-23・TAK-45）取り込み後の影響確認を踏まえて承認した。範囲は spec.md・plan.md・tasks.md の全体。
+- **T001（API の確認）**: Cloud から Apple の文書を参照して確かめてはいない。`NSMenuItem.keyEquivalent` / `keyEquivalentModifierMask` は既存のコードが使っている。`performKeyEquivalent(with:)`、`charactersIgnoringModifiers`、`NSAccessibility.post(…announcementRequested…)` も既存のコードまたは AppKit の標準 API。`NSTabView` は使わず、`NSSegmentedControl` と切り替え用のビューにした（Tab 順を変えないため）。CI のビルドと GUI 確認で確かめる。
+- **T002（既定値の突き合わせ）**: `MainMenu.swift`・`FileListViewController.swift`・`MainSplitViewController.swift`・`DirectoryTreeViewController.swift`・`FileContextMenu.swift` の `keyEquivalent` を grep して contracts §1 と照合した。「ゴミ箱に入れる」は「ファイル」「編集」・ファイルリストとツリーのコンテキストメニューの 4 か所に現れ、すべて同じコマンド `trash` に結び付けた。ファイルリストのコンテキストメニューの「開く」はキー表示を持たない（`keyEquivalent` が空）ため登録していない。
+- **未実行**: `swift build` / `swift test`（Cloud に Swift がない。CI は PR の作成時に動く）、GUI 確認 Q1〜Q16。
