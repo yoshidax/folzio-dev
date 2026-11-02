@@ -35,7 +35,7 @@ public enum MediaKind: String, CaseIterable, Sendable {
     }
 }
 
-/// Color role of a file list row's leading icon (FR-255–257).
+/// Color role of a file list row's leading icon (FR-269–271).
 /// Core only decides the role; the app maps each role to a concrete `NSColor`.
 public enum ListItemIconTone: Sendable, Hashable {
     /// Fixed blue used for folders and directories inside a zip
@@ -59,7 +59,7 @@ public enum ListItemKind: Sendable, Hashable {
     /// Leading `..` row (inside a zip, and in regular folders other than tree roots)
     case parent
 
-    /// Color role of the row's leading icon (FR-255–257).
+    /// Color role of the row's leading icon (FR-269–271).
     public var iconTone: ListItemIconTone {
         switch self {
         case .folder, .directory:

@@ -6,4 +6,4 @@
 - [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable; success criteria measurable
 - [x] Edge cases, scope (ツリー・`..`・メディアは対象外), assumptions identified
-- [x] 具体的な色の値は plan で確定する（A-155）
+- [x] 具体的な色の値は plan で確定する（A-164）
