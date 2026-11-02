@@ -218,7 +218,10 @@ Cloud 環境で Agent が作業するときの規則です。手順の詳細は 
 - Cloud には Swift がないため、ビルドとテストは macOS の CI で確認する。CI は PR の作成時と Ready にしたときだけ自動で動く
 - 結果とログは GitHub MCP で読む。実行中のジョブのログは取得できない。修正は、ログを読んでまとめてから push する
 - 置き換える API は、使う前にヘッダーや文書で存在を確認する。同じ原因の失敗を 3 回直しても解決しない場合は、作業を止めて報告する
-- 追加の push の後は、`workflow_dispatch` で再確認する（Agent が起動できなければ、保守者に実行を頼む）
+- CI の起動・再実行（`workflow_dispatch`、`actions_run_trigger` の `run_workflow`／`rerun_workflow_run`／`rerun_failed_jobs`、`gh workflow run`、`gh run rerun`）は、
+  **毎回、保守者の許可を得てから**行う。許可なしに起動しない。追加の push の後に再確認が必要なら、理由（直した内容）と
+  対象の作業ブランチを示して許可を求める。許可が得られない、または確認が保守者に届かないときは、保守者に実行を頼む
+- 権限設定（`.claude/settings.json` の `ask`、`.kilo/kilo.jsonc`、`.codex/rules/sdd.rules`）は補助であり、許可を求める義務を免除しない
 
 ### 検証ゲート（手順書 5）
 
