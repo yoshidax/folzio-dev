@@ -4,7 +4,7 @@
 `name` / `creationDate` / `kind` / `size` / `modificationDate`。この順が表示順。場所（`location`）は含まない（検索中の自動列）。
 
 ## ListColumnVisibility / ViewSettings.visibleColumns
-- 表示する `ListColumn` の集合。`name` は常に含まれる（外せない）。
+- 表示する `ListColumn` の集合。`name` は常に含まれる（ポップアップの項目にもない）。
 - 既定: `{name, creationDate, kind}`。
 - 保存: `UserDefaults` の `view.list.visibleColumns`（rawValue の文字列配列）。読み込み時、未知の値を捨て、`name` を補う。型が違うときは既定。
 

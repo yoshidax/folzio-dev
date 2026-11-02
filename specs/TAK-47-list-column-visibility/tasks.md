@@ -23,7 +23,7 @@
 - [ ] T007 [US1] `ViewSettings` に `visibleColumns` を追加する（既定は T001 の既定。`Sources/FolzioCore/Model/Settings.swift`）
 - [ ] T008 [US1] `ListModeView` にサイズ・変更日の列（`size`、`modificationDate`）を追加し、`visibleColumns` と検索中の場所列（FR-084）で `isHidden` を決める（`Sources/FolzioApp/FileList/ListModeView.swift`）
 - [ ] T009 [US1] セルの表示を追加する: サイズは `ByteCountFormatter`（.file）、フォルダ・`..` と取得不能は `--`、変更日は `l10n.dateTime`（nil は `--`）。表示言語の切り替え時の再描画（`displayLanguageDidChange`、`refreshVisibleLocalizedCells`）にも加える（同ファイル）
-- [ ] T010 [US1] `tableView.headerView?.menu` に、5 項目（チェック付き、ファイル名は無効）の `NSMenu` を設定し、`menuNeedsUpdate` でチェックを更新する。選択で `visibleColumns` を更新して即座に反映し、行の右クリックのメニュー（`tableView.menu`）は変えない（同ファイル。`FileListTableView` の `menu(for:)` の影響を確認する）
+- [ ] T010 [US1] `tableView.headerView?.menu` に、4 項目（作成日・種類・サイズ・変更日。チェック付き。ファイル名は含めない）の `NSMenu` を設定し、`menuNeedsUpdate` でチェックを更新する。選択で `visibleColumns` を更新して即座に反映し、行の右クリックのメニュー（`tableView.menu`）は変えない（同ファイル。`FileListTableView` の `menu(for:)` の影響を確認する）
 - [ ] T011 [P] [US1] サイズ文字列の整形（フォルダ・0 バイトのファイル）を Core の関数にしてテストする場合は `Tests/FolzioCoreTests/` に置く。整形が AppKit なしで書ける範囲を Core に置く
 
 ## Phase 3: User Story 2 — サイズと変更日で並べ替える（P2）
@@ -31,9 +31,9 @@
 **Goal**: サイズ・変更日の見出しのクリックと「表示 > 並べ替え」で並べ替えられる。
 **Independent Test**: quickstart の手動確認 3〜5。
 
-- [ ] T012 [P] [US2] 並べ替えのテスト: サイズ・変更日の昇順・降順、値なし（フォルダ・`..`・nil）は昇順・降順とも末尾、同値は名前の自然順、`sortedMerge` と整合（`Tests/FolzioCoreTests/SortingTests.swift` に追記）
+- [ ] T012 [P] [US2] 並べ替えのテスト: サイズ・変更日の昇順・降順、値なし（フォルダ・`..`・nil）は昇順・降順とも末尾、同値は名前の自然順、`sortedMerge` と整合、並べ替え中の列を非表示にしたときのファイル名への切り替えと方向（最後に使った方向、なければ昇順）（`Tests/FolzioCoreTests/SortingTests.swift` に追記）
 - [ ] T013 [US2] `SortColumn` に `size` / `modificationDate` を追加し、`Sorting.swift` の `precedes` / `comparePrimary` で値なしを末尾に置く規則を日付とサイズに一般化する（`Sources/FolzioCore/Model/Settings.swift`、`Sources/FolzioCore/Model/Sorting.swift`）
-- [ ] T014 [US2] `ListModeView` の `sortEntries` とソート記述子の対応にサイズ・変更日を加え、「表示 > 並べ替え」メニューにも出す。列が非表示でも並べ替えは維持する（`Sources/FolzioApp/FileList/ListModeView.swift`）
+- [ ] T014 [US2] `ListModeView` の `sortEntries` とソート記述子の対応にサイズ・変更日を加え、「表示 > 並べ替え」メニューにも出す。並べ替え中の列を非表示にしたらファイル名の並べ替えに切り替え、方向はファイル名で最後に使った方向（なければ昇順）にする。判断ロジックは Core に置く（`Sources/FolzioApp/FileList/ListModeView.swift`）
 - [ ] T015 [P] [US2] `DirectoryLister` が変更日を返すテストと、zip の項目の更新日時のテストを追加する（`Tests/FolzioCoreTests/DirectoryListerTests.swift`、`Tests/FolzioCoreTests/ArchiveIndexTests.swift`。既存のファイル名に合わせる）
 
 ## Phase 4: User Story 3 — 列の表示状態を保存する（P2）
