@@ -719,7 +719,7 @@ extension ListModeView: NSTableViewDelegate {
             cell.representedURL = file.url
             cell.representedVersion = nil
             cell.iconView.image = IconCatalog.listItemIcon(for: file.kind, pointSize: 16)
-            cell.iconView.contentTintColor = .secondaryLabelColor
+            cell.iconView.contentTintColor = IconCatalog.tintColor(for: file.kind)
             if renamingURL != file.url {
                 setEditingAppearance(cell.nameField, editing: false)
             }
