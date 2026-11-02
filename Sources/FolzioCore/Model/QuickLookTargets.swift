@@ -1,12 +1,12 @@
 import Foundation
 
 /// Chooses the files handed to the Quick Look panel when Space is pressed in the file list
-/// (FR-233, FR-235, FR-236, FR-240; data-model.md).
+/// (FR-247, FR-249, FR-250, FR-254; data-model.md).
 public enum QuickLookTargets {
     /// Returns the URLs of the selected media files in listing order.
     ///
     /// Folders, zip files, and `..` rows are excluded. Nothing is returned while browsing a zip, or for URLs that
-    /// point inside a zip, because they have no real file (A-145). URLs missing from `files` are ignored.
+    /// point inside a zip, because they have no real file (A-150). URLs missing from `files` are ignored.
     ///
     /// - Parameters:
     ///   - files: The rows of the displayed listing, including search results, in display order.

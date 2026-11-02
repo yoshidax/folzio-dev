@@ -2,12 +2,12 @@ import AppKit
 import FolzioCore
 import Quartz
 
-/// Drives the Quick Look panel for the file list (TAK-18; FR-233–236, FR-239, FR-240; research.md R1–R3, R8).
+/// Drives the Quick Look panel for the file list (TAK-18; FR-247–236, FR-253, FR-254; research.md R1–R3, R8).
 ///
 /// The panel is the standard `QLPreviewPanel`. It takes control through the responder chain: the file list views
 /// answer `acceptsPreviewPanelControl(_:)` and call `attach(to:)` / `detach(from:)`, so the panel only opens while the
-/// file list has the focus (EC-164). The coordinator supplies the items, the on-screen frame each item zooms from and
-/// back to, and forwards arrow keys to the file list so that the list selection follows (FR-240).
+/// file list has the focus (EC-170). The coordinator supplies the items, the on-screen frame each item zooms from and
+/// back to, and forwards arrow keys to the file list so that the list selection follows (FR-254).
 @MainActor
 final class QuickLookCoordinator: NSObject, @preconcurrency QLPreviewPanelDataSource,
     @preconcurrency QLPreviewPanelDelegate {
@@ -18,13 +18,13 @@ final class QuickLookCoordinator: NSObject, @preconcurrency QLPreviewPanelDataSo
 
     /// Whether Space must not open the panel (full screen, slideshow). Name editing never reaches the list view.
     var isBlocked: () -> Bool = { false }
-    /// Called before the panel opens, for example to scroll the focused row into view (EC-167).
+    /// Called before the panel opens, for example to scroll the focused row into view (EC-173).
     var prepareToOpen: () -> Void = {}
     /// Returns the on-screen frame of the row or thumbnail for a URL, or `.zero` when it is not visible.
     var sourceFrame: (URL) -> NSRect = { _ in .zero }
-    /// Passes an arrow key event to the file list as if it had the key focus (FR-240).
+    /// Passes an arrow key event to the file list as if it had the key focus (FR-254).
     var forwardKey: (NSEvent) -> Void = { _ in }
-    /// Called when the panel starts or stops showing the file list's items (EC-169).
+    /// Called when the panel starts or stops showing the file list's items (EC-175).
     var onActiveChange: (Bool) -> Void = { _ in }
 
     init(model: BrowserModel) {
@@ -43,7 +43,7 @@ final class QuickLookCoordinator: NSObject, @preconcurrency QLPreviewPanelDataSo
     }
 
     /// Opens the panel for the selected media, or closes it when it is already shown. Does nothing when the selection
-    /// has no media (EC-165).
+    /// has no media (EC-171).
     func toggle() {
         guard let panel = QLPreviewPanel.shared() else { return }
         if panel.isVisible {
@@ -96,7 +96,7 @@ final class QuickLookCoordinator: NSObject, @preconcurrency QLPreviewPanelDataSo
     }
 
     /// Follows the file list while the panel is shown: a different selection or listing updates or closes the panel
-    /// (FR-240, EC-166).
+    /// (FR-254, EC-172).
     private func observeModel() {
         guard isControlling else { return }
         withObservationTracking {

@@ -35,7 +35,7 @@ public enum MediaKind: String, CaseIterable, Sendable {
     }
 }
 
-/// Kind of a file list row (FR-068–070, 076, 077; ListItemKind in data-model.md). The type of `MediaFile.kind`.
+/// Kind of a file list row (FR-68–070, 076, 077; ListItemKind in data-model.md). The type of `MediaFile.kind`.
 public enum ListItemKind: Sendable, Hashable {
     /// Supported media file
     case media(MediaKind)
@@ -63,8 +63,8 @@ public enum ListItemKind: Sendable, Hashable {
         mediaKind?.isVideo ?? false
     }
 
-    /// Whether double-click opens the file in the app associated with it by the OS (FR-237).
-    /// Only media files in the file system qualify. Media inside a zip has no real file (A-145).
+    /// Whether double-click opens the file in the app associated with it by the OS (FR-251).
+    /// Only media files in the file system qualify. Media inside a zip has no real file (A-150).
     public func opensInDefaultApp(isBrowsingArchive: Bool) -> Bool {
         isMedia && !isBrowsingArchive
     }

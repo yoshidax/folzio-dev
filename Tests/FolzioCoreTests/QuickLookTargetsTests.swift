@@ -67,7 +67,7 @@ struct QuickLookTargetsTests {
         #expect(result.isEmpty)
     }
 
-    @Test("Nothing is returned while browsing a zip (A-145)")
+    @Test("Nothing is returned while browsing a zip (A-150)")
     func insideArchive() {
         let archive = URL(fileURLWithPath: "/tmp/folder/b.zip")
         let entry = ArchiveURL.entry(archive: archive, path: "x.jpg")

@@ -171,6 +171,9 @@
 /* Fallback kind name (when the OS does not return a kind name) */
 "kind.zipArchive" = "ZIP archive";
 
+/* About item in the application menu (the first item). Do not translate the app name */
+"menu.app.about" = "About Folzio";
+
 /* Settings item in the application menu (ends with … because it opens a dialog) */
 "menu.app.settings" = "Settings…";
 
@@ -331,19 +334,49 @@
 "toolbar.panes" = "Panes";
 
 /* Toolbar zoom group name */
-"toolbar.zoomGroup" = "Zoom";
+"toolbar.zoomGroup" = "Preview Size";
 
 /* Toolbar media type group name */
 "toolbar.mediaType" = "Media Type";
 
 /* Toolbar view mode group name */
-"toolbar.viewMode" = "View";
+"toolbar.viewMode" = "File List View";
 
 /* Toolbar and size bar group name */
 "toolbar.size" = "Size";
 
 /* Tooltip and accessibility text for the toolbar and size bar. Include the shortcut */
 "toolbar.thumbnailSize" = "Thumbnail Size (⌃⌘. / ⌃⌘,)";
+
+/* Toolbar group name. Also shown in the customization palette and the text display mode */
+"toolbar.slideshowLabel" = "Slideshow";
+
+/* Toolbar group name. Also shown in the customization palette and the text display mode */
+"toolbar.zipFilesLabel" = "Zip Files";
+
+/* Toolbar group name. Also shown in the customization palette and the text display mode */
+"toolbar.thumbnailSizeLabel" = "Thumbnail Size";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.goBackHelp" = "Back (⌘[)";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.goForwardHelp" = "Forward (⌘])";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.showFileListOnlyHelp" = "Show File List Only (⌃⌘2)";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.showPreviewOnlyHelp" = "Show Preview Only (⌃⌘3)";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.showImagesOnlyHelp" = "Show Images Only (⇧⌘I)";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.showVideosOnlyHelp" = "Show Videos Only (⇧⌘M)";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.zipFilesHelp" = "Show Zip Files (⌃⌘Z)";
 
 /* Slideshow tooltip. Includes the shortcut */
 "toolbar.startSlideshowHelp" = "Start Slideshow (⇧⌘S)";
@@ -358,10 +391,10 @@
 "toolbar.zoomOutHelp" = "Zoom Out (⌘-)";
 
 /* View mode options in the toolbar */
-"toolbar.thumbnails" = "Thumbnails";
+"toolbar.thumbnails" = "Thumbnails (⌘1)";
 
 /* View mode options in the toolbar */
-"toolbar.list" = "List";
+"toolbar.list" = "List (⌘2)";
 
 /* Settings window title */
 "settings.window" = "Settings";
@@ -897,3 +930,15 @@
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.quit" = "Quit Folzio";
+
+/* Name of the About window. Not drawn on screen; used as the window title for accessibility */
+"about.window" = "About Folzio";
+
+/* Version line in the About window. %1$@ is the version number, for example 1.0.0 */
+"about.version" = "Version %1$@";
+
+/* Accessibility description of the app icon in the About window */
+"about.icon" = "Folzio app icon";
+
+/* Accessibility help of the repository link in the About window */
+"about.link" = "Opens the Folzio repository in your default web browser";

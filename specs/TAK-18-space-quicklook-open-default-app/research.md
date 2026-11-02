@@ -2,7 +2,7 @@
 
 Cloud では Swift と GUI を実行できないため、以下は SDK の文書と既存コードの読み取りに基づく。実機で確かめるべき点は「要実機」と記す。
 
-## R1 Quick Look パネルで起点からのズームを実現できるか（FR-238 の技術検証）
+## R1 Quick Look パネルで起点からのズームを実現できるか（FR-252 の技術検証）
 
 - **Decision**: `QLPreviewPanel.shared()` を使い、`QLPreviewPanelDelegate.previewPanel(_:sourceFrameOnScreenFor:)` で項目の画面座標の矩形を返す。
   パネルはこの矩形から拡大して開き、`close()` / Space でこの矩形へ縮む。独自のウインドウやアニメーションは作らない。
@@ -18,7 +18,7 @@ Cloud では Swift と GUI を実行できないため、以下は SDK の文書
   を、リストの `NSTableView` とサムネイルの `NSCollectionView` のサブクラス（すでにキー入力を処理している）に実装する。
   `beginPreviewPanelControl` で Coordinator を `dataSource` / `delegate` に設定し、`endPreviewPanelControl` で外す。
 - **Rationale**: `QLPreviewPanel` は、キーウインドウのレスポンダチェーンで `acceptsPreviewPanelControl` が true の最初のオブジェクトに制御させる。
-  フォーカスがファイルリストにあるときだけ制御を受けるため、EC-164（フォーカス条件）が自然に成り立つ。
+  フォーカスがファイルリストにあるときだけ制御を受けるため、EC-170（フォーカス条件）が自然に成り立つ。
 - **Alternatives**: ウインドウコントローラが制御を持つ案は、ツリーやプレビューにフォーカスがあるときも開けてしまい、条件が崩れる。
 
 ## R3 Space の入口と二重処理
@@ -26,14 +26,14 @@ Cloud では Swift と GUI を実行できないため、以下は SDK の文書
 - **Decision**: `keyDown` の Space（`charactersIgnoringModifiers == " "`、修飾キーなし）で `QuickLookCoordinator.toggle()`。
   パネルが開いている間はキーウインドウがパネルになり、パネル自身の Space/Esc で閉じる。
   現在の `ListModeView.onSpace`（動画なら `onTogglePlayback`）は削除する。
-- **Rationale**: 現行の Space は動画の再生を切り替える（FR-033）。保守者の決定（ファイルリストでは Quick Look に統一）に従う。
+- **Rationale**: 現行の Space は動画の再生を切り替える（FR-33）。保守者の決定（ファイルリストでは Quick Look に統一）に従う。
 - **要実機**: 閉じた後に first responder がファイルリストに戻ること（M3）。
 
 ## R4 複数項目
 
 - **Decision**: 選択中のメディアを、`BrowserModel.listing.files` の並び順で Coordinator が保持して `numberOfPreviewItems` を返す。
-  先頭は、一覧の並びで最初の選択項目。複数項目のときのツールバーの `<` `>` ボタンは `QLPreviewPanel` 標準の UI で、移動は Folzio の選択と同期しない（A-146、FR-235）。
-  矢印キーは R8 のとおりファイルリストへ転送する（FR-240）。
+  先頭は、一覧の並びで最初の選択項目。複数項目のときのツールバーの `<` `>` ボタンは `QLPreviewPanel` 標準の UI で、移動は Folzio の選択と同期しない（A-151、FR-249）。
+  矢印キーは R8 のとおりファイルリストへ転送する（FR-254）。
 - **Rationale**: 保守者が Finder で確認した挙動（複数ファイル形式の UI と `<` `>`、矢印キーは親のリストの切り替え）に合わせる。
 - **Alternatives**: `<` `>` の移動にも選択を同期する案は、Finder の挙動と異なるため採らない。
 
@@ -49,21 +49,21 @@ Cloud では Swift と GUI を実行できないため、以下は SDK の文書
 - **要確認**: Swift 6 の言語モードで `QLPreviewPanel` の API が `@MainActor` として扱えるか、`NSObject` の `acceptsPreviewPanelControl` を override できるか。
   Cloud ではビルドできないため CI で確認する。失敗したらログを読んでまとめて直す（`docs_private/cloud-agent-workflow.md` の 4 章）。
 
-## R7 一時プレビュー中の状態の変化（EC-166・169）
+## R7 一時プレビュー中の状態の変化（EC-172・175）
 
 - **Decision**: 開く前に `previewViewController` の動画を一時停止する（既存の再生制御に pause がなければ、`togglePlayback` の状態を見て止める小さな API を足す）。
   一覧の更新通知で、対象 URL が一覧から消えたら閉じる。残りがあれば `reloadData()`。
 - **Alternatives**: 何もしない案は、動画の音声がパネルの音声と重なる。
 
-## R8 矢印キーのファイルリストへの転送（FR-240）
+## R8 矢印キーのファイルリストへの転送（FR-254）
 
 - **Decision**: `QLPreviewPanelDelegate.previewPanel(_:handle:)` で `keyDown` の矢印キー（⌘ なし。⇧ は可）を受け、ファイルリストの first responder
   （`NSTableView` / `NSCollectionView` サブクラス）の `keyDown(with:)` へそのまま渡して `true` を返す。ほかのキー（Space・Esc など）は `false` を返し、パネルの標準処理に任せる。
   選択が変わった通知（既存の選択変更の経路）で Coordinator が `items` を `QuickLookTargets.urls` で再計算し、`panel.reloadData()` を呼ぶ。
   再計算の結果が空なら `panel.close()`（US3-AS36）。
 - **Rationale**: Apple の Quick Look のサンプルがこの形（`previewPanel(_:handle:)` でテーブルへキーを転送）を使うというのが理解で、Finder の挙動に一致する。
-  選択のロジックを再実装せず、ファイルリストの既存の矢印キーの規則（FR-016・017）をそのまま使える。
+  選択のロジックを再実装せず、ファイルリストの既存の矢印キーの規則（FR-16・17）をそのまま使える。
 - **要実機**: 転送したキーでテーブルの選択が動くこと（パネルがキーウインドウでもリストの first responder が `keyDown` を処理できること）、
   `reloadData()` 後に現在の項目と起点の矩形が新しい選択に追従すること、選択が1件→複数→1件と変わるときの UI の切り替わり。
-- **動画の自動再生の抑制**: 選択が動画に移るとプレビューペインが自動再生を始めるため（FR-031・032）、パネルの表示中は自動再生を抑える状態を `PreviewViewController` に持たせる（EC-169）。
+- **動画の自動再生の抑制**: 選択が動画に移るとプレビューペインが自動再生を始めるため（FR-31・32）、パネルの表示中は自動再生を抑える状態を `PreviewViewController` に持たせる（EC-175）。
 - **Alternatives**: パネル内の矢印キーを Quick Look の標準（項目間の移動）のままにする案は、1件選択で効かず Finder と異なるため採らない。

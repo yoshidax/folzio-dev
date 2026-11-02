@@ -6,14 +6,14 @@
 
 ## Content Quality
 
-- [x] No implementation details (languages, frameworks, APIs) — Quick Look は Issue と保守者の決定による製品要件（FR-233・A-144）であり、実装方法は plan.md で扱う
+- [x] No implementation details (languages, frameworks, APIs) — Quick Look は Issue と保守者の決定による製品要件（FR-247・A-149）であり、実装方法は plan.md で扱う
 - [x] Focused on user value and business needs
 - [x] Written for non-technical stakeholders
 - [x] All mandatory sections completed
 
 ## Requirement Completeness
 
-- [x] No [NEEDS CLARIFICATION] markers remain — 未確認の A-145（zip の中は対象外）は仮の採用として明記し、設計レビューで確認する
+- [x] No [NEEDS CLARIFICATION] markers remain — 未確認の A-150（zip の中は対象外）は仮の採用として明記し、設計レビューで確認する
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,4 +31,4 @@
 
 ## Notes
 
-- Space の一時プレビューは実機でしか確認できない（A-144・FR-238）。Cloud では確認できないため、保守者の起動スモークで技術検証の判定をする
+- Space の一時プレビューは実機でしか確認できない（A-149・FR-252）。Cloud では確認できないため、保守者の起動スモークで技術検証の判定をする

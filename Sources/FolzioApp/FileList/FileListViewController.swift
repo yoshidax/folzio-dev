@@ -30,7 +30,7 @@ final class FileListViewController: NSViewController {
     private var messageBandHeightConstraint: NSLayoutConstraint?
     private var displayMode: DisplayMode
     private let initialThumbnailSize: Double
-    /// Opens and closes the Quick Look panel for the selected media (FR-233).
+    /// Opens and closes the Quick Look panel for the selected media (FR-247).
     private let quickLook: QuickLookCoordinator
     private struct HiddenListNavigation {
         let width: Double
@@ -43,7 +43,7 @@ final class FileListViewController: NSViewController {
     private weak var imagesOnlyMenuItem: NSMenuItem?
     private weak var videosOnlyMenuItem: NSMenuItem?
     private weak var zipVisibilityMenuItem: NSMenuItem?
-    /// Scroll position preserved across list rebuilds (SC-017).
+    /// Scroll position preserved across list rebuilds (SC-17).
     private var pendingScrollOrigin: CGPoint?
 
     var onViewStateChange: ((DisplayMode, Double) -> Void)?
@@ -115,7 +115,7 @@ final class FileListViewController: NSViewController {
                 return self.thumbnailModeView.quickLookSourceFrame(for: url)
             }
         }
-        // Arrow keys typed in the panel move the file list selection, as in Finder (FR-240).
+        // Arrow keys typed in the panel move the file list selection, as in Finder (FR-254).
         quickLook.forwardKey = { [weak self] event in
             self?.primaryFocusView.keyDown(with: event)
         }
@@ -147,7 +147,7 @@ final class FileListViewController: NSViewController {
     }
 
     /// Esc. While showing search results (excluding full screen and renaming), returns to the pre-search folder
-    /// listing. If searching, stops the search. Does nothing otherwise (FR-086).
+    /// listing. If searching, stops the search. Does nothing otherwise (FR-86).
     private func leaveSearchResults() -> Bool {
         guard model.isShowingSearchResults,
               hiddenListNavigation == nil,
@@ -174,13 +174,13 @@ final class FileListViewController: NSViewController {
             : listModeView.focusView
     }
 
-    /// Whether Space must not open Quick Look: full screen and slideshow (EC-164). Set by the main controller.
+    /// Whether Space must not open Quick Look: full screen and slideshow (EC-170). Set by the main controller.
     var isQuickLookBlocked: () -> Bool {
         get { quickLook.isBlocked }
         set { quickLook.isBlocked = newValue }
     }
 
-    /// Called when Quick Look starts or stops showing the file list's items (EC-169).
+    /// Called when Quick Look starts or stops showing the file list's items (EC-175).
     var onQuickLookActiveChange: (Bool) -> Void {
         get { quickLook.onActiveChange }
         set { quickLook.onActiveChange = newValue }
@@ -589,7 +589,7 @@ final class FileListViewController: NSViewController {
     }
 
     /// Keeps showing the list even in a message state when rows remain (`..` or directories).
-    /// For an unreadable folder, shows the list when `..` remains and puts the message in the bottom band (FR-077).
+    /// For an unreadable folder, shows the list when `..` remains and puts the message in the bottom band (FR-77).
     private var showsFileList: Bool {
         switch model.listing.state {
         case .loaded:
@@ -619,7 +619,7 @@ final class FileListViewController: NSViewController {
             progressIndicator.startAnimation(nil)
             message = isSearch ? l10n.text(.emptySearching) : l10n.text(.emptyLoading)
         case .empty:
-            // Distinguish this from "No supported media files" in FR-060.
+            // Distinguish this from "No supported media files" in FR-60.
             message = isSearch ? l10n.text(.emptyNoMatches) : l10n.text(.emptyNoMedia)
         case .noMatches:
             switch model.mediaTypeFilter.emptyState {
@@ -657,7 +657,7 @@ final class FileListViewController: NSViewController {
         }
     }
 
-    /// Captures the scroll position before rebuilding the list (SC-017).
+    /// Captures the scroll position before rebuilding the list (SC-17).
     private func captureScrollOrigin() {
         pendingScrollOrigin = currentVisibleOrigin
     }
@@ -691,7 +691,7 @@ final class FileListViewController: NSViewController {
 
         // Loading hides the list, so AppKit moves focus to the next key view (such as the preview).
         // Return focus when the list reappears so keyboard focus stays in the file list while entering or leaving
-        // folders (FR-078).
+        // folders (FR-78).
         if focusWasInFileList, !showsFiles, let window = view.window {
             displacedFocus = window.firstResponder
         }
@@ -1071,7 +1071,7 @@ final class FileListViewController: NSViewController {
         NSWorkspace.shared.activateFileViewerSelecting(urls)
     }
 
-    /// Opens the focused zip file or directory. If it is `..`, goes up one level (⌘↓, FR-069).
+    /// Opens the focused zip file or directory. If it is `..`, goes up one level (⌘↓, FR-69).
     @objc func openFocusedItem(_ sender: Any?) {
         guard !isEditingText,
               focusedItemCommands.canOpenContainer,
@@ -1081,13 +1081,13 @@ final class FileListViewController: NSViewController {
         openItem(focused)
     }
 
-    /// Called from double-click and ⌘↓. Media rows outside a zip open in the default app (FR-237); containers open
+    /// Called from double-click and ⌘↓. Media rows outside a zip open in the default app (FR-251); containers open
     /// their contents (Core decides).
     func openItem(_ url: URL) {
         if let file = model.listing.files.first(where: { $0.url == url }),
            file.kind.opensInDefaultApp(isBrowsingArchive: model.listing.archive != nil) {
             quickLook.close()
-            // A failure to open is ignored, as with ⌘O (EC-170).
+            // A failure to open is ignored, as with ⌘O (EC-176).
             _ = NSWorkspace.shared.open(url)
             return
         }
@@ -1099,7 +1099,7 @@ final class FileListViewController: NSViewController {
     }
 
     /// Inside a zip, goes up one level. At the zip root, returns to the listing of the folder containing the zip
-    /// (⌘↑, FR-070).
+    /// (⌘↑, FR-70).
     @objc func goToEnclosingLevel(_ sender: Any?) {
         guard !isEditingText, focusedItemCommands.canGoUp else { return }
         Task { @MainActor [weak self] in
@@ -1109,7 +1109,7 @@ final class FileListViewController: NSViewController {
         }
     }
 
-    /// Scrolls the focused row of the visible display mode into view (EC-167).
+    /// Scrolls the focused row of the visible display mode into view (EC-173).
     private func scrollFocusedItemIntoView() {
         switch displayMode {
         case .list:
@@ -1195,7 +1195,7 @@ extension FileListViewController: NSMenuItemValidation {
             return !isEditingText && focusedItemCommands.canGoUp
         }
 
-        // A zip is read-only (FR-073). `..` is not an operation target (R30). ListItemCommands makes the decision.
+        // A zip is read-only (FR-73). `..` is not an operation target (R30). ListItemCommands makes the decision.
         let commands = selectionItemCommands
         switch menuItem.action {
         case #selector(copy(_:)),

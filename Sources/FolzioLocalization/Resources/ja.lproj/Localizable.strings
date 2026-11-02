@@ -171,6 +171,9 @@
 /* Fallback kind name (when the OS does not return a kind name) */
 "kind.zipArchive" = "ZIP アーカイブ";
 
+/* About item in the application menu (the first item). Do not translate the app name */
+"menu.app.about" = "Folzio について";
+
 /* Settings item in the application menu (ends with … because it opens a dialog) */
 "menu.app.settings" = "設定…";
 
@@ -325,25 +328,55 @@
 "context.movePasteHere" = "ここに移動ペースト";
 
 /* Toolbar history group name */
-"toolbar.history" = "履歴";
+"toolbar.history" = "戻る / 進む";
 
 /* Toolbar panes group name */
-"toolbar.panes" = "ペイン";
+"toolbar.panes" = "表示";
 
 /* Toolbar zoom group name */
-"toolbar.zoomGroup" = "拡大・縮小";
+"toolbar.zoomGroup" = "プレビューサイズ";
 
 /* Toolbar media type group name */
-"toolbar.mediaType" = "種類";
+"toolbar.mediaType" = "メディアタイプ";
 
 /* Toolbar view mode group name */
-"toolbar.viewMode" = "表示形式";
+"toolbar.viewMode" = "ファイルリスト表示形式";
 
 /* Toolbar and size bar group name */
 "toolbar.size" = "サイズ";
 
 /* Tooltip and accessibility text for the toolbar and size bar. Include the shortcut */
-"toolbar.thumbnailSize" = "サムネイルのサイズ（⌃⌘. / ⌃⌘,）";
+"toolbar.thumbnailSize" = "サムネイルサイズ（⌃⌘. / ⌃⌘,）";
+
+/* Toolbar group name. Also shown in the customization palette and the text display mode */
+"toolbar.slideshowLabel" = "スライドショー";
+
+/* Toolbar group name. Also shown in the customization palette and the text display mode */
+"toolbar.zipFilesLabel" = "zipファイル";
+
+/* Toolbar group name. Also shown in the customization palette and the text display mode */
+"toolbar.thumbnailSizeLabel" = "サムネイルサイズ";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.goBackHelp" = "戻る（⌘[）";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.goForwardHelp" = "進む（⌘]）";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.showFileListOnlyHelp" = "ファイルリストのみ表示（⌃⌘2）";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.showPreviewOnlyHelp" = "プレビューのみ表示（⌃⌘3）";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.showImagesOnlyHelp" = "画像のみ表示（⇧⌘I）";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.showVideosOnlyHelp" = "動画のみ表示（⇧⌘M）";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.zipFilesHelp" = "zipファイルを表示（⌃⌘Z）";
 
 /* Slideshow tooltip. Includes the shortcut */
 "toolbar.startSlideshowHelp" = "スライドショーを開始（⇧⌘S）";
@@ -358,10 +391,10 @@
 "toolbar.zoomOutHelp" = "縮小（⌘-）";
 
 /* View mode options in the toolbar */
-"toolbar.thumbnails" = "サムネイル";
+"toolbar.thumbnails" = "サムネイル（⌘1）";
 
 /* View mode options in the toolbar */
-"toolbar.list" = "リスト";
+"toolbar.list" = "リスト（⌘2）";
 
 /* Settings window title */
 "settings.window" = "設定";
@@ -897,3 +930,15 @@
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.quit" = "Folzioを終了する";
+
+/* Name of the About window. Not drawn on screen; used as the window title for accessibility */
+"about.window" = "Folzio について";
+
+/* Version line in the About window. %1$@ is the version number, for example 1.0.0 */
+"about.version" = "バージョン %1$@";
+
+/* Accessibility description of the app icon in the About window */
+"about.icon" = "Folzio のアイコン";
+
+/* Accessibility help of the repository link in the About window */
+"about.link" = "Folzio のリポジトリを既定の Web ブラウザで開きます";

@@ -9,7 +9,7 @@
 2つの独立した変更に分ける。（A）ダブルクリック: メディアの行のダブルクリックで `NSWorkspace.open` を呼ぶ。対象の判断は Core の純粋な関数に置く。
 （B）Space: ファイルリストにフォーカスがあるとき、Quick Look の標準パネル（`QLPreviewPanel`）を開閉する。パネルの項目と起点の矩形は
 App の `QuickLookCoordinator` が持ち、対象の選び方は Core の純粋な関数に置く。（B）は Cloud で実行して確かめられない公開 API の挙動
-（起点からのズーム）に依存するため、最初のタスクを実機の技術検証にし、成り立たなければ（B）を見送って（A）だけを出す（FR-238）。
+（起点からのズーム）に依存するため、最初のタスクを実機の技術検証にし、成り立たなければ（B）を見送って（A）だけを出す（FR-252）。
 
 本資料は設計レビュー用。`docs_private/cloud-agent-workflow.md` の「承認の前に実装しない」に従い、設計の承認後に tasks.md の実装を始める。
 
@@ -67,7 +67,7 @@ Sources/FolzioApp/App/MainSplitViewController.swift        # 変更: Space を�
 docs/usage.md / docs/usage.ja.md                           # 変更: Space とダブルクリックの説明
 ```
 
-**Structure Decision**: 判断は Core、パネルの制御と矩形の計算は App。`BrowserModel.openItem` は「メディアでは何もしない」まま変えず（FR-069・076 の契約）、
+**Structure Decision**: 判断は Core、パネルの制御と矩形の計算は App。`BrowserModel.openItem` は「メディアでは何もしない」まま変えず（FR-69・76 の契約）、
 既定のアプリを開くのは `FileListViewController.openItem` が Core の判断で呼ぶ。`NSWorkspace` は Core に入れない。
 
 ## Phase 0: Research
@@ -84,9 +84,9 @@ docs/usage.md / docs/usage.ja.md                           # 変更: Space と�
    （見えない場合は `.zero`）。
 3. `ListModeView` の `NSTableView` と `ThumbnailModeView` の `NSCollectionView` のサブクラスで `acceptsPreviewPanelControl` / `beginPreviewPanelControl` / `endPreviewPanelControl`
    を実装し、Coordinator を dataSource / delegate に設定する。`keyDown` の Space で Coordinator の `toggle()` を呼ぶ（開いている間はパネルが first responder になり、パネル自身の Space で閉じる）。
-4. `toggle()` は Core の判断で対象が空なら何もしない。開く前にプレビューペインの動画を一時停止し（EC-169）、起点の行が見えなければスクロールする（EC-167）。
-5. 一覧の更新（選択中のファイルの消失・フォルダの切り替え）と選択の変更で、Coordinator が項目を再計算して `reloadData()` するか、0件なら閉じる（EC-166、FR-240）。
-   矢印キー（⌘ なし）は `previewPanel(_:handle:)` でファイルリストの `keyDown` へ転送する（research.md R8）。パネルの表示中は、プレビューペインの動画の自動再生を抑える（EC-169）。
+4. `toggle()` は Core の判断で対象が空なら何もしない。開く前にプレビューペインの動画を一時停止し（EC-175）、起点の行が見えなければスクロールする（EC-173）。
+5. 一覧の更新（選択中のファイルの消失・フォルダの切り替え）と選択の変更で、Coordinator が項目を再計算して `reloadData()` するか、0件なら閉じる（EC-172、FR-254）。
+   矢印キー（⌘ なし）は `previewPanel(_:handle:)` でファイルリストの `keyDown` へ転送する（research.md R8）。パネルの表示中は、プレビューペインの動画の自動再生を抑える（EC-175）。
 6. `FileListViewController.openItem(_:)` で、一覧から URL の行を引き、Core の判断が「既定のアプリで開く」なら `NSWorkspace.shared.open(url)` を呼ぶ。それ以外は従来の `model.openItem`。
 7. `onTogglePlayback` の Space 経路（`ListModeView` の `onSpace`）を外す。プレビューの動画へのフォーカス時の Space はプレビュー側のコントロールが処理する（変更なし）。
 8. ショートカット一覧（Core のカタログ・文言）を更新する。

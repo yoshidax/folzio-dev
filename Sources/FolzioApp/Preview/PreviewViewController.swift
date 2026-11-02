@@ -85,7 +85,7 @@ final class PreviewViewController: NSViewController {
         return imageView
     }
 
-    /// Called when the media display area is double-clicked outside any control (FR-035, FR-220).
+    /// Called when the media display area is double-clicked outside any control (FR-35, FR-220).
     /// The receiver decides whether the double-click toggles full screen (`PreviewDoubleClick`).
     var onDoubleClick: (() -> Void)?
 
@@ -96,7 +96,7 @@ final class PreviewViewController: NSViewController {
 
     /// Whether the Quick Look panel is showing the file list's items. While it is, a playing video is paused and
     /// videos do not start by themselves, so sounds do not overlap. Closing the panel does not resume playback
-    /// (EC-169).
+    /// (EC-175).
     private var isQuickLookActive = false
 
     func setQuickLookActive(_ active: Bool) {

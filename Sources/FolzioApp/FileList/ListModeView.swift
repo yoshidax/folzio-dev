@@ -6,7 +6,7 @@ import Quartz
 @MainActor
 private final class FileListTableView: NSTableView {
     var onSpace: ((NSEvent) -> Bool)?
-    /// Takes control of the Quick Look panel while this table has the focus (FR-233, research.md R2).
+    /// Takes control of the Quick Look panel while this table has the focus (FR-247, research.md R2).
     var quickLook: QuickLookCoordinator?
 
     override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool {
@@ -116,7 +116,7 @@ final class ListModeView: NSView {
     private let scrollView = NSScrollView()
     private let tableView = FileListTableView()
 
-    /// Coordinator of the Quick Look panel, set by the file list controller (FR-233).
+    /// Coordinator of the Quick Look panel, set by the file list controller (FR-247).
     var quickLook: QuickLookCoordinator? {
         didSet { tableView.quickLook = quickLook }
     }
@@ -125,7 +125,7 @@ final class ListModeView: NSView {
     var onRenameNewFolder: ((URL, String) async -> Void)?
     var onOpenItem: ((URL) -> Void)?
     var onInternalDrop: (([URL], URL, Bool) -> Void)?
-    /// Esc. Returns true when handled (ends search results; FR-086).
+    /// Esc. Returns true when handled (ends search results; FR-86).
     var onEscape: (() -> Bool)? {
         get { tableView.onEscape }
         set { tableView.onEscape = newValue }
@@ -230,13 +230,13 @@ final class ListModeView: NSView {
         InternalDrag.register(tableView)
         tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
         tableView.setDraggingSourceOperationMask(.copy, forLocal: false)
-        // Space toggles the Quick Look panel instead of video playback (FR-233, FR-234).
+        // Space toggles the Quick Look panel instead of video playback (FR-247, FR-248).
         tableView.onSpace = { [weak self] event in
             self?.quickLook?.handleSpace(event) ?? false
         }
         tableView.onReturn = { [weak self] in
             guard let self else { return false }
-            // Do not start renaming inside a zip (FR-073). Consume the key.
+            // Do not start renaming inside a zip (FR-73). Consume the key.
             guard self.model.focusedItemCommands.allowsFileOperations else { return true }
             return self.beginRenaming()
         }
@@ -246,7 +246,7 @@ final class ListModeView: NSView {
         addColumn(identifier: "name", title: l10n.text(.listColumnName), width: 220)
         addColumn(identifier: "creationDate", title: l10n.text(.listColumnCreationDate), width: 150)
         addColumn(identifier: "kind", title: l10n.text(.listColumnKind), width: 150)
-        // Shown only while search results are displayed (FR-084, R37).
+        // Shown only while search results are displayed (FR-84, R37).
         addColumn(identifier: "location", title: l10n.text(.listColumnLocation), width: 180)
         tableView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier("location"))?.isHidden = true
 
@@ -273,7 +273,7 @@ final class ListModeView: NSView {
     }
 
     /// On-screen frame of the icon of the row for `url`, where Quick Look zooms from and back to. `.zero` when the
-    /// row is not visible (FR-233, EC-167).
+    /// row is not visible (FR-247, EC-173).
     func quickLookSourceFrame(for url: URL) -> NSRect {
         guard let window = tableView.window,
               let row = model.listing.files.firstIndex(where: { $0.url == url }) else {
@@ -287,7 +287,7 @@ final class ListModeView: NSView {
         return window.convertToScreen(tableView.convert(iconRect, to: nil))
     }
 
-    /// Scrolls the focused row into view (following after going back; FR-070).
+    /// Scrolls the focused row into view (following after going back; FR-70).
     func scrollToFocused() {
         guard let focused = model.selection.focused,
               let row = model.listing.files.firstIndex(where: { $0.url == focused }) else {
@@ -296,7 +296,7 @@ final class ListModeView: NSView {
         tableView.scrollRowToVisible(row)
     }
 
-    /// Origin of the visible list range (used to preserve the scroll position; SC-017).
+    /// Origin of the visible list range (used to preserve the scroll position; SC-17).
     var visibleOrigin: CGPoint {
         scrollView.contentView.bounds.origin
     }
@@ -343,7 +343,7 @@ final class ListModeView: NSView {
     private func applyModel() {
         updateLocationColumn()
         // For a hidden mode, defer row reloading and selection updates until it is shown (viewDidUnhide).
-        // This avoids blocking the main thread for an invisible list when opening a zip with 10,000 rows (SC-015).
+        // This avoids blocking the main thread for an invisible list when opening a zip with 10,000 rows (SC-15).
         guard !isHidden else {
             syncSortDescriptors()
             updateSortMenuItems()
@@ -480,7 +480,7 @@ final class ListModeView: NSView {
     @objc private func chooseSortColumn(_ sender: NSMenuItem) {
         guard sender.tag >= 0, sender.tag < Self.sortEntries.count else { return }
         let column = Self.sortEntries[sender.tag].column
-        // Location can be selected only while search results are displayed (FR-084).
+        // Location can be selected only while search results are displayed (FR-84).
         guard column != .location || model.isShowingSearchResults else { return }
         let current = model.sortOrder
         let ascending = current.column == column ? !current.ascending : true
@@ -598,7 +598,7 @@ extension ListModeView: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         guard menuItem.action == #selector(chooseSortColumn(_:)),
               Self.sortEntries.indices.contains(menuItem.tag) else { return true }
-        // Location in View > Sort is enabled only while search results are displayed (FR-084).
+        // Location in View > Sort is enabled only while search results are displayed (FR-84).
         return Self.sortEntries[menuItem.tag].column != .location || model.isShowingSearchResults
     }
 }
@@ -832,7 +832,7 @@ extension ListModeView {
         pasteboardWriterForRow row: Int
     ) -> NSPasteboardWriting? {
         guard row >= 0, row < model.listing.files.count else { return nil }
-        // Do not start a drag for rows inside a zip or `..` (FR-073).
+        // Do not start a drag for rows inside a zip or `..` (FR-73).
         guard model.itemCommands(forRowAt: row).allowsFileOperations else { return nil }
         return model.listing.files[row].url as NSURL
     }
