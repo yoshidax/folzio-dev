@@ -40,6 +40,21 @@ struct SortingTests {
         #expect(descending.map(\.name) == ["new.jpg", "old.jpg", "none.jpg"])
     }
 
+    @Test("Folders and files are ordered together by modification date")
+    func mixesFoldersAndFilesByModificationDate() {
+        let files = [
+            file("late.jpg", modified: Date(timeIntervalSince1970: 300)),
+            folder("early", modified: Date(timeIntervalSince1970: 100)),
+            file("middle.jpg", modified: Date(timeIntervalSince1970: 200)),
+        ]
+
+        let ascending = sorted(files, by: SortOrder(column: .modificationDate, ascending: true))
+        #expect(ascending.map(\.name) == ["early", "middle.jpg", "late.jpg"])
+
+        let descending = sorted(files, by: SortOrder(column: .modificationDate, ascending: false))
+        #expect(descending.map(\.name) == ["late.jpg", "middle.jpg", "early"])
+    }
+
     @Test("Folders count as 0 bytes when sorting by size: first when ascending, last when descending")
     func sortsFoldersAsZeroBytes() {
         let files = [
@@ -249,13 +264,14 @@ struct SortingTests {
         )
     }
 
-    private func folder(_ name: String, fileSize: Int64 = 0) -> MediaFile {
+    private func folder(_ name: String, modified: Date? = nil, fileSize: Int64 = 0) -> MediaFile {
         MediaFile(
             url: URL(fileURLWithPath: "/tmp/\(name)"),
             name: name,
             kind: .folder,
             typeDescription: "Folder",
             creationDate: nil,
+            modificationDate: modified,
             fileSize: fileSize
         )
     }
