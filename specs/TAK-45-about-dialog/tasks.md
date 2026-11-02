@@ -62,6 +62,7 @@
 - [ ] T016 作業ブランチを push し、保守者へ PR を作成できる状態であることと、確認していないこと（`swift build`・`swift test`・GUI）を報告する。PR は依頼されたときだけ作る。PR の作成後に Linear の TAK-45 へ PR のリンクを追加して `In Review` に更新し、macOS CI の結果を読む（失敗は原因をまとめてから直す）。
 - [ ] T017 保守者のローカルでの起動スモークと quickstart の GUI シナリオ（1〜14）の確認を依頼し、結果を `specs/TAK-45-about-dialog/quickstart.md` の第 5 章に記録する。省略して「CI が通ったから完了」にしない。
 - [ ] T018 実装と検証の完了後、最新の `master` を取り込み（`git merge origin/master`）、ID（FR-238〜246、SC-118〜120、EC-166〜169、A-146〜148、US46〜47）が他の feature と衝突していないことを確認してから、`specs/TAK-45-about-dialog/spec.md` の「反映先」の表に従って `specs/product/overview.md`・`window-layout.md`・`contracts/keyboard-and-menus.md`・`contracts/app-bundle.md`・`contracts/localization.md` へ反映する。重複 ID の検査（`docs_private/cloud-agent-workflow.md` 7 章）を実行し、反映した項目と差分を保守者へ示して承認を得てからコミットする。spec.md の冒頭に移行済み・凍結の注記を入れる。
+- [x] T019 [US2] 保守者の GUI 確認で、開いた直後にリンクへ常にフォーカスの枠が出ることが分かった。`Sources/FolzioApp/About/AboutWindowController.swift` の `AboutLinkButton` で、キー操作（`NSApp.currentEvent` が `keyDown`）でフォーカスが移ったときだけ枠を表示するようにし、`Tests/FolzioAppTests/AboutWindowTests.swift` にテストを追加する（FR-242、US46-AS5）。修正後の GUI 確認は quickstart のシナリオ 15 で保守者が行う。
 
 ## Dependencies
 

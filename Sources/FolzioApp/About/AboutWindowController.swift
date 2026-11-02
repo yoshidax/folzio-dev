@@ -8,6 +8,33 @@ import FolzioLocalization
 final class AboutLinkButton: NSButton {
     override var canBecomeKeyView: Bool { true }
 
+    /// Whether the focus ring is drawn. It is drawn only when keyboard navigation moved the focus here.
+    ///
+    /// The link is the only key view, so AppKit gives it the initial focus when the window opens. Showing the ring
+    /// then would look like a permanent blue frame around the link (FR-242).
+    private(set) var showsFocusRing = false
+
+    override func becomeFirstResponder() -> Bool {
+        let accepted = super.becomeFirstResponder()
+        if accepted {
+            setShowsFocusRing(NSApp?.currentEvent?.type == .keyDown)
+        }
+        return accepted
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned { setShowsFocusRing(false) }
+        return resigned
+    }
+
+    private func setShowsFocusRing(_ shows: Bool) {
+        showsFocusRing = shows
+        focusRingType = shows ? .exterior : .none
+        noteFocusRingMaskChanged()
+        needsDisplay = true
+    }
+
     override func resetCursorRects() {
         addCursorRect(bounds, cursor: .pointingHand)
     }
@@ -99,7 +126,8 @@ final class AboutWindowController: NSWindowController {
 
         linkButton.isBordered = false
         linkButton.setButtonType(.momentaryChange)
-        linkButton.focusRingType = .exterior
+        // The ring appears only after keyboard navigation reaches the link (see AboutLinkButton).
+        linkButton.focusRingType = .none
         linkButton.attributedTitle = NSAttributedString(
             string: AboutInfo.repositoryURL.absoluteString,
             attributes: [

@@ -51,6 +51,23 @@ struct AboutWindowTests {
         #expect(controller.linkButton.attributedTitle.string == "https://github.com/yoshidax/folzio")
     }
 
+    @Test("The link does not show a focus ring when it gets the initial focus without a key event (FR-242)")
+    func noFocusRingOnInitialFocus() throws {
+        let controller = AboutWindowController(version: "1.0.0", openURL: { _ in true })
+        let window = try #require(controller.window)
+
+        #expect(controller.linkButton.showsFocusRing == false)
+        #expect(controller.linkButton.focusRingType == .none)
+
+        // Giving the link the focus without a key event (as when the window opens) keeps the ring hidden.
+        window.makeFirstResponder(controller.linkButton)
+        #expect(controller.linkButton.showsFocusRing == false)
+        #expect(controller.linkButton.focusRingType == .none)
+
+        window.makeFirstResponder(nil)
+        #expect(controller.linkButton.showsFocusRing == false)
+    }
+
     @Test("Pressing the link opens the repository once and ignores failure (US46-AS2, EC-166)", arguments: [true, false])
     func linkOpensRepository(succeeds: Bool) throws {
         var opened: [URL] = []
