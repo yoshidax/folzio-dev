@@ -1,5 +1,9 @@
 # Feature Specification: ツールバーのボタンセット単位の並び替え（実現可否の検討）
 
+> **移行済み（2026-11-02）**: 現在の仕様は [specs/product/](../product/README.md) を正とする（`window-layout.md` の FR-233〜237・US44・EC-164〜165・SC-117・A-144〜145、
+> `contracts/keyboard-and-menus.md` の「ツールバー」、`contracts/settings.md`）。このファイルは TAK-23 の検討・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> 技術検証の結果は [research.md](research.md) を参照。
+
 **Feature Branch**: `claude/sleepy-brahmagupta-n900cl`（作業ブランチ。feature 専用のブランチは作らない）
 
 **Created**: 2026-11-01
