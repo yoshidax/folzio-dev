@@ -73,6 +73,7 @@ Sources/FolzioApp/App/MainToolbarController.swift        # 変更: 参照管理�
 Sources/FolzioApp/App/MainWindowController.swift         # 変更: 構成の復元・保存のタイミング
 Tests/FolzioCoreTests/ToolbarLayoutTests.swift           # 新規
 Tests/FolzioCoreTests/Localization/                      # 既存検査が新キーを検査（変更が要れば追記）
+docs/usage.md / docs/usage.ja.md                          # 変更: ツールバーの記述（ラベル・カスタマイズ）を同じ内容で更新
 specs/product/                                           # 反映（最後の作業。下記）
 ```
 
@@ -91,7 +92,7 @@ specs/product/                                           # 反映（最後の作
   状態の更新対象にならない
 - `itemForItemIdentifier` は呼ばれるたびに**新しい control と項目**を返す（スライダーも項目ごとに作る。1つの `NSView` を複数の項目で共有しない）。
   `willBeInsertedIntoToolbar == true` のときだけ、現在の状態を適用する。`false`（パレット用）は状態を適用せず、参照も保持しない
-- 項目がツールバーに入った・外れたとき（`toolbarWillAddItem`／`toolbarDidRemoveItem`）に、その識別子の状態を再適用する。
+- 項目がツールバーに入った・外れたとき（`toolbarWillAddItem`／`toolbarDidRemoveItem`）に、その識別子の状態を再適用する。`toolbarWillAddItem` の時点では項目が `toolbar.items` に入っていない見込みのため、通知の項目へ直接適用するか、次の run loop で引き直す。
   これで「外して戻す」「デフォルトセットの入れ直し」でも状態が追従する
 - `NSToolbarItemValidation` と `apply(...)` 系は、上のアクセサ経由に書き換える。`toolbar.items` に該当がない間（未装着）は何もしない
 - 同じセットが複数回追加できた場合の扱いは、実機で確かめて決める（R-4）。許される場合は、識別子で見つかるすべての項目に同じ状態を適用する
