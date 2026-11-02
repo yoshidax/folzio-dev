@@ -38,14 +38,14 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 
 ## File List and Layouts
 
-- Switching between list and thumbnail views, adjustable thumbnail size, and sorting by column header
+- Switching between list and thumbnail views, adjustable thumbnail size, sorting by column header, and showing or hiding the Date Created, Kind, Size, and Date Modified columns (right-click the column header)
 
 - A toolbar with view-mode buttons and a thumbnail-size slider (hidden by default. Toggle it with ⇧⌘T; its state is restored on the next launch). Right-click the toolbar and choose "Customize Toolbar…" to rearrange the button groups by dragging (a group such as Back/Forward or Thumbnails/List moves as one unit), remove or re-add them, add spaces, and change the display mode. The order and display mode are restored on the next launch
 
 - Pane layout switching (three panes / file list only / preview only). Switch with the "Show File List Only" and "Show Preview Only" buttons at the left of the default toolbar,
   ⌃⌘2 / ⌃⌘3, or the matching items in the View menu (表示). All three share the same state (the menu and shortcuts work even while the toolbar is hidden).
   The tree cannot be hidden on its own, so the layouts are three panes, file list only, and preview only
-  - In the preview-only layout, the arrow keys move the selection in the hidden file list (up/down/left/right in thumbnail view, up/down in list view). For videos, `<` / `>` skip back / forward 5 seconds
+  - In the preview-only layout, the arrow keys move the selection in the hidden file list (up/down/left/right in thumbnail view, up/down in list view). For videos, `<` / `>` skip back / forward 5 seconds (also in the three-pane layout)
   - When the list has no media, the preview shows "No media file to display" (表示するメディアファイルがありません)
   - Focusing a hidden pane, favorites, search, and similar actions are disabled
   - Full screen is available from either layout and returns to it on exit
@@ -154,7 +154,7 @@ The keys in this guide are the defaults. In Settings (⌘,) → Shortcuts (シ�
 | Move through the hidden list during a slideshow (the timer also restarts at the configured interval) | Arrow keys (up/down/left/right in thumbnail view, up/down in list view. Esc ends) |
 | Play/pause a video or seek 5 seconds during a slideshow | `/`, `<` / `>` |
 | Move the selection in the hidden file list (preview only) | Arrow keys (up/down/left/right in thumbnail view, up/down in list view) |
-| Skip a video back / forward 5 seconds (preview only) | `<` / `>` |
+| Skip a video back / forward 5 seconds (while a video is shown; not while typing) | `<` / `>` |
 | Expand / collapse a folder in the tree | → / ←, double-click a folder row |
 | Add to Favorites | ⌃⌘T, tree context menu |
 | Rename a favorite (edited in place. Return commits, Esc cancels, clearing the name restores the original folder name. No confirmation. The actual folder is not renamed) | Return, "Rename" in the favorite's context menu, Edit menu → "Rename" |

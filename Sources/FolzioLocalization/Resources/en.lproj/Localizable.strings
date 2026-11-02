@@ -508,6 +508,12 @@
 "list.column.kind" = "Kind";
 
 /* List view column headings. Also used in the sort menu */
+"list.column.size" = "Size";
+
+/* List view column headings. Also used in the sort menu */
+"list.column.modificationDate" = "Date Modified";
+
+/* List view column headings. Also used in the sort menu */
 "list.column.location" = "Location";
 
 /* Selected column in the sort menu (ascending). %1$@ is the column name */
@@ -944,7 +950,7 @@
 "shortcuts.entry.videoSeek" = "Seek backward or forward by 5 seconds";
 
 /* Availability note below a shortcut reference action */
-"shortcuts.condition.videoSeek" = "For video in full screen or preview-only view.";
+"shortcuts.condition.videoSeek" = "For video shown in the preview.";
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.slideshowStart" = "Start a slideshow";

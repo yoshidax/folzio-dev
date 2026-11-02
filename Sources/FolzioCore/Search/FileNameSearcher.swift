@@ -177,8 +177,11 @@ public struct FileNameSearcher: FileNameSearching {
     }
 
     private static func folderRow(at url: URL, kindNames: KindNames) -> MediaFile {
-        let creationDate = (try? url.resourceValues(forKeys: [.creationDateKey]))?.creationDate
-        return DirectoryLister.folderRow(at: url, creationDate: creationDate, kindNames: kindNames)
+        let values = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+        return DirectoryLister.folderRow(
+            at: url, creationDate: values?.creationDate, modificationDate: values?.contentModificationDate,
+            kindNames: kindNames
+        )
     }
 
     private static func matchedFile(
