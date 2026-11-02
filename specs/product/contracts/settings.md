@@ -66,7 +66,7 @@
   - `view.toolbarItems`: 識別子の文字列の配列（`history`・`paneLayout`・`slideshow`・`previewZoom`・`mediaTypeFilter`・`zipVisibility`・`viewMode`・`thumbnailSize`・
     `NSToolbarSpaceItem`・`NSToolbarFlexibleSpaceItem`）。既定の並びと同じとき、またはカスタマイズしていないときは保存しない（キーを消す）
   - `view.toolbarDisplayMode`: 整数（`NSToolbar.DisplayMode` の値）。既定の「アイコンのみ」のときは保存しない
-  - 読み込み時は、未知の識別子と同じセットの重複を除き、値が配列でない・未知の識別子しかないときは既定の並びにする。空の配列は「すべて外した」状態とする（EC-165）。
+  - 読み込み時は、値が配列でない・未知の識別子を1つでも含むときは既定の並びにし、同じセットの重複は最初の1つだけ残す。空の配列は「すべて外した」状態とする（EC-165）。
     保存はアプリの終了時と、`itemIdentifiers`・`displayMode` の変更の通知で行う
 - 検索の条件（キーワード・検索起点ディレクトリ）と検索結果は保存しない。前回のキーワードは起動中だけ覚える。検索を始めても
   `view.lastFolderPath` は変えない（FR-081・086）。並べ替えの「場所」（`location`）は検索結果の表示中だけ使い、`view.sort.column` には
