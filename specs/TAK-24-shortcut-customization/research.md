@@ -70,6 +70,18 @@
 - **Decision**: 辞書でなければ無視。未知のコマンド ID・解釈できない値・検証（修飾/予約/固定）に反する値は、その項目だけ捨てる。重複は、コマンドの宣言順で先のものを残し、後のものを捨てる。
 - **Rationale**: 起動を妨げず、他の割り当てを保つ（SC-123、EC-171）。宣言順で決定的にする。
 
+## R10 master 取り込み（2026-11-02）の影響
+
+- **TAK-23（ツールバーのカスタマイズ）**: `MainToolbarController.swift` が大きく変わり、ツールチップ・アクセシビリティ用の文言が 14 個の翻訳キーに分かれた
+  （`toolbar.goBackHelp`・`goForwardHelp`・`showFileListOnlyHelp`・`showPreviewOnlyHelp`・`showImagesOnlyHelp`・`showVideosOnlyHelp`・`zipFilesHelp`・`startSlideshowHelp`・
+  `zoomInHelp`・`zoomToFitHelp`・`zoomOutHelp`・`thumbnails`・`list`・`thumbnailSize`）。いずれもキー記号を訳文に直接含む。
+  対応: これらを「名前」と「キー」の引数付き文言に変え、キーは割り当ての表から生成する（T012・T016）。`thumbnailSize` は 2 コマンドを ` / ` でつなぐ。
+  ツールバーの保存キー（`view.toolbarItems`・`view.toolbarDisplayMode`）とは独立で、競合しない。
+- **TAK-45（Folzio について）**: アプリメニューに「Folzio について」（ショートカットなし）が増えた。コマンドの対象外で、予約キー・固定キーにも影響しない。
+  アプリメニューは区切りが増えただけで、`MainMenu` の登録箇所は変わらない（T015）。
+- **公開ドキュメント**: `docs/usage.md`・`docs/usage.ja.md` にもキーが多数書かれている。既定のキーである旨を明記し、保存先の節に `shortcuts.overrides` を足す（T026）。
+- **product 仕様**: `keyboard-and-menus.md` にツールバーのツールチップの表（キー付き）、`settings.md` に `view.toolbarItems` が入った。反映時（T027）は、ツールチップの表を「既定のキー。割り当てに従う」と注記する。
+
 ## 範囲外として決めたこと
 
 - 修飾なしの既定値を持つ Return（名前の変更）は対象外（FR-248）。

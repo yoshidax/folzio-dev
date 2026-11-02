@@ -27,7 +27,7 @@
 ## Phase 3: 翻訳
 
 - [ ] T011 `Tests/FolzioCoreTests/Localization/ShortcutSettingsTextTests.swift` を追加する。contracts §4 の文言（タブ名・記録・案内・既定値に戻す・すべて戻す・変更済み・エラー 4 種）が日本語・英語で欠けず、引数の数が正しいこと
-- [ ] T012 `Sources/FolzioLocalization/TextKey.swift` と `Resources/{en,ja}.lproj/Localizable.strings` に contracts §4 の翻訳キーを追加する。ツールバーのツールチップの `toolbarStartSlideshowHelp` など、キーを直接含む文言をキーの引数を受ける形に変える（R7）。既存の文言の値は、キー表記の部分以外を変えない
+- [ ] T012 `Sources/FolzioLocalization/TextKey.swift` と `Resources/{en,ja}.lproj/Localizable.strings` に contracts §4 の翻訳キーを追加する。ツールバーの 14 個の文言（`toolbar.goBackHelp`・`goForwardHelp`・`showFileListOnlyHelp`・`showPreviewOnlyHelp`・`showImagesOnlyHelp`・`showVideosOnlyHelp`・`zipFilesHelp`・`startSlideshowHelp`・`zoomInHelp`・`zoomToFitHelp`・`zoomOutHelp`・`thumbnails`・`list`・`thumbnailSize`）を、キーの引数を受ける形に変える（R7・R10）。既存の文言の値は、キー表記の部分以外を変えない
 
 ## Phase 4: US48 記録して割り当てる＋タブ (P1)
 
@@ -38,7 +38,7 @@
 - [ ] T013 [US48] `Sources/FolzioApp/Shortcuts/ShortcutAssignmentStore.swift` を追加する（MainActor。起動時に `SettingsStore` から読み込み、`assign`/`reset` で保存し、変更を通知する。`NotificationCenter` で `.shortcutAssignmentsDidChange`）
 - [ ] T014 [US48] `Sources/FolzioApp/Shortcuts/MenuShortcutApplier.swift` を追加する。`register(_:for:)` で `NSMenuItem`（弱参照）とコマンド ID を結び付け、登録時と変更通知のたびに登録済みの全項目へ `keyEquivalent`・`keyEquivalentModifierMask` を設定する。`item.identifier`（文言の更新が使用）は変えない。`zoomIn` の別名項目は主キーが既定値のときだけ有効にする（R2、EC-173）
 - [ ] T015 [US48] `MainMenu.swift`、`FileListViewController.swift`（`installViewMenuItems`）、`MainSplitViewController.swift`（`installFocusMenuItems`、`goBack`/`goForward` の項目）、`DirectoryTreeViewController.swift`、`FileContextMenu.swift` の各メニュー項目を、組み立て直後に `MenuShortcutApplier.register` で登録して適用する（コンテキストメニューはメニューを作り直すたびに登録する）。`MainMenu.bind` の識別子には触れない。キーの直書きは残さない。予約キー（⌘Q ⌘W ⌘, と編集メニューの標準キー）と Return の項目は対象外のまま
-- [ ] T016 [US48] ツールバーのツールチップとアクセシビリティラベル（`MainToolbarController.swift`）、ショートカット一覧ウインドウ（`ShortcutCheatSheetWindowController.swift` ほか）を割り当ての表から生成する。変更通知で更新し、一覧は先頭の可視項目を保つ（FR-253、R7）
+- [ ] T016 [US48] ツールバーのツールチップとアクセシビリティラベル（`MainToolbarController.swift`。TAK-23 で `l10n.text(.toolbar…Help)` を使う箇所が約 20 か所に増えた。カスタマイズの変更通知後・言語切り替え後も更新する）、ショートカット一覧ウインドウ（`ShortcutCheatSheetWindowController.swift` ほか）を割り当ての表から生成する。変更通知で更新し、一覧は先頭の可視項目を保つ（FR-253、R7）
 - [ ] T017 [US48] `Sources/FolzioApp/Shortcuts/ShortcutRecorderRow.swift` を追加する。コマンド名・現在のキー・状態・「記録」・「既定値に戻す」・エラーの 1 行。記録中は `performKeyEquivalent`/`keyDown` を横取りし、押された文字と修飾キーを `KeyCombination.normalized` に通して候補にし、修飾キーだけの入力は無視、Esc で取消、フォーカス喪失・ウインドウ閉鎖・言語変更で取消（FR-250、R3、EC-170）
 - [ ] T018 [US48] `Sources/FolzioApp/Settings/ShortcutSettingsViewController.swift` を追加する。区分の見出しと 32 行を `NSScrollView` に並べ、下部に「すべて既定値に戻す」を固定する。Tab / ⇧Tab の巡回、行ごとのアクセシビリティ（名前・キー・状態）、エラーの読み上げ（FR-249・257）
 - [ ] T019 [US48] `SettingsWindowController.swift` を `NSTabView` の 2 タブ（「一般」「ショートカット」）にする。「一般」は現行の `makeContentView()` の内容・間隔・Tab 順・補足説明をそのまま移す。開いたとき常に「一般」。タブ切り替えで高さを各タブに合わせ、記録中なら取り消す。言語切り替えで両タブを更新する（FR-247、US48-AS5〜7）
@@ -63,10 +63,10 @@
 
 - [ ] T022 Cloud の検査（quickstart.md「自動の検証」の Cloud の行）を実行し、結果を quickstart.md に記録する。新しいコードコメントは英語で書く
 - [ ] T023 作業ブランチに push し、保守者の依頼で PR を作ったら CI（`swift build`・`swift test`）の結果を GitHub MCP で確認して quickstart.md に記録する。性能テストはログの末尾で合否を確かめる
-- [ ] T024 [MANUAL] 保守者が quickstart.md の GUI の確認 Q1〜Q15 を日本語・英語で行い、結果（実行日・OS・合否）を報告する。報告を `specs/TAK-24-shortcut-customization/checklists/validation.md` に記録する（SC-121〜127）
+- [ ] T024 [MANUAL] 保守者が quickstart.md の GUI の確認 Q1〜Q16 を日本語・英語で行い、結果（実行日・OS・合否）を報告する。報告を `specs/TAK-24-shortcut-customization/checklists/validation.md` に記録する（SC-121〜127）
 - [ ] T025 `speckit-converge` を実行し、追加のタスクがあれば実装と検証を繰り返す
-- [ ] T026 `README.md` と `README.ja.md` のキー表（⌘/、⌘1 / ⌘2、⌘+ など）の見出しまたは直前の文に「既定のキー。設定の「ショートカット」で変更できる」旨を同じコミットで両言語に入れる。構造を1対1で保ち、`scripts/check-readme-sync.sh master` を通す（AGENTS.md「README の英語版と日本語版」）
-- [ ] T027 PR の最後の作業として `git merge origin/master` で最新の master を取り込み、ID の衝突を確かめてから、spec.md の「反映先」を `specs/product/window-layout.md`・`contracts/settings.md`・`contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映し、spec.md の冒頭に移行済み・凍結の注記を入れる。差分を保守者に示し、承認後にコミットする
+- [ ] T026 `README.md` と `README.ja.md` のキー表（⌘/、⌘1 / ⌘2、⌘+ など）の見出しまたは直前の文に「既定のキー。設定の「ショートカット」で変更できる」旨を同じコミットで両言語に入れる。`docs/usage.md`・`docs/usage.ja.md` にも同じ注記と、保存先の節への `shortcuts.overrides` を足す（公開版のため `specs/` などへのリンクは張らない）。構造を1対1で保ち、`scripts/check-readme-sync.sh master` を通す（AGENTS.md「README の英語版と日本語版」）
+- [ ] T027 PR の最後の作業として（`keyboard-and-menus.md` のツールバーのツールチップの表には「既定のキー。割り当てに従う」と注記する） `git merge origin/master` で最新の master を取り込み、ID の衝突を確かめてから、spec.md の「反映先」を `specs/product/window-layout.md`・`contracts/settings.md`・`contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映し、spec.md の冒頭に移行済み・凍結の注記を入れる。差分を保守者に示し、承認後にコミットする
 
 ## Dependencies
 
