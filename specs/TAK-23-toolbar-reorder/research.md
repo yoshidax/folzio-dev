@@ -72,7 +72,12 @@
 `init` 後は `[]`（未装着）、`window.toolbar` 割り当て直後と次の run loop は、どちらも**既定の並び**（history, paneLayout, …, NSToolbarFlexibleSpaceItem）だった。
 つまり、次の run loop までに並びが既定から変わる処理は起きておらず、**割り当て時点で保存済みの並びが適用されていない**。自分のコードが後から上書きしているわけではない。
 同じ実行後の `defaults read` には `TB Display Mode`・`TB Icon Size Mode`・`TB Is Shown`・`TB Size Mode` だけがあり、`TB Item Identifiers` と `TB Default Item Identifiers` が**なかった**
-（以前の実験の保存値には両方あった）。並べ替えの有無と順序の詳細は確認中。
+（以前の実験の保存値には両方あった）。並べ替えの有無と順序の詳細は、下の追加の確認で確定した。
+
+**追加の確認（保守者、2026-11-02）**: `defaults delete` の後、起動して並べ替え（thumbnailSize を先頭へ）、終了すると、`TB Item Identifiers` に並べ替え後の順序が保存された（A）。
+次に、何も触らずに起動して終了すると、`TB Item Identifiers` と `TB Default Item Identifiers` の**両方が消えた**（B。起動時のログは3点とも既定の並び）。
+つまり、標準の自動保存は、(1) 起動時に保存済みの並びを適用せず、(2) 起動のたびに保存値を消す。以前の実験（診断ログなし）では、何も触らずに起動しても保存値が残っていた。
+今回との違いは、診断ログが `init` で `toolbar.items` に触れる点で、消去がログ由来の副作用である可能性がある（未確認）。ただし、復元されない問題はログ追加前から起きていた。
 
 **判断**: 標準の自動保存（段1）は、設定の順序でも、起動時の上書きでもなく、直す手がかりが見つからなかった。段2 は非推奨。したがって、段3（`itemIdentifiers` / `displayMode` による保存・復元）を採る見込み。
 `autosavesConfiguration` は、保存の仕組みが二重にならないよう `false` にする（T005 で確定）。
