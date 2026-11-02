@@ -1,5 +1,16 @@
 # Feature Specification: 通常表示でも動画を < / > で5秒戻す・送る
 
+> **ID の対応表（TAK-52）**: この記録は凍結しており、本文の ID は書き換えない。`specs/product/` への反映時に、`file-list.md`（TAK-46）の ID と重複したため、
+> 次のとおり振り直した。`specs/product/`・ソースのコメントでは右の新 ID を使う。
+>
+> | 本文の ID | `specs/product/` の ID |
+> | -- | -- |
+> | FR-269 | FR-287 |
+> | SC-133 | SC-148 |
+> | A-164 | A-181 |
+> | EC-188 | EC-201 |
+> | EC-189 | EC-202 |
+
 **Feature Branch**: `claude/gallant-hawking-vyx9ta`
 
 **Created**: 2026-11-02

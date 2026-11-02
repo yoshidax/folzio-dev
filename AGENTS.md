@@ -223,7 +223,7 @@ Cloud 環境で Agent が作業するときの規則です。手順の詳細は 
 ### 検証ゲート（手順書 5）
 
 - Cloud で行う: `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、
-  `scripts/dev/check-skill-sync.sh`、`test_check_git_push.py`
+  `scripts/dev/check-skill-sync.sh`、`scripts/dev/check-spec-ids.sh`、`test_check_git_push.py`
 - CI で行う: `swift build`、`swift test`
 - 保守者がローカルで行う: 起動スモーク、ローカルの最新の Swift でのビルド、`scripts/dev/tests` の公開・配布のテスト
 - 起動スモークを省略して「CI が通ったから完了」にしない。マージ前のゲート（自動テストの通過）は、CI の成功と保守者のローカルでの確認で満たす
