@@ -75,7 +75,7 @@ Cloud では `swift build`・`swift test`・GUI を実行しない（AGENTS.md�
 
 - [x] T020 【Cloud】`docs/usage.md` と `docs/usage.ja.md` にツールバーの記述（ラベル・並び替え）があれば、新しいラベルとカスタマイズの方法に更新する。両言語を同じコミットで揃える。公開版のガイドから `specs/` などへのリンクは張らない（AGENTS.md）。
 - [x] T021 【Cloud】検証ゲートの Cloud 分を実行する: `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`。失敗したら直す。
-- [ ] T022 【実機】保守者がローカルで起動スモーク（3ペインの表示、ツールバーのカスタマイズの一巡）を行う。結果を `specs/TAK-23-toolbar-reorder/quickstart.md` に記録する。省略して「CI が通ったから完了」にしない（AGENTS.md）。
+- [x] T022 【実機】（保守者が確認済み、2026-11-02）保守者がローカルで起動スモーク（3ペインの表示、ツールバーのカスタマイズの一巡）を行う。結果を `specs/TAK-23-toolbar-reorder/quickstart.md` に記録する。省略して「CI が通ったから完了」にしない（AGENTS.md）。
 - [x] T023 【Cloud】実装と検証が終わったら、`git fetch origin master` して `git merge origin/master` で最新の master を取り込み、`specs/product/` へ反映する（plan.md Phase 1-5）。`window-layout.md` の FR-051・089・114・134、`contracts/keyboard-and-menus.md` の「ツールバー」、`contracts/settings.md`（保存の内容と不正値の扱い）、ローカライズの領域、新しい FR を追加する。FR の ID が他の feature と衝突したら、まだマージされていない側が振り直す。この feature の spec.md の冒頭に「移行済み」の注記を入れ、凍結する。反映の差分を保守者に示し、承認後にコミットする。
 - [ ] T024 【Cloud】保守者が PR の作成を依頼したら、PR を作り、`TAK-23` の Linear に PR のリンクを追加して `In Review` に更新する。`Done` は、保守者のマージ後の依頼があるときだけ行う（AGENTS.md）。
 
