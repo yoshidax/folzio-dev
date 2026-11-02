@@ -22,6 +22,7 @@ final class MainToolbarController: NSObject {
     private var visibilityObservation: NSKeyValueObservation?
     private var editingObservers: [NSObjectProtocol] = []
     private var configurationObservations: [NSKeyValueObservation] = []
+    private var assignmentObserver: ShortcutAssignmentObserver?
     private var terminationObserver: NSObjectProtocol?
 
     // The toolbar does not keep references to its controls. The customization palette and the removal and re-adding of
@@ -37,6 +38,8 @@ final class MainToolbarController: NSObject {
         NotificationCenter.default.addObserver(
             self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
         )
+        // The tooltips show the current keys, so an assignment change refreshes them like a language change.
+        assignmentObserver = ShortcutAssignmentObserver { [weak self] in self?.displayLanguageDidChange() }
 
         toolbar.delegate = self
         toolbar.displayMode = .iconOnly
@@ -147,7 +150,7 @@ final class MainToolbarController: NSObject {
         ]
         for (identifier, key, segmentKeys) in entries {
             let label = l10n.text(key)
-            let labels = segmentKeys.map { l10n.text($0) }
+            let labels = segmentKeys.map { ToolbarShortcutText.text($0) }
             for item in items(for: identifier) {
                 item.label = label
                 item.paletteLabel = label
@@ -161,21 +164,21 @@ final class MainToolbarController: NSObject {
         for item in items(for: Self.slideshowIdentifier) {
             item.label = l10n.text(.toolbarSlideshowLabel)
             item.paletteLabel = item.label
-            item.toolTip = l10n.text(.toolbarStartSlideshowHelp)
+            item.toolTip = ToolbarShortcutText.text(.toolbarStartSlideshowHelp)
             if let button = item.view as? NSButton {
-                button.toolTip = l10n.text(.toolbarStartSlideshowHelp)
+                button.toolTip = ToolbarShortcutText.text(.toolbarStartSlideshowHelp)
                 button.setAccessibilityLabel(l10n.text(.menuViewStartSlideshow))
-                button.setAccessibilityHelp(l10n.text(.toolbarStartSlideshowHelp))
+                button.setAccessibilityHelp(ToolbarShortcutText.text(.toolbarStartSlideshowHelp))
             }
         }
         for item in items(for: Self.thumbnailSizeIdentifier) {
             item.label = l10n.text(.toolbarThumbnailSizeLabel)
             item.paletteLabel = item.label
-            item.toolTip = l10n.text(.toolbarThumbnailSize)
+            item.toolTip = ToolbarShortcutText.text(.toolbarThumbnailSize)
             if let slider = item.view as? NSSlider {
-                slider.toolTip = l10n.text(.toolbarThumbnailSize)
-                slider.setAccessibilityLabel(l10n.text(.toolbarThumbnailSize))
-                slider.setAccessibilityHelp(l10n.text(.toolbarThumbnailSize))
+                slider.toolTip = ToolbarShortcutText.text(.toolbarThumbnailSize)
+                slider.setAccessibilityLabel(ToolbarShortcutText.text(.toolbarThumbnailSize))
+                slider.setAccessibilityHelp(ToolbarShortcutText.text(.toolbarThumbnailSize))
             }
         }
     }
@@ -413,9 +416,9 @@ final class MainToolbarController: NSObject {
         slider.controlSize = .small
         slider.target = self
         slider.action = #selector(thumbnailSizeChanged(_:))
-        slider.toolTip = l10n.text(.toolbarThumbnailSize)
-        slider.setAccessibilityLabel(l10n.text(.toolbarThumbnailSize))
-        slider.setAccessibilityHelp(l10n.text(.toolbarThumbnailSize))
+        slider.toolTip = ToolbarShortcutText.text(.toolbarThumbnailSize)
+        slider.setAccessibilityLabel(ToolbarShortcutText.text(.toolbarThumbnailSize))
+        slider.setAccessibilityHelp(ToolbarShortcutText.text(.toolbarThumbnailSize))
         slider.translatesAutoresizingMaskIntoConstraints = false
         slider.widthAnchor.constraint(equalToConstant: 120).isActive = true
         return slider
@@ -504,8 +507,8 @@ extension MainToolbarController: NSToolbarDelegate {
         case Self.historyIdentifier:
             guard let control = makeSegmentedControl(
                 items: [
-                    ("chevron.left", l10n.text(.toolbarGoBackHelp)),
-                    ("chevron.right", l10n.text(.toolbarGoForwardHelp)),
+                    ("chevron.left", ToolbarShortcutText.text(.toolbarGoBackHelp)),
+                    ("chevron.right", ToolbarShortcutText.text(.toolbarGoForwardHelp)),
                 ],
                 trackingMode: .momentary,
                 action: #selector(historySelected(_:))
@@ -520,8 +523,8 @@ extension MainToolbarController: NSToolbarDelegate {
         case Self.paneLayoutIdentifier:
             guard let control = makeSegmentedControl(
                 items: [
-                    ("list.bullet.rectangle", l10n.text(.toolbarShowFileListOnlyHelp)),
-                    ("sidebar.right", l10n.text(.toolbarShowPreviewOnlyHelp)),
+                    ("list.bullet.rectangle", ToolbarShortcutText.text(.toolbarShowFileListOnlyHelp)),
+                    ("sidebar.right", ToolbarShortcutText.text(.toolbarShowPreviewOnlyHelp)),
                 ],
                 trackingMode: .selectAny,
                 action: #selector(paneLayoutSelected(_:))
@@ -544,14 +547,14 @@ extension MainToolbarController: NSToolbarDelegate {
             button.controlSize = .regular
             button.isBordered = true
             button.imagePosition = .imageOnly
-            button.toolTip = l10n.text(.toolbarStartSlideshowHelp)
+            button.toolTip = ToolbarShortcutText.text(.toolbarStartSlideshowHelp)
             button.setAccessibilityLabel(l10n.text(.menuViewStartSlideshow))
-            button.setAccessibilityHelp(l10n.text(.toolbarStartSlideshowHelp))
+            button.setAccessibilityHelp(ToolbarShortcutText.text(.toolbarStartSlideshowHelp))
 
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
             item.label = l10n.text(.toolbarSlideshowLabel)
             item.paletteLabel = l10n.text(.toolbarSlideshowLabel)
-            item.toolTip = l10n.text(.toolbarStartSlideshowHelp)
+            item.toolTip = ToolbarShortcutText.text(.toolbarStartSlideshowHelp)
             item.view = button
             item.target = panes
             item.action = #selector(MainSplitViewController.startSlideshow(_:))
@@ -571,11 +574,11 @@ extension MainToolbarController: NSToolbarDelegate {
             ) else {
                 return nil
             }
-            control.setToolTip(l10n.text(.toolbarZoomInHelp), forSegment: 0)
-            control.setToolTip(l10n.text(.toolbarZoomToFitHelp), forSegment: 1)
-            control.setToolTip(l10n.text(.toolbarZoomOutHelp), forSegment: 2)
+            control.setToolTip(ToolbarShortcutText.text(.toolbarZoomInHelp), forSegment: 0)
+            control.setToolTip(ToolbarShortcutText.text(.toolbarZoomToFitHelp), forSegment: 1)
+            control.setToolTip(ToolbarShortcutText.text(.toolbarZoomOutHelp), forSegment: 2)
             control.setAccessibilityHelp(l10n.list([
-                l10n.text(.toolbarZoomInHelp), l10n.text(.toolbarZoomToFitHelp), l10n.text(.toolbarZoomOutHelp),
+                ToolbarShortcutText.text(.toolbarZoomInHelp), ToolbarShortcutText.text(.toolbarZoomToFitHelp), ToolbarShortcutText.text(.toolbarZoomOutHelp),
             ]))
             return makeGroupItem(
                 identifier: itemIdentifier,
@@ -585,8 +588,8 @@ extension MainToolbarController: NSToolbarDelegate {
         case Self.mediaTypeFilterIdentifier:
             guard let control = makeSegmentedControl(
                 items: [
-                    ("photo", l10n.text(.toolbarShowImagesOnlyHelp)),
-                    ("film", l10n.text(.toolbarShowVideosOnlyHelp)),
+                    ("photo", ToolbarShortcutText.text(.toolbarShowImagesOnlyHelp)),
+                    ("film", ToolbarShortcutText.text(.toolbarShowVideosOnlyHelp)),
                 ],
                 trackingMode: .selectAny,
                 action: #selector(mediaTypeFilterSelected(_:))
@@ -601,7 +604,7 @@ extension MainToolbarController: NSToolbarDelegate {
         case Self.zipVisibilityIdentifier:
             guard let control = makeSegmentedControl(
                 items: [
-                    ("doc.zipper", l10n.text(.toolbarZipFilesHelp)),
+                    ("doc.zipper", ToolbarShortcutText.text(.toolbarZipFilesHelp)),
                 ],
                 trackingMode: .selectAny,
                 action: #selector(zipVisibilitySelected(_:))
@@ -616,8 +619,8 @@ extension MainToolbarController: NSToolbarDelegate {
         case Self.viewModeIdentifier:
             guard let control = makeSegmentedControl(
                 items: [
-                    ("square.grid.2x2", l10n.text(.toolbarThumbnails)),
-                    ("list.bullet", l10n.text(.toolbarList)),
+                    ("square.grid.2x2", ToolbarShortcutText.text(.toolbarThumbnails)),
+                    ("list.bullet", ToolbarShortcutText.text(.toolbarList)),
                 ],
                 trackingMode: .selectOne,
                 action: #selector(viewModeSelected(_:))
@@ -633,7 +636,7 @@ extension MainToolbarController: NSToolbarDelegate {
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
             item.label = l10n.text(.toolbarThumbnailSizeLabel)
             item.paletteLabel = item.label
-            item.toolTip = l10n.text(.toolbarThumbnailSize)
+            item.toolTip = ToolbarShortcutText.text(.toolbarThumbnailSize)
             item.view = makeSizeSlider()
             item.autovalidates = false
             return item

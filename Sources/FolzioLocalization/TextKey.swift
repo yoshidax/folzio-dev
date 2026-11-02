@@ -190,6 +190,23 @@ public enum TextKey: String, CaseIterable, Sendable {
     case settingsTransitionCrossfade = "settings.transition.crossfade"
     case settingsTransitionSlide = "settings.transition.slide"
     case settingsTransitionZoom = "settings.transition.zoom"
+    case settingsTabGeneral = "settings.tab.general"
+    case settingsTabShortcuts = "settings.tab.shortcuts"
+    case settingsShortcutsList = "settings.shortcuts.list"
+    case settingsShortcutsRecord = "settings.shortcuts.record"
+    case settingsShortcutsRecording = "settings.shortcuts.recording"
+    case settingsShortcutsReset = "settings.shortcuts.reset"
+    case settingsShortcutsResetAll = "settings.shortcuts.resetAll"
+    case settingsShortcutsChanged = "settings.shortcuts.changed"
+    case settingsShortcutsRecordFor = "settings.shortcuts.recordFor"
+    case settingsShortcutsResetFor = "settings.shortcuts.resetFor"
+    case settingsShortcutsErrorModifier = "settings.shortcuts.error.modifier"
+    case settingsShortcutsErrorFixed = "settings.shortcuts.error.fixed"
+    case settingsShortcutsErrorConflict = "settings.shortcuts.error.conflict"
+    case settingsShortcutsErrorDefaultConflict = "settings.shortcuts.error.defaultConflict"
+    case settingsShortcutsClear = "settings.shortcuts.clear"
+    case settingsShortcutsClearFor = "settings.shortcuts.clearFor"
+    case settingsShortcutsUnset = "settings.shortcuts.unset"
 
     // MARK: - File List and Tree
 
@@ -382,7 +399,12 @@ public enum TextKey: String, CaseIterable, Sendable {
         case .errorZipCannotOpen, .errorOperationTrashExistingFailed, .errorOperationSystemFailure,
              .listSortAscending, .listSortDescending,
              .dialogConfirmBullet, .dialogConfirmDestination, .dialogConfirmLocation,
-             .dialogFavoriteRemoveItems, .previewUnavailable, .aboutVersion:
+             .dialogFavoriteRemoveItems, .previewUnavailable, .aboutVersion,
+             .toolbarGoBackHelp, .toolbarGoForwardHelp, .toolbarShowFileListOnlyHelp, .toolbarShowPreviewOnlyHelp, .toolbarShowImagesOnlyHelp,
+             .toolbarShowVideosOnlyHelp, .toolbarZipFilesHelp, .toolbarStartSlideshowHelp, .toolbarZoomInHelp, .toolbarZoomToFitHelp,
+             .toolbarZoomOutHelp, .toolbarThumbnails, .toolbarList, .toolbarThumbnailSize,
+             .settingsShortcutsRecordFor, .settingsShortcutsResetFor, .settingsShortcutsErrorConflict, .settingsShortcutsErrorDefaultConflict,
+             .settingsShortcutsClearFor:
             return [.text]
         case .contextCopySingle:
             return [.text]
@@ -702,16 +724,50 @@ public enum TextKey: String, CaseIterable, Sendable {
              .toolbarThumbnailSizeLabel:
             return "Toolbar group names. They are also shown in the customization palette and in the text display mode"
         case .toolbarThumbnailSize:
-            return "Thumbnail size in the toolbar and size bar. Includes the shortcut"
+            return "Thumbnail size in the toolbar and size bar. The value is the shortcut text"
         case .toolbarStartSlideshowHelp:
-            return "Slideshow tooltip. Includes the shortcut"
+            return "Slideshow tooltip. The value is the shortcut text"
         case .toolbarZoomInHelp, .toolbarZoomToFitHelp, .toolbarZoomOutHelp:
-            return "Zoom in and out tooltips. Include the shortcuts"
+            return "Zoom in, zoom to fit, and zoom out tooltips. The value is the shortcut text"
         case .toolbarGoBackHelp, .toolbarGoForwardHelp, .toolbarShowFileListOnlyHelp, .toolbarShowPreviewOnlyHelp,
              .toolbarShowImagesOnlyHelp, .toolbarShowVideosOnlyHelp, .toolbarZipFilesHelp:
-            return "Toolbar button tooltips and accessibility text. They are separate from the menu item names and include the shortcuts"
+            return "Toolbar button tooltips and accessibility text. They are separate from the menu item names. The value is the shortcut text"
         case .toolbarThumbnails, .toolbarList:
-            return "View mode options in the toolbar. Tooltips that include the shortcuts"
+            return "View mode options in the toolbar. Tooltips. The value is the shortcut text"
+        case .settingsTabGeneral:
+            return "Settings window tab name for the general settings"
+        case .settingsTabShortcuts:
+            return "Settings window tab name for the shortcut assignments"
+        case .settingsShortcutsList:
+            return "Accessibility label of the shortcut assignment list in the Settings window"
+        case .settingsShortcutsRecord:
+            return "Button that starts recording a new shortcut for a command"
+        case .settingsShortcutsRecording:
+            return "Prompt shown in place of the key while a shortcut is being recorded"
+        case .settingsShortcutsReset:
+            return "Button that returns one command to its default shortcut"
+        case .settingsShortcutsResetAll:
+            return "Button that returns every command to its default shortcut"
+        case .settingsShortcutsChanged:
+            return "Marker for a command whose shortcut differs from the default"
+        case .settingsShortcutsRecordFor:
+            return "Accessibility label of the Record button. The value is the command name"
+        case .settingsShortcutsResetFor:
+            return "Accessibility label of the Reset button. The value is the command name"
+        case .settingsShortcutsErrorModifier:
+            return "Error when the typed shortcut has none of Command, Control, or Option"
+        case .settingsShortcutsErrorFixed:
+            return "Error when the typed shortcut is reserved or fixed"
+        case .settingsShortcutsErrorConflict:
+            return "Error when another command uses the typed shortcut. The value is that command name"
+        case .settingsShortcutsErrorDefaultConflict:
+            return "Error when the default shortcut of a command is used by another command. The value is that command name"
+        case .settingsShortcutsClear:
+            return "Button that removes the shortcut of a command, so that the command has no key"
+        case .settingsShortcutsClearFor:
+            return "Accessibility label of the Clear button. The value is the command name"
+        case .settingsShortcutsUnset:
+            return "Shown in place of the key of a command that has no shortcut, in the Settings window, the shortcut reference, and tooltips"
         case .settingsWindow:
             return "Settings window title"
         case .settingsLanguage:

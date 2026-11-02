@@ -38,6 +38,7 @@ final class FileListViewController: NSViewController {
 
     private var hiddenListNavigation: HiddenListNavigation?
     private var installedViewMenuItems = false
+    private var shortcutObserver: ShortcutAssignmentObserver?
     private weak var thumbnailMenuItem: NSMenuItem?
     private weak var listMenuItem: NSMenuItem?
     private weak var imagesOnlyMenuItem: NSMenuItem?
@@ -396,6 +397,7 @@ final class FileListViewController: NSViewController {
         NotificationCenter.default.addObserver(
             self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
         )
+        shortcutObserver = ShortcutAssignmentObserver { [weak self] in self?.refreshSizeBarShortcutText() }
         installViewMenuItems()
         refresh()
         observeModel()
@@ -405,11 +407,17 @@ final class FileListViewController: NSViewController {
 
     @objc private func displayLanguageDidChange() {
         sizeLabel.stringValue = l10n.text(.toolbarSize)
-        sizeLabel.toolTip = l10n.text(.toolbarThumbnailSize)
-        sizeSlider.toolTip = l10n.text(.toolbarThumbnailSize)
-        sizeSlider.setAccessibilityLabel(l10n.text(.toolbarThumbnailSize))
-        sizeSlider.setAccessibilityHelp(l10n.text(.toolbarThumbnailSize))
+        refreshSizeBarShortcutText()
         refresh()
+    }
+
+    /// Shows the current thumbnail size keys in the size bar's tooltips and accessibility texts (FR-261).
+    private func refreshSizeBarShortcutText() {
+        let text = ToolbarShortcutText.text(.toolbarThumbnailSize)
+        sizeLabel.toolTip = text
+        sizeSlider.toolTip = text
+        sizeSlider.setAccessibilityLabel(text)
+        sizeSlider.setAccessibilityHelp(text)
     }
 
     override func viewDidAppear() {
@@ -520,11 +528,11 @@ final class FileListViewController: NSViewController {
         label.stringValue = l10n.text(.toolbarSize)
         label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         label.textColor = .secondaryLabelColor
-        label.toolTip = l10n.text(.toolbarThumbnailSize)
+        label.toolTip = ToolbarShortcutText.text(.toolbarThumbnailSize)
 
-        sizeSlider.toolTip = l10n.text(.toolbarThumbnailSize)
-        sizeSlider.setAccessibilityLabel(l10n.text(.toolbarThumbnailSize))
-        sizeSlider.setAccessibilityHelp(l10n.text(.toolbarThumbnailSize))
+        sizeSlider.toolTip = ToolbarShortcutText.text(.toolbarThumbnailSize)
+        sizeSlider.setAccessibilityLabel(ToolbarShortcutText.text(.toolbarThumbnailSize))
+        sizeSlider.setAccessibilityHelp(ToolbarShortcutText.text(.toolbarThumbnailSize))
         sizeSlider.minValue = ViewSettings.minimumThumbnailSize
         sizeSlider.maxValue = ViewSettings.maximumThumbnailSize
         sizeSlider.doubleValue = initialThumbnailSize
@@ -799,6 +807,16 @@ final class FileListViewController: NSViewController {
         MainMenu.bind(zipVisibilityItem, .menuViewShowZipFiles)
         viewMenu.addItem(zipVisibilityItem)
         zipVisibilityMenuItem = zipVisibilityItem
+
+        // Keys come from the shortcut assignments, not from the literals above (FR-261).
+        let shortcutBindings: [(NSMenuItem, ShortcutCommandID)] = [
+            (thumbnailsItem, .thumbnails), (listItem, .list), (zoomInItem, .largerThumbnails),
+            (zoomOutItem, .smallerThumbnails), (imagesOnlyItem, .imagesOnly), (videosOnlyItem, .videosOnly),
+            (zipVisibilityItem, .zipVisibility),
+        ]
+        for (item, command) in shortcutBindings {
+            MenuShortcutApplier.shared.register(item, for: command)
+        }
 
         updateViewMenuState()
     }

@@ -115,4 +115,42 @@ public enum ShortcutText {
         case .quit: return nil
         }
     }
+
+    /// The menu item name that identifies a customizable command in the Settings window and in conflict messages.
+    public static func commandName(_ id: ShortcutCommandID) -> TextKey {
+        switch id {
+        case .focusTree: return .menuViewFocusTree
+        case .focusFileList: return .menuViewFocusFileList
+        case .focusPreview: return .menuViewFocusPreview
+        case .fileListOnly: return .menuViewShowFileListOnly
+        case .previewOnly: return .menuViewShowPreviewOnly
+        case .toolbar: return .menuViewShowToolbar
+        case .thumbnails: return .menuViewAsThumbnails
+        case .list: return .menuViewAsList
+        case .largerThumbnails: return .menuViewLargerThumbnails
+        case .smallerThumbnails: return .menuViewSmallerThumbnails
+        case .imagesOnly: return .menuViewShowImagesOnly
+        case .videosOnly: return .menuViewShowVideosOnly
+        case .zipVisibility: return .menuViewShowZipFiles
+        case .showContents: return .menuFileShowContents
+        case .enclosingFolder: return .menuFileEnclosingFolder
+        case .back: return .menuGoBack
+        case .forward: return .menuGoForward
+        case .goToFavorites: return .menuViewGoToFavorites
+        case .addToFavorites: return .menuFileAddToFavorites
+        case .open: return .menuFileOpen
+        case .movePaste: return .menuEditMovePaste
+        case .copyPathname: return .menuEditCopyPathname
+        case .duplicate: return .menuEditDuplicate
+        case .newFolder: return .menuFileNewFolder
+        case .trash: return .menuFileTrash
+        case .find: return .menuFileFind
+        case .zoomIn: return .menuViewZoomIn
+        case .zoomOut: return .menuViewZoomOut
+        case .zoomToFit: return .menuViewZoomToFit
+        case .fullScreen: return .menuViewFullScreen
+        case .startSlideshow: return .menuViewStartSlideshow
+        case .shortcuts: return .menuFileShortcuts
+        }
+    }
 }
