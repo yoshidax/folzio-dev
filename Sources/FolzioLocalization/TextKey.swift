@@ -85,6 +85,7 @@ public enum TextKey: String, CaseIterable, Sendable {
 
     // MARK: - Menu Bar
 
+    case menuAppAbout = "menu.app.about"
     case menuAppSettings = "menu.app.settings"
     case menuAppQuit = "menu.app.quit"
     case menuFile = "menu.file"
@@ -150,6 +151,16 @@ public enum TextKey: String, CaseIterable, Sendable {
     case toolbarViewMode = "toolbar.viewMode"
     case toolbarSize = "toolbar.size"
     case toolbarThumbnailSize = "toolbar.thumbnailSize"
+    case toolbarSlideshowLabel = "toolbar.slideshowLabel"
+    case toolbarZipFilesLabel = "toolbar.zipFilesLabel"
+    case toolbarThumbnailSizeLabel = "toolbar.thumbnailSizeLabel"
+    case toolbarGoBackHelp = "toolbar.goBackHelp"
+    case toolbarGoForwardHelp = "toolbar.goForwardHelp"
+    case toolbarShowFileListOnlyHelp = "toolbar.showFileListOnlyHelp"
+    case toolbarShowPreviewOnlyHelp = "toolbar.showPreviewOnlyHelp"
+    case toolbarShowImagesOnlyHelp = "toolbar.showImagesOnlyHelp"
+    case toolbarShowVideosOnlyHelp = "toolbar.showVideosOnlyHelp"
+    case toolbarZipFilesHelp = "toolbar.zipFilesHelp"
     case toolbarStartSlideshowHelp = "toolbar.startSlideshowHelp"
     case toolbarZoomInHelp = "toolbar.zoomInHelp"
     case toolbarZoomToFitHelp = "toolbar.zoomToFitHelp"
@@ -252,6 +263,13 @@ public enum TextKey: String, CaseIterable, Sendable {
     case dialogTreeTrashOverlapMessage = "dialog.treeTrashOverlap.message"
     case dialogCancel = "dialog.cancel"
     case dialogOK = "dialog.ok"
+
+    // MARK: - About Dialog
+
+    case aboutWindow = "about.window"
+    case aboutVersion = "about.version"
+    case aboutIcon = "about.icon"
+    case aboutLink = "about.link"
 
     // MARK: - Shortcut Reference
 
@@ -362,7 +380,7 @@ public enum TextKey: String, CaseIterable, Sendable {
         case .errorZipCannotOpen, .errorOperationTrashExistingFailed, .errorOperationSystemFailure,
              .listSortAscending, .listSortDescending,
              .dialogConfirmBullet, .dialogConfirmDestination, .dialogConfirmLocation,
-             .dialogFavoriteRemoveItems, .previewUnavailable:
+             .dialogFavoriteRemoveItems, .previewUnavailable, .aboutVersion:
             return [.text]
         case .contextCopySingle:
             return [.text]
@@ -632,6 +650,16 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Reason the preview cannot be displayed"
         case .kindFolder, .kindZipArchive:
             return "Fallback kind name (when the OS does not return a kind name)"
+        case .menuAppAbout:
+            return "About item in the application menu (the first item). Do not translate the app name"
+        case .aboutWindow:
+            return "Name of the About window. Not drawn on screen; used as the window title for accessibility"
+        case .aboutVersion:
+            return "Version line in the About window. %1$@ is the version number, for example 1.0.0"
+        case .aboutIcon:
+            return "Accessibility description of the app icon in the About window"
+        case .aboutLink:
+            return "Accessibility help of the repository link in the About window"
         case .menuAppSettings:
             return "Settings item in the application menu (ends with … because it opens a dialog)"
         case .menuAppQuit:
@@ -664,16 +692,20 @@ public enum TextKey: String, CaseIterable, Sendable {
         case .contextPasteHere, .contextMovePasteHere:
             return "Paste in the directory tree's context menu"
         case .toolbarHistory, .toolbarPanes, .toolbarZoomGroup, .toolbarMediaType,
-             .toolbarViewMode, .toolbarSize:
-            return "Toolbar group names"
+             .toolbarViewMode, .toolbarSize, .toolbarSlideshowLabel, .toolbarZipFilesLabel,
+             .toolbarThumbnailSizeLabel:
+            return "Toolbar group names. They are also shown in the customization palette and in the text display mode"
         case .toolbarThumbnailSize:
             return "Thumbnail size in the toolbar and size bar. Includes the shortcut"
         case .toolbarStartSlideshowHelp:
             return "Slideshow tooltip. Includes the shortcut"
         case .toolbarZoomInHelp, .toolbarZoomToFitHelp, .toolbarZoomOutHelp:
             return "Zoom in and out tooltips. Include the shortcuts"
+        case .toolbarGoBackHelp, .toolbarGoForwardHelp, .toolbarShowFileListOnlyHelp, .toolbarShowPreviewOnlyHelp,
+             .toolbarShowImagesOnlyHelp, .toolbarShowVideosOnlyHelp, .toolbarZipFilesHelp:
+            return "Toolbar button tooltips and accessibility text. They are separate from the menu item names and include the shortcuts"
         case .toolbarThumbnails, .toolbarList:
-            return "View mode options in the toolbar"
+            return "View mode options in the toolbar. Tooltips that include the shortcuts"
         case .settingsWindow:
             return "Settings window title"
         case .settingsLanguage:

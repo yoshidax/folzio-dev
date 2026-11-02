@@ -47,6 +47,15 @@ final class MainMenu {
         appMenu.identifier = NSUserInterfaceItemIdentifier("menu.app")
         appMenuItem.submenu = appMenu
 
+        let aboutItem = NSMenuItem(
+            title: l10n.text(.menuAppAbout),
+            action: #selector(AppDelegate.showAbout(_:)),
+            keyEquivalent: ""
+        )
+        aboutItem.target = nil
+        appMenu.addItem(aboutItem)
+        appMenu.addItem(.separator())
+
         let settingsItem = NSMenuItem(
             title: l10n.text(.menuAppSettings),
             action: #selector(AppDelegate.showSettings(_:)),
@@ -347,7 +356,7 @@ final class MainMenu {
         navigateMenu.addItem(forwardItem)
 
         let bindings: [(NSMenuItem, TextKey)] = [
-            (settingsItem, .menuAppSettings), (quitItem, .menuAppQuit),
+            (aboutItem, .menuAppAbout), (settingsItem, .menuAppSettings), (quitItem, .menuAppQuit),
             (fileMenuItem, .menuFile), (newFolderItem, .menuFileNewFolder), (openItem, .menuFileOpen),
             (openContainerItem, .menuFileShowContents), (goUpItem, .menuFileEnclosingFolder),
             (revealItem, .menuFileRevealInFinder), (addFavoriteItem, .menuFileAddToFavorites),
