@@ -78,6 +78,7 @@
 
 | メニュー | 日本語 | 英語 |
 |---|---|---|
+| アプリ | Folzio について | About Folzio |
 | アプリ | 設定… | Settings… |
 | アプリ | 終了 | Quit Folzio |
 | — | ファイル | File |
@@ -147,6 +148,18 @@
 | アプリとウィンドウ | App and Windows |
 
 各操作の掲載範囲と条件は [keyboard-and-menus.md](keyboard-and-menus.md) の「ショートカット一覧」を参照する。
+
+### About ダイアログ（FR-244）
+
+| 用途 | 日本語 | 英語 |
+|---|---|---|
+| メニュー項目 | Folzio について | About Folzio |
+| ウィンドウ名（画面には出さず、アクセシビリティに使う） | Folzio について | About Folzio |
+| バージョン行（`%@` はバージョン番号） | バージョン %@ | Version %@ |
+| アイコンの説明 | Folzio のアイコン | Folzio app icon |
+| リンクのヘルプ | Folzio のリポジトリを既定の Web ブラウザで開きます | Opens the Folzio repository in your default web browser |
+
+アプリ名「Folzio」と URL・バージョンの数値は翻訳しない（FR-147）。表示中の言語の切り替えで、バージョン行・ウィンドウ名・アイコンの説明・リンクのヘルプ・メニュー項目を即時更新する。
 
 ### 右クリックメニュー
 

@@ -1,10 +1,14 @@
 # Feature Specification: Folzio について（About）ダイアログ
 
+> **移行済み（2026-11-02）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-45 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> CI 結果、保守者の動作確認の報告は [quickstart.md](quickstart.md) を参照。
+
 **Feature Branch**: `claude/great-lamport-eudxq0`（Cloud が指定した作業ブランチ。feature ディレクトリとは独立）
 
 **Created**: 2026-11-01
 
-**Status**: Draft — 設計のレビュー待ち
+**Status**: Approved — 実装 PR [#32](https://github.com/yoshidax/folzio-dev/pull/32)、product へ移行（マージ前）
 
 **Input**: [TAK-45](https://linear.app/takyoshida/issue/TAK-45/アプリメニューにfolzio-についてを追加しアイコンとバージョンのダイアログを表示する)「アプリメニューに「Folzio について」を追加し、アイコンとバージョンのダイアログを表示する」（本文と 2026-11-02 の追記を含む）。会話で「TAK-45に対応して」と依頼され、次の点を保守者が決めた。
 
@@ -113,7 +117,7 @@ Swift Testing で、バージョン文字列の取得と整形（取得不能・
 
 ## 反映先
 
-実装と検証が終わってから `specs/product/` へ反映する（`specs/product/README.md`）。
+2026-11-02、最新 master（TAK-23 の取り込み後）と照合し、ID の衝突と重複がないことを確かめて、次の領域へ反映した。
 
 | ID | 種別 | 反映先 |
 |---|---|---|
