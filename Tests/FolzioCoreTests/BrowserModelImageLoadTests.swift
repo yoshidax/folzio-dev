@@ -4,7 +4,7 @@ import Testing
 @testable import FixtureKit
 @testable import FolzioCore
 
-/// Verifies the limit on concurrent image loads and the cancellation of unneeded prefetches (FR-233 to FR-237).
+/// Verifies the limit on concurrent image loads and the cancellation of unneeded prefetches (FR-282 to FR-286).
 @Suite("BrowserModel image loading")
 @MainActor
 struct BrowserModelImageLoadTests {
@@ -21,7 +21,7 @@ struct BrowserModelImageLoadTests {
         let model = env.model
 
         await model.selectFolder(folder)
-        // The first preview and the first prefetch start and hold both slots (US44-AS1).
+        // The first preview and the first prefetch start and hold both slots (US57-AS1).
         model.select([files[0].url], focused: files[0].url)
         #expect(await eventually { await gate.blockedCount == 2 })
 
@@ -33,11 +33,11 @@ struct BrowserModelImageLoadTests {
         #expect(await scheduler.runningCount == 2)
 
         await gate.releaseAll()
-        // Only the last image is shown, never an image passed on the way (FR-237, US44-AS2).
+        // Only the last image is shown, never an image passed on the way (FR-286, US57-AS2).
         #expect(await eventually { self.previewWidth(of: model) == 40 })
         #expect(await eventually { await self.isIdle(scheduler) })
 
-        // Nothing but the first two loads and the neighbors of the last selection started (SC-118, US44-AS3, AS4).
+        // Nothing but the first two loads and the neighbors of the last selection started (SC-146, US57-AS3, AS4).
         let started = Set(await gate.started)
         #expect(started.isSubset(of: ["img0.jpg", "img1.jpg", "img38.jpg", "img39.jpg", "img40.jpg"]))
         #expect(started.contains("img39.jpg"))
@@ -82,7 +82,7 @@ struct BrowserModelImageLoadTests {
         await gate.release("img4.jpg")
         #expect(await eventually { self.previewWidth(of: model) == 5 })
 
-        // The prefetch of img5 still runs. A far image gets the free slot at once (US46-AS2, FR-235).
+        // The prefetch of img5 still runs. A far image gets the free slot at once (US59-AS2, FR-284).
         model.select([files[8].url], focused: files[8].url)
         #expect(await eventually { await gate.hasStarted("img8.jpg") })
         // The next prefetch waits for the running one.
@@ -138,7 +138,7 @@ struct BrowserModelImageLoadTests {
         model.select([firstFiles[2].url], focused: firstFiles[2].url)
         #expect(await eventually { await gate.blockedCount == 2 })
 
-        // img1 waits for a slot as the previous neighbor. It never starts after the folder changes (EC-167).
+        // img1 waits for a slot as the previous neighbor. It never starts after the folder changes (EC-199).
         await model.selectFolder(second)
         await gate.releaseAll()
         #expect(await eventually { await self.isIdle(scheduler) })
@@ -187,7 +187,7 @@ struct BrowserModelImageLoadTests {
 
         model.select([files[2].url], focused: files[2].url)
         #expect(await eventually { self.previewWidth(of: model) == 3 })
-        // The image was served from the cache: its own decode did not start again (EC-165, US46-AS1).
+        // The image was served from the cache: its own decode did not start again (EC-197, US59-AS1).
         #expect(await gate.startCount("img2.jpg") == 1)
     }
 
@@ -218,7 +218,7 @@ struct BrowserModelImageLoadTests {
         #expect(await eventually { await self.isIdle(env.scheduler) })
         #expect(await env.scheduler.peakRunning <= ImageLoadScheduler.defaultLimit)
         #expect(await env.gate.maxRunning <= ImageLoadScheduler.defaultLimit)
-        // The first two loads and the neighbors of the last selection: at most five decodes (SC-118).
+        // The first two loads and the neighbors of the last selection: at most five decodes (SC-146).
         #expect(await env.gate.started.count <= 5)
     }
 
@@ -237,7 +237,7 @@ struct BrowserModelImageLoadTests {
         await env.gate.releaseAll()
         #expect(await eventually { await self.isIdle(env.scheduler) })
 
-        // Only the preview and the running prefetch decoded; the waiting prefetch was cancelled (US45-AS2).
+        // Only the preview and the running prefetch decoded; the waiting prefetch was cancelled (US58-AS2).
         #expect(await env.gate.started.count == 2)
     }
 

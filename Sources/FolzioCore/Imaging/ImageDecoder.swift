@@ -36,7 +36,7 @@ public struct ImageDecoder: ImageDecoding {
     /// Runs the decoding work on a detached task and forwards cancellation of the caller to it.
     ///
     /// A task cancelled before the work starts does not decode. Decoding that already started cannot be
-    /// interrupted and runs to the end (EC-164). A cancelled call throws a `DecodeError`, so callers tell
+    /// interrupted and runs to the end (EC-196). A cancelled call throws a `DecodeError`, so callers tell
     /// cancellation from a real failure with `Task.isCancelled`.
     private static func runDetached(
         _ work: @escaping @Sendable () throws -> DecodedImage

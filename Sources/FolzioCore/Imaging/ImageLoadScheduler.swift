@@ -8,11 +8,11 @@ public enum ImageLoadPriority: Sendable {
     case prefetch
 }
 
-/// Limits how many image loads (reading and decoding) run at the same time (FR-233).
+/// Limits how many image loads (reading and decoding) run at the same time (FR-282).
 ///
 /// The preview and the prefetch share the slots. The preview is served first when a slot becomes free, and only
-/// `prefetchLimit` prefetches run at once, so prefetches alone never fill every slot (FR-235). A request cancelled
-/// while waiting leaves the queue without taking a slot (EC-166).
+/// `prefetchLimit` prefetches run at once, so prefetches alone never fill every slot (FR-284). A request cancelled
+/// while waiting leaves the queue without taking a slot (EC-198).
 public actor ImageLoadScheduler {
     public static let defaultLimit = 2
     public static let defaultPrefetchLimit = 1

@@ -167,11 +167,11 @@ public final class BrowserModel {
     private var previewTask: Task<Void, Never>?
     private var previewGeneration = 0
     private var prefetchTasks: [URL: PrefetchEntry] = [:]
-    /// Shares the load slots between the preview and the prefetch (FR-233, FR-235).
+    /// Shares the load slots between the preview and the prefetch (FR-282, FR-284).
     private let loadScheduler: ImageLoadScheduler
 
     /// One prefetch of a neighbor image. `isRunning` is set once the prefetch holds a load slot, which tells the
-    /// preview whether it can wait for the result instead of starting the same load again (FR-236).
+    /// preview whether it can wait for the result instead of starting the same load again (FR-285).
     @MainActor
     private final class PrefetchEntry {
         var task: Task<Void, Never>?
@@ -1585,7 +1585,7 @@ public final class BrowserModel {
         }
 
         // The focused image is no longer a neighbor to prefetch. Take over its prefetch instead of loading it twice
-        // (FR-234, FR-236).
+        // (FR-283, FR-285).
         let inheritedPrefetch = claimPrefetch(for: url)
 
         if let parsed = ArchiveURL.parse(url) {
@@ -1628,7 +1628,7 @@ public final class BrowserModel {
     ) {
         previewTask = Task { [weak self] in
             guard let self else { return }
-            // The result of the inherited prefetch is in the cache when it succeeds (FR-236).
+            // The result of the inherited prefetch is in the cache when it succeeds (FR-285).
             await inheritedPrefetch?.value
             guard !Task.isCancelled, self.previewGeneration == generation else { return }
             let result = await self.decodedImage(for: url, version: version)
@@ -1690,7 +1690,7 @@ public final class BrowserModel {
     }
 
     /// Obtains an image inside a zip in this order: cache, read `Data`, decode. Returns animated images as `Data`.
-    /// The read and the decode run while holding a load slot (FR-233). A request cancelled while waiting for the
+    /// The read and the decode run while holding a load slot (FR-282). A request cancelled while waiting for the
     /// slot returns a failure that the caller discards because its task is cancelled.
     private func archiveImage(
         for url: URL,
@@ -1735,7 +1735,7 @@ public final class BrowserModel {
 
         do {
             let image = try await decoder.decode(data: data, maxPixelSize: maxPixelSize)
-            // A result that finishes after the request was cancelled is kept for later (EC-164).
+            // A result that finishes after the request was cancelled is kept for later (EC-196).
             await cache.put(image, for: url, version: version)
             return .image(image)
         } catch {
@@ -1745,7 +1745,7 @@ public final class BrowserModel {
 
     /// Decodes an image file, using the cache only for the same content version (FR-230). A result decoded after the
     /// content was replaced is stored under the old version and is never returned for the new one (EC-161).
-    /// The decode runs while holding a load slot (FR-233). A request cancelled while waiting for the slot returns
+    /// The decode runs while holding a load slot (FR-282). A request cancelled while waiting for the slot returns
     /// a failure that the caller discards because its task is cancelled.
     private func decodedImage(
         for url: URL,
@@ -1773,7 +1773,7 @@ public final class BrowserModel {
 
         do {
             let image = try await decoder.decode(url, maxPixelSize: max(1, screenMaxPixel))
-            // A result that finishes after the request was cancelled is kept for later (EC-164).
+            // A result that finishes after the request was cancelled is kept for later (EC-196).
             await cache.put(image, for: url, version: version)
             return .success(image)
         } catch {
@@ -1841,7 +1841,7 @@ public final class BrowserModel {
     }
 
     /// Prefetches the neighbors of the focused row, the next image first. Cancels the prefetches of images that are no
-    /// longer neighbors (FR-234). Prefetches run through the load scheduler, one at a time (FR-235).
+    /// longer neighbors (FR-283). Prefetches run through the load scheduler, one at a time (FR-284).
     private func schedulePrefetch(around url: URL?) {
         var wanted: [MediaFile] = []
         if let url, let index = listing.files.firstIndex(where: { $0.url == url }) {
