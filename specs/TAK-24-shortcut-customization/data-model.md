@@ -52,14 +52,16 @@ contracts §1 の 32 個の安定した ID（`newFolder`、`openDefault`、…�
 | `resetting(_:)` | 1 コマンドを既定値へ。既定値が他の割り当てと重複するなら `.conflict` |
 | `resettingAll()` | すべての上書きを消す |
 | `isOverridden(_:)` | 既定値と異なるか |
-| `overrides` | `[ShortcutCommandID: KeyCombination]`（既定値と異なるものだけ） |
+| `overrides` | `[ShortcutCommandID: ShortcutOverride]`（既定値と異なるものだけ。`ShortcutOverride` は `.key(KeyCombination)` または `.unset`） |
+| `combination(for:)` | 現在の組み合わせ。未設定なら nil |
+| `unsetting(_:)` | コマンドのキーを外す（常に成功） |
 | `init(storedOverrides:)` | 保存値から復元（R9）。不正な項目は捨てる |
 
-不変条件: ① すべてのコマンドが常に 1 つの組み合わせを持つ ② 現在の割り当て全体で重複がない ③ すべての組み合わせが修飾要件を満たし、固定キー・予約キーを含まない。
+不変条件: ① 各コマンドは 1 つの組み合わせを持つか、未設定である ② 現在の割り当て全体で、設定済みの組み合わせに重複がない（未設定は加わらない） ③ すべての組み合わせが修飾要件を満たし、固定キー・予約キーを含まない。未設定のコマンドの別名は無効。
 
 ## 保存形式 `shortcuts.overrides`
 
-`[String: String]`（コマンド ID → 保存形式の組み合わせ）。既定値と異なるものだけ。上書きがなければキー自体を消す。例:
+`[String: String]`（コマンド ID → 保存形式の組み合わせ。未設定は `none`）。既定値と異なるものだけ。上書きがなければキー自体を消す。例:
 
 ```text
 shortcuts.overrides = { "newFolder": "opt+cmd+j", "find": "ctrl+cmd+f" }

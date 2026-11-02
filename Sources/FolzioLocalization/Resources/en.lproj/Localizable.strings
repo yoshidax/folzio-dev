@@ -489,6 +489,15 @@
 /* Error when the default shortcut of a command is used by another command. The value is that command name */
 "settings.shortcuts.error.defaultConflict" = "The default shortcut is used by “%1$@”.";
 
+/* Button that removes the shortcut of a command, so that the command has no key */
+"settings.shortcuts.clear" = "Clear";
+
+/* Accessibility label of the Clear button. The value is the command name */
+"settings.shortcuts.clearFor" = "Clear shortcut for %1$@";
+
+/* Shown in place of the key of a command that has no shortcut */
+"settings.shortcuts.unset" = "Not Set";
+
 /* List view column headings. Also used in the sort menu */
 "list.column.name" = "Name";
 

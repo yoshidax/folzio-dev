@@ -79,10 +79,10 @@ public struct ShortcutEntry: Equatable, Sendable {
         self.parts = parts
     }
 
-    /// The keys to show for the given assignments.
-    public func keys(using assignments: ShortcutAssignments) -> String {
+    /// The keys to show for the given assignments. `unsetText` stands in for the key of an unset command.
+    public func keys(using assignments: ShortcutAssignments, unsetText: String = "-") -> String {
         guard let parts else { return keys }
-        return parts.map { $0.displayText(using: assignments) }.joined()
+        return parts.map { $0.displayText(using: assignments, unsetText: unsetText) }.joined()
     }
 }
 
@@ -93,14 +93,15 @@ public enum ShortcutKeyPart: Equatable, Sendable {
     /// The command's key followed by its active alternates, separated by " / ".
     case commandWithAlternates(ShortcutCommandID)
 
-    public func displayText(using assignments: ShortcutAssignments) -> String {
+    public func displayText(using assignments: ShortcutAssignments, unsetText: String = "-") -> String {
         switch self {
         case .text(let text):
             return text
         case .command(let id):
-            return assignments.combination(for: id).displayText
+            return assignments.combination(for: id)?.displayText ?? unsetText
         case .commandWithAlternates(let id):
-            let keys = [assignments.combination(for: id)] + assignments.activeAlternates(for: id)
+            guard let combination = assignments.combination(for: id) else { return unsetText }
+            let keys = [combination] + assignments.activeAlternates(for: id)
             return keys.map(\.displayText).joined(separator: " / ")
         }
     }

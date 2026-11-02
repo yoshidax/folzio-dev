@@ -51,7 +51,8 @@ final class ShortcutRecordButton: NSButton {
     }
 }
 
-private final class ShortcutResetButton: NSButton {
+/// A row button that accepts Tab focus regardless of the system Keyboard Navigation setting.
+private final class ShortcutRowButton: NSButton {
     override var canBecomeKeyView: Bool { true }
 }
 
@@ -60,7 +61,8 @@ private final class ShortcutResetButton: NSButton {
 final class ShortcutRecorderRow: NSView {
     let command: ShortcutCommandID
     let recordButton = ShortcutRecordButton()
-    let resetButton: NSButton = ShortcutResetButton()
+    let clearButton: NSButton = ShortcutRowButton()
+    let resetButton: NSButton = ShortcutRowButton()
 
     private let nameLabel = NSTextField(wrappingLabelWithString: "")
     private let keyLabel = NSTextField(labelWithString: "")
@@ -70,11 +72,11 @@ final class ShortcutRecorderRow: NSView {
     private var isChanged = false
     private(set) var isRecording = false
 
-    private static let nameColumnWidth: CGFloat = 200
-    private static let keyColumnWidth: CGFloat = 120
-    private static let changedColumnWidth: CGFloat = 56
+    private static let nameColumnWidth: CGFloat = 160
+    private static let keyColumnWidth: CGFloat = 110
 
     var onRecordTapped: ((ShortcutCommandID) -> Void)?
+    var onClearTapped: ((ShortcutCommandID) -> Void)?
     var onResetTapped: ((ShortcutCommandID) -> Void)?
 
     init(command: ShortcutCommandID) {
@@ -98,13 +100,14 @@ final class ShortcutRecorderRow: NSView {
         changedLabel.textColor = .secondaryLabelColor
         changedLabel.setAccessibilityElement(false)
 
-        for button in [recordButton, resetButton] {
+        for button in [recordButton, clearButton, resetButton] {
             button.bezelStyle = .rounded
             button.controlSize = .small
             button.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
             button.target = self
         }
         recordButton.action = #selector(recordTapped(_:))
+        clearButton.action = #selector(clearTapped(_:))
         resetButton.action = #selector(resetTapped(_:))
 
         errorLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
@@ -112,9 +115,14 @@ final class ShortcutRecorderRow: NSView {
         errorLabel.isHidden = true
         errorLabel.setAccessibilityElement(false)
 
-        let line = NSStackView(views: [nameLabel, keyLabel, changedLabel, recordButton, resetButton])
+        // The state ("Changed") sits under the key, so that the row stays within the list's width in every language.
+        let keyColumn = NSStackView(views: [keyLabel, changedLabel])
+        keyColumn.orientation = .vertical
+        keyColumn.alignment = .leading
+        keyColumn.spacing = 0
+        let line = NSStackView(views: [nameLabel, keyColumn, recordButton, clearButton, resetButton])
         line.orientation = .horizontal
-        line.alignment = .firstBaseline
+        line.alignment = .centerY
         line.spacing = 8
         let column = NSStackView(views: [line, errorLabel])
         column.orientation = .vertical
@@ -130,8 +138,8 @@ final class ShortcutRecorderRow: NSView {
             line.widthAnchor.constraint(equalTo: column.widthAnchor),
             errorLabel.widthAnchor.constraint(equalTo: column.widthAnchor),
             nameLabel.widthAnchor.constraint(equalToConstant: Self.nameColumnWidth),
-            keyLabel.widthAnchor.constraint(equalToConstant: Self.keyColumnWidth),
-            changedLabel.widthAnchor.constraint(equalToConstant: Self.changedColumnWidth),
+            keyColumn.widthAnchor.constraint(equalToConstant: Self.keyColumnWidth),
+            keyLabel.widthAnchor.constraint(equalTo: keyColumn.widthAnchor),
         ])
     }
 
@@ -141,15 +149,19 @@ final class ShortcutRecorderRow: NSView {
     }
 
     /// Shows the command name, its current key, and whether it differs from the default.
-    func update(name: String, keyText: String, isChanged: Bool, canReset: Bool) {
+    func update(name: String, keyText: String, isChanged: Bool, canClear: Bool, canReset: Bool) {
         self.keyText = keyText
         self.isChanged = isChanged
         nameLabel.stringValue = name
         changedLabel.stringValue = isChanged ? l10n.text(.settingsShortcutsChanged) : ""
+        changedLabel.isHidden = !isChanged
         recordButton.title = l10n.text(.settingsShortcutsRecord)
+        clearButton.title = l10n.text(.settingsShortcutsClear)
         resetButton.title = l10n.text(.settingsShortcutsReset)
+        clearButton.isEnabled = canClear && !isRecording
         resetButton.isEnabled = canReset && !isRecording
         recordButton.setAccessibilityLabel(l10n.text(.settingsShortcutsRecordFor, .text(name)))
+        clearButton.setAccessibilityLabel(l10n.text(.settingsShortcutsClearFor, .text(name)))
         resetButton.setAccessibilityLabel(l10n.text(.settingsShortcutsResetFor, .text(name)))
         renderKey(name: name)
     }
@@ -165,6 +177,7 @@ final class ShortcutRecorderRow: NSView {
     func beginRecording() {
         isRecording = true
         recordButton.isRecording = true
+        clearButton.isEnabled = false
         resetButton.isEnabled = false
         showError(nil)
         renderKey(name: nameLabel.stringValue)
@@ -205,6 +218,10 @@ final class ShortcutRecorderRow: NSView {
 
     @objc private func recordTapped(_ sender: Any?) {
         onRecordTapped?(command)
+    }
+
+    @objc private func clearTapped(_ sender: Any?) {
+        onClearTapped?(command)
     }
 
     @objc private func resetTapped(_ sender: Any?) {

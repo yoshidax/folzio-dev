@@ -78,4 +78,13 @@ struct ShortcutCommandConsistencyTests {
             .get()
         #expect(zoom.keys(using: changed) == "⌥⌘J / ⌘-")
     }
+
+    @Test("An unset command shows the given text in the reference entries")
+    func catalogShowsUnset() throws {
+        let assignments = ShortcutAssignments().unsetting(.back)
+        let history = try #require(ShortcutCatalog.entries.first { $0.id == .history })
+        #expect(history.keys(using: assignments, unsetText: "Not Set") == "Not Set / ⌘]")
+        let zoom = try #require(ShortcutCatalog.entries.first { $0.id == .imageZoom })
+        #expect(zoom.keys(using: ShortcutAssignments().unsetting(.zoomIn), unsetText: "Not Set") == "Not Set / ⌘-")
+    }
 }

@@ -10,13 +10,25 @@ public enum ShortcutAssignmentError: Error, Equatable, Sendable {
     case conflict(ShortcutCommandID)
 }
 
+/// A user's change to one command's key.
+public enum ShortcutOverride: Equatable, Sendable {
+    /// The command uses this combination instead of its default.
+    case key(KeyCombination)
+    /// The command has no key (FR-268).
+    case unset
+
+    /// The text stored for an unset command.
+    static let unsetStoredText = "none"
+}
+
 /// The current key of every command: the defaults plus the user's overrides.
 ///
-/// Invariants: every command has one combination; no two commands share one; every combination has a required
-/// modifier and is neither fixed nor reserved. Every mutation returns a new value and keeps the invariants.
+/// Invariants: every command has one combination or none; no two commands share a combination (an unset command
+/// shares nothing); every combination has a required modifier and is neither fixed nor reserved. Every mutation
+/// returns a new value and keeps the invariants.
 public struct ShortcutAssignments: Equatable, Sendable {
-    /// The combinations that differ from the default.
-    public private(set) var overrides: [ShortcutCommandID: KeyCombination]
+    /// The commands whose key differs from the default, including the commands that were unset.
+    public private(set) var overrides: [ShortcutCommandID: ShortcutOverride]
 
     /// Creates the default assignments.
     public init() {
@@ -29,13 +41,17 @@ public struct ShortcutAssignments: Equatable, Sendable {
     /// commands end up with the same combination, the override of the later command in `ShortcutCommands.all`
     /// returns to its default.
     public init(storedOverrides: [String: String]) {
-        var accepted: [ShortcutCommandID: KeyCombination] = [:]
+        var accepted: [ShortcutCommandID: ShortcutOverride] = [:]
         for command in ShortcutCommands.all {
-            guard let text = storedOverrides[command.id.rawValue],
-                  let combination = KeyCombination(storedText: text),
+            guard let text = storedOverrides[command.id.rawValue] else { continue }
+            if text == ShortcutOverride.unsetStoredText {
+                accepted[command.id] = .unset
+                continue
+            }
+            guard let combination = KeyCombination(storedText: text),
                   Self.staticError(for: combination) == nil,
                   combination != command.defaultCombination else { continue }
-            accepted[command.id] = combination
+            accepted[command.id] = .key(combination)
         }
         var result = ShortcutAssignments()
         result.overrides = accepted
@@ -47,12 +63,26 @@ public struct ShortcutAssignments: Equatable, Sendable {
 
     /// The text to store: only the overrides.
     public var storedOverrides: [String: String] {
-        Dictionary(uniqueKeysWithValues: overrides.map { ($0.key.rawValue, $0.value.storedText) })
+        Dictionary(uniqueKeysWithValues: overrides.map { entry in
+            switch entry.value {
+            case let .key(combination): return (entry.key.rawValue, combination.storedText)
+            case .unset: return (entry.key.rawValue, ShortcutOverride.unsetStoredText)
+            }
+        })
     }
 
-    /// The command's current combination.
-    public func combination(for id: ShortcutCommandID) -> KeyCombination {
-        overrides[id] ?? ShortcutCommands.command(id).defaultCombination
+    /// The command's current combination, or nil when the command is unset.
+    public func combination(for id: ShortcutCommandID) -> KeyCombination? {
+        switch overrides[id] {
+        case let .key(combination): return combination
+        case .unset: return nil
+        case nil: return ShortcutCommands.command(id).defaultCombination
+        }
+    }
+
+    /// Whether the command has no key.
+    public func isUnset(_ id: ShortcutCommandID) -> Bool {
+        overrides[id] == .unset
     }
 
     /// Extra keys that currently work for the command. They work only while the command keeps its default key.
@@ -93,9 +123,16 @@ public struct ShortcutAssignments: Equatable, Sendable {
         if candidate == ShortcutCommands.command(id).defaultCombination {
             copy.overrides[id] = nil
         } else {
-            copy.overrides[id] = candidate
+            copy.overrides[id] = .key(candidate)
         }
         return .success(copy)
+    }
+
+    /// Removes the command's key. The command's former key becomes free for other commands (FR-268).
+    public func unsetting(_ id: ShortcutCommandID) -> ShortcutAssignments {
+        var copy = self
+        copy.overrides[id] = .unset
+        return copy
     }
 
     /// Returns the command to its default key, unless another command uses that key now.
@@ -119,10 +156,11 @@ public struct ShortcutAssignments: Equatable, Sendable {
         return nil
     }
 
-    /// Finds an override that shares its combination with another command, preferring the later command.
+    /// Finds a key override that shares its combination with another command, preferring the later command.
     private func firstOverrideInConflict() -> ShortcutCommandID? {
-        for command in ShortcutCommands.all.reversed() where overrides[command.id] != nil {
-            if self.command(using: combination(for: command.id), excluding: command.id) != nil {
+        for command in ShortcutCommands.all.reversed() {
+            guard case .key(let combination)? = overrides[command.id] else { continue }
+            if self.command(using: combination, excluding: command.id) != nil {
                 return command.id
             }
         }

@@ -154,4 +154,97 @@ struct ShortcutAssignmentsTests {
         let assignments = ShortcutAssignments(storedOverrides: ["find": "cmd+f", "open": "cmd+="])
         #expect(assignments.overrides.isEmpty)
     }
+
+    // MARK: - Unset commands (FR-268)
+
+    @Test("Unsetting removes the command's key and is stored as none")
+    func unsetsACommand() {
+        let assignments = ShortcutAssignments().unsetting(.find)
+        #expect(assignments.combination(for: .find) == nil)
+        #expect(assignments.isUnset(.find))
+        #expect(assignments.isOverridden(.find))
+        #expect(assignments.storedOverrides == ["find": "none"])
+    }
+
+    @Test("The key of an unset command is free for another command")
+    func unsetFreesTheKey() throws {
+        let findKey = KeyCombination(key: "f", modifiers: [.command])
+        let assignments = ShortcutAssignments().unsetting(.find)
+        #expect(assignments.command(using: findKey) == nil)
+        let taken = try assignments.assigning(findKey, to: .newFolder).get()
+        #expect(taken.combination(for: .newFolder) == findKey)
+    }
+
+    @Test("Two commands swap keys in three steps without a spare key")
+    func swapsTwoCommands() throws {
+        let findKey = KeyCombination(key: "f", modifiers: [.command])
+        let newFolderKey = KeyCombination(key: "n", modifiers: [.shift, .command])
+        var assignments = ShortcutAssignments()
+        // Without the unset step, taking the other command's key is a conflict.
+        #expect(assignments.assigning(findKey, to: .newFolder) == .failure(.conflict(.find)))
+        assignments = assignments.unsetting(.find)
+        assignments = try assignments.assigning(findKey, to: .newFolder).get()
+        assignments = try assignments.assigning(newFolderKey, to: .find).get()
+        #expect(assignments.combination(for: .find) == newFolderKey)
+        #expect(assignments.combination(for: .newFolder) == findKey)
+    }
+
+    @Test("An unset command can record a key, but a key in use is still a conflict")
+    func unsetCommandRecords() throws {
+        let unset = ShortcutAssignments().unsetting(.find)
+        #expect(
+            unset.assigning(KeyCombination(key: "n", modifiers: [.shift, .command]), to: .find)
+                == .failure(.conflict(.newFolder))
+        )
+        let recorded = try unset.assigning(optionCommandJ, to: .find).get()
+        #expect(recorded.combination(for: .find) == optionCommandJ)
+        #expect(!recorded.isUnset(.find))
+    }
+
+    @Test("Resetting an unset command restores its default unless another command uses it")
+    func resettingAnUnsetCommand() throws {
+        let findKey = KeyCombination(key: "f", modifiers: [.command])
+        let unset = ShortcutAssignments().unsetting(.find)
+        #expect(try unset.resetting(.find).get().overrides.isEmpty)
+        let taken = try unset.assigning(findKey, to: .newFolder).get()
+        #expect(taken.resetting(.find) == .failure(.conflict(.newFolder)))
+    }
+
+    @Test("Resetting all clears the unset commands")
+    func resettingAllClearsUnset() {
+        let assignments = ShortcutAssignments().unsetting(.find).unsetting(.newFolder)
+        #expect(assignments.resettingAll() == ShortcutAssignments())
+    }
+
+    @Test("Zoom in's alternate is off while zoom in is unset")
+    func unsetZoomInDropsItsAlternate() throws {
+        let equals = KeyCombination(key: "=", modifiers: [.command])
+        let unset = ShortcutAssignments().unsetting(.zoomIn)
+        #expect(unset.activeAlternates(for: .zoomIn).isEmpty)
+        #expect(try unset.assigning(equals, to: .find).get().combination(for: .find) == equals)
+    }
+
+    @Test("Stored none loads as unset, and an unknown command's none is dropped")
+    func loadsStoredNone() {
+        let assignments = ShortcutAssignments(storedOverrides: ["find": "none", "unknownCommand": "none"])
+        #expect(assignments.isUnset(.find))
+        #expect(assignments.overrides.count == 1)
+    }
+
+    @Test("Unset commands never take part in a stored conflict")
+    func unsetDoesNotConflictOnLoad() {
+        let stored = ["find": "none", "newFolder": "cmd+f"]
+        let assignments = ShortcutAssignments(storedOverrides: stored)
+        #expect(assignments.isUnset(.find))
+        #expect(assignments.combination(for: .newFolder) == KeyCombination(key: "f", modifiers: [.command]))
+    }
+
+    @Test("A mix of keys and unset commands round-trips through the stored form")
+    func unsetRoundTrips() throws {
+        let assignments = try ShortcutAssignments()
+            .assigning(optionCommandJ, to: .newFolder)
+            .get()
+            .unsetting(.find)
+        #expect(ShortcutAssignments(storedOverrides: assignments.storedOverrides) == assignments)
+    }
 }

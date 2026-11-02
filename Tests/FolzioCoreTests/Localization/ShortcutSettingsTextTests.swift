@@ -7,11 +7,11 @@ struct ShortcutSettingsTextTests {
     private let plainKeys: [TextKey] = [
         .settingsTabGeneral, .settingsTabShortcuts, .settingsShortcutsList, .settingsShortcutsRecord,
         .settingsShortcutsRecording, .settingsShortcutsReset, .settingsShortcutsResetAll, .settingsShortcutsChanged,
-        .settingsShortcutsErrorModifier, .settingsShortcutsErrorFixed,
+        .settingsShortcutsErrorModifier, .settingsShortcutsErrorFixed, .settingsShortcutsClear, .settingsShortcutsUnset,
     ]
     private let nameKeys: [TextKey] = [
         .settingsShortcutsRecordFor, .settingsShortcutsResetFor, .settingsShortcutsErrorConflict,
-        .settingsShortcutsErrorDefaultConflict,
+        .settingsShortcutsErrorDefaultConflict, .settingsShortcutsClearFor,
     ]
     private let toolbarKeys: [TextKey] = [
         .toolbarGoBackHelp, .toolbarGoForwardHelp, .toolbarShowFileListOnlyHelp, .toolbarShowPreviewOnlyHelp,

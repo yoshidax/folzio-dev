@@ -204,6 +204,9 @@ public enum TextKey: String, CaseIterable, Sendable {
     case settingsShortcutsErrorFixed = "settings.shortcuts.error.fixed"
     case settingsShortcutsErrorConflict = "settings.shortcuts.error.conflict"
     case settingsShortcutsErrorDefaultConflict = "settings.shortcuts.error.defaultConflict"
+    case settingsShortcutsClear = "settings.shortcuts.clear"
+    case settingsShortcutsClearFor = "settings.shortcuts.clearFor"
+    case settingsShortcutsUnset = "settings.shortcuts.unset"
 
     // MARK: - File List and Tree
 
@@ -400,7 +403,8 @@ public enum TextKey: String, CaseIterable, Sendable {
              .toolbarGoBackHelp, .toolbarGoForwardHelp, .toolbarShowFileListOnlyHelp, .toolbarShowPreviewOnlyHelp, .toolbarShowImagesOnlyHelp,
              .toolbarShowVideosOnlyHelp, .toolbarZipFilesHelp, .toolbarStartSlideshowHelp, .toolbarZoomInHelp, .toolbarZoomToFitHelp,
              .toolbarZoomOutHelp, .toolbarThumbnails, .toolbarList, .toolbarThumbnailSize,
-             .settingsShortcutsRecordFor, .settingsShortcutsResetFor, .settingsShortcutsErrorConflict, .settingsShortcutsErrorDefaultConflict:
+             .settingsShortcutsRecordFor, .settingsShortcutsResetFor, .settingsShortcutsErrorConflict, .settingsShortcutsErrorDefaultConflict,
+             .settingsShortcutsClearFor:
             return [.text]
         case .contextCopySingle:
             return [.text]
@@ -758,6 +762,12 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Error when another command uses the typed shortcut. The value is that command name"
         case .settingsShortcutsErrorDefaultConflict:
             return "Error when the default shortcut of a command is used by another command. The value is that command name"
+        case .settingsShortcutsClear:
+            return "Button that removes the shortcut of a command, so that the command has no key"
+        case .settingsShortcutsClearFor:
+            return "Accessibility label of the Clear button. The value is the command name"
+        case .settingsShortcutsUnset:
+            return "Shown in place of the key of a command that has no shortcut, in the Settings window, the shortcut reference, and tooltips"
         case .settingsWindow:
             return "Settings window title"
         case .settingsLanguage:

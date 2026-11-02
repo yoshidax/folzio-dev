@@ -43,7 +43,8 @@ final class MenuShortcutApplier {
             combination = assignments.combination(for: registration.command)
         }
         guard let combination else {
-            // The alternate is off while its command uses a custom key.
+            // The item has no key: the alternate is off while its command uses a custom key, and an unset command
+            // has no key at all (FR-268).
             item.keyEquivalent = ""
             item.keyEquivalentModifierMask = []
             return

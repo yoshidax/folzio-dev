@@ -1,5 +1,6 @@
 import AppKit
 import FolzioCore
+import FolzioLocalization
 
 extension Notification.Name {
     /// Posted after the current shortcut assignments change (FR-261).
@@ -45,13 +46,18 @@ final class ShortcutAssignmentStore {
         }
     }
 
+    /// Removes the command's key (FR-268).
+    func unset(_ command: ShortcutCommandID) {
+        commit(assignments.unsetting(command))
+    }
+
     func resetAll() {
         commit(assignments.resettingAll())
     }
 
-    /// The display text of one command's current key, such as `⇧⌘N`.
+    /// The display text of one command's current key, such as `⇧⌘N`, or "Not Set" when the command has none.
     func keyText(_ command: ShortcutCommandID) -> String {
-        assignments.combination(for: command).displayText
+        assignments.combination(for: command)?.displayText ?? l10n.text(.settingsShortcutsUnset)
     }
 
     /// The display text of several commands' current keys, joined with " / ".

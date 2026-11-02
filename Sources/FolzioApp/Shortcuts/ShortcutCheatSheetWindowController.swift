@@ -144,7 +144,7 @@ private final class ShortcutDocumentView: NSView {
         }
         let assignments = ShortcutAssignmentStore.shared.assignments
         for row in rows {
-            row.keys.stringValue = row.entry.keys(using: assignments)
+            row.keys.stringValue = row.entry.keys(using: assignments, unsetText: l10n.text(.settingsShortcutsUnset))
             row.description.stringValue = l10n.text(ShortcutText.description(row.entry.id))
             let note = ShortcutText.condition(row.entry.id).map { l10n.text($0) } ?? ""
             row.condition.stringValue = note

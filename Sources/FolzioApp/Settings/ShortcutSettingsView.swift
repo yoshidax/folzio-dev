@@ -44,9 +44,9 @@ final class ShortcutSettingsView: NSView {
         fatalError("init(coder:) is not supported")
     }
 
-    /// The controls in Tab order: each row's Record and Reset buttons, then Reset All (FR-265).
+    /// The controls in Tab order: each row's Record, Clear, and Reset buttons, then Reset All (FR-265).
     var keyViews: [NSView] {
-        rows.flatMap { [$0.recordButton, $0.resetButton] } + [resetAllButton]
+        rows.flatMap { [$0.recordButton, $0.clearButton, $0.resetButton] } + [resetAllButton]
     }
 
     override func viewDidMoveToWindow() {
@@ -83,6 +83,7 @@ final class ShortcutSettingsView: NSView {
             for command in commands {
                 let row = ShortcutRecorderRow(command: command.id)
                 row.onRecordTapped = { [weak self] id in self?.recordTapped(id) }
+                row.onClearTapped = { [weak self] id in self?.clearTapped(id) }
                 row.onResetTapped = { [weak self] id in self?.resetTapped(id) }
                 row.recordButton.onCapture = { [weak self, id = command.id] combination in
                     self?.captured(combination, for: id)
@@ -152,8 +153,9 @@ final class ShortcutSettingsView: NSView {
         for row in rows {
             row.update(
                 name: l10n.text(ShortcutText.commandName(row.command)),
-                keyText: assignments.combination(for: row.command).displayText,
+                keyText: assignments.combination(for: row.command)?.displayText ?? l10n.text(.settingsShortcutsUnset),
                 isChanged: assignments.isOverridden(row.command),
+                canClear: !assignments.isUnset(row.command),
                 canReset: assignments.isOverridden(row.command)
             )
         }
@@ -219,6 +221,12 @@ final class ShortcutSettingsView: NSView {
         target.endRecording()
         for row in rows { row.setRecordEnabled(true) }
         refreshRows()
+    }
+
+    private func clearTapped(_ command: ShortcutCommandID) {
+        cancelRecording()
+        row(for: command)?.showError(nil)
+        store.unset(command)
     }
 
     private func resetTapped(_ command: ShortcutCommandID) {
