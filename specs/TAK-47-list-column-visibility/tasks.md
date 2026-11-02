@@ -31,8 +31,8 @@
 **Goal**: サイズ・変更日の見出しのクリックと「表示 > 並べ替え」で並べ替えられる。
 **Independent Test**: quickstart の手動確認 3〜5。
 
-- [ ] T012 [P] [US2] 並べ替えのテスト: サイズ・変更日の昇順・降順、値なし（フォルダ・`..`・nil）は昇順・降順とも末尾、同値は名前の自然順、`sortedMerge` と整合、並べ替え中の列を非表示にしたときのファイル名への切り替えと方向（最後に使った方向、なければ昇順）（`Tests/FolzioCoreTests/SortingTests.swift` に追記）
-- [ ] T013 [US2] `SortColumn` に `size` / `modificationDate` を追加し、`Sorting.swift` の `precedes` / `comparePrimary` で値なしを末尾に置く規則を日付とサイズに一般化する（`Sources/FolzioCore/Model/Settings.swift`、`Sources/FolzioCore/Model/Sorting.swift`）
+- [ ] T012 [P] [US2] 並べ替えのテスト: サイズ・変更日の昇順・降順、フォルダは 0 バイト扱い（昇順で先頭、降順で末尾）、変更日 nil は昇順・降順とも末尾、同値は名前の自然順、`sortedMerge` と整合、並べ替え中の列を非表示にしたときのファイル名への切り替えと方向（最後に使った方向、なければ昇順）（`Tests/FolzioCoreTests/SortingTests.swift` に追記）
+- [ ] T013 [US2] `SortColumn` に `size` / `modificationDate` を追加し、`Sorting.swift` の `precedes` / `comparePrimary` でサイズ（フォルダ・`..` は 0 バイト扱い）と変更日（nil は末尾）の比較を実装する（`Sources/FolzioCore/Model/Settings.swift`、`Sources/FolzioCore/Model/Sorting.swift`）
 - [ ] T014 [US2] `ListModeView` の `sortEntries` とソート記述子の対応にサイズ・変更日を加え、「表示 > 並べ替え」メニューにも出す。並べ替え中の列を非表示にしたらファイル名の並べ替えに切り替え、方向はファイル名で最後に使った方向（なければ昇順）にする。判断ロジックは Core に置く（`Sources/FolzioApp/FileList/ListModeView.swift`）
 - [ ] T015 [P] [US2] `DirectoryLister` が変更日を返すテストと、zip の項目の更新日時のテストを追加する（`Tests/FolzioCoreTests/DirectoryListerTests.swift`、`Tests/FolzioCoreTests/ArchiveIndexTests.swift`。既存のファイル名に合わせる）
 
@@ -41,8 +41,8 @@
 **Goal**: 再起動後も列の状態が復元される。
 **Independent Test**: quickstart の手動確認 6。
 
-- [ ] T016 [US3] `SettingsStore.viewSettings` に `visibleColumns` の保存・復元（キー `view.list.visibleColumns`、rawValue の配列）を実装する。未知の値は捨て、`name` を補い、型が違う・欠落は既定にする（`Sources/FolzioCore/Settings/SettingsStore.swift`）
-- [ ] T017 [P] [US3] `SettingsStore` のテスト: 保存と復元、未知の列を無視、壊れた値は既定、`name` の補完、新しい `view.sort.column`（size など）の読み込み（`Tests/FolzioCoreTests/SettingsStoreTests.swift`）
+- [ ] T016 [US3] `SettingsStore.viewSettings` に `visibleColumns` の保存・復元（キー `view.list.visibleColumns`、rawValue の配列）を実装する。未知の値は捨て、`name` を補い、型が違う・欠落は既定にする。あわせて、ファイル名で最後に使った並べ替えの方向を `view.sort.nameAscending` に保存・復元する（既定は昇順）（`Sources/FolzioCore/Settings/SettingsStore.swift`）
+- [ ] T017 [P] [US3] `SettingsStore` のテスト: ファイル名の最後の方向（`view.sort.nameAscending`）の保存と復元、保存と復元、未知の列を無視、壊れた値は既定、`name` の補完、新しい `view.sort.column`（size など）の読み込み（`Tests/FolzioCoreTests/SettingsStoreTests.swift`）
 - [ ] T018 [US3] 列の切り替えで `visibleColumns` を保存する経路を、既存の表示設定の保存（`BrowserModel` 経由）に接続する。保存経路は実装時に確認する（`Sources/FolzioCore/Browser/BrowserModel.swift`、`ListModeView.swift`）
 
 ## Phase 5: 仕上げと反映

@@ -10,14 +10,15 @@
 - **Decision**: `DirectoryLister` の読み取りキーに `contentModificationDateKey` を足す。zip の項目は entry の更新日時を使う（`creationDate` に渡している値と同じ）。
 - **Rationale**: 列挙時に同時に取得でき、追加の I/O は発生しない。
 
-## R3 サイズの表示と「サイズなし」
+## R3 サイズの表示
 - **Decision**: `ByteCountFormatter`（`.file` スタイル）で表示する。フォルダ（zip 内を含む）・`..` 行は `--`。ファイルは 0 バイトを `0 バイト` と表示する。
 - **Rationale**: 現状、フォルダの `fileSize` は 0 で、ファイルの 0 バイトと区別できないため、種類（`ListItemKind`）で判定する。
 - **Alternatives**: `fileSize` を `Int64?` にする案は呼び出し箇所が多く、今回は種類で判定する。
 
 ## R4 並べ替えの値なし
-- **Decision**: 作成日の「値なしは末尾」規則を、変更日とサイズに一般化する。サイズは、フォルダ・`..` を「値なし」とする。
-- **Rationale**: spec FR-259。昇順・降順で空欄が先頭に来ると、実質的な項目が見えなくなる。
+- **Decision**: サイズの並べ替えでは、フォルダ・`..` を 0 バイトとして扱う（Finder と同じ。保守者が決定）。変更日は nil を昇順・降順とも末尾に置く（作成日と同じ規則）。
+- **Rationale**: Finder の振る舞いに合わせる。昇順ではフォルダが先頭、降順では末尾になる。
+- **Alternatives**: フォルダを常に末尾に置く案は、Finder と異なるため採らない。
 
 ## R5 保存形式
 - **Decision**: `view.list.visibleColumns` に列の rawValue の配列を保存する。読み込み時に既知の列だけを採り、`name` を補う。キーが無ければ既定。

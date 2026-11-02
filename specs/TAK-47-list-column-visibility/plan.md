@@ -39,7 +39,7 @@ Sources/
 ├── FolzioCore/
 │   ├── Model/MediaFile.swift            # modificationDate を追加
 │   ├── Model/Settings.swift             # SortColumn に size / modificationDate、ListColumn と ListColumnVisibility を追加
-│   ├── Model/Sorting.swift              # サイズ・変更日の比較（値なしは末尾）
+│   ├── Model/Sorting.swift              # サイズ（フォルダは 0 バイト扱い）・変更日（nil は末尾）の比較
 │   ├── FileSystem/DirectoryLister.swift # contentModificationDateKey を読む
 │   ├── Archive/ArchiveIndex.swift       # entry の更新日時を modificationDate に渡す
 │   └── Settings/SettingsStore.swift     # 列の表示状態の保存・復元
@@ -55,7 +55,7 @@ Tests/FolzioCoreTests/                   # 並べ替え・設定・Lister・Arch
 1. `ListColumn`（name / creationDate / kind / size / modificationDate）と、表示集合 `ListColumnVisibility`（name は常に含む）を Core に置く。既定は name・creationDate・kind。
 2. `ViewSettings` に `visibleColumns` を持たせ、`SettingsStore` が `view.list.visibleColumns`（列名の文字列配列）で保存する。壊れた値・未知の名前は無視し、空や欠落は既定へ（name は常に補う）。
 3. `MediaFile` に `modificationDate: Date?` を追加（既定 nil）。`DirectoryLister` は `contentModificationDateKey` を読む。zip の項目は既存の `creationDate` と同じ entry の更新日時を渡す。フォルダ行の更新日時も取得する。
-4. `SortColumn` に `size` / `modificationDate` を追加。比較は、値なしを昇順・降順とも末尾に置き（作成日と同じ規則を日付とサイズに一般化）、同値は名前の自然順。フォルダと `fileSize` が意味を持たない行は「サイズなし」とする。
+4. `SortColumn` に `size` / `modificationDate` を追加。比較は、サイズはフォルダ・`..` を 0 バイト扱い（Finder と同じ）、変更日は nil を昇順・降順とも末尾（作成日と同じ規則）、同値は名前の自然順。フォルダと `fileSize` が意味を持たない行は「サイズなし」とする。
 5. `ListModeView`: 5 列を作り、`visibleColumns` と検索中の場所列で `isHidden` を設定する。`NSTableHeaderView.menu` に「作成日/種類/サイズ/変更日」のチェック付き項目を持つ `NSMenu` を付け、`menuNeedsUpdate` でチェックを更新する。ファイル名は項目に含めない（Finder の「名前」と同じ）。並べ替え中の列を非表示にしたら、並べ替えをファイル名へ切り替える（方向はファイル名で最後に使った方向。メモリ上で保持、なければ昇順）。
 6. サイズは `ByteCountFormatter`（file style）で表示。フォルダ・取得不能は `--`。表示言語の切り替え時に列名とセルを更新する（既存の `displayLanguageDidChange` に追加）。
 7. 設定は `BrowserModel` 経由の既存の保存経路（表示設定の変更時に保存）に乗せる。実装時に保存経路を確認する。

@@ -10,7 +10,8 @@
 
 ## MediaFile
 - 追加: `modificationDate: Date?`（既定 nil）。通常のファイル・フォルダは `contentModificationDate`、zip の項目は entry の更新日時。
-- 既存: `fileSize`。フォルダと `..` では意味を持たず、表示と並べ替えでは「サイズなし」として扱う（種類で判定）。
+- 既存: `fileSize`。フォルダと `..` では意味を持たない。表示は `--`（種類で判定）、並べ替えでは 0 バイトとして扱う。
+- 保存: ファイル名で最後に使った並べ替えの方向を `view.sort.nameAscending` に保存する（既定は昇順）。並べ替えの列が `name` のときは `view.sort.ascending` と同じ値。
 
 ## SortColumn
 - 追加: `size`, `modificationDate`。`location` は従来どおり保存しない。
