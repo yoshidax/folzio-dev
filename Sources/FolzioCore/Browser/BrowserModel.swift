@@ -713,7 +713,7 @@ public final class BrowserModel {
     }
 
     /// Shows or hides a list column and persists the choice. Hiding the column the list is sorted by switches to sorting
-    /// by name, in the direction the user last sorted by name in (ascending if never), as Finder does (FR-259).
+    /// by name, in the direction the user last sorted by name in (ascending if never), as Finder does (FR-273).
     public func setColumn(_ column: ListColumn, visible: Bool) {
         var columns = visibleColumns
         if visible {

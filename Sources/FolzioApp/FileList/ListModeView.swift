@@ -166,7 +166,7 @@ final class ListModeView: NSView {
         return formatter
     }()
 
-    /// Text of the Size column: `--` for folders and `..`, which have no size (TAK-47, FR-258).
+    /// Text of the Size column: `--` for folders and `..`, which have no size (TAK-47, FR-272).
     private static func sizeText(of file: MediaFile) -> String {
         file.hasFileSize ? sizeFormatter.string(fromByteCount: file.fileSize) : "--"
     }
@@ -450,7 +450,7 @@ final class ListModeView: NSView {
         column.isHidden = hidden
     }
 
-    /// Shows the columns the user chose besides the name column, which is always shown (TAK-47, FR-256).
+    /// Shows the columns the user chose besides the name column, which is always shown (TAK-47, FR-270).
     private func updateColumnVisibility() {
         for column in ListColumn.allCases {
             guard let tableColumn = tableView.tableColumn(
@@ -657,7 +657,7 @@ final class ListModeView: NSView {
 
 extension ListModeView: NSMenuDelegate {
     /// Builds the column header menu: one checkable item per toggleable column. The name column has no item because it
-    /// is always shown (TAK-47, FR-255).
+    /// is always shown (TAK-47, FR-269).
     func menuNeedsUpdate(_ menu: NSMenu) {
         guard menu === columnsMenu else { return }
         menu.removeAllItems()
