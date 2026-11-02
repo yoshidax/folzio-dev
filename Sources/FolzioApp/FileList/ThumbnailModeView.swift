@@ -215,7 +215,7 @@ final class ThumbnailItemView: NSCollectionViewItem {
     /// Kind icon for zip file, directory, and `..` rows. Does not request a thumbnail.
     func showListItemIcon(for kind: ListItemKind, pointSize: Double) {
         thumbnailImageView.imageScaling = .scaleNone
-        thumbnailImageView.contentTintColor = .secondaryLabelColor
+        thumbnailImageView.contentTintColor = IconCatalog.tintColor(for: kind)
         thumbnailImageView.image = IconCatalog.listItemIcon(for: kind, pointSize: CGFloat(pointSize))
     }
 
