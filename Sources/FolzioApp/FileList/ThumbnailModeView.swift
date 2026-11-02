@@ -438,7 +438,7 @@ final class ThumbnailModeView: NSView {
     }
 
     var onInternalDrop: (([URL], URL, Bool) -> Void)?
-    /// Esc. Returns true when handled (ends search results; FR-86).
+    /// Esc. Returns true when handled (ends search results; FR-086).
     var onEscape: (() -> Bool)? {
         get { collectionView.onEscape }
         set { collectionView.onEscape = newValue }
@@ -490,7 +490,7 @@ final class ThumbnailModeView: NSView {
         scrollItemIntoView(at: index)
     }
 
-    /// Origin of the visible list range (used to preserve the scroll position; SC-17).
+    /// Origin of the visible list range (used to preserve the scroll position; SC-017).
     var visibleOrigin: CGPoint {
         scrollView.contentView.bounds.origin
     }
@@ -679,7 +679,7 @@ final class ThumbnailModeView: NSView {
     }
 
     private func applyModel() {
-        // For a hidden mode, defer reloading and selection updates until it is shown (viewDidUnhide) (SC-15).
+        // For a hidden mode, defer reloading and selection updates until it is shown (viewDidUnhide) (SC-015).
         guard !isHidden else { return }
         let files = model.listing.files
         let urls = files.map(\.url)
@@ -842,7 +842,7 @@ final class ThumbnailModeView: NSView {
         max(16, storedThumbnailSize / 2)
     }
 
-    /// Selects a double-clicked item as the only selection, then opens it (FR-69, FR-70).
+    /// Selects a double-clicked item as the only selection, then opens it (FR-069, FR-070).
     private func openItem(at index: Int) {
         let files = model.listing.files
         guard files.indices.contains(index) else { return }
@@ -855,7 +855,7 @@ final class ThumbnailModeView: NSView {
     }
 
     private func beginRenameFromKeyboard() -> Bool {
-        // Do not start renaming inside a zip (FR-73). Consume the key.
+        // Do not start renaming inside a zip (FR-073). Consume the key.
         guard model.focusedItemCommands.allowsFileOperations else { return true }
         guard onRename != nil else { return false }
         newFolderRenamingURL = nil
@@ -1095,7 +1095,7 @@ extension ThumbnailModeView: NSCollectionViewDataSource {
         }
         thumbnailItem.configure(with: file, iconPointSize: listItemIconPointSize)
         // In search results, show the location tooltip for same-named files that cannot be distinguished by name alone
-        // (FR-84, R37).
+        // (FR-084, R37).
         thumbnailItem.view.toolTip = model.listing.search?.location(of: file.url)
         requestThumbnail(for: file)
         return thumbnailItem
@@ -1129,7 +1129,7 @@ extension ThumbnailModeView: NSCollectionViewDelegateFlowLayout {
     ) -> NSPasteboardWriting? {
         let files = model.listing.files
         guard files.indices.contains(indexPath.item) else { return nil }
-        // Do not start a drag for rows inside a zip or `..` (FR-73).
+        // Do not start a drag for rows inside a zip or `..` (FR-073).
         guard model.itemCommands(forRowAt: indexPath.item).allowsFileOperations else { return nil }
         return files[indexPath.item].url as NSURL
     }

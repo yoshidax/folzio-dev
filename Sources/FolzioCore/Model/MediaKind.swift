@@ -35,7 +35,7 @@ public enum MediaKind: String, CaseIterable, Sendable {
     }
 }
 
-/// Kind of a file list row (FR-68–070, 076, 077; ListItemKind in data-model.md). The type of `MediaFile.kind`.
+/// Kind of a file list row (FR-068–070, 076, 077; ListItemKind in data-model.md). The type of `MediaFile.kind`.
 public enum ListItemKind: Sendable, Hashable {
     /// Supported media file
     case media(MediaKind)

@@ -67,7 +67,7 @@ Sources/FolzioApp/App/MainSplitViewController.swift        # 変更: Space を�
 docs/usage.md / docs/usage.ja.md                           # 変更: Space とダブルクリックの説明
 ```
 
-**Structure Decision**: 判断は Core、パネルの制御と矩形の計算は App。`BrowserModel.openItem` は「メディアでは何もしない」まま変えず（FR-69・76 の契約）、
+**Structure Decision**: 判断は Core、パネルの制御と矩形の計算は App。`BrowserModel.openItem` は「メディアでは何もしない」まま変えず（FR-069・076 の契約）、
 既定のアプリを開くのは `FileListViewController.openItem` が Core の判断で呼ぶ。`NSWorkspace` は Core に入れない。
 
 ## Phase 0: Research

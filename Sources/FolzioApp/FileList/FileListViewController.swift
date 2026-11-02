@@ -43,7 +43,7 @@ final class FileListViewController: NSViewController {
     private weak var imagesOnlyMenuItem: NSMenuItem?
     private weak var videosOnlyMenuItem: NSMenuItem?
     private weak var zipVisibilityMenuItem: NSMenuItem?
-    /// Scroll position preserved across list rebuilds (SC-17).
+    /// Scroll position preserved across list rebuilds (SC-017).
     private var pendingScrollOrigin: CGPoint?
 
     var onViewStateChange: ((DisplayMode, Double) -> Void)?
@@ -147,7 +147,7 @@ final class FileListViewController: NSViewController {
     }
 
     /// Esc. While showing search results (excluding full screen and renaming), returns to the pre-search folder
-    /// listing. If searching, stops the search. Does nothing otherwise (FR-86).
+    /// listing. If searching, stops the search. Does nothing otherwise (FR-086).
     private func leaveSearchResults() -> Bool {
         guard model.isShowingSearchResults,
               hiddenListNavigation == nil,
@@ -589,7 +589,7 @@ final class FileListViewController: NSViewController {
     }
 
     /// Keeps showing the list even in a message state when rows remain (`..` or directories).
-    /// For an unreadable folder, shows the list when `..` remains and puts the message in the bottom band (FR-77).
+    /// For an unreadable folder, shows the list when `..` remains and puts the message in the bottom band (FR-077).
     private var showsFileList: Bool {
         switch model.listing.state {
         case .loaded:
@@ -619,7 +619,7 @@ final class FileListViewController: NSViewController {
             progressIndicator.startAnimation(nil)
             message = isSearch ? l10n.text(.emptySearching) : l10n.text(.emptyLoading)
         case .empty:
-            // Distinguish this from "No supported media files" in FR-60.
+            // Distinguish this from "No supported media files" in FR-060.
             message = isSearch ? l10n.text(.emptyNoMatches) : l10n.text(.emptyNoMedia)
         case .noMatches:
             switch model.mediaTypeFilter.emptyState {
@@ -657,7 +657,7 @@ final class FileListViewController: NSViewController {
         }
     }
 
-    /// Captures the scroll position before rebuilding the list (SC-17).
+    /// Captures the scroll position before rebuilding the list (SC-017).
     private func captureScrollOrigin() {
         pendingScrollOrigin = currentVisibleOrigin
     }
@@ -691,7 +691,7 @@ final class FileListViewController: NSViewController {
 
         // Loading hides the list, so AppKit moves focus to the next key view (such as the preview).
         // Return focus when the list reappears so keyboard focus stays in the file list while entering or leaving
-        // folders (FR-78).
+        // folders (FR-078).
         if focusWasInFileList, !showsFiles, let window = view.window {
             displacedFocus = window.firstResponder
         }
@@ -1071,7 +1071,7 @@ final class FileListViewController: NSViewController {
         NSWorkspace.shared.activateFileViewerSelecting(urls)
     }
 
-    /// Opens the focused zip file or directory. If it is `..`, goes up one level (⌘↓, FR-69).
+    /// Opens the focused zip file or directory. If it is `..`, goes up one level (⌘↓, FR-069).
     @objc func openFocusedItem(_ sender: Any?) {
         guard !isEditingText,
               focusedItemCommands.canOpenContainer,
@@ -1099,7 +1099,7 @@ final class FileListViewController: NSViewController {
     }
 
     /// Inside a zip, goes up one level. At the zip root, returns to the listing of the folder containing the zip
-    /// (⌘↑, FR-70).
+    /// (⌘↑, FR-070).
     @objc func goToEnclosingLevel(_ sender: Any?) {
         guard !isEditingText, focusedItemCommands.canGoUp else { return }
         Task { @MainActor [weak self] in
@@ -1195,7 +1195,7 @@ extension FileListViewController: NSMenuItemValidation {
             return !isEditingText && focusedItemCommands.canGoUp
         }
 
-        // A zip is read-only (FR-73). `..` is not an operation target (R30). ListItemCommands makes the decision.
+        // A zip is read-only (FR-073). `..` is not an operation target (R30). ListItemCommands makes the decision.
         let commands = selectionItemCommands
         switch menuItem.action {
         case #selector(copy(_:)),

@@ -506,6 +506,10 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Action description in the shortcut reference"
         case .shortcutOpenDefaultCondition:
             return "Availability note below a shortcut reference action"
+        case .shortcutQuickLook:
+            return "Action description in the shortcut reference"
+        case .shortcutQuickLookCondition:
+            return "Availability note below a shortcut reference action"
         case .shortcutRename:
             return "Action description in the shortcut reference"
         case .shortcutRenameCondition:

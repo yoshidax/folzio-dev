@@ -85,7 +85,7 @@ final class PreviewViewController: NSViewController {
         return imageView
     }
 
-    /// Called when the media display area is double-clicked outside any control (FR-35, FR-220).
+    /// Called when the media display area is double-clicked outside any control (FR-035, FR-220).
     /// The receiver decides whether the double-click toggles full screen (`PreviewDoubleClick`).
     var onDoubleClick: (() -> Void)?
 

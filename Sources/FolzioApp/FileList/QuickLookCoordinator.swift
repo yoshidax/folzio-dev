@@ -2,7 +2,7 @@ import AppKit
 import FolzioCore
 import Quartz
 
-/// Drives the Quick Look panel for the file list (TAK-18; FR-247–236, FR-253, FR-254; research.md R1–R3, R8).
+/// Drives the Quick Look panel for the file list (TAK-18; FR-247–250, FR-253, FR-254; research.md R1–R3, R8).
 ///
 /// The panel is the standard `QLPreviewPanel`. It takes control through the responder chain: the file list views
 /// answer `acceptsPreviewPanelControl(_:)` and call `attach(to:)` / `detach(from:)`, so the panel only opens while the

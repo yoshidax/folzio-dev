@@ -26,7 +26,7 @@ Cloud では Swift と GUI を実行できないため、以下は SDK の文書
 - **Decision**: `keyDown` の Space（`charactersIgnoringModifiers == " "`、修飾キーなし）で `QuickLookCoordinator.toggle()`。
   パネルが開いている間はキーウインドウがパネルになり、パネル自身の Space/Esc で閉じる。
   現在の `ListModeView.onSpace`（動画なら `onTogglePlayback`）は削除する。
-- **Rationale**: 現行の Space は動画の再生を切り替える（FR-33）。保守者の決定（ファイルリストでは Quick Look に統一）に従う。
+- **Rationale**: 現行の Space は動画の再生を切り替える（FR-033）。保守者の決定（ファイルリストでは Quick Look に統一）に従う。
 - **要実機**: 閉じた後に first responder がファイルリストに戻ること（M3）。
 
 ## R4 複数項目
@@ -62,8 +62,8 @@ Cloud では Swift と GUI を実行できないため、以下は SDK の文書
   選択が変わった通知（既存の選択変更の経路）で Coordinator が `items` を `QuickLookTargets.urls` で再計算し、`panel.reloadData()` を呼ぶ。
   再計算の結果が空なら `panel.close()`（US3-AS36）。
 - **Rationale**: Apple の Quick Look のサンプルがこの形（`previewPanel(_:handle:)` でテーブルへキーを転送）を使うというのが理解で、Finder の挙動に一致する。
-  選択のロジックを再実装せず、ファイルリストの既存の矢印キーの規則（FR-16・17）をそのまま使える。
+  選択のロジックを再実装せず、ファイルリストの既存の矢印キーの規則（FR-016・017）をそのまま使える。
 - **要実機**: 転送したキーでテーブルの選択が動くこと（パネルがキーウインドウでもリストの first responder が `keyDown` を処理できること）、
   `reloadData()` 後に現在の項目と起点の矩形が新しい選択に追従すること、選択が1件→複数→1件と変わるときの UI の切り替わり。
-- **動画の自動再生の抑制**: 選択が動画に移るとプレビューペインが自動再生を始めるため（FR-31・32）、パネルの表示中は自動再生を抑える状態を `PreviewViewController` に持たせる（EC-175）。
+- **動画の自動再生の抑制**: 選択が動画に移るとプレビューペインが自動再生を始めるため（FR-031・032）、パネルの表示中は自動再生を抑える状態を `PreviewViewController` に持たせる（EC-175）。
 - **Alternatives**: パネル内の矢印キーを Quick Look の標準（項目間の移動）のままにする案は、1件選択で効かず Finder と異なるため採らない。
