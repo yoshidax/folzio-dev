@@ -180,8 +180,12 @@
 `TB Item Identifiers` が並び替え後の順序（履歴 → サムネイルサイズ → ズーム → …）で**保存されていた**。したがって、書き込みは行われており、
 問題は**起動時に読み込まれない**ことにある。コードに構成の読み書きの明示的な処理はない（`insertItem`・`setConfiguration` なし）。
 `MainToolbarController.init` は、`toolbar.delegate = self` の後で `autosavesConfiguration` を設定し、`MainWindowController` は
-`toolbar.isVisible` を設定してから `window.toolbar` を割り当てている。この順序が原因かは未確認で、`autosavesConfiguration` を
-delegate の設定より前に移す実験を、plan の最初の確認項目とする。
+`toolbar.isVisible` を設定してから `window.toolbar` を割り当てている。`autosavesConfiguration` を
+delegate の設定より前に移す実験（保守者、2026-11-02）では**直らなかった**。次の仮説は、「autosave を有効にした後に `displayMode` などを
+設定する処理が、起動時の既定の構成を保存し、保存済みの構成を上書きしている」。切り分けは、(a) カスタマイズせずに起動・終了し、
+`defaults read` の `TB Item Identifiers` が既定の順序に戻っていないかを見る、(b) `autosavesConfiguration = true` を `init` の最後
+（`displayMode`・`allowsUserCustomization` の設定より後）へ移す。どちらでも直らなければ、標準の構成保存に頼らず、並び順を自前で
+保存・復元する（設定キーを1つ追加し、起動時に `insertItem` で並べ直す）案を評価する。
 
 **判断への影響**: 3 により、参照の管理（delegate の状態保持）の作り直しが必須と確定した。セットごとの参照を、項目が作り直されても
 実際に表示しているボタンへ向け直す設計が要る。独自のカスタマイズ画面は不要のため、見送り基準には当たらない。4 の原因次第では、
