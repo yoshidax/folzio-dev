@@ -3,7 +3,7 @@ import FolzioCore
 import FolzioLocalization
 
 /// A borderless button that looks like a link and is reachable with Tab regardless of the system Keyboard
-/// Navigation setting (FR-040, FR-237).
+/// Navigation setting (FR-040, FR-242).
 @MainActor
 final class AboutLinkButton: NSButton {
     override var canBecomeKeyView: Bool { true }
@@ -22,7 +22,7 @@ final class AboutLinkButton: NSButton {
     }
 }
 
-/// Shows the app icon, name, version, and repository link in one independent, non-modal window (FR-233...FR-240).
+/// Shows the app icon, name, version, and repository link in one independent, non-modal window (FR-238...FR-245).
 @MainActor
 final class AboutWindowController: NSWindowController {
     private let openURL: @MainActor (URL) -> Bool
@@ -40,7 +40,7 @@ final class AboutWindowController: NSWindowController {
     var versionText: String? { versionLabel?.stringValue }
 
     /// - Parameters:
-    ///   - version: The display version, or `nil` to omit the version line (FR-236).
+    ///   - version: The display version, or `nil` to omit the version line (FR-241).
     ///   - openURL: Opens a URL in the default web browser. Defaults to `NSWorkspace`; tests inject their own.
     init(version: String?, openURL: (@MainActor (URL) -> Bool)? = nil) {
         self.version = version
@@ -143,7 +143,7 @@ final class AboutWindowController: NSWindowController {
         fitContent(keepingTop: true)
     }
 
-    /// Sizes the window to its content (the window is not resizable by the user, EC-167).
+    /// Sizes the window to its content (the window is not resizable by the user, EC-169).
     private func fitContent(keepingTop: Bool) {
         guard let window else { return }
         stack.layoutSubtreeIfNeeded()
@@ -161,7 +161,7 @@ final class AboutWindowController: NSWindowController {
     }
 
     @objc private func openRepository(_ sender: Any?) {
-        // A failure to open is ignored on purpose: no error is shown and the window stays open (EC-164).
+        // A failure to open is ignored on purpose: no error is shown and the window stays open (EC-166).
         _ = openURL(AboutInfo.repositoryURL)
     }
 }

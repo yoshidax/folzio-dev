@@ -65,13 +65,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mainWindowController?.stopSlideshowImmediately()
     }
 
-    /// Opens the About window, or brings the existing one to the front (FR-233, FR-238). It is always available.
+    /// Opens the About window, or brings the existing one to the front (FR-238, FR-243). It is always available.
     @objc func showAbout(_ sender: Any?) {
         let controller: AboutWindowController
         if let existing = aboutWindowController {
             controller = existing
         } else {
-            // Info.plist is absent under `swift run`, which yields no version and so no version line (FR-236).
+            // Info.plist is absent under `swift run`, which yields no version and so no version line (FR-241).
             let value = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
             controller = AboutWindowController(version: AboutInfo.displayVersion(from: value))
             aboutWindowController = controller

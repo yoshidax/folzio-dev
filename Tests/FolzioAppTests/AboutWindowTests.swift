@@ -14,7 +14,7 @@ struct AboutWindowTests {
         return found
     }
 
-    @Test("Has only a close button in the title bar and a non-empty accessibility name (FR-234)")
+    @Test("Has only a close button in the title bar and a non-empty accessibility name (FR-239)")
     func windowAppearance() throws {
         let controller = AboutWindowController(version: "1.0.0", openURL: { _ in true })
         let window = try #require(controller.window)
@@ -29,7 +29,7 @@ struct AboutWindowTests {
         #expect(!window.isReleasedWhenClosed)
     }
 
-    @Test("Shows the version line only when a version is given (FR-236, EC-166)")
+    @Test("Shows the version line only when a version is given (FR-241, EC-168)")
     func versionLine() {
         let withVersion = AboutWindowController(version: "1.0.0", openURL: { _ in true })
         let text = withVersion.versionText
@@ -39,7 +39,7 @@ struct AboutWindowTests {
         #expect(withoutVersion.versionText == nil)
     }
 
-    @Test("The link is the only button and is reachable with Tab (FR-237)")
+    @Test("The link is the only button and is reachable with Tab (FR-242)")
     func linkIsTheOnlyControl() throws {
         let controller = AboutWindowController(version: "1.0.0", openURL: { _ in true })
         let content = try #require(controller.window?.contentView)
@@ -51,7 +51,7 @@ struct AboutWindowTests {
         #expect(controller.linkButton.attributedTitle.string == "https://github.com/yoshidax/folzio")
     }
 
-    @Test("Pressing the link opens the repository once and ignores failure (US45-AS2, EC-164)", arguments: [true, false])
+    @Test("Pressing the link opens the repository once and ignores failure (US46-AS2, EC-166)", arguments: [true, false])
     func linkOpensRepository(succeeds: Bool) throws {
         var opened: [URL] = []
         let controller = AboutWindowController(version: "1.0.0", openURL: { url in

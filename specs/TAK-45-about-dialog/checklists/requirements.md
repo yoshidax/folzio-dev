@@ -33,4 +33,4 @@
 
 - `Info.plist` のキー名 `CFBundleShortVersionString` は、既存の契約（app-bundle.md）が定める製品の外部仕様であり、実装の詳細としては扱わない。
 - 保守者に確認した 4 点（版の代替・ウィンドウの扱い・言語とリンクの形式・版の範囲）を Input に記録し、`[NEEDS CLARIFICATION]` は残していない。
-- ID は全領域と他の TAK-* feature を通した最大値の次から採番した（FR-233、SC-117、EC-164、A-144、US44）。
+- ID は全領域と他の TAK-* feature を通した最大値の次から採番した（FR-238、SC-118、EC-166、A-146、US45）。
