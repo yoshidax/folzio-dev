@@ -1,10 +1,14 @@
 # Feature Specification: メディアの Space プレビューとダブルクリックによる既定アプリ起動
 
+> **移行済み（2026-11-02）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-18 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> CI の結果と保守者の動作確認の報告は [quickstart.md](quickstart.md) を参照。
+
 **Feature Branch**: `claude/inspiring-johnson-vf3781`
 
 **Created**: 2026-11-01
 
-**Status**: Draft（設計レビュー待ち）
+**Status**: Approved — PR #33、product へ移行
 
 **Input**: [TAK-18](https://linear.app/takyoshida/issue/TAK-18)「メディアのSpaceプレビューとダブルクリックによる既定アプリ起動に対応する」。
 Space による一時プレビューの技術検証と採用条件（Issue の追加要望、2026-10-30）を含む。
@@ -162,15 +166,16 @@ Space による一時プレビューの技術検証と採用条件（Issue の�
 
 ## 反映先
 
-実装と検証が終わった後に決める。予定は次のとおり。
+2026-11-02、最新の master（b35ede1）と照合し、次の領域へ反映した。反映後に、`specs/product/` の FR・SC・EC・A の ID に重複がないことを確かめた。
 
 | ID | 種別 | 反映先 |
 |---|---|---|
-| FR-247・249〜250・252〜254 | 追加 | file-list.md |
-| FR-251 | 追加 | file-list.md |
-| FR-248（FR-033 の Space の規定） | 変更 | preview.md |
+| FR-247・249〜251・253・254 | 追加 | file-list.md |
+| FR-248 | 追加（FR-033 の Space の規定を変更。FR-033 の本文に参照を追記） | preview.md |
+| FR-252 | 反映しない | 技術検証の判定の条件（2026-11-02 に成り立つことを確認した）のため。ID は再利用しない |
 | US3-AS23〜37 | 追加 | file-list.md |
 | EC-170〜177 | 追加 | file-list.md |
-| SC-121〜124 | 追加 | file-list.md |
-| A-149〜154 | 追加 | file-list.md |
-| ファイルリストの Space・メディアの行のダブルクリックの行、ショートカット一覧 | 契約変更 | contracts/keyboard-and-menus.md |
+| SC-121〜124 | 追加 | file-list.md（SC-122 は、プレビューの動画にフォーカスがあるときの Space の部分を除いた。通常表示で効かない既存の不具合は別 Issue（TAK-48）） |
+| A-149〜154 | 追加（A-149 は実機で確認した旨に改めた） | file-list.md |
+| 一時プレビューの対象 | エンティティ追加 | file-list.md |
+| ファイルリストの Space・メディアの行のダブルクリックの行、一時プレビュー表示中のキー、zip の中の注記、プレビューの Space の行、ショートカット一覧（quickLook の追加と videoPlay の条件、合計46項目） | 契約変更 | contracts/keyboard-and-menus.md |
