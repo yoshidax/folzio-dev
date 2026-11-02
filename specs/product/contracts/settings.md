@@ -13,6 +13,8 @@
 | `view.sort.ascending` | Bool | true | FR-012 |
 | `view.lastFolderPath` | String（絶対パス） | （未設定 = ホーム） | FR-003（zip の中を表示中に終了しても、zip を含むフォルダ） |
 | `view.showsToolbar` | Bool | false | FR-003・049 |
+| `view.toolbarItems` | 文字列の配列 | なし（既定の並び） | FR-235 |
+| `view.toolbarDisplayMode` | Int | なし（アイコンのみ） | FR-235 |
 | `view.showsZipFiles` | Bool | false | FR-003・095 |
 | `playback.autoplay` | Bool | true | FR-031・032 |
 | `playback.loop` | Bool | true | FR-031・032 |
@@ -59,8 +61,13 @@
   ツリーの表示は「2025」「2025（バックアップ）」（登録順）
 - zip の中の位置（開いている zip と階層）は保存しない。zip の中へ入っても `view.lastFolderPath` は変えず、次回は zip を含む
   フォルダの一覧から始まる（FR-003）。保存キーは追加しない
-- ツールバーの構成は保存しない（`NSToolbar.autosavesConfiguration = false`）。表示状態だけを
-  `view.showsToolbar` に保存し、フルスクリーン中の自動非表示はこの値を変えない
+- ツールバーの並び順と表示モードは、標準の自動保存（`NSToolbar.autosavesConfiguration`、`false` のまま）ではなく、次のキーに保存する（FR-235、A-145）。
+  表示状態は従来どおり `view.showsToolbar` に保存し、フルスクリーン中の自動非表示はこの値を変えない
+  - `view.toolbarItems`: 識別子の文字列の配列（`history`・`paneLayout`・`slideshow`・`previewZoom`・`mediaTypeFilter`・`zipVisibility`・`viewMode`・`thumbnailSize`・
+    `NSToolbarSpaceItem`・`NSToolbarFlexibleSpaceItem`）。既定の並びと同じとき、またはカスタマイズしていないときは保存しない（キーを消す）
+  - `view.toolbarDisplayMode`: 整数（`NSToolbar.DisplayMode` の値）。既定の「アイコンのみ」のときは保存しない
+  - 読み込み時は、未知の識別子と同じセットの重複を除き、値が配列でない・未知の識別子しかないときは既定の並びにする。空の配列は「すべて外した」状態とする（EC-165）。
+    保存はアプリの終了時と、`itemIdentifiers`・`displayMode` の変更の通知で行う
 - 検索の条件（キーワード・検索起点ディレクトリ）と検索結果は保存しない。前回のキーワードは起動中だけ覚える。検索を始めても
   `view.lastFolderPath` は変えない（FR-081・086）。並べ替えの「場所」（`location`）は検索結果の表示中だけ使い、`view.sort.column` には
   書かない（保存済みの値は `name` / `creationDate` / `kind` のまま）。保存キーは追加しない
