@@ -1,4 +1,5 @@
 import AppKit
+import FolzioCore
 import os
 
 @MainActor
@@ -10,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var launchToListState: OSSignpostIntervalState?
     private var mainWindowController: MainWindowController?
     private var settingsWindowController: SettingsWindowController?
+    private var aboutWindowController: AboutWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         launchToListState = performanceSignposter.beginInterval("LaunchToList")
@@ -46,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let window = notification.object as? NSWindow,
               window === mainWindowController?.window else { return }
         settingsWindowController?.close()
+        aboutWindowController?.close()
     }
 
     private func endLaunchToListInterval() {
@@ -60,6 +63,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         mainWindowController?.stopSlideshowImmediately()
+    }
+
+    /// Opens the About window, or brings the existing one to the front (FR-238, FR-243). It is always available.
+    @objc func showAbout(_ sender: Any?) {
+        let controller: AboutWindowController
+        if let existing = aboutWindowController {
+            controller = existing
+        } else {
+            // Info.plist is absent under `swift run`, which yields no version and so no version line (FR-241).
+            let value = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
+            controller = AboutWindowController(version: AboutInfo.displayVersion(from: value))
+            aboutWindowController = controller
+        }
+        controller.present()
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc func showSettings(_ sender: Any?) {

@@ -38,13 +38,15 @@ Folzio.app/
 | `CFBundleName` | `Folzio` | 表示名 |
 | `CFBundleIconFile` | `AppIcon` | バンドルアイコン（拡張子なし） |
 | `CFBundlePackageType` | `APPL` | アプリケーションバンドル |
-| `CFBundleShortVersionString` | 開発時の既定値 `0.1.0`、配布時は指定したバージョン | バージョン |
+| `CFBundleShortVersionString` | 開発時の既定値 `1.0.0`、配布時は指定したバージョン | バージョン（About ダイアログが表示する） |
 | `CFBundleVersion` | 開発時の既定値 `1`、配布時は指定した数字 | ビルド番号 |
 | `LSMinimumSystemVersion` | `15.0` | 対象 OS |
 | `NSHighResolutionCapable` | `true` | Retina 対応 |
 | `NSPrincipalClass` | `NSApplication` | AppKit アプリ |
 
 配布時は公開用コミットから arm64 を明示してビルドし、アプリのバージョンを Release のタグと一致させる（FR-170・171）。署名は ad hoc とする（FR-172）。
+
+About ダイアログ（FR-238〜245（window-layout.md））は、実行中のアプリの `CFBundleShortVersionString` を表示する。値がない、空、または Info.plist を持たない起動（`swift run`）では、バージョン行を表示しない（FR-241）。`CFBundleVersion`（ビルド番号）は表示しない。開発時の既定値は `scripts/make-app.sh` の `FOLZIO_VERSION` の既定（FR-246（overview.md））。
 
 `CFBundleAllowMixedLocalizations` は設定しない。OS の部品がアプリの設定言語と一致することは保証しない。
 
