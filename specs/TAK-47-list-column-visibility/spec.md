@@ -1,5 +1,9 @@
 # Feature Specification: リスト形式の列の表示・非表示
 
+> **移行済み（2026-11-02）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-47 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> 手動確認の結果は、保守者の報告により quickstart.md の 1〜8 に問題がなかった。
+
 **Feature Branch**: `claude/jolly-ptolemy-1b91ys`（Cloud が指定した作業ブランチ。feature ディレクトリとは独立）
 
 **Created**: 2026-11-02
