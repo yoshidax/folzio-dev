@@ -126,7 +126,7 @@ struct SettingsStoreTests {
 
             defaults.set("large", forKey: "view.thumbnailSize")
             defaults.set("grid", forKey: "view.displayMode")
-            defaults.set("size", forKey: "view.sort.column")
+            defaults.set("owner", forKey: "view.sort.column")
             defaults.set("yes", forKey: "view.sort.ascending")
             defaults.set("no", forKey: "playback.autoplay")
             defaults.set("yes", forKey: "view.showsToolbar")
