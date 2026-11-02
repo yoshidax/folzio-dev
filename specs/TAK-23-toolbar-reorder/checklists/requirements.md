@@ -19,7 +19,7 @@
 - [x] Success criteria are technology-agnostic
 - [x] All acceptance scenarios are defined
 - [x] Edge cases are identified
-- [x] Scope is clearly bounded（並び替えのみ、実装しない）
+- [x] Scope is clearly bounded（標準のカスタマイズ機能の範囲、実装しない）
 - [x] Dependencies and assumptions identified
 
 ## Feature Readiness
@@ -31,4 +31,5 @@
 
 ## Notes
 
+- 2026-11-02: 範囲を「並び替えのみ」から「標準のカスタマイズ機能の許容」へ変更した。
 - 実機でしか確かめられない点は spec.md の「保守者への検証依頼」に分けた。Edge Cases の2点（カスタマイズ開始の可否、既定へ戻す手段）は plan で決める。
