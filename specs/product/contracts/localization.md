@@ -186,6 +186,8 @@
 | 表示形式のグループ | 表示形式 / サムネイル / リスト | View / Thumbnails / List |
 | サイズ | サイズ / サムネイルのサイズ（⌃⌘. / ⌃⌘,） | Size / Thumbnail Size (⌃⌘. / ⌃⌘,) |
 
+ツールバーの表のキーは既定の割り当て。現在の割り当てに従って表示し、未設定のコマンドは「（未設定）」/ `(Not Set)` とする（FR-261・268）。
+
 ### 設定ウインドウ
 
 | 日本語 | 英語 |
@@ -205,6 +207,17 @@
 | 最後まで表示したら先頭から繰り返す | Repeat from the beginning after the last item |
 | 切り替え効果 | Transition |
 | なし / クロスフェード / スライド / ズーム | None / Crossfade / Slide / Zoom |
+| 一般 / ショートカット（タブ） | General / Shortcuts |
+| ショートカット（一覧のアクセシビリティ） | Shortcuts |
+| 記録 / キーを入力… | Record / Type shortcut… |
+| 未設定にする / 未設定 | Clear / Not Set |
+| 既定値に戻す / すべて既定値に戻す | Reset / Reset All |
+| 変更済み | Changed |
+| 「%@」のショートカットを記録 / 未設定にする / 既定値に戻す（アクセシビリティ。値はコマンド名） | Record / Clear / Reset shortcut for %@ |
+| ⌘・⌃・⌥ のいずれかと組み合わせてください | Combine with ⌘, ⌃, or ⌥. |
+| このキーは変更できません | This shortcut can’t be changed. |
+| 「%@」で使われています | Already used by “%@”. |
+| 既定のキーを「%@」が使っています | The default shortcut is used by “%@”. |
 
 ### ファイルリスト・ツリー・プレビュー
 

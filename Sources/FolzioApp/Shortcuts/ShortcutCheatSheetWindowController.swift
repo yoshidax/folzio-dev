@@ -8,6 +8,7 @@ final class ShortcutCheatSheetWindowController: NSWindowController {
     private let scrollView = NSScrollView()
     private let referenceView = ShortcutDocumentView(frame: .zero)
     private var languageObserver: LanguageChangeObserver?
+    private var assignmentObserver: ShortcutAssignmentObserver?
 
     init(parent: NSWindow) {
         let window = NSWindow(
@@ -32,6 +33,8 @@ final class ShortcutCheatSheetWindowController: NSWindowController {
         refreshLanguage()
         placeInitially(beside: parent)
         languageObserver = LanguageChangeObserver { [weak self] in self?.refreshLanguage() }
+        // The keys shown follow the current assignments, so a change refreshes the text and keeps the visible row.
+        assignmentObserver = ShortcutAssignmentObserver { [weak self] in self?.refreshLanguage() }
     }
 
     @available(*, unavailable)
@@ -139,13 +142,15 @@ private final class ShortcutDocumentView: NSView {
                 heading.setAccessibilityLabel(heading.stringValue)
             }
         }
+        let assignments = ShortcutAssignmentStore.shared.assignments
         for row in rows {
+            row.keys.stringValue = row.entry.keys(using: assignments, unsetText: l10n.text(.settingsShortcutsUnset))
             row.description.stringValue = l10n.text(ShortcutText.description(row.entry.id))
             let note = ShortcutText.condition(row.entry.id).map { l10n.text($0) } ?? ""
             row.condition.stringValue = note
             row.condition.isHidden = note.isEmpty
             row.description.setAccessibilityLabel(
-                [row.entry.keys, row.description.stringValue, note].filter { !$0.isEmpty }.joined(separator: ". ")
+                [row.keys.stringValue, row.description.stringValue, note].filter { !$0.isEmpty }.joined(separator: ". ")
             )
         }
         layoutLabels()

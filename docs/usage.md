@@ -142,7 +142,9 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 
 ## Keyboard Shortcuts
 
-| Action | Shortcut |
+The keys in this guide are the defaults. In Settings (⌘,) → Shortcuts (ショートカット), you can change the shortcut of any menu command: press Record on its row, then press the new keys (include ⌘, ⌃, or ⌥). A combination that another command uses, a fixed key such as the arrow keys, Space, Return, Esc, or Tab, or an app and system key such as ⌘Q or ⌘W is refused with a reason, so two commands never share a key. Clear removes a command's shortcut (the command then shows Not Set and has no key, so you can swap two commands' keys without hunting for a free one: Clear the first, give the second the first's old keys, then give the first the second's old keys). Reset returns one command to its default, and Reset All returns every command. The menus, the toolbar tooltips, and the shortcut reference (⌘/) show your current keys. Control-Tab switches between the General and Shortcuts tabs.
+
+| Action | Default shortcut |
 |--------|----------|
 | Settings | ⌘, |
 | Quit | ⌘Q |
@@ -191,7 +193,7 @@ A name conflict shows a dialog regardless of the settings. When copying onto the
 
 ## Where Settings Are Stored
 
-Settings are stored in `UserDefaults`. The `.app` and `swift run` use different domains.
+Settings are stored in `UserDefaults`, including your shortcut changes (`shortcuts.overrides`, only the commands that differ from the default). The `.app` and `swift run` use different domains.
 
 ```bash
 # Reset the settings of the .app

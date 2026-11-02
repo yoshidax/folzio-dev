@@ -26,6 +26,7 @@ public struct SettingsStore {
         static let slideshowIntervalSeconds = "slideshow.intervalSeconds"
         static let slideshowRepeats = "slideshow.repeats"
         static let slideshowTransition = "slideshow.transition"
+        static let shortcutOverrides = "shortcuts.overrides"
     }
 
     private let defaults: UserDefaults
@@ -84,6 +85,22 @@ public struct SettingsStore {
             }
             defaults.set(newValue.showsToolbar, forKey: Keys.showsToolbar)
             defaults.set(newValue.showsZipFiles, forKey: Keys.showsZipFiles)
+        }
+    }
+
+    /// The user's shortcut overrides (command raw value → stored combination). A value that is not a dictionary
+    /// reads as empty, and entries whose value is not a string are dropped. Setting an empty dictionary removes the key
+    /// (FR-262). Entries that are not valid assignments are dropped by `ShortcutAssignments`.
+    public var shortcutOverrides: [String: String] {
+        get {
+            (defaults.object(forKey: Keys.shortcutOverrides) as? [String: Any])?.compactMapValues { $0 as? String } ?? [:]
+        }
+        nonmutating set {
+            if newValue.isEmpty {
+                defaults.removeObject(forKey: Keys.shortcutOverrides)
+            } else {
+                defaults.set(newValue, forKey: Keys.shortcutOverrides)
+            }
         }
     }
 
