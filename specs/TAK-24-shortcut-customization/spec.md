@@ -1,5 +1,9 @@
 # Feature Specification: 設定画面でのショートカットキー割り当ての変更
 
+> **移行済み（2026-11-02）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-24 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> CI の結果と保守者の動作確認は [checklists/validation.md](checklists/validation.md) と [quickstart.md](quickstart.md) を参照。
+
 **Feature Branch**: `claude/modest-edison-e1itmi`
 
 **Created**: 2026-11-01
