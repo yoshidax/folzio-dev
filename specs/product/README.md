@@ -15,7 +15,7 @@ Folzio の現在の仕様（Living spec）を領域ごとに分けたもの。
 | [zip.md](zip.md) | zip ファイル | zip ファイル（8）、zip ファイルの表示制御（4） |
 | [file-operations.md](file-operations.md) | ファイル操作 | ファイル操作（25） |
 | [search.md](search.md) | 検索 | 検索（17） |
-| [preview.md](preview.md) | プレビュー | プレビュー（8）、フルスクリーン（6） |
+| [preview.md](preview.md) | プレビュー | プレビュー（16）、フルスクリーン（6）、スライドショー（20）、表示倍率（7） |
 
 ## 横断の契約
 
