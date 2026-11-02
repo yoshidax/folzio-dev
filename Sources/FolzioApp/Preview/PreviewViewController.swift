@@ -80,7 +80,7 @@ final class PreviewViewController: NSViewController {
 
     var primaryFocusView: NSView {
         if case .video = model.preview, !videoView.isHidden {
-            return videoView
+            return videoView.focusTargetView
         }
         return imageView
     }

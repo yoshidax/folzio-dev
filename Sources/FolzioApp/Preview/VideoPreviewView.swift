@@ -37,7 +37,13 @@ final class VideoPreviewView: NSView {
         fatalError("init(coder:) is not supported")
     }
 
-    override var acceptsFirstResponder: Bool { true }
+    /// The container itself never takes keyboard focus.
+    /// The inner player view handles Space, arrow keys, and the other standard video control keys (FR-033, FR-248),
+    /// so focus goes there instead (bug: tak-48).
+    override var acceptsFirstResponder: Bool { false }
+
+    /// The view that receives keyboard focus while a video is shown.
+    var focusTargetView: NSView { playerView }
 
     var isPlaying: Bool {
         guard let player else { return false }

@@ -38,9 +38,36 @@ private final class KeyViewPopUpButton: NSPopUpButton {
     override var canBecomeKeyView: Bool { true }
 }
 
+/// The Settings window. Control-Tab and Control-Shift-Tab switch tabs without adding a stop to the Tab order of
+/// either tab (FR-255).
+private final class SettingsWindow: NSWindow {
+    /// Called with whether to go forward. Returns whether the key press was used.
+    var onSwitchTab: ((Bool) -> Bool)?
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection([.command, .control, .option, .shift])
+        if event.type == .keyDown, event.keyCode == 48, flags == [.control] || flags == [.control, .shift],
+           onSwitchTab?(!flags.contains(.shift)) == true {
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
 @MainActor
 final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, NSWindowDelegate {
+    private enum Tab: Int {
+        case general
+        case shortcuts
+    }
+
     private let store: SettingsStore
+    /// The General tab: the settings that existed before the Shortcuts tab. Its layout is unchanged (FR-255).
+    private var generalView = NSView()
+    private let shortcutsView = ShortcutSettingsView(frame: .zero)
+    private let tabSelector = NSSegmentedControl()
+    private let tabHolder = NSView()
+    private var currentTab = Tab.general
 
     private let autoplayCheckbox: NSButton
     private let loopCheckbox: NSButton
@@ -86,19 +113,24 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         self.loopCheckbox = loopCheckbox
         self.confirmFileOperationsCheckbox = confirmFileOperationsCheckbox
 
-        let window = NSWindow(
+        let window = SettingsWindow(
             contentRect: NSRect(x: 0, y: 0, width: Self.contentWidth, height: 340),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
         super.init(window: window)
+        window.onSwitchTab = { [weak self] forward in
+            guard let self, !self.shortcutsView.isRecording else { return false }
+            self.select(forward ? .shortcuts : .general)
+            return true
+        }
 
         window.title = l10n.text(.settingsWindow)
         window.isReleasedWhenClosed = false
         window.delegate = self
-        let contentView = makeContentView()
-        window.contentView = contentView
+        generalView = makeContentView()
+        window.contentView = makeRootView()
         window.autorecalculatesKeyViewLoop = false
         languagePopup.nextKeyView = autoplayCheckbox
         autoplayCheckbox.nextKeyView = loopCheckbox
@@ -107,6 +139,10 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         intervalField.nextKeyView = repeatsCheckbox
         repeatsCheckbox.nextKeyView = transitionPopup
         transitionPopup.nextKeyView = languagePopup
+        let shortcutKeyViews = shortcutsView.keyViews
+        for (index, view) in shortcutKeyViews.enumerated() {
+            view.nextKeyView = shortcutKeyViews[(index + 1) % shortcutKeyViews.count]
+        }
         window.initialFirstResponder = languagePopup
 
         autoplayCheckbox.target = self
@@ -162,6 +198,8 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
     }
 
     override func showWindow(_ sender: Any?) {
+        // The Settings window always opens on the General tab (FR-255).
+        select(.general)
         syncFromStore()
         if !hasShownOnce {
             hasShownOnce = true
@@ -268,13 +306,86 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         return (14...28).contains(indent) ? indent : Self.fallbackNoteIndent
     }
 
-    /// Fits the window height to its content and keeps the top edge in place (FR-222).
+    private static let tabSelectorTopMargin: CGFloat = 12
+    private static let tabSelectorBottomMargin: CGFloat = 8
+
+    /// Builds the window's content: a tab selector above the selected tab's view.
+    private func makeRootView() -> NSView {
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: Self.contentWidth, height: 340))
+        tabSelector.segmentCount = 2
+        tabSelector.trackingMode = .selectOne
+        tabSelector.segmentStyle = .rounded
+        tabSelector.target = self
+        tabSelector.action = #selector(tabSelectorChanged(_:))
+        tabSelector.translatesAutoresizingMaskIntoConstraints = false
+        tabHolder.translatesAutoresizingMaskIntoConstraints = false
+        root.addSubview(tabSelector)
+        root.addSubview(tabHolder)
+        generalView.translatesAutoresizingMaskIntoConstraints = false
+        // The window's width is fixed, so the General tab lays out at that width as it did before the tabs.
+        generalView.widthAnchor.constraint(equalToConstant: Self.contentWidth).isActive = true
+        NSLayoutConstraint.activate([
+            tabSelector.topAnchor.constraint(equalTo: root.topAnchor, constant: Self.tabSelectorTopMargin),
+            tabSelector.centerXAnchor.constraint(equalTo: root.centerXAnchor),
+            tabHolder.topAnchor.constraint(equalTo: tabSelector.bottomAnchor, constant: Self.tabSelectorBottomMargin),
+            tabHolder.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            tabHolder.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            tabHolder.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+        ])
+        tabHolder.addSubview(generalView)
+        pinToHolder(generalView)
+        tabSelector.selectedSegment = Tab.general.rawValue
+        return root
+    }
+
+    private func pinToHolder(_ view: NSView) {
+        NSLayoutConstraint.activate([
+            view.topAnchor.constraint(equalTo: tabHolder.topAnchor),
+            view.leadingAnchor.constraint(equalTo: tabHolder.leadingAnchor),
+            view.trailingAnchor.constraint(equalTo: tabHolder.trailingAnchor),
+            view.bottomAnchor.constraint(equalTo: tabHolder.bottomAnchor),
+        ])
+    }
+
+    @objc private func tabSelectorChanged(_ sender: NSSegmentedControl) {
+        select(Tab(rawValue: sender.selectedSegment) ?? .general)
+    }
+
+    /// Shows a tab. Recording stops, and an interval being edited is committed first (FR-258).
+    private func select(_ tab: Tab) {
+        shortcutsView.cancelRecording()
+        if tab != currentTab {
+            window?.makeFirstResponder(nil)
+            let outgoing: NSView = currentTab == .general ? generalView : shortcutsView
+            let incoming: NSView = tab == .general ? generalView : shortcutsView
+            outgoing.removeFromSuperview()
+            tabHolder.addSubview(incoming)
+            pinToHolder(incoming)
+            currentTab = tab
+        }
+        tabSelector.selectedSegment = tab.rawValue
+        let first: NSView? = tab == .general ? languagePopup : shortcutsView.keyViews.first
+        tabSelector.nextKeyView = first
+        window?.initialFirstResponder = first
+        resizeToFitContent()
+    }
+
+    /// Fits the window height to the selected tab and keeps the top edge in place (FR-222).
     private func resizeToFitContent() {
-        guard let window, let contentView = window.contentView else { return }
-        // The wrapping checkbox updates its height after it learns its width, so lay out twice.
-        contentView.layoutSubtreeIfNeeded()
-        contentView.layoutSubtreeIfNeeded()
-        let contentSize = NSSize(width: Self.contentWidth, height: contentView.fittingSize.height)
+        guard let window else { return }
+        let inner: CGFloat
+        switch currentTab {
+        case .general:
+            // The wrapping checkbox updates its height after it learns its width, so lay out twice.
+            generalView.layoutSubtreeIfNeeded()
+            generalView.layoutSubtreeIfNeeded()
+            inner = generalView.fittingSize.height
+        case .shortcuts:
+            inner = ShortcutSettingsView.contentHeight
+        }
+        let selectorHeight = ceil(tabSelector.fittingSize.height)
+        let height = Self.tabSelectorTopMargin + selectorHeight + Self.tabSelectorBottomMargin + inner
+        let contentSize = NSSize(width: Self.contentWidth, height: height)
         var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: contentSize))
         frame.origin.x = window.frame.minX
         frame.origin.y = window.frame.maxY - frame.height
@@ -310,6 +421,9 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
 
     @objc private func updateLocalizedLabels() {
         window?.title = l10n.text(.settingsWindow)
+        tabSelector.setLabel(l10n.text(.settingsTabGeneral), forSegment: Tab.general.rawValue)
+        tabSelector.setLabel(l10n.text(.settingsTabShortcuts), forSegment: Tab.shortcuts.rawValue)
+        tabSelector.setAccessibilityLabel(l10n.text(.settingsWindow))
         languageLabel.stringValue = l10n.text(.settingsLanguage)
         languagePopup.setAccessibilityLabel(l10n.text(.settingsLanguage))
         videoHeader.stringValue = l10n.text(.settingsVideo)
