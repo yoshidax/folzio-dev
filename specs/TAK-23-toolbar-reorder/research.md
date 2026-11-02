@@ -16,11 +16,16 @@
 - [`setConfiguration(_:)`](https://developer.apple.com/documentation/appkit/nstoolbar/setconfiguration(_:)): 保存した辞書から構成を復元する。
   認識しないキーは無視する。辞書の形式は `configuration` と一致させる
 
-**未確認**: 上の2つの文書の availability は「macOS 10.0.0 - 15.0.0」と表示される。非推奨かどうかは文書から読み取れなかった。
-最低が macOS 15 のため、SDK のヘッダー（`NSToolbar.h` の `API_DEPRECATED`）で確認する（保守者の実機または CI。Cloud には SDK がない）。
-`isVisible` を含むため、`view.showsToolbar`（FR-049）と二重管理にならないよう、復元時は `isVisible` を除くか、`showsToolbar` を優先する。
+**確認済み（保守者、2026-11-02、macOS 26.6.2 の SDK ヘッダー `NSToolbar.h`）**: `configurationDictionary`（`configuration`）と `setConfigurationFromDictionary:`（`setConfiguration(_:)`）は
+`API_DEPRECATED(..., macos(10.0, 15.0))`、つまり **macOS 15 で非推奨**。ヘッダーの指示は「`-itemIdentifiers` と `-displayMode` を使う」（`-setItemIdentifiers:` と `-setDisplayMode:`）。
+文書の availability 表示「macOS 10.0.0 - 15.0.0」は、この非推奨を指していた。最低が macOS 15 のため、**段2（`configuration` / `setConfiguration(_:)`）は採らない**。
 
-**Alternatives**: 識別子の並びだけの自前保存（R-3 の段3）。文書化された方式が使えない場合の最終手段。
+**代替 API**: [`itemIdentifiers`](https://developer.apple.com/documentation/appkit/nstoolbar/itemidentifiers)（macOS 15.0 以降、get/set、KVO 対応）。
+「現在の項目の識別子の配列。設定すると、既存の項目との差分で項目を入れ替える。`allowsUserCustomization` が有効なときは、ユーザーのカスタマイズを上書きするため注意して使う」
+と文書にある。`displayMode` と組み合わせれば、旧 API が保存していた内容（項目の並びと表示モード）を、非推奨でない API で保存・復元できる。
+`isVisible` は `view.showsToolbar`（FR-049）が正のため、保存対象に含めない。
+
+**Alternatives**: 旧 API による自前保存（段2）は非推奨のため不採用。代わりに `itemIdentifiers` / `displayMode` による保存・復元（R-3 の段3）を採る。これは Apple が非推奨の理由として指す、正式な代替 API である（独自の `insertItem` による並べ直しではない）。
 
 ## R-2 参照が壊れる事象（実機で確認済み）
 
@@ -63,7 +68,14 @@
 2. 文書化された `configuration` / `setConfiguration(_:)`（R-1）
 3. 識別子の並びだけの自前保存（最終手段）
 
-保守者へ依頼すること: 段0 のログの確認と、使っている macOS のバージョンの共有。
+**段0 の結果（保守者、2026-11-02、macOS 26.6.2）**: `autosavesConfiguration = true`・`allowsUserCustomization = true`・`allowsDisplayModeCustomization = true` の状態で、
+`init` 後は `[]`（未装着）、`window.toolbar` 割り当て直後と次の run loop は、どちらも**既定の並び**（history, paneLayout, …, NSToolbarFlexibleSpaceItem）だった。
+つまり、次の run loop までに並びが既定から変わる処理は起きておらず、**割り当て時点で保存済みの並びが適用されていない**。自分のコードが後から上書きしているわけではない。
+同じ実行後の `defaults read` には `TB Display Mode`・`TB Icon Size Mode`・`TB Is Shown`・`TB Size Mode` だけがあり、`TB Item Identifiers` と `TB Default Item Identifiers` が**なかった**
+（以前の実験の保存値には両方あった）。並べ替えの有無と順序の詳細は確認中。
+
+**判断**: 標準の自動保存（段1）は、設定の順序でも、起動時の上書きでもなく、直す手がかりが見つからなかった。段2 は非推奨。したがって、段3（`itemIdentifiers` / `displayMode` による保存・復元）を採る見込み。
+`autosavesConfiguration` は、保存の仕組みが二重にならないよう `false` にする（T005 で確定）。
 
 ## R-4 同じセットの重複追加
 

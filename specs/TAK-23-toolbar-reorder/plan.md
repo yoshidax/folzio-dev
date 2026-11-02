@@ -111,8 +111,8 @@ specs/product/                                           # 反映（最後の作
 |---|---|---|
 | 0 | 標準の自動保存の切り分け。起動直後の `toolbar.items` の識別子を、`init` 後・`window.toolbar` 割り当て後・次の run loop でログに出す（保守者の実機） | 一時的なログのみ（実装には残さない） |
 | 1 | 標準の自動保存で直る設定・順序が見つかれば、それを採る | なし |
-| 2 | Apple が文書で示す `configuration` / `setConfiguration(_:)` による自前の保存。`isVisible` は `view.showsToolbar` が正なので、保存・復元の前後で除く | `view.toolbarConfiguration`（plist 化した辞書） |
-| 3 | 最終手段。識別子の並びだけを保存し、起動時に `insertItem` で並べ直す | `view.toolbarItems`（識別子の配列）。正規化は Core の `ToolbarLayout` |
+| 2 | （不採用）`configuration` / `setConfiguration(_:)` は macOS 15 で非推奨（SDK ヘッダーで確認、R-1） | — |
+| 3 | **採用見込み**。非推奨 API の正式な代替である `itemIdentifiers`（macOS 15 以降、get/set）と `displayMode` を保存・復元する。`autosavesConfiguration` は `false` | `view.toolbarItems`（識別子の配列）と表示モード。正規化は Core の `ToolbarLayout` |
 
 - 段2・3 の保存のタイミング: カスタマイズ画面（シート）が閉じたとき（`NSWindow.didEndSheetNotification` の見込み。実機で確認）と、
   アプリの終了時。通知の有無は R-3 の段0 と合わせて確認する

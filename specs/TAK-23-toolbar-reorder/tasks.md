@@ -15,14 +15,14 @@ Cloud では `swift build`・`swift test`・GUI を実行しない（AGENTS.md�
 ## Phase 1: Setup
 
 - [x] T001 【Cloud】`specs/TAK-23-toolbar-reorder/research.md` の R-3 に、保守者の macOS が 26.6.2（25G83）であること、および Apple Forums の displayMode の不具合は macOS 26 beta 2 で修正済みのため OS 固有の既知不具合の可能性は下がる（ただし項目の並びは別の事象で、この版でも再現している）ことを追記する。
-- [ ] T002 【実機】SDK のヘッダー `NSToolbar.h` で `configuration` と `setConfiguration(_:)` に `API_DEPRECATED` が付くかを確認し、結果を `specs/TAK-23-toolbar-reorder/research.md` の R-1 の「未確認」に追記する（保守者に依頼。段2 を採るか決める入力になる）。
+- [x] T002 【実機】SDK のヘッダー `NSToolbar.h` で `configuration` と `setConfiguration(_:)` に `API_DEPRECATED` が付くかを確認し、結果を `specs/TAK-23-toolbar-reorder/research.md` の R-1 の「未確認」に追記する（保守者に依頼。段2 を採るか決める入力になる）。
 
 ## Phase 2: Foundational（すべてのストーリーの前提）
 
 **復元の段0 を最初に行う。** 結果で、T005 の分岐（段1・2・3 のどれを実装するか）が決まる。
 
 - [x] T003 【Cloud】`Sources/FolzioApp/App/MainToolbarController.swift` と `Sources/FolzioApp/App/MainWindowController.swift` に、**一時的な**診断ログを追加する。`allowsUserCustomization = true` と `autosavesConfiguration = true` を有効にした状態で、起動直後の `toolbar.items` の識別子を、`MainToolbarController.init` の後、`window.toolbar` 割り当ての直後、次の run loop（`DispatchQueue.main.async`）の3点で `NSLog` に出す。ログの接頭辞は `[TAK-23 spike]`。ログは `TAK-23 SPIKE` のコメントで囲み、T005 で必ず取り除く（`#if DEBUG` は使わない。`make-app.sh` が release ビルドで、ログが出なくなるため）。`allowsUserCustomization = true` と `autosavesConfiguration = true` の設定は T009 の変更と同じ内容なので残す（取り除くのはログだけ。`autosavesConfiguration` は T005・T009 で最終の値にする）。
-- [ ] T004 【実機】保守者がローカルで `swift build` を行い（コンパイルエラーがあれば共有する）、`scripts/make-app.sh` でビルドし、(a) カスタマイズして並び替え、(b) 終了、(c) 再起動して `[TAK-23 spike]` のログ3点を確認する。結果（3点の識別子の並び）を `specs/TAK-23-toolbar-reorder/research.md` の R-3 に記録する。`defaults read local.folzio.Folzio "NSToolbar Configuration MainToolbar"` の出力も併記する。
+- [x] T004 【実機】保守者がローカルで `swift build` を行い（コンパイルエラーがあれば共有する）、`scripts/make-app.sh` でビルドし、(a) カスタマイズして並び替え、(b) 終了、(c) 再起動して `[TAK-23 spike]` のログ3点を確認する。結果（3点の識別子の並び）を `specs/TAK-23-toolbar-reorder/research.md` の R-3 に記録する。`defaults read local.folzio.Folzio "NSToolbar Configuration MainToolbar"` の出力も併記する。
 - [ ] T005 【Cloud】T004 の結果で復元の方式を決め、`specs/TAK-23-toolbar-reorder/research.md` の R-3 と `plan.md` の Phase 1-3 に「採用した段」と根拠を記録する。T003 の診断ログを取り除く。分岐は次のとおり:
   - ログで、`window.toolbar` 割り当て後は保存した並びで、その後に既定へ戻る → 戻す処理を特定して直す（段1）。T012〜T013 は不要
   - ログで、割り当て後から既定の並び（読み込みが効かない） → T002 の結果が非推奨でなければ段2（T012）。非推奨なら段3（T013）
@@ -55,8 +55,8 @@ Cloud では `swift build`・`swift test`・GUI を実行しない（AGENTS.md�
 
 **Independent Test**: quickstart Q5・Q6。
 
-- [ ] T012 【Cloud】[US3] （T005 で段2 を採った場合）`Sources/FolzioCore/Settings/SettingsStore.swift` に `view.toolbarConfiguration`（plist 化した辞書）の読み書きを追加し、`MainWindowController.swift` で、カスタマイズ画面が閉じたとき（`NSWindow.didEndSheetNotification`）とアプリの終了時に `toolbar.configuration` を保存し、`window.toolbar` 割り当て後に `setConfiguration(_:)` で復元する。`isVisible` は `view.showsToolbar` を正とし、復元の前後で除く。保存値の識別子は `ToolbarLayout.normalized(saved:)` で検証し、不正なら既定の構成で起動する。`autosavesConfiguration` は無効にする。
-- [ ] T013 【Cloud】[US3] （T005 で段3 を採った場合）`SettingsStore.swift` に `view.toolbarItems`（識別子の配列）の読み書きを追加し、`MainWindowController.swift` で、カスタマイズ画面が閉じたときとアプリの終了時に `toolbar.items` の識別子を保存し、起動時に `ToolbarLayout.normalized(saved:)` の結果で `insertItem` により並べ直す。表示モードも `toolbar.displayMode` を保存して復元する（FR-005。保存の有無は T014 の結果に依らず必須）。`autosavesConfiguration` は無効にする。
+- [ ] T012 【不採用: `configuration` / `setConfiguration(_:)` は macOS 15 で非推奨（research.md R-1）】[US3] （段2。実装しない）`Sources/FolzioCore/Settings/SettingsStore.swift` に `view.toolbarConfiguration`（plist 化した辞書）の読み書きを追加し、`MainWindowController.swift` で、カスタマイズ画面が閉じたとき（`NSWindow.didEndSheetNotification`）とアプリの終了時に `toolbar.configuration` を保存し、`window.toolbar` 割り当て後に `setConfiguration(_:)` で復元する。`isVisible` は `view.showsToolbar` を正とし、復元の前後で除く。保存値の識別子は `ToolbarLayout.normalized(saved:)` で検証し、不正なら既定の構成で起動する。`autosavesConfiguration` は無効にする。
+- [ ] T013 【Cloud】[US3] （段3。`itemIdentifiers` を使う）`SettingsStore.swift` に `view.toolbarItems`（識別子の配列）の読み書きを追加し、`MainWindowController.swift` で、カスタマイズ画面が閉じたときとアプリの終了時に `toolbar.itemIdentifiers` を保存し、`window.toolbar` 割り当て後に `ToolbarLayout.normalized(saved:)` の結果を `toolbar.itemIdentifiers` へ設定して復元する（macOS 15 以降の API。`insertItem` による並べ直しはしない）。表示モードも `toolbar.displayMode` を保存して復元する（FR-005。保存の有無は T014 の結果に依らず必須）。`autosavesConfiguration` は無効にする。
 - [ ] T014 【実機】[US3] quickstart Q5・Q6 を実施する。並び順と構成が復元され、保存値を壊した状態（`defaults write local.folzio.Folzio` で不正値を書く）でも起動できることを確認し、結果を `specs/TAK-23-toolbar-reorder/quickstart.md` に記録する。
 
 ## Phase 6: US4 標準のカスタマイズ機能の許容とラベル・ツールチップ (P3)
