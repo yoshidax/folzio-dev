@@ -133,6 +133,13 @@
 - **US42-AS2**: **Given** zip Z の中の画像 P をプレビュー中, **When** アプリの外で Z を置き換える, **Then** EC-26 のとおり
   zip を含むフォルダの一覧に戻り、プレビューを空にする
 
+### US58 zip の中の画像でも同じ上限が働く（P2）
+
+- **US58-AS1**: **Given** 画像が 40 件以上ある zip を開いている, **When** 読み込みの完了を待たずに 40 回続けて次の画像へ移動する,
+  **Then** zip の項目の読み出しとデコードを合わせて、同時に実行される数は常に 2 件以下である
+- **US58-AS2**: **Given** zip の中の画像の先読みが待機中または実行中, **When** zip から出てフォルダの一覧に戻る,
+  **Then** zip の中の待機中の先読みはすべて取り消され（EC-199（preview.md））、フォルダの画像の読み込みの枠を占めない
+
 ## エッジケース
 
 - **EC-10**: 10,000 項目以上を含む zip を開いた場合も、読み込み中の表示を出し、UI は操作可能なまま（SC-015）
@@ -188,4 +195,4 @@
 - [file-list.md](file-list.md): FR-008・FR-010・FR-012・FR-013・FR-016・FR-017・FR-048・FR-056・FR-057・FR-059・FR-077・FR-228・SC-003
 - [file-operations.md](file-operations.md): FR-018・FR-019・FR-027
 - [search.md](search.md): FR-084
-- [preview.md](preview.md): FR-028・FR-035・FR-037・FR-038・FR-046・SC-010
+- [preview.md](preview.md): FR-028・FR-035・FR-037・FR-038・FR-046・SC-010・EC-199

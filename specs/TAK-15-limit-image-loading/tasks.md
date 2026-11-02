@@ -85,7 +85,7 @@
 - [x] T018 作業ブランチを push する。保守者が PR を依頼したら PR を作り、CI の結果（通常のテストと、性能テストのログの末尾）を確認し、PR 本文に性能テストの結果を記載する（憲章 II）。失敗はログを読んでまとめてから直す
 - [x] T019 [MANUAL] 保守者に、ローカルの最新 Swift での build/test、起動スモーク、quickstart.md のシナリオ 1〜3 を依頼し、結果を quickstart.md に記録する。
   報告があるまで未チェックのままにする（A-179）
-- [ ] T020 実装と検証の後、`specs/product/` へ反映する（spec.md の「反映先」の表）。反映の直前に `git merge origin/master` し、ID の衝突を
+- [x] T020 (反映を作成。保守者の承認待ちでコミットした: 修正があれば同じブランチで直す) 実装と検証の後、`specs/product/` へ反映する（spec.md の「反映先」の表）。反映の直前に `git merge origin/master` し、ID の衝突を
   `grep -rhoE '^\s*- \*\*(FR|SC|EC|A)-[0-9]+\*\*' specs/product | sed -E 's/^\s*- //' | sort | uniq -d` で確かめ、feature の spec.md の冒頭に凍結の注記を入れる。
   保守者の承認を得てからコミットする
 

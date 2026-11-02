@@ -1,10 +1,14 @@
 # Feature Specification: 連続選択時の画像読み込み数と不要な先読みを制御する
 
+> **移行済み（2026-11-03）**: 現在の仕様は [specs/product/](../product/README.md) の preview.md・zip.md・overview.md
+> を正とする（末尾の「反映先」の表）。このファイルは TAK-15 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> CI と保守者の動作確認の結果は [quickstart.md](quickstart.md) を参照。
+
 **Feature Branch**: `claude/elegant-planck-mq7dkd`
 
 **Created**: 2026-11-01
 
-**Status**: Draft
+**Status**: 仕様反映済み・凍結
 
 **Input**: [TAK-15](https://linear.app/takyoshida/issue/TAK-15/連続選択時の画像読み込み数と不要な先読みを制御する)「連続選択時の画像読み込み数と不要な先読みを制御する」
 
