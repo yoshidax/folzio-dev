@@ -189,6 +189,8 @@ zip ファイルのファイル操作は FR-073（zip.md）に従う。US51〜US
 | A-79 | 削除 | search.md |
 | A-81 | 変更 | search.md |
 | EC（zip の名前が `x.zip` のフォルダ、壊れた zip、権限のない zip、検索中の切り替え、zip の中で始めた検索） | 追加 | search.md（反映時に EC-188 から採番） |
+| 検索結果の行の操作（「中を表示」・フォルダの行だけを挙げている記述に zip ファイルの行を加える）、「zipファイルを表示」の切り替えは検索結果に効かない旨の記述 | 変更 | contracts/keyboard-and-menus.md（FR-095・FR-139・FR-140 の記述がある検索結果・zip の表示切り替えの節） |
+| 領域の表の件数（検索の機能要件の数） | 変更 | README.md（`specs/product/README.md`） |
 
 ## Clarifications
 
