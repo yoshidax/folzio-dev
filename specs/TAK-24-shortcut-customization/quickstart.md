@@ -40,4 +40,8 @@
 - **設計の承認**: 2026-11-02。保守者が analyze の指摘 F1〜F6 の修正と、master（TAK-23・TAK-45）取り込み後の影響確認を踏まえて承認した。範囲は spec.md・plan.md・tasks.md の全体。
 - **T001（API の確認）**: Cloud から Apple の文書を参照して確かめてはいない。`NSMenuItem.keyEquivalent` / `keyEquivalentModifierMask` は既存のコードが使っている。`performKeyEquivalent(with:)`、`charactersIgnoringModifiers`、`NSAccessibility.post(…announcementRequested…)` も既存のコードまたは AppKit の標準 API。`NSTabView` は使わず、`NSSegmentedControl` と切り替え用のビューにした（Tab 順を変えないため）。CI のビルドと GUI 確認で確かめる。
 - **T002（既定値の突き合わせ）**: `MainMenu.swift`・`FileListViewController.swift`・`MainSplitViewController.swift`・`DirectoryTreeViewController.swift`・`FileContextMenu.swift` の `keyEquivalent` を grep して contracts §1 と照合した。「ゴミ箱に入れる」は「ファイル」「編集」・ファイルリストとツリーのコンテキストメニューの 4 か所に現れ、すべて同じコマンド `trash` に結び付けた。ファイルリストのコンテキストメニューの「開く」はキー表示を持たない（`keyEquivalent` が空）ため登録していない。
-- **未実行**: `swift build` / `swift test`（Cloud に Swift がない。CI は PR の作成時に動く）、GUI 確認 Q1〜Q16。
+- **CI（macOS 15 / Xcode 16.0）**:
+  - 1da8559（PR #35 の作成時の実行）: ビルド成功、通常のテスト 985 件が全件成功、性能テスト 27 件が全件成功（ログの末尾 `Test run with 27 tests passed` で確認）。
+  - ef60615（「ショートカット」タブの列の幅の修正。`workflow_dispatch`）: 同じく、ビルド成功、通常のテスト 985 件・性能テスト 27 件が全件成功。
+  - 追加した 5 つのテストスイートが個別に走ったことは、ログの全文を取得できず（ログのホストにこのセッションから接続できない）確認していない。ログの末尾だけで判断した。
+- **未実行**: GUI 確認 Q1〜Q16（保守者のローカル）。

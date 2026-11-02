@@ -62,7 +62,7 @@
 ## Phase 7: Polish & 検証
 
 - [X] T022 Cloud の検査（quickstart.md「自動の検証」の Cloud の行）を実行し、結果を quickstart.md に記録する。新しいコードコメントは英語で書く
-- [ ] T023 作業ブランチに push し、保守者の依頼で PR を作ったら CI（`swift build`・`swift test`）の結果を GitHub MCP で確認して quickstart.md に記録する。性能テストはログの末尾で合否を確かめる
+- [X] T023 作業ブランチに push し、保守者の依頼で PR を作ったら CI（`swift build`・`swift test`）の結果を GitHub MCP で確認して quickstart.md に記録する。性能テストはログの末尾で合否を確かめる
 - [ ] T024 [MANUAL] 保守者が quickstart.md の GUI の確認 Q1〜Q16 を日本語・英語で行い、結果（実行日・OS・合否）を報告する。報告を `specs/TAK-24-shortcut-customization/checklists/validation.md` に記録する（SC-125〜131）
 - [ ] T025 `speckit-converge` を実行し、追加のタスクがあれば実装と検証を繰り返す
 - [X] T026 `README.md` と `README.ja.md` のキー表（⌘/、⌘1 / ⌘2、⌘+ など）の見出しまたは直前の文に「既定のキー。設定の「ショートカット」で変更できる」旨を同じコミットで両言語に入れる。`docs/usage.md`・`docs/usage.ja.md` にも同じ注記と、保存先の節への `shortcuts.overrides` を足す（公開版のため `specs/` などへのリンクは張らない）。構造を1対1で保ち、`scripts/check-readme-sync.sh master` を通す（AGENTS.md「README の英語版と日本語版」）
