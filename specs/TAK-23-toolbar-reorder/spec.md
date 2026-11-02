@@ -181,11 +181,14 @@
 問題は**起動時に読み込まれない**ことにある。コードに構成の読み書きの明示的な処理はない（`insertItem`・`setConfiguration` なし）。
 `MainToolbarController.init` は、`toolbar.delegate = self` の後で `autosavesConfiguration` を設定し、`MainWindowController` は
 `toolbar.isVisible` を設定してから `window.toolbar` を割り当てている。`autosavesConfiguration` を
-delegate の設定より前に移す実験（保守者、2026-11-02）では**直らなかった**。次の仮説は、「autosave を有効にした後に `displayMode` などを
-設定する処理が、起動時の既定の構成を保存し、保存済みの構成を上書きしている」。切り分けは、(a) カスタマイズせずに起動・終了し、
-`defaults read` の `TB Item Identifiers` が既定の順序に戻っていないかを見る、(b) `autosavesConfiguration = true` を `init` の最後
-（`displayMode`・`allowsUserCustomization` の設定より後）へ移す。どちらでも直らなければ、標準の構成保存に頼らず、並び順を自前で
-保存・復元する（設定キーを1つ追加し、起動時に `insertItem` で並べ直す）案を評価する。
+delegate の設定より前に移す実験（保守者、2026-11-02）では**直らなかった**。次の仮説「初期化の設定が起動時に保存済みの構成を既定へ上書きする」も**棄却**した（保守者、2026-11-02）:
+カスタマイズ後、何も触らずに起動・終了しても、`TB Item Identifiers` はカスタマイズした順序のままだった。元のコードも
+`autosavesConfiguration` を `displayMode`・`allowsUserCustomization` の設定より後に置いていたため、設定順の実験は不要だった。
+結論として、**書き込みは正常で、起動時の読み込みだけが効かない**（原因は未特定）。静的な確認では特定できないため、plan では
+次の順で進める: (1) 起動直後に `toolbar.items` の識別子を、`init` 後・`window.toolbar` 割り当て後・次の run loop の3点でログに出し、
+どの時点で既定の並びになるかを確認する（保守者の実機）、(2) 原因が AppKit の仕様で回避できない場合は、標準の構成保存を使わず、
+並び順を自前で保存・復元する（設定キーを1つ追加し、終了時に `toolbar.items` の識別子を保存、起動時に `insertItem` で並べ直す）。
+この自前の保存は規模が小さく、見送り基準には当たらない見込みである。
 
 **判断への影響**: 3 により、参照の管理（delegate の状態保持）の作り直しが必須と確定した。セットごとの参照を、項目が作り直されても
 実際に表示しているボタンへ向け直す設計が要る。独自のカスタマイズ画面は不要のため、見送り基準には当たらない。4 の原因次第では、
