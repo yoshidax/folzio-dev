@@ -59,4 +59,19 @@ M1 と M16 で起点からの拡大・縮小または矢印キーの転送が成
 
 ## 5 実行結果（実装後に記録）
 
-未実施。
+### Cloud の静的検査（2026-11-02）
+
+`scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、`test_check_git_push.py`、`git diff --check` はすべて成功した。
+
+### macOS CI（2026-11-02、PR #33、head 3d8c596）
+
+- `swift build`: 成功。通常のテスト（`--skip FolzioPerformanceTests`）: 944 件すべて成功。`QuickLookTargetsTests` とショートカット一覧の整合テストを含む。
+- 経緯: 1 回目は `TextKey.comment` の switch の網羅漏れ、2 回目は `acceptsPreviewPanelControl` 系の override が MainActor のプロパティを参照できない Swift 6 の並行性エラーで失敗し、
+  それぞれ直した（override を `nonisolated` にして `MainActor.assumeIsolated` で包んだ）。3 回目で成功した。
+- 性能テスト（失敗を許容するステップ）: 27 件中 1 件が基準をわずかに超えた。`didRenameFolder` が検索結果 10,000 件で中央値 0.1019 秒（基準 0.1 秒。測定値 0.112 / 0.102 / 0.098 秒）。
+  この処理は TAK-18 の変更に含まれず、共有ランナーでの測定のぶれと考えられる。再現確認は行っていない。
+- 警告: `QuickLookCoordinator` の `@preconcurrency QLPreviewPanelDelegate` に「`NSWindowDelegate` への `@preconcurrency` は効果なし」の警告が出る。ビルドは止まらない。
+
+### 保守者の実機確認
+
+未実施（M1〜M19）。

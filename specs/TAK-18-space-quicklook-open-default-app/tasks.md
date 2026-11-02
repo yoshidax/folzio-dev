@@ -43,7 +43,7 @@
 ## Phase 5: 検証と反映
 
 - [x] T017 Cloud の静的検査（quickstart.md 第1章）を実行する
-- [ ] T018 保守者の依頼で PR を作り、CI（`swift build`・`swift test`）の結果を読む。失敗は原因をまとめて直す
+- [x] T018 保守者の依頼で PR を作り、CI（`swift build`・`swift test`）の結果を読む。失敗は原因をまとめて直す
 - [ ] T019 保守者が quickstart.md の M1〜M15 を実機で確認する。結果を第5章に記録する
 - [ ] T020 `git merge origin/master` を取り込み、ID の重複を確かめてから、変更点を `specs/product/`（file-list.md・preview.md・contracts/keyboard-and-menus.md）へ反映する。保守者の承認を得てコミットする
 - [ ] T021 spec.md の冒頭に移行済み・凍結の注記を入れる。Linear を `In Review` にして PR のリンクを追加する
