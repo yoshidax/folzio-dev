@@ -19,6 +19,11 @@ struct BrowserModelTests {
         try? await Task.sleep(for: .milliseconds(20))
         model.setKindNames(KindNames(folder: "フォルダ", zipArchive: "ZIP アーカイブ"))
         await load.value
+        // If the sleep above overshoots on a busy runner, the language changes after the listing has loaded. The
+        // kind names are then applied asynchronously, so wait for the update instead of reading right after the load.
+        for _ in 0..<100 where model.listing.files.first?.typeDescription != "フォルダ" {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
         #expect(model.listing.files.first?.typeDescription == "フォルダ")
     }
 
@@ -656,6 +661,51 @@ struct BrowserModelTests {
         #expect(restored.showsZipFiles == true)
         await restored.selectFolder(folder)
         #expect(restored.listing.files.map(\.name) == ["a.jpg", "b.zip", "c.png", "sub"])
+    }
+
+    @MainActor
+    @Test("Shows and hides list columns and restores them in a new model")
+    func columnVisibilityIsPersisted() {
+        let (model, defaults, suite) = makeModel(lister: FakeLister(responses: [:]), decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        #expect(model.visibleColumns == [.creationDate, .kind])
+
+        model.setColumn(.size, visible: true)
+        model.setColumn(.kind, visible: false)
+        #expect(model.visibleColumns == [.creationDate, .size])
+
+        let restored = BrowserModel(
+            kindNames: FixtureKit.kindNames,
+            lister: FakeLister(responses: [:]),
+            decoder: FakeDecoder(),
+            cache: DecodedImageCache(costLimitBytes: 10_000_000),
+            settings: SettingsStore(defaults: defaults)
+        )
+        #expect(restored.visibleColumns == [.creationDate, .size])
+    }
+
+    @MainActor
+    @Test("Hiding the sorted column falls back to name in its last direction, and keeps other sorts")
+    func hidingSortedColumnFallsBackToName() {
+        let (model, defaults, suite) = makeModel(lister: FakeLister(responses: [:]), decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        model.setColumn(.size, visible: true)
+
+        // Never sorted by name in descending order: falls back to ascending.
+        model.sortOrder = SortOrder(column: .size, ascending: false)
+        model.setColumn(.size, visible: false)
+        #expect(model.sortOrder == SortOrder(column: .name, ascending: true))
+
+        // Hiding a column that is not the sorted one does not change the sort.
+        model.sortOrder = SortOrder(column: .name, ascending: false)
+        model.sortOrder = SortOrder(column: .creationDate, ascending: true)
+        model.setColumn(.kind, visible: false)
+        #expect(model.sortOrder == SortOrder(column: .creationDate, ascending: true))
+
+        // Uses the direction the name sort last had, and the direction survives a restart.
+        model.setColumn(.creationDate, visible: false)
+        #expect(model.sortOrder == SortOrder(column: .name, ascending: false))
+        #expect(SettingsStore(defaults: defaults).viewSettings.sortOrder == SortOrder(column: .name, ascending: false))
     }
 
     @MainActor

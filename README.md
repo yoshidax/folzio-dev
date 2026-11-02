@@ -53,7 +53,9 @@ If a folder is not accessible, allow Folzio access in System Settings → Privac
 
 ## Useful Shortcuts
 
-| Action | Shortcut |
+The keys below are the defaults. You can change the shortcut of a menu command in Settings (⌘,) → Shortcuts (ショートカット).
+
+| Action | Default shortcut |
 |--------|----------|
 | Open the shortcut reference | ⌘/ |
 | Close the key window | ⌘W |

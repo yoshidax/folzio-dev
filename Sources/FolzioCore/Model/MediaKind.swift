@@ -35,6 +35,17 @@ public enum MediaKind: String, CaseIterable, Sendable {
     }
 }
 
+/// Color role of a file list row's leading icon (FR-269–271).
+/// Core only decides the role; the app maps each role to a concrete `NSColor`.
+public enum ListItemIconTone: Sendable, Hashable {
+    /// Fixed blue used for folders and directories inside a zip
+    case folderBlue
+    /// Fixed yellow used for zip files
+    case archiveYellow
+    /// Secondary label color: the `..` row and the media fallback icons keep their existing look
+    case secondary
+}
+
 /// Kind of a file list row (FR-068–070, 076, 077; ListItemKind in data-model.md). The type of `MediaFile.kind`.
 public enum ListItemKind: Sendable, Hashable {
     /// Supported media file
@@ -47,6 +58,18 @@ public enum ListItemKind: Sendable, Hashable {
     case directory
     /// Leading `..` row (inside a zip, and in regular folders other than tree roots)
     case parent
+
+    /// Color role of the row's leading icon (FR-269–271).
+    public var iconTone: ListItemIconTone {
+        switch self {
+        case .folder, .directory:
+            return .folderBlue
+        case .archive:
+            return .archiveYellow
+        case .parent, .media:
+            return .secondary
+        }
+    }
 
     public var isMedia: Bool {
         if case .media = self { return true }
@@ -61,6 +84,12 @@ public enum ListItemKind: Sendable, Hashable {
     /// Whether this is a video `.media` item.
     public var isVideo: Bool {
         mediaKind?.isVideo ?? false
+    }
+
+    /// Whether double-click opens the file in the app associated with it by the OS (FR-251).
+    /// Only media files in the file system qualify. Media inside a zip has no real file (A-150).
+    public func opensInDefaultApp(isBrowsingArchive: Bool) -> Bool {
+        isMedia && !isBrowsingArchive
     }
 
     /// Whether double-click or ⌘↓ can open the row (`.archive`, `.folder`, `.directory`, `.parent`).

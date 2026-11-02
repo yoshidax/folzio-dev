@@ -512,6 +512,14 @@ final class DirectoryTreeViewController: NSViewController {
         }
         menuItem.target = self
         menuItem.representedObject = item
+        // The displayed keys follow the shortcut assignments (FR-261). Rename keeps Return, which is fixed.
+        switch kind {
+        case .addToFavorites: MenuShortcutApplier.shared.register(menuItem, for: .addToFavorites)
+        case .copyPathname: MenuShortcutApplier.shared.register(menuItem, for: .copyPathname)
+        case .removeFromFavorites, .moveToTrash: MenuShortcutApplier.shared.register(menuItem, for: .trash)
+        case .newFolder: MenuShortcutApplier.shared.register(menuItem, for: .newFolder)
+        default: break
+        }
         return menuItem
     }
 

@@ -30,12 +30,15 @@ final class FileListViewController: NSViewController {
     private var messageBandHeightConstraint: NSLayoutConstraint?
     private var displayMode: DisplayMode
     private let initialThumbnailSize: Double
+    /// Opens and closes the Quick Look panel for the selected media (FR-247).
+    private let quickLook: QuickLookCoordinator
     private struct HiddenListNavigation {
         let width: Double
     }
 
     private var hiddenListNavigation: HiddenListNavigation?
     private var installedViewMenuItems = false
+    private var shortcutObserver: ShortcutAssignmentObserver?
     private weak var thumbnailMenuItem: NSMenuItem?
     private weak var listMenuItem: NSMenuItem?
     private weak var imagesOnlyMenuItem: NSMenuItem?
@@ -97,7 +100,26 @@ final class FileListViewController: NSViewController {
         self.initialThumbnailSize = ViewSettings.clampThumbnailSize(
             viewSettings.thumbnailSize
         )
+        self.quickLook = QuickLookCoordinator(model: model)
         super.init(nibName: nil, bundle: nil)
+        listModeView.quickLook = quickLook
+        thumbnailModeView.quickLook = quickLook
+        quickLook.prepareToOpen = { [weak self] in
+            self?.scrollFocusedItemIntoView()
+        }
+        quickLook.sourceFrame = { [weak self] url in
+            guard let self else { return .zero }
+            switch self.displayMode {
+            case .list:
+                return self.listModeView.quickLookSourceFrame(for: url)
+            case .thumbnails:
+                return self.thumbnailModeView.quickLookSourceFrame(for: url)
+            }
+        }
+        // Arrow keys typed in the panel move the file list selection, as in Finder (FR-254).
+        quickLook.forwardKey = { [weak self] event in
+            self?.primaryFocusView.keyDown(with: event)
+        }
         thumbnailModeView.thumbnailSize = initialThumbnailSize
         fileContextMenu.install(
             listModeView: listModeView,
@@ -153,9 +175,16 @@ final class FileListViewController: NSViewController {
             : listModeView.focusView
     }
 
-    var onTogglePlayback: (() -> Void)? {
-        get { listModeView.onTogglePlayback }
-        set { listModeView.onTogglePlayback = newValue }
+    /// Whether Space must not open Quick Look: full screen and slideshow (EC-170). Set by the main controller.
+    var isQuickLookBlocked: () -> Bool {
+        get { quickLook.isBlocked }
+        set { quickLook.isBlocked = newValue }
+    }
+
+    /// Called when Quick Look starts or stops showing the file list's items (EC-175).
+    var onQuickLookActiveChange: (Bool) -> Void {
+        get { quickLook.onActiveChange }
+        set { quickLook.onActiveChange = newValue }
     }
 
     var onRename: ((URL, String) async -> Void)? {
@@ -368,6 +397,7 @@ final class FileListViewController: NSViewController {
         NotificationCenter.default.addObserver(
             self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
         )
+        shortcutObserver = ShortcutAssignmentObserver { [weak self] in self?.refreshSizeBarShortcutText() }
         installViewMenuItems()
         refresh()
         observeModel()
@@ -377,11 +407,17 @@ final class FileListViewController: NSViewController {
 
     @objc private func displayLanguageDidChange() {
         sizeLabel.stringValue = l10n.text(.toolbarSize)
-        sizeLabel.toolTip = l10n.text(.toolbarThumbnailSize)
-        sizeSlider.toolTip = l10n.text(.toolbarThumbnailSize)
-        sizeSlider.setAccessibilityLabel(l10n.text(.toolbarThumbnailSize))
-        sizeSlider.setAccessibilityHelp(l10n.text(.toolbarThumbnailSize))
+        refreshSizeBarShortcutText()
         refresh()
+    }
+
+    /// Shows the current thumbnail size keys in the size bar's tooltips and accessibility texts (FR-261).
+    private func refreshSizeBarShortcutText() {
+        let text = ToolbarShortcutText.text(.toolbarThumbnailSize)
+        sizeLabel.toolTip = text
+        sizeSlider.toolTip = text
+        sizeSlider.setAccessibilityLabel(text)
+        sizeSlider.setAccessibilityHelp(text)
     }
 
     override func viewDidAppear() {
@@ -492,11 +528,11 @@ final class FileListViewController: NSViewController {
         label.stringValue = l10n.text(.toolbarSize)
         label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         label.textColor = .secondaryLabelColor
-        label.toolTip = l10n.text(.toolbarThumbnailSize)
+        label.toolTip = ToolbarShortcutText.text(.toolbarThumbnailSize)
 
-        sizeSlider.toolTip = l10n.text(.toolbarThumbnailSize)
-        sizeSlider.setAccessibilityLabel(l10n.text(.toolbarThumbnailSize))
-        sizeSlider.setAccessibilityHelp(l10n.text(.toolbarThumbnailSize))
+        sizeSlider.toolTip = ToolbarShortcutText.text(.toolbarThumbnailSize)
+        sizeSlider.setAccessibilityLabel(ToolbarShortcutText.text(.toolbarThumbnailSize))
+        sizeSlider.setAccessibilityHelp(ToolbarShortcutText.text(.toolbarThumbnailSize))
         sizeSlider.minValue = ViewSettings.minimumThumbnailSize
         sizeSlider.maxValue = ViewSettings.maximumThumbnailSize
         sizeSlider.doubleValue = initialThumbnailSize
@@ -771,6 +807,16 @@ final class FileListViewController: NSViewController {
         MainMenu.bind(zipVisibilityItem, .menuViewShowZipFiles)
         viewMenu.addItem(zipVisibilityItem)
         zipVisibilityMenuItem = zipVisibilityItem
+
+        // Keys come from the shortcut assignments, not from the literals above (FR-261).
+        let shortcutBindings: [(NSMenuItem, ShortcutCommandID)] = [
+            (thumbnailsItem, .thumbnails), (listItem, .list), (zoomInItem, .largerThumbnails),
+            (zoomOutItem, .smallerThumbnails), (imagesOnlyItem, .imagesOnly), (videosOnlyItem, .videosOnly),
+            (zipVisibilityItem, .zipVisibility),
+        ]
+        for (item, command) in shortcutBindings {
+            MenuShortcutApplier.shared.register(item, for: command)
+        }
 
         updateViewMenuState()
     }
@@ -1053,8 +1099,16 @@ final class FileListViewController: NSViewController {
         openItem(focused)
     }
 
-    /// Called from double-click and ⌘↓. Does nothing for media rows (Core decides).
+    /// Called from double-click and ⌘↓. Media rows outside a zip open in the default app (FR-251); containers open
+    /// their contents (Core decides).
     func openItem(_ url: URL) {
+        if let file = model.listing.files.first(where: { $0.url == url }),
+           file.kind.opensInDefaultApp(isBrowsingArchive: model.listing.archive != nil) {
+            quickLook.close()
+            // A failure to open is ignored, as with ⌘O (EC-176).
+            _ = NSWorkspace.shared.open(url)
+            return
+        }
         Task { @MainActor [weak self] in
             guard let self else { return }
             await self.model.openItem(url)
@@ -1070,6 +1124,16 @@ final class FileListViewController: NSViewController {
             guard let self else { return }
             await self.model.goToEnclosingLevel()
             await self.scrollFocusedItemIntoViewAfterModelUpdate()
+        }
+    }
+
+    /// Scrolls the focused row of the visible display mode into view (EC-173).
+    private func scrollFocusedItemIntoView() {
+        switch displayMode {
+        case .list:
+            listModeView.scrollToFocused()
+        case .thumbnails:
+            thumbnailModeView.scrollToFocused()
         }
     }
 

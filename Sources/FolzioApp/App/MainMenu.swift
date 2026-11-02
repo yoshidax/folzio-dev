@@ -1,4 +1,5 @@
 import AppKit
+import FolzioCore
 import FolzioLocalization
 
 /// Resets the item title that the tree changed to Remove from Favorites during validation back to Move to Trash
@@ -46,6 +47,15 @@ final class MainMenu {
         let appMenu = NSMenu(title: "Folzio")
         appMenu.identifier = NSUserInterfaceItemIdentifier("menu.app")
         appMenuItem.submenu = appMenu
+
+        let aboutItem = NSMenuItem(
+            title: l10n.text(.menuAppAbout),
+            action: #selector(AppDelegate.showAbout(_:)),
+            keyEquivalent: ""
+        )
+        aboutItem.target = nil
+        appMenu.addItem(aboutItem)
+        appMenu.addItem(.separator())
 
         let settingsItem = NSMenuItem(
             title: l10n.text(.menuAppSettings),
@@ -347,7 +357,7 @@ final class MainMenu {
         navigateMenu.addItem(forwardItem)
 
         let bindings: [(NSMenuItem, TextKey)] = [
-            (settingsItem, .menuAppSettings), (quitItem, .menuAppQuit),
+            (aboutItem, .menuAppAbout), (settingsItem, .menuAppSettings), (quitItem, .menuAppQuit),
             (fileMenuItem, .menuFile), (newFolderItem, .menuFileNewFolder), (openItem, .menuFileOpen),
             (openContainerItem, .menuFileShowContents), (goUpItem, .menuFileEnclosingFolder),
             (revealItem, .menuFileRevealInFinder), (addFavoriteItem, .menuFileAddToFavorites),
@@ -363,6 +373,21 @@ final class MainMenu {
             (navigateMenuItem, .menuGo), (backItem, .menuGoBack), (forwardItem, .menuGoForward),
         ]
         for (item, key) in bindings { bind(item, key) }
+
+        // Keys come from the shortcut assignments, not from the literals above (FR-261). Return (Rename) and the
+        // app and system keys (⌘Q, ⌘W, ⌘,, and the Edit menu basics) are not customizable (FR-256).
+        let shortcutBindings: [(NSMenuItem, ShortcutCommandID)] = [
+            (newFolderItem, .newFolder), (openItem, .open), (openContainerItem, .showContents),
+            (goUpItem, .enclosingFolder), (addFavoriteItem, .addToFavorites), (searchItem, .find),
+            (shortcutsItem, .shortcuts), (fileTrashItem, .trash), (editTrashItem, .trash),
+            (movePasteItem, .movePaste), (copyPathnameItem, .copyPathname), (duplicateItem, .duplicate),
+            (toolbarItem, .toolbar), (fullScreenItem, .fullScreen), (zoomInItem, .zoomIn), (zoomOutItem, .zoomOut),
+            (zoomToFitItem, .zoomToFit), (slideshowItem, .startSlideshow), (backItem, .back), (forwardItem, .forward),
+        ]
+        for (item, command) in shortcutBindings {
+            MenuShortcutApplier.shared.register(item, for: command)
+        }
+        MenuShortcutApplier.shared.register(zoomInAlternateItem, for: .zoomIn, isAlternate: true)
         let editBindings: [(Selector, TextKey)] = [
             (Selector(("undo:")), .menuEditUndo), (#selector(NSText.cut(_:)), .menuEditCut),
             (#selector(NSText.copy(_:)), .menuEditCopy), (#selector(NSText.paste(_:)), .menuEditPaste),

@@ -1,9 +1,26 @@
 import AppKit
 import FolzioCore
 import FolzioLocalization
+import Quartz
 
 @MainActor
 private final class ThumbnailCollectionView: NSCollectionView {
+    var onSpace: ((NSEvent) -> Bool)?
+    /// Takes control of the Quick Look panel while this view has the focus (FR-247, research.md R2).
+    var quickLook: QuickLookCoordinator?
+
+    // The panel control methods are not main-actor isolated in the SDK, but AppKit calls them on the main thread.
+    nonisolated override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool {
+        MainActor.assumeIsolated { quickLook != nil }
+    }
+
+    nonisolated override func beginPreviewPanelControl(_ panel: QLPreviewPanel!) {
+        MainActor.assumeIsolated { quickLook?.attach(to: panel) }
+    }
+
+    nonisolated override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
+        MainActor.assumeIsolated { quickLook?.detach(from: panel) }
+    }
     var onArrowKey: ((NSEvent.SpecialKey, NSEvent.ModifierFlags) -> Bool)?
     var onReturnKey: (() -> Bool)?
     var onEscape: (() -> Bool)?
@@ -46,6 +63,10 @@ private final class ThumbnailCollectionView: NSCollectionView {
             return
         }
 
+        if event.charactersIgnoringModifiers == " ", onSpace?(event) == true {
+            return
+        }
+
         if let key = event.specialKey {
             switch key {
             case .leftArrow, .rightArrow, .upArrow, .downArrow:
@@ -69,6 +90,16 @@ private final class RenameTextField: NSTextField {
         return true
     }
 
+    override func textDidEndEditing(_ notification: Notification) {
+        super.textDidEndEditing(notification)
+        // The field editor takes the left alignment used while editing, and ending the edit can write it back to the
+        // cell after `ThumbnailItemView.endRenaming` has already restored `.center`. Restore it once the editor is
+        // detached. `isEditable` is false once `endRenaming` has run, on every path that ends a rename.
+        if !isEditable {
+            alignment = .center
+        }
+    }
+
     func selectBaseName() {
         guard let editor = currentEditor() as? NSTextView else { return }
         let baseName = (stringValue as NSString).deletingPathExtension
@@ -79,6 +110,9 @@ private final class RenameTextField: NSTextField {
 @MainActor
 final class ThumbnailItemView: NSCollectionViewItem {
     private let thumbnailImageView = NSImageView()
+
+    /// The view Quick Look zooms from and back to (FR-247).
+    var quickLookSourceView: NSView { thumbnailImageView }
     private let nameLabel = RenameTextField(wrappingLabelWithString: "")
 
     private(set) var representedURL: URL?
@@ -97,6 +131,9 @@ final class ThumbnailItemView: NSCollectionViewItem {
         thumbnailImageView.imageScaling = .scaleProportionallyUpOrDown
         thumbnailImageView.imageAlignment = .alignCenter
         thumbnailImageView.setAccessibilityLabel(l10n.text(.a11yThumbnail))
+        // NSImageView accepts drags itself and would hide drops on the thumbnail from the collection view,
+        // so in-app drops onto folder items would never be validated (FR-163, bug: tak-44).
+        thumbnailImageView.unregisterDraggedTypes()
         NotificationCenter.default.addObserver(
             self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
         )
@@ -178,7 +215,7 @@ final class ThumbnailItemView: NSCollectionViewItem {
     /// Kind icon for zip file, directory, and `..` rows. Does not request a thumbnail.
     func showListItemIcon(for kind: ListItemKind, pointSize: Double) {
         thumbnailImageView.imageScaling = .scaleNone
-        thumbnailImageView.contentTintColor = .secondaryLabelColor
+        thumbnailImageView.contentTintColor = IconCatalog.tintColor(for: kind)
         thumbnailImageView.image = IconCatalog.listItemIcon(for: kind, pointSize: CGFloat(pointSize))
     }
 
@@ -262,9 +299,22 @@ final class ThumbnailItemView: NSCollectionViewItem {
         if restoreFocus, let collectionView {
             collectionView.window?.makeFirstResponder(collectionView)
         }
+
+        // Restoring the string and moving focus can end the edit inside AppKit, which may write the field editor's left
+        // alignment back to the cell after `setRenamingAppearance` restored `.center`. Restore it once more last.
+        nameLabel.alignment = .center
     }
 
     private func updateSelectionAppearance() {
+        // A valid in-app drop target is filled like the drop target rows of the list and the tree,
+        // and returns to its normal appearance when the pointer leaves (FR-164, bug: tak-44).
+        if highlightState == .asDropTarget {
+            view.layer?.backgroundColor = NSColor.selectedContentBackgroundColor.cgColor
+            view.layer?.borderWidth = 0
+            if !isRenaming { nameLabel.textColor = .alternateSelectedControlTextColor }
+            return
+        }
+        if !isRenaming { nameLabel.textColor = .labelColor }
         let isHighlighted = isSelected || highlightState == .forSelection
         view.layer?.backgroundColor = isHighlighted
             ? NSColor.controlAccentColor.withAlphaComponent(0.25).cgColor
@@ -365,6 +415,29 @@ final class ThumbnailModeView: NSView {
         return collectionView.indexPathForItem(at: location) == nil
     }
     var onOpenItem: ((URL) -> Void)?
+    /// Coordinator of the Quick Look panel, set by the file list controller (FR-247).
+    var quickLook: QuickLookCoordinator? {
+        didSet {
+            collectionView.quickLook = quickLook
+            collectionView.onSpace = { [weak self] event in
+                self?.quickLook?.handleSpace(event) ?? false
+            }
+        }
+    }
+
+    /// On-screen frame of the thumbnail for `url`, where Quick Look zooms from and back to. `.zero` when the item is
+    /// not visible (FR-247, EC-173).
+    func quickLookSourceFrame(for url: URL) -> NSRect {
+        guard let window = collectionView.window,
+              let index = model.listing.files.firstIndex(where: { $0.url == url }),
+              let item = collectionView.item(at: IndexPath(item: index, section: 0)) as? ThumbnailItemView else {
+            return .zero
+        }
+        let source = item.quickLookSourceView
+        guard source.window != nil else { return .zero }
+        return window.convertToScreen(source.convert(source.bounds, to: nil))
+    }
+
     var onInternalDrop: (([URL], URL, Bool) -> Void)?
     /// Esc. Returns true when handled (ends search results; FR-086).
     var onEscape: (() -> Bool)? {
@@ -968,12 +1041,16 @@ final class ThumbnailModeView: NSView {
 
 extension ThumbnailModeView: NSCollectionViewDataSource {
     func collectionView(_ collectionView: NSCollectionView, validateDrop info: any NSDraggingInfo, proposedIndexPath: AutoreleasingUnsafeMutablePointer<NSIndexPath>, dropOperation: UnsafeMutablePointer<NSCollectionView.DropOperation>) -> NSDragOperation {
-        let index = proposedIndexPath.pointee.item
-        guard dropOperation.pointee == .on, !model.isBrowsingArchive,
-              model.listing.files.indices.contains(index), model.listing.files[index].kind == .folder else { return [] }
-        let operation = InternalDrag.operation(info, destination: model.listing.files[index].url)
-        if !operation.isEmpty { dropOperation.pointee = .on }
-        return operation
+        // The flow layout may propose `.before` near item edges, so resolve the target from the item under the
+        // pointer instead. Gaps and the background stay invalid (FR-163).
+        let location = collectionView.convert(info.draggingLocation, from: nil)
+        guard !model.isBrowsingArchive,
+              let indexPath = collectionView.indexPathForItem(at: location) else { return [] }
+        let index = indexPath.item
+        guard model.listing.files.indices.contains(index), model.listing.files[index].kind == .folder else { return [] }
+        proposedIndexPath.pointee = indexPath as NSIndexPath
+        dropOperation.pointee = .on
+        return InternalDrag.operation(info, destination: model.listing.files[index].url)
     }
 
     func collectionView(_ collectionView: NSCollectionView, acceptDrop info: any NSDraggingInfo, indexPath: IndexPath, dropOperation: NSCollectionView.DropOperation) -> Bool {

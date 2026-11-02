@@ -40,6 +40,7 @@ final class MainWindowController: NSWindowController {
         fileList.isToolbarShown = showsToolbar
         window.toolbarStyle = .unified
         window.toolbar = toolbarController.toolbar
+        toolbarController.restoreSavedConfiguration()
 
         let dividerWidth = splitViewController.splitView.dividerThickness
         window.minSize = NSSize(width: 720 + dividerWidth * 2, height: 400)
