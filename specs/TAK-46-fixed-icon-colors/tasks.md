@@ -13,7 +13,7 @@
 
 **Independent Test**: フォルダと zip を含む一覧で、フォルダが青、zip が黄で表示される（ライト／ダーク）
 
-- [x] T003 [US1] `Sources/FolzioApp/Shared/IconCatalog.swift` に固定色 2 つ（青 sRGB(0.00, 0.48, 1.00)、黄 sRGB(0.96, 0.72, 0.00)）と `tintColor(for: ListItemKind) -> NSColor`（`secondary` は `.secondaryLabelColor`）を追加する（FR-255・256、research.md R1・R2）
+- [x] T003 [US1] `Sources/FolzioApp/Shared/IconCatalog.swift` に固定色 2 つ（青 sRGB(0.18, 0.64, 1.00)、黄 sRGB(0.96, 0.72, 0.00)）と `tintColor(for: ListItemKind) -> NSColor`（`secondary` は `.secondaryLabelColor`）を追加する（FR-255・256、research.md R1・R2）
 - [x] T004 [P] [US2] `Tests/FolzioAppTests/IconCatalogTintTests.swift` に、`tintColor(for:)` の種別ごとの値、青と黄の HSB 明度差が 0.1 以内であること、外観（ライト／ダーク）によらず同じ値であることを検証するテストを追加する（FR-256）
 - [x] T005 [US1] `Sources/FolzioApp/FileList/ListModeView.swift` の非メディア行（`nameCell`）の `.secondaryLabelColor` を `IconCatalog.tintColor(for: file.kind)` に置き換える。メディア行の `nil` は変えない（FR-255・256・257）
 - [x] T006 [US1] `Sources/FolzioApp/FileList/ThumbnailModeView.swift` の `showListItemIcon` の `.secondaryLabelColor` を `IconCatalog.tintColor(for: kind)` に置き換える。メディア行・再利用時の `nil` は変えない（FR-255・256・257）
