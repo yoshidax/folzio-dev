@@ -76,6 +76,8 @@ final class MainSplitViewController: NSSplitViewController {
     private var didNormalizeInitialPaneState = false
     private var isAppInitiatedFullScreenTransition = false
     private var hiddenListKeyMonitor: Any?
+    /// Monitor for `<` / `>` video seeking while the file list and the preview are both visible (FR-269).
+    private var videoSeekKeyMonitor: Any?
     /// Keyword from the previous search in the same launch. Not persisted (FR-081, R39).
     private var lastSearchKeyword: String?
     private var pendingKindNames: KindNames?
@@ -241,6 +243,7 @@ final class MainSplitViewController: NSSplitViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        installVideoSeekKeyMonitor()
 
         NotificationCenter.default.addObserver(
             self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
@@ -830,6 +833,39 @@ final class MainSplitViewController: NSSplitViewController {
                 self?.handleHiddenListKey(event) ?? false
             }
             return handled ? nil : event
+        }
+    }
+
+    private func installVideoSeekKeyMonitor() {
+        guard videoSeekKeyMonitor == nil else { return }
+        videoSeekKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            let handled = MainActor.assumeIsolated {
+                self?.handleVideoSeekKey(event) ?? false
+            }
+            return handled ? nil : event
+        }
+    }
+
+    /// Seeks the video by 5 seconds with `<` / `>` when the preview is visible and the file list is not hidden
+    /// (FR-269). The hidden-list views (preview-only, full screen) are handled by `handleHiddenListKey`.
+    private func handleVideoSeekKey(_ event: NSEvent) -> Bool {
+        guard !slideshowCoordinator.isActive,
+              appliedPresentation.isVisible(.preview),
+              !appliedPresentation.navigatesHiddenFileList,
+              let window = view.window,
+              event.windowNumber == window.windowNumber,
+              !(window.firstResponder is NSTextView) else {
+            return false
+        }
+        let disallowed: NSEvent.ModifierFlags = [.command, .option, .control]
+        guard event.modifierFlags.intersection(disallowed).isEmpty else { return false }
+        switch event.charactersIgnoringModifiers {
+        case "<":
+            return previewViewController.seekVideo(by: -5)
+        case ">":
+            return previewViewController.seekVideo(by: 5)
+        default:
+            return false
         }
     }
 

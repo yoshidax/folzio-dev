@@ -166,7 +166,7 @@ final class ListModeView: NSView {
         return formatter
     }()
 
-    /// Text of the Size column: `--` for folders and `..`, which have no size (TAK-47, FR-272).
+    /// Text of the Size column: `--` for folders and `..`, which have no size (TAK-47, FR-276).
     private static func sizeText(of file: MediaFile) -> String {
         file.hasFileSize ? sizeFormatter.string(fromByteCount: file.fileSize) : "--"
     }
@@ -450,7 +450,7 @@ final class ListModeView: NSView {
         column.isHidden = hidden
     }
 
-    /// Shows the columns the user chose besides the name column, which is always shown (TAK-47, FR-270).
+    /// Shows the columns the user chose besides the name column, which is always shown (TAK-47, FR-274).
     private func updateColumnVisibility() {
         for column in ListColumn.allCases {
             guard let tableColumn = tableView.tableColumn(
@@ -657,7 +657,7 @@ final class ListModeView: NSView {
 
 extension ListModeView: NSMenuDelegate {
     /// Builds the column header menu: one checkable item per toggleable column. The name column has no item because it
-    /// is always shown (TAK-47, FR-269).
+    /// is always shown (TAK-47, FR-273).
     func menuNeedsUpdate(_ menu: NSMenu) {
         guard menu === columnsMenu else { return }
         menu.removeAllItems()
@@ -799,7 +799,7 @@ extension ListModeView: NSTableViewDelegate {
             cell.representedURL = file.url
             cell.representedVersion = nil
             cell.iconView.image = IconCatalog.listItemIcon(for: file.kind, pointSize: 16)
-            cell.iconView.contentTintColor = .secondaryLabelColor
+            cell.iconView.contentTintColor = IconCatalog.tintColor(for: file.kind)
             if renamingURL != file.url {
                 setEditingAppearance(cell.nameField, editing: false)
             }

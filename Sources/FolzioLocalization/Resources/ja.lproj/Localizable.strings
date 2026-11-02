@@ -950,7 +950,7 @@
 "shortcuts.entry.videoSeek" = "動画を5秒戻す・送る";
 
 /* Availability note below a shortcut reference action */
-"shortcuts.condition.videoSeek" = "全画面・プレビューのみ表示中の動画で使えます。";
+"shortcuts.condition.videoSeek" = "動画を表示中に使えます。";
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.slideshowStart" = "スライドショーを開始する";
