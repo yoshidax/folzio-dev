@@ -8,7 +8,9 @@
 - **決定**: `openArchive` に「zip を含むフォルダ」と「位置の変更の理由」を渡せるようにする。検索結果から開くときは、親フォルダを `listing.folder` にし、
   `TreeSyncRequest(folder: 親)` を発行してから、`.openedSearchResultFolder` で通知する。通常の一覧から開くときは従来どおり（`.navigated`）。
 - **理由**: FR-271 の「ツリーの選択は zip を含むフォルダ」「履歴は検索結果を記録せず zip の最上位を記録」を、フォルダの行と同じ経路で満たせる。
-- **未確認**: ツリーに表示されない場合の EC-102 の処理がどこにあるか（`DirectoryTreeViewController` の `treeSyncRequest` 受け取り側と思われる）。実装時に、フォルダの行と同じ経路で動くことを確かめる。
+- **確認済み（T002）**: ツリー側（`DirectoryTreeViewController.syncSelection`）は `model.listing.folder == request.folder` で照合して選択し、`completeSearchResultTreeSync` で EC-102 の祖先を保存する。
+  `listing.folder` を zip を含むフォルダにすれば同じ経路で動く。ただし `completeSearchResultTreeSync` の `listing.archive == nil` の条件が zip の場合に保存を止めるため、外した
+  （`pendingSearchTreeSyncID` が検索結果から開いたときだけ設定されるので、通常の一覧・履歴からの同期は従来どおり拒否される）。
 
 ## R2: 設定の固定と `rebuildListing` のフィルタ
 
@@ -31,3 +33,11 @@
 
 - **確認したこと**: 列挙では `isDirectory` を先に見るため、フォルダの `x.zip` はフォルダの行として扱われ、zip 判定に進まない。
 - **決定**: 現状の分岐順を保ち、テストで固定する。
+
+## R6: App 層の確認（T012）
+
+- `ListItemCommands.canOpenContainer` は `ListItemKind.opensAsContainer`（`.archive` を含む）を使うため、「中を表示（⌘↓）」・ダブルクリックは検索結果の zip の行でも有効になる（`FileListViewController.openFocusedItem`）。
+  「上の階層へ」は `isShowingSearchResults` で無効のまま。
+- `.folder` を固定で見ている分岐は、ドロップ先の判定（`ListModeView`・`ThumbnailModeView`）だけで、zip はドロップ先にならないので変更不要。
+- `BrowserModel` の `hasMedia`・フルスクリーンの移動・スライドショーは `kind.isMedia` で判定しており、`.archive` の行は対象にならない。
+- 上は読んで確認した結果であり、実際の表示（メニューの項目・区切り線・「場所」列）は quickstart のシナリオ 6〜9 で保守者が確認する。

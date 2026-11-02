@@ -38,4 +38,6 @@ ZipSearchFixture/
 
 ## 記録
 
-（実施後に、実行日・OS・各シナリオの合否を `checklists/validation.md` に記録する。）
+- 2026-11-02: 設計（spec.md・plan.md・tasks.md）のレビューを保守者が承認した（「承認します」）。実装を開始した。
+
+（GUI の確認は、実施後に、実行日・OS・各シナリオの合否を `checklists/validation.md` に記録する。）

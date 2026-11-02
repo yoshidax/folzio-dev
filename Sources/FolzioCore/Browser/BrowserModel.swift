@@ -171,6 +171,9 @@ public final class BrowserModel {
     private var searchTasks: [Task<Void, Never>] = []
     /// Criteria of the current search. Used to enumerate the new location after a rename (R63).
     private var searchPattern: SearchPattern?
+    /// Whether the current search matches zip files. Fixed from `showsZipFiles` when the search starts, so toggling
+    /// the setting later does not change the running search or its results (FR-269).
+    private var searchIncludesArchives = false
     /// Folder renames during the current search. Rebases URLs of results that arrive later (R63).
     private var searchLedger = SearchRenameLedger()
     private var movedSearchPaths: Set<String> = []
@@ -322,6 +325,7 @@ public final class BrowserModel {
         )
 
         searchPattern = pattern
+        searchIncludesArchives = showsZipFiles
         startSearchStream(in: root, matching: pattern)
     }
 
@@ -332,7 +336,13 @@ public final class BrowserModel {
         let visits = SearchVisitLog()
         let streamIndex = searchLedger.addStream(visits: visits)
         let stream = searcher.search(
-            SearchRequest(root: root, pattern: pattern, matchesRoot: matchesRoot, visits: visits)
+            SearchRequest(
+                root: root,
+                pattern: pattern,
+                matchesRoot: matchesRoot,
+                visits: visits,
+                includesArchives: searchIncludesArchives
+            )
         )
         activeSearchStreams += 1
         let task = Task { [weak self] in
@@ -355,16 +365,26 @@ public final class BrowserModel {
     public func didRenameItem(at oldURL: URL, to newURL: URL) {
         guard isShowingSearchResults,
               let index = allFiles.firstIndex(where: { $0.url == oldURL }) else { return }
-        guard let kind = MediaKind(fileExtension: newURL.pathExtension) else {
+        let old = allFiles[index]
+        let newKind: ListItemKind
+        if old.kind == .archive {
+            // A zip file stays in the results only while its new name still has the `.zip` extension (FR-272).
+            guard DirectoryLister.isArchive(newURL) else {
+                removeSearchResults([oldURL])
+                return
+            }
+            newKind = .archive
+        } else if let kind = MediaKind(fileExtension: newURL.pathExtension) {
+            newKind = .media(kind)
+        } else {
             removeSearchResults([oldURL])
             return
         }
 
-        let old = allFiles[index]
         var renamed = old
         renamed.url = newURL
         renamed.name = newURL.lastPathComponent
-        renamed.kind = .media(kind)
+        renamed.kind = newKind
         renamed.typeDescription = (try? newURL.resourceValues(forKeys: [.localizedTypeDescriptionKey]))?
             .localizedTypeDescription ?? old.typeDescription
         allFiles[index] = renamed
@@ -567,7 +587,9 @@ public final class BrowserModel {
         switch file.kind {
         case .archive:
             guard listing.archive == nil else { return }
-            await openArchive(file.url)
+            // From search results, the zip's folder (not the pre-search folder) becomes the current folder and the
+            // history records the zip root as a new location (FR-271).
+            await openArchive(file.url, fromSearchResults: isShowingSearchResults)
         case .directory:
             guard let location = listing.archive,
                   let index = archiveIndex,
@@ -621,7 +643,6 @@ public final class BrowserModel {
               treeSyncRequest == request,
               listing.folder.standardizedFileURL == request.folder.standardizedFileURL,
               !isShowingSearchResults,
-              listing.archive == nil,
               !showsNotFound else { return }
         let selectedComponents = selectedFolder.standardizedFileURL.pathComponents
         let targetComponents = request.folder.standardizedFileURL.pathComponents
@@ -921,8 +942,12 @@ public final class BrowserModel {
     /// search results, and uses `.loading` while searching before any results arrive.
     private func rebuildListing() {
         // Apply the zip visibility once after the media type filter. Does not change `allFiles` (FR-095, R46).
-        let filtered = ZipFileVisibility(showsZipFiles: showsZipFiles)
-            .apply(to: mediaTypeFilter.apply(to: allFiles))
+        // Search results are exempt: whether they contain zip files was decided when the search started, and
+        // toggling the setting afterwards does not change existing results (FR-269).
+        let mediaFiltered = mediaTypeFilter.apply(to: allFiles)
+        let filtered = isShowingSearchResults
+            ? mediaFiltered
+            : ZipFileVisibility(showsZipFiles: showsZipFiles).apply(to: mediaFiltered)
         if let location = listing.archive {
             listing.files = [Self.parentRow(for: location)] + filtered
         } else {
@@ -1017,6 +1042,7 @@ public final class BrowserModel {
         }
         searchTasks.removeAll()
         searchPattern = nil
+        searchIncludesArchives = false
         searchLedger = SearchRenameLedger()
         movedSearchPaths.removeAll()
         pendingSearchTreeSyncID = nil
@@ -1040,19 +1066,38 @@ public final class BrowserModel {
     }
 
     /// Opens a zip and builds the root listing. Uses `.loading` while opening.
-    private func openArchive(_ url: URL) async {
+    ///
+    /// When opened from search results, the folder containing the zip becomes `listing.folder`; the tree is asked to
+    /// select it (EC-102 applies when it is not in the tree) and the saved last folder is updated, as for a folder
+    /// row opened from search results (FR-140, 271).
+    private func openArchive(_ url: URL, fromSearchResults: Bool = false) async {
         let leavingFocus = selection.focused
+        let containingFolder = fromSearchResults
+            ? URL(fileURLWithPath: url.deletingLastPathComponent().path, isDirectory: true)
+            : listing.folder
+        if fromSearchResults {
+            treeSyncCounter += 1
+            treeSyncRequest = TreeSyncRequest(folder: containingFolder, id: treeSyncCounter)
+        }
         resetForNavigation()
         leaveSearchIfNeeded()
+        if fromSearchResults {
+            pendingSearchTreeSyncID = treeSyncRequest?.id
+            var viewSettings = settings.viewSettings
+            if viewSettings.lastFolder?.standardizedFileURL != containingFolder.standardizedFileURL {
+                viewSettings.lastFolder = containingFolder
+                settings.viewSettings = viewSettings
+            }
+        }
         archiveIndex = nil
         archiveRenames.removeAll()
         listing = FolderListing(
-            folder: listing.folder,
+            folder: containingFolder,
             files: [],
             state: .loading,
             archive: ArchiveLocation(archive: url, directory: "")
         )
-        onLocationEvent?(.navigated(leavingFocus: leavingFocus))
+        notifyLocationChange(fromSearchResults ? .openedSearchResultFolder : .navigated, leavingFocus: leavingFocus)
 
         let generation = navigationGeneration
         let task = Task { [weak self] in

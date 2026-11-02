@@ -83,16 +83,8 @@ public struct DirectoryLister: DirectoryListing {
                     return Self.folderRow(at: url, creationDate: values?.creationDate, kindNames: kindNames)
                 }
 
-                if url.pathExtension.lowercased() == Self.archiveExtension {
-                    return MediaFile(
-                        url: url,
-                        name: url.lastPathComponent,
-                        kind: .archive,
-                        typeDescription: values?.localizedTypeDescription ?? kindNames.zipArchive,
-                        creationDate: values?.creationDate,
-                        fileSize: Int64(values?.fileSize ?? 0),
-                        kindNameSource: values?.localizedTypeDescription == nil ? .zipArchive : nil
-                    )
+                if Self.isArchive(url) {
+                    return Self.archiveRow(at: url, values: values, kindNames: kindNames)
                 }
                 guard let kind = MediaKind(fileExtension: url.pathExtension) else { return nil }
                 return Self.mediaFile(at: url, kind: kind, values: values)
@@ -111,6 +103,29 @@ public struct DirectoryLister: DirectoryListing {
             creationDate: creationDate,
             fileSize: 0,
             kindNameSource: .folder
+        )
+    }
+
+    /// Whether the URL names a zip file (extension `.zip`, case-insensitive; FR-068).
+    static func isArchive(_ url: URL) -> Bool {
+        url.pathExtension.lowercased() == archiveExtension
+    }
+
+    /// Builds a zip file row. Shared with `FileNameSearcher` so listings and search results use the same values
+    /// (FR-270).
+    static func archiveRow(at url: URL, kindNames: KindNames) -> MediaFile {
+        archiveRow(at: url, values: try? url.resourceValues(forKeys: mediaKeys), kindNames: kindNames)
+    }
+
+    private static func archiveRow(at url: URL, values: URLResourceValues?, kindNames: KindNames) -> MediaFile {
+        MediaFile(
+            url: url,
+            name: url.lastPathComponent,
+            kind: .archive,
+            typeDescription: values?.localizedTypeDescription ?? kindNames.zipArchive,
+            creationDate: values?.creationDate,
+            fileSize: Int64(values?.fileSize ?? 0),
+            kindNameSource: values?.localizedTypeDescription == nil ? .zipArchive : nil
         )
     }
 
