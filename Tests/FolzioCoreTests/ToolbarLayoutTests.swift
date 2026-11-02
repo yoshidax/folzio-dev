@@ -42,9 +42,13 @@ struct ToolbarLayoutTests {
         #expect(ToolbarLayout.normalized(saved: saved) == ["history", "viewMode"])
     }
 
-    @Test("An empty order, a missing value, and values of other types give the default order")
+    @Test("An empty order stays empty, because the user may remove every set")
+    func keepsEmptyOrder() {
+        #expect(ToolbarLayout.normalized(saved: [String]()).isEmpty)
+    }
+
+    @Test("A missing value and values of other types give the default order")
     func invalidValuesGiveDefaultOrder() {
-        #expect(ToolbarLayout.normalized(saved: [String]()) == ToolbarLayout.defaultOrder)
         #expect(ToolbarLayout.normalized(saved: nil) == ToolbarLayout.defaultOrder)
         #expect(ToolbarLayout.normalized(saved: "history") == ToolbarLayout.defaultOrder)
         #expect(ToolbarLayout.normalized(saved: 42) == ToolbarLayout.defaultOrder)

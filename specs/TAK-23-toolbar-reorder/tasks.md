@@ -37,8 +37,8 @@ Cloud では `swift build`・`swift test`・GUI を実行しない（AGENTS.md�
 
 **Independent Test**: quickstart Q1〜Q3。
 
-- [ ] T009 【Cloud】[US1] `Sources/FolzioApp/App/MainToolbarController.swift` の `init` で `allowsUserCustomization = true` にし、`toolbarAllowedItemIdentifiers` に `.space`・`.flexibleSpace` を含めた8種＋スペースを返す。`toolbarDefaultItemIdentifiers` は現行の順序（FR-006）のまま。`autosavesConfiguration` は T005 の結果で決める（段1 なら有効、段2・3 なら無効にして自前で保存する）。
-- [ ] T010 【実機】[US1] quickstart Q1〜Q3 を実施し、結果を `specs/TAK-23-toolbar-reorder/quickstart.md` の末尾に「実機検証の結果」として記録する。参照の不具合（R-2）は AppKit の挙動のため単体テストに向かない。再現と修正の確認は、Q1〜Q3 で代える（憲章 IV の「UI の見た目そのものの自動テストは必須としない」に基づく）。外して戻す・「デフォルトセット」の入れ直しの後も、履歴・ペイン・種類・zip・表示形式・サイズの状態が追従することを確認する。
+- [x] T009 【Cloud】[US1] `Sources/FolzioApp/App/MainToolbarController.swift` の `init` で `allowsUserCustomization = true` にし、`toolbarAllowedItemIdentifiers` に `.space`・`.flexibleSpace` を含めた8種＋スペースを返す。`toolbarDefaultItemIdentifiers` は現行の順序（FR-006）のまま。`autosavesConfiguration` は T005 の結果で決める（段1 なら有効、段2・3 なら無効にして自前で保存する）。
+- [x] T010 【実機】（Q1〜Q3 を保守者が確認済み、2026-11-02。状態は追従する）[US1] quickstart Q1〜Q3 を実施し、結果を `specs/TAK-23-toolbar-reorder/quickstart.md` の末尾に「実機検証の結果」として記録する。参照の不具合（R-2）は AppKit の挙動のため単体テストに向かない。再現と修正の確認は、Q1〜Q3 で代える（憲章 IV の「UI の見た目そのものの自動テストは必須としない」に基づく）。外して戻す・「デフォルトセット」の入れ直しの後も、履歴・ペイン・種類・zip・表示形式・サイズの状態が追従することを確認する。
 
 ## Phase 4: US2 セット内のボタンは分離できない (P1)
 
@@ -56,7 +56,7 @@ Cloud では `swift build`・`swift test`・GUI を実行しない（AGENTS.md�
 **Independent Test**: quickstart Q5・Q6。
 
 - [ ] T012 【不採用: `configuration` / `setConfiguration(_:)` は macOS 15 で非推奨（research.md R-1）】[US3] （段2。実装しない）`Sources/FolzioCore/Settings/SettingsStore.swift` に `view.toolbarConfiguration`（plist 化した辞書）の読み書きを追加し、`MainWindowController.swift` で、カスタマイズ画面が閉じたとき（`NSWindow.didEndSheetNotification`）とアプリの終了時に `toolbar.configuration` を保存し、`window.toolbar` 割り当て後に `setConfiguration(_:)` で復元する。`isVisible` は `view.showsToolbar` を正とし、復元の前後で除く。保存値の識別子は `ToolbarLayout.normalized(saved:)` で検証し、不正なら既定の構成で起動する。`autosavesConfiguration` は無効にする。
-- [ ] T013 【Cloud】[US3] （段3。`itemIdentifiers` を使う）`SettingsStore.swift` に `view.toolbarItems`（識別子の配列）の読み書きを追加し、`MainWindowController.swift` で、カスタマイズ画面が閉じたときとアプリの終了時に `toolbar.itemIdentifiers` を保存し、`window.toolbar` 割り当て後に `ToolbarLayout.normalized(saved:)` の結果を `toolbar.itemIdentifiers` へ設定して復元する（macOS 15 以降の API。`insertItem` による並べ直しはしない）。表示モードも `toolbar.displayMode` を保存して復元する（FR-005。保存の有無は T014 の結果に依らず必須）。`autosavesConfiguration` は無効にする。
+- [x] T013 【Cloud】[US3] （段3。`itemIdentifiers` を使う）`SettingsStore.swift` に `view.toolbarItems`（識別子の配列）の読み書きを追加し、`MainWindowController.swift` で、`itemIdentifiers` と `displayMode` の KVO（文書上 `itemIdentifiers` は KVO 対応）とアプリの終了時に保存し（既定と同じ値のときは保存せず、キーを消す）、`window.toolbar` 割り当て後に `ToolbarLayout.normalized(saved:)` の結果を `toolbar.itemIdentifiers` へ設定して復元する（macOS 15 以降の API。`insertItem` による並べ直しはしない）。表示モードも `toolbar.displayMode` を保存して復元する（FR-005。保存の有無は T014 の結果に依らず必須）。`autosavesConfiguration` は無効にする。
 - [ ] T014 【実機】[US3] quickstart Q5・Q6 を実施する。並び順と構成が復元され、保存値を壊した状態（`defaults write local.folzio.Folzio` で不正値を書く）でも起動できることを確認し、結果を `specs/TAK-23-toolbar-reorder/quickstart.md` に記録する。
 
 ## Phase 6: US4 標準のカスタマイズ機能の許容とラベル・ツールチップ (P3)
@@ -65,9 +65,9 @@ Cloud では `swift build`・`swift test`・GUI を実行しない（AGENTS.md�
 
 **Independent Test**: quickstart Q4・Q6〜Q8。
 
-- [ ] T015 【Cloud】[US4] `Sources/FolzioApp/App/MainToolbarController.swift` の `init` で `allowsDisplayModeCustomization = true` にする（FR-003c）。`displayMode` の既定は `.iconOnly` のままにする。
-- [ ] T016 【Cloud】[US4] `Sources/FolzioLocalization/TextKey.swift` と `Sources/FolzioLocalization/Resources/{en,ja}.lproj/Localizable.strings` に、`contracts/toolbar-labels.md` の新規キー（`toolbar.slideshowLabel`・`toolbar.zipFilesLabel`・`toolbar.thumbnailSizeLabel`・`toolbar.goBackHelp`・`toolbar.goForwardHelp`・`toolbar.showFileListOnlyHelp`・`toolbar.showPreviewOnlyHelp`・`toolbar.showImagesOnlyHelp`・`toolbar.showVideosOnlyHelp`・`toolbar.zipFilesHelp`）を、日英の文言とともに追加する。既存の `toolbar.history`・`toolbar.panes`・`toolbar.zoomGroup`・`toolbar.mediaType`・`toolbar.viewMode`・`toolbar.thumbnails`・`toolbar.list`・`toolbar.thumbnailSize` の値を表のとおりに変える。`toolbar.size`（サイズバーのラベル）と `menu.*` は変えない。各キーの用途を `TextKey` の説明（英語）に追加する。
-- [ ] T017 【Cloud】[US4] `Sources/FolzioApp/App/MainToolbarController.swift` で、ラベルを T016 の新キーに差し替え、セグメントのツールチップとアクセシビリティのラベル・ヘルプを `contracts/toolbar-labels.md` のツールチップのキーに差し替える。メニューの文言（`menu.go.back` など）とは共用しない。`displayLanguageDidChange` の対応表も同じキーに更新する。
+- [x] T015 【Cloud】[US4] `Sources/FolzioApp/App/MainToolbarController.swift` の `init` で `allowsDisplayModeCustomization = true` にする（FR-003c）。`displayMode` の既定は `.iconOnly` のままにする。
+- [x] T016 【Cloud】[US4] `Sources/FolzioLocalization/TextKey.swift` と `Sources/FolzioLocalization/Resources/{en,ja}.lproj/Localizable.strings` に、`contracts/toolbar-labels.md` の新規キー（`toolbar.slideshowLabel`・`toolbar.zipFilesLabel`・`toolbar.thumbnailSizeLabel`・`toolbar.goBackHelp`・`toolbar.goForwardHelp`・`toolbar.showFileListOnlyHelp`・`toolbar.showPreviewOnlyHelp`・`toolbar.showImagesOnlyHelp`・`toolbar.showVideosOnlyHelp`・`toolbar.zipFilesHelp`）を、日英の文言とともに追加する。既存の `toolbar.history`・`toolbar.panes`・`toolbar.zoomGroup`・`toolbar.mediaType`・`toolbar.viewMode`・`toolbar.thumbnails`・`toolbar.list`・`toolbar.thumbnailSize` の値を表のとおりに変える。`toolbar.size`（サイズバーのラベル）と `menu.*` は変えない。各キーの用途を `TextKey` の説明（英語）に追加する。
+- [x] T017 【Cloud】[US4] `Sources/FolzioApp/App/MainToolbarController.swift` で、ラベルを T016 の新キーに差し替え、セグメントのツールチップとアクセシビリティのラベル・ヘルプを `contracts/toolbar-labels.md` のツールチップのキーに差し替える。メニューの文言（`menu.go.back` など）とは共用しない。`displayLanguageDidChange` の対応表も同じキーに更新する。
 - [ ] T018 【CI】[US4] PR の作成後（保守者の依頼があるとき）、CI で `swift build` と `swift test` を確認する。`CatalogConsistencyTests`（日英のキー一致、`TextKey` の説明）と `ToolbarLayoutTests`（T008 を行った場合）が通ることを確認する。
 - [ ] T019 【実機】[US4] quickstart Q4・Q6〜Q8 を実施し、日英のラベルとツールチップが `contracts/toolbar-labels.md` と一致することを確認する。テキスト表示のときのセグメントの幅とラベルの破綻、ウィンドウを最小幅まで狭めたときの溢れの扱いも確認する。結果を `specs/TAK-23-toolbar-reorder/quickstart.md` に記録する。あわせて Q9（スライドショー実行中・名前の変更中・全画面中にカスタマイズを開いたときの挙動。標準のまま制限しない方針のため、破綻がないかを確認する）を実施する。
 

@@ -16,6 +16,8 @@ public struct SettingsStore {
         static let lastFolderPath = "view.lastFolderPath"
         static let showsToolbar = "view.showsToolbar"
         static let showsZipFiles = "view.showsZipFiles"
+        static let toolbarItems = "view.toolbarItems"
+        static let toolbarDisplayMode = "view.toolbarDisplayMode"
         static let autoplay = "playback.autoplay"
         static let loop = "playback.loop"
         static let confirmBeforeExecuting = "fileOps.confirmBeforeExecuting"
@@ -82,6 +84,34 @@ public struct SettingsStore {
             }
             defaults.set(newValue.showsToolbar, forKey: Keys.showsToolbar)
             defaults.set(newValue.showsZipFiles, forKey: Keys.showsZipFiles)
+        }
+    }
+
+    /// Whether the user has customized the toolbar, so that a saved item order exists.
+    public var hasSavedToolbarItemOrder: Bool {
+        defaults.object(forKey: Keys.toolbarItems) != nil
+    }
+
+    /// The toolbar item order. Reads a valid order even when the stored value is broken (see `ToolbarLayout`).
+    public var toolbarItemOrder: [String] {
+        get { ToolbarLayout.normalized(saved: defaults.object(forKey: Keys.toolbarItems)) }
+        nonmutating set { defaults.set(newValue, forKey: Keys.toolbarItems) }
+    }
+
+    /// Removes the saved toolbar item order, so that the default order is used again.
+    public func clearToolbarItemOrder() {
+        defaults.removeObject(forKey: Keys.toolbarItems)
+    }
+
+    /// The raw value of the toolbar's display mode, or nil when the user has not changed it.
+    public var toolbarDisplayModeRawValue: Int? {
+        get { defaults.object(forKey: Keys.toolbarDisplayMode) as? Int }
+        nonmutating set {
+            if let newValue {
+                defaults.set(newValue, forKey: Keys.toolbarDisplayMode)
+            } else {
+                defaults.removeObject(forKey: Keys.toolbarDisplayMode)
+            }
         }
     }
 
