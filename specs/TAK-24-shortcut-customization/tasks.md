@@ -15,14 +15,14 @@
 
 ## Phase 2: Foundational（Core の割り当ての表）
 
-- [ ] T003 `Tests/FolzioCoreTests/Shortcuts/KeyCombinationTests.swift` を追加する。正規化（大文字 → 小文字 + shift）、表記（`⇧⌘N`、`⌘↓`、`⌘Delete`）、保存形式の往復、不正な文字列の拒否、`hasRequiredModifier`（先に失敗する形で書く。data-model.md）
+- [ ] T003 `Tests/FolzioCoreTests/Shortcuts/KeyCombinationTests.swift` を追加する。正規化（大文字 → 小文字 + shift、⇧記号の正規化: 押下 ⇧⌘= が既定の ⌘+ と等しい、⌘= と ⌘+ は別、⇧⌘N と ⌘N は別）、表記（`⇧⌘N`、`⌘↓`、`⌘Delete`）、保存形式の往復、不正な文字列の拒否、`hasRequiredModifier`（先に失敗する形で書く。data-model.md）
 - [ ] T004 `Sources/FolzioCore/Shortcuts/KeyCombination.swift` を追加する（`KeyModifiers`、`KeyCombination`。AppKit を import しない）
 - [ ] T005 `Tests/FolzioCoreTests/Shortcuts/ShortcutCommandConsistencyTests.swift` を追加する。既定値どうしの重複なし、既定値がすべて修飾要件を満たす、既定値が固定キー・予約キーを含まない、コマンド 32 個の ID が一意、各コマンドの既定値が contracts §1 と一致、`ShortcutEntry` の静的表記とコマンドの既定値の不一致なし（FR-244）
 - [ ] T006 `Sources/FolzioCore/Shortcuts/ShortcutCommand.swift` を追加する（`ShortcutCommandID`、`ShortcutCommand`、宣言順の一覧、`FixedKeys`、`ReservedKeys`。contracts §1〜3）
 - [ ] T007 `Tests/FolzioCoreTests/Shortcuts/ShortcutAssignmentsTests.swift` を追加する。検証の順序（修飾 → 固定/予約 → 重複）、自分自身と同じ組み合わせは変更なし、既定値のままのコマンドとの重複、重複する既定値への戻しが `.conflict`、すべて戻す、`zoomIn` の別名（EC-167）、読み込み時の不正値・未知 ID・重複の解消（EC-165、R9）
 - [ ] T008 `Sources/FolzioCore/Shortcuts/ShortcutAssignments.swift` を追加する（data-model.md の操作と不変条件）
 - [ ] T009 `Tests/FolzioCoreTests/Shortcuts/ShortcutOverridesStoreTests.swift` を追加し、`Sources/FolzioCore/Settings/SettingsStore.swift` に `shortcutOverrides` を追加する。上書きなしでキーを消す、辞書でない値の無視、往復（FR-239、contracts §5）
-- [ ] T010 `Sources/FolzioCore/Shortcuts/ShortcutCatalog.swift` の `ShortcutEntry` にコマンド ID の配列と区切りを持たせ、`keys` を割り当てから生成する関数を追加する。コマンドに対応しない項目は静的な表記のまま。既存の `CatalogConsistencyTests` と `ShortcutTextTests` を通す（R7）
+- [ ] T010 `Sources/FolzioCore/Shortcuts/ShortcutCatalog.swift` の `ShortcutEntry` にコマンド ID の配列と区切りを持たせ、`keys` を割り当てから生成する関数を追加する。コマンドに対応しない項目は静的な表記のまま。固定キーとコマンドのキーが混ざる項目（`endSearch` = `Esc / ⌘[`、`imageZoom` = `⌘+ / ⌘= / ⌘-` など）は、項目をパーツ列（静的な文字列 / コマンド）で表し、パーツを区切りで連結する。ショートカット一覧の説明文・条件文（`Localizable.strings` の `shortcut.*`）にキー記号が含まれていないかを grep で棚卸しし、含まれていれば引数化するか、キーを含まない文にする。既存の `CatalogConsistencyTests` と `ShortcutTextTests` を通す（R7）
 
 ## Phase 3: 翻訳
 
@@ -36,10 +36,10 @@
 **Independent Test**: quickstart.md Q1〜Q5、Q12
 
 - [ ] T013 [US44] `Sources/FolzioApp/Shortcuts/ShortcutAssignmentStore.swift` を追加する（MainActor。起動時に `SettingsStore` から読み込み、`assign`/`reset` で保存し、変更を通知する。`NotificationCenter` で `.shortcutAssignmentsDidChange`）
-- [ ] T014 [US44] `Sources/FolzioApp/Shortcuts/MenuShortcutApplier.swift` を追加する。`NSMenuItem` の識別子 `shortcut.<ID>` から割り当てを引き、`keyEquivalent`・`keyEquivalentModifierMask` を設定する。メインメニューの全項目を走査し、変更通知で再適用する。`zoomIn` の別名項目は主キーが既定値のときだけ有効にする（R2、EC-167）
-- [ ] T015 [US44] `MainMenu.swift`、`FileListViewController.swift`（`installViewMenuItems`）、`MainSplitViewController.swift`（`installFocusMenuItems`、`goBack`/`goForward` の項目）、`DirectoryTreeViewController.swift`、`FileContextMenu.swift` の各メニュー項目に識別子を付け、組み立て後に `MenuShortcutApplier` で適用する。キーの直書きは残さない。予約キー（⌘Q ⌘W ⌘, と編集メニューの標準キー）と Return の項目は対象外のまま
+- [ ] T014 [US44] `Sources/FolzioApp/Shortcuts/MenuShortcutApplier.swift` を追加する。`register(_:for:)` で `NSMenuItem`（弱参照）とコマンド ID を結び付け、登録時と変更通知のたびに登録済みの全項目へ `keyEquivalent`・`keyEquivalentModifierMask` を設定する。`item.identifier`（文言の更新が使用）は変えない。`zoomIn` の別名項目は主キーが既定値のときだけ有効にする（R2、EC-167）
+- [ ] T015 [US44] `MainMenu.swift`、`FileListViewController.swift`（`installViewMenuItems`）、`MainSplitViewController.swift`（`installFocusMenuItems`、`goBack`/`goForward` の項目）、`DirectoryTreeViewController.swift`、`FileContextMenu.swift` の各メニュー項目を、組み立て直後に `MenuShortcutApplier.register` で登録して適用する（コンテキストメニューはメニューを作り直すたびに登録する）。`MainMenu.bind` の識別子には触れない。キーの直書きは残さない。予約キー（⌘Q ⌘W ⌘, と編集メニューの標準キー）と Return の項目は対象外のまま
 - [ ] T016 [US44] ツールバーのツールチップとアクセシビリティラベル（`MainToolbarController.swift`）、ショートカット一覧ウインドウ（`ShortcutCheatSheetWindowController.swift` ほか）を割り当ての表から生成する。変更通知で更新し、一覧は先頭の可視項目を保つ（FR-238、R7）
-- [ ] T017 [US44] `Sources/FolzioApp/Shortcuts/ShortcutRecorderRow.swift` を追加する。コマンド名・現在のキー・状態・「記録」・「既定値に戻す」・エラーの 1 行。記録中は `performKeyEquivalent`/`keyDown` を横取りし、修飾キーだけの入力は無視、Esc で取消、フォーカス喪失・ウインドウ閉鎖・言語変更で取消（FR-235、R3、EC-164）
+- [ ] T017 [US44] `Sources/FolzioApp/Shortcuts/ShortcutRecorderRow.swift` を追加する。コマンド名・現在のキー・状態・「記録」・「既定値に戻す」・エラーの 1 行。記録中は `performKeyEquivalent`/`keyDown` を横取りし、押された文字と修飾キーを `KeyCombination.normalized` に通して候補にし、修飾キーだけの入力は無視、Esc で取消、フォーカス喪失・ウインドウ閉鎖・言語変更で取消（FR-235、R3、EC-164）
 - [ ] T018 [US44] `Sources/FolzioApp/Settings/ShortcutSettingsViewController.swift` を追加する。区分の見出しと 32 行を `NSScrollView` に並べ、下部に「すべて既定値に戻す」を固定する。Tab / ⇧Tab の巡回、行ごとのアクセシビリティ（名前・キー・状態）、エラーの読み上げ（FR-234・242）
 - [ ] T019 [US44] `SettingsWindowController.swift` を `NSTabView` の 2 タブ（「一般」「ショートカット」）にする。「一般」は現行の `makeContentView()` の内容・間隔・Tab 順・補足説明をそのまま移す。開いたとき常に「一般」。タブ切り替えで高さを各タブに合わせ、記録中なら取り消す。言語切り替えで両タブを更新する（FR-232、US44-AS5〜7）
 
@@ -65,10 +65,11 @@
 - [ ] T023 作業ブランチに push し、保守者の依頼で PR を作ったら CI（`swift build`・`swift test`）の結果を GitHub MCP で確認して quickstart.md に記録する。性能テストはログの末尾で合否を確かめる
 - [ ] T024 [MANUAL] 保守者が quickstart.md の GUI の確認 Q1〜Q15 を日本語・英語で行い、結果（実行日・OS・合否）を報告する。報告を `specs/TAK-24-shortcut-customization/checklists/validation.md` に記録する（SC-117〜123）
 - [ ] T025 `speckit-converge` を実行し、追加のタスクがあれば実装と検証を繰り返す
-- [ ] T026 PR の最後の作業として `git merge origin/master` で最新の master を取り込み、ID の衝突を確かめてから、spec.md の「反映先」を `specs/product/window-layout.md`・`contracts/settings.md`・`contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映し、spec.md の冒頭に移行済み・凍結の注記を入れる。差分を保守者に示し、承認後にコミットする
+- [ ] T026 `README.md` と `README.ja.md` のキー表（⌘/、⌘1 / ⌘2、⌘+ など）の見出しまたは直前の文に「既定のキー。設定の「ショートカット」で変更できる」旨を同じコミットで両言語に入れる。構造を1対1で保ち、`scripts/check-readme-sync.sh master` を通す（AGENTS.md「README の英語版と日本語版」）
+- [ ] T027 PR の最後の作業として `git merge origin/master` で最新の master を取り込み、ID の衝突を確かめてから、spec.md の「反映先」を `specs/product/window-layout.md`・`contracts/settings.md`・`contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映し、spec.md の冒頭に移行済み・凍結の注記を入れる。差分を保守者に示し、承認後にコミットする
 
 ## Dependencies
 
-- T001・T002 → T003〜T010（T003→T004、T005→T006→T007→T008→T009→T010 の順。テストを先に書く）→ T011→T012 → T013〜T021 → T022〜T026
+- T001・T002 → T003〜T010（T003→T004、T005→T006→T007→T008→T009→T010 の順。テストを先に書く）→ T011→T012 → T013〜T021 → T022〜T027（T026 の README は T025 の後、T027 の前）
 - T014 は T013 の後、T015 は T014 の後、T016 は T012・T013 の後、T017 は T008・T013 の後、T018 は T017 の後、T019 は T018 の後、T020・T021 は T017 の後
 - 同じファイルを触るタスクは直列で行う（Cloud は並列実装をしない）

@@ -10,12 +10,14 @@
 
 ## R2 メニュー項目へのキーの適用
 
-- **Decision**: 各 `NSMenuItem` に、文言の更新で使っている `MainMenu.bind` と同じ方式で識別子 `shortcut.<コマンドID>` を付ける。`MenuShortcutApplier` が
-  メインメニューと、表示中のコンテキストメニューの全項目を走査し、識別子から割り当てを引いて `keyEquivalent` と `keyEquivalentModifierMask` を設定する。
-  メニューの組み立て時（4 か所 + コンテキストメニュー）は、直書きをやめて同じ関数 `MenuShortcutApplier.apply(to:)` を呼ぶ。割り当ての変更通知でも呼ぶ。
-- **Rationale**: 言語切り替え（`refreshTitles`）と同じ経路で、追加の仕組みが要らない。ビューコントローラーは後からメニューに項目を足すため
-  （`installViewMenuItems` など）、組み立て時にも適用しないと初回が既定値のままになる。
-- **Alternatives**: メニューを全部作り直す → 状態（チェック・有効/無効の検証）を失う。却下。
+- **Decision**: `MenuShortcutApplier` に登録表 `register(_ item: NSMenuItem, for command: ShortcutCommandID)` を持たせる（項目は弱参照で保持し、解放された項目は適用時に捨てる）。
+  メニューを組み立てる各所（`MainMenu`、`installViewMenuItems`、`installFocusMenuItems`、ツリーとファイルリストのコンテキストメニュー）は、項目を作った直後に
+  キーの直書きをやめて `register` を呼ぶ。登録時と割り当ての変更通知のたびに、登録済みの全項目へ `keyEquivalent` と `keyEquivalentModifierMask` を設定する。
+- **Rationale**: `NSMenuItem.identifier` は 1 つしかなく、`MainMenu.bind` が文言の更新（`localization.<key>`、`refreshTitles`）に既に使っている（`MainMenu.swift:22`）。
+  同じ識別子へ別の情報を載せると文言の更新が壊れるため、識別子は使わず登録表で結び付ける。ビューコントローラーは後からメニューに項目を足すため
+  （`installViewMenuItems` など）、組み立て時にも登録して適用しないと初回が既定値のままになる。コンテキストメニューの項目は、メニューを作り直すたびに登録し直す。
+- **Alternatives**: ① `identifier` に `shortcut.<ID>` を付ける → `localization.*` と衝突する。却下。② `NSMenuItem` の subclass → 標準の項目（編集メニュー等）と混在し、
+  差し替えの範囲が広い。却下。③ メニューを全部作り直す → 状態（チェック・有効/無効の検証）を失う。却下。
 
 ## R3 記録（キーの横取り）
 
@@ -31,7 +33,7 @@
 
 - **Decision**: `KeyCombination { key: String, modifiers: KeyModifiers }`。`key` は `NSMenuItem.keyEquivalent` と同じ文字（小文字化した文字、または矢印・Delete の特殊キーの文字）。
   `KeyModifiers` は Core 独自の `OptionSet`（command / control / option / shift）。大文字（例: `"N"`）で ⇧ を暗黙に表す既存の書き方は、解釈時に `shift` を明示する形に正規化する。
-  保存は `"<修飾キーの文字順>+<key>"` の安定した文字列（例 `cmd+opt+j`）。`⌘+` は `shift` + `=` の押下だが、`NSMenuItem` では `"+"` で動くため既存どおり `"+"` として保持する（A-148）。
+  保存は `"<修飾キーの文字順>+<key>"` の安定した文字列（例 `cmd+opt+j`）。`⌘+` は ⇧ + `=` の押下だが、`NSMenuItem` では `"+"`（⇧なし）で動くため、記録時に ⇧記号を ⇧なしの表記へ正規化して既存の既定値と同じ組み合わせにする（data-model.md、`KeyCombination.normalized`）。同じ文字を出す別の物理キーは同一として扱う（A-148）。
 - **Rationale**: Core が AppKit を import しないため独自型が必要。保存は人が読めて、`NSEvent` のフラグの値に依存しない。
 - **Alternatives**: `NSEvent.ModifierFlags` の rawValue を保存 → OS の将来の変更に弱く、Core が AppKit に依存する。却下。
 

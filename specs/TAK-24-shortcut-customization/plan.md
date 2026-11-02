@@ -105,4 +105,4 @@ Tests/FolzioCoreTests/Localization/ShortcutSettingsTextTests.swift
 ```
 
 **Structure Decision**: 判断ロジック（解釈・検証・保存）は Core、描画と入力（記録ビュー、メニューへの適用、タブ）は FolzioApp に置く（AGENTS.md）。
-メニュー項目は、`MainMenu.bind` が文言のために付けている識別子と同じ仕組みで、コマンド ID を `NSMenuItem` に結び付け、適用側が ID から引く（R2）。
+メニュー項目は、組み立てた各所が `MenuShortcutApplier.register(_:for:)` でコマンド ID に結び付け、適用側が登録表から引く（R2。`identifier` は文言の更新が使っているため使わない）。
