@@ -65,7 +65,7 @@
 - [ ] T023 作業ブランチに push し、保守者の依頼で PR を作ったら CI（`swift build`・`swift test`）の結果を GitHub MCP で確認して quickstart.md に記録する。性能テストはログの末尾で合否を確かめる
 - [ ] T024 [MANUAL] 保守者が quickstart.md の GUI の確認 Q1〜Q16 を日本語・英語で行い、結果（実行日・OS・合否）を報告する。報告を `specs/TAK-24-shortcut-customization/checklists/validation.md` に記録する（SC-121〜127）
 - [ ] T025 `speckit-converge` を実行し、追加のタスクがあれば実装と検証を繰り返す
-- [ ] T026 `README.md` と `README.ja.md` のキー表（⌘/、⌘1 / ⌘2、⌘+ など）の見出しまたは直前の文に「既定のキー。設定の「ショートカット」で変更できる」旨を同じコミットで両言語に入れる。`docs/usage.md`・`docs/usage.ja.md` にも同じ注記と、保存先の節への `shortcuts.overrides` を足す（公開版のため `specs/` などへのリンクは張らない）。構造を1対1で保ち、`scripts/check-readme-sync.sh master` を通す（AGENTS.md「README の英語版と日本語版」）
+- [X] T026 `README.md` と `README.ja.md` のキー表（⌘/、⌘1 / ⌘2、⌘+ など）の見出しまたは直前の文に「既定のキー。設定の「ショートカット」で変更できる」旨を同じコミットで両言語に入れる。`docs/usage.md`・`docs/usage.ja.md` にも同じ注記と、保存先の節への `shortcuts.overrides` を足す（公開版のため `specs/` などへのリンクは張らない）。構造を1対1で保ち、`scripts/check-readme-sync.sh master` を通す（AGENTS.md「README の英語版と日本語版」）
 - [ ] T027 PR の最後の作業として（`keyboard-and-menus.md` のツールバーのツールチップの表には「既定のキー。割り当てに従う」と注記する） `git merge origin/master` で最新の master を取り込み、ID の衝突を確かめてから、spec.md の「反映先」を `specs/product/window-layout.md`・`contracts/settings.md`・`contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映し、spec.md の冒頭に移行済み・凍結の注記を入れる。差分を保守者に示し、承認後にコミットする
 
 ## Dependencies
