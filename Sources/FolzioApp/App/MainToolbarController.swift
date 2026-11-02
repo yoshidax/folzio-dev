@@ -44,9 +44,9 @@ final class MainToolbarController: NSObject {
 
         toolbar.delegate = self
         toolbar.displayMode = .iconOnly
-        toolbar.allowsUserCustomization = false
-        toolbar.allowsDisplayModeCustomization = false
-        toolbar.autosavesConfiguration = false
+        toolbar.allowsUserCustomization = true
+        toolbar.allowsDisplayModeCustomization = true
+        toolbar.autosavesConfiguration = true
 
         sizeSlider.minValue = ViewSettings.minimumThumbnailSize
         sizeSlider.maxValue = ViewSettings.maximumThumbnailSize
@@ -91,6 +91,14 @@ final class MainToolbarController: NSObject {
         }
         observeEditingAvailability()
         observeHistoryAvailability()
+        logToolbarSpike("after init")
+    }
+
+    // TAK-23 SPIKE (temporary, remove in T005): prints the current toolbar item order to find where the saved
+    // configuration stops being applied. It is not wrapped in `#if DEBUG` because `make-app.sh` builds release.
+    func logToolbarSpike(_ phase: String) {
+        let identifiers = toolbar.items.map { $0.itemIdentifier.rawValue }.joined(separator: ", ")
+        NSLog("[TAK-23 spike] %@: [%@] isVisible=%ld", phase, identifiers, toolbar.isVisible ? 1 : 0)
     }
 
     @objc private func displayLanguageDidChange() {

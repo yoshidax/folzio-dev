@@ -40,6 +40,13 @@ final class MainWindowController: NSWindowController {
         fileList.isToolbarShown = showsToolbar
         window.toolbarStyle = .unified
         window.toolbar = toolbarController.toolbar
+        // TAK-23 SPIKE (temporary, remove in T005).
+        toolbarController.logToolbarSpike("after window.toolbar assignment")
+        DispatchQueue.main.async { [weak toolbarController] in
+            MainActor.assumeIsolated {
+                toolbarController?.logToolbarSpike("next run loop")
+            }
+        }
 
         let dividerWidth = splitViewController.splitView.dividerThickness
         window.minSize = NSSize(width: 720 + dividerWidth * 2, height: 400)
