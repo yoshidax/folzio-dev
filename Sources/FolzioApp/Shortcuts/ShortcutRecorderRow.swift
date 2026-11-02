@@ -62,13 +62,17 @@ final class ShortcutRecorderRow: NSView {
     let recordButton = ShortcutRecordButton()
     let resetButton: NSButton = ShortcutResetButton()
 
-    private let nameLabel = NSTextField(labelWithString: "")
+    private let nameLabel = NSTextField(wrappingLabelWithString: "")
     private let keyLabel = NSTextField(labelWithString: "")
     private let changedLabel = NSTextField(labelWithString: "")
     private let errorLabel = NSTextField(wrappingLabelWithString: "")
     private var keyText = ""
     private var isChanged = false
     private(set) var isRecording = false
+
+    private static let nameColumnWidth: CGFloat = 200
+    private static let keyColumnWidth: CGFloat = 120
+    private static let changedColumnWidth: CGFloat = 56
 
     var onRecordTapped: ((ShortcutCommandID) -> Void)?
     var onResetTapped: ((ShortcutCommandID) -> Void)?
@@ -78,12 +82,18 @@ final class ShortcutRecorderRow: NSView {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
 
-        nameLabel.lineBreakMode = .byTruncatingTail
-        nameLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        // Every column has a fixed width, so the columns line up in every row whatever the text length or language.
+        // A long command name wraps to a second line instead of pushing the other columns (FR-257).
+        nameLabel.lineBreakMode = .byWordWrapping
+        nameLabel.maximumNumberOfLines = 2
+        nameLabel.preferredMaxLayoutWidth = Self.nameColumnWidth
+        nameLabel.setContentHuggingPriority(.required, for: .horizontal)
+        nameLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
 
         keyLabel.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .medium)
         keyLabel.alignment = .left
+        keyLabel.lineBreakMode = .byTruncatingTail
+        keyLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         changedLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         changedLabel.textColor = .secondaryLabelColor
         changedLabel.setAccessibilityElement(false)
@@ -119,9 +129,9 @@ final class ShortcutRecorderRow: NSView {
             column.bottomAnchor.constraint(equalTo: bottomAnchor),
             line.widthAnchor.constraint(equalTo: column.widthAnchor),
             errorLabel.widthAnchor.constraint(equalTo: column.widthAnchor),
-            nameLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 140),
-            keyLabel.widthAnchor.constraint(equalToConstant: 120),
-            changedLabel.widthAnchor.constraint(equalToConstant: 64),
+            nameLabel.widthAnchor.constraint(equalToConstant: Self.nameColumnWidth),
+            keyLabel.widthAnchor.constraint(equalToConstant: Self.keyColumnWidth),
+            changedLabel.widthAnchor.constraint(equalToConstant: Self.changedColumnWidth),
         ])
     }
 
