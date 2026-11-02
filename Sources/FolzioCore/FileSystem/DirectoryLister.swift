@@ -120,7 +120,7 @@ public struct DirectoryLister: DirectoryListing {
     }
 
     /// Builds a zip file row. Shared with `FileNameSearcher` so listings and search results use the same values
-    /// (FR-270).
+    /// (FR-279).
     static func archiveRow(at url: URL, kindNames: KindNames) -> MediaFile {
         archiveRow(at: url, values: try? url.resourceValues(forKeys: mediaKeys), kindNames: kindNames)
     }

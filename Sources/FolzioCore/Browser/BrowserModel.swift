@@ -175,7 +175,7 @@ public final class BrowserModel {
     /// Criteria of the current search. Used to enumerate the new location after a rename (R63).
     private var searchPattern: SearchPattern?
     /// Whether the current search matches zip files. Fixed from `showsZipFiles` when the search starts, so toggling
-    /// the setting later does not change the running search or its results (FR-269).
+    /// the setting later does not change the running search or its results (FR-278).
     private var searchIncludesArchives = false
     /// Folder renames during the current search. Rebases URLs of results that arrive later (R63).
     private var searchLedger = SearchRenameLedger()
@@ -372,7 +372,7 @@ public final class BrowserModel {
         let old = allFiles[index]
         let newKind: ListItemKind
         if old.kind == .archive {
-            // A zip file stays in the results only while its new name still has the `.zip` extension (FR-272).
+            // A zip file stays in the results only while its new name still has the `.zip` extension (FR-281).
             guard DirectoryLister.isArchive(newURL) else {
                 removeSearchResults([oldURL])
                 return
@@ -592,7 +592,7 @@ public final class BrowserModel {
         case .archive:
             guard listing.archive == nil else { return }
             // From search results, the zip's folder (not the pre-search folder) becomes the current folder and the
-            // history records the zip root as a new location (FR-271).
+            // history records the zip root as a new location (FR-280).
             await openArchive(file.url, fromSearchResults: isShowingSearchResults)
         case .directory:
             guard let location = listing.archive,
@@ -967,7 +967,7 @@ public final class BrowserModel {
     private func rebuildListing() {
         // Apply the zip visibility once after the media type filter. Does not change `allFiles` (FR-095, R46).
         // Search results are exempt: whether they contain zip files was decided when the search started, and
-        // toggling the setting afterwards does not change existing results (FR-269).
+        // toggling the setting afterwards does not change existing results (FR-278).
         let mediaFiltered = mediaTypeFilter.apply(to: allFiles)
         let filtered = isShowingSearchResults
             ? mediaFiltered

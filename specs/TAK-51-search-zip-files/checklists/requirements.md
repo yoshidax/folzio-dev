@@ -32,6 +32,6 @@
 ## Notes
 
 - Issue の「検討事項」4点は保守者に確認し、spec.md の Clarifications に記録した（2026-11-02）。
-- 既存 ID との整合: FR-269〜FR-272、SC-133〜SC-138、A-164〜A-169、US51〜US53 は、`specs/product/` の最大値（FR-268、SC-132、A-163、US50）の次から採番した。
+- 既存 ID との整合: FR-278〜FR-281、SC-139〜SC-144、A-171〜A-176、US54〜US56 は、`specs/product/` の最大値（2026-11-02 に master の TAK-46・47・49 を取り込んだ後の FR-277、SC-138、EC-190、A-170、US53）の次から採番した。最初は FR-269・SC-133・A-164・US51 から採番していたが、master の別の feature と衝突したため、未マージの本 feature 側を振り直した。
   反映の直前に master を取り込み、別の feature との衝突を確認する（`docs_private/cloud-agent-workflow.md` 7 章）。
-- EC は反映時に EC-188 から採番する（spec.md に ID を振っていない）。
+- EC は反映時に EC-191 から採番する（spec.md に ID を振っていない）。

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Searches for supported media files, folders, and (when requested) zip files whose names match at every level
-/// below the search root (FR-083, 085, 139, 269; research.md R1).
+/// below the search root (FR-083, 085, 139, 278; research.md R1).
 public protocol FileNameSearching: Sendable {
     /// Yields matching media files and folders in small batches and finishes the stream after traversing every level.
     /// Terminating the stream (including cancellation) stops enumeration.
@@ -205,7 +205,7 @@ public struct FileNameSearcher: FileNameSearching {
         if let kind {
             return DirectoryLister.mediaFile(at: rebase(url), kind: kind)
         }
-        // Only the name of a zip is matched; its contents are never opened (FR-083, 269).
+        // Only the name of a zip is matched; its contents are never opened (FR-083, 278).
         return DirectoryLister.archiveRow(at: rebase(url), kindNames: kindNames)
     }
 }

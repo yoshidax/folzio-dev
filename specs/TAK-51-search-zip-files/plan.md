@@ -31,14 +31,14 @@ AGENTS.md の【共通】規則に反しない。Core のみで判断し、App �
 | 検索の実行 | `Sources/FolzioCore/Search/FileNameSearcher.swift` | `.zip`（大文字小文字を区別しない）のファイルを、`includesArchives` のときだけ `.archive` の行で返す。コメントの「zip を開かない」を更新する |
 | 行の生成 | `Sources/FolzioCore/FileSystem/DirectoryLister.swift` | `.archive` の行の生成を、検索と共有する static に取り出す（フォルダの行 `folderRow` と同じ方式） |
 | 検索の開始と固定 | `Sources/FolzioCore/Browser/BrowserModel.swift` | `startSearch` で `showsZipFiles` を `searchIncludesArchives` として保持し、`startSearchStream`（名前変更後の追加の列挙を含む）で `SearchRequest` に渡す。`resetForNavigation` で破棄する |
-| 一覧の構築 | 同上 `rebuildListing` | 検索結果の表示中は `ZipFileVisibility` を適用しない（FR-269） |
-| 開く | 同上 `openItem` / `openArchive` | 検索結果の zip を開くとき、`listing.folder` を zip を含むフォルダにし、ツリー同期を要求し、`.openedSearchResultFolder` で位置の変更を通知する（FR-271） |
-| 名前の変更 | 同上 `didRenameItem` | `.archive` の行は新しい名前の拡張子が `.zip` の間だけ残す。それ以外は外す（FR-272） |
+| 一覧の構築 | 同上 `rebuildListing` | 検索結果の表示中は `ZipFileVisibility` を適用しない（FR-278） |
+| 開く | 同上 `openItem` / `openArchive` | 検索結果の zip を開くとき、`listing.folder` を zip を含むフォルダにし、ツリー同期を要求し、`.openedSearchResultFolder` で位置の変更を通知する（FR-280） |
+| 名前の変更 | 同上 `didRenameItem` | `.archive` の行は新しい名前の拡張子が `.zip` の間だけ残す。それ以外は外す（FR-281） |
 | App | `Sources/FolzioApp/FileList/*` | 原則変更なし。`ListItemCommands.canOpenContainer`（`opensAsContainer`）が `.archive` を含むため、「中を表示」は有効になる。確認と、必要なら検索結果のメニューを調整する |
 
 ## 設計上の判断
 
-1. **設定の固定**: 検索の開始時の `showsZipFiles` を `BrowserModel` に保持する（A-166）。`SearchRequest` に載せるので、Core 単体でテストできる。
+1. **設定の固定**: 検索の開始時の `showsZipFiles` を `BrowserModel` に保持する（A-173）。`SearchRequest` に載せるので、Core 単体でテストできる。
 2. **フィルタの適用範囲**: 通常の一覧にだけ `ZipFileVisibility` を適用し、検索結果と zip の中には適用しない。zip の中には `.archive` の行がなく影響しない。
 3. **検索結果から zip を開く**: `openArchive` は現在 `listing.folder` を引き継ぐ。検索結果では `listing.folder` が検索前の場所になるため、
    zip の親フォルダに置き換える。ツリー同期はフォルダの行と同じ `TreeSyncRequest` を使い、ツリーに表示されない場合の EC-102 は既存の処理に任せる（research.md R1）。

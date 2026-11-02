@@ -12,7 +12,7 @@ public struct SearchRequest: Sendable {
     /// Log where directories are recorded immediately before enumeration matches them
     public var visits: SearchVisitLog
     /// Whether zip files (`.zip`) are matched by name. Fixed when the search starts from the "Show Zip Files"
-    /// setting and does not change while the search runs (FR-269). The contents of a zip are never searched.
+    /// setting and does not change while the search runs (FR-278). The contents of a zip are never searched.
     public var includesArchives: Bool
 
     public init(

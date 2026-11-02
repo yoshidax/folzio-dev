@@ -26,7 +26,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.files.map(\.url) == [kept.url])
     }
 
-    // MARK: - Zip Files in Search Results (TAK-51; FR-269–272)
+    // MARK: - Zip Files in Search Results (TAK-51; FR-278–281)
 
     private final class EventLog {
         var events: [LocationEvent] = []
@@ -58,7 +58,7 @@ struct BrowserModelSearchTests {
         #expect(env.searcher.includesArchives == [false, true])
     }
 
-    @Test("Toggling the zip setting during a search leaves its results and count unchanged (FR-269)")
+    @Test("Toggling the zip setting during a search leaves its results and count unchanged (FR-278)")
     func togglingZipSettingKeepsExistingResults() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -84,7 +84,7 @@ struct BrowserModelSearchTests {
         #expect(env.searcher.includesArchives == [true, false])
     }
 
-    @Test("Results that contain only zip files are not empty, and selecting one clears the preview (FR-270)")
+    @Test("Results that contain only zip files are not empty, and selecting one clears the preview (FR-279)")
     func zipOnlyResultsAreListed() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -100,7 +100,7 @@ struct BrowserModelSearchTests {
         #expect(isEmptyPreview(env.model.preview))
     }
 
-    @Test("The media type filter keeps zip rows and shows the filtered message when no media remains (FR-270)")
+    @Test("The media type filter keeps zip rows and shows the filtered message when no media remains (FR-279)")
     func mediaTypeFilterKeepsZipRows() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -117,7 +117,7 @@ struct BrowserModelSearchTests {
         #expect(env.model.listing.search?.totalCount == 2)
     }
 
-    @Test("Opening a zip row ends the search, makes its folder current, syncs the tree, and reports it (FR-271)")
+    @Test("Opening a zip row ends the search, makes its folder current, syncs the tree, and reports it (FR-280)")
     func openingZipFromSearchResults() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
@@ -166,7 +166,7 @@ struct BrowserModelSearchTests {
         if case .navigated = log.events[0] {} else { Issue.record("Expected a navigated event: \(log.events)") }
     }
 
-    @Test("A renamed zip row stays while it keeps the .zip extension and is removed otherwise (FR-272)")
+    @Test("A renamed zip row stays while it keeps the .zip extension and is removed otherwise (FR-281)")
     func renamingZipRow() async throws {
         let env = try makeEnv()
         defer { env.cleanup() }
