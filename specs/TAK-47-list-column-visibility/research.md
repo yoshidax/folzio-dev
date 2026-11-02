@@ -21,5 +21,5 @@
 - **Alternatives**: フォルダを常に末尾に置く案は、Finder と異なるため採らない。
 
 ## R5 保存形式
-- **Decision**: `view.list.visibleColumns` に列の rawValue の配列を保存する。読み込み時に既知の列だけを採り、`name` を補う。キーが無ければ既定。
+- **Decision**: `view.list.visibleColumns` に列の rawValue の配列を保存する。読み込み時に既知の列だけを採り、キーが無ければ既定。
 - **Rationale**: 壊れた値・未知の列を無視でき（US49-AS7）、将来の列の追加と互換性を保てる。

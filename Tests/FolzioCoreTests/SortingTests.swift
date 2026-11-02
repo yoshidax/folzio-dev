@@ -27,6 +27,49 @@ struct SortingTests {
         #expect(descending.map(\.name) == ["new.jpg", "old.jpg", "none.jpg"])
     }
 
+    @Test("Nil modification dates sort last in both ascending and descending order")
+    func placesMissingModificationDateLast() {
+        let old = Date(timeIntervalSince1970: 100)
+        let new = Date(timeIntervalSince1970: 200)
+        let files = [file("none.jpg"), file("new.jpg", modified: new), file("old.jpg", modified: old)]
+
+        let ascending = sorted(files, by: SortOrder(column: .modificationDate, ascending: true))
+        #expect(ascending.map(\.name) == ["old.jpg", "new.jpg", "none.jpg"])
+
+        let descending = sorted(files, by: SortOrder(column: .modificationDate, ascending: false))
+        #expect(descending.map(\.name) == ["new.jpg", "old.jpg", "none.jpg"])
+    }
+
+    @Test("Folders count as 0 bytes when sorting by size: first when ascending, last when descending")
+    func sortsFoldersAsZeroBytes() {
+        let files = [
+            file("big.jpg", size: 2_000), folder("b", fileSize: 99_999), file("small.jpg", size: 1_000), folder("a"),
+        ]
+
+        let ascending = sorted(files, by: SortOrder(column: .size, ascending: true))
+        #expect(ascending.map(\.name) == ["a", "b", "small.jpg", "big.jpg"])
+
+        let descending = sorted(files, by: SortOrder(column: .size, ascending: false))
+        #expect(descending.map(\.name) == ["big.jpg", "small.jpg", "a", "b"])
+    }
+
+    @Test("Equal sizes use natural name order as the secondary key")
+    func breaksSizeTiesByName() {
+        let files = [file("b.jpg", size: 5), file("a10.jpg", size: 5), file("a2.jpg", size: 5)]
+        let result = sorted(files, by: SortOrder(column: .size, ascending: false))
+        #expect(result.map(\.name) == ["a2.jpg", "a10.jpg", "b.jpg"])
+    }
+
+    @Test("Only files and zip files have a size to show")
+    func hasFileSizeByKind() {
+        #expect(file("a.jpg").hasFileSize)
+        #expect(!folder("a").hasFileSize)
+        let kinds: [ListItemKind] = [.archive, .directory, .parent]
+        #expect(kinds.map { kind in
+            MediaFile(url: URL(fileURLWithPath: "/tmp/x"), name: "x", kind: kind, typeDescription: "", creationDate: nil, fileSize: 1).hasFileSize
+        } == [true, false, false])
+    }
+
     @Test("Equal values use natural name order as the secondary key")
     func breaksTiesByName() {
         let sameDate = Date(timeIntervalSince1970: 100)
@@ -191,6 +234,8 @@ struct SortingTests {
     private func file(
         _ name: String,
         created: Date? = nil,
+        modified: Date? = nil,
+        size: Int64 = 0,
         typeDescription: String = "JPEG イメージ"
     ) -> MediaFile {
         MediaFile(
@@ -199,7 +244,19 @@ struct SortingTests {
             kind: .media(MediaKind(fileExtension: (name as NSString).pathExtension) ?? .jpeg),
             typeDescription: typeDescription,
             creationDate: created,
-            fileSize: 0
+            modificationDate: modified,
+            fileSize: size
+        )
+    }
+
+    private func folder(_ name: String, fileSize: Int64 = 0) -> MediaFile {
+        MediaFile(
+            url: URL(fileURLWithPath: "/tmp/\(name)"),
+            name: name,
+            kind: .folder,
+            typeDescription: "Folder",
+            creationDate: nil,
+            fileSize: fileSize
         )
     }
 }

@@ -457,6 +457,12 @@
 "list.column.kind" = "種類";
 
 /* List view column headings. Also used in the sort menu */
+"list.column.size" = "サイズ";
+
+/* List view column headings. Also used in the sort menu */
+"list.column.modificationDate" = "変更日";
+
+/* List view column headings. Also used in the sort menu */
 "list.column.location" = "場所";
 
 /* Selected column in the sort menu (ascending). %1$@ is the column name */

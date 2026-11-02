@@ -10,7 +10,7 @@ scripts/dev/check-skill-sync.sh
 `swift build` / `swift test` は CI（macOS）で実行する。
 
 ## 自動テスト（CI）
-- 列の設定: 既定、`name` の補完、未知の列・壊れた値の無視、保存と復元（SettingsStore）
+- 列の設定: 既定、未知の列・壊れた値の無視、保存と復元（SettingsStore）
 - 並べ替え: サイズ・変更日の昇順・降順、フォルダは 0 バイト扱い（昇順で先頭・降順で末尾）、変更日 nil は末尾、同値は名前の自然順（Sorting）
 - 取得: `DirectoryLister` が変更日を返す、zip の項目の更新日時（ArchiveIndex）
 - 書式: サイズ文字列（フォルダは `--`、0 バイトのファイル）

@@ -457,6 +457,12 @@
 "list.column.kind" = "Kind";
 
 /* List view column headings. Also used in the sort menu */
+"list.column.size" = "Size";
+
+/* List view column headings. Also used in the sort menu */
+"list.column.modificationDate" = "Date Modified";
+
+/* List view column headings. Also used in the sort menu */
 "list.column.location" = "Location";
 
 /* Selected column in the sort menu (ascending). %1$@ is the column name */

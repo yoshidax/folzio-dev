@@ -131,6 +131,9 @@ public final class BrowserModel {
         }
     }
 
+    /// Columns of the list view shown besides the name column. Changes are persisted (TAK-47).
+    public private(set) var visibleColumns: Set<ListColumn>
+
     private let lister: any DirectoryListing
     private let decoder: any ImageDecoding
     private let cache: DecodedImageCache
@@ -216,6 +219,7 @@ public final class BrowserModel {
         self.searcher = searcher ?? FileNameSearcher(kindNames: kindNames)
         self.sortOrder = settings.viewSettings.sortOrder
         self.showsZipFiles = settings.viewSettings.showsZipFiles
+        self.visibleColumns = settings.viewSettings.visibleColumns
         self.screenMaxPixel = 4096
 
         let folder = settings.viewSettings.lastFolder
@@ -705,6 +709,26 @@ public final class BrowserModel {
             schedulePrefetch(around: restricted.focused)
         } else {
             select(restricted.selected, focused: restricted.focused)
+        }
+    }
+
+    /// Shows or hides a list column and persists the choice. Hiding the column the list is sorted by switches to sorting
+    /// by name, in the direction the user last sorted by name in (ascending if never), as Finder does (FR-259).
+    public func setColumn(_ column: ListColumn, visible: Bool) {
+        var columns = visibleColumns
+        if visible {
+            columns.insert(column)
+        } else {
+            columns.remove(column)
+        }
+        guard columns != visibleColumns else { return }
+        visibleColumns = columns
+        var viewSettings = settings.viewSettings
+        viewSettings.visibleColumns = columns
+        settings.viewSettings = viewSettings
+
+        if !visible, sortOrder.column.listColumn == column {
+            sortOrder = SortOrder(column: .name, ascending: viewSettings.nameSortAscending)
         }
     }
 

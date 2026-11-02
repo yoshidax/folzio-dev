@@ -38,7 +38,7 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 
 ## File List and Layouts
 
-- Switching between list and thumbnail views, adjustable thumbnail size, and sorting by column header
+- Switching between list and thumbnail views, adjustable thumbnail size, sorting by column header, and showing or hiding the Date Created, Kind, Size, and Date Modified columns (right-click the column header)
 
 - A toolbar with view-mode buttons and a thumbnail-size slider (hidden by default. Toggle it with ⇧⌘T; its state is restored on the next launch). Right-click the toolbar and choose "Customize Toolbar…" to rearrange the button groups by dragging (a group such as Back/Forward or Thumbnails/List moves as one unit), remove or re-add them, add spaces, and change the display mode. The order and display mode are restored on the next launch
 

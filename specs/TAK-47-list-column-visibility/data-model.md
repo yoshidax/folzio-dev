@@ -1,12 +1,12 @@
 # Data Model: リスト形式の列の表示・非表示
 
 ## ListColumn（FolzioCore）
-`name` / `creationDate` / `kind` / `size` / `modificationDate`。この順が表示順。場所（`location`）は含まない（検索中の自動列）。
+`creationDate` / `kind` / `size` / `modificationDate`。この順がメニューと列の順。ファイル名は列として常に表示し、ポップアップの対象ではないため含めない。場所（`location`）は含まない（検索中の自動列）。
 
 ## ListColumnVisibility / ViewSettings.visibleColumns
-- 表示する `ListColumn` の集合。`name` は常に含まれる（ポップアップの項目にもない）。
+- 表示する `ListColumn` の集合（ファイル名は常に表示のため含めない。空もあり得る）。
 - 既定: `{name, creationDate, kind}`。
-- 保存: `UserDefaults` の `view.list.visibleColumns`（rawValue の文字列配列）。読み込み時、未知の値を捨て、`name` を補う。型が違うときは既定。
+- 保存: `UserDefaults` の `view.list.visibleColumns`（rawValue の文字列配列）。読み込み時、未知の値（`name` を含む）を捨てる。型が違うときは既定。
 
 ## MediaFile
 - 追加: `modificationDate: Date?`（既定 nil）。通常のファイル・フォルダは `contentModificationDate`、zip の項目は entry の更新日時。

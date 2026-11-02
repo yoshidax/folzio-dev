@@ -196,6 +196,8 @@ public enum TextKey: String, CaseIterable, Sendable {
     case listColumnName = "list.column.name"
     case listColumnCreationDate = "list.column.creationDate"
     case listColumnKind = "list.column.kind"
+    case listColumnSize = "list.column.size"
+    case listColumnModificationDate = "list.column.modificationDate"
     case listColumnLocation = "list.column.location"
     case listSortAscending = "list.sort.ascending"
     case listSortDescending = "list.sort.descending"
@@ -735,7 +737,8 @@ public enum TextKey: String, CaseIterable, Sendable {
         case .settingsTransitionNone, .settingsTransitionCrossfade,
              .settingsTransitionSlide, .settingsTransitionZoom:
             return "Transition options"
-        case .listColumnName, .listColumnCreationDate, .listColumnKind, .listColumnLocation:
+        case .listColumnName, .listColumnCreationDate, .listColumnKind, .listColumnSize,
+             .listColumnModificationDate, .listColumnLocation:
             return "List view column headings. Also used in the sort menu"
         case .listSortAscending:
             return "Selected column in the sort menu (ascending). The value is the column name"
