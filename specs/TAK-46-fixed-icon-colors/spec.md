@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-02
 
-**Status**: Draft（設計レビュー待ち）
+**Status**: Approved — 実装済み、product へ移行（PR 作成前。CI 未確認）
 
 **Input**: [TAK-46](https://linear.app/takyoshida/issue/TAK-46/リストビューのフォルダアイコンを青固定にzip-ファイルのアイコンを黄色固定にする)「リストビューのフォルダアイコンを青固定に、zip ファイルのアイコンを黄色固定にする」。
 会話で「ISSUE TAK-46に対応して」と依頼され、次の点を保守者が決めた。

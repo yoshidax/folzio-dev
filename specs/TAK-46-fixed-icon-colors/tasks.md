@@ -27,7 +27,7 @@
 - [x] T008 `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh` を実行して通す
 - [x] T009 コミットして作業ブランチに push する。PR は保守者の依頼があるまで作らない
 - [ ] T010 CI（GUI 確認は 2026-11-02 に保守者が実施し、問題なし。CI は PR 作成後） の結果（`swift build`・`swift test`）と、保守者の GUI 確認（quickstart.md）を記録する。**GUI 確認は保守者に依頼し、未実施のまま完了にしない**
-- [ ] T011 実装と検証の完了後、変更点を `specs/product/file-list.md` へ反映する（最新の master を取り込み、ID の衝突を確認する。反映内容を示し、承認を得てからコミットする）
+- [x] T011 実装と検証の完了後、変更点を `specs/product/file-list.md` へ反映する（最新の master を取り込み、ID の衝突を確認する。反映内容を示し、承認を得てからコミットする）
 
 ## 依存関係
 
