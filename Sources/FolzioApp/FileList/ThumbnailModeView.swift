@@ -9,16 +9,17 @@ private final class ThumbnailCollectionView: NSCollectionView {
     /// Takes control of the Quick Look panel while this view has the focus (FR-247, research.md R2).
     var quickLook: QuickLookCoordinator?
 
-    override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool {
-        quickLook != nil
+    // The panel control methods are not main-actor isolated in the SDK, but AppKit calls them on the main thread.
+    nonisolated override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool {
+        MainActor.assumeIsolated { quickLook != nil }
     }
 
-    override func beginPreviewPanelControl(_ panel: QLPreviewPanel!) {
-        quickLook?.attach(to: panel)
+    nonisolated override func beginPreviewPanelControl(_ panel: QLPreviewPanel!) {
+        MainActor.assumeIsolated { quickLook?.attach(to: panel) }
     }
 
-    override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
-        quickLook?.detach(from: panel)
+    nonisolated override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
+        MainActor.assumeIsolated { quickLook?.detach(from: panel) }
     }
     var onArrowKey: ((NSEvent.SpecialKey, NSEvent.ModifierFlags) -> Bool)?
     var onReturnKey: (() -> Bool)?
