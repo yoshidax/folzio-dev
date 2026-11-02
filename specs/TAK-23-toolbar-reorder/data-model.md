@@ -13,7 +13,7 @@
 | `defaultOrder` | 既定の並び（FR-006）。末尾に `flexibleSpace` |
 | `normalized(saved:)` | 保存した識別子の配列を受け取り、未知の識別子を除き、セットの重複（R-4 で不可と分かった場合）を除いた配列を返す。結果が空・不正のときは `defaultOrder` |
 
-検証規則: 空配列・型が配列でない値は、既定の並びを返す（FR-005）。未知の識別子は除く。同じセットの重複は最初の1つだけ残す（標準では `NSToolbarItem.allowsDuplicatesInToolbar` が既定で `false` の見込みで、実機の確認は T011）。スペース類は複数回出現してよい。ユーザーが外したセットは、保存した並びに無くてもそのまま外れたままにする。実装は `Sources/FolzioCore/Settings/ToolbarLayout.swift`。
+検証規則: 空配列・型が配列でない値は、既定の並びを返す（FR-005）。未知の識別子を1つでも含む配列は不正な値として、既定の並びを返す（FR-005）。同じセットの重複は最初の1つだけ残す（標準では `NSToolbarItem.allowsDuplicatesInToolbar` が既定で `false` の見込みで、実機の確認は T011）。スペース類は複数回出現してよい。ユーザーが外したセットは、保存した並びに無くてもそのまま外れたままにする。実装は `Sources/FolzioCore/Settings/ToolbarLayout.swift`。
 
 ## 保存キー（R-3 の結果で1つだけ追加）
 

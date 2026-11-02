@@ -31,10 +31,10 @@ public enum ToolbarLayout {
 
     /// Returns a valid order for a value read from the saved settings.
     ///
-    /// The result drops identifiers that are not allowed and repeated button sets (only the first of a set is kept).
-    /// Space items may repeat. A value that is not an array of strings, or a non-empty one that has no allowed
-    /// identifier left, gives `defaultOrder`. A set that is missing from a saved order stays missing, and an empty
-    /// array stays empty, because the user may remove every set.
+    /// A value that is not an array of strings, or an array with an identifier that is not allowed, is treated as
+    /// broken and gives `defaultOrder` (FR-005). Space items may repeat, and repeated button sets keep only their
+    /// first occurrence. A set that is missing from a saved order stays missing, and an empty array stays empty,
+    /// because the user may remove every set.
     ///
     /// - Parameter saved: The raw value that was stored, such as `UserDefaults.object(forKey:)`.
     public static func normalized(saved: Any?) -> [String] {
@@ -43,12 +43,12 @@ public enum ToolbarLayout {
         var seenSets = Set<String>()
         var result: [String] = []
         for identifier in identifiers {
-            guard allowed.contains(identifier) else { continue }
+            guard allowed.contains(identifier) else { return defaultOrder }
             if setIdentifiers.contains(identifier) {
                 guard seenSets.insert(identifier).inserted else { continue }
             }
             result.append(identifier)
         }
-        return result.isEmpty ? defaultOrder : result
+        return result
     }
 }

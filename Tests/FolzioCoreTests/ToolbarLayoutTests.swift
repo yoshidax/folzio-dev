@@ -30,10 +30,10 @@ struct ToolbarLayoutTests {
         #expect(ToolbarLayout.normalized(saved: saved) == saved)
     }
 
-    @Test("Unknown identifiers are dropped")
-    func dropsUnknownIdentifiers() {
-        let saved = ["history", "futureItem", "viewMode"]
-        #expect(ToolbarLayout.normalized(saved: saved) == ["history", "viewMode"])
+    @Test("An order with an unknown identifier is broken and gives the default order")
+    func unknownIdentifierGivesDefaultOrder() {
+        #expect(ToolbarLayout.normalized(saved: ["history", "futureItem", "viewMode"]) == ToolbarLayout.defaultOrder)
+        #expect(ToolbarLayout.normalized(saved: ["unknown", "history"]) == ToolbarLayout.defaultOrder)
     }
 
     @Test("A repeated button set keeps only its first occurrence")
@@ -55,8 +55,4 @@ struct ToolbarLayoutTests {
         #expect(ToolbarLayout.normalized(saved: ["history", 1] as [Any]) == ToolbarLayout.defaultOrder)
     }
 
-    @Test("An order with no allowed identifier gives the default order")
-    func onlyUnknownIdentifiersGiveDefaultOrder() {
-        #expect(ToolbarLayout.normalized(saved: ["a", "b"]) == ToolbarLayout.defaultOrder)
-    }
 }
