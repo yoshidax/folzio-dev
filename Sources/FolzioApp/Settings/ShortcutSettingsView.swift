@@ -10,7 +10,7 @@ private final class ResetAllButton: NSButton {
     override var canBecomeKeyView: Bool { true }
 }
 
-/// The Shortcuts tab of the Settings window: every customizable command with its current key (FR-247, FR-249).
+/// The Shortcuts tab of the Settings window: every customizable command with its current key (FR-255, FR-257).
 @MainActor
 final class ShortcutSettingsView: NSView {
     /// The height of the tab's content. The list scrolls inside it.
@@ -44,7 +44,7 @@ final class ShortcutSettingsView: NSView {
         fatalError("init(coder:) is not supported")
     }
 
-    /// The controls in Tab order: each row's Record and Reset buttons, then Reset All (FR-257).
+    /// The controls in Tab order: each row's Record and Reset buttons, then Reset All (FR-265).
     var keyViews: [NSView] {
         rows.flatMap { [$0.recordButton, $0.resetButton] } + [resetAllButton]
     }
@@ -195,7 +195,7 @@ final class ShortcutSettingsView: NSView {
     private func captured(_ combination: KeyCombination, for command: ShortcutCommandID) {
         guard recordingCommand == command, let target = row(for: command) else { return }
         if let error = store.assign(combination, to: command) {
-            // Stay in recording so that the next key can be tried (FR-250, FR-252).
+            // Stay in recording so that the next key can be tried (FR-258, FR-260).
             target.showError(message(for: error))
             return
         }

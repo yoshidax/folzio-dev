@@ -2,10 +2,10 @@ import AppKit
 import FolzioCore
 import FolzioLocalization
 
-/// A button that captures the next key press while it is recording (FR-250).
+/// A button that captures the next key press while it is recording (FR-258).
 ///
 /// The window offers a key press to its view hierarchy before the main menu, so returning true from
-/// `performKeyEquivalent` keeps the menu from running the command that already uses the key (EC-170).
+/// `performKeyEquivalent` keeps the menu from running the command that already uses the key (EC-178).
 final class ShortcutRecordButton: NSButton {
     var isRecording = false
     var onCapture: ((KeyCombination) -> Void)?
@@ -146,7 +146,7 @@ final class ShortcutRecorderRow: NSView {
 
     private func renderKey(name: String) {
         keyLabel.stringValue = isRecording ? l10n.text(.settingsShortcutsRecording) : keyText
-        // Read the name, the key, and the state as one unit; the state is not conveyed by color alone (FR-257).
+        // Read the name, the key, and the state as one unit; the state is not conveyed by color alone (FR-265).
         let state = isChanged ? l10n.text(.settingsShortcutsChanged) : ""
         keyLabel.setAccessibilityLabel([name, state].filter { !$0.isEmpty }.joined(separator: ", "))
         keyLabel.setAccessibilityValue(keyLabel.stringValue)

@@ -19,7 +19,7 @@
 - [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined
 - [x] Edge cases are identified
-- [x] Scope is clearly bounded (A-149, A-156, FR-248, FR-256)
+- [x] Scope is clearly bounded (A-155, A-162, FR-256, FR-264)
 - [x] Dependencies and assumptions identified (TAK-20 の間隔、TAK-22 のショートカット一覧)
 
 ## Feature Readiness
@@ -31,5 +31,5 @@
 
 ## Notes
 
-- 対象コマンドの一覧と固定キーの一覧は plan で確定する（FR-248・256、A-151）。
+- 対象コマンドの一覧と固定キーの一覧は plan で確定する（FR-256・264、A-157）。
 - 推奨回答の採用は spec.md の Clarifications に記録した。設計レビューで確認する。

@@ -90,7 +90,7 @@ public struct SettingsStore {
 
     /// The user's shortcut overrides (command raw value → stored combination). A value that is not a dictionary
     /// reads as empty, and entries whose value is not a string are dropped. Setting an empty dictionary removes the key
-    /// (FR-254). Entries that are not valid assignments are dropped by `ShortcutAssignments`.
+    /// (FR-262). Entries that are not valid assignments are dropped by `ShortcutAssignments`.
     public var shortcutOverrides: [String: String] {
         get {
             (defaults.object(forKey: Keys.shortcutOverrides) as? [String: Any])?.compactMapValues { $0 as? String } ?? [:]

@@ -1,7 +1,7 @@
 import FolzioCore
 import FolzioLocalization
 
-/// Builds the toolbar tooltips and accessibility texts, inserting the current key of each command (FR-253).
+/// Builds the toolbar tooltips and accessibility texts, inserting the current key of each command (FR-261).
 @MainActor
 enum ToolbarShortcutText {
     /// The text for one of the toolbar keys whose translation takes the shortcut as its argument.

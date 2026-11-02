@@ -374,8 +374,8 @@ final class MainMenu {
         ]
         for (item, key) in bindings { bind(item, key) }
 
-        // Keys come from the shortcut assignments, not from the literals above (FR-253). Return (Rename) and the
-        // app and system keys (⌘Q, ⌘W, ⌘,, and the Edit menu basics) are not customizable (FR-248).
+        // Keys come from the shortcut assignments, not from the literals above (FR-261). Return (Rename) and the
+        // app and system keys (⌘Q, ⌘W, ⌘,, and the Edit menu basics) are not customizable (FR-256).
         let shortcutBindings: [(NSMenuItem, ShortcutCommandID)] = [
             (newFolderItem, .newFolder), (openItem, .open), (openContainerItem, .showContents),
             (goUpItem, .enclosingFolder), (addFavoriteItem, .addToFavorites), (searchItem, .find),

@@ -411,7 +411,7 @@ final class FileListViewController: NSViewController {
         refresh()
     }
 
-    /// Shows the current thumbnail size keys in the size bar's tooltips and accessibility texts (FR-253).
+    /// Shows the current thumbnail size keys in the size bar's tooltips and accessibility texts (FR-261).
     private func refreshSizeBarShortcutText() {
         let text = ToolbarShortcutText.text(.toolbarThumbnailSize)
         sizeLabel.toolTip = text
@@ -808,7 +808,7 @@ final class FileListViewController: NSViewController {
         viewMenu.addItem(zipVisibilityItem)
         zipVisibilityMenuItem = zipVisibilityItem
 
-        // Keys come from the shortcut assignments, not from the literals above (FR-253).
+        // Keys come from the shortcut assignments, not from the literals above (FR-261).
         let shortcutBindings: [(NSMenuItem, ShortcutCommandID)] = [
             (thumbnailsItem, .thumbnails), (listItem, .list), (zoomInItem, .largerThumbnails),
             (zoomOutItem, .smallerThumbnails), (imagesOnlyItem, .imagesOnly), (videosOnlyItem, .videosOnly),

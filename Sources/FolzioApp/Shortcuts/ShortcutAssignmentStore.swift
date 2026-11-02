@@ -2,13 +2,13 @@ import AppKit
 import FolzioCore
 
 extension Notification.Name {
-    /// Posted after the current shortcut assignments change (FR-253).
+    /// Posted after the current shortcut assignments change (FR-261).
     static let shortcutAssignmentsDidChange = Notification.Name("FolzioShortcutAssignmentsDidChange")
 }
 
 /// Holds the current shortcut assignments, saves them, and tells every display to refresh.
 ///
-/// Every menu, tooltip, and reference reads its keys from here, so that they cannot disagree (FR-253).
+/// Every menu, tooltip, and reference reads its keys from here, so that they cannot disagree (FR-261).
 @MainActor
 final class ShortcutAssignmentStore {
     static let shared = ShortcutAssignmentStore()

@@ -39,7 +39,7 @@ private final class KeyViewPopUpButton: NSPopUpButton {
 }
 
 /// The Settings window. Control-Tab and Control-Shift-Tab switch tabs without adding a stop to the Tab order of
-/// either tab (FR-247).
+/// either tab (FR-255).
 private final class SettingsWindow: NSWindow {
     /// Called with whether to go forward. Returns whether the key press was used.
     var onSwitchTab: ((Bool) -> Bool)?
@@ -62,7 +62,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
     }
 
     private let store: SettingsStore
-    /// The General tab: the settings that existed before the Shortcuts tab. Its layout is unchanged (FR-247).
+    /// The General tab: the settings that existed before the Shortcuts tab. Its layout is unchanged (FR-255).
     private var generalView = NSView()
     private let shortcutsView = ShortcutSettingsView(frame: .zero)
     private let tabSelector = NSSegmentedControl()
@@ -198,7 +198,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
     }
 
     override func showWindow(_ sender: Any?) {
-        // The Settings window always opens on the General tab (FR-247).
+        // The Settings window always opens on the General tab (FR-255).
         select(.general)
         syncFromStore()
         if !hasShownOnce {
@@ -351,7 +351,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         select(Tab(rawValue: sender.selectedSegment) ?? .general)
     }
 
-    /// Shows a tab. Recording stops, and an interval being edited is committed first (FR-250).
+    /// Shows a tab. Recording stops, and an interval being edited is committed first (FR-258).
     private func select(_ tab: Tab) {
         shortcutsView.cancelRecording()
         if tab != currentTab {
