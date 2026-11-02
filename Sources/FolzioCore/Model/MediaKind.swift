@@ -63,6 +63,12 @@ public enum ListItemKind: Sendable, Hashable {
         mediaKind?.isVideo ?? false
     }
 
+    /// Whether double-click opens the file in the app associated with it by the OS (FR-251).
+    /// Only media files in the file system qualify. Media inside a zip has no real file (A-150).
+    public func opensInDefaultApp(isBrowsingArchive: Bool) -> Bool {
+        isMedia && !isBrowsingArchive
+    }
+
     /// Whether double-click or ⌘↓ can open the row (`.archive`, `.folder`, `.directory`, `.parent`).
     public var opensAsContainer: Bool {
         switch self {

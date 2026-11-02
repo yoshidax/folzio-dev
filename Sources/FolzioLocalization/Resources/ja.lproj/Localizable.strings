@@ -830,6 +830,12 @@
 "shortcuts.condition.openDefault" = "ファイルリストで選択したファイル・フォルダを開きます。zipの中では使えません。";
 
 /* Action description in the shortcut reference */
+"shortcuts.entry.quickLook" = "選択したメディアをクイックルックで確認する";
+
+/* Availability note below a shortcut reference action */
+"shortcuts.condition.quickLook" = "ファイルリストで使えます。もう一度 Space を押すと閉じます。表示中は矢印キーで選択を移せます。zipの中では使えません。メディアをダブルクリックすると既定のアプリで開きます。";
+
+/* Action description in the shortcut reference */
 "shortcuts.entry.rename" = "選択項目の名前を変更する";
 
 /* Availability note below a shortcut reference action */
@@ -917,7 +923,7 @@
 "shortcuts.entry.videoPlay" = "動画を再生・一時停止する";
 
 /* Availability note below a shortcut reference action */
-"shortcuts.condition.videoPlay" = "標準の動画コントロールの操作です。ファイルリストからも使えます。";
+"shortcuts.condition.videoPlay" = "プレビューの動画にフォーカスがあるときの、標準の動画コントロールの操作です。ファイルリストでは Space でクイックルックを開きます。";
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.videoControls" = "動画のシーク・音量を変える";

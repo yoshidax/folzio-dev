@@ -36,6 +36,7 @@ public enum ShortcutID: String, CaseIterable, Sendable {
     case selection
     case extendSelection
     case openDefault
+    case quickLook
     case rename
     case copy
     case paste
@@ -133,6 +134,7 @@ public enum ShortcutCatalog {
         ShortcutEntry(id: .selection, keys: "↑ / ↓ / ← / →", section: .files),
         ShortcutEntry(id: .extendSelection, keys: "⇧↑ / ⇧↓ / ⇧← / ⇧→ / ⌘A", section: .files),
         ShortcutEntry(id: .openDefault, keys: "⌘O", section: .files, parts: [.command(.open)]),
+        ShortcutEntry(id: .quickLook, keys: "Space", section: .files),
         ShortcutEntry(id: .rename, keys: "Return", section: .files),
         ShortcutEntry(id: .copy, keys: "⌘C", section: .files),
         ShortcutEntry(id: .paste, keys: "⌘V / ⌥⌘V", section: .files, parts: [.text("⌘V / "), .command(.movePaste)]),
