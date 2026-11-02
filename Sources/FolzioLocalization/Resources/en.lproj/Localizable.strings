@@ -944,7 +944,7 @@
 "shortcuts.entry.videoSeek" = "Seek backward or forward by 5 seconds";
 
 /* Availability note below a shortcut reference action */
-"shortcuts.condition.videoSeek" = "For video in full screen or preview-only view.";
+"shortcuts.condition.videoSeek" = "For video shown in the preview.";
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.slideshowStart" = "Start a slideshow";

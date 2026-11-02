@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-02
 
-**Status**: Draft — 設計レビュー待ち
+**Status**: Approved — 実装済み、CI・実機確認待ち
 
 **Input**: [TAK-49](https://linear.app/takyoshida/issue/TAK-49)「通常表示のファイルリストとプレビューの表示中も、動画を < / > で5秒戻す・送れるようにする」。
 TAK-48 の PR（yoshidax/folzio-dev#37）の実機確認で、通常表示では `<` / `>` が効かないことが見つかった。現行の仕様（FR-033・FR-093）が
