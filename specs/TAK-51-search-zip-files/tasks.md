@@ -46,4 +46,4 @@
 - [x] T013 Cloud の検査を行う: `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`。新規・変更したコードのコメントは英語で書く。
 - [x] T014 作業ブランチに push し、保守者の依頼で PR を作って、CI（`swift build`、`swift test`）の成功を確認する。（PR は未作成のため、`workflow_dispatch` で `83feaf8` を実行し、成功を確認した。PR を作ったときの CI は、依頼があったときに確認する）
 - [x] T015 [MANUAL] 保守者が `quickstart.md` のシナリオ 1〜9 をローカルで確認し、結果を `specs/TAK-51-search-zip-files/checklists/validation.md` に記録する。GUI は Cloud で起動しない。
-- [ ] T016 実装と検証が終わった後に、`git merge origin/master` で最新の master を取り込み、spec.md の「反映先」の表に従って `specs/product/search.md`・`specs/product/zip.md` を更新する（ID の重複確認を含む。EC は EC-191 から採番）。spec.md の冒頭に凍結の注記を入れる。差分を保守者に示し、承認を得てからコミットする。
+- [x] T016 実装と検証が終わった後に、`git merge origin/master` で最新の master を取り込み、spec.md の「反映先」の表に従って `specs/product/search.md`・`specs/product/zip.md` を更新する（ID の重複確認を含む。EC は EC-191 から採番）。spec.md の冒頭に凍結の注記を入れる。差分を保守者に示し、承認を得てからコミットする。

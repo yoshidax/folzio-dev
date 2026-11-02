@@ -1,10 +1,14 @@
 # Feature Specification: ファイル名検索で zip ファイルも検索対象にする
 
+> **移行済み（2026-11-02）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-51 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> CI 結果、保守者の動作確認の報告は [checklists/validation.md](checklists/validation.md) と [quickstart.md](quickstart.md) を参照。
+
 **Feature Branch**: `claude/great-johnson-41kca1`（Cloud が指定した作業ブランチ。feature ディレクトリとは独立）
 
 **Created**: 2026-11-02
 
-**Status**: Draft
+**Status**: Approved — 実装・検証済み、product へ移行（マージ前）
 
 **Input**: [TAK-51](https://linear.app/takyoshida/issue/TAK-51/ファイル名検索で-zip-ファイルも検索対象にする)「ファイル名検索で zip ファイルも検索対象にする」。会話で「ISSUE TAK-51に対応してください」と依頼され、Issue の「検討事項」にあった次の点を保守者が決めた。
 
@@ -188,7 +192,7 @@ zip ファイルのファイル操作は FR-073（zip.md）に従う。US54〜US
 | A-171〜A-176 | 追加 | search.md |
 | A-79 | 削除 | search.md |
 | A-81 | 変更 | search.md |
-| EC（zip の名前が `x.zip` のフォルダ、壊れた zip、権限のない zip、検索中の切り替え、zip の中で始めた検索） | 追加 | search.md（反映時に EC-191 から採番） |
+| EC（zip の名前が `x.zip` のフォルダ、壊れた zip、権限のない zip、検索中の切り替え、zip の中で始めた検索） | 追加 | search.md（EC-191〜EC-195） |
 | 検索結果の行の操作（「中を表示」・フォルダの行だけを挙げている記述に zip ファイルの行を加える）、「zipファイルを表示」の切り替えは検索結果に効かない旨の記述 | 変更 | contracts/keyboard-and-menus.md（FR-095・FR-139・FR-140 の記述がある検索結果・zip の表示切り替えの節） |
 | 領域の表の件数（検索の機能要件の数） | 変更 | README.md（`specs/product/README.md`） |
 
