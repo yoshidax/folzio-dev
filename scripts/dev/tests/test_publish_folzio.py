@@ -181,6 +181,59 @@ class WorkflowPublishTests(unittest.TestCase):
         self.assertEqual((fixture.target / "obsolete.txt").read_text(), "old\n")
         self.assertFalse((fixture.target / "README.md").exists())
 
+    def test_publish_places_and_updates_public_workflows(self):
+        fixture = PublishFixture(self.root)
+        fixture.write("scripts/dev/oss-workflows/release.yml", "name: Release\n")
+        fixture.write("scripts/dev/oss-workflows/check.yaml", "name: Check\n")
+        fixture.write("scripts/dev/oss-workflows/README.md", "managed public workflows\n")
+        fixture.write("scripts/dev/oss-workflows/sub/nested.yml", "name: Nested\n")
+        fixture.commit()
+        result = fixture.publish()
+        self.assert_published(result)
+        self.assertEqual(fixture.published_workflows(),
+                         {"release.yml": "name: Release\n", "check.yaml": "name: Check\n"})
+        self.assertIn("release.yml", result.stdout)
+        self.assertFalse((fixture.target / "scripts/dev").exists())
+
+        fixture.write("scripts/dev/oss-workflows/release.yml", "name: Release v2\n")
+        fixture.commit()
+        self.assert_published(fixture.publish())
+        self.assertEqual(fixture.published_workflows(),
+                         {"release.yml": "name: Release v2\n", "check.yaml": "name: Check\n"})
+
+        fixture.remove("scripts/dev/oss-workflows/release.yml")
+        fixture.commit()
+        self.assert_published(fixture.publish())
+        self.assertEqual(fixture.published_workflows(), {"check.yaml": "name: Check\n"})
+
+    def test_publish_removes_workflows_when_none_are_managed(self):
+        fixture = PublishFixture(self.root)
+        fixture.write("scripts/dev/oss-workflows/README.md", "managed public workflows\n")
+        fixture.commit()
+        manual = fixture.target / ".github/workflows/manual.yml"
+        manual.parent.mkdir(parents=True)
+        manual.write_text("name: Manual\n")
+        result = fixture.publish()
+        self.assert_published(result)
+        self.assertFalse((fixture.target / ".github").exists())
+        self.assertIn("公開用 workflow はありません", result.stdout)
+
+    def test_publish_prefers_managed_workflow_over_development_workflow(self):
+        fixture = PublishFixture(self.root)
+        fixture.write(".github/workflows/release.yml", "name: Development release\n")
+        fixture.write("scripts/dev/oss-workflows/release.yml", "name: Public release\n")
+        fixture.commit()
+        self.assert_published(fixture.publish())
+        self.assertEqual(fixture.published_workflows(), {"release.yml": "name: Public release\n"})
+
+    def test_publish_skips_symbolic_links_in_managed_workflows(self):
+        fixture = PublishFixture(self.root)
+        fixture.write("scripts/dev/oss-workflows/release.yml", "name: Release\n")
+        fixture.symlink("scripts/dev/oss-workflows/link.yml", "release.yml")
+        fixture.commit()
+        self.assert_published(fixture.publish())
+        self.assertEqual(fixture.published_workflows(), {"release.yml": "name: Release\n"})
+
 
 if __name__ == "__main__":
     unittest.main()

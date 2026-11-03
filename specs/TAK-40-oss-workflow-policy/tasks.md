@@ -45,7 +45,7 @@
 
 **Independent Test**: quickstart.md の 1 の「公開用 workflow の配置」「変更と削除」「定義がない」「同じ名前」。
 
-- [ ] T008 [US62] `scripts/dev/tests/test_publish_folzio.py` にテストを足す（この時点では失敗することを確かめる）。
+- [X] T008 [US62] `scripts/dev/tests/test_publish_folzio.py` にテストを足す（この時点では失敗することを確かめる）。
   (a) 管理元に `release.yml`・`check.yaml`・`README.md`・`sub/nested.yml` を置いて書き出すと、公開先の `.github/workflows/` には
   `release.yml` と `check.yaml` だけが同じ内容で置かれる（US62-AS1、EC-204、EC-205）。標準出力に `release.yml` が示される。
   (b) 続けて `release.yml` を変更してコミットし書き出すと、公開先が新しい内容になる（US62-AS2）。
@@ -54,10 +54,10 @@
   標準出力に「公開用 workflow はありません」が示される。
   (e) 開発用の `.github/workflows/release.yml` と管理元の `release.yml` の内容が違うとき、公開先には管理元の内容が置かれる（US62-AS5）。
   (f) 管理元の `link.yml` がシンボリックリンク（モード `120000`）のとき、公開先に置かれない（data-model.md の条件 2）。
-- [ ] T009 [US62] `scripts/dev/oss-workflows/README.md` を作る。この場所が公開用 workflow の管理元であること、直下の `*.yml`・`*.yaml` だけが
+- [X] T009 [US62] `scripts/dev/oss-workflows/README.md` を作る。この場所が公開用 workflow の管理元であること、直下の `*.yml`・`*.yaml` だけが
   書き出しで公開用リポジトリの `.github/workflows/` に置かれること、開発用リポジトリでは動かないこと、このファイル自体は書き出されないこと、
   方針の正本が `docs_private/repository-and-release.md` の「GitHub Actions の workflow」であることを書く。（FR-290）
-- [ ] T010 [US62] `scripts/dev/publish.sh` に公開用 workflow の配置を足す（contracts の「配置」「順序」）。
+- [X] T010 [US62] `scripts/dev/publish.sh` に公開用 workflow の配置を足す（contracts の「配置」「順序」）。
   - `git ls-tree -z HEAD -- scripts/dev/oss-workflows/` の各項目のうち、「種類が blob で、モードが通常ファイル（`100644` または `100755`）」かつ
     「名前が `.yml` または `.yaml` で終わる」ものだけを、`git cat-file blob <id>` で `$tmp/.github/workflows/<名前>` に書く。
     `.github/workflows/` は定義が 1 つ以上あるときだけ作る。（FR-291、R3）
@@ -66,7 +66,7 @@
   - 配置した定義の名前（定義がなければ「公開用 workflow はありません」）を標準出力に示す。
   - `$HOME`・ユーザー名の検査を、配置の後に移す（R4）。
   - ファイルの先頭のコメントに、公開用 workflow を置くことを 1 行加える。
-- [ ] T011 [US62] T008 のテストと、既存・T004 のテストがすべて通ることを確かめる。
+- [X] T011 [US62] T008 のテストと、既存・T004 のテストがすべて通ることを確かめる。
 
 ## Phase 5: User Story 63 - workflow の管理の方針を文書で確かめる (P2)
 
