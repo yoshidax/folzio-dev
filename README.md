@@ -9,7 +9,7 @@ Browse a folder of photos, animated images, and video clips, then organize files
 
 macOS 15 or later · Apple silicon only · English and Japanese · Works locally without network communication · [MIT License](LICENSE)
 
-![Folzio showing a folder tree, image thumbnails, and a photo preview](docs/images/screenshot.png)
+![Folzio showing a folder tree, image thumbnails, and a photo preview](docs/images/screenshot.jpg)
 
 ## Features
 
@@ -29,11 +29,11 @@ macOS 15 or later · Apple silicon only · English and Japanese · Works locally
 - **Make it your own.** Rearrange the toolbar, reassign menu shortcuts, and choose which columns the list view shows.
   Keep the shortcut reference open in its own window while you work.
 
-![List view with folders and zip files, and the column menu opened from the column header](docs/images/list-view.png)
+![List view with the column menu opened from the column header](docs/images/list-view.jpg)
 
-![Quick Look showing the selected image over the file list](docs/images/quick-look.png)
+![Quick Look showing the selected image over the file list](docs/images/quick-look.jpg)
 
-![The shortcut reference window next to the main window](docs/images/shortcuts.png)
+![The shortcut reference window next to the main window](docs/images/shortcuts.jpg)
 
 ## Download
 

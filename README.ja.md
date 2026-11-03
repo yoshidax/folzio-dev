@@ -9,7 +9,7 @@ Folzio は、フォルダ移動・サムネイル一覧・プレビューをひ�
 
 macOS 15 以降 · Apple silicon 専用 · 英語・日本語対応 · ネットワーク通信なしでローカルで動作 · [MIT License](LICENSE)
 
-![フォルダツリー、画像のサムネイル、写真のプレビューを表示した Folzio](docs/images/screenshot.png)
+![フォルダツリー、画像のサムネイル、写真のプレビューを表示した Folzio](docs/images/screenshot.jpg)
 
 ## 主な機能
 
@@ -29,11 +29,11 @@ macOS 15 以降 · Apple silicon 専用 · 英語・日本語対応 · ネット
 - **自分好みに整える。** ツールバーの並び替え、メニューのショートカットの割り当て変更、リスト形式で表示する列の選択ができます。
   ショートカット一覧は別ウインドウで開いたまま参照できます。
 
-![フォルダと zip ファイルを含むリスト形式と、列見出しから開いた列のメニュー](docs/images/list-view.png)
+![リスト形式と、列見出しから開いた列のメニュー](docs/images/list-view.jpg)
 
-![ファイルリストの上に選択中の画像を表示したクイックルック](docs/images/quick-look.png)
+![ファイルリストの上に選択中の画像を表示したクイックルック](docs/images/quick-look.jpg)
 
-![メインウインドウの横に開いたショートカット一覧](docs/images/shortcuts.png)
+![メインウインドウの横に開いたショートカット一覧](docs/images/shortcuts.jpg)
 
 ## ダウンロード
 
