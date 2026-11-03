@@ -176,5 +176,4 @@ TAK-41・TAK-35 で workflow を足す人が、手順書だけで正しく置け
 | FR-289〜FR-295 | 追加 | overview.md |
 | SC-153〜SC-156 | 追加 | overview.md |
 | A-182〜A-186 | 追加 | overview.md |
-
 | — | 追加 | contracts/scripts.md（書き出しでの workflow の除外と配置。plan.md の「反映の方針」） |
