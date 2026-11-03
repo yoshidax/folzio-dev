@@ -41,8 +41,13 @@ public func sortedMerge(_ existing: [MediaFile], _ incoming: [MediaFile], by ord
 
 /// Returns true when `a` precedes `b`, false when it follows, and nil when they tie. A missing creation or
 /// modification date sorts last regardless of direction; when column values are equal, the natural name order
-/// (ascending) is the secondary key. Folders count as 0 bytes when sorting by size, as in Finder.
+/// (ascending) is the secondary key. Folders count as 0 bytes when sorting by size, as in Finder. When sorting by
+/// name, folder rows always come before file rows in both directions, and each group is ordered by name (FR-287).
 private func precedes(_ a: MediaFile, _ b: MediaFile, by order: SortOrder) -> Bool? {
+    if order.column == .name, a.kind.isFolderRow != b.kind.isFolderRow {
+        return a.kind.isFolderRow
+    }
+
     if let dates = dateAccessor(for: order.column) {
         if dates(a) == nil, dates(b) != nil {
             return false

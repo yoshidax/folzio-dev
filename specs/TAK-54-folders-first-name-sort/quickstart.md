@@ -12,4 +12,9 @@
 
 ## 記録
 
-（設計レビューの承認、CI の結果、保守者の確認の結果をここに追記する）
+- 2026-11-03: 保守者が設計（plan.md）を承認。「`precedes` に名前順のときだけフォルダ先頭の比較を足す」方針で OK、サムネイル形式も同じ並びで OK。
+  `swift build` / `swift test` は保守者がローカルで代理実行する（Cloud では実行できない）。
+- 2026-11-03: T006 で更新したテストの期待値（名前順でフォルダとファイルが混ざる前提だったもの）:
+  `BrowserModelTests`（zip 表示設定の 6 か所）、`BrowserModelFolderTests`（2 か所）、`BrowserModelArchiveTests`（2 か所）、`BrowserModelSearchTests`（2 か所）、`SortingTests`。
+  grep では洗い出せない経路（実ファイルシステムの列挙の添字指定など）が残る可能性があり、その失敗はローカルの `swift test` で検出する。
+（CI の結果、保守者の起動スモークの結果は、実施後にここへ追記する）

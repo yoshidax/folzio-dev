@@ -189,8 +189,8 @@ struct BrowserModelArchiveTests {
         #expect(model.listing.state == .loaded)
         #expect(model.listing.files[0].kind == .parent)
         #expect(model.listing.files[0].url == env.parentLink())
-        // Directories and media are interleaved in natural name order.
-        #expect(model.listing.files.dropFirst().map(\.name) == ["anim.gif", "b.png", "sub"])
+        // Directories come before media, each group in natural name order (FR-287).
+        #expect(model.listing.files.dropFirst().map(\.name) == ["sub", "anim.gif", "b.png"])
         #expect(model.listing.files.filter { $0.kind == .parent }.count == 1)
         #expect(model.selection.selected.isEmpty)
         #expect(model.selection.focused == nil)
@@ -498,7 +498,7 @@ struct BrowserModelArchiveTests {
         #expect(env.model.listing.state == .noMatches)
 
         env.model.setMediaTypeFilter(MediaTypeFilter())
-        #expect(env.model.listing.files.map(\.name) == ["..", "a.jpg", "dir"])
+        #expect(env.model.listing.files.map(\.name) == ["..", "dir", "a.jpg"])
         #expect(env.model.listing.state == .loaded)
     }
 
