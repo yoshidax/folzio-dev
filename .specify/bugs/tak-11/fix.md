@@ -24,10 +24,10 @@
 
 ## Local Verification
 
-- ネットワーク API、英語コメント、skill 同期、git push 検査: pass。
-- README 同期: `scripts/check-readme-sync.sh origin/master` pass。ローカルの `master` が存在しないため代替参照を使用。
-- `git diff --check`: pass。
-- Swift build/test および GUI: 未実施。Cloud では macOS CI と保守者による確認が必要。
+- 2026-11-03: `origin/master`（`28d72be`）をマージした後、macOS のローカルで確認した。
+- `swift build`、`swift test`: pass（FolzioCoreTests 1032件ほか全件）。
+- 回帰テスト2件を20回繰り返し実行: すべて pass。
+- ネットワーク API、README 同期（`master`）、英語コメント、skill 同期、spec ID、`git diff --check`: pass。
 
 ## Deviations from Assessment
 
@@ -35,4 +35,4 @@
 
 ## Follow-ups
 
-- macOS CI でビルドと回帰テストを実行し、保守者が GUI 起動スモークを行う。
+- 保守者が GUI の起動スモークを行う。

@@ -3,7 +3,7 @@
 - **Slug**: tak-11
 - **Created**: 2026-11-01
 - **Source**: [TAK-11](https://linear.app/takyoshida/issue/TAK-11/同じフォルダの再読み込みが重なると古い一覧が最新結果を上書きする)
-- **Verdict**: likely valid, needs reproduction
+- **Verdict**: valid（2026-11-03 にローカルで再現）
 - **Severity**: medium
 
 ## Report (summarized)
@@ -24,7 +24,18 @@
 2. ファイル構成の異なる後続の再読み込みを開始し、先に完了させる。
 3. 最初の列挙を完了させ、最新の一覧・選択・プレビューが維持されるか確認する。以前のエラーについても同様に確認する。
 
-[NEEDS CLARIFICATION: 通常操作での発生頻度。] この環境では再現テストおよび GUI 確認を実施していない。
+### ローカルでの再現（2026-11-03）
+
+master `28d72be` に修正を入れず、回帰テスト（`overlappingReloads`、`reloadSupersedesInitialLoad`）だけを追加して `swift test --filter BrowserModelTests` を実行した。2件とも失敗し、他の30件は通過した。
+
+| 場面 | master での結果 |
+|---|---|
+| 重なった再読み込みで、古い成功が後から届く | 古い一覧に戻り、選択とプレビューが消える |
+| 古い失敗（notFound）が後から届く | 最新の一覧が消える |
+| 新しい失敗（denied）の後に古い成功が届く | `.loaded` と古い一覧に戻る |
+| 初回の読み込みより再読み込みが先に終わる | 初回の古い結果で上書きされる |
+
+通常操作での発生頻度は未確認（完了順の逆転は、列挙が遅いフォルダでファイル操作と変更通知が重なる場合に起こり得る）。
 
 ## Suspected Code Paths
 
@@ -35,7 +46,7 @@
 
 ## Root Cause Hypothesis
 
-**Confidence: high (static analysis)**。`await lister.mediaFiles` の間に MainActor は別の再読み込みを開始できる。両者が同じ generation と folder を保持するため、新しい要求が先に結果を適用した後も古い要求のガードが通り、成功または失敗を適用できる。実行による再現は未確認。
+**Confidence: high（回帰テストで再現）**。`await lister.mediaFiles` の間に MainActor は別の再読み込みを開始できる。両者が同じ generation と folder を保持するため、新しい要求が先に結果を適用した後も古い要求のガードが通り、成功または失敗を適用できる。
 
 ## Proposed Remediation
 
@@ -57,4 +68,4 @@
 
 ## Open Questions
 
-- [NEEDS CLARIFICATION: 実操作での発生頻度。]
+- 実操作での発生頻度は未確認（修正の要否には影響しない）。

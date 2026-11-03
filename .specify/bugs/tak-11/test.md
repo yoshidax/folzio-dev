@@ -1,32 +1,34 @@
 # Bug Verification: 重複するフォルダ列挙の結果順序
 
 - **Slug**: tak-11
-- **Tested**: 2026-11-01
+- **Tested**: 2026-11-03
 - **Assessment**: ./assessment.md
 - **Fix**: ./fix.md
 - **Result**: partial
 
 ## Summary
 
-静的検査は通過した。再現を固定するテストは追加したが、Cloud 環境では Swift と GUI を実行できず、修正後の再現や回帰は未検証。
+`origin/master`（`28d72be`）をマージした後、macOS のローカルでビルド、全テスト、静的検査が通過した。修正前の master では回帰テスト2件が失敗し、修正後は20回の繰り返し実行ですべて通過した。完了順の逆転は GUI で意図的に起こせないため、再現の確認は回帰テストで行う。起動スモークは保守者の確認待ち。
 
 ## Checks Performed
 
 | Check | Command / Action | Result | Notes |
 |-------|------------------|--------|-------|
-| 再現・新規テスト・回帰 | `swift build`, `swift test` | not-run | macOS CI が必要 |
-| 起動スモーク | GUI 起動 | not-run | 保守者の macOS が必要 |
-| ネットワーク API | `scripts/check-no-network.sh` | pass | Sources にネットワーク API なし |
-| README | `scripts/check-readme-sync.sh origin/master` | pass | ローカルの master は存在しない |
-| 英語コメント | `scripts/dev/check-english-comments.sh` | pass | |
-| skill 同期 | `scripts/dev/check-skill-sync.sh` | pass | |
-| git push 検査 | `python3 -m unittest discover -s scripts/dev/tests -p test_check_git_push.py` | pass | 3 tests |
-| 差分 | `git diff --check` | pass | |
+| 再現（修正前） | master に回帰テストだけを入れて `swift test --filter BrowserModelTests` | fail（期待どおり） | 2件が失敗、他の30件は通過 |
+| 回帰テスト（修正後） | `overlappingReloads`、`reloadSupersedesInitialLoad` を20回実行 | pass | |
+| Swift build / test | `swift build`、`swift test` | pass | FolzioCoreTests 1032件、性能テスト27件、ほか19件 |
+| 起動スモーク | `scripts/make-app.sh`、`open .build/Folzio.app` | not-run | 保守者の確認待ち |
+| Network API | `scripts/check-no-network.sh` | pass | |
+| README | `scripts/check-readme-sync.sh master` | pass | README の変更なし |
+| Comments | `scripts/dev/check-english-comments.sh` | pass | |
+| Skills | `scripts/dev/check-skill-sync.sh` | pass | |
+| Spec IDs | `scripts/dev/check-spec-ids.sh` | pass | |
+| Diff whitespace | `git diff --check` | pass | |
 
 ## Residual Risks
 
-- 回帰テストのコンパイルと実行、実際の GUI での動作は確認できていない。
+- 完了順の逆転そのものは GUI で確かめていない（回帰テストのみ）。
 
 ## Recommendation
 
-macOS CI でビルド・テストを実行し、保守者が起動スモークを確認するまで検証は partial とする。
+保守者が起動スモークを確認したら、pass に更新してマージしてよい。
