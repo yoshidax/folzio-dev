@@ -6,6 +6,8 @@
 /.codex                   export-ignore
 /.vscode                  export-ignore
 /.github/pull_request_template.md export-ignore
+# 開発用の workflow。公開用リポジトリだけで動かす workflow は scripts/dev/oss-workflows/ に置き、publish.sh が書き出しに置く
+/.github/workflows        export-ignore
 /specs                    export-ignore
 /docs_private             export-ignore
 /shared-skills            export-ignore

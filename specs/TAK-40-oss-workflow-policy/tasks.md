@@ -9,14 +9,14 @@
 
 ## Phase 1: 準備
 
-- [ ] T001 `git fetch origin master` の後、`git merge-base --is-ancestor origin/master HEAD` で取り込み済みであることを確かめる。先に進んでいたら
+- [X] T001 `git fetch origin master` の後、`git merge-base --is-ancestor origin/master HEAD` で取り込み済みであることを確かめる。先に進んでいたら
   `git merge origin/master` で取り込む（履歴は書き換えない）。
-- [ ] T002 変更前の状態を記録する。`git archive HEAD | tar -t | grep -E '^\.github/workflows/'` に `macos-swift-ci.yml` が出ること、
+- [X] T002 変更前の状態を記録する。`git archive HEAD | tar -t | grep -E '^\.github/workflows/'` に `macos-swift-ci.yml` が出ること、
   `python3 -I -m unittest discover -s scripts/dev/tests -p "test_publish_folzio.py"` の既存の 3 件が通ることを確かめる（`rsync` がなければ入れる）。
 
 ## Phase 2: 基盤（テストの土台。US61・US62 の前に行う）
 
-- [ ] T003 `scripts/dev/tests/test_publish_folzio.py` に、workflow のテスト用の土台を足す。既存の `exercise_publish` は変えずに、
+- [X] T003 `scripts/dev/tests/test_publish_folzio.py` に、workflow のテスト用の土台を足す。既存の `exercise_publish` は変えずに、
   一時ディレクトリに開発用リポジトリ（`.gitattributes`・`scripts/dev/publish.sh` は実物をコピー、検査スクリプトと `swift` は偽物）と公開先を作り、
   ファイルの追加・削除・コミット・`publish.sh` の実行を何度でも行えるヘルパー（クラス）を作る。既存のテストと同じく、`publish.sh` は
   `cwd` を開発用リポジトリにして `bash` で実行し、結果（終了コード・出力）を返す。
@@ -27,16 +27,16 @@
 
 **Independent Test**: quickstart.md の 1 の「開発用 workflow の除外」「除外設定の不備」と、2 の `git archive` の確認。
 
-- [ ] T004 [US61] `scripts/dev/tests/test_publish_folzio.py` にテストを足す（この時点では失敗することを確かめる）。
+- [X] T004 [US61] `scripts/dev/tests/test_publish_folzio.py` にテストを足す（この時点では失敗することを確かめる）。
   (a) 開発用リポジトリの `.github/workflows/` に `macos-swift-ci.yml` と新しい名前の `lint.yml` を置いて書き出すと、公開先に `.github/workflows/`
   の項目がなく、`README.md` は置かれる（US61-AS1、AS2）。
   (b) `.gitattributes` から `/.github/workflows export-ignore` の行を消すと、非ゼロ終了し、標準エラーに `.gitattributes` を含み、
   公開先の既存のファイル（`obsolete.txt`）が残る（US61-AS3）。
-- [ ] T005 [US61] `.gitattributes` に `/.github/workflows        export-ignore` を追加する（既存の `/.github/pull_request_template.md` の行の前後。
+- [X] T005 [US61] `.gitattributes` に `/.github/workflows        export-ignore` を追加する（既存の `/.github/pull_request_template.md` の行の前後。
   桁は既存の行にそろえる）。コメントで「開発用の workflow。公開用の workflow は scripts/dev/oss-workflows/ に置く」ことを示す。（FR-289、R1）
-- [ ] T006 [US61] `scripts/dev/publish.sh` の混入検査の正規表現に `^\./\.github/workflows(/|$)` を加える。メッセージは既存のまま
+- [X] T006 [US61] `scripts/dev/publish.sh` の混入検査の正規表現に `^\./\.github/workflows(/|$)` を加える。メッセージは既存のまま
   （「書き出しに開発用のファイルが含まれています（.gitattributes を確認してください）」）。（FR-293 の前半、contracts の「除外」）
-- [ ] T007 [US61] T004 のテストと既存のテストが通ることを確かめる。`git archive HEAD | tar -t | grep -E '^\.github/workflows/'` が
+- [X] T007 [US61] T004 のテストと既存のテストが通ることを確かめる。`git archive HEAD | tar -t | grep -E '^\.github/workflows/'` が
   何も出さないことを確かめる（SC-153）。
 
 ## Phase 4: User Story 62 - 公開用の workflow を開発用リポジトリで管理して書き出す (P1)
