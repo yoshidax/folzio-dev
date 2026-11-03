@@ -20,6 +20,11 @@ This guide covers controls and detailed behavior. For a first look, see the [REA
 The interface supports English and Japanese and defaults to English. Open Settings (⌘,) and choose Language to change it;
 the choice takes effect immediately and is saved for the next launch. macOS-provided interface text follows system settings.
 
+## Checking the Version
+
+Choose Folzio → "About Folzio" (Folzio について) to see the app icon, the version, and a link to the GitHub repository.
+Close the window with ⌘W; it also closes when the main window closes.
+
 ## Folders and Favorites
 
 - Folder navigation from the directory tree (home and mounted volumes). Double-click a folder row to expand or collapse it.
@@ -38,7 +43,8 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 
 ## File List and Layouts
 
-- Switching between list and thumbnail views, adjustable thumbnail size, sorting by column header, and showing or hiding the Date Created, Kind, Size, and Date Modified columns (right-click the column header)
+- Switching between list and thumbnail views, adjustable thumbnail size, sorting by column header
+  (when sorting by name, folders always come before files in both ascending and descending order; zip files count as files), and showing or hiding the Date Created, Kind, Size, and Date Modified columns (right-click the column header)
 
 - A toolbar with view-mode buttons and a thumbnail-size slider (hidden by default. Toggle it with ⇧⌘T; its state is restored on the next launch). Right-click the toolbar and choose "Customize Toolbar…" to rearrange the button groups by dragging (a group such as Back/Forward or Thumbnails/List moves as one unit), remove or re-add them, add spaces, and change the display mode. The order and display mode are restored on the next launch
 
@@ -127,9 +133,12 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
     (`2024.10_trip`, `photos.jpg`) are not treated as having an extension. Hidden files, hidden folders, package contents,
     symbolic links to folders (the link itself and its contents), zip contents, and the start folder itself are excluded
     (symbolic links to files are included)
+  - If "Show Zip Files" (zipファイルを表示) is on when the search starts, zip file names are matched too (their contents are not searched).
+    Matching zip files appear as rows like in a regular list: double-click or ⌘↓ opens the top level of the zip, and they can be copied, renamed, moved, or moved to the Trash.
+    Toggling the setting during a search applies from the next search
   - Results appear in the file list as a single list that mixes files and folders, added in the order they are found and sorted by the current sort (folders are grouped first when sorting by name). You can keep working while it searches.
     List view gets a "Location" (場所) column (the folder relative to the start folder), which can also be used for sorting. Thumbnail view shows the location as a tooltip.
-    The search bar above the list shows the total number of files and folders, "Searching…" (検索中…) while searching, and "No matching items" (該当する項目はありません) when nothing matches
+    The search bar above the list shows the total number of files, folders, and zip files, "Searching…" (検索中…) while searching, and "No matching items" (該当する項目はありません) when nothing matches
   - Folder rows are the same as regular folder rows and open with a double-click, ⌘↓, or right-click → "Show Contents" (中を表示). Opening one closes the search results and
     shows that folder's list, and ⌘[ (Back) returns to the folder shown before the search. Selecting a folder row clears the preview
   - Preview, copy, duplicate, rename, move to Trash, and move all work on search results. Paste, move-paste, and ⌘↑ do not.
