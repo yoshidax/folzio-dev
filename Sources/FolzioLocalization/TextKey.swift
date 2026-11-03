@@ -590,7 +590,8 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Reason a name cannot be used for renaming"
         case .errorOperationNoDestination, .errorOperationDestinationNotFound,
              .errorOperationSourceNotFound, .errorOperationIntoItself,
-             .errorOperationSameNameExists, .errorOperationSameNameAtDestination:
+             .errorOperationSameNameExists, .errorOperationSameNameAtDestination,
+             .errorOperationReplacementContainsSource:
             return "Reason a file operation failed"
         case .errorOperationTrashExistingFailed:
             return "Reason an existing item could not be moved to the Trash. The value is the reason returned by the OS"
