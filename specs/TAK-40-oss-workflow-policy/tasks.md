@@ -91,7 +91,7 @@
 
 ## Phase 6: 仕上げ
 
-- [ ] T015 Cloud の検証ゲート（quickstart.md の 3）をすべて実行し、結果を記録する。あわせて `test_publish_folzio.py` の全件を実行する。
+- [X] T015 Cloud の検証ゲート（quickstart.md の 3）をすべて実行し、結果を記録する。あわせて `test_publish_folzio.py` の全件を実行する。
 - [ ] T016 作業ブランチに push し、保守者に設計・実装の確認と、PR の作成の要否を尋ねる（PR は依頼があったときだけ作る）。
 - [ ] T017 `specs/product/` へ反映する（PR の最後の作業）。直前に `git fetch origin master` と `git merge origin/master` で取り込み、
   `scripts/dev/check-spec-ids.sh` と master の最大値を突き合わせて ID の衝突を確かめる（衝突したら、この feature の ID を振り直す）。
