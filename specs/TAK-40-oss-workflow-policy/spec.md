@@ -1,5 +1,8 @@
 # Feature Specification: 開発用と公開用の workflow の管理
 
+> **移行済み（2026-11-03）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-40 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `claude/gracious-dijkstra-du6nx2`（Cloud が指定する作業ブランチ。feature ディレクトリ名とは独立）
 
 **Created**: 2026-11-03

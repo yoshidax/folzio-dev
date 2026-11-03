@@ -92,14 +92,14 @@
 ## Phase 6: 仕上げ
 
 - [X] T015 Cloud の検証ゲート（quickstart.md の 3）をすべて実行し、結果を記録する。あわせて `test_publish_folzio.py` の全件を実行する。
-- [ ] T016 作業ブランチに push し、保守者に設計・実装の確認と、PR の作成の要否を尋ねる（PR は依頼があったときだけ作る）。
-- [ ] T017 `specs/product/` へ反映する（PR の最後の作業）。直前に `git fetch origin master` と `git merge origin/master` で取り込み、
+- [X] T016 作業ブランチに push し、保守者に設計・実装の確認と、PR の作成の要否を尋ねる（PR は依頼があったときだけ作る）。
+- [X] T017 `specs/product/` へ反映する（PR の最後の作業）。直前に `git fetch origin master` と `git merge origin/master` で取り込み、
   `scripts/dev/check-spec-ids.sh` と master の最大値を突き合わせて ID の衝突を確かめる（衝突したら、この feature の ID を振り直す）。
   `specs/product/overview.md` に、spec.md の「反映先」の項目を、決定後の本文で加える（US は「ユーザーストーリー」、FR は「機能要件」の新しい小見出し
   「開発用と公開用の workflow」、EC・SC・A はそれぞれの節）。`specs/product/contracts/scripts.md` に、contracts の「除外」「配置」の要点を加える。
   `specs/product/README.md` の領域の表の overview.md の件数を更新する。反映後に `scripts/dev/check-spec-ids.sh` を再度実行する。
   反映した項目と差分を保守者に示し、承認を得てからコミットする。
-- [ ] T018 反映の後、spec.md の冒頭に移行済み・凍結の注記を入れる（TAK-30 の spec.md と同じ形式）。
+- [X] T018 反映の後、spec.md の冒頭に移行済み・凍結の注記を入れる（TAK-30 の spec.md と同じ形式）。
 - [ ] T019 CI（PR の作成時の `macOS Swift CI`）の成否を確かめる（SC-156）。性能テストの結果はログの末尾で確かめる。
 - [ ] T020 保守者に、ローカルでの確認を依頼する（quickstart.md の 5: macOS での公開のテスト、一時ディレクトリへの実際の書き出し、起動スモーク）。
   結果を受け取るまで、このタスクは未チェックのままにする。
