@@ -797,6 +797,83 @@ struct FileOperationServiceTests {
         }
     }
 
+    @Test("Creating a folder uses the base name and leaves an empty directory (FR-209)")
+    func createsFolderWithBaseName() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try makeOps(in: root)
+        let before = try Set(FileManager.default.contentsOfDirectory(atPath: folder.path))
+
+        let created = try await service.createFolder(in: folder, baseName: "untitled folder").get()
+
+        #expect(created == folder.appendingPathComponent("untitled folder"))
+        var isDirectory: ObjCBool = false
+        #expect(FileManager.default.fileExists(atPath: created.path, isDirectory: &isDirectory))
+        #expect(isDirectory.boolValue)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: created.path).isEmpty)
+        let after = try Set(FileManager.default.contentsOfDirectory(atPath: folder.path))
+        #expect(after == before.union(["untitled folder"]))
+    }
+
+    @Test("Creating a folder numbers the name when any entry already uses it (FR-209)")
+    func numbersCreatedFolder() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fileManager = FileManager.default
+        try fileManager.createDirectory(
+            at: root.appendingPathComponent("untitled folder"),
+            withIntermediateDirectories: false
+        )
+        try Data("x".utf8).write(to: root.appendingPathComponent("untitled folder 2"))
+        let existing = try Data(contentsOf: root.appendingPathComponent("untitled folder 2"))
+
+        let created = try await service.createFolder(in: root, baseName: "untitled folder").get()
+
+        #expect(created.lastPathComponent == "untitled folder 3")
+        #expect(try Data(contentsOf: root.appendingPathComponent("untitled folder 2")) == existing)
+        #expect(try fileManager.contentsOfDirectory(atPath: root.appendingPathComponent("untitled folder").path).isEmpty)
+    }
+
+    @Test("Creating a folder in a missing destination fails without creating anything (EC-141)")
+    func refusesCreateInMissingFolder() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let missing = root.appendingPathComponent("missing", isDirectory: true)
+        let file = root.appendingPathComponent("file.txt")
+        try Data("x".utf8).write(to: file)
+
+        for destination in [missing, file] {
+            let result = await service.createFolder(in: destination, baseName: "untitled folder")
+            guard case .failure(let reason) = result else {
+                Issue.record("Expected a failure for \(destination.lastPathComponent)")
+                continue
+            }
+            #expect(reason == .destinationNotFound)
+        }
+        #expect(!FileManager.default.fileExists(atPath: missing.path))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == ["file.txt"])
+    }
+
+    @Test("Creating a folder in an unwritable destination reports a system failure (EC-141)")
+    func refusesCreateInUnwritableFolder() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let destination = root.appendingPathComponent("locked", isDirectory: true)
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: false)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: destination.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: destination.path)
+        }
+
+        let result = await service.createFolder(in: destination, baseName: "untitled folder")
+
+        guard case .failure(let reason) = result, case .systemFailure = reason else {
+            Issue.record("Expected a system failure, got \(result)")
+            return
+        }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: destination.path).isEmpty)
+    }
+
     private func makeTemporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("FolzioOpsTests-\(UUID().uuidString)", isDirectory: true)

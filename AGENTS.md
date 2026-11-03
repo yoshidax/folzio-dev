@@ -196,6 +196,8 @@ Cloud 環境で Agent が作業するときの規則です。手順の詳細は 
 - Cloud が指定した作業ブランチ上で作業する。git 拡張の `before_specify` フック（`speckit.git.feature`）は実行せず、feature 用のブランチを新しく作らない
 - feature ディレクトリは `specs/TAK-<nn>-<slug>`（`<nn>` は Linear の Issue 番号）。`SPECIFY_FEATURE_DIRECTORY` で明示する。ブランチ名とは独立している
 - 作業の前に `git fetch origin master` し、最新の master を取り込む（ローカルの `master` ブランチは古いことがある）
+- Codex Cloud で Git の通信が失敗したら、Cloud のネットワーク設定に加えてコマンドのサンドボックス権限を確認する。詳細は
+  [Cloud Agent の作業手順](docs_private/cloud-agent-workflow.md) の「Codex Cloud の Git 通信」を参照する
 
 ### Linear（手順書 2）
 
@@ -216,12 +218,15 @@ Cloud 環境で Agent が作業するときの規則です。手順の詳細は 
 - Cloud には Swift がないため、ビルドとテストは macOS の CI で確認する。CI は PR の作成時と Ready にしたときだけ自動で動く
 - 結果とログは GitHub MCP で読む。実行中のジョブのログは取得できない。修正は、ログを読んでまとめてから push する
 - 置き換える API は、使う前にヘッダーや文書で存在を確認する。同じ原因の失敗を 3 回直しても解決しない場合は、作業を止めて報告する
-- 追加の push の後は、`workflow_dispatch` で再確認する（Agent が起動できなければ、保守者に実行を頼む）
+- CI の起動・再実行（`workflow_dispatch`、`actions_run_trigger` の `run_workflow`／`rerun_workflow_run`／`rerun_failed_jobs`、`gh workflow run`、`gh run rerun`）は、
+  **毎回、保守者の許可を得てから**行う。許可なしに起動しない。追加の push の後に再確認が必要なら、理由（直した内容）と
+  対象の作業ブランチを示して許可を求める。許可が得られない、または確認が保守者に届かないときは、保守者に実行を頼む
+- 権限設定（`.claude/settings.json` の `ask`、`.kilo/kilo.jsonc`、`.codex/rules/sdd.rules`）は補助であり、許可を求める義務を免除しない
 
 ### 検証ゲート（手順書 5）
 
 - Cloud で行う: `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、
-  `scripts/dev/check-skill-sync.sh`、`test_check_git_push.py`
+  `scripts/dev/check-skill-sync.sh`、`scripts/dev/check-spec-ids.sh`、`test_check_git_push.py`
 - CI で行う: `swift build`、`swift test`
 - 保守者がローカルで行う: 起動スモーク、ローカルの最新の Swift でのビルド、`scripts/dev/tests` の公開・配布のテスト
 - 起動スモークを省略して「CI が通ったから完了」にしない。マージ前のゲート（自動テストの通過）は、CI の成功と保守者のローカルでの確認で満たす

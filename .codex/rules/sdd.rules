@@ -23,3 +23,17 @@ prefix_rule(
     justification = "未追跡ファイルを一括削除しない。対象を個別に確認する。",
     match = ["git clean -fd"],
 )
+# CI の起動・再実行は macOS の使用時間を消費する。保守者の許可を毎回求める（TAK-53）。
+# GitHub MCP の actions_run_trigger は shell ではないため、この規則の対象外。AGENTS.md の規則で扱う。
+prefix_rule(
+    pattern = ["gh", "workflow", "run"],
+    decision = "prompt",
+    justification = "CI の起動は macOS の使用時間を消費する。保守者の許可を得てから実行する。",
+    match = ["gh workflow run macos-swift-ci.yml"],
+)
+prefix_rule(
+    pattern = ["gh", "run", "rerun"],
+    decision = "prompt",
+    justification = "CI の再実行は macOS の使用時間を消費する。保守者の許可を得てから実行する。",
+    match = ["gh run rerun 123"],
+)

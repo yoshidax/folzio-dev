@@ -23,7 +23,9 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 ## Folders and Favorites
 
 - Folder navigation from the directory tree (home and mounted volumes). Double-click a folder row to expand or collapse it.
-  The disclosure triangle appears only on folders that have subfolders (excluding hidden folders and packages)
+  The disclosure triangle appears only on folders that have subfolders (excluding hidden folders and packages).
+  Select several folders with ⌘-click, Shift-click, or Shift+↑↓; the file list shows the folder you clicked (or moved to with the keyboard) last.
+  Drag the selected folders to move them together (hold Option to copy), or move them to the Trash together with ⌘Delete or "Move to Trash" (ゴミ箱に入れる) in the context menu
 
 - Register frequently used folders under "Favorites" (お気に入り) at the top of the tree (right-click in the tree → "Add to Favorites" (お気に入りに追加), or ⌃⌘T). Remove an entry with right-click → "Remove from Favorites" (お気に入りから削除) or ⌘Delete after a confirmation (on a regular folder, ⌘Delete means "Move to Trash" instead); the actual folder is not changed. The confirmation shows the display name and the absolute path.
   Rename an entry with Return, right-click → "Rename" (名前を変更), or Edit → "Rename" (edited in place; Return commits, Esc cancels, and clearing the name restores the original folder name. There is no confirmation dialog, and the actual folder is not renamed). ⇧⌘F jumps to the heading. Favorites are saved and restored on the next launch, and folders that cannot be found stay in the list, dimmed
@@ -36,14 +38,14 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 
 ## File List and Layouts
 
-- Switching between list and thumbnail views, adjustable thumbnail size, and sorting by column header
+- Switching between list and thumbnail views, adjustable thumbnail size, sorting by column header, and showing or hiding the Date Created, Kind, Size, and Date Modified columns (right-click the column header)
 
-- A toolbar with view-mode buttons and a thumbnail-size slider (hidden by default. Toggle it with ⇧⌘T; its state is restored on the next launch)
+- A toolbar with view-mode buttons and a thumbnail-size slider (hidden by default. Toggle it with ⇧⌘T; its state is restored on the next launch). Right-click the toolbar and choose "Customize Toolbar…" to rearrange the button groups by dragging (a group such as Back/Forward or Thumbnails/List moves as one unit), remove or re-add them, add spaces, and change the display mode. The order and display mode are restored on the next launch
 
-- Pane layout switching (three panes / file list only / preview only). Switch with the "Show File List Only" and "Show Preview Only" buttons at the left end of the toolbar,
+- Pane layout switching (three panes / file list only / preview only). Switch with the "Show File List Only" and "Show Preview Only" buttons at the left of the default toolbar,
   ⌃⌘2 / ⌃⌘3, or the matching items in the View menu (表示). All three share the same state (the menu and shortcuts work even while the toolbar is hidden).
   The tree cannot be hidden on its own, so the layouts are three panes, file list only, and preview only
-  - In the preview-only layout, the arrow keys move the selection in the hidden file list (up/down/left/right in thumbnail view, up/down in list view). For videos, `<` / `>` skip back / forward 5 seconds
+  - In the preview-only layout, the arrow keys move the selection in the hidden file list (up/down/left/right in thumbnail view, up/down in list view). For videos, `<` / `>` skip back / forward 5 seconds (also in the three-pane layout)
   - When the list has no media, the preview shows "No media file to display" (表示するメディアファイルがありません)
   - Focusing a hidden pane, favorites, search, and similar actions are disabled
   - Full screen is available from either layout and returns to it on exit
@@ -66,9 +68,10 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 
 - Animated GIF playback and animated WebP playback (using OS-standard APIs; falls back to the first frame when unsupported)
 
-- Video playback, looping, an autoplay setting, and play/pause with the Space key
+- Video playback, looping, an autoplay setting, and play/pause with the Space key while the preview's video has the focus
 
-- Full-screen preview (double-click or ⌃⌘F; Esc to return)
+- Full-screen preview (double-click an image or video, including the margins around it, or press ⌃⌘F; Esc to return).
+  In full screen, double-clicking anywhere returns to the previous layout. The video playback controls and the image scroll bars do not toggle full screen
 
 ## Slideshow
 
@@ -124,7 +127,7 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
     (`2024.10_trip`, `photos.jpg`) are not treated as having an extension. Hidden files, hidden folders, package contents,
     symbolic links to folders (the link itself and its contents), zip contents, and the start folder itself are excluded
     (symbolic links to files are included)
-  - Results appear in the file list as a single list that mixes files and folders, added in the order they are found and sorted by the current sort. You can keep working while it searches.
+  - Results appear in the file list as a single list that mixes files and folders, added in the order they are found and sorted by the current sort (folders are grouped first when sorting by name). You can keep working while it searches.
     List view gets a "Location" (場所) column (the folder relative to the start folder), which can also be used for sorting. Thumbnail view shows the location as a tooltip.
     The search bar above the list shows the total number of files and folders, "Searching…" (検索中…) while searching, and "No matching items" (該当する項目はありません) when nothing matches
   - Folder rows are the same as regular folder rows and open with a double-click, ⌘↓, or right-click → "Show Contents" (中を表示). Opening one closes the search results and
@@ -139,7 +142,9 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 
 ## Keyboard Shortcuts
 
-| Action | Shortcut |
+The keys in this guide are the defaults. In Settings (⌘,) → Shortcuts (ショートカット), you can change the shortcut of any menu command: press Record on its row, then press the new keys (include ⌘, ⌃, or ⌥). A combination that another command uses, a fixed key such as the arrow keys, Space, Return, Esc, or Tab, or an app and system key such as ⌘Q or ⌘W is refused with a reason, so two commands never share a key. Clear removes a command's shortcut (the command then shows Not Set and has no key, so you can swap two commands' keys without hunting for a free one: Clear the first, give the second the first's old keys, then give the first the second's old keys). Reset returns one command to its default, and Reset All returns every command. The menus, the toolbar tooltips, and the shortcut reference (⌘/) show your current keys. Control-Tab switches between the General and Shortcuts tabs.
+
+| Action | Default shortcut |
 |--------|----------|
 | Settings | ⌘, |
 | Quit | ⌘Q |
@@ -149,23 +154,27 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
 | Move through the hidden list during a slideshow (the timer also restarts at the configured interval) | Arrow keys (up/down/left/right in thumbnail view, up/down in list view. Esc ends) |
 | Play/pause a video or seek 5 seconds during a slideshow | `/`, `<` / `>` |
 | Move the selection in the hidden file list (preview only) | Arrow keys (up/down/left/right in thumbnail view, up/down in list view) |
-| Skip a video back / forward 5 seconds (preview only) | `<` / `>` |
+| Skip a video back / forward 5 seconds (while a video is shown; not while typing) | `<` / `>` |
 | Expand / collapse a folder in the tree | → / ←, double-click a folder row |
 | Add to Favorites | ⌃⌘T, tree context menu |
 | Rename a favorite (edited in place. Return commits, Esc cancels, clearing the name restores the original folder name. No confirmation. The actual folder is not renamed) | Return, "Rename" in the favorite's context menu, Edit menu → "Rename" |
 | Remove from Favorites (with a confirmation that shows the display name and the absolute path. The actual folder is not changed) | ⌘Delete, the favorite's context menu |
-| Move a folder in the tree to the Trash (with its contents. Asks for confirmation, which can be skipped in Settings. Not available for home or the top level of a volume. Trashing the folder being shown shows its parent) | ⌘Delete, "Move to Trash" in the tree folder's context menu |
+| Select several folders in the tree (the file list shows the folder clicked or moved to last) | ⌘-click, Shift-click, Shift+↑ / ↓ |
+| Move folders in the tree to the Trash (with their contents. A multiple selection is one operation. Always asks for confirmation regardless of Settings, showing each folder's name and absolute path. Not available when the selection includes home, the top level of a volume, or a favorite, or both a folder and a folder inside it. Trashing the folder being shown shows its parent) | ⌘Delete, "Move to Trash" in the tree folder's context menu |
 | Jump to the "Favorites" heading | ⇧⌘F |
 | Thumbnail view / list view | ⌘1 / ⌘2 |
 | Larger / smaller thumbnails | ⌃⌘. / ⌃⌘,, View menu |
 | Zoom the preview image in / out / fit to view (25% steps, 25%–800%) | ⌘+ (⌘= also works) / ⌘− / ⌘0, View menu, toolbar |
 | Show / hide the toolbar | ⇧⌘T, View menu |
 | Images only / videos only | ⇧⌘I / ⇧⌘M, View menu, toolbar |
-| Show / hide zip files (hidden by default. Saved and restored on relaunch. While off, zip files are excluded from the list, selection, file operations, and full-screen navigation. Toggling while viewing the inside of a zip does not change the list inside) | ⌃⌘Z, View menu → "Show Zip Files", toolbar (right of the kind filter, left of the view-mode buttons) |
-| Play / pause a video (from the list) | Space |
-| Full-screen preview / return | ⌃⌘F, double-click the image, Esc |
+| Show / hide zip files (hidden by default. Saved and restored on relaunch. While off, zip files are excluded from the list, selection, file operations, and full-screen navigation. Toggling while viewing the inside of a zip does not change the list inside) | ⌃⌘Z, View menu → "Show Zip Files", toolbar (by default, right of the kind filter and left of the view-mode buttons) |
+| Quick Look the selected media (zooms from the row or thumbnail; Space again closes it. With several selected, it shows them together. Arrow keys move the selection while it is open. Not available inside a zip. A playing preview video is paused while it is open) | Space in the file list |
+| Open media in its default app (inside a zip, does nothing) | Double-click a media row or thumbnail |
+| Play / pause a video (with the preview's video focused) | Space |
+| Full-screen preview / return | ⌃⌘F, double-click the image or video (anywhere in full screen), Esc |
 | Copy / paste / move-paste | ⌘C / ⌘V / ⌥⌘V |
 | Duplicate | ⌘D |
+| Create a folder named "untitled folder" and rename it in place (no confirmation. In the file list, inside the displayed folder; in the tree, inside the selected or right-clicked folder, or a favorite's folder. Not available inside a zip, in search results, on the "Favorites" heading, or for a missing favorite) | ⇧⌘N, File menu → "New Folder" (新規フォルダ), the tree folder's context menu, the context menu on the file list's background |
 | Rename (in place) | Return |
 | Move to Trash | ⌘Delete |
 | Open the selected item | ⌘O |
@@ -184,7 +193,7 @@ A name conflict shows a dialog regardless of the settings. When copying onto the
 
 ## Where Settings Are Stored
 
-Settings are stored in `UserDefaults`. The `.app` and `swift run` use different domains.
+Settings are stored in `UserDefaults`, including your shortcut changes (`shortcuts.overrides`, only the commands that differ from the default). The `.app` and `swift run` use different domains.
 
 ```bash
 # Reset the settings of the .app
