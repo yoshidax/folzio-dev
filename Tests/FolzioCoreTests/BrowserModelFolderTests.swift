@@ -109,7 +109,7 @@ struct BrowserModelFolderTests {
         defer { env.cleanup() }
         await env.model.selectFolder(env.root)
 
-        #expect(env.model.listing.files.map(\.name) == ["cover.jpg", "empty", "only", "trip"])
+        #expect(env.model.listing.files.map(\.name) == ["empty", "only", "trip", "cover.jpg"])
         #expect(env.row("trip")?.kind == .folder)
         #expect(!env.model.listing.files.contains { $0.kind == .parent })
         #expect(env.model.hasEnclosingLevel == false)
@@ -727,7 +727,7 @@ struct BrowserModelFolderTests {
         let (old, new) = try rename(env, "trip", to: "a-trip")
         env.model.didRenameFolder(from: old, to: new)
 
-        #expect(env.model.listing.files.map(\.name) == ["a-trip", "cover.jpg", "empty", "only"])
+        #expect(env.model.listing.files.map(\.name) == ["a-trip", "empty", "only", "cover.jpg"])
         #expect(env.row("a-trip")?.kind == .folder)
         #expect(path(env.model.selection.focused) == path(env.url("a-trip")))
     }

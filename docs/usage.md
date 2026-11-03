@@ -127,7 +127,7 @@ the choice takes effect immediately and is saved for the next launch. macOS-prov
     (`2024.10_trip`, `photos.jpg`) are not treated as having an extension. Hidden files, hidden folders, package contents,
     symbolic links to folders (the link itself and its contents), zip contents, and the start folder itself are excluded
     (symbolic links to files are included)
-  - Results appear in the file list as a single list that mixes files and folders, added in the order they are found and sorted by the current sort. You can keep working while it searches.
+  - Results appear in the file list as a single list that mixes files and folders, added in the order they are found and sorted by the current sort (folders are grouped first when sorting by name). You can keep working while it searches.
     List view gets a "Location" (場所) column (the folder relative to the start folder), which can also be used for sorting. Thumbnail view shows the location as a tooltip.
     The search bar above the list shows the total number of files and folders, "Searching…" (検索中…) while searching, and "No matching items" (該当する項目はありません) when nothing matches
   - Folder rows are the same as regular folder rows and open with a double-click, ⌘↓, or right-click → "Show Contents" (中を表示). Opening one closes the search results and

@@ -1022,7 +1022,7 @@ struct BrowserModelSearchTests {
         await finish(env)
 
         env.model.sortOrder = SortOrder(column: .name, ascending: true)
-        #expect(names(env.model) == ["2024_Kyoto", "m_Kyoto.jpg", "n_Kyoto.mp4", "zzz_Kyoto"])
+        #expect(names(env.model) == ["2024_Kyoto", "zzz_Kyoto", "m_Kyoto.jpg", "n_Kyoto.mp4"])
 
         env.model.sortOrder = SortOrder(column: .creationDate, ascending: true)
         #expect(names(env.model) == ["m_Kyoto.jpg", "n_Kyoto.mp4", "2024_Kyoto", "zzz_Kyoto"])
@@ -1337,7 +1337,7 @@ struct BrowserModelSearchTests {
 
         // When sorting by Name, re-sort with the new name.
         env.model.sortOrder = SortOrder(column: .name, ascending: true)
-        #expect(names(env.model) == ["g.jpg", "zzz"])
+        #expect(names(env.model) == ["zzz", "g.jpg"])
     }
 
     @Test("Deleting a folder after renaming its row removes both the row and its descendant results")

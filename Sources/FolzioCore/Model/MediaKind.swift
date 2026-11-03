@@ -76,6 +76,17 @@ public enum ListItemKind: Sendable, Hashable {
         return false
     }
 
+    /// Whether this row is a folder that the name sort groups first: a regular `.folder` or a `.directory` inside
+    /// a zip. Zip files (`.archive`) and the `..` row (`.parent`) are not folder rows (FR-288).
+    public var isFolderRow: Bool {
+        switch self {
+        case .folder, .directory:
+            return true
+        case .media, .archive, .parent:
+            return false
+        }
+    }
+
     public var mediaKind: MediaKind? {
         if case .media(let kind) = self { return kind }
         return nil

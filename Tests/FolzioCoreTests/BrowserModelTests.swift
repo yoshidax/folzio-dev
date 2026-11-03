@@ -455,7 +455,7 @@ struct BrowserModelTests {
         #expect(model.showsZipFiles == false)
         await model.selectFolder(folder)
 
-        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "c.png", "sub"])
+        #expect(model.listing.files.map(\.name) == ["..", "sub", "a.jpg", "c.png"])
         #expect(model.listing.state == .loaded)
     }
 
@@ -473,7 +473,7 @@ struct BrowserModelTests {
         model.setShowsZipFiles(true)
 
         #expect(model.showsZipFiles == true)
-        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "b.zip", "c.png", "sub"])
+        #expect(model.listing.files.map(\.name) == ["..", "sub", "a.jpg", "b.zip", "c.png"])
         #expect(model.listing.state == .loaded)
         #expect(await lister.callCount == callsBefore)
         #expect(defaults.object(forKey: "view.showsZipFiles") as? Bool == true)
@@ -494,7 +494,7 @@ struct BrowserModelTests {
         let shown = model.listing.files.map(\.url)
         model.setShowsZipFiles(false)
         #expect(!model.listing.files.contains { $0.kind == .archive })
-        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "c.png", "sub"])
+        #expect(model.listing.files.map(\.name) == ["..", "sub", "a.jpg", "c.png"])
         #expect(defaults.object(forKey: "view.showsZipFiles") as? Bool == false)
 
         model.setShowsZipFiles(true)
@@ -514,10 +514,10 @@ struct BrowserModelTests {
 
         model.setMediaTypeFilter(MediaTypeFilter(imagesOnly: true))
         model.setShowsZipFiles(true)
-        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "b.zip", "c.png", "sub"])
+        #expect(model.listing.files.map(\.name) == ["..", "sub", "a.jpg", "b.zip", "c.png"])
 
         model.setShowsZipFiles(false)
-        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "c.png", "sub"])
+        #expect(model.listing.files.map(\.name) == ["..", "sub", "a.jpg", "c.png"])
     }
 
     @Test("Hiding a focused zip moves focus and preview to a remaining selected item")
@@ -660,7 +660,7 @@ struct BrowserModelTests {
         )
         #expect(restored.showsZipFiles == true)
         await restored.selectFolder(folder)
-        #expect(restored.listing.files.map(\.name) == ["a.jpg", "b.zip", "c.png", "sub"])
+        #expect(restored.listing.files.map(\.name) == ["sub", "a.jpg", "b.zip", "c.png"])
     }
 
     @MainActor
