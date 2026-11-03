@@ -85,9 +85,11 @@ public enum TextKey: String, CaseIterable, Sendable {
 
     // MARK: - Menu Bar
 
+    case menuAppAbout = "menu.app.about"
     case menuAppSettings = "menu.app.settings"
     case menuAppQuit = "menu.app.quit"
     case menuFile = "menu.file"
+    case menuFileNewFolder = "menu.file.newFolder"
     case menuFileOpen = "menu.file.open"
     case menuFileShowContents = "menu.file.showContents"
     case menuFileEnclosingFolder = "menu.file.enclosingFolder"
@@ -149,6 +151,16 @@ public enum TextKey: String, CaseIterable, Sendable {
     case toolbarViewMode = "toolbar.viewMode"
     case toolbarSize = "toolbar.size"
     case toolbarThumbnailSize = "toolbar.thumbnailSize"
+    case toolbarSlideshowLabel = "toolbar.slideshowLabel"
+    case toolbarZipFilesLabel = "toolbar.zipFilesLabel"
+    case toolbarThumbnailSizeLabel = "toolbar.thumbnailSizeLabel"
+    case toolbarGoBackHelp = "toolbar.goBackHelp"
+    case toolbarGoForwardHelp = "toolbar.goForwardHelp"
+    case toolbarShowFileListOnlyHelp = "toolbar.showFileListOnlyHelp"
+    case toolbarShowPreviewOnlyHelp = "toolbar.showPreviewOnlyHelp"
+    case toolbarShowImagesOnlyHelp = "toolbar.showImagesOnlyHelp"
+    case toolbarShowVideosOnlyHelp = "toolbar.showVideosOnlyHelp"
+    case toolbarZipFilesHelp = "toolbar.zipFilesHelp"
     case toolbarStartSlideshowHelp = "toolbar.startSlideshowHelp"
     case toolbarZoomInHelp = "toolbar.zoomInHelp"
     case toolbarZoomToFitHelp = "toolbar.zoomToFitHelp"
@@ -167,6 +179,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case settingsLoop = "settings.loop"
     case settingsFileOperations = "settings.fileOperations"
     case settingsConfirm = "settings.confirm"
+    case settingsConfirmNote = "settings.confirm.note"
     case settingsSlideshow = "settings.slideshow"
     case settingsInterval = "settings.interval"
     case settingsSeconds = "settings.seconds"
@@ -177,12 +190,31 @@ public enum TextKey: String, CaseIterable, Sendable {
     case settingsTransitionCrossfade = "settings.transition.crossfade"
     case settingsTransitionSlide = "settings.transition.slide"
     case settingsTransitionZoom = "settings.transition.zoom"
+    case settingsTabGeneral = "settings.tab.general"
+    case settingsTabShortcuts = "settings.tab.shortcuts"
+    case settingsShortcutsList = "settings.shortcuts.list"
+    case settingsShortcutsRecord = "settings.shortcuts.record"
+    case settingsShortcutsRecording = "settings.shortcuts.recording"
+    case settingsShortcutsReset = "settings.shortcuts.reset"
+    case settingsShortcutsResetAll = "settings.shortcuts.resetAll"
+    case settingsShortcutsChanged = "settings.shortcuts.changed"
+    case settingsShortcutsRecordFor = "settings.shortcuts.recordFor"
+    case settingsShortcutsResetFor = "settings.shortcuts.resetFor"
+    case settingsShortcutsErrorModifier = "settings.shortcuts.error.modifier"
+    case settingsShortcutsErrorFixed = "settings.shortcuts.error.fixed"
+    case settingsShortcutsErrorConflict = "settings.shortcuts.error.conflict"
+    case settingsShortcutsErrorDefaultConflict = "settings.shortcuts.error.defaultConflict"
+    case settingsShortcutsClear = "settings.shortcuts.clear"
+    case settingsShortcutsClearFor = "settings.shortcuts.clearFor"
+    case settingsShortcutsUnset = "settings.shortcuts.unset"
 
     // MARK: - File List and Tree
 
     case listColumnName = "list.column.name"
     case listColumnCreationDate = "list.column.creationDate"
     case listColumnKind = "list.column.kind"
+    case listColumnSize = "list.column.size"
+    case listColumnModificationDate = "list.column.modificationDate"
     case listColumnLocation = "list.column.location"
     case listSortAscending = "list.sort.ascending"
     case listSortDescending = "list.sort.descending"
@@ -194,6 +226,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case treeTooltipNotFound = "tree.tooltip.notFound"
     case treeA11yFavoriteName = "tree.a11y.favoriteName"
     case treeA11yFolderName = "tree.a11y.folderName"
+    case folderDefaultName = "folder.defaultName"
 
     // MARK: - Search
 
@@ -245,8 +278,17 @@ public enum TextKey: String, CaseIterable, Sendable {
     case dialogOperationSummary = "dialog.operation.summary"
     case dialogOperationFailureLine = "dialog.operation.failureLine"
     case dialogOperationMore = "dialog.operation.more"
+    case dialogTreeTrashOverlapTitle = "dialog.treeTrashOverlap.title"
+    case dialogTreeTrashOverlapMessage = "dialog.treeTrashOverlap.message"
     case dialogCancel = "dialog.cancel"
     case dialogOK = "dialog.ok"
+
+    // MARK: - About Dialog
+
+    case aboutWindow = "about.window"
+    case aboutVersion = "about.version"
+    case aboutIcon = "about.icon"
+    case aboutLink = "about.link"
 
     // MARK: - Shortcut Reference
 
@@ -300,6 +342,8 @@ public enum TextKey: String, CaseIterable, Sendable {
     case shortcutExtendSelectionCondition = "shortcuts.condition.extendSelection"
     case shortcutOpenDefault = "shortcuts.entry.openDefault"
     case shortcutOpenDefaultCondition = "shortcuts.condition.openDefault"
+    case shortcutQuickLook = "shortcuts.entry.quickLook"
+    case shortcutQuickLookCondition = "shortcuts.condition.quickLook"
     case shortcutRename = "shortcuts.entry.rename"
     case shortcutRenameCondition = "shortcuts.condition.rename"
     case shortcutCopy = "shortcuts.entry.copy"
@@ -310,6 +354,8 @@ public enum TextKey: String, CaseIterable, Sendable {
     case shortcutCopyPathCondition = "shortcuts.condition.copyPath"
     case shortcutDuplicate = "shortcuts.entry.duplicate"
     case shortcutDuplicateCondition = "shortcuts.condition.duplicate"
+    case shortcutNewFolder = "shortcuts.entry.newFolder"
+    case shortcutNewFolderCondition = "shortcuts.condition.newFolder"
     case shortcutTrash = "shortcuts.entry.trash"
     case shortcutTrashCondition = "shortcuts.condition.trash"
     case shortcutFind = "shortcuts.entry.find"
@@ -355,7 +401,12 @@ public enum TextKey: String, CaseIterable, Sendable {
         case .errorZipCannotOpen, .errorOperationTrashExistingFailed, .errorOperationSystemFailure,
              .listSortAscending, .listSortDescending,
              .dialogConfirmBullet, .dialogConfirmDestination, .dialogConfirmLocation,
-             .dialogFavoriteRemoveItems, .previewUnavailable:
+             .dialogFavoriteRemoveItems, .previewUnavailable, .aboutVersion,
+             .toolbarGoBackHelp, .toolbarGoForwardHelp, .toolbarShowFileListOnlyHelp, .toolbarShowPreviewOnlyHelp, .toolbarShowImagesOnlyHelp,
+             .toolbarShowVideosOnlyHelp, .toolbarZipFilesHelp, .toolbarStartSlideshowHelp, .toolbarZoomInHelp, .toolbarZoomToFitHelp,
+             .toolbarZoomOutHelp, .toolbarThumbnails, .toolbarList, .toolbarThumbnailSize,
+             .settingsShortcutsRecordFor, .settingsShortcutsResetFor, .settingsShortcutsErrorConflict, .settingsShortcutsErrorDefaultConflict,
+             .settingsShortcutsClearFor:
             return [.text]
         case .contextCopySingle:
             return [.text]
@@ -479,6 +530,10 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Action description in the shortcut reference"
         case .shortcutOpenDefaultCondition:
             return "Availability note below a shortcut reference action"
+        case .shortcutQuickLook:
+            return "Action description in the shortcut reference"
+        case .shortcutQuickLookCondition:
+            return "Availability note below a shortcut reference action"
         case .shortcutRename:
             return "Action description in the shortcut reference"
         case .shortcutRenameCondition:
@@ -498,6 +553,10 @@ public enum TextKey: String, CaseIterable, Sendable {
         case .shortcutDuplicate:
             return "Action description in the shortcut reference"
         case .shortcutDuplicateCondition:
+            return "Availability note below a shortcut reference action"
+        case .shortcutNewFolder:
+            return "Action description in the shortcut reference"
+        case .shortcutNewFolderCondition:
             return "Availability note below a shortcut reference action"
         case .shortcutTrash:
             return "Action description in the shortcut reference"
@@ -621,13 +680,23 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Reason the preview cannot be displayed"
         case .kindFolder, .kindZipArchive:
             return "Fallback kind name (when the OS does not return a kind name)"
+        case .menuAppAbout:
+            return "About item in the application menu (the first item). Do not translate the app name"
+        case .aboutWindow:
+            return "Name of the About window. Not drawn on screen; used as the window title for accessibility"
+        case .aboutVersion:
+            return "Version line in the About window. %1$@ is the version number, for example 1.0.0"
+        case .aboutIcon:
+            return "Accessibility description of the app icon in the About window"
+        case .aboutLink:
+            return "Accessibility help of the repository link in the About window"
         case .menuAppSettings:
             return "Settings item in the application menu (ends with … because it opens a dialog)"
         case .menuAppQuit:
             return "Quit item in the application menu. Do not translate the app name"
         case .menuFile, .menuEdit, .menuView, .menuGo:
             return "Menu bar menu names"
-        case .menuFileOpen, .menuFileShowContents, .menuFileEnclosingFolder,
+        case .menuFileNewFolder, .menuFileOpen, .menuFileShowContents, .menuFileEnclosingFolder,
              .menuFileRevealInFinder, .menuFileAddToFavorites, .menuFileFind,
              .menuFileTrash, .menuFileRemoveFromFavorites:
             return "File menu items (the Trash and Remove from Favorites items swap depending on the state)"
@@ -653,16 +722,54 @@ public enum TextKey: String, CaseIterable, Sendable {
         case .contextPasteHere, .contextMovePasteHere:
             return "Paste in the directory tree's context menu"
         case .toolbarHistory, .toolbarPanes, .toolbarZoomGroup, .toolbarMediaType,
-             .toolbarViewMode, .toolbarSize:
-            return "Toolbar group names"
+             .toolbarViewMode, .toolbarSize, .toolbarSlideshowLabel, .toolbarZipFilesLabel,
+             .toolbarThumbnailSizeLabel:
+            return "Toolbar group names. They are also shown in the customization palette and in the text display mode"
         case .toolbarThumbnailSize:
-            return "Thumbnail size in the toolbar and size bar. Includes the shortcut"
+            return "Thumbnail size in the toolbar and size bar. The value is the shortcut text"
         case .toolbarStartSlideshowHelp:
-            return "Slideshow tooltip. Includes the shortcut"
+            return "Slideshow tooltip. The value is the shortcut text"
         case .toolbarZoomInHelp, .toolbarZoomToFitHelp, .toolbarZoomOutHelp:
-            return "Zoom in and out tooltips. Include the shortcuts"
+            return "Zoom in, zoom to fit, and zoom out tooltips. The value is the shortcut text"
+        case .toolbarGoBackHelp, .toolbarGoForwardHelp, .toolbarShowFileListOnlyHelp, .toolbarShowPreviewOnlyHelp,
+             .toolbarShowImagesOnlyHelp, .toolbarShowVideosOnlyHelp, .toolbarZipFilesHelp:
+            return "Toolbar button tooltips and accessibility text. They are separate from the menu item names. The value is the shortcut text"
         case .toolbarThumbnails, .toolbarList:
-            return "View mode options in the toolbar"
+            return "View mode options in the toolbar. Tooltips. The value is the shortcut text"
+        case .settingsTabGeneral:
+            return "Settings window tab name for the general settings"
+        case .settingsTabShortcuts:
+            return "Settings window tab name for the shortcut assignments"
+        case .settingsShortcutsList:
+            return "Accessibility label of the shortcut assignment list in the Settings window"
+        case .settingsShortcutsRecord:
+            return "Button that starts recording a new shortcut for a command"
+        case .settingsShortcutsRecording:
+            return "Prompt shown in place of the key while a shortcut is being recorded"
+        case .settingsShortcutsReset:
+            return "Button that returns one command to its default shortcut"
+        case .settingsShortcutsResetAll:
+            return "Button that returns every command to its default shortcut"
+        case .settingsShortcutsChanged:
+            return "Marker for a command whose shortcut differs from the default"
+        case .settingsShortcutsRecordFor:
+            return "Accessibility label of the Record button. The value is the command name"
+        case .settingsShortcutsResetFor:
+            return "Accessibility label of the Reset button. The value is the command name"
+        case .settingsShortcutsErrorModifier:
+            return "Error when the typed shortcut has none of Command, Control, or Option"
+        case .settingsShortcutsErrorFixed:
+            return "Error when the typed shortcut is reserved or fixed"
+        case .settingsShortcutsErrorConflict:
+            return "Error when another command uses the typed shortcut. The value is that command name"
+        case .settingsShortcutsErrorDefaultConflict:
+            return "Error when the default shortcut of a command is used by another command. The value is that command name"
+        case .settingsShortcutsClear:
+            return "Button that removes the shortcut of a command, so that the command has no key"
+        case .settingsShortcutsClearFor:
+            return "Accessibility label of the Clear button. The value is the command name"
+        case .settingsShortcutsUnset:
+            return "Shown in place of the key of a command that has no shortcut, in the Settings window, the shortcut reference, and tooltips"
         case .settingsWindow:
             return "Settings window title"
         case .settingsLanguage:
@@ -673,6 +780,8 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Section headings in the Settings window"
         case .settingsAutoplay, .settingsLoop, .settingsConfirm, .settingsRepeat:
             return "Checkboxes in the Settings window"
+        case .settingsConfirmNote:
+            return "Supplementary note under the confirmation checkbox in the Settings window. Also its accessibility help"
         case .settingsInterval:
             return "Interval label in the Settings window"
         case .settingsSeconds:
@@ -684,7 +793,8 @@ public enum TextKey: String, CaseIterable, Sendable {
         case .settingsTransitionNone, .settingsTransitionCrossfade,
              .settingsTransitionSlide, .settingsTransitionZoom:
             return "Transition options"
-        case .listColumnName, .listColumnCreationDate, .listColumnKind, .listColumnLocation:
+        case .listColumnName, .listColumnCreationDate, .listColumnKind, .listColumnSize,
+             .listColumnModificationDate, .listColumnLocation:
             return "List view column headings. Also used in the sort menu"
         case .listSortAscending:
             return "Selected column in the sort menu (ascending). The value is the column name"
@@ -700,6 +810,8 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Tooltip for a directory tree row"
         case .treeA11yFavoriteName, .treeA11yFolderName:
             return "Accessibility label for a name edit field in the directory tree"
+        case .folderDefaultName:
+            return "Default name of a folder created with New Folder, before the user renames it. Use Finder's wording"
         case .searchKeyword, .searchRoot, .searchChoose, .searchChooseHelp,
              .searchSearch, .searchError:
             return "Labels, buttons, and accessibility text in the search sheet"
@@ -756,6 +868,8 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "One failure line for a file operation. The values are the name and the reason"
         case .dialogOperationMore:
             return "Remaining failure count for file operations. The value is the formatted count"
+        case .dialogTreeTrashOverlapTitle, .dialogTreeTrashOverlapMessage:
+            return "Error shown when folders selected in the directory tree include a folder inside another selected folder, so nothing is moved to the Trash"
         case .a11yThumbnail:
             return "Accessibility label for a thumbnail image"
         }

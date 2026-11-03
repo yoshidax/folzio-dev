@@ -859,12 +859,12 @@ private func waitForCache(
     let clock = ContinuousClock()
     let deadline = clock.now + timeout
     while clock.now < deadline {
-        if await cache.get(url) != nil {
+        if await cache.containsEntry(for: url) {
             return true
         }
         try? await Task.sleep(for: .milliseconds(10))
     }
-    return await cache.get(url) != nil
+    return await cache.containsEntry(for: url)
 }
 
 /// Searcher that emits results at any time from tests.

@@ -78,9 +78,11 @@
 
 | メニュー | 日本語 | 英語 |
 |---|---|---|
+| アプリ | Folzio について | About Folzio |
 | アプリ | 設定… | Settings… |
 | アプリ | 終了 | Quit Folzio |
 | — | ファイル | File |
+| ファイル | 新規フォルダ | New Folder |
 | ファイル | 開く | Open |
 | ファイル | 中を表示 | Show Contents |
 | ファイル | 上の階層へ | Enclosing Folder |
@@ -147,6 +149,18 @@
 
 各操作の掲載範囲と条件は [keyboard-and-menus.md](keyboard-and-menus.md) の「ショートカット一覧」を参照する。
 
+### About ダイアログ（FR-244）
+
+| 用途 | 日本語 | 英語 |
+|---|---|---|
+| メニュー項目 | Folzio について | About Folzio |
+| ウィンドウ名（画面には出さず、アクセシビリティに使う） | Folzio について | About Folzio |
+| バージョン行（`%@` はバージョン番号） | バージョン %@ | Version %@ |
+| アイコンの説明 | Folzio のアイコン | Folzio app icon |
+| リンクのヘルプ | Folzio のリポジトリを既定の Web ブラウザで開きます | Opens the Folzio repository in your default web browser |
+
+アプリ名「Folzio」と URL・バージョンの数値は翻訳しない（FR-147）。表示中の言語の切り替えで、バージョン行・ウィンドウ名・アイコンの説明・リンクのヘルプ・メニュー項目を即時更新する。
+
 ### 右クリックメニュー
 
 | 場所 | 日本語 | 英語 |
@@ -156,7 +170,8 @@
 | ファイルリスト | コピー・ペースト・移動ペースト・パス名をコピー・複製・名前を変更・ゴミ箱に入れる・開く・中を表示・上の階層へ・Finder に表示 | メニューバーと同じ |
 | ツリー | ここにペースト | Paste Here |
 | ツリー | ここに移動ペースト | Move Item Here |
-| ツリー | お気に入りに追加・お気に入りから削除・Finder に表示・パス名をコピー・ゴミ箱に入れる・名前を変更 | メニューバーと同じ |
+| ツリー | お気に入りに追加・お気に入りから削除・Finder に表示・パス名をコピー・ゴミ箱に入れる・名前を変更・新規フォルダ | メニューバーと同じ |
+| ファイルリスト（背景） | 新規フォルダ・ペースト・移動ペースト・Finder に表示 | メニューバーと同じ |
 
 ### ツールバー
 
@@ -171,6 +186,8 @@
 | 表示形式のグループ | 表示形式 / サムネイル / リスト | View / Thumbnails / List |
 | サイズ | サイズ / サムネイルのサイズ（⌃⌘. / ⌃⌘,） | Size / Thumbnail Size (⌃⌘. / ⌃⌘,) |
 
+ツールバーの表のキーは既定の割り当て。現在の割り当てに従って表示し、未設定のコマンドは「（未設定）」/ `(Not Set)` とする（FR-261・268）。
+
 ### 設定ウインドウ
 
 | 日本語 | 英語 |
@@ -182,13 +199,25 @@
 | 動画を自動再生する | Play videos automatically |
 | 動画をループ再生する | Loop videos |
 | ファイル操作 | File Operations |
-| コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する（名前の変更・移動・ツリーのフォルダのゴミ箱は常に確認する） | Confirm before copying, moving to the Trash, or removing from Favorites (renaming, moving, and moving tree folders to the Trash are always confirmed) |
+| コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する | Confirm before copying, moving to the Trash, or removing from Favorites |
+| 名前の変更・移動と、ツリーのフォルダをゴミ箱に入れる操作は、この設定に関わらず常に確認します（確認の補足説明。アクセシビリティのヘルプにも使う） | Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless of this setting |
 | スライドショー | Slideshow |
 | 切り替え間隔 / 秒 | Interval / seconds |
 | 切り替え間隔（秒）（アクセシビリティ） | Interval (seconds) |
 | 最後まで表示したら先頭から繰り返す | Repeat from the beginning after the last item |
 | 切り替え効果 | Transition |
 | なし / クロスフェード / スライド / ズーム | None / Crossfade / Slide / Zoom |
+| 一般 / ショートカット（タブ） | General / Shortcuts |
+| ショートカット（一覧のアクセシビリティ） | Shortcuts |
+| 記録 / キーを入力… | Record / Type shortcut… |
+| 未設定にする / 未設定 | Clear / Not Set |
+| 既定値に戻す / すべて既定値に戻す | Reset / Reset All |
+| 変更済み | Changed |
+| 「%@」のショートカットを記録 / 未設定にする / 既定値に戻す（アクセシビリティ。値はコマンド名） | Record / Clear / Reset shortcut for %@ |
+| ⌘・⌃・⌥ のいずれかと組み合わせてください | Combine with ⌘, ⌃, or ⌥. |
+| このキーは変更できません | This shortcut can’t be changed. |
+| 「%@」で使われています | Already used by “%@”. |
+| 既定のキーを「%@」が使っています | The default shortcut is used by “%@”. |
 
 ### ファイルリスト・ツリー・プレビュー
 
@@ -211,6 +240,7 @@
 | 種類名のフォールバック | フォルダ / ZIP アーカイブ | Folder / ZIP archive |
 | サムネイルの画像（アクセシビリティ） | サムネイル | Thumbnail |
 | ツリーの名前の編集欄（アクセシビリティ） | お気に入りの名前 / フォルダの名前 | Favorite name / Folder name |
+| 新規フォルダの既定名（作成時の表示言語で決め、作成後に言語を変えても名前は変えない） | 名称未設定フォルダ | untitled folder |
 
 ### 検索
 

@@ -19,6 +19,11 @@ struct BrowserModelTests {
         try? await Task.sleep(for: .milliseconds(20))
         model.setKindNames(KindNames(folder: "フォルダ", zipArchive: "ZIP アーカイブ"))
         await load.value
+        // If the sleep above overshoots on a busy runner, the language changes after the listing has loaded. The
+        // kind names are then applied asynchronously, so wait for the update instead of reading right after the load.
+        for _ in 0..<100 where model.listing.files.first?.typeDescription != "フォルダ" {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
         #expect(model.listing.files.first?.typeDescription == "フォルダ")
     }
 
@@ -522,7 +527,7 @@ struct BrowserModelTests {
         #expect(model.showsZipFiles == false)
         await model.selectFolder(folder)
 
-        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "c.png", "sub"])
+        #expect(model.listing.files.map(\.name) == ["..", "sub", "a.jpg", "c.png"])
         #expect(model.listing.state == .loaded)
     }
 
@@ -540,7 +545,7 @@ struct BrowserModelTests {
         model.setShowsZipFiles(true)
 
         #expect(model.showsZipFiles == true)
-        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "b.zip", "c.png", "sub"])
+        #expect(model.listing.files.map(\.name) == ["..", "sub", "a.jpg", "b.zip", "c.png"])
         #expect(model.listing.state == .loaded)
         #expect(await lister.callCount == callsBefore)
         #expect(defaults.object(forKey: "view.showsZipFiles") as? Bool == true)
@@ -561,7 +566,7 @@ struct BrowserModelTests {
         let shown = model.listing.files.map(\.url)
         model.setShowsZipFiles(false)
         #expect(!model.listing.files.contains { $0.kind == .archive })
-        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "c.png", "sub"])
+        #expect(model.listing.files.map(\.name) == ["..", "sub", "a.jpg", "c.png"])
         #expect(defaults.object(forKey: "view.showsZipFiles") as? Bool == false)
 
         model.setShowsZipFiles(true)
@@ -581,10 +586,10 @@ struct BrowserModelTests {
 
         model.setMediaTypeFilter(MediaTypeFilter(imagesOnly: true))
         model.setShowsZipFiles(true)
-        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "b.zip", "c.png", "sub"])
+        #expect(model.listing.files.map(\.name) == ["..", "sub", "a.jpg", "b.zip", "c.png"])
 
         model.setShowsZipFiles(false)
-        #expect(model.listing.files.map(\.name) == ["..", "a.jpg", "c.png", "sub"])
+        #expect(model.listing.files.map(\.name) == ["..", "sub", "a.jpg", "c.png"])
     }
 
     @Test("Hiding a focused zip moves focus and preview to a remaining selected item")
@@ -727,7 +732,52 @@ struct BrowserModelTests {
         )
         #expect(restored.showsZipFiles == true)
         await restored.selectFolder(folder)
-        #expect(restored.listing.files.map(\.name) == ["a.jpg", "b.zip", "c.png", "sub"])
+        #expect(restored.listing.files.map(\.name) == ["sub", "a.jpg", "b.zip", "c.png"])
+    }
+
+    @MainActor
+    @Test("Shows and hides list columns and restores them in a new model")
+    func columnVisibilityIsPersisted() {
+        let (model, defaults, suite) = makeModel(lister: FakeLister(responses: [:]), decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        #expect(model.visibleColumns == [.creationDate, .kind])
+
+        model.setColumn(.size, visible: true)
+        model.setColumn(.kind, visible: false)
+        #expect(model.visibleColumns == [.creationDate, .size])
+
+        let restored = BrowserModel(
+            kindNames: FixtureKit.kindNames,
+            lister: FakeLister(responses: [:]),
+            decoder: FakeDecoder(),
+            cache: DecodedImageCache(costLimitBytes: 10_000_000),
+            settings: SettingsStore(defaults: defaults)
+        )
+        #expect(restored.visibleColumns == [.creationDate, .size])
+    }
+
+    @MainActor
+    @Test("Hiding the sorted column falls back to name in its last direction, and keeps other sorts")
+    func hidingSortedColumnFallsBackToName() {
+        let (model, defaults, suite) = makeModel(lister: FakeLister(responses: [:]), decoder: FakeDecoder())
+        defer { defaults.removePersistentDomain(forName: suite) }
+        model.setColumn(.size, visible: true)
+
+        // Never sorted by name in descending order: falls back to ascending.
+        model.sortOrder = SortOrder(column: .size, ascending: false)
+        model.setColumn(.size, visible: false)
+        #expect(model.sortOrder == SortOrder(column: .name, ascending: true))
+
+        // Hiding a column that is not the sorted one does not change the sort.
+        model.sortOrder = SortOrder(column: .name, ascending: false)
+        model.sortOrder = SortOrder(column: .creationDate, ascending: true)
+        model.setColumn(.kind, visible: false)
+        #expect(model.sortOrder == SortOrder(column: .creationDate, ascending: true))
+
+        // Uses the direction the name sort last had, and the direction survives a restart.
+        model.setColumn(.creationDate, visible: false)
+        #expect(model.sortOrder == SortOrder(column: .name, ascending: false))
+        #expect(SettingsStore(defaults: defaults).viewSettings.sortOrder == SortOrder(column: .name, ascending: false))
     }
 
     @MainActor
@@ -756,7 +806,9 @@ struct BrowserModelTests {
             kind: .media(MediaKind(fileExtension: (name as NSString).pathExtension) ?? .jpeg),
             typeDescription: "JPEG イメージ",
             creationDate: nil,
-            fileSize: 0
+            fileSize: 0,
+            // Rows from DirectoryLister always carry a content version; the cache keys images by it (FR-230).
+            contentVersion: FileContentVersion(fileSize: 0, modificationDate: nil, fileIdentifier: 1)
         )
     }
 
@@ -785,7 +837,7 @@ struct BrowserModelTests {
     private func waitForCache(_ cache: DecodedImageCache, _ url: URL) async -> Bool {
         let deadline = ContinuousClock.now + .seconds(2)
         while ContinuousClock.now < deadline {
-            if await cache.get(url) != nil { return true }
+            if await cache.containsEntry(for: url) { return true }
             try? await Task.sleep(for: .milliseconds(10))
         }
         return false

@@ -171,6 +171,9 @@
 /* Fallback kind name (when the OS does not return a kind name) */
 "kind.zipArchive" = "ZIP アーカイブ";
 
+/* About item in the application menu (the first item). Do not translate the app name */
+"menu.app.about" = "Folzio について";
+
 /* Settings item in the application menu (ends with … because it opens a dialog) */
 "menu.app.settings" = "設定…";
 
@@ -179,6 +182,9 @@
 
 /* Menu bar menu names */
 "menu.file" = "ファイル";
+
+/* File menu items */
+"menu.file.newFolder" = "新規フォルダ";
 
 /* File menu items */
 "menu.file.open" = "開く";
@@ -322,43 +328,73 @@
 "context.movePasteHere" = "ここに移動ペースト";
 
 /* Toolbar history group name */
-"toolbar.history" = "履歴";
+"toolbar.history" = "戻る / 進む";
 
 /* Toolbar panes group name */
-"toolbar.panes" = "ペイン";
+"toolbar.panes" = "表示";
 
 /* Toolbar zoom group name */
-"toolbar.zoomGroup" = "拡大・縮小";
+"toolbar.zoomGroup" = "プレビューサイズ";
 
 /* Toolbar media type group name */
-"toolbar.mediaType" = "種類";
+"toolbar.mediaType" = "メディアタイプ";
 
 /* Toolbar view mode group name */
-"toolbar.viewMode" = "表示形式";
+"toolbar.viewMode" = "ファイルリスト表示形式";
 
 /* Toolbar and size bar group name */
 "toolbar.size" = "サイズ";
 
 /* Tooltip and accessibility text for the toolbar and size bar. Include the shortcut */
-"toolbar.thumbnailSize" = "サムネイルのサイズ（⌃⌘. / ⌃⌘,）";
+"toolbar.thumbnailSize" = "サムネイルサイズ（%1$@）";
+
+/* Toolbar group name. Also shown in the customization palette and the text display mode */
+"toolbar.slideshowLabel" = "スライドショー";
+
+/* Toolbar group name. Also shown in the customization palette and the text display mode */
+"toolbar.zipFilesLabel" = "zipファイル";
+
+/* Toolbar group name. Also shown in the customization palette and the text display mode */
+"toolbar.thumbnailSizeLabel" = "サムネイルサイズ";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.goBackHelp" = "戻る（%1$@）";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.goForwardHelp" = "進む（%1$@）";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.showFileListOnlyHelp" = "ファイルリストのみ表示（%1$@）";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.showPreviewOnlyHelp" = "プレビューのみ表示（%1$@）";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.showImagesOnlyHelp" = "画像のみ表示（%1$@）";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.showVideosOnlyHelp" = "動画のみ表示（%1$@）";
+
+/* Toolbar button tooltip and accessibility text. Includes the shortcut */
+"toolbar.zipFilesHelp" = "zipファイルを表示（%1$@）";
 
 /* Slideshow tooltip. Includes the shortcut */
-"toolbar.startSlideshowHelp" = "スライドショーを開始（⇧⌘S）";
+"toolbar.startSlideshowHelp" = "スライドショーを開始（%1$@）";
 
 /* Zoom in tooltip. Includes the shortcut */
-"toolbar.zoomInHelp" = "拡大（⌘+）";
+"toolbar.zoomInHelp" = "拡大（%1$@）";
 
 /* Zoom to Fit tooltip. Includes the shortcut */
-"toolbar.zoomToFitHelp" = "表示領域に合わせる（⌘0）";
+"toolbar.zoomToFitHelp" = "表示領域に合わせる（%1$@）";
 
 /* Zoom out tooltip. Includes the shortcut */
-"toolbar.zoomOutHelp" = "縮小（⌘-）";
+"toolbar.zoomOutHelp" = "縮小（%1$@）";
 
 /* View mode options in the toolbar */
-"toolbar.thumbnails" = "サムネイル";
+"toolbar.thumbnails" = "サムネイル（%1$@）";
 
 /* View mode options in the toolbar */
-"toolbar.list" = "リスト";
+"toolbar.list" = "リスト（%1$@）";
 
 /* Settings window title */
 "settings.window" = "設定";
@@ -376,7 +412,10 @@
 "settings.fileOperations" = "ファイル操作";
 
 /* Checkboxes in the Settings window */
-"settings.confirm" = "コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する（名前の変更・移動・ツリーのフォルダのゴミ箱は常に確認する）";
+"settings.confirm" = "コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する";
+
+/* Supplementary note under the confirmation checkbox in the Settings window. Also its accessibility help */
+"settings.confirm.note" = "名前の変更・移動と、ツリーのフォルダをゴミ箱に入れる操作は、この設定に関わらず常に確認します";
 
 /* Section headings in the Settings window */
 "settings.slideshow" = "スライドショー";
@@ -408,6 +447,57 @@
 /* Transition options */
 "settings.transition.zoom" = "ズーム";
 
+/* Settings window tab name for the general settings */
+"settings.tab.general" = "一般";
+
+/* Settings window tab name for the shortcut assignments */
+"settings.tab.shortcuts" = "ショートカット";
+
+/* Accessibility label of the shortcut assignment list in the Settings window */
+"settings.shortcuts.list" = "ショートカット";
+
+/* Button that starts recording a new shortcut for a command */
+"settings.shortcuts.record" = "記録";
+
+/* Prompt shown in place of the key while a shortcut is being recorded */
+"settings.shortcuts.recording" = "キーを入力…";
+
+/* Button that returns one command to its default shortcut */
+"settings.shortcuts.reset" = "既定値に戻す";
+
+/* Button that returns every command to its default shortcut */
+"settings.shortcuts.resetAll" = "すべて既定値に戻す";
+
+/* Marker for a command whose shortcut differs from the default */
+"settings.shortcuts.changed" = "変更済み";
+
+/* Accessibility label of the Record button. The value is the command name */
+"settings.shortcuts.recordFor" = "「%1$@」のショートカットを記録";
+
+/* Accessibility label of the Reset button. The value is the command name */
+"settings.shortcuts.resetFor" = "「%1$@」のショートカットを既定値に戻す";
+
+/* Error when the typed shortcut has none of Command, Control, or Option */
+"settings.shortcuts.error.modifier" = "⌘・⌃・⌥ のいずれかと組み合わせてください";
+
+/* Error when the typed shortcut is reserved or fixed */
+"settings.shortcuts.error.fixed" = "このキーは変更できません";
+
+/* Error when another command uses the typed shortcut. The value is that command name */
+"settings.shortcuts.error.conflict" = "「%1$@」で使われています";
+
+/* Error when the default shortcut of a command is used by another command. The value is that command name */
+"settings.shortcuts.error.defaultConflict" = "既定のキーを「%1$@」が使っています";
+
+/* Button that removes the shortcut of a command, so that the command has no key */
+"settings.shortcuts.clear" = "未設定にする";
+
+/* Accessibility label of the Clear button. The value is the command name */
+"settings.shortcuts.clearFor" = "「%1$@」のショートカットを未設定にする";
+
+/* Shown in place of the key of a command that has no shortcut */
+"settings.shortcuts.unset" = "未設定";
+
 /* List view column headings. Also used in the sort menu */
 "list.column.name" = "名前";
 
@@ -416,6 +506,12 @@
 
 /* List view column headings. Also used in the sort menu */
 "list.column.kind" = "種類";
+
+/* List view column headings. Also used in the sort menu */
+"list.column.size" = "サイズ";
+
+/* List view column headings. Also used in the sort menu */
+"list.column.modificationDate" = "変更日";
 
 /* List view column headings. Also used in the sort menu */
 "list.column.location" = "場所";
@@ -446,6 +542,9 @@
 
 /* Accessibility label for a name edit field in the directory tree */
 "tree.a11y.folderName" = "フォルダの名前";
+
+/* Default name of a folder created with New Folder, before the user renames it. Use Finder's wording */
+"folder.defaultName" = "名称未設定フォルダ";
 
 /* Search sheet keyword label, placeholder, and accessibility text */
 "search.keyword" = "検索キーワード";
@@ -575,6 +674,12 @@
 
 /* Remaining failure count for file operations. %1$@ is the formatted count */
 "dialog.operation.more" = "ほか %1$@ 件";
+
+/* Error shown when folders selected in the directory tree include a folder inside another selected folder, so nothing is moved to the Trash */
+"dialog.treeTrashOverlap.title" = "ゴミ箱に入れられません";
+
+/* Error shown when folders selected in the directory tree include a folder inside another selected folder, so nothing is moved to the Trash */
+"dialog.treeTrashOverlap.message" = "選択したフォルダの中に、ほかの選択したフォルダの中にあるフォルダが含まれています。どのフォルダもゴミ箱に入れていません。";
 
 /* Accessibility label for a thumbnail image */
 "a11y.thumbnail" = "サムネイル";
@@ -740,6 +845,12 @@
 "shortcuts.condition.openDefault" = "ファイルリストで選択したファイル・フォルダを開きます。zipの中では使えません。";
 
 /* Action description in the shortcut reference */
+"shortcuts.entry.quickLook" = "選択したメディアをクイックルックで確認する";
+
+/* Availability note below a shortcut reference action */
+"shortcuts.condition.quickLook" = "ファイルリストで使えます。もう一度 Space を押すと閉じます。表示中は矢印キーで選択を移せます。zipの中では使えません。メディアをダブルクリックすると既定のアプリで開きます。";
+
+/* Action description in the shortcut reference */
 "shortcuts.entry.rename" = "選択項目の名前を変更する";
 
 /* Availability note below a shortcut reference action */
@@ -768,6 +879,12 @@
 
 /* Availability note below a shortcut reference action */
 "shortcuts.condition.duplicate" = "ファイルリストで使えます。zipの中では使えません。";
+
+/* Action description in the shortcut reference */
+"shortcuts.entry.newFolder" = "新規フォルダを作る";
+
+/* Availability note below a shortcut reference action */
+"shortcuts.condition.newFolder" = "ファイルリストでは表示中のフォルダ、ツリーでは選択中のフォルダ（お気に入りは登録先）に作ります。zipの中、検索結果のファイルリスト、「お気に入り」の見出し、見つからないお気に入り、名前の変更中は使えません。";
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.trash" = "ゴミ箱に入れる・お気に入りから削除する";
@@ -821,7 +938,7 @@
 "shortcuts.entry.videoPlay" = "動画を再生・一時停止する";
 
 /* Availability note below a shortcut reference action */
-"shortcuts.condition.videoPlay" = "標準の動画コントロールの操作です。ファイルリストからも使えます。";
+"shortcuts.condition.videoPlay" = "プレビューの動画にフォーカスがあるときの、標準の動画コントロールの操作です。ファイルリストでは Space でクイックルックを開きます。";
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.videoControls" = "動画のシーク・音量を変える";
@@ -833,7 +950,7 @@
 "shortcuts.entry.videoSeek" = "動画を5秒戻す・送る";
 
 /* Availability note below a shortcut reference action */
-"shortcuts.condition.videoSeek" = "全画面・プレビューのみ表示中の動画で使えます。";
+"shortcuts.condition.videoSeek" = "動画を表示中に使えます。";
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.slideshowStart" = "スライドショーを開始する";
@@ -870,3 +987,15 @@
 
 /* Action description in the shortcut reference */
 "shortcuts.entry.quit" = "Folzioを終了する";
+
+/* Name of the About window. Not drawn on screen; used as the window title for accessibility */
+"about.window" = "Folzio について";
+
+/* Version line in the About window. %1$@ is the version number, for example 1.0.0 */
+"about.version" = "バージョン %1$@";
+
+/* Accessibility description of the app icon in the About window */
+"about.icon" = "Folzio のアイコン";
+
+/* Accessibility help of the repository link in the About window */
+"about.link" = "Folzio のリポジトリを既定の Web ブラウザで開きます";
