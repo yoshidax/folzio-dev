@@ -100,8 +100,8 @@
   `specs/product/README.md` の領域の表の overview.md の件数を更新する。反映後に `scripts/dev/check-spec-ids.sh` を再度実行する。
   反映した項目と差分を保守者に示し、承認を得てからコミットする。
 - [X] T018 反映の後、spec.md の冒頭に移行済み・凍結の注記を入れる（TAK-30 の spec.md と同じ形式）。
-- [ ] T019 CI（PR の作成時の `macOS Swift CI`）の成否を確かめる（SC-156）。性能テストの結果はログの末尾で確かめる。
-- [ ] T020 保守者に、ローカルでの確認を依頼する（quickstart.md の 5: macOS での公開のテスト、一時ディレクトリへの実際の書き出し、起動スモーク）。
+- [X] T019 CI（PR の作成時の `macOS Swift CI`）の成否を確かめる（SC-156）。性能テストの結果はログの末尾で確かめる。
+- [X] T020 保守者に、ローカルでの確認を依頼する（quickstart.md の 5: macOS での公開のテスト、一時ディレクトリへの実際の書き出し、起動スモーク）。
   結果を受け取るまで、このタスクは未チェックのままにする。
 
 ## Dependencies & Execution Order
