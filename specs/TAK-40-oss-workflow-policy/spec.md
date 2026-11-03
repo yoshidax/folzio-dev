@@ -177,4 +177,4 @@ TAK-41・TAK-35 で workflow を足す人が、手順書だけで正しく置け
 | SC-153〜SC-156 | 追加 | overview.md |
 | A-182〜A-186 | 追加 | overview.md |
 
-契約 `contracts/scripts.md` への反映の要否は plan.md で決める。
+| — | 追加 | contracts/scripts.md（書き出しでの workflow の除外と配置。plan.md の「反映の方針」） |
