@@ -1,10 +1,15 @@
 # Feature Specification: リスト形式の名前順でフォルダを常に先頭にまとめる
 
+> **移行済み（2026-11-03）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-54 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> ID は master の FR-287・SC-148・US57 と衝突したため、この feature の ID を FR-288・SC-149〜152・US60 に振り直して反映した。
+> 保守者の動作確認の報告は [quickstart.md](quickstart.md) を参照。
+
 **Feature Branch**: `claude/modest-lamport-kfizin`（Cloud が指定した作業ブランチ。feature ディレクトリとは独立）
 
 **Created**: 2026-11-02
 
-**Status**: Draft — 設計レビュー待ち
+**Status**: Approved — 実装・検証済み、product へ移行（マージ前）
 
 **Input**: [TAK-54](https://linear.app/takyoshida/issue/TAK-54/リスト形式の名前順でフォルダを常に先頭にまとめるfinder-と同じ)「リスト形式の名前順でフォルダを常に先頭にまとめる（Finder と同じ）」。
 会話で「issue TAK-54 に対応してください」と依頼された。Issue の本文に決定事項が書かれているため、追加の確認なしで仕様化した（Assumptions を参照）。

@@ -32,7 +32,7 @@
 - [x] T008 `git merge origin/master` で最新の master を取り込み、競合があれば解消する。
 - [x] T009 `specs/product/file-list.md` に FR-288・A-25（変更）・US60-AS1〜AS5・SC-149〜SC-152 を、`specs/product/search.md` に FR-084（変更）を反映する。ID の重複がないことを `docs_private/cloud-agent-workflow.md` 7 章のコマンドで確かめる。
 - [x] T010 `specs/product/contracts/keyboard-and-menus.md` の検索結果の並び、`docs/usage.ja.md` と `docs/usage.md` の検索結果の説明（「混ぜて」の記述）を、フォルダ先頭の規則に合わせて直す。`README.md`・`README.ja.md` に並べ替えの記述があれば、同じコミットで両方を直す。
-- [ ] T011 反映した項目と差分を保守者へ示し、承認を得てから spec.md の冒頭に移行済み・凍結の注記を入れる。
+- [x] T011 反映した項目と差分を保守者へ示し、承認を得てから spec.md の冒頭に移行済み・凍結の注記を入れる。
 
 ## Phase 4: 検証
 

@@ -17,4 +17,6 @@
 - 2026-11-03: T006 で更新したテストの期待値（名前順でフォルダとファイルが混ざる前提だったもの）:
   `BrowserModelTests`（zip 表示設定の 6 か所）、`BrowserModelFolderTests`（2 か所）、`BrowserModelArchiveTests`（2 か所）、`BrowserModelSearchTests`（2 か所）、`SortingTests`。
   grep では洗い出せない経路（実ファイルシステムの列挙の添字指定など）が残る可能性があり、その失敗はローカルの `swift test` で検出する。
-（CI の結果、保守者の起動スモークの結果は、実施後にここへ追記する）
+- 2026-11-03: 保守者がローカルで `swift build` / `swift test` と起動スモーク（手順 1〜5）を実施し、問題なしと報告（報告による）。
+  ID の振り直し前のコミット（`72b2234`）での確認。振り直し後はコメントとテスト名の ID だけの変更。
+（PR の CI の結果は、実行後にここへ追記する）
