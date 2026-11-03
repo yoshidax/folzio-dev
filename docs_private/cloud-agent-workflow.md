@@ -84,7 +84,15 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 4. **置き換える API は、使う前に、ヘッダーや文書で存在を確認する**。たとえば `mach_task_self()` は C のマクロで Swift から使えず、確認せずに置き換えたために CI を 1 回無駄にした。
 5. 同じ原因の失敗を 3 回直しても解決しない場合は、作業を止めて、状況を保守者へ報告する。
 
-**再確認**: 追加の push の後は、CI が自動では動かない。GitHub の MCP ツール `actions_run_trigger` の `run_workflow`（`workflow_id` に `macos-swift-ci.yml`、`ref` に作業ブランチ）で、`workflow_dispatch` を起動できる（2026-10-30 に確認。`204` が返り、run が作られて PR に関連づけられ、約 5 分で成功した）。同じツールに `rerun_workflow_run`、`rerun_failed_jobs`、`cancel_workflow_run` もある（未試行）。起動に失敗したら、保守者に、GitHub の Actions タブの「macOS Swift CI」→「Run workflow」で、作業ブランチを選んで実行するよう頼む。手動実行も macOS の使用時間を消費するので、必要なときだけ 1 回行う。
+**再確認（保守者の許可が必要）**: 追加の push の後は、CI が自動では動かない。CI の起動・再実行は、macOS の使用時間（1 分 0.062 ドル、1 回約 5 分）を消費するため、**Agent は毎回、保守者の許可を得てから行う**（TAK-53。2026-11-02 に Actions の予算が 0 ドルで CI が止まった件が発端）。対象の操作は、GitHub MCP の `actions_run_trigger`（`run_workflow`、`rerun_workflow_run`、`rerun_failed_jobs`）、`gh workflow run`、`gh run rerun`。手順は次のとおり。
+
+1. 起動する理由（直した内容）、対象の作業ブランチ、1 回の見込み時間（約 5 分）を保守者に示して許可を求める。
+2. 許可が得られたら、`run_workflow`（`workflow_id` に `macos-swift-ci.yml`、`ref` に作業ブランチ）で `workflow_dispatch` を起動する（2026-10-30 に確認。`204` が返り、run が作られて PR に関連づけられ、約 5 分で成功した）。1 回の許可で起動するのは 1 回だけ。
+3. 許可が得られない、または確認が保守者に届かないときは、保守者に、GitHub の Actions タブの「macOS Swift CI」→「Run workflow」で、作業ブランチを選んで実行するよう頼む。
+
+PR の作成と Draft の PR の Ready 化も CI を自動で起動するため、保守者が依頼したときだけ行う（「PR とマージ」）。`cancel_workflow_run` は使用時間を増やさないので、許可は不要。
+
+**権限設定**: Claude Code は `.claude/settings.json` の `permissions.ask` に `mcp__github__actions_run_trigger` と `Bash(gh workflow run *)`、`Bash(gh run rerun *)` を置く（Agent は編集できないため、保守者が編集する。反映は新しいセッションから）。Kilo Code は `.kilo/kilo.jsonc`、Codex は `.codex/rules/sdd.rules` で、同じ操作を確認の対象にする。Cloud で `ask` の確認が保守者に届くかは未確認。届かなければ `deny` にして、手動起動の運用（上の 3）にする。GitHub 側の予算の上限（Stop usage）も併用する。
 
 ## 5 検証ゲート（Cloud 版）
 
