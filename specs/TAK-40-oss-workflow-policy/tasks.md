@@ -74,7 +74,7 @@
 
 **Independent Test**: quickstart.md にはない。spec.md の US63-AS1、AS2 の問いに、`docs_private/repository-and-release.md` だけで答えられるかを読み比べる（SC-155）。
 
-- [ ] T012 [P] [US63] `docs_private/repository-and-release.md` を更新する。（FR-295）
+- [X] T012 [P] [US63] `docs_private/repository-and-release.md` を更新する。（FR-295）
   - 「公開版から外すファイル」の表に `.github/workflows/`（開発用の workflow）を加える
   - 「公開の手順」の `publish.sh` が行うことの一覧に、混入検査の対象の追加と、公開用 workflow の配置（と確認）を、実際の順序で加える
   - 新しい節「GitHub Actions の workflow」を置く。開発用と公開用の表（管理元、公開先での配置、動く場所、書き出しでの扱い）、
@@ -82,10 +82,10 @@
     公開用リポジトリで直接編集すると次の書き出しで消えること（EC-203）、管理元の条件（直下・通常ファイル・`.yml`/`.yaml`）、
     公開用 workflow は開発用リポジトリでは実行できず、動作の確認は公開用リポジトリで行うこと（A-183）、本体は TAK-41 で作ること（A-182）
   - 「注意」の「公開用で直接コミットしない」に、workflow も同じであることを加える
-- [ ] T013 [P] [US63] `docs_private/cloud-agent-workflow.md` の「4 CI の確認」の冒頭の段落の後に、`macos-swift-ci.yml` は開発用で公開用リポジトリには
+- [X] T013 [P] [US63] `docs_private/cloud-agent-workflow.md` の「4 CI の確認」の冒頭の段落の後に、`macos-swift-ci.yml` は開発用で公開用リポジトリには
   書き出さないこと、開発用の workflow は `.github/workflows/`、公開用の workflow は `scripts/dev/oss-workflows/` に置くこと
   （詳細は `repository-and-release.md` の「GitHub Actions の workflow」）を 1〜2 文で加える。
-- [ ] T014 [P] [US63] `AGENTS.md` の「公開用リポジトリ【共通】」に 1 行加える: 開発用の workflow は `.github/workflows/`（書き出さない）、
+- [X] T014 [P] [US63] `AGENTS.md` の「公開用リポジトリ【共通】」に 1 行加える: 開発用の workflow は `.github/workflows/`（書き出さない）、
   公開用リポジトリだけで動かす workflow は `scripts/dev/oss-workflows/`（書き出しで `.github/workflows/` に置く）。詳細は
   `docs_private/repository-and-release.md`。
 
