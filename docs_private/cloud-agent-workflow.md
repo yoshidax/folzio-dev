@@ -72,6 +72,8 @@ GitHub 連携、Cloud 環境のネットワーク設定、コマンドのサン�
 
 Cloud 環境には Swift がないため、`swift build` と `swift test` は、GitHub Actions の macOS の CI（`.github/workflows/macos-swift-ci.yml`）でしか確認できない。
 
+この CI は開発用で、公開用リポジトリには書き出さない（TAK-40）。開発用の workflow は `.github/workflows/`、公開用リポジトリだけで動かす workflow は `scripts/dev/oss-workflows/` に置く。詳細は [repository-and-release.md](repository-and-release.md) の「GitHub Actions の workflow」にある。
+
 **CI の構成（2026-10-30 時点）**: `macos-15` のランナー、Xcode 16.0（Swift 6.0）。`swift build` → 通常のテスト（`swift test --no-parallel --skip FolzioPerformanceTests`、10 分のタイムアウト）→ 性能テスト（失敗を許容、10 分のタイムアウト）。ジョブ全体のタイムアウトは 30 分。テストの各ステップに、ジョブ全体より短いタイムアウトがあるため、止まったテストが 30 分間ランナーを占有することはなく、止まった箇所をログから読める。通常のテストを直列で実行するのは、3 コアのランナーで並列に実行すると進まなくなったため（原因は未調査）。
 
 **いつ動くか**: PR を作ったときと、Draft の PR を Ready にしたときに**自動で動く**。以後の push では動かない（macOS の無料枠が小さいため）。

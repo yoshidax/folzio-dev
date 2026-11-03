@@ -275,6 +275,8 @@ open .build/Folzio.app
 - Spec Kit・AI エージェント・開発記録のファイルは `.gitattributes` の `export-ignore` で書き出しから外す。
   開発専用スクリプトと補助ファイルは `scripts/dev/` に置く。その他の開発専用ファイルは `.gitattributes` で除外する
 - 公開版の README・ガイド・ソースのコメントから `specs/`・`.specify/`・`docs_private/`・`shared-skills/`・`AGENTS.md` へのリンクを張らない
+- GitHub Actions の workflow は、開発用を `.github/workflows/`（書き出さない）、公開用リポジトリだけで動かすものを
+  `scripts/dev/oss-workflows/`（書き出しで `.github/workflows/` に置く）で管理する。公開用リポジトリで直接編集しない
 - 公開用リポジトリへのコミットと push はユーザーが行う
 - 構成と公開の手順の詳細: `docs_private/repository-and-release.md`
 
