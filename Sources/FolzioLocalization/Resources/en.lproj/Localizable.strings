@@ -116,6 +116,7 @@
 
 /* Reason a file operation failed */
 "error.operation.sameNameAtDestination" = "Stopped because an item with the same name exists at the destination";
+"error.operation.replacementContainsSource" = "Stopped because the item to replace contains a transfer source";
 
 /* Reason an existing item could not be moved to the Trash. %1$@ is the reason returned by the OS */
 "error.operation.trashExistingFailed" = "Couldn’t move the existing item to the Trash: %1$@";

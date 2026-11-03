@@ -7,6 +7,74 @@ import Testing
 struct FileOperationServiceTests {
     private let service = FileOperationService()
 
+    @Test("Replacing an ancestor of the source is rejected before either item changes")
+    func refusesReplacingSourceAncestor() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let parent = root.appendingPathComponent("album", isDirectory: true)
+        let source = parent.appendingPathComponent("album", isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        let marker = source.appendingPathComponent("photo.txt")
+        try Data("original".utf8).write(to: marker)
+        let alias = root.appendingPathComponent("alias", isDirectory: true)
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: parent)
+
+        for kind in [FileOperation.Kind.copy, .move] {
+            for path in [source, alias.appendingPathComponent("album", isDirectory: true)] {
+                let result = await service.execute(
+                    FileOperation(kind: kind, sources: [path], destination: root), resolution: .replace
+                )
+                #expect(result.succeeded.isEmpty)
+                #expect(result.failed.first?.reason == .replacementContainsSource)
+                #expect(try Data(contentsOf: marker) == Data("original".utf8))
+            }
+        }
+        let kept = await service.execute(
+            FileOperation(kind: .copy, sources: [source], destination: root), resolution: .keepBoth
+        )
+        #expect(kept.failed.isEmpty)
+        #expect(try Data(contentsOf: root.appendingPathComponent("album 2/photo.txt")) == Data("original".utf8))
+    }
+
+    @Test("Replacement cannot remove another selected source")
+    func refusesReplacingAncestorOfAnotherSource() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let target = root.appendingPathComponent("album", isDirectory: true)
+        let external = root.appendingPathComponent("external/album", isDirectory: true)
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: external, withIntermediateDirectories: true)
+        let otherSource = target.appendingPathComponent("photo.txt")
+        try Data("selected".utf8).write(to: otherSource)
+
+        let result = await service.execute(
+            FileOperation(kind: .copy, sources: [external, otherSource], destination: root), resolution: .replace
+        )
+        #expect(result.failed.count == 1)
+        #expect(result.failed.first?.url == external)
+        #expect(result.failed.first?.reason == .replacementContainsSource)
+        #expect(try Data(contentsOf: otherSource) == Data("selected".utf8))
+        #expect(try Data(contentsOf: root.appendingPathComponent("photo.txt")) == Data("selected".utf8))
+    }
+
+    @Test("A similarly prefixed sibling is not treated as an ancestor")
+    func allowsReplacingSimilarlyNamedSibling() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let target = root.appendingPathComponent("album", isDirectory: true)
+        let source = root.appendingPathComponent("album-extra/album", isDirectory: true)
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try Data("source".utf8).write(to: source.appendingPathComponent("photo.txt"))
+
+        let result = await service.execute(
+            FileOperation(kind: .copy, sources: [source], destination: root), resolution: .replace
+        )
+        #expect(result.failed.isEmpty)
+        #expect(try Data(contentsOf: target.appendingPathComponent("photo.txt")) == Data("source".utf8))
+        #expect(FileManager.default.fileExists(atPath: source.path))
+    }
+
     @Test("Rejects replacing an item with itself without deleting the original")
     func refusesReplaceOfSource() async throws {
         let root = try makeTemporaryDirectory()

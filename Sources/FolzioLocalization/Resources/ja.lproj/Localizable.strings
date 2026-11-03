@@ -116,6 +116,7 @@
 
 /* Reason a file operation failed */
 "error.operation.sameNameAtDestination" = "操作先に同じ名前の項目があるため中止しました";
+"error.operation.replacementContainsSource" = "置き換え先に転送元が含まれているため中止しました";
 
 /* Reason an existing item could not be moved to the Trash. %1$@ is the reason returned by the OS */
 "error.operation.trashExistingFailed" = "既存の項目をゴミ箱へ移動できませんでした: %1$@";
