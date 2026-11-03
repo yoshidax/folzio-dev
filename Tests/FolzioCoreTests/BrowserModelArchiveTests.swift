@@ -189,7 +189,7 @@ struct BrowserModelArchiveTests {
         #expect(model.listing.state == .loaded)
         #expect(model.listing.files[0].kind == .parent)
         #expect(model.listing.files[0].url == env.parentLink())
-        // Directories come before media, each group in natural name order (FR-287).
+        // Directories come before media, each group in natural name order (FR-288).
         #expect(model.listing.files.dropFirst().map(\.name) == ["sub", "anim.gif", "b.png"])
         #expect(model.listing.files.filter { $0.kind == .parent }.count == 1)
         #expect(model.selection.selected.isEmpty)

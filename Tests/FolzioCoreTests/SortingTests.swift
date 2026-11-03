@@ -122,7 +122,7 @@ struct SortingTests {
         }
     }
 
-    @Test("Name sort groups zip directories before media in both directions (FR-287)")
+    @Test("Name sort groups zip directories before media in both directions (FR-288)")
     func groupsDirectoriesBeforeMediaByName() {
         let files = [
             item("c.png", .media(.png)),
@@ -138,7 +138,7 @@ struct SortingTests {
         #expect(descending.map(\.name) == ["..", "d", "b", "c.png", "a.jpg"])
     }
 
-    @Test("Name sort puts folders first and keeps zip files with the files (FR-287)")
+    @Test("Name sort puts folders first and keeps zip files with the files (FR-288)")
     func groupsFoldersFirstByName() {
         let files = [
             item("c.png", .media(.png)),
@@ -223,7 +223,7 @@ struct SortingTests {
                     // number.
                     url: URL(fileURLWithPath: "\(folder)/\(name)"),
                     name: name,
-                    // Roughly one row in four is a folder so the name sort's folder grouping (FR-287) is exercised.
+                    // Roughly one row in four is a folder so the name sort's folder grouping (FR-288) is exercised.
                     kind: Int.random(in: 0..<4, using: &generator) == 0
                         ? .folder
                         : .media(MediaKind(fileExtension: (name as NSString).pathExtension) ?? .jpeg),

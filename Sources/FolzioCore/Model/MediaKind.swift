@@ -77,7 +77,7 @@ public enum ListItemKind: Sendable, Hashable {
     }
 
     /// Whether this row is a folder that the name sort groups first: a regular `.folder` or a `.directory` inside
-    /// a zip. Zip files (`.archive`) and the `..` row (`.parent`) are not folder rows (FR-287).
+    /// a zip. Zip files (`.archive`) and the `..` row (`.parent`) are not folder rows (FR-288).
     public var isFolderRow: Bool {
         switch self {
         case .folder, .directory:

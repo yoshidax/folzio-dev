@@ -25,7 +25,7 @@
 
 ## 仕様・文書の反映
 
-- 実装と検証の後に、spec.md の「反映先」の表のとおり `specs/product/file-list.md`（FR-287・A-25・US57-AS1〜AS5・SC-148〜151）と `search.md`（FR-084）へ反映する。
+- 実装と検証の後に、spec.md の「反映先」の表のとおり `specs/product/file-list.md`（FR-288・A-25・US60-AS1〜AS5・SC-149〜151）と `search.md`（FR-084）へ反映する。
   あわせて `contracts/keyboard-and-menus.md` の検索結果の並び、`docs/usage.ja.md` と `docs/usage.md` の検索結果の説明を直す。
 - ID の衝突は、反映の直前に `git merge origin/master` した上で `docs_private/cloud-agent-workflow.md` 7 章の確認コマンドで調べる。
 - `README.md` と `README.ja.md` は、並べ替えの説明がある場合だけ同じコミットで両方を直す（現時点では該当なし。タスクで確認する）。
