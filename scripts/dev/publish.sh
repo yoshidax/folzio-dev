@@ -23,7 +23,9 @@ scripts/check-readme-sync.sh
 scripts/dev/check-english-comments.sh
 
 tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
+# 書き出しに含めない作業用のファイル
+listing="$(mktemp)"
+trap 'rm -rf "$tmp" "$listing"' EXIT
 
 git archive HEAD | tar -x -C "$tmp"
 
@@ -37,20 +39,38 @@ fi
 # 管理元の直下の通常ファイルで、名前が .yml か .yaml で終わるものだけを置く
 # （サブディレクトリ・シンボリックリンク・説明の文書は置かない）。開発用の .github/workflows/ は上で除いている
 oss_workflows="scripts/dev/oss-workflows"
+# 一覧はファイルに書き出してから読む。プロセス置換で読むと git ls-tree の失敗を set -e で止められず、
+# 管理元に workflow がないと扱って、公開先の公開用 workflow を同期で消してしまう。
+# 管理元のディレクトリがないときは、失敗せずに空の一覧になる
+if ! git ls-tree -z HEAD -- "$oss_workflows/" >"$listing"; then
+    echo "$oss_workflows/ の一覧を取得できません" >&2
+    exit 1
+fi
 # 古い bash（macOS の 3.2）では set -u で空の配列を展開できないため、件数は配列から求めずに数える
 workflow_names=()
 workflow_ids=()
+workflow_keys=()
 workflow_count=0
 while IFS= read -r -d '' entry; do
     read -r mode type id <<<"${entry%%$'\t'*}"
     path="${entry#*$'\t'}"
     name="${path##*/}"
     if [[ "$type" == blob && ( "$mode" == 100644 || "$mode" == 100755 ) && ( "$name" == *.yml || "$name" == *.yaml ) ]]; then
+        # 大文字小文字を区別しないファイルシステム（既定の APFS）では、大文字小文字だけが違う名前は同じファイルになる。
+        # 古い bash には ${name,,} がないため、tr で小文字にそろえて比べる
+        key="$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')"
+        for ((i = 0; i < workflow_count; i++)); do
+            if [[ "${workflow_keys[i]}" == "$key" ]]; then
+                echo "$oss_workflows/ の ${workflow_names[i]} と $name は大文字小文字だけが違うため、同じファイルとして置かれます。どちらかの名前を変えてください" >&2
+                exit 1
+            fi
+        done
         workflow_names+=("$name")
         workflow_ids+=("$id")
+        workflow_keys+=("$key")
         workflow_count=$((workflow_count + 1))
     fi
-done < <(git ls-tree -z HEAD -- "$oss_workflows/")
+done <"$listing"
 
 if ((workflow_count > 0)); then
     mkdir -p "$tmp/.github/workflows"
@@ -59,7 +79,8 @@ if ((workflow_count > 0)); then
     done
 fi
 
-# 書き出しの .github/workflows/ が、管理元の workflow と名前・内容とも一致するか確かめる
+# 書き出しの .github/workflows/ が、管理元の workflow と名前・内容とも一致するか確かめる。
+# 件数で余分なファイルを、置いたファイルのオブジェクト ID と管理元の blob の ID の比較で名前と内容を確かめる
 placed=0
 if [[ -d "$tmp/.github/workflows" ]]; then
     placed=$(find "$tmp/.github/workflows" -mindepth 1 | wc -l | tr -d ' ')
@@ -69,7 +90,8 @@ if [[ "$placed" != "$workflow_count" ]]; then
     exit 1
 fi
 for ((i = 0; i < workflow_count; i++)); do
-    if ! git cat-file blob "${workflow_ids[i]}" | cmp -s - "$tmp/.github/workflows/${workflow_names[i]}"; then
+    placed_file="$tmp/.github/workflows/${workflow_names[i]}"
+    if [[ ! -f "$placed_file" || "$(git hash-object --no-filters -- "$placed_file")" != "${workflow_ids[i]}" ]]; then
         echo "書き出しの .github/workflows/${workflow_names[i]} が $oss_workflows/ の内容と一致しません" >&2
         exit 1
     fi

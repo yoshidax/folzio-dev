@@ -97,6 +97,8 @@ class PublishFixture:
             text = attributes(text)
         self.write(".gitattributes", text)
         self.write("README.md", "Folzio\n")
+        # Excluded by the real .gitattributes, so git archive emits an empty .github/ as in the real repository.
+        self.write(".github/pull_request_template.md", "private pull request template\n")
         dev = self.source / "scripts/dev"
         dev.mkdir(parents=True)
         shutil.copy2(ROOT / "scripts/dev/publish.sh", dev / "publish.sh")
@@ -108,15 +110,24 @@ class PublishFixture:
         self.commit()
         subprocess.run(["git", "init", "-b", "main", str(self.target)], check=True, capture_output=True)
         (self.target / "obsolete.txt").write_text("old\n")
-        bin_dir = root / "bin"
-        bin_dir.mkdir()
-        (bin_dir / "swift").write_text("#!/bin/sh\nexit 0\n")
-        (bin_dir / "swift").chmod(0o755)
+        self.bin_dir = root / "bin"
+        self.bin_dir.mkdir()
+        (self.bin_dir / "swift").write_text("#!/bin/sh\nexit 0\n")
+        (self.bin_dir / "swift").chmod(0o755)
         self.env = os.environ.copy()
-        self.env["PATH"] = str(bin_dir) + os.pathsep + self.env["PATH"]
+        self.env["PATH"] = str(self.bin_dir) + os.pathsep + self.env["PATH"]
 
-    def git(self, *args):
-        subprocess.run(["git", "-C", str(self.source), *args], check=True, capture_output=True)
+    def git(self, *args, input=None):
+        return subprocess.run(["git", "-C", str(self.source), *args], check=True, capture_output=True,
+                              input=input, text=True).stdout
+
+    def fail_git(self, command):
+        """Makes the git found by publish fail for the given subcommand and run the real git otherwise."""
+        real_git = shutil.which("git")
+        wrapper = self.bin_dir / "git"
+        wrapper.write_text(f'#!/bin/sh\nif [ "$1" = {command} ]; then echo "fatal: simulated {command} failure" >&2; '
+                           f'exit 128; fi\nexec "{real_git}" "$@"\n')
+        wrapper.chmod(0o755)
 
     def write(self, path, text):
         file = self.source / path
@@ -131,8 +142,18 @@ class PublishFixture:
         file.parent.mkdir(parents=True, exist_ok=True)
         file.symlink_to(destination)
 
-    def commit(self):
-        self.git("add", "-A")
+    def stage_index_only(self, path, text):
+        """Stages a file in the index without a working tree file.
+
+        Names that differ only in case cannot coexist in the working tree of a case-insensitive file system.
+        """
+        blob = self.git("hash-object", "-w", "--stdin", input=text).strip()
+        self.git("update-index", "--add", "--cacheinfo", f"100644,{blob},{path}")
+        self.git("update-index", "--skip-worktree", path)
+
+    def commit(self, stage=True):
+        if stage:
+            self.git("add", "-A")
         self.git("-c", "user.name=Test", "-c", "user.email=test@example.invalid",
                  "commit", "--allow-empty", "-m", "fixture")
 
@@ -145,6 +166,10 @@ class PublishFixture:
         if not directory.exists():
             return {}
         return {path.name: path.read_text() for path in directory.iterdir()}
+
+    def published_github_files(self):
+        directory = self.target / ".github"
+        return sorted(str(path.relative_to(directory)) for path in directory.rglob("*") if not path.is_dir())
 
 
 def without_workflow_exclusion(text):
@@ -168,7 +193,7 @@ class WorkflowPublishTests(unittest.TestCase):
         fixture.commit()
         self.assert_published(fixture.publish())
         self.assertEqual(fixture.published_workflows(), {})
-        self.assertFalse((fixture.target / ".github").exists())
+        self.assertEqual(fixture.published_github_files(), [])
         self.assertEqual((fixture.target / "README.md").read_text(), "Folzio\n")
 
     def test_publish_rejects_included_development_workflows_before_sync(self):
@@ -215,7 +240,7 @@ class WorkflowPublishTests(unittest.TestCase):
         manual.write_text("name: Manual\n")
         result = fixture.publish()
         self.assert_published(result)
-        self.assertFalse((fixture.target / ".github").exists())
+        self.assertEqual(fixture.published_github_files(), [])
         self.assertIn("公開用 workflow はありません", result.stdout)
 
     def test_publish_prefers_managed_workflow_over_development_workflow(self):
@@ -233,6 +258,34 @@ class WorkflowPublishTests(unittest.TestCase):
         fixture.commit()
         self.assert_published(fixture.publish())
         self.assertEqual(fixture.published_workflows(), {"release.yml": "name: Release\n"})
+
+    def test_publish_stops_before_sync_when_managed_workflows_cannot_be_listed(self):
+        fixture = PublishFixture(self.root)
+        fixture.write("scripts/dev/oss-workflows/release.yml", "name: Release\n")
+        fixture.commit()
+        self.assert_published(fixture.publish())
+        fixture.write("README.md", "Folzio v2\n")
+        fixture.commit()
+        fixture.fail_git("ls-tree")
+        result = fixture.publish()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("scripts/dev/oss-workflows", result.stderr)
+        self.assertNotIn("公開用 workflow はありません", result.stdout)
+        self.assertEqual(fixture.published_workflows(), {"release.yml": "name: Release\n"})
+        self.assertEqual((fixture.target / "README.md").read_text(), "Folzio\n")
+
+    def test_publish_rejects_workflow_names_differing_only_in_case_before_sync(self):
+        fixture = PublishFixture(self.root)
+        fixture.git("add", "-A")
+        fixture.stage_index_only("scripts/dev/oss-workflows/Release.yml", "name: Upper\n")
+        fixture.stage_index_only("scripts/dev/oss-workflows/release.yml", "name: Lower\n")
+        fixture.commit(stage=False)
+        result = fixture.publish()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Release.yml", result.stderr)
+        self.assertIn("release.yml", result.stderr)
+        self.assertEqual((fixture.target / "obsolete.txt").read_text(), "old\n")
+        self.assertFalse((fixture.target / "README.md").exists())
 
 
 if __name__ == "__main__":
