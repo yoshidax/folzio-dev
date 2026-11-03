@@ -76,7 +76,7 @@ final class MainSplitViewController: NSSplitViewController {
     private var didNormalizeInitialPaneState = false
     private var isAppInitiatedFullScreenTransition = false
     private var hiddenListKeyMonitor: Any?
-    /// Monitor for `<` / `>` video seeking while the file list and the preview are both visible (FR-269).
+    /// Monitor for `<` / `>` video seeking while the file list and the preview are both visible (FR-287).
     private var videoSeekKeyMonitor: Any?
     /// Keyword from the previous search in the same launch. Not persisted (FR-081, R39).
     private var lastSearchKeyword: String?
@@ -847,7 +847,7 @@ final class MainSplitViewController: NSSplitViewController {
     }
 
     /// Seeks the video by 5 seconds with `<` / `>` when the preview is visible and the file list is not hidden
-    /// (FR-269). The hidden-list views (preview-only, full screen) are handled by `handleHiddenListKey`.
+    /// (FR-287). The hidden-list views (preview-only, full screen) are handled by `handleHiddenListKey`.
     private func handleVideoSeekKey(_ event: NSEvent) -> Bool {
         guard !slideshowCoordinator.isActive,
               appliedPresentation.isVisible(.preview),
