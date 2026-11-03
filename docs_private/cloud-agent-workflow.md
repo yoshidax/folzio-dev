@@ -92,7 +92,7 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 
 | 実行する者 | 検査 |
 |---|---|
-| Cloud（Agent） | `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` |
+| Cloud（Agent） | `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、`scripts/dev/check-spec-ids.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` |
 | CI | `swift build`、`swift test`（通常のテストと性能テスト） |
 | 保守者（ローカル） | 起動スモーク（`scripts/make-app.sh` の後に `open .build/Folzio.app` で 3 ペインの表示）、ローカルの最新の Swift でのビルドとテスト、`scripts/dev/tests` の公開・配布のテスト（Apple silicon の macOS と `rsync` を前提とし、Cloud では 6 件が失敗する） |
 
@@ -117,8 +117,9 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 - `specs/product/` の ID（`FR`・`SC`・`EC`・`A`・`US`）は、並行する feature が同じ時点の最大値から採るので、衝突し得る。取り込んだ `master` と突き合わせ、別の feature が同じ ID を使っていたら、**まだマージされていない自分の feature の ID を振り直してから反映する**。マージ済みの ID は振り直さない。反映の後に、重複した ID がないことを確かめる:
 
   ```bash
-  grep -rhoE '^\s*- \*\*(FR|SC|EC|A)-[0-9]+\*\*' specs/product | sed -E 's/^\s*- //' | sort | uniq -d
+  scripts/dev/check-spec-ids.sh
   ```
 
-  何も出力されなければ、重複はない。
+  重複した ID があれば、その ID を表示して終了コード 1 で終わる。反映の前（取り込んだ `master` との突き合わせ）と、反映の後の両方で実行する。
+- 重複した ID が、すでにどちらもマージ済みだったときは、あとにマージされた feature の ID を振り直す。新しい番号は、そのときの `specs/product/` の全領域の最大値の次から採る。凍結した feature の記録は書き換えず、先頭に旧 ID と新 ID の対応表を注記する（例: TAK-52）。
 - 反映した項目と差分を保守者へ示し、承認を得てからコミットする。
