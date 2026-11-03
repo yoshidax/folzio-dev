@@ -81,7 +81,7 @@
       "Edit(/.claude/settings.json)",
       "Edit(/.claude/settings.local.json)",
       "Edit(/scripts/dev/check-git-push.py)"
-    ]
+    ],
     "ask": [
         "mcp__github__actions_run_trigger",
         "Bash(gh workflow run *)",
