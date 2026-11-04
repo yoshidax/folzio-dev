@@ -9,12 +9,13 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 class CheckAgentsMdTests(unittest.TestCase):
-    def run_check(self, text, files=(), base_text=None, base_ref="master"):
+    def run_check(self, text, files=(), base_text=None, base_ref="master", base_files=()):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             dev = root / "scripts/dev"
             dev.mkdir(parents=True)
-            shutil.copy2(ROOT / "scripts/dev/check-agents-md.sh", dev / "check-agents-md.sh")
+            for script in ("check-agents-md.sh", "base-ref.sh"):
+                shutil.copy2(ROOT / "scripts/dev" / script, dev / script)
             for name in files:
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -23,18 +24,27 @@ class CheckAgentsMdTests(unittest.TestCase):
                 else:
                     path.write_text("x\n")
             if base_text is not None:
-                self.commit_base(root, base_text, base_ref)
+                self.commit_base(root, base_text, base_ref, base_files)
             (root / "AGENTS.md").write_text(text)
             return subprocess.run([str(dev / "check-agents-md.sh")], capture_output=True, text=True)
 
-    def commit_base(self, root, text, ref):
+    def commit_base(self, root, text, ref, files=()):
+        """Commits AGENTS.md and `files` as the base ref, then removes `files` from the working tree."""
         def git(*args):
             subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
         git("init", "-q", "-b", "work")
         (root / "AGENTS.md").write_text(text)
-        git("add", "AGENTS.md")
+        for name in files:
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("x\n")
+        git("add", "-A")
         git("-c", "user.name=test", "-c", "user.email=test@example.com", "commit", "-q", "-m", "base")
         git("update-ref", f"refs/{'remotes/' if '/' in ref else 'heads/'}{ref}", "HEAD")
+        for name in files:
+            (root / name).unlink()
+            if (root / name).parent != root and not any((root / name).parent.iterdir()):
+                (root / name).parent.rmdir()
 
     def lines(self, count):
         return "".join(f"line {i}\n" for i in range(count))
@@ -106,6 +116,41 @@ class CheckAgentsMdTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("  scripts/old.sh", result.stderr)
         self.assertNotIn("ok.sh", result.stderr)
+
+    def test_checks_markdown_link_targets(self):
+        text = "See [guide](docs/guide.md), [old](docs/old.md), [site](https://example.com/x) and [top](#usage).\n"
+        result = self.run_check(text, files=("docs/guide.md",))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("  docs/old.md\n", result.stderr)
+        self.assertNotIn("guide", result.stderr)
+        self.assertNotIn("example", result.stderr)
+
+    def test_detects_renamed_top_level_directory(self):
+        text = "Read `oldtop/rules.md` and `notapath/x`.\n"
+        result = self.run_check(text, base_text=text, base_files=("oldtop/rules.md",))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("  oldtop/rules.md", result.stderr)
+        self.assertNotIn("notapath", result.stderr)
+
+    def test_detects_removed_root_file_but_not_other_file_names(self):
+        text = "Read `README.ja.md` and the feature's `tasks.md`.\n"
+        result = self.run_check(text, base_text=text, base_files=("README.ja.md",))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("  README.ja.md", result.stderr)
+        self.assertNotIn("tasks.md", result.stderr)
+
+    def test_strips_anchors(self):
+        text = "See `docs/guide.md#usage` and [guide](docs/guide.md#install).\n"
+        result = self.run_check(text, files=("docs/guide.md",))
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_accepts_existing_path_with_spaces(self):
+        result = self.run_check("See `docs/release notes.md`.\n", files=("docs/release notes.md",))
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_warns_without_base_ref(self):
+        result = self.run_check(self.lines(46))
+        self.assertIn("no base ref to compare against", result.stderr)
 
     def test_passes_without_any_backticks(self):
         result = self.run_check("Plain text only.\n")

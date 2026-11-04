@@ -103,3 +103,9 @@ T003（AGENTS.md）と T004（docs_private/ の 9 個）を同時に進め、T00
   - 3: US66 の説明文（`overview.md` の US66 の本文）の「`specs/product/README.md` と `AGENTS.md` を読んで」は、
     要件ではなく、AGENTS.md の参照から README にたどり着く流れとして読めるので、変えていない
 - T011: コミットと push まで。PR は保守者の依頼があってから作る
+- 追加（保守者の指示）: #50 のレビューの指摘 8 件を、FR-310 を満たすためにこの feature で直した
+  - `scripts/dev/check-agents-md.sh`: Markdown のリンクの参照先も調べる。直下のディレクトリの改名（基準の ref にあった最初の要素）と、
+    直下のファイルの削除・改名を検出する。`#見出し` を除く。空白を含むパスはコードの中身全体で存在を確かめる
+  - `scripts/dev/base-ref.sh`（新規）: 比べる基準（`origin/master`、なければ `master`）を1か所で決め、`check-all.sh` と共有する
+  - 警告の文言に、基準が最後の fetch の時点のものであることと、基準がない場合を示し、`docs_private/agents/README.md` にも書く
+  - `test_check_agents_md.py` は 19 件（追加 6 件）。`check-all.sh` は成功し、quickstart の 4 も再び期待どおり
