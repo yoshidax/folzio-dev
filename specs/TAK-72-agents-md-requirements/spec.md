@@ -2,6 +2,9 @@
 
 > **移行済み（2026-11-04）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
 > このファイルは TAK-72 時点の記録として凍結しており、更新しない。
+> PR #52 のレビューを受けて、`specs/product/overview.md` には次を改めた後の表現で反映している（tasks.md の実施の記録）。
+> FR-195 の「見出しと参照の行に区分を示す」は「節の見出しに示し、参照の行は見出しに区分がないときと違う区分のときに示す」に、
+> SC-163 は「`AGENTS.md` の行数が FR-309 の上限以下である」に、US66 の説明文は「README を `AGENTS.md` の参照からたどって読む」にした。
 
 **Feature Branch**: `claude/tak-72-agents-md-spec`（Cloud が指定した作業ブランチ。feature ディレクトリ名とは独立）
 

@@ -109,3 +109,9 @@ T003（AGENTS.md）と T004（docs_private/ の 9 個）を同時に進め、T00
   - `scripts/dev/base-ref.sh`（新規）: 比べる基準（`origin/master`、なければ `master`）を1か所で決め、`check-all.sh` と共有する
   - 警告の文言に、基準が最後の fetch の時点のものであることと、基準がない場合を示し、`docs_private/agents/README.md` にも書く
   - `test_check_agents_md.py` は 19 件（追加 6 件）。`check-all.sh` は成功し、quickstart の 4 も再び期待どおり
+- 追加（保守者の指示）: #52 のレビューの指摘 9 件に対応した
+  - `scripts/dev/check-agents-md.sh`: 拡張子を持つパスは最初のディレクトリ名を打ち間違えても調べる。拡張子を持つ「/」なしの語は、
+    直下の名前と 2 文字以内の違いなら調べる（`READMEE.md` は検出し、`tasks.md` は検出しない）。参照形式のリンクの定義も読む。
+    警告の「as of the last fetch」は基準が `origin/...` のときだけ出す。語ごとの `sed` と `git` の起動をやめ、直下の名前を1回だけ読む
+  - `test_check_agents_md.py`: 26 件（追加 7 件。うち 3 件は `scripts/dev/base-ref.sh` のテスト）
+  - `specs/product/overview.md`: FR-195 の区分の示し方、SC-163（FR-309 の上限以下）、US66 の説明文を改め、spec.md の冒頭に注記した

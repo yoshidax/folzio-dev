@@ -152,9 +152,69 @@ class CheckAgentsMdTests(unittest.TestCase):
         result = self.run_check(self.lines(46))
         self.assertIn("no base ref to compare against", result.stderr)
 
+    def test_detects_misspelled_first_directory_when_the_path_has_an_extension(self):
+        text = "Read `doc_private/x.md`, but not branches like `claude/tak-72-spec` or `owner/repo`.\n"
+        result = self.run_check(text, files=("docs_private/",))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("  doc_private/x.md", result.stderr)
+        self.assertNotIn("claude", result.stderr)
+        self.assertNotIn("owner", result.stderr)
+
+    def test_detects_misspelled_root_file_near_an_existing_one(self):
+        text = "Read `READMEE.md`, the feature's `tasks.md`, and `SKILL.md`.\n"
+        result = self.run_check(text, files=("README.md",))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("  READMEE.md", result.stderr)
+        self.assertNotIn("tasks.md", result.stderr)
+        self.assertNotIn("SKILL.md", result.stderr)
+
+    def test_checks_reference_style_link_definitions(self):
+        text = "See [x][r] and [y][s].\n\n[r]: docs/missing.md\n[s]: <docs/guide.md> \"Guide\"\n[t]: https://example.com/x\n"
+        result = self.run_check(text, files=("docs/guide.md",))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("  docs/missing.md", result.stderr)
+        self.assertNotIn("guide", result.stderr)
+        self.assertNotIn("example", result.stderr)
+
+    def test_says_last_fetch_only_for_origin(self):
+        result = self.run_check(self.lines(48), base_text=self.lines(47), base_ref="master")
+        self.assertIn("(47 on master, limit", result.stderr)
+        self.assertNotIn("fetch", result.stderr)
+
     def test_passes_without_any_backticks(self):
         result = self.run_check("Plain text only.\n")
         self.assertEqual(result.returncode, 0, result.stderr)
+
+
+class BaseRefTests(unittest.TestCase):
+    def run_base_ref(self, refs):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            dev = root / "scripts/dev"
+            dev.mkdir(parents=True)
+            shutil.copy2(ROOT / "scripts/dev/base-ref.sh", dev / "base-ref.sh")
+            if refs is not None:
+                def git(*args):
+                    subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
+                git("init", "-q", "-b", "work")
+                git("-c", "user.name=test", "-c", "user.email=test@example.com",
+                    "commit", "-q", "--allow-empty", "-m", "base")
+                for ref in refs:
+                    git("update-ref", f"refs/{'remotes/' if '/' in ref else 'heads/'}{ref}", "HEAD")
+            return subprocess.run([str(dev / "base-ref.sh")], cwd=root, capture_output=True, text=True)
+
+    def test_prefers_origin_master(self):
+        result = self.run_base_ref(["master", "origin/master"])
+        self.assertEqual((result.returncode, result.stdout), (0, "origin/master\n"))
+
+    def test_falls_back_to_master(self):
+        result = self.run_base_ref(["master"])
+        self.assertEqual((result.returncode, result.stdout), (0, "master\n"))
+
+    def test_fails_without_either_ref(self):
+        for refs in ([], None):
+            result = self.run_base_ref(refs)
+            self.assertEqual((result.returncode, result.stdout), (1, ""))
 
 
 if __name__ == "__main__":
