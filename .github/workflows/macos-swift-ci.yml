@@ -50,3 +50,23 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         run: swift test --filter FolzioPerformanceTests
+
+  # Checks that need no Swift run on a Linux runner, independently of the macOS job.
+  # They share the workflow triggers, so they run on the same events as the build and test.
+  spec-checks:
+    name: Spec format check (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Show Python
+        run: python3 --version
+
+      - name: Check specs/product format
+        run: python3 scripts/dev/check-spec-format.py
+
+      - name: Test the spec checkers
+        run: python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_spec_*.py"

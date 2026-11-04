@@ -32,7 +32,7 @@ Cloud Agent の手順の詳細は [docs_private/cloud-agent-workflow.md](docs_pr
 | Issue 管理 | 共通 | PR を作った後の Linear の更新は「Cloud Agent の作業」 |
 | Git の規則 | 共通 | `git push`、master へのマージ、GUI の起動の依頼 |
 | コードコメント（英語） | 共通 | |
-| 製品仕様の書き方 | 共通 | ゲートへの組み込みは TAK-63 |
+| 製品仕様の書き方 | 共通 | 形式の検査は検証ゲートと CI でも実行する |
 | Phase の検証ゲート | ローカル | Cloud 版は「Cloud Agent の作業」の「検証ゲート」 |
 | バグ修正 | 共通 | 手順 1 と 5 は、ローカルと Cloud で違う（注記あり） |
 | 起動しないときの初動（AppKit / macOS） | ローカル | Cloud では保守者に依頼する |
@@ -97,7 +97,8 @@ OSS として配布するため、ソースコードのコメントは英語で�
 - `specs/product/` を変えたら `python3 scripts/dev/check-spec-format.py` を実行し、エラー 0 件・警告が基準値以下であることを確かめる
 - 形式だけを変える変更では `python3 scripts/dev/check-spec-equivalence.py origin/master` を実行し、「追加」「削除」がないことと、
   「移動」の一覧で文脈が変わっていないことを確かめる
-- 検証ゲート・CI への組み込みは TAK-63 で行う。それまでは、上の検査を手で実行する
+- 形式の検査は、ローカルと Cloud の検証ゲートと、開発用 CI の Linux のジョブでも実行する
+- equivalence チェックは、形式だけを変える変更でだけ実行する（本文を変える変更では必ず失敗するため、ゲートと CI には入れない）
 
 ## Phase の検証ゲート【ローカル】
 
@@ -106,7 +107,8 @@ OSS として配布するため、ソースコードのコメントは英語で�
 1. `swift build`
 2. `swift test`
 3. `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、
-   `scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`
+   `scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、
+   `python3 scripts/dev/check-spec-format.py`
 4. 起動スモーク（3ペインが表示されること）
    - `scripts/make-app.sh`
    - `open .build/Folzio.app`
@@ -239,8 +241,8 @@ Cloud 環境で Agent が作業するときの規則です。手順の詳細は 
 ### 検証ゲート（手順書 5）
 
 - Cloud で行う: `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、
-  `scripts/dev/check-skill-sync.sh`、`scripts/dev/check-spec-ids.sh`、`test_check_git_push.py`
-- CI で行う: `swift build`、`swift test`
+  `scripts/dev/check-skill-sync.sh`、`scripts/dev/check-spec-ids.sh`、`python3 scripts/dev/check-spec-format.py`、`test_check_git_push.py`
+- CI で行う: `swift build`、`swift test`（macOS のジョブ）、形式の検査とその回帰テスト（Linux のジョブ）
 - 保守者がローカルで行う: 起動スモーク、ローカルの最新の Swift でのビルド、`scripts/dev/tests` の公開・配布のテスト
 - 起動スモークを省略して「CI が通ったから完了」にしない。マージ前のゲート（自動テストの通過）は、CI の成功と保守者のローカルでの確認で満たす
 
@@ -269,6 +271,7 @@ swift test --filter FolzioCoreTests
 swift test --filter FolzioPerformanceTests
 scripts/check-no-network.sh
 scripts/check-readme-sync.sh master
+python3 scripts/dev/check-spec-format.py
 scripts/make-fixtures.sh ~/FolzioFixtures
 scripts/make-app.sh
 open .build/Folzio.app

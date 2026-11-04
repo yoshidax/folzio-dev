@@ -2,7 +2,7 @@ schema_version: "1.0"
 workflow:
   id: "sdd-increment-codex"
   name: "SDD increment (Codex)"
-  version: "0.3.0"
+  version: "0.4.0"
   author: "igachan"
   # command / prompt の手順で使う integration の既定値。指定しないと prompt の手順が integration なしで失敗する
   integration: "codex"
@@ -290,7 +290,10 @@ steps:
       - 追加は反映先のファイルの該当する見出しの下に置き、変更は同じ ID の項目を書き換え、削除は項目を消してください
       - 横断の契約に関わる変更は、feature の contracts/ の内容を specs/product/contracts/ へ反映してください
       - 最後に feature の spec.md の冒頭へ、移行済み・凍結の注記を入れてください
-      コミットはしないでください。最後に、反映した項目（ID・種別・反映先）と、反映先を決められなかった項目を一覧で出力してください。
+      - 反映の後に python3 scripts/dev/check-spec-format.py を実行し、エラーが 0 件、警告が基準値以下になるまで直してください
+        （書き方は specs/product/README.md の「書き方のルール」。警告を直せない場合は、基準値を更新せずに理由を出力してください）
+      コミットはしないでください。最後に、反映した項目（ID・種別・反映先）と、反映先を決められなかった項目と、
+      形式の検査の結果（エラーと警告の件数）を一覧で出力してください。
 
   - id: notify_merge_back
     type: shell
@@ -303,7 +306,7 @@ steps:
       {{ steps.merge_back.output.stdout }}
 
       `git diff -- specs` で差分を確認してください。
-        approve: 反映をコミットする
+        approve: 反映をコミットする（コミットの前に形式の検査を行い、失敗したらコミットせずに止まる）
         reject:  一時停止（直してから resume すると、この確認からやり直す）
     options: [approve, reject]
     on_reject: retry
@@ -311,6 +314,8 @@ steps:
   - id: commit_product
     type: shell
     run: |
+      python3 scripts/dev/check-spec-format.py || {
+        echo "specs/product/ の形式の検査が失敗しました。反映はコミットしていません。直してから再開してください" >&2; exit 1; }
       git add specs
       git diff --cached --quiet || git commit -q -m "docs: reflect the increment into specs/product"
 

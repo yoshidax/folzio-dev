@@ -76,6 +76,8 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 
 **CI の構成（2026-10-30 時点）**: `macos-15` のランナー、Xcode 16.0（Swift 6.0）。`swift build` → 通常のテスト（`swift test --no-parallel --skip FolzioPerformanceTests`、10 分のタイムアウト）→ 性能テスト（失敗を許容、10 分のタイムアウト）。ジョブ全体のタイムアウトは 30 分。テストの各ステップに、ジョブ全体より短いタイムアウトがあるため、止まったテストが 30 分間ランナーを占有することはなく、止まった箇所をログから読める。通常のテストを直列で実行するのは、3 コアのランナーで並列に実行すると進まなくなったため（原因は未調査）。
 
+**Linux のジョブ（TAK-63）**: 同じ workflow に、Swift を使わない検査のジョブ `spec-checks`（`ubuntu-24.04`、5 分のタイムアウト）がある。`specs/product/` の形式の検査（`python3 scripts/dev/check-spec-format.py`）と、形式の検査と equivalence チェックの回帰テスト（`test_check_spec_*.py`）を実行する。トリガーを workflow で共有するので、動く条件は macOS のジョブと同じで、macOS のジョブとは独立に動く（片方が失敗しても、もう片方は最後まで動く）。equivalence チェックは、本文を変える PR では必ず失敗するため、CI には入れていない。手動実行（`workflow_dispatch`）でも両方のジョブが動く。
+
 **いつ動くか**: PR を作ったときと、Draft の PR を Ready にしたときに**自動で動く**。以後の push では動かない（macOS の無料枠が小さいため）。
 
 **結果の確認と修正**:
@@ -102,8 +104,8 @@ PR の作成と Draft の PR の Ready 化も CI を自動で起動するため�
 
 | 実行する者 | 検査 |
 |---|---|
-| Cloud（Agent） | `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、`scripts/dev/check-spec-ids.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` |
-| CI | `swift build`、`swift test`（通常のテストと性能テスト） |
+| Cloud（Agent） | `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、`scripts/dev/check-spec-ids.sh`、`python3 scripts/dev/check-spec-format.py`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` |
+| CI | macOS のジョブ: `swift build`、`swift test`（通常のテストと性能テスト）。Linux のジョブ: `python3 scripts/dev/check-spec-format.py`、`test_check_spec_*.py` |
 | 保守者（ローカル） | 起動スモーク（`scripts/make-app.sh` の後に `open .build/Folzio.app` で 3 ペインの表示）、ローカルの最新の Swift でのビルドとテスト、`scripts/dev/tests` の公開・配布のテスト（Apple silicon の macOS と `rsync` を前提とし、Cloud では 6 件が失敗する） |
 
 - **起動スモークを省略して「CI が通ったから完了」にしない**。GUI の確認は保守者に依頼し、実行するコマンドと確認する点を具体的に示す。
@@ -131,5 +133,6 @@ PR の作成と Draft の PR の Ready 化も CI を自動で起動するため�
   ```
 
   重複した ID があれば、その ID を表示して終了コード 1 で終わる。反映の前（取り込んだ `master` との突き合わせ）と、反映の後の両方で実行する。
+- 反映の後に、形式の検査（`python3 scripts/dev/check-spec-format.py`）も実行し、エラー 0 件・警告が基準値以下であることを確かめる。書き方と、警告が増えたときの扱いは `specs/product/README.md` の「書き方のルール」と「形式の検査」にある。形式だけを変える変更では、`python3 scripts/dev/check-spec-equivalence.py origin/master` も実行し、結果を PR に書く。
 - 重複した ID が、すでにどちらもマージ済みだったときは、あとにマージされた feature の ID を振り直す。新しい番号は、そのときの `specs/product/` の全領域の最大値の次から採る。凍結した feature の記録は書き換えず、先頭に旧 ID と新 ID の対応表を注記する（例: TAK-52）。
 - 反映した項目と差分を保守者へ示し、承認を得てからコミットする。

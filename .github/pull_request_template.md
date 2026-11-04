@@ -52,7 +52,11 @@ Linear: [TAK-<nn>](https://linear.app/takyoshida/issue/TAK-<nn>)
 区分ごとに、該当するものを残して書く。
 - Cloud（Agent が実行した検証）: `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、
   `scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、`test_check_git_push.py`、`git diff --check`。
+- 製品仕様の形式: `python3 scripts/dev/check-spec-format.py` のエラーと警告の件数（基準値）を書く。基準値を更新したときは理由を書く。
+  `specs/product/` の形式だけを変える PR では、`python3 scripts/dev/check-spec-equivalence.py origin/master` の結果
+  （「追加」「削除」が 0 件であること、「移動」を読んで文脈が変わっていないこと）も書く。
 - CI（macOS）: 対象のコミットと、実行の種類（PR の作成時か、`workflow_dispatch` か）、ビルドとテストの結果。
+  同じ実行の Linux のジョブ（製品仕様の形式の検査）の結果も書く。
   失敗や不安定なテストがあれば、原因の判断と、その根拠を書く。
 - 保守者のローカルでの確認: 起動スモークなど、保守者に依頼した確認の結果。報告を受けたものは「報告による」と書き、確認した環境の詳細が不明ならそう書く。
 - 該当しない区分は、「該当なし（理由）」と書く。
