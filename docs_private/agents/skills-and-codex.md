@@ -1,5 +1,7 @@
 # スキル・Codex・Spec Kit の構成
 
+**適用範囲**: 【共通】（「Codex の自動実行」の節は【ローカル】）
+
 AGENTS.md から参照する、スキルや各エージェントの設定を変えるとき、Codex を自動実行するときの規約。
 
 ## スキル
@@ -16,7 +18,7 @@ AGENTS.md から参照する、スキルや各エージェントの設定を変�
 
 - `.codex/config.toml` と `.codex/rules/` は Codex 用。Claude（`.claude/settings.json`）／Kilo（`.kilo/kilo.jsonc`）の permissions 設定は Codex に適用されない
 
-## Codex の自動実行（ローカル）
+## Codex の自動実行【ローカル】
 
 - Codex の自動実行は `scripts/dev/sdd-run-codex.sh` を使う。run／resume／status と更新手順は
   [codex-speckit.md](../codex-speckit.md) を参照する。既定の integration は Claude のままとする

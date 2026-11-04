@@ -10,11 +10,7 @@
 ## 仕様と進捗【共通】
 - 新しい要件は新しい feature ディレクトリで扱い、実装と検証の後に `specs/product/` へ反映する（手順と ID: `specs/product/README.md`）
 - 実装中に更新する仕様文書は、今の feature の `tasks.md` のチェックと、タスクが明示した追記だけ。進捗は `tasks.md` を正とする
-- `specs/product/` の書き方の要点（詳細と検査は `specs/product/README.md` の「書き方のルール」「形式の検査」）
-  - 1つの箇条書きに1つの要件・条件・例外を書き、条件と例外は子項目に分ける
-  - 表のセルは短い要約にし、詳細は表の直後の「表の詳細」に書いて、セルには `下記` と書く
-  - インラインコード・引用・英語の語句・表の行を、途中で改行しない
-- `specs/product/` を変えたら `python3 scripts/dev/check-spec-format.py` を、反映の前と後に `scripts/dev/check-spec-ids.sh` を実行する。ID が衝突したら `docs_private/cloud-agent-workflow.md` の 7 章に従う
+- `specs/product/` を変える前に `specs/product/README.md` の「書き方のルール」を読む。変えたら `python3 scripts/dev/check-spec-format.py` を、反映の前と後に `scripts/dev/check-spec-ids.sh` を実行する。ID が衝突したら `docs_private/cloud-agent-workflow.md` の 7 章に従う
 
 ## Git と GitHub【共通】
 - push は default ブランチ（`master`）以外の作業ブランチへだけ行う。強制 push・リモートブランチの削除・履歴の書き換えはしない

@@ -1,6 +1,8 @@
 # バグ修正の手順
 
-AGENTS.md から参照する、バグを直すときの手順。ローカルと Cloud の両方で使う（違いは各手順に注記する）。
+**適用範囲**: 【共通】（手順 1 と 5 はローカルと Cloud で違う）
+
+AGENTS.md から参照する、バグを直すときの手順。ローカルと Cloud の違いは各手順に注記する。
 
 bug 拡張の `/speckit-bug-assess` → `/speckit-bug-fix` → `/speckit-bug-test` で直す（Kilo では `/speckit.bug.*`、Codex CLI では `$speckit-bug-*`）。
 記録は `.specify/bugs/<slug>/` に残る。

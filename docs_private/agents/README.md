@@ -1,5 +1,7 @@
 # AGENTS.md に何を書くか
 
+**適用範囲**: 【共通】
+
 `AGENTS.md` に規則を足す・変えるとき、または feature の `tasks.md` で `AGENTS.md` の変更を指示するときの基準。
 `AGENTS.md` はエージェントが毎回読むので、短いほどよい。不要な指示は余計な探索を招き、コストと失敗を増やす。
 `scripts/dev/check-agents-md.sh`（`scripts/dev/check-all.sh` から呼ぶ）が、行数と参照先のパスを検査する。

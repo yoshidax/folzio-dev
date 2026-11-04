@@ -1,5 +1,8 @@
 # Feature Specification: エージェント向けの規約の置き場所を AGENTS.md に限らない
 
+> **移行済み（2026-11-04）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-72 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `claude/tak-72-agents-md-spec`（Cloud が指定した作業ブランチ。feature ディレクトリ名とは独立）
 
 **Created**: 2026-11-04
@@ -22,7 +25,7 @@
 - FR-196（overview.md）の「`AGENTS.md` と手順書だけで進められる」は、参照先の文書を認めているので変えない
 - A-91（overview.md）と `contracts/localization.md` の「Phase の検証ゲート（AGENTS.md）」は、節の名前の参照なので変えない
 - TAK-71 で、`AGENTS.md` の行数と参照先のパスの検査（`scripts/dev/check-agents-md.sh`）と、置き場所の基準
-  （`docs_private/agents/README.md`）を入れた（PR #50、未マージ）
+  （`docs_private/agents/README.md`）を入れた（PR #50。2026-11-04 にマージ済み）
 - TAK-63（作業中）も FR-306 の近く（形式の検査の検証ゲートへの組み込み）を変える可能性がある
 
 ## Clarifications
