@@ -32,8 +32,9 @@
   - 警告は、`WARN_LINES` を超えていて、比べる基準（`scripts/dev/base-ref.sh` の `origin/master`、なければ `master`）より
     行数が増えたときに出る。基準がないとき（git のリポジトリの外など）も出る
   - `origin/master` は最後に fetch した時点のもの。古いと、行数を増やしていなくても警告が出ることがあるので、先に fetch する
-- 警告が出たら、規則を足す前に `AGENTS.md` の各行を見直す
-  - 見直しでは、各行を「削除」「移動」「ツール化」「残す」に分類し、根拠のファイルパスを示す
+- 警告や失敗が出たら、規則を足す前に `AGENTS.md` の各行を見直す
+  - 見直しは監査のスキルで行う（Claude Code と Kilo Code は `/folzio-agents-md-audit`、Codex は `$folzio-agents-md-audit`。
+    手順は `shared-skills/folzio-agents-md-audit.md`）
   - 過去の事故から追加された行は、削除せずに残すか、別ファイルへ移す
 
 ## 追加の理由を残す

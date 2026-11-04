@@ -56,6 +56,7 @@ root_names=$(
 if ((lines > MAX_LINES)); then
     echo "$file has $lines lines (limit: $MAX_LINES)." >&2
     echo "Move task-specific material out and leave a pointer, or turn the rule into a check (see $GUIDE)." >&2
+    echo "To review every line, use the folzio-agents-md-audit skill (/folzio-agents-md-audit, or \$folzio-agents-md-audit in Codex)." >&2
     status=1
 elif ((lines > WARN_LINES)) && [[ -z "$base_lines" || "$lines" -gt "$base_lines" ]]; then
     if [[ "$base_ref" == origin/* ]]; then
@@ -65,7 +66,7 @@ elif ((lines > WARN_LINES)) && [[ -z "$base_lines" || "$lines" -gt "$base_lines"
     else
         echo "warning: $file has $lines lines (no base ref to compare against, limit: $MAX_LINES)." >&2
     fi
-    echo "Review it before adding rules (see $GUIDE)." >&2
+    echo "Review it before adding rules: use the folzio-agents-md-audit skill (/folzio-agents-md-audit, or \$folzio-agents-md-audit in Codex; see $GUIDE)." >&2
 fi
 
 # Prints, one per line, the contents of inline code spans, every line inside fenced code blocks,
