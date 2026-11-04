@@ -11,7 +11,7 @@
 - 公開用の workflow は、`HEAD` の `scripts/dev/oss-workflows/` の直下にある通常ファイルのうち、名前が `.yml` または
   `.yaml` で終わるものだけを、同じ名前・内容で書き出しの `.github/workflows/` に置く。
   - サブディレクトリの中、シンボリックリンク、ほかのファイルは置かない。
-  - 定義がなければ`.github/workflows/` を作らない（FR-291）。
+  - 定義がなければ `.github/workflows/` を作らない（FR-291）。
 - 置いた workflow の名前の集合と内容が管理元と一致しなければ、同期の前に非ゼロ終了する（FR-293）。
   - 置いた workflow の名前（なければそのこと）を表示する。
 - `$HOME`・ユーザー名の検査は、公開用の workflow を置いた後に行う。

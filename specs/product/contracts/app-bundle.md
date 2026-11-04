@@ -1,7 +1,7 @@
 # Contract: アプリバンドルの構成とアイコン
 
-配布用 `.app` の外形と、アイコンの生成・同梱に関する契約。仕様は[overview.md](../overview.md) の FR-043〜045、SC-011、
-前提を参照。
+配布用 `.app` の外形と、アイコンの生成・同梱に関する契約。仕様は [overview.md](../overview.md) の FR-043〜045、
+SC-011、前提を参照。
 
 製品とSwift Packageの名称は `Folzio`。ターゲットは `FolzioCore`、`FolzioLocalization`、`FolzioApp`、
 `FolzioCoreTests`、`FolzioPerformanceTests` とし、`FixtureKit` と既存の補助ツールの名称は維持する（FR-166・168）。
@@ -78,7 +78,7 @@ About ダイアログ（FR-238〜245（window-layout.md））は、実行中の�
 | `icon_512x512@2x.png` | 1024 |
 
 - `iconutil -c icns` は上記スロットが揃わないと失敗する。
-  - `scripts/make-icon.sh` は生成後に`sips -g pixelWidth -g pixelHeight` で各ファイルの寸法を検証する
+  - `scripts/make-icon.sh` は生成後に `sips -g pixelWidth -g pixelHeight` で各ファイルの寸法を検証する
 - 生成物は `.build/AppIcon.iconset/` と `.build/AppIcon.icns` に置き、リポジトリにはコミットしない
 - 途中で失敗した場合、`scripts/make-app.sh` は既存の `.app` を残さず非ゼロで終了する（汎用アイコンのまま出荷しない:
   spec エッジケース）
