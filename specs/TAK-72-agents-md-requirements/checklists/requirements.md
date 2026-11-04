@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -33,5 +33,4 @@
 
 - 保守者の運用（文書の置き場所）を扱う feature なので、ファイル名（`AGENTS.md`、`specs/product/README.md`）は利用者から見える対象として書いている。
   既存の FR-195・FR-306 と同じ扱いで、実装の詳細には当たらないと判断した。
-- [NEEDS CLARIFICATION] が 3 件残っている（FR-195 の区分の示し方、US66-AS2 の書き方の要点、EC-213 の参照切れの検出）。
-  保守者の回答を受けて更新する。
+- [NEEDS CLARIFICATION] の 3 件は、2026-11-04 の保守者の回答で解消した（spec.md の Clarifications）。
