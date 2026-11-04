@@ -85,7 +85,7 @@
 
 ## Phase 6: 検証と反映
 
-- [ ] T018 Cloud の検証ゲートを行う（`AGENTS.md` の「Cloud Agent の作業」の「検証ゲート」）。`scripts/check-no-network.sh`、
+- [X] T018 Cloud の検証ゲートを行う（`AGENTS.md` の「Cloud Agent の作業」の「検証ゲート」）。`scripts/check-no-network.sh`、
   `scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、
   `scripts/dev/check-spec-ids.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"`、
   `python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_spec_*.py"`。
