@@ -27,7 +27,7 @@ run scripts/dev/check-english-comments.sh
 run scripts/dev/check-skill-sync.sh
 run scripts/dev/check-spec-ids.sh
 run scripts/dev/check-agents-md.sh
-run python3 -I -m unittest discover -s scripts/dev/tests -p 'test_check_git_push.py'
+run python3 -I -m unittest discover -s scripts/dev/tests -p 'test_check_*.py'
 
 if ((${#failed[@]} != 0)); then
     echo "failed checks:" >&2
