@@ -1,5 +1,7 @@
 # AGENTS.md に何を書くか
 
+**適用範囲**: 【共通】
+
 `AGENTS.md` に規則を足す・変えるとき、または feature の `tasks.md` で `AGENTS.md` の変更を指示するときの基準。
 `AGENTS.md` はエージェントが毎回読むので、短いほどよい。不要な指示は余計な探索を招き、コストと失敗を増やす。
 `scripts/dev/check-agents-md.sh`（`scripts/dev/check-all.sh` から呼ぶ）が、行数と参照先のパスを検査する。
@@ -27,7 +29,9 @@
 ## 行数の上限
 
 - 上限の行数（空行と見出しを含む）と、警告を出す行数は、`scripts/dev/check-agents-md.sh` の `MAX_LINES` と `WARN_LINES` にある
-  - 警告は、`WARN_LINES` を超えていて、`origin/master` より行数が増えたときに出る
+  - 警告は、`WARN_LINES` を超えていて、比べる基準（`scripts/dev/base-ref.sh` の `origin/master`、なければ `master`）より
+    行数が増えたときに出る。基準がないとき（git のリポジトリの外など）も出る
+  - `origin/master` は最後に fetch した時点のもの。古いと、行数を増やしていなくても警告が出ることがあるので、先に fetch する
 - 警告が出たら、規則を足す前に `AGENTS.md` の各行を見直す
   - 見直しでは、各行を「削除」「移動」「ツール化」「残す」に分類し、根拠のファイルパスを示す
   - 過去の事故から追加された行は、削除せずに残すか、別ファイルへ移す

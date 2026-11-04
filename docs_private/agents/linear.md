@@ -1,6 +1,8 @@
 # Linear の運用
 
-AGENTS.md から参照する、Linear の Issue を扱うときの規則。ローカルと Cloud の両方で使う。
+**適用範囲**: 【共通】
+
+AGENTS.md から参照する、Linear の Issue を扱うときの規則。
 
 - やりたいことやバグは Linear の [Folzio プロジェクト](https://linear.app/takyoshida/project/folzio-968b9d447da8)（チーム TAK）で管理する
 - 使うのは Linear の MCP（`get_issue`、`save_issue`）
