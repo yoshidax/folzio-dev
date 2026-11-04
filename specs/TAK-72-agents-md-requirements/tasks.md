@@ -13,6 +13,9 @@
 - [ ] T001 `git fetch origin master` の後、TAK-71 の変更（`scripts/dev/check-agents-md.sh` と `docs_private/agents/README.md`）が
   `origin/master` にあることを確かめる。なければ止めて、保守者に TAK-71 のマージを待つことを報告する。あれば `git merge origin/master` で
   取り込む（履歴は書き換えない）。
+  - TAK-73（PR #51）も `docs_private/agents/README.md` を変える。TAK-73 がまだマージされていなければ、T004 の README の変更が
+    TAK-73 と競合し得ることを記録し、後からマージする側で解消する
+  - `specs/TAK-72-agents-md-requirements/spec.md` の「既存の仕様との関係」の「（PR #50、未マージ）」を、マージ後の表現に直す
 - [ ] T002 変更前の状態を記録する。`scripts/dev/check-all.sh` が成功すること、`awk 'END { print NR }' AGENTS.md` の行数、
   `grep -n 'AGENTS.md' specs/product/*.md specs/product/contracts/*.md` の結果を控える。
 
@@ -59,13 +62,14 @@
   - 「製品仕様の形式の検査」の節の後に、新しい節「エージェント向けの規約」を作り、FR-307〜FR-310 を置く
   - EC-213・EC-214 をエッジケースの末尾に、SC-162〜SC-165 を成功基準の末尾に、A-192〜A-195 を前提の末尾に足す
   - SC-094 と SC-161 を、spec.md の（変更）の本文に書き換える
+  - 「主なエンティティ」に、spec.md の Key Entities（エージェント向けの規約、参照、運用の文書）を足す
 - [ ] T008 `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行し、成功することを確かめる。
   警告が基準値を超えたら、`specs/product/README.md` の「書き方のルール」に従って直す。
 - [ ] T009 `specs/TAK-72-agents-md-requirements/spec.md` の冒頭に、001 と同じ形式で移行済み・凍結の注記を入れる。
 
 ## Phase 4: 仕上げ
 
-- [ ] T010 quickstart.md の 1〜7 を順に行い、結果を記録する。4（参照切れ）は、確認の後に元に戻して `git status` に差分がないことを確かめる。
+- [ ] T010 quickstart.md の 1〜8 を順に行い、結果を記録する（7 で FR-308 を確かめる）。4（参照切れ）は、確認の後に元に戻して `git status` に差分がないことを確かめる。
 - [ ] T011 `git diff --check` を実行し、変更をコミットして作業ブランチに push する。PR は保守者の依頼があったときだけ作る。
   PR の本文の「変更」に、`AGENTS.md` を変えた理由（TAK-72、Clarifications の Q2）を独立した項目で書く（`docs_private/agents/README.md`）。
 

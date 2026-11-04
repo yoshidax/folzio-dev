@@ -68,7 +68,7 @@ specs/TAK-72-agents-md-requirements/
 ├── plan.md              # このファイル
 ├── research.md          # R1〜R7
 ├── data-model.md        # エージェント向けの規約・参照・適用範囲
-├── quickstart.md        # SC-094・SC-161〜SC-165 の確認手順
+├── quickstart.md        # SC-094・SC-161〜SC-165・FR-308 の確認手順
 ├── checklists/
 │   └── requirements.md
 └── tasks.md             # /speckit-tasks で作る
