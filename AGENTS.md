@@ -32,6 +32,7 @@ Cloud Agent の手順の詳細は [docs_private/cloud-agent-workflow.md](docs_pr
 | Issue 管理 | 共通 | PR を作った後の Linear の更新は「Cloud Agent の作業」 |
 | Git の規則 | 共通 | `git push`、master へのマージ、GUI の起動の依頼 |
 | コードコメント（英語） | 共通 | |
+| 製品仕様の書き方 | 共通 | ゲートへの組み込みは TAK-63 |
 | Phase の検証ゲート | ローカル | Cloud 版は「Cloud Agent の作業」の「検証ゲート」 |
 | バグ修正 | 共通 | 手順 1 と 5 は、ローカルと Cloud で違う（注記あり） |
 | 起動しないときの初動（AppKit / macOS） | ローカル | Cloud では保守者に依頼する |
@@ -85,6 +86,18 @@ OSS として配布するため、ソースコードのコメントは英語で�
 - 型名・関数名・引数名・`FR-*` や `research.md` の R 番号などの ID は翻訳しない
 - 翻訳後もコメントのみの変更でも `swift build` と `swift test` を実行する
 - 基準とする書式の例: `Sources/FolzioCore/Archive/InflateCursor.swift`
+
+## 製品仕様の書き方【共通】
+
+`specs/product/` に書くときの要点です。詳細と検査の説明は `specs/product/README.md` の「書き方のルール」と「形式の検査」にあります。
+
+- 1つの箇条書きに1つの要件・条件・例外を書く。条件と例外は子項目に分ける
+- 表のセルは短い要約にし、詳細は表の直後の「表の詳細」に書いて、セルには `下記` と書く
+- インラインコード・引用（「」・“ ”）・英語の語句・表の行を、途中で改行しない
+- `specs/product/` を変えたら `python3 scripts/dev/check-spec-format.py` を実行し、エラー 0 件・警告が基準値以下であることを確かめる
+- 形式だけを変える変更では `python3 scripts/dev/check-spec-equivalence.py origin/master` を実行し、「追加」「削除」がないことと、
+  「移動」の一覧で文脈が変わっていないことを確かめる
+- 検証ゲート・CI への組み込みは TAK-63 で行う。それまでは、上の検査を手で実行する
 
 ## Phase の検証ゲート【ローカル】
 

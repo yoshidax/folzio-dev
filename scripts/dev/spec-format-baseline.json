@@ -1,0 +1,49 @@
+{
+  "warnings": {
+    "contracts/app-bundle.md": {
+      "cell-width": 1
+    },
+    "contracts/keyboard-and-menus.md": {
+      "cell-width": 28,
+      "line-width": 6
+    },
+    "contracts/localization.md": {
+      "cell-width": 10
+    },
+    "contracts/settings.md": {
+      "cell-width": 2
+    },
+    "directory-tree.md": {
+      "line-width": 1,
+      "multi-sentence": 1
+    },
+    "file-list.md": {
+      "line-width": 1,
+      "multi-sentence": 3
+    },
+    "file-operations.md": {
+      "multi-sentence": 8
+    },
+    "navigation-history.md": {
+      "multi-sentence": 4
+    },
+    "overview.md": {
+      "multi-sentence": 8
+    },
+    "preview.md": {
+      "line-width": 1,
+      "multi-sentence": 3
+    },
+    "search.md": {
+      "line-width": 1,
+      "multi-sentence": 3
+    },
+    "window-layout.md": {
+      "line-width": 3,
+      "multi-sentence": 3
+    },
+    "zip.md": {
+      "multi-sentence": 1
+    }
+  }
+}
