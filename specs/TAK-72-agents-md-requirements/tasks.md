@@ -103,4 +103,3 @@ T003（AGENTS.md）と T004（docs_private/ の 9 個）を同時に進め、T00
   - 3: US66 の説明文（`overview.md` の US66 の本文）の「`specs/product/README.md` と `AGENTS.md` を読んで」は、
     要件ではなく、AGENTS.md の参照から README にたどり着く流れとして読めるので、変えていない
 - T011: コミットと push まで。PR は保守者の依頼があってから作る
-
