@@ -89,11 +89,11 @@
   `scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、
   `scripts/dev/check-spec-ids.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"`、
   `python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_spec_*.py"`。
-- [ ] T019 [MANUAL] 保守者のローカル（macOS の `python3`。Command Line Tools の 3.9 の場合を含む）で、
+- [X] T019 [MANUAL] 保守者のローカル（macOS の `python3`。Command Line Tools の 3.9 の場合を含む）で、
   `python3 scripts/dev/check-spec-format.py` と `python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_spec_*.py"`
   が成功することを確かめてもらう。あわせて、マージ前の確認として起動スモーク（`scripts/make-app.sh` の後に
   `open .build/Folzio.app` で3ペインが表示されること）を依頼する。アプリのコードは変えないため、結果は変わらない見込み。
-- [ ] T020 `specs/product/` への反映（plan.md の「反映の方針」）。`git merge origin/master` の後に `scripts/dev/check-spec-ids.sh` で
+- [X] T020 `specs/product/` への反映（plan.md の「反映の方針」）。`git merge origin/master` の後に `scripts/dev/check-spec-ids.sh` で
   ID の重複を確かめ、`overview.md` に節「製品仕様の形式の検査」を作って spec.md の「反映先」の項目を移す。反映後に形式の検査と
   ID の検査を実行する。spec.md の冒頭に凍結の注記を入れる。反映した項目と差分を保守者に示し、承認を得てからコミットする。
-- [ ] T021 作業ブランチに push し、保守者に、PR を作成できる状態であること、検証の結果、確認していないことを報告する。
+- [X] T021 作業ブランチに push し、保守者に、PR を作成できる状態であること、検証の結果、確認していないことを報告する。
