@@ -10,4 +10,3 @@ description: AGENTS.md の各行を監査し、削除・移動・ツール化・
 ## Claude Code での注意
 
 - `.claude/settings.json` は権限設定で編集が禁じられている。Claude 向けのツール化（`permissions` や hook の追加）は、改訂案に変更内容を示し、編集は保守者に依頼する。
-- 保守者への質問は、1回に3問までにして返答を待つ。答えを受ける前に次の段階へ進まない。
