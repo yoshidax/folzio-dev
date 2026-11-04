@@ -86,6 +86,12 @@ if grep -rnIF -e "$HOME" -e "$(id -un)" "$tmp"; then
     exit 1
 fi
 
+# 公開版の Markdown から、書き出さないファイルへのリンクが張られていないか確かめる
+if grep -rnIE --include='*.md' '(\]\(|href=")[^)"]*(specs/|\.specify/|docs_private/|shared-skills/|AGENTS\.md)' "$tmp"; then
+    echo "書き出しに、公開しないファイルへのリンクが含まれています" >&2
+    exit 1
+fi
+
 if [[ ! -d "$dest/.git" ]]; then
     mkdir -p "$dest"
     git -C "$dest" init -b main

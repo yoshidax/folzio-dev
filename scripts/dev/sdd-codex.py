@@ -226,7 +226,7 @@ def guard_resume(state, root):
 def verify_workspace(root=ROOT, commands=None):
     commands = commands if commands is not None else [
         ("build", ["swift", "build"]), ("test", ["swift", "test"]),
-        ("no-network", ["scripts/check-no-network.sh"]), ("readme-sync", ["scripts/check-readme-sync.sh", "master"]),
+        ("checks", ["scripts/dev/check-all.sh"]),
         ("make-app", ["scripts/make-app.sh"]),
     ]
     directory = attempt_directory(root) / ("verify-" + uuid.uuid4().hex)

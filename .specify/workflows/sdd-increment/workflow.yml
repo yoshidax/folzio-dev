@@ -208,7 +208,7 @@ steps:
 
               {{ steps.analyze.output.stdout }}
 
-  # 実装の sub agent は worktree を Phase ブランチから切るため、文書を先にコミットする（AGENTS.md）
+  # 実装の sub agent は worktree を Phase ブランチから切るため、文書を先にコミットする（docs_private/agents/parallel-worktree.md）
   - id: commit_docs
     type: shell
     run: |
@@ -226,7 +226,7 @@ steps:
         command: speckit.implement
         input:
           args: >-
-            sub agent で実装してください。ファイルが重ならない作業は、AGENTS.md の worktree 規約に従って複数の sub agent を
+            sub agent で実装してください。ファイルが重ならない作業は、docs_private/agents/parallel-worktree.md の worktree 規約に従って複数の sub agent を
             並行で起動してください（sub agent のモデルは {{ inputs.impl_model }}）。統合は Phase ブランチへ git merge --no-ff で行い、
             各マージ後に swift build と swift test を通してください。GUI の起動確認が必要なタスクは実施せず、未チェックのまま残してください。
             GUI は起動しないでください
@@ -235,7 +235,7 @@ steps:
       - id: verify
         type: shell
         timeout: 3600
-        run: swift build && swift test && scripts/check-no-network.sh && scripts/check-readme-sync.sh master && scripts/make-app.sh
+        run: swift build && swift test && scripts/dev/check-all.sh && scripts/make-app.sh
 
       - id: notify_gui
         type: shell

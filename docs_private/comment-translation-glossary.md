@@ -1,7 +1,7 @@
 # コードコメント翻訳の用語集
 
 ソースコードのコメントを英語化するときの用語と書式をそろえるための内部資料です。
-書式の正本は `AGENTS.md` の「コードコメント（英語）」とし、このファイルは訳語の判断だけを扱います。
+ソースのコメントの書式と訳語は、このファイルを正本とします（`AGENTS.md` からは参照だけを置きます）。
 `docs_private/` は公開用リポジトリから除外されます。
 
 ## 基本方針
@@ -12,8 +12,13 @@
 - UI の用語は `Sources/FolzioLocalization/Resources/en.lproj/Localizable.strings` の値を正とする
 - 日本語の句読点（、。「」・）は ASCII（`,` `.` `"`）に置き換える
 - 識別子・型名・関数名・引数名はバッククォートで囲む
-- 1行は100〜120文字を目安に折り返す
-- doc comment は三人称単数・現在形。Boolean は `Whether ...`
+- 1行は100〜120文字を目安に折り返す。長い文は文単位で改行してよい
+- doc comment（`///`）は Apple の API ドキュメントの慣例に合わせ、三人称単数・現在形で書く（例: `Inflates ... and returns ...`）。
+  同じコメント内で命令形と三人称を混ぜない
+- Boolean の値・プロパティの説明は `Whether ...` で始める
+- `zip` は小文字、`ZIP64` は大文字。圧縮データは compressed data、スレッド安全でないは not thread-safe と書く
+- コメントだけの変更でも、ビルドとテストを通す（ローカルは `swift build` と `swift test`、Cloud は CI）
+- 基準とする書式の例: `Sources/FolzioCore/Archive/InflateCursor.swift`
 
 ## UI 用語
 

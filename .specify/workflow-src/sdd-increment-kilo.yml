@@ -211,7 +211,7 @@ steps:
 
               {{ steps.analyze.output.stdout }}
 
-  # 実装の sub agent は worktree を Phase ブランチから切るため、文書を先にコミットする（AGENTS.md）
+  # 実装の sub agent は worktree を Phase ブランチから切るため、文書を先にコミットする（docs_private/agents/parallel-worktree.md）
   - id: commit_docs
     type: shell
     run: |
@@ -229,7 +229,7 @@ steps:
         command: speckit.implement
         input:
           args: >-
-            実装してください。AGENTS.md の worktree 規約に従い、ファイルが重ならない作業を並行化する場合は、
+            実装してください。docs_private/agents/parallel-worktree.md の worktree 規約に従い、ファイルが重ならない作業を並行化する場合は、
             `git worktree add` で作業ツリーを分けてから
             `kilo run --dir <worktree> --auto -m byteplus-model-ark/deepseek-v4-1-flash-261017 "<作業指示>"` を並行して起動してください。
             `kilo run` を並行起動できない場合は、同じ worktree 規約で直列に実装してください。
@@ -241,7 +241,7 @@ steps:
       - id: verify
         type: shell
         timeout: 3600
-        run: swift build && swift test && scripts/check-no-network.sh && scripts/check-readme-sync.sh master && scripts/make-app.sh
+        run: swift build && swift test && scripts/dev/check-all.sh && scripts/make-app.sh
 
       - id: notify_gui
         type: shell
