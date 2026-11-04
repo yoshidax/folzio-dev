@@ -206,11 +206,11 @@
   - 幅は従来どおり固定とする。
   - （5）区分の並び・項目・保存のタイミングは `contracts/settings.md` の「設定ウインドウ（⌘,）」のとおりで変えない
 - **FR-223**: 「ファイル操作」の確認の項目は、チェックボックスの行と補足説明の行の2つに分けて表示しなければならない。
-  - （1）チェックボックスの文言は「コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する」（英語: Confirm before
-    copying, moving to the Trash, or removing from Favorites）とする。
+  - （1）チェックボックスの文言は「コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する」
+    （英語: Confirm before copying, moving to the Trash, or removing from Favorites）とする。
   - （2）補足説明は「名前の変更・移動と、ツリーのフォルダをゴミ箱に入れる操作は、この設定に関わらず常に確認します」
-    （英語: Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless
-    of this setting）とし、チェックボックスの直下に、チェックボックスの文言の先頭に揃えて置く。
+    （英語: Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless of this setting）
+    とし、チェックボックスの直下に、チェックボックスの文言の先頭に揃えて置く。
   - チェックボックスとの間隔は、同じ区分の中の項目どうしの間隔より狭くし、主文に従属する説明として見せる。
   - （3）補足説明は、チェックボックスの文言より小さい文字と、OS の標準の淡い（二次的な）文字色で表示する。
   - クリック・選択・編集・キーボードフォーカスの対象にしない。
@@ -219,8 +219,9 @@
   - 補足説明の行を、読み上げで独立した項目として二重に読ませない。
   - （5）確認の設定の意味・既定値・保存キー（`fileOps.confirmBeforeExecuting`）と、
     常に確認する操作の範囲は変えない（FR-022〜024（file-operations.md））。
-  - FR-024（file-operations.md）の「設定ウインドウの確認の項目には、名前の変更・移動・
-    ツリーのフォルダをゴミ箱に入れる操作を、設定に関わらず常に確認する操作として示す」は、この補足説明で満たす
+  - FR-024（file-operations.md）の
+    「設定ウインドウの確認の項目には、名前の変更・移動・ツリーのフォルダをゴミ箱に入れる操作を、設定に関わらず常に確認する操作として示す」
+    は、この補足説明で満たす
 
 ### ショートカットの割り当て（TAK-24）
 
@@ -473,8 +474,9 @@
 - **US40-AS2**: **Given** 英語表示,
   - **When** 同じ箇所を見る,
   - **Then** US40-AS1 と同じ構造で、1行目に「Confirm before copying, moving to the Trash, or removing from Favorites」、
-    2行目に「Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless
-    of this setting」が表示される
+    2行目に
+    「Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless of this setting」
+    が表示される
 - **US40-AS3**: **Given** 確認の設定がオン,
   - **When** 補足説明の文字をクリックする,
   - **Then** チェックボックスの状態も保存値も変わらず、補足説明は選択・編集・

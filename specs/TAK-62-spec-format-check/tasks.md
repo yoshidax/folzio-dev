@@ -63,12 +63,12 @@
 
 ## Phase 4: 既存の分断の修正（US64-AS1、SC-157、SC-160）
 
-- [ ] T011 Phase 2 と Phase 3 の成果（スクリプト・設定・テスト）をコミットする（`TAK-62: ...`）。
-- [ ] T012 形式の検査のエラーを、改行の位置だけを変えて直す（`contracts/settings.md`、`file-operations.md`、`window-layout.md`）。
+- [X] T011 Phase 2 と Phase 3 の成果（スクリプト・設定・テスト）をコミットする（`TAK-62: ...`）。
+- [X] T012 形式の検査のエラーを、改行の位置だけを変えて直す（`contracts/settings.md`、`file-operations.md`、`window-layout.md`）。
   行の幅が 120 桁を超えないように改行の位置を選ぶ。
-- [ ] T013 `python3 scripts/dev/check-spec-format.py --update-baseline` で基準値を記録し、もう一度実行して成功することを確かめる（SC-157）。
+- [X] T013 `python3 scripts/dev/check-spec-format.py --update-baseline` で基準値を記録し、もう一度実行して成功することを確かめる（SC-157）。
   `python3 scripts/dev/check-spec-equivalence.py HEAD` が差分なしで成功することを確かめる（SC-160）。
-- [ ] T014 T012〜T013 をコミットする。
+- [X] T014 T012〜T013 をコミットする。
 
 ## Phase 5: User Story 66 - 書き方のルールを文書で確かめる (P2)
 
