@@ -28,8 +28,9 @@
 
 - 上限の行数（空行と見出しを含む）と、警告を出す行数は、`scripts/dev/check-agents-md.sh` の `MAX_LINES` と `WARN_LINES` にある
   - 警告は、`WARN_LINES` を超えていて、`origin/master` より行数が増えたときに出る
-- 警告が出たら、規則を足す前に `AGENTS.md` の各行を見直す
-  - 見直しでは、各行を「削除」「移動」「ツール化」「残す」に分類し、根拠のファイルパスを示す
+- 警告や失敗が出たら、規則を足す前に `AGENTS.md` の各行を見直す
+  - 見直しは監査のスキルで行う（Claude Code と Kilo Code は `/folzio-agents-md-audit`、Codex は `$folzio-agents-md-audit`。
+    手順は `shared-skills/folzio-agents-md-audit.md`）
   - 過去の事故から追加された行は、削除せずに残すか、別ファイルへ移す
 
 ## 追加の理由を残す

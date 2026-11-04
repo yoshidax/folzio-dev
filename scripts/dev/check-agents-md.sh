@@ -41,6 +41,7 @@ done
 if ((lines > MAX_LINES)); then
     echo "$file has $lines lines (limit: $MAX_LINES)." >&2
     echo "Move task-specific material out and leave a pointer, or turn the rule into a check (see $GUIDE)." >&2
+    echo "To review every line, use the folzio-agents-md-audit skill." >&2
     status=1
 elif ((lines > WARN_LINES)) && [[ -z "$base_lines" || "$lines" -gt "$base_lines" ]]; then
     if [[ -n "$base_ref" ]]; then
@@ -48,7 +49,7 @@ elif ((lines > WARN_LINES)) && [[ -z "$base_lines" || "$lines" -gt "$base_lines"
     else
         echo "warning: $file has $lines lines (limit: $MAX_LINES)." >&2
     fi
-    echo "Review it before adding rules (see $GUIDE)." >&2
+    echo "Review it before adding rules: use the folzio-agents-md-audit skill (see $GUIDE)." >&2
 fi
 
 # Prints the contents of inline code spans and every line inside fenced code blocks.
