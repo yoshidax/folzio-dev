@@ -1,5 +1,9 @@
 # Feature Specification: 製品仕様の形式の検査のゲートへの組み込み
 
+> **移行済み（2026-11-04）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-63 時点の記録として凍結しており、更新しない。
+> 反映の際、`overview.md` では行の幅（120 桁）に収まるよう改行の位置だけを変えた。
+
 **Feature Branch**: `claude/friendly-ride-5inepi`（Cloud が指定する作業ブランチ。feature ディレクトリ名とは独立）
 
 **Created**: 2026-11-04

@@ -36,7 +36,7 @@
 - [X] T009 quickstart.md の手順を行う。崩した一時コピーで検査が終了コード 1 になること、記述の確認、macOS のジョブの差分。
   変えた YAML が読めることを確かめる。
 - [X] T010 Cloud の検証ゲートを行う（quickstart.md の「この feature の検証」の 2）。`git diff --check` も行う。
-- [ ] T011 `specs/product/` への反映（plan.md の「反映の方針」）。`git merge origin/master` の後に `scripts/dev/check-spec-ids.sh` で
+- [X] T011 `specs/product/` への反映（plan.md の「反映の方針」）。`git merge origin/master` の後に `scripts/dev/check-spec-ids.sh` で
   ID の重複を確かめ、`overview.md` の節「製品仕様の形式の検査」に spec.md の「反映先」の項目を加え、A-187 を削除する。
   `README.md` の「形式の検査」に、実行される場所を加える。反映後に形式の検査と ID の検査を実行する。
   spec.md の冒頭に凍結の注記を入れる。

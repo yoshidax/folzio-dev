@@ -615,6 +615,41 @@ Cloud 環境には Swift がないため、Agent は PR の CI の結果を読�
    - **When** Agent が `specs/product/` を変更しようとする、
    - **Then** 書き方のルールの要点と、詳細が `specs/product/README.md` にあることが分かる。
 
+### User Story 67 - 仕様の変更が検証ゲートと CI で検査される (Priority: P1)
+
+保守者と Agent は、検証ゲートを行うと、ほかの検査と一緒に `specs/product/` の形式の検査を実行する。
+PR を作ると、開発用 CI でも同じ検査が動き、崩れがあれば PR の check が失敗する。
+SDD increment で `specs/product/` へ反映したときも、コミットの前に検査が動く。
+
+**Why this priority**: TAK-62 の検査は、手で実行しなければ働かない。
+ゲートと CI に組み込まなければ、崩れの再発を防げない。
+
+**Independent Test**: 検査が失敗する崩れた文書と、成功する文書のそれぞれで、CI のジョブと同じコマンドを実行し、
+終了コードを確かめる。
+`AGENTS.md`、手順書、PR のテンプレート、SDD increment の手順と workflow を読み、
+同じコマンドが書かれていることを確かめる。
+
+**Acceptance Scenarios**:
+
+1. **US67-AS1**: **Given** `AGENTS.md` のローカルの Phase の検証ゲート、
+   - **When** 保守者がゲートを行う、
+   - **Then** 形式の検査を、ほかの検査と同じ段階で実行する。
+2. **US67-AS2**: **Given** `AGENTS.md` と手順書の Cloud の検証ゲート、
+   - **When** Agent がゲートを行う、
+   - **Then** 形式の検査を実行し、結果を PR の「検証」に書く。
+3. **US67-AS3**: **Given** `specs/product/` に形式のエラーがある作業ブランチ、
+   - **When** PR の作成時または Ready にしたときに CI が動く、
+   - **Then** Linux のジョブが失敗し、PR の check で失敗が分かる。
+4. **US67-AS4**: **Given** 形式のエラーがなく、警告が基準値以下の作業ブランチ、
+   - **When** CI が動く、
+   - **Then** Linux のジョブは成功する。
+5. **US67-AS5**: **Given** SDD increment の workflow で `specs/product/` へ反映し、反映の確認を approve した、
+   - **When** 形式の検査が失敗する、
+   - **Then** 反映はコミットされずに workflow が止まる。
+6. **US67-AS6**: **Given** PR のテンプレート、
+   - **When** 作成者が「検証」を書く、
+   - **Then** 形式の検査と、形式だけを変える変更での equivalence チェックが、結果を書く検査として示されている。
+
 ## 機能要件
 
 ### 保存と復元
@@ -882,6 +917,20 @@ Cloud 環境には Swift がないため、Agent は PR の CI の結果を読�
     - 表のセルは短い要約にし、詳細は「表の詳細」に置く。`下記` と「表の詳細」を対応づける
     - インラインコード・引用・英語句・表の行を途中で改行しない
   - `AGENTS.md` は、書き方のルールの要点と、詳細の参照先を示す
+- **FR-307**: ローカルの Phase の検証ゲートと Cloud の検証ゲートは、
+  形式の検査（`python3 scripts/dev/check-spec-format.py`）を含まなければならない。
+  - 検査は、`specs/product/` を変えない作業でも実行する
+- **FR-308**: 開発用 CI は、形式の検査と、形式の検査と equivalence チェックの回帰テストを、macOS のジョブとは別の Linux
+  のジョブで実行しなければならない。
+  - Linux のジョブの動く条件は、macOS のジョブと同じとする（FR-190）
+  - 検査またはテストが失敗したら、ジョブが失敗し、PR の check で分かる
+- **FR-309**: equivalence チェックは、検証ゲートと CI の必須の検査にしてはならない。
+  - 形式だけを変える変更で実行し、結果を PR に書く
+- **FR-310**: PR のテンプレートの「検証」は、形式の検査と、形式だけを変える変更での equivalence チェックを、
+  実行して結果を書く検査として示さなければならない。
+- **FR-311**: SDD increment の手順は、`specs/product/` への反映の後に、形式の検査を実行しなければならない。
+  - 対象は、共通の手順（`shared-skills/folzio-sdd-increment.md`）と、sdd-increment の workflow（Claude・Kilo・Codex）
+  - workflow は、検査が失敗したら反映をコミットせずに止まる
 
 ## 主なエンティティ
 
@@ -977,6 +1026,12 @@ Cloud 環境には Swift がないため、Agent は PR の CI の結果を読�
   - ほかのファイルとの間の移動は、移動として扱う
 - **EC-212**: 基準の版として、存在しないコミットや作業ブランチと共通の祖先がないコミットを指定した場合、
   equivalence チェックは比較をせずに、理由を示して失敗する。
+- **EC-213**: `specs/product/` を変えない PR でも、CI の Linux のジョブは形式の検査を実行する。
+  - 取り込んだ master に崩れがあれば、その PR のジョブも失敗する
+- **EC-214**: 警告が基準値を下回った場合、CI のジョブは成功する（FR-300）。
+  - 基準値の更新は、作成者が `--update-baseline` で行う
+- **EC-215**: Linux のジョブと macOS のジョブは、互いの結果を待たずに動く。
+  - 一方が失敗しても、もう一方は最後まで動く
 
 ## 成功基準
 
@@ -1059,6 +1114,11 @@ Cloud 環境には Swift がないため、Agent は PR の CI の結果を読�
 - **SC-160**: TAK-62 で行った既存の分断の修正（7 か所）が、equivalence チェックで差分なしと判定される。
 - **SC-161**: 保守者と Agent が、`specs/product/README.md` と `AGENTS.md` だけを読んで、
   書き方のルールと検査の実行方法を答えられる。
+- **SC-162**: ローカルの検証ゲート、Cloud の検証ゲート、CI の Linux のジョブ、SDD increment の反映の手順のすべてで、
+  同じコマンド（`python3 scripts/dev/check-spec-format.py`）が実行される。
+- **SC-163**: 形式のエラーを1つ入れた `specs/product/` で、CI の Linux のジョブと同じコマンドが終了コード 1 で終わる。
+  - 崩していない `specs/product/` では、終了コード 0 で終わる
+- **SC-164**: 開発用 CI の macOS のジョブの動く条件と内容が、TAK-63 の前と変わらない。
 
 ## 前提
 
@@ -1164,8 +1224,6 @@ Cloud 環境には Swift がないため、Agent は PR の CI の結果を読�
   で実行する。
   - Cloud では実行できない場合がある（`docs_private/cloud-agent-workflow.md` の「検証ゲート」）。
 
-- **A-187**: 検査を検証ゲート・CI・PR のテンプレートへ組み込むのは TAK-63 で行う。
-  - それまでは、検査は手で実行する
 - **A-188**: 「1文=1行」を採るかどうかは TAK-64 で決める。
   - 採った場合は、行の幅のしきい値と警告の基準値を TAK-64 で見直す
 - **A-189**: 子項目への分割による係り受けの変化と、移動による文脈の変化は、機械では判定できない。
@@ -1174,6 +1232,16 @@ Cloud 環境には Swift がないため、Agent は PR の CI の結果を読�
   - feature ディレクトリ（`specs/NNN-xxx/`、`specs/TAK-<nn>-<slug>/`）の文書は、凍結した記録なので検査しない
 - **A-191**: 保守者のローカルの Python は、macOS の Command Line Tools の Python 3.9 の場合がある。
   - 検査とテストは Python 3.9 で動く書き方にする
+- **A-192**: 公開書き出し（`scripts/dev/publish.sh`）には、形式の検査を加えない。
+  - `specs/` は書き出しから除かれ、混入したら書き出しが止まるため、公開物の検査には当たらない
+- **A-193**: `scripts/dev/sdd-codex.py` の検証には、形式の検査を加えない。
+  - その検証は `specs/product/` への反映の前に動くため、反映の崩れを検出できない
+  - 反映の後の検査は、workflow の反映の段階で行う（FR-311）
+- **A-194**: Spec Kit の tasks テンプレート（`.specify/templates/tasks-template.md`）には、確認の項目を加えない。
+  - Spec Kit が生成する英語の汎用のテンプレートで、更新で上書きされるおそれがある
+  - feature の tasks.md の反映のタスクは、`AGENTS.md` と手順書の検証ゲートに従う
+- **A-195**: CI の Linux のジョブは、ランナーに入っている Python 3 を使う。
+  - Python 3.9 での動作（A-191）は、保守者のローカルで確かめる
 
 ## 参照しているほかの領域
 
