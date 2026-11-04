@@ -9,9 +9,9 @@
 
 ## Phase 1: 準備
 
-- [ ] T001 `git fetch origin master` の後、`git merge-base --is-ancestor origin/master HEAD` で取り込み済みであることを確かめる。
+- [X] T001 `git fetch origin master` の後、`git merge-base --is-ancestor origin/master HEAD` で取り込み済みであることを確かめる。
   先に進んでいたら `git merge origin/master` で取り込む（履歴は書き換えない）。
-- [ ] T002 変更前の状態を記録する。`scripts/dev/check-spec-ids.sh` が成功すること、既存の `scripts/dev/tests` のうち
+- [X] T002 変更前の状態を記録する。`scripts/dev/check-spec-ids.sh` が成功すること、既存の `scripts/dev/tests` のうち
   `test_check_git_push.py` と `test_check_skill_sync.py` が通ることを確かめる。
 
 ## Phase 2: User Story 64 - 製品仕様の形式の崩れを検出する (P1) 🎯 MVP
@@ -20,7 +20,7 @@
 
 **Independent Test**: `python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_spec_format.py"`（quickstart.md）。
 
-- [ ] T003 [P] [US64] `scripts/dev/tests/test_check_spec_format.py` を作る（この時点では失敗することを確かめる）。一時ディレクトリに
+- [X] T003 [P] [US64] `scripts/dev/tests/test_check_spec_format.py` を作る（この時点では失敗することを確かめる）。一時ディレクトリに
   スクリプトをコピーし、`specs/product/` に Markdown、`scripts/dev/` に設定と基準値を置いて実行する。次を確かめる。
   - 崩していない文書（見出し・箇条書き・表・`下記` と「表の詳細」・コードブロック・1行で閉じた引用とインラインコード）で成功する
   - 各エラー（`line-width` の 160 桁超、`table-row-split` の2つの形、`table-columns`、`table-separator`、`table-empty`、`code-split`、
@@ -34,10 +34,10 @@
   - `下記` の行が、キーで始まる見出しの「表の詳細」の項目と対応する（同じキーの行が複数ある場合を含む。EC-210）
   - 設定の `section` と `table_columns` で指定した範囲の、指定した検出項目だけが対象外になる（US64-AS7）。存在しないファイル・見出しの
     指定は終了コード 2
-- [ ] T004 [US64] `scripts/dev/spec-format-config.json` を作る（data-model.md の「設定」。しきい値 120 / 160 / 80、対象外の 2 件と理由）。
-- [ ] T005 [US64] `scripts/dev/check-spec-format.py` を作る（contracts/cli.md、research.md の R2〜R10）。Python 3.9 で動く書き方にし、
+- [X] T004 [US64] `scripts/dev/spec-format-config.json` を作る（data-model.md の「設定」。しきい値 120 / 160 / 80、対象外の 2 件と理由）。
+- [X] T005 [US64] `scripts/dev/check-spec-format.py` を作る（contracts/cli.md、research.md の R2〜R10）。Python 3.9 で動く書き方にし、
   コメントは英語で書く。行の種類の判定、表のまとまりの検査、各検出項目、対象外の適用、基準値との比較、`--update-baseline`、終了コードを実装する。
-- [ ] T006 [US64] T003 のテストが通ることを確かめる。`python3 scripts/dev/check-spec-format.py` を現在の `specs/product/` に実行し、
+- [X] T006 [US64] T003 のテストが通ることを確かめる。`python3 scripts/dev/check-spec-format.py` を現在の `specs/product/` に実行し、
   エラーが spec.md の「現状」の分断（引用 6、英語句 3。`overview.md` の「出発点となった要望」は対象外）だけであり、警告の件数が
   計測（行の幅 10、セルの幅 41、複数の文 34）と一致するかを確かめる。差があれば理由を research.md に追記する。
 
@@ -47,19 +47,19 @@
 
 **Independent Test**: `python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_spec_equivalence.py"`（quickstart.md）。
 
-- [ ] T007 [P] [US65] `scripts/dev/tests/test_check_spec_equivalence.py` を作る（この時点では失敗することを確かめる）。一時ディレクトリに
+- [X] T007 [P] [US65] `scripts/dev/tests/test_check_spec_equivalence.py` を作る（この時点では失敗することを確かめる）。一時ディレクトリに
   git のリポジトリを作り、スクリプトをコピーし、`specs/product/` の基準の版をコミットしてから作業ツリーを変えて実行する。次を確かめる。
   - 改行の位置・インデント・箇条書きの入れ子・句読点（`。`・`、`）だけの変更で、終了コード 0 と差分なしの表示（US65-AS1）
   - 表のセルの文を「表の詳細」へ移してセルを `下記` にした変更で、終了コード 0 と「移動」の表示（US65-AS2）
   - 語句の書き換え、文の追加、文の削除で、終了コード 1 と「追加」「削除」の表示（ファイルと行の番号を含む。US65-AS3）
   - コミットしていない変更と追跡していないファイルが比較に入る（US65-AS4）。ファイルの追加・削除と、ファイルの間の移動（EC-211）
   - 存在しない版の指定で終了コード 2（EC-212）
-- [ ] T008 [US65] `scripts/dev/check-spec-equivalence.py` を作る（contracts/cli.md、research.md の R11）。Python 3.9 で動く書き方にし、
+- [X] T008 [US65] `scripts/dev/check-spec-equivalence.py` を作る（contracts/cli.md、research.md の R11）。Python 3.9 で動く書き方にし、
   コメントは英語で書く。
-- [ ] T009 [US65] T007 のテストが通ることを確かめる。TAK-61 の差分で試す。作業ツリーを変えないため、スクラッチのディレクトリに
+- [X] T009 [US65] T007 のテストが通ることを確かめる。TAK-61 の差分で試す。作業ツリーを変えないため、スクラッチのディレクトリに
   このリポジトリを `git clone` して `f734a08` をチェックアウトし、その中のスクリプトで `b4e48eb` を基準に比べる。一覧が research.md の
   R11 の説明（移動と、`keyboard-and-menus.md` などの見出しの書き換え）と合うかを確かめ、結果を research.md に追記する。
-- [ ] T010 [US65] 全体の実行時間を計る（plan.md の Performance Goals: 30 秒以内）。超える場合は、research.md に理由と対策を書く。
+- [X] T010 [US65] 全体の実行時間を計る（plan.md の Performance Goals: 30 秒以内）。超える場合は、research.md に理由と対策を書く。
 
 ## Phase 4: 既存の分断の修正（US64-AS1、SC-157、SC-160）
 

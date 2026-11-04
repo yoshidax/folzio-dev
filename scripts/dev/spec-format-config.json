@@ -1,0 +1,19 @@
+{
+  "line_width_warning": 120,
+  "line_width_error": 160,
+  "cell_width_warning": 80,
+  "exclusions": [
+    {
+      "file": "overview.md",
+      "section": "## 出発点となった要望",
+      "rules": ["quote-split", "english-split", "line-width"],
+      "reason": "The original user request is quoted verbatim as one long quotation."
+    },
+    {
+      "file": "contracts/localization.md",
+      "table_columns": ["日本語", "英語"],
+      "rules": ["cell-width"],
+      "reason": "Translation tables keep each Japanese and English pair on one row."
+    }
+  ]
+}
