@@ -50,8 +50,7 @@ Linear: [TAK-<nn>](https://linear.app/takyoshida/issue/TAK-<nn>)
 <!--
 実行して確かめたことだけを書き、コマンドと結果（成功・失敗・件数）を添える。「実行していないこと」は、ここではなく次の欄に書く。
 区分ごとに、該当するものを残して書く。
-- Cloud（Agent が実行した検証）: `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、
-  `scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、`test_check_git_push.py`、`git diff --check`。
+- Cloud（Agent が実行した検証）: `scripts/dev/check-all.sh`（実行する検査はスクリプトを参照）、`git diff --check`。
 - CI（macOS）: 対象のコミットと、実行の種類（PR の作成時か、`workflow_dispatch` か）、ビルドとテストの結果。
   失敗や不安定なテストがあれば、原因の判断と、その根拠を書く。
 - 保守者のローカルでの確認: 起動スモークなど、保守者に依頼した確認の結果。報告を受けたものは「報告による」と書き、確認した環境の詳細が不明ならそう書く。

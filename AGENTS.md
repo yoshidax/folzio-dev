@@ -29,8 +29,7 @@
 - ウインドウの表示と `contentViewController` の設定は MainActor で行う
 
 ## Phase の検証ゲート【ローカル】
-まとまった変更・Phase の終わりに、1 `swift build`、2 `swift test`、3 `scripts/dev/check-all.sh`、4 起動スモーク（`scripts/make-app.sh` →
-`open .build/Folzio.app` で 3 ペインが表示される）をこの順で行い、5 問題がなければ Phase 単位でコミットする。Cloud 版は `docs_private/cloud-agent-workflow.md` の 5 章。
+まとまった変更・Phase の終わりに、1 `swift build`、2 `swift test`、3 `scripts/dev/check-all.sh`、4 起動スモーク（`scripts/make-app.sh` → `open .build/Folzio.app` で 3 ペインが表示される）をこの順で行い、5 問題がなければ Phase 単位でコミットする。Cloud 版は `docs_private/cloud-agent-workflow.md` の 5 章。
 
 ## 完了の条件【共通】
 - テストや CI が通っただけで完了にしない。起動スモークまで行う。GUI の起動は保守者に依頼して実行するコマンドと確認する点を示し、確認されるまで GUI のタスクは未チェックで残す（Cloud では build と test も CI で確かめる）
@@ -40,7 +39,7 @@
 ## 書くときの規則【共通】
 - ソースのコメントは英語で書く。書式と用語は `docs_private/comment-translation-glossary.md`
 - `README.md` と `README.ja.md` は同じ内容の 2 言語版。同じコミットで両方を同じ内容に変える（訳の一致はスクリプトで検査されない）
-- `docs/` は公開用、`docs_private/` は非公開。公開用リポジトリの扱いは `docs_private/repository-and-release.md`
+- `docs/`・README・ソースのコメントは公開される。`specs/`・`.specify/`・`docs_private/`・`shared-skills/`・`AGENTS.md` へリンクしない（公開の手順: `docs_private/repository-and-release.md`）
 
 ## 作業別の手順（該当するときに読む）
 - 【Cloud】作業を始める前に `docs_private/cloud-agent-workflow.md`（feature の始め方、PR、CI、検証ゲート、並行する作業）
@@ -48,3 +47,4 @@
 - 【ローカル】アプリが起動しない・ウインドウが出ない、設定の保存先を調べる: `docs_private/agents/launch-debugging.md`
 - 【ローカル】実装を並列化する: `docs_private/agents/parallel-worktree.md`（【Cloud】は Issue 単位で並行し、サブエージェントで実装を分けない）
 - 【共通】スキル・Codex・Spec Kit の構成を変える、Codex を自動実行する: `docs_private/agents/skills-and-codex.md`
+- 【共通】性能テストの基準値を変える・調べる: `specs/001-three-pane-media-viewer/quickstart.md` の「性能の検証」

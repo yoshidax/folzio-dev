@@ -20,4 +20,4 @@ AGENTS.md から参照する、スキルや各エージェントの設定を変�
 
 - Codex の自動実行は `scripts/dev/sdd-run-codex.sh` を使う。run／resume／status と更新手順は
   [codex-speckit.md](../codex-speckit.md) を参照する。既定の integration は Claude のままとする
-- Codex の初期ワークフローは順次実装する。並列実装の規約は [parallel-worktree.md](parallel-worktree.md)
+- Codex での並列化の可否は [parallel-worktree.md](parallel-worktree.md)

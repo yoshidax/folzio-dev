@@ -1,7 +1,7 @@
 # Cloud Agent の作業手順
 
 Cloud Agent（Claude / Codex）が、Cloud 環境で feature またはバグ修正を進め、GitHub の PR にまとめるための手順。ローカルでの開発の手順は
-[folzio-sdd-increment.md](../shared-skills/folzio-sdd-increment.md) と `AGENTS.md` の【ローカル】の節にあり、この手順書とは別に、そのまま使える。
+[folzio-sdd-increment.md](../shared-skills/folzio-sdd-increment.md)、`AGENTS.md` の【ローカル】の節、そこから参照する [agents/](agents/) にあり、この手順書とは別に、そのまま使える。
 
 この手順書は、feature の仕様（`specs/TAK-30-cloud-agent-workflow/`）の要件 FR-186〜FR-199 を実装したもの。規則の全体は `AGENTS.md` にあり、適用範囲（【共通】【ローカル】【Cloud】）は各見出しで示す。
 
@@ -92,13 +92,13 @@ PR の作成と Draft の PR の Ready 化も CI を自動で起動するため�
 
 | 実行する者 | 検査 |
 |---|---|
-| Cloud（Agent） | `scripts/check-no-network.sh`、`scripts/check-readme-sync.sh master`、`scripts/dev/check-english-comments.sh`、`scripts/dev/check-skill-sync.sh`、`scripts/dev/check-spec-ids.sh`、`python3 -I -m unittest discover -s scripts/dev/tests -p "test_check_git_push.py"` |
+| Cloud（Agent） | `scripts/dev/check-all.sh`（実行する検査はスクリプトを参照） |
 | CI | `swift build`、`swift test`（通常のテストと性能テスト） |
 | 保守者（ローカル） | 起動スモーク（`scripts/make-app.sh` の後に `open .build/Folzio.app` で 3 ペインの表示）、ローカルの最新の Swift でのビルドとテスト、`scripts/dev/tests` の公開・配布のテスト（Apple silicon の macOS と `rsync` を前提とし、Cloud では 6 件が失敗する） |
 
 - **起動スモークを省略して「CI が通ったから完了」にしない**。GUI の確認は保守者に依頼し、実行するコマンドと確認する点を具体的に示す。
 - 憲章の「マージ前のゲート」（自動テストの通過）は、Cloud では**CI の成功と、保守者のローカルでの確認**で満たすと解釈する（憲章は改定しない）。
-- Cloud では `swift` を使うコマンドを実行できない。Cloud（Agent）の検査は、`scripts/dev/check-all.sh` でまとめて実行できる。
+- Cloud では `swift` を使うコマンドを実行できない。Cloud（Agent）の検査は、`scripts/dev/check-all.sh` だけを実行する。
 
 ## 6 ブランチ
 

@@ -235,7 +235,7 @@ steps:
       - id: verify
         type: shell
         timeout: 3600
-        run: swift build && swift test && scripts/check-no-network.sh && scripts/check-readme-sync.sh master && scripts/make-app.sh
+        run: swift build && swift test && scripts/dev/check-all.sh && scripts/make-app.sh
 
       - id: notify_gui
         type: shell
