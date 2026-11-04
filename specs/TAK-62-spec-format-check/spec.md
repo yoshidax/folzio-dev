@@ -1,5 +1,10 @@
 # Feature Specification: 製品仕様の形式の検査
 
+> **移行済み（2026-11-04）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-62 時点の記録として凍結しており、更新しない。
+> FR-303 の「「表の詳細」の各項目の見出し」は、実装で「見出しのうち直前の表の行のキーと重なる部分と、見出しの直後の括弧」に
+> 改めた（research.md の「実装後の確認」）。`specs/product/overview.md` には改めた後の表現で反映している。
+
 **Feature Branch**: `claude/gallant-faraday-2z1fe7`（Cloud が指定する作業ブランチ。feature ディレクトリ名とは独立）
 
 **Created**: 2026-11-04
