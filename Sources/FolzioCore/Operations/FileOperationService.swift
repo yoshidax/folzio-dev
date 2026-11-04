@@ -3,6 +3,8 @@ import Foundation
 public protocol FileOperating: Sendable {
     func conflicts(for operation: FileOperation) -> [URL]
     func execute(_ operation: FileOperation, resolution: ConflictResolution) async -> FileOperationResult
+    /// Creates an empty folder in `parent` named `baseName`, or the next free numbered name (FR-208, FR-209).
+    func createFolder(in parent: URL, baseName: String) async -> Result<URL, OperationFailureReason>
 }
 
 public struct FileOperationService: FileOperating {
@@ -35,6 +37,46 @@ public struct FileOperationService: FileOperating {
         await Task.detached(priority: .userInitiated) {
             Self.perform(operation, resolution: resolution)
         }.value
+    }
+
+    /// Never overwrites or changes an existing entry. When an entry with the chosen name appears between listing
+    /// and creating, retries with the next numbered name (EC-142, research.md R3).
+    public func createFolder(in parent: URL, baseName: String) async -> Result<URL, OperationFailureReason> {
+        await Task.detached(priority: .userInitiated) {
+            Self.makeFolder(in: parent, baseName: baseName)
+        }.value
+    }
+
+    /// Upper bound on retries when a name collides at creation time.
+    private static let createFolderAttempts = 100
+
+    private static func makeFolder(in parent: URL, baseName: String) -> Result<URL, OperationFailureReason> {
+        let fileManager = FileManager.default
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(atPath: parent.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+            return .failure(.destinationNotFound)
+        }
+
+        var takenNames: Set<String>
+        do {
+            takenNames = Set(try fileManager.contentsOfDirectory(atPath: parent.path))
+        } catch {
+            return .failure(.systemFailure(systemReason: error.localizedDescription))
+        }
+
+        for _ in 0..<createFolderAttempts {
+            let name = newFolderName(baseName: baseName, existingNames: takenNames)
+            let target = parent.appendingPathComponent(name, isDirectory: true)
+            do {
+                try fileManager.createDirectory(at: target, withIntermediateDirectories: false)
+                return .success(target)
+            } catch let error as CocoaError where error.code == .fileWriteFileExists {
+                takenNames.insert(name)
+            } catch {
+                return .failure(.systemFailure(systemReason: error.localizedDescription))
+            }
+        }
+        return .failure(.sameNameAtDestination)
     }
 
     private static func perform(_ operation: FileOperation, resolution: ConflictResolution) -> FileOperationResult {
@@ -122,6 +164,7 @@ public struct FileOperationService: FileOperating {
             for: source,
             in: destination,
             resolution: resolution,
+            protectedSources: operation.sources,
             createdNames: &createdNames,
             fileManager: fileManager
         )
@@ -196,6 +239,7 @@ public struct FileOperationService: FileOperating {
         for source: URL,
         in destination: URL,
         resolution: ConflictResolution,
+        protectedSources: [URL],
         createdNames: inout Set<String>,
         fileManager: FileManager
     ) throws -> URL {
@@ -208,6 +252,11 @@ public struct FileOperationService: FileOperating {
         case .abort:
             throw OperationFailure(reason: .sameNameAtDestination)
         case .replace:
+            guard !protectedSources.contains(where: {
+                isDescendant($0, of: target) || sameItem($0, target, fileManager: fileManager)
+            }) else {
+                throw OperationFailure(reason: .replacementContainsSource)
+            }
             _ = try moveToTrash(target, fileManager: fileManager)
             return target
         case .keepBoth:

@@ -52,6 +52,14 @@ public func validateNewName(
     return .ok
 }
 
+/// Returns the name for a new folder (FR-209, research.md R2).
+/// Returns `baseName` when no entry in `existingNames` matches it, ignoring case.
+/// Otherwise numbers it from 2 with `uniqueName(for:existingNames:)`, matching Duplicate (FR-018).
+public func newFolderName(baseName: String, existingNames: Set<String>) -> String {
+    let isTaken = existingNames.contains { $0.caseInsensitiveCompare(baseName) == .orderedSame }
+    return isTaken ? uniqueName(for: baseName, existingNames: existingNames) : baseName
+}
+
 public func uniqueName(for name: String, existingNames: Set<String>) -> String {
     let lowercasedNames = Set(existingNames.map { $0.lowercased() })
     let fileExtension = (name as NSString).pathExtension

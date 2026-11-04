@@ -1,5 +1,7 @@
 # リポジトリの構成と公開の手順
 
+**適用範囲**: 【共通】（公開の手順は保守者が行う）
+
 このリポジトリは非公開の開発用で、GitHub で公開するのは書き出した別のリポジトリだけにしている。
 Spec Kit・AI エージェントの設定・仕様書・開発記録は公開しない。このドキュメントも公開版には含めない。
 
@@ -47,6 +49,18 @@ Issue を `Done` にする。これはマージや push に連動する自動更
 - `docs_private/`: 非公開の運用手順・用語集・開発記録。このファイルを含み、公開用リポジトリには書き出さない
 - `shared-skills/`: Codex・Claude Code・Kilo Code で共有するスキルの手順本文。各ツールの `SKILL.md` から参照し、公開用リポジトリには書き出さない
 
+## README の英語版と日本語版
+
+`README.md`（英語）と `README.ja.md`（日本語）は同じ内容の2言語版。片方だけを更新しない。
+
+- 一方を変えたら、同じコミットでもう一方にも同じ変更を入れる。タスクや指示が `README.md` だけを挙げていても両方を直す
+- 見出し・箇条書き（入れ子の深さを含む）・表の行・コードブロックを1対1で対応させる。コードブロックは `#` 以降のコメントだけを訳す
+- 英語版では、アプリの UI の文言を英訳し、探しやすくするために必要なところへ日本語の表示名を括弧で添える
+- `scripts/check-readme-sync.sh [base]` で確かめる。base（既定は HEAD）との merge-base 以降の変更（未コミット・未追跡を含む）で、
+  片方だけが変わっていないかと、2つの構造（見出し・箇条書き・表の行・コードブロック）が一致するかを調べる
+  - 訳の中身が一致しているかまでは調べない。差分を読み、両方に同じ内容が入っていることを確かめる
+- `scripts/dev/publish.sh` も書き出しの前に同じ確認を行う
+
 ## 公開版から外すファイル
 
 `.gitattributes` の `export-ignore` で指定する。`git archive` がこの指定を読み、書き出しから外す。
@@ -61,6 +75,7 @@ Issue を `Done` にする。これはマージや push に連動する自動更
 | `AGENTS.md` | エージェント向けのプロジェクト規約 |
 | `scripts/dev/` | 開発専用のスクリプト・補助ファイル・検証 |
 | `.vscode/` | エディタの個人設定 |
+| `.github/workflows/` | 開発用の GitHub Actions の workflow（「GitHub Actions の workflow」） |
 | `.gitattributes` | この指定そのもの |
 
 開発専用スクリプトとその補助ファイルは `scripts/dev/` に置く。その他の開発専用ファイルは `.gitattributes` で除外する。
@@ -84,13 +99,15 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
    1. `scripts/check-readme-sync.sh` で、`README.md` と `README.ja.md` の構造がそろっているか確かめる
    2. `scripts/dev/check-english-comments.sh` で公開対象のソースコメントを検査する
    3. `git archive HEAD` で、`export-ignore` を除いたファイルを一時ディレクトリへ取り出す
-   4. 外したはずのファイルが混ざっていないか確かめる
-   5. `$HOME` のパスとユーザー名が含まれていないか確かめる
-   6. `../folzio-oss` へ同期する（`.git`、`.build`、`.vscode` を保護し、それ以外は書き出し内容に合わせる）。
+   4. 外したはずのファイル（開発用の `.github/workflows/` を含む）が混ざっていないか確かめる
+   5. 公開用の workflow を `scripts/dev/oss-workflows/` から一時ディレクトリの `.github/workflows/` に置き、
+      管理元と名前・内容が一致することを確かめる。置いた workflow の名前（なければ「公開用 workflow はありません」）を表示する
+   6. `$HOME` のパスとユーザー名が含まれていないか確かめる（公開用の workflow も対象）
+   7. `../folzio-oss` へ同期する（`.git`、`.build`、`.vscode` を保護し、それ以外は書き出し内容に合わせる）。
       書き出し先がなければ `git init -b main` で作る
-   7. 書き出し先で `swift build`、Core のテスト、性能テスト、`scripts/check-no-network.sh` を行う。
+   8. 書き出し先で `swift build`、Core のテスト、性能テスト、`scripts/check-no-network.sh` を行う。
       テストは2つを順に流す（同時に流すと、Core の待ち時間のあるテストが CPU 不足で落ちることがある）
-   8. `git add -A` で変更をステージし、`git status` を表示する
+   9. `git add -A` で変更をステージし、`git status` を表示する
 
 3. 書き出し先で起動スモークを行う（3ペインが表示されること）
 
@@ -113,6 +130,37 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
    影響しない変更（README やガイドのみの変更など）では、アプリのバージョンを上げず、
    GitHub Release の作成や配布物の再アップロードも行わない。
 
+## GitHub Actions の workflow
+
+開発用リポジトリと公開用リポジトリでは、動かす workflow が違う。どちらの元のファイルも開発用リポジトリで管理し、
+公開用リポジトリでは workflow を直接編集しない（TAK-40）。
+
+| | 開発用の workflow | 公開用の workflow |
+|---|---|---|
+| 元のファイル（管理元） | 開発用の `.github/workflows/` | 開発用の `scripts/dev/oss-workflows/`（直下の `*.yml`・`*.yaml`） |
+| 動く場所 | 開発用リポジトリ（`yoshidax/folzio-dev`）だけ | 公開用リポジトリだけ |
+| 書き出しでの扱い | 書き出さない（`.gitattributes` の `/.github/workflows export-ignore`） | 公開用リポジトリの `.github/workflows/` に、同じ名前・内容で置く |
+| 例 | `macos-swift-ci.yml`（PR の作成時などのビルドとテスト） | TAK-41 のアプリのビルドと Release への添付（まだない） |
+
+- 開発用の workflow を足すときは、開発用の `.github/workflows/` に置くだけでよい。ディレクトリごと除外しているので、除外の指定は要らない
+- 公開用の workflow として置くのは、管理元の**直下**にある、名前が `.yml` または `.yaml` で終わる通常ファイルだけ。
+  サブディレクトリの中、シンボリックリンク、説明の文書（管理元の `README.md`）は置かない
+- 置くのはコミット済みの内容（`HEAD`）。管理元に workflow がなければ、公開用リポジトリに `.github/workflows/` を作らない
+- 公開用の workflow は開発用リポジトリでは動かない（GitHub Actions は `.github/workflows/` の直下だけを読む）。動作は公開用リポジトリで確かめる
+- 開発用と公開用で同じファイル名を使ってもよい。開発用の workflow は書き出さないので、公開用リポジトリでは衝突しない
+
+公開用の workflow の追加・変更・削除の手順:
+
+1. 開発用の作業ブランチで、`scripts/dev/oss-workflows/` の workflow を追加・変更・削除する
+2. 開発用 master にマージする（「開発用 master へのマージとバックアップ」）
+3. 「公開の手順」で書き出す。`publish.sh` の出力に、置いた workflow の名前が出る
+4. 書き出し先の `git status` で `.github/workflows/` の変更（追加・変更・削除）を確かめてから、「公開の手順」の 4 でコミットする
+5. 公開用リポジトリの Actions で、workflow が意図どおり動くことを確かめる
+
+公開用リポジトリで `.github/workflows/` を直接編集した場合、その変更は次の書き出しで管理元の内容に置き換わる（`rsync --delete` は
+`.github/workflows/` を保護しない）。公開用リポジトリでコミット済みのファイルは `git status` に削除（`D`）として出るが、
+コミットしていないファイルは表示されずに消える。
+
 ## 公開用リポジトリの方針
 
 - 作者は `yoshidax <takehiko.yoshida.z@gmail.com>`（global の git 設定）
@@ -122,7 +170,7 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
 
 ## 注意
 
-- 公開用で直接コミットしない。次の書き出しで開発用の内容に置き換わる
+- 公開用で直接コミットしない。次の書き出しで開発用の内容に置き換わる。GitHub Actions の workflow も同じ（「GitHub Actions の workflow」）
 - `.app` はアドホック署名（`codesign --sign -`）。配布物は Gatekeeper でブロックされるため、配布するなら
   Developer ID の署名と公証を行うか、開き方を README で案内する
 - 公開版に出るファイルに `$HOME` の絶対パスを書かない。`scripts/dev/publish.sh` の確認で止まる

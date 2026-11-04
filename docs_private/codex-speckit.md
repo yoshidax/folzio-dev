@@ -39,7 +39,7 @@ $speckit-converge
 ```
 
 不具合は `$speckit-bug-assess` → 診断のユーザー確認 → `$speckit-bug-fix` →
-`$speckit-bug-test`。仕様が未定義・誤りの場合は、AGENTS.md に従って feature に回す。
+`$speckit-bug-test`。仕様が未定義・誤りの場合は、[agents/bugfix.md](agents/bugfix.md) に従って feature に回す。
 `$speckit-git-feature` などの git 拡張も利用できる。
 
 ## increment を対話で進める
@@ -205,7 +205,7 @@ open .build/Folzio.app
 - 失敗・中断: 表示された run_id の status と progress.log を確認してから resume する。
 - ロックが残った: 実行プロセスがないことを確認した場合だけ
   `rmdir .specify/workflows/runs/.sdd-codex.lock` を実行する。
-- GUI が起動しない: AGENTS.md の lldb 手順を使う。GUI 未確認のまま完了にしない。
+- GUI が起動しない: [agents/launch-debugging.md](agents/launch-debugging.md) の lldb の手順を使う。GUI 未確認のまま完了にしない。
 
 公式資料: [Skills](https://learn.chatgpt.com/docs/build-skills)、
 [Config](https://learn.chatgpt.com/docs/config-file/config-basic)、
