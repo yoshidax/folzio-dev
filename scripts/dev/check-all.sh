@@ -21,7 +21,7 @@ run() {
 run scripts/check-no-network.sh
 run scripts/check-no-archive-writes.sh
 # Prefer origin/master: the local master branch can be stale or missing in a Cloud clone.
-if git rev-parse --verify --quiet origin/master >/dev/null; then readme_base=origin/master; else readme_base=master; fi
+readme_base=$(scripts/dev/base-ref.sh) || readme_base=master
 run scripts/check-readme-sync.sh "$readme_base"
 run scripts/dev/check-english-comments.sh
 run scripts/dev/check-skill-sync.sh
