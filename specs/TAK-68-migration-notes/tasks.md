@@ -34,8 +34,9 @@
 - [x] T015 `specs/product/file-operations.md` と feature 注記の完成差分を保守者に示し、コミット前の承認を得る（`docs_private/cloud-agent-workflow.md` 7章）
 - [ ] T016 [MANUAL] 必要な `swift build`・`swift test`・macOS CI について `docs_private/cloud-agent-workflow.md` の手順に従い、実施結果または保守者のスキップ指示を記録する
 - [ ] T017 [MANUAL] 保守者が `scripts/make-app.sh` と `open .build/Folzio.app` で起動・3ペインを確認するか、スキップを明示する
-- [ ] T018 `specs/TAK-68-migration-notes/tasks.md` に検証と保守者の判断を記録し、凍結手順を除く未完了事項を解消する
-- [ ] T019 `specs/TAK-68-migration-notes/spec.md` の凍結注記案を含む最終差分を保守者に示して承認を得る
+  - PR 作成時のコミット `f6944fa` の macOS CI はビルド・通常テスト 1057 件・性能テスト 27 件が成功。後続の変更は文書のみのため、最新コミットの CI とローカル確認は保守者の指示でスキップ（2026-11-05）。実施していない確認は未チェックのまま残す。
+- [x] T018 `specs/TAK-68-migration-notes/tasks.md` に検証と保守者の判断を記録し、凍結手順を除く未完了事項を解消する
+- [x] T019 `specs/TAK-68-migration-notes/spec.md` の凍結注記案を含む最終差分を保守者に示して承認を得る
 
 ## 依存関係と実装戦略
 

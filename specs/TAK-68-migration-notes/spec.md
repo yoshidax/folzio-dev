@@ -1,5 +1,8 @@
 # Feature Specification: 完了 feature の仕様反映と凍結注記
 
+> **移行済み（2026-11-05）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-68 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `chore/tak-68-migration-notes`
 
 **Created**: 2026-11-05
