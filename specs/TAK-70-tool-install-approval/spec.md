@@ -9,13 +9,13 @@
 
 ### User Story 1 - 依存ツールの導入前に確認する (Priority: P1)
 
-保守者は Claude Code・Kilo Code・Codex が Homebrew でツールを導入する前に確認できる。
+Claude Code は導入前に保守者に確認し、Codex と Kilo Code は直接の Homebrew 導入を禁止して保守者に依頼する。
 
 **Independent Test**: 各設定の規則とそのエージェントの判定方法を確認する。実際のインストールは実行しない。
 
 **Acceptance Scenarios**:
 
-1. **Given** 各エージェントで設定が有効、**When** `brew install webp` を直接実行する、**Then** 保守者への確認が求められる。
+1. **Given** 各エージェントで設定が有効、**When** `brew install webp` を直接実行する、**Then** Claude は保守者に確認し、Codex と Kilo は実行を禁止する。
 2. **Given** 設定の判定範囲外から導入できる可能性がある、**When** 保守者が手順を読む、**Then** 設定だけで全経路を保証しないことと、依存ツールの導入前に確認する規則が分かる。
 
 ### Edge Cases
@@ -28,7 +28,7 @@
 
 ### Functional Requirements
 
-- 各エージェントの設定で、直接の `brew install` を承認対象とする。
+- 直接の `brew install` を Claude は承認対象とし、Codex と Kilo は禁止する。必要な導入は保守者に依頼する。
 - 適用するルールとその限界、別の導入方法にも既存の確認規則が適用されることを文書に記す。
 - 自動・手動の検証で実際にパッケージをインストールしない。
 
@@ -36,9 +36,9 @@
 
 ### Measurable Outcomes
 
-- 対象の 3 エージェントに `brew install` の確認規則がある。
-- Codex のルール判定はインストール用の模擬コマンドで `prompt` となり、読み取り用コマンドはその規則の対象とならない。
-- Claude・Kilo は設定の内容と、利用可能な環境での確認状況を区別して記録する。
+- Claude に `brew install` の確認規則、Codex と Kilo に禁止規則がある。
+- Codex のルール判定はインストール用の模擬コマンドで `forbidden` となり、読み取り用コマンドはその規則の対象とならない。
+- 各エージェントの設定内容と、利用可能な環境での実動確認状況を区別して記録する。
 
 ## Assumptions
 

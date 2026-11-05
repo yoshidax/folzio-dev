@@ -2,7 +2,7 @@
   "$schema": "https://app.kilo.ai/config.json",
   "permission": {
     "bash": {
-      "brew install *": "ask",
+      "brew install *": "deny",
       "git push *": "deny",
       "scripts/dev/merge-to-master.sh *": "deny",
       "scripts/dev/merge-to-master.sh": "deny",

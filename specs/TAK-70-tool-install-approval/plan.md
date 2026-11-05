@@ -4,19 +4,21 @@
 
 ## 概要
 
-直接の `brew install` を Claude・Kilo の ask と Codex の prompt の対象にする。Codex の接頭辞は `pattern = ["brew", "install"]` とし、模擬コマンドの判定と読み取り系コマンドの非該当を検査する。保守者が編集する Claude 設定の具体案と、手元での確認方法を示す。
+直接の `brew install` を Claude の ask、Kilo の deny と Codex の forbidden の対象にする。Codex の接頭辞は `pattern = ["brew", "install"]` とし、模擬コマンドの判定と読み取り系コマンドの非該当を検査する。保守者が編集する Claude 設定の具体案と、手元での確認方法を示す。
+
+保守者は 2026-11-06 に、自動承認モードで Codex・Kilo が確認なしに導入した結果を受け、禁止して保守者が実行する方針を承認した。
 
 ## 設定案
 
 - Claude: `.claude/settings.json` の `permissions.ask` に `Bash(brew install *)` を追加。ISSUE の指示に従い保守者が編集する。
-- Kilo: `.kilo/kilo.jsonc` の `permission.bash` に `"brew install *": "ask"` を追加する。
-- Codex: `.codex/rules/sdd.rules` に `brew install` の接頭辞を `prompt` とする規則を追加する。`match` と `not_match` を設ける。
+- Kilo: `.kilo/kilo.jsonc` の `permission.bash` に `"brew install *": "deny"` を追加する。
+- Codex: `.codex/rules/sdd.rules` に `brew install` の接頭辞を `forbidden` とする規則を追加する。`match` と `not_match` を設ける。
 - `docs_private/agents/skills-and-codex.md` 等の運用文書に範囲・新規セッション・バイパス可能な表記・他の導入方法での既存の確認義務を記載する。
 - Python パッケージや npm のグローバル導入は今回の機械的な規則に含めず、既存の人による確認規則を適用する。既存のプログラムでこれらの自動導入は確認できず、対応対象の無制限な拡大を避ける。
 
 ## 検証と限界
 
-- `codex execpolicy check` で `brew install webp` が prompt、`brew list` が当該規則に一致しないことを検査し、設定全体との競合も確認する。実インストールはしない。
+- `codex execpolicy check` で `brew install webp` が forbidden、`brew list` が当該規則に一致しないことを検査し、設定全体との競合も確認する。実インストールはしない。
 - JSON/JSONC の構造と規則を検査する。Claude と Kilo の実セッションが使えない場合、設定されたことと確認ダイアログが実際に表示されたことを区別する。
 - 絶対パス、別コマンド、環境やラッパー、入れ子などのすべての経路を検出する保証はない。権限の確認は新しいセッションで行い、設定を書き換えた現在のセッションへの即時反映を前提にしない。
 - 必要な設定・文書の変更と Claude 向けの具体的編集案を先に準備し、実動確認や保守者編集の結果は未確認なら正直に記録する。

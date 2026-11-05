@@ -11,8 +11,8 @@
 
 **Independent Test**: 実際の導入を行わずに設定と Codex の判定を確認し、各エージェントの実セッションでの未確認事項を記録する。
 
-- [x] T003 [US1] `.kilo/kilo.jsonc` に直接の `brew install` の確認規則を追加する。
-- [x] T004 [US1] `.codex/rules/sdd.rules` に直接の `brew install` の確認規則を追加する。
+- [x] T003 [US1] `.kilo/kilo.jsonc` に直接の `brew install` の禁止規則を追加する。
+- [x] T004 [US1] `.codex/rules/sdd.rules` に直接の `brew install` の禁止規則を追加する。
 - [x] T005 [US1] `.claude/settings.json` の具体的な変更を保守者に提示し、保守者による変更と結果を確認する。
 - [x] T006 [US1] `docs_private/agents/skills-and-codex.md` に対象と限界、他の依存ツールと新規セッションの扱いを記す。
 - [ ] T007 [US1] `specs/TAK-70-tool-install-approval/quickstart.md` に沿って設定・判定・通常の検査を行い、保守者の編集と各エージェントの実動確認の結果または未確認理由を `specs/TAK-70-tool-install-approval/tasks.md` に記録する。
@@ -24,5 +24,9 @@
 実動確認の報告（2026-11-06）: 保守者によると Claude は確認画面が表示された一方、Codex と Kilo では確認画面が表示されず実際にインストールされた。実行した正確なコマンド・設定の読み込み状態・承認モードを確認中。Cloud の `codex execpolicy check` では `brew install jq` は `prompt` と判定されるが、実セッションの動作を保証するものではない。T007 は原因と対応の確認まで未完了とする。
 
 追加報告（2026-11-06）: Kilo は `brew install jq`、Codex は `brew install eza` を実行し、両方とも自動承認モードだった。Cloud の Codex 単体判定では両コマンドとも `prompt` に一致するが、自動承認時に保守者の確認画面が表示される保証はない。設定の読み込み状態は未確認。自動承認時の扱いについて保守者の判断を待つ。
+
+方針変更（2026-11-06）: 保守者は両方とも対象ブランチから新規起動していたと報告し、Codex・Kilo の直接の `brew install` を禁止し、必要な導入は保守者が実行する方式を承認した。禁止規則の実セッションでの検証は未確認。
+
+禁止規則の検証（2026-11-06）: `codex execpolicy check` で `brew install eza` は `forbidden`、`brew list` は対象外と判定された。Claude の `ask` と Kilo の `deny` の設定内容を JSON として確認し、`scripts/dev/check-all.sh` は成功（71 テスト）。実セッションでの禁止動作は未確認。
 
 凍結手順: 全タスクの状態を記録し、対象とならない注記案を保守者に示して承認を得てから `specs/TAK-70-tool-install-approval/spec.md` に凍結注記を付ける。注記は feature ディレクトリの最後の編集とする。
