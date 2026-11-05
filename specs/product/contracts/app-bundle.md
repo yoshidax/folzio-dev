@@ -4,8 +4,8 @@
 SC-011、前提を参照。
 
 製品とSwift Packageの名称は `Folzio`。ターゲットは `FolzioCore`、`FolzioLocalization`、`FolzioApp`、
-`FolzioCoreTests`、`FolzioAppTests`、`FolzioPerformanceTests` とし、`FixtureKit` と既存の補助ツールの名称は維持する
-（FR-166・168）。
+`FolzioCoreTests`、`FolzioAppTests`、`FolzioPerformanceTests` とし、
+`FixtureKit` と既存の補助ツールの名称は維持する（FR-166・168）。
 
 ## バンドル構成
 
