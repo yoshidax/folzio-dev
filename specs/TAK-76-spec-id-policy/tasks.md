@@ -19,7 +19,7 @@
 
 ## Phase 3: User Story 2 - 正本と参照先を見つける (P2)
 
-**Independent Test**: ローカルと Cloud の双方で、FR-193・EC-135・README・憲章から適用範囲の正しい手順へ到達する。
+**Independent Test**: ローカルと Cloud の双方で、FR-193・EC-135・README・憲章・`AGENTS.md` から適用範囲の正しい手順へ到達する。
 
 - [ ] T008 [US2] `specs/product/README.md` の ID の付け方から `docs_private/spec-id-conflicts.md` への参照を追加する
 - [ ] T009 [US2] `docs_private/agents/README.md` を読み、`AGENTS.md` の ID 衝突時の参照先を `docs_private/spec-id-conflicts.md` に変え、`scripts/dev/check-agents-md.sh` で行数と参照先を確認し、変更理由を PR 本文に記録する
