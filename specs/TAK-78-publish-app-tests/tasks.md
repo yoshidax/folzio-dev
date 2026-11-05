@@ -11,7 +11,7 @@
 
 **Independent Test**: 一時公開先の成功・失敗ケースと macOS の実テスト選択を確認する。
 
-- [ ] T003 [US1] `scripts/dev/tests/test_publish_folzio.py` に Swift の呼び出し順と通常・性能テストの失敗を観測する一時フィクスチャと回帰テストを追加する。失敗時の後続検査とステージング未実行を検証する。
+- [x] T003 [US1] `scripts/dev/tests/test_publish_folzio.py` に Swift の呼び出し順と通常・性能テストの失敗を観測する一時フィクスチャと回帰テストを追加する。失敗時の後続検査とステージング未実行を検証する。
 - [x] T004 [US1] `scripts/dev/publish.sh` の通常テストを CI と同じ非並列・性能テスト除外の実行に変更し、性能テストをその後に実行する。
 - [x] T005 [US1] `specs/product/overview.md` と `specs/product/contracts/scripts.md` に FR-311 の公開検査と異常終了を反映し、`specs/product/README.md` の件数を更新する。反映前に ID の重複を確認する。
 
@@ -24,10 +24,10 @@
 
 ## Phase 4: 検証とレビュー
 
-- [ ] T008 `specs/TAK-78-publish-app-tests/quickstart.md` に従って回帰テスト、仕様検査と macOS 実テストを実施し、結果または未実施の理由を `specs/TAK-78-publish-app-tests/tasks.md` に記録する。
+- [x] T008 `specs/TAK-78-publish-app-tests/quickstart.md` に従って回帰テスト、仕様検査と macOS 実テストを実施し、結果または未実施の理由を `specs/TAK-78-publish-app-tests/tasks.md` に記録する。
 - [x] T009 `specs/product/` の反映差分と検証結果を保守者に示し、コミット前に承認を得る。
 
-検証記録（2026-11-05）: Cloud の `scripts/dev/check-all.sh` は成功（71 テスト）。製品仕様の形式検査はエラー 0 件、警告 88 件（既存の基準値と同数）。公開回帰テストは Swift をスタブにするが rsync を必要とし、この Cloud 環境では実行していない。macOS の実テストには Swift が必要で、実テストと起動確認も未実施。レビューでは rsync の代替を用いた 12 件の成功と、元の Core のみのコマンドに戻すと新規 3 件が失敗することを確認した。実際の rsync を使う実行は未確認のため T003 は未チェックとする。
+検証記録（2026-11-05）: Cloud の `scripts/dev/check-all.sh` は成功（71 テスト）。製品仕様の形式検査はエラー 0 件、警告 88 件（既存の基準値と同数）。レビューでは rsync の代替を用いた 12 件の成功と、元の Core のみのコマンドに戻すと新規 3 件が失敗することを確認した。最新コミット `ef305ba` の公開回帰テストと macOS 検証は、保守者が実施し問題なしと報告した。
 
 製品仕様の反映差分と検証状況は保守者に提示し、2026-11-05 に承認された。
 
