@@ -1,6 +1,6 @@
 # Feature Specification: 大きな連番のファイル操作
 
-**Feature Branch**: `work`
+**Feature Branch**: `bugfix/tak-10-unbounded-counters`
 **Created**: 2026-11-01
 **Status**: Draft
 **Input**: [TAK-10](https://linear.app/takyoshida/issue/TAK-10/連番が-intmax-のファイルを複製すると整数オーバーフローでクラッシュする)

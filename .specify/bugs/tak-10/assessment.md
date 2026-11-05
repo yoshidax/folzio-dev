@@ -3,7 +3,7 @@
 - **Slug**: tak-10
 - **Created**: 2026-11-01
 - **Source**: [TAK-10](https://linear.app/takyoshida/issue/TAK-10/連番が-intmax-のファイルを複製すると整数オーバーフローでクラッシュする)
-- **Verdict**: likely valid, needs reproduction
+- **Verdict**: valid
 - **Severity**: medium
 
 ## Report
@@ -25,13 +25,13 @@
 2. ファイルを選んで ⌘D で複製する。
 3. クラッシュの有無と既存ファイルを確認する。
 
-このセッションでは実行再現していない。元の報告では検証プログラムの異常終了が確認された。
+修正前の GUI では実行再現していない。元の報告では検証プログラムの異常終了が確認され、修正前のコード上もオーバーフローが明白なため valid と判定した。修正後の GUI 確認は保守者から問題なしと報告された。
 
 ## Suspected Code Paths
 
-- `Sources/FolzioCore/Operations/NameValidation.swift:53` — `uniqueName` は末尾の数値に 1 を加え、衝突時も加算する。
-- `Sources/FolzioCore/Operations/NameValidation.swift:77` — `trailingCounter` は `Int.max` を `Int` として受理する。
-- `Sources/FolzioApp/Operations/FileOperationCoordinator.swift:42`、`Sources/FolzioCore/Operations/FileOperationService.swift:198` — 複製と衝突解決から命名処理へ到達する。
+- 修正前の `Sources/FolzioCore/Operations/NameValidation.swift` の `uniqueName` は末尾の数値に 1 を加え、衝突時も加算する。
+- 修正前の同ファイルの `trailingCounter` は `Int.max` を `Int` として受理する。
+- `Sources/FolzioApp/Operations/FileOperationCoordinator.swift` の `duplicate`、`Sources/FolzioCore/Operations/FileOperationService.swift` の `resolveTarget` から命名処理へ到達する。
 
 ## Root Cause Hypothesis
 
@@ -53,4 +53,4 @@
 
 ## Open Questions
 
-- 上限を超えた連番を十進文字列として続ける案を採用するか。
+- 解決済み: 上限を超えた連番を十進文字列として続ける案を保守者が承認した。

@@ -1,6 +1,6 @@
 # Implementation Plan: 大きな連番のファイル操作
 
-**Branch**: `work` | **Date**: 2026-11-01 | **Spec**: [spec.md](spec.md)
+**Branch**: `bugfix/tak-10-unbounded-counters` | **Date**: 2026-11-01 | **Spec**: [spec.md](spec.md)
 
 ## Summary
 

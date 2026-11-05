@@ -503,6 +503,32 @@ struct FileOperationServiceTests {
         #expect(try Data(contentsOf: occupied) == occupiedData)
     }
 
+    @Test("Duplicating a maximum-length name reports failure and preserves the source")
+    func rejectsDuplicateWhenCounterExceedsNameLimit() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let name = "p " + String(repeating: "9", count: 249) + ".jpg"
+        let source = root.appendingPathComponent(name)
+        let contents = Data("original".utf8)
+        #expect(name.utf8.count == 255)
+        try contents.write(to: source)
+
+        let result = await service.execute(
+            FileOperation(kind: .copy, sources: [source], destination: root), resolution: .keepBoth
+        )
+
+        #expect(result.succeeded.isEmpty)
+        let failure = try #require(result.failed.first)
+        #expect(result.failed.count == 1)
+        #expect(failure.url == source)
+        guard case .systemFailure = failure.reason else {
+            Issue.record("Expected a system error, got \(failure.reason)")
+            return
+        }
+        #expect(try Data(contentsOf: source) == contents)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == [name])
+    }
+
     @Test("Copying with abort fails on a destination name conflict and preserves the existing item")
     func abortsCopyOnConflict() async throws {
         let root = try makeTemporaryDirectory()
