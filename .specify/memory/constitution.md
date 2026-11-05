@@ -3,10 +3,14 @@ Sync Impact Report
 - Version: 1.2.0 → 1.3.0（MINOR: ID の振り直しに重複解消の例外を追加）
 - 変更理由: ID の振り直しに関する憲章と既存の運用の矛盾を解消する（TAK-67）
 - 変更した原則: なし
-- 変更した節: 仕様の管理（ID の一意性と再利用禁止を維持し、重複解消時の振り直しを許可）
+- 変更した節: 仕様の管理（ID の一意性と再利用禁止を維持し、マージ済み ID の重複解消と凍結記録への注記を許可）
 - 追加・削除した節: なし
-- 影響を受ける文書: docs_private/cloud-agent-workflow.md の 7 章と整合。既存の spec / plan に追従変更は不要
-- 未解決の TODO: なし
+- 影響を受ける文書と追従方針:
+  - AGENTS.md: 凍結した記録への対応表の注記を例外として明記する
+  - docs_private/cloud-agent-workflow.md の 7 章: ID の振り直しと参照の追従手順を定める
+  - specs/product/overview.md の EC-135: マージ済み ID の重複解消を扱えるよう、別の feature で追従する。
+    追従までの間、矛盾する場合は憲章と 7 章に従う。FR-193 からの参照もあわせて確認する
+- 未解決の TODO: EC-135 の追従を別 feature で実施する
 -->
 # my_img_viewer Constitution
 
@@ -115,9 +119,12 @@ Sync Impact Report
 - feature の spec.md には変更点だけを書き、既存の要件は `specs/product/` の ID で参照する。
   plan・tasks・analyze・converge は、feature の spec.md と、参照している `specs/product/` の領域をあわせて入力とする。
 - feature の実装と検証が終わったら、変更点を `specs/product/` の該当する領域へ反映し、その feature ディレクトリは
-  凍結する（以後は実装の経緯の記録として扱い、更新しない）（MUST）。
-- FR・SC などの ID は全領域で一意とし、再利用しない。マージ済みの ID は、重複を解消する場合を除いて振り直さない。
-  ID の付け方は `specs/product/README.md` に従う。
+  凍結する（以後は実装の経緯の記録として扱い、更新しない）（MUST）。ただし、マージ済み ID の重複解消時には、
+  旧 ID と新 ID の対応表を先頭に注記できる。
+- FR・SC などの ID は全領域で一意とし、再利用しない。未マージの ID がマージ済み ID と重複した場合は、
+  未マージ側の ID を振り直す。マージ済みの ID は振り直さない。ただし、どちらもマージ済みの ID が重複した場合に限り、
+  あとにマージされた側の ID を振り直す。ID の付け方は `specs/product/README.md` に、重複の解消手順は
+  `docs_private/cloud-agent-workflow.md` の 7 章に従う。
 - 実装が `specs/product/` の項目に反している不具合は、bug 拡張（assess → fix → test）で直し、記録を
   `.specify/bugs/<slug>/` に残す。このとき `specs/product/` は変更しない。
 - 仕様が誤っている、または定めていないことが原因の不具合は、仕様の変更として新しい feature で扱う（MUST）。
