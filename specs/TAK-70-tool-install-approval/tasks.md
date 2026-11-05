@@ -29,4 +29,6 @@
 
 禁止規則の検証（2026-11-06）: `codex execpolicy check` で `brew install eza` は `forbidden`、`brew list` は対象外と判定された。Claude の `ask` と Kilo の `deny` の設定内容を JSON として確認し、`scripts/dev/check-all.sh` は成功（71 テスト）。実セッションでの禁止動作は未確認。
 
+追記（2026-11-06）: 保守者から Kilo で禁止が効いていないとの報告があった。実行環境、コマンド、禁止設定の読み込み状態を調査中。実効性を確認するまで T007 は未完了とする。
+
 凍結手順: 全タスクの状態を記録し、対象とならない注記案を保守者に示して承認を得てから `specs/TAK-70-tool-install-approval/spec.md` に凍結注記を付ける。注記は feature ディレクトリの最後の編集とする。
