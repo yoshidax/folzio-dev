@@ -1,6 +1,6 @@
 # Feature Specification: Codex での Spec Kit 開発環境
 
-> **移行済み（2026-11-05）**: この feature は開発環境の変更であり、`specs/product/` への反映対象外。
+> **凍結（2026-11-05、製品仕様の反映対象外）**: この feature は開発環境の変更であり、`specs/product/` への反映対象外。
 > 現在の Codex 運用は [docs_private/codex-speckit.md](../../docs_private/codex-speckit.md) を参照する。
 > このファイルは 005 時点の記録として凍結しており、更新しない。
 
