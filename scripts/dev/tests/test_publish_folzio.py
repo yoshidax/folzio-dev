@@ -108,12 +108,12 @@ class PublishFixture:
         self.commit()
         subprocess.run(["git", "init", "-b", "main", str(self.target)], check=True, capture_output=True)
         (self.target / "obsolete.txt").write_text("old\n")
-        bin_dir = root / "bin"
-        bin_dir.mkdir()
-        (bin_dir / "swift").write_text("#!/bin/sh\nexit 0\n")
-        (bin_dir / "swift").chmod(0o755)
+        self.bin_dir = root / "bin"
+        self.bin_dir.mkdir()
+        (self.bin_dir / "swift").write_text("#!/bin/sh\nexit 0\n")
+        (self.bin_dir / "swift").chmod(0o755)
         self.env = os.environ.copy()
-        self.env["PATH"] = str(bin_dir) + os.pathsep + self.env["PATH"]
+        self.env["PATH"] = str(self.bin_dir) + os.pathsep + self.env["PATH"]
 
     def git(self, *args):
         subprocess.run(["git", "-C", str(self.source), *args], check=True, capture_output=True)
@@ -154,7 +154,7 @@ class PublishVerificationTests(unittest.TestCase):
         self.root = Path(directory.name)
         self.fixture = PublishFixture(self.root)
         self.log = self.root / "commands.log"
-        swift = self.root / "bin/swift"
+        swift = self.fixture.bin_dir / "swift"
         swift.write_text(
             '#!/bin/sh\n'
             'echo "swift $*" >> "$PUBLISH_TEST_LOG"\n'
@@ -163,7 +163,9 @@ class PublishVerificationTests(unittest.TestCase):
         swift.chmod(0o755)
         self.fixture.env["PUBLISH_TEST_LOG"] = str(self.log)
         self.fixture.env["PUBLISH_TEST_FAIL"] = ""
-        self.fixture.write("scripts/check-no-network.sh", '#!/bin/sh\necho network >> "$PUBLISH_TEST_LOG"\n')
+        self.fixture.write("scripts/check-no-network.sh", '#!/bin/sh\necho network >> "$PUBLISH_TEST_LOG"\n'
+                           'if [ "$PUBLISH_TEST_FAIL" = network ]; then exit 1; fi\n')
+        (self.fixture.source / "scripts/check-no-network.sh").chmod(0o755)
         self.fixture.commit()
 
     def run_publish(self, fail=""):
@@ -179,6 +181,13 @@ class PublishVerificationTests(unittest.TestCase):
             check=True, capture_output=True, text=True,
         )
         return result.stdout.splitlines()
+
+    def test_failed_build_stops_before_tests_and_staging(self):
+        result = self.run_publish("build")
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.commands(), ["swift build"])
+        self.assertEqual(self.staged_files(), [])
+        self.assertIn("未検証", result.stderr)
 
     def test_runs_normal_and_performance_tests_before_staging(self):
         result = self.run_publish()
@@ -200,6 +209,7 @@ class PublishVerificationTests(unittest.TestCase):
         ])
         self.assertEqual(self.staged_files(), [])
         self.assertTrue((self.fixture.target / "README.md").exists())
+        self.assertIn("未検証", result.stderr)
 
     def test_failed_performance_tests_stop_before_staging(self):
         result = self.run_publish("test --filter FolzioPerformanceTests")
@@ -210,6 +220,18 @@ class PublishVerificationTests(unittest.TestCase):
             "swift test --filter FolzioPerformanceTests",
         ])
         self.assertEqual(self.staged_files(), [])
+
+    def test_failed_network_check_stops_before_staging(self):
+        result = self.run_publish("network")
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.commands(), [
+            "swift build",
+            "swift test --no-parallel --skip FolzioPerformanceTests",
+            "swift test --filter FolzioPerformanceTests",
+            "network",
+        ])
+        self.assertEqual(self.staged_files(), [])
+        self.assertIn("未検証", result.stderr)
 
 
 def without_workflow_exclusion(text):

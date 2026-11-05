@@ -99,12 +99,15 @@ fi
 
 rsync -a --delete --exclude /.git --exclude /.build --exclude /.vscode "$tmp"/ "$dest"/
 
+dest="$(cd "$dest" && pwd)"
+trap 'echo "公開先には同期済みの未検証の変更が残っています。確認せずにコミットしないでください: $dest" >&2' ERR
 cd "$dest"
 swift build
 # 性能テストと同時に走らせると、Core の待ち時間のあるテストが CPU 不足で落ちるため、順に実行する
 swift test --no-parallel --skip FolzioPerformanceTests
 swift test --filter FolzioPerformanceTests
 scripts/check-no-network.sh
+trap - ERR
 
 git add -A
 echo
