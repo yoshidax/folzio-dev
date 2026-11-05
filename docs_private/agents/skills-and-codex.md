@@ -17,7 +17,8 @@ AGENTS.md から参照する、スキルや各エージェントの設定を変�
 ## 権限の設定
 
 - `.codex/config.toml` と `.codex/rules/` は Codex 用。Claude（`.claude/settings.json`）／Kilo（`.kilo/kilo.jsonc`）の permissions 設定は Codex に適用されない
-- 直接の `brew install` について、Claude は確認、Codex は `forbidden`、Kilo は `deny` の規則を設定する。必要な導入は保守者へ依頼し、保守者が実行する
+- 直接の `brew install`・`reinstall`・`upgrade`・`bundle` は Codex で `forbidden`、Kilo で `deny` の規則を設定する。必要な操作は保守者へ依頼し、保守者が実行する
+- `brew bundle` はすべてのサブコマンドが禁止対象であり、`brew bundle check` などの読み取りも含む。Claude の `brew install` を保守者が deny に変更する予定
 - Codex と Kilo の自動承認モードでは `prompt`・`ask` が人の確認なしに承認され得る。Claude の `.claude/settings.json` は保守者が編集する
 - `pip install` や `npm install -g` を含む他の依存ツールの導入も、`AGENTS.md` の規則に従い事前に保守者へ確認する
 - 権限設定は OS のアクセス制御ではなく、絶対パス、ラッパー、入れ子のシェルなど全実行経路を保証しない。変更は新しいセッションから確認する

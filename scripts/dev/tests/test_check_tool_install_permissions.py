@@ -16,10 +16,13 @@ class ToolInstallPermissionTests(unittest.TestCase):
         rule = 'Bash(brew install *)'
         self.assertTrue(rule in permissions.get('ask', []) or rule in permissions.get('deny', []))
 
-    def test_kilo_last_matching_rule_denies_homebrew_install(self):
+    def test_kilo_last_matching_rule_denies_homebrew_mutations(self):
         settings = json.loads((ROOT / '.kilo/kilo.jsonc').read_text())
         rules = settings['permission']['bash']
-        for command in ('brew install jq', 'brew install --cask example'):
+        for command in (
+            'brew install jq', 'brew install --cask example', 'brew reinstall jq',
+            'brew upgrade', 'brew upgrade jq', 'brew bundle', 'brew bundle install', 'brew bundle check',
+        ):
             with self.subTest(command=command):
                 matches = [action for pattern, action in rules.items() if fnmatch.fnmatchcase(command, pattern)]
                 self.assertTrue(matches, f'No rule matches {command}')

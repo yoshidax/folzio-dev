@@ -139,8 +139,8 @@ run_id を省略した `status` は従来どおり Spec Kit の一覧表示に�
   workflow は `codex exec --approve-for-me`（workspace-write を含む）を使い、
   sandbox 外の Git 操作や Swift キャッシュ書き込みなどは自動承認レビューへ渡す。
   ポリシーで拒否された操作は失敗として止まる。必要な対象・理由を確認して再開する。
-- `git reset --hard`、`git clean`、直接の `brew install` の禁止ルールを `.codex/rules/sdd.rules` に置く。
-  `brew install` が必要な場合は保守者に依頼し、保守者が実行する。
+- `git reset --hard`、`git clean`、直接の `brew install`・`reinstall`・`upgrade`・`bundle` の禁止ルールを `.codex/rules/sdd.rules` に置く。
+  これらの Homebrew 操作が必要な場合は保守者に依頼し、保守者が実行する。`brew bundle check` などの読み取りも対象に含む。
   `git push` は `prompt` とする。非対話の `--approve-for-me` では自動承認レビューに委ねられるため、
   この確認だけで拒否される保証はない。`.codex/hooks.json` の `PreToolUse` が Claude と同じ
   `scripts/dev/check-git-push.py` を呼び、Bash の push 先・オプションを検査する。フックは
@@ -203,6 +203,9 @@ python3 -m unittest discover -s scripts/dev/tests -v
 codex execpolicy check --rules .codex/rules/sdd.rules -- git reset --hard
 codex execpolicy check --rules .codex/rules/sdd.rules -- git push origin master
 codex execpolicy check --rules .codex/rules/sdd.rules -- brew install webp
+codex execpolicy check --rules .codex/rules/sdd.rules -- brew reinstall webp
+codex execpolicy check --rules .codex/rules/sdd.rules -- brew upgrade
+codex execpolicy check --rules .codex/rules/sdd.rules -- brew bundle
 swift build
 swift test
 scripts/check-no-network.sh

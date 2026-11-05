@@ -7,6 +7,24 @@ prefix_rule(
     not_match = ["brew list", "brew info webp"],
 )
 prefix_rule(
+    pattern = ["brew", "reinstall"],
+    decision = "forbidden",
+    justification = "依存ツールの再導入は保守者に依頼し、保守者が実行する。",
+    match = ["brew reinstall webp"],
+)
+prefix_rule(
+    pattern = ["brew", "upgrade"],
+    decision = "forbidden",
+    justification = "依存ツールの更新は保守者に依頼し、保守者が実行する。",
+    match = ["brew upgrade", "brew upgrade webp"],
+)
+prefix_rule(
+    pattern = ["brew", "bundle"],
+    decision = "forbidden",
+    justification = "brew bundle は保守者に依頼し、保守者が実行する。",
+    match = ["brew bundle", "brew bundle install", "brew bundle check"],
+)
+prefix_rule(
     pattern = ["git", "push"],
     decision = "prompt",
     justification = "フックが無効または未承認の場合にも push の確認を求める。",
