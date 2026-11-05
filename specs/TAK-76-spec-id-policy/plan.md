@@ -6,7 +6,7 @@
 
 ## Summary
 
-EC-135 を憲章と揃え、詳細手順の正本は憲章が既に参照する `docs_private/cloud-agent-workflow.md` の 7 章とする。製品仕様には検証可能な要求と正本への参照を残し、ID の付け方からも手順へ誘導する。
+ID の振り直し対象の判断規則は憲章を正本とする。詳細手順はローカルと Cloud に共通の `docs_private/spec-id-conflicts.md` に置き、EC-135・README・Cloud 手順から参照する。EC-135 の対象ラベル・検出時点・反映前に振り直す順序は維持する。
 
 ## Technical Context
 
@@ -24,9 +24,9 @@ EC-135 を憲章と揃え、詳細手順の正本は憲章が既に参照する 
 
 **Performance Goals**: 該当なし
 
-**Constraints**: 憲章 1.3.0 に従い、凍結済み feature の本文と既存 ID を変更しない
+**Constraints**: 憲章の ID 判断規則に従い、凍結済み feature の本文と既存 ID を変更しない
 
-**Scale/Scope**: EC-135 と ID の参照経路、7 章の重複解消手順
+**Scale/Scope**: EC-135、憲章の参照、共通手順と Cloud 固有手順の分離
 
 ## Constitution Check
 
@@ -35,7 +35,7 @@ EC-135 を憲章と揃え、詳細手順の正本は憲章が既に参照する 
 - 原則 V: 新しいツール・依存・実装は追加しない。
 - 仕様管理: 新規 feature に変更内容を記録し、承認後に EC-135 を既存 ID のまま反映する。
 - 憲章との整合: マージ状態による対象、凍結記録への注記、一意性と再利用禁止を維持する。
-- 設計後の再確認: 上記を満たす。憲章の変更は不要。
+- 設計後の再確認: ID の判断規則は変更しない。詳細手順の参照先を変更する憲章改定を Spec Kit の手続きに従って行う。
 
 ## Project Structure
 
@@ -56,11 +56,12 @@ specs/TAK-76-spec-id-policy/
 ```text
 specs/product/overview.md            # EC-135 の正本
 specs/product/README.md              # ID の付け方と手順への参照
-docs_private/cloud-agent-workflow.md  # 重複解消の詳細手順
-.specify/memory/constitution.md      # 優先される原則と手順への参照（本文は変更しない）
+docs_private/spec-id-conflicts.md     # ローカルと Cloud に共通する詳細手順（新規）
+docs_private/cloud-agent-workflow.md  # Cloud 固有の手順と共通手順への参照
+.specify/memory/constitution.md      # 判断規則の正本、共通手順への参照
 ```
 
-**Structure Decision**: 現在の 7 章を詳細手順の正本とし、他の文書にはその役割に必要な要約とリンクを置く。FR-193 は EC-135 への参照を維持する。EC-135 の反映後、憲章の Sync Impact Report の追従 TODO を完了済みに更新するが、憲章本文とバージョンは変えない。
+**Structure Decision**: 判断規則は憲章にのみ定義し、操作の詳細は共通手順に集約する。Cloud 手順には PR・master 取り込みなど Cloud 固有の事項と共通手順へのリンクを残す。FR-193 は EC-135 への参照を維持する。憲章の参照先を変えるため 1.3.0 → 1.3.1 の PATCH 改定とし、改定日・Sync Impact Report に TAK-76、変更理由、影響と EC-135 追従の完了を記録する。判断規則の意味は変えない。改定日は実際の改定日とし、元の制定日を保持する。
 
 ## Complexity Tracking
 

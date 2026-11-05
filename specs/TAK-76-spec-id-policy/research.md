@@ -2,10 +2,10 @@
 
 ## 詳細手順の正本
 
-- Decision: `docs_private/cloud-agent-workflow.md` の 7 章を重複解消の詳細手順の正本にする。
-- Rationale: 憲章 1.3.0 が既に同章を指定し、両ケース、最大 ID、凍結記録、参照追従を記している。移設すると憲章の別途改定が必要になる。
-- Alternatives: README や EC-135 に移す案は、詳細の移設と憲章の参照変更を伴うため今回採らない。EC-135 は製品仕様として結果の要約とリンクを残す。
-- 適用範囲: 7 章は Cloud 手順である。憲章の ID 原則は共通であり、ローカルの運用全体を Cloud 手順へ置き換えない。
+- Decision: 判断規則は憲章に集約し、ローカル・Cloud 共通の詳細手順を `docs_private/spec-id-conflicts.md` に置く。Cloud の 7 章は Cloud 固有の PR・master 取り込みと共通手順への参照を持つ。
+- Rationale: 憲章は全運用に優先する一方、既存の 7 章は Cloud 専用なので共通手順の正本にするとローカルの手順が混在する。EC-135 は既存の検出時点と反映順序を保持し、判断を憲章に委ねる。
+- Alternatives: Cloud の 7 章に詳細を残す案はローカルから Cloud 固有の操作に誘導する。README に全規則を移す案は憲章との重複が残る。
+- 憲章改定: 手順の参照先の変更は意味を変えないため PATCH を提案する。Spec Kit で日付・Sync Impact Report を更新し、設計と完成差分の双方をレビューする。
 
 ## 参照と過去の記録
 

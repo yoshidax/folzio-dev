@@ -2,40 +2,44 @@
 
 **Input**: `specs/TAK-76-spec-id-policy/spec.md`、`plan.md`、`research.md`、`data-model.md`、`quickstart.md`
 
-## Phase 1: 前提の確認
+## Phase 1: 前提
 
 - [ ] T001 `specs/product/README.md` の書き方と `.specify/memory/constitution.md` の ID 規則を再確認する
-- [ ] T002 `scripts/dev/check-spec-ids.sh` を実行し、`specs/product/` への反映前に重複がないことを確認する
+- [ ] T002 最新の `master` を取り込み、`scripts/dev/check-spec-ids.sh` で反映前の重複を確認する
 
 ## Phase 2: User Story 1 - ID の重複を一貫して解消する (P1)
 
-**Independent Test**: 2 つのマージ状態で、憲章・EC-135・7 章の指定する振り直し側が一致する。
+**Independent Test**: EC-135 から憲章と共通手順をたどり、2 ケースの対象と反映順序を判断できる。
 
-- [ ] T003 [US1] `specs/product/overview.md` の EC-135 を `specs/TAK-76-spec-id-policy/spec.md` の変更後の内容に更新し、FR-193 の参照を確認する
-- [ ] T004 [US1] `docs_private/cloud-agent-workflow.md` の 7 章で旧 ID の参照、凍結記録、未判別の場合、検査の限界を照合し、不足があれば明確にする
-- [ ] T005 [US1] `specs/TAK-76-spec-id-policy/quickstart.md` のケースに従い、対象の選択と参照追従を文脈で照合する
+- [ ] T003 [US1] `docs_private/spec-id-conflicts.md` を新設し、番号の採り方・凍結記録・参照追従・判別不能時・検査の限界を Cloud 固有の操作と分離して集約し、対象の判断を憲章に委ねる
+- [ ] T004 [US1] `docs_private/cloud-agent-workflow.md` 7章を Cloud 固有の取り込み・PR 手順と共通手順への参照に整理し、共通の判断規則・操作の重複を取り除く
+- [ ] T005 [US1] `.specify/memory/constitution.md` の詳細手順の参照先を共通手順へ変更し、`speckit-constitution` の手順で PATCH 改定、改定日、Sync Impact Report と TAK-76 による EC-135 追従の完了を記録する
+- [ ] T006 [US1] `specs/product/overview.md` の EC-135 を `specs/TAK-76-spec-id-policy/spec.md` の変更後の内容に更新し、対象ラベル・検出時点・反映前の振り直し・マージ済み ID の保護を維持する
+- [ ] T007 [US1] `specs/TAK-76-spec-id-policy/quickstart.md` の両ケースで、憲章の判断規則と共通手順が正しくたどれることを照合する
 
 ## Phase 3: User Story 2 - 正本と参照先を見つける (P2)
 
-**Independent Test**: 憲章・FR-193・EC-135・README から詳細手順の正本へ到達する。
+**Independent Test**: ローカルと Cloud の双方で、FR-193・EC-135・README・憲章から適用範囲の正しい手順へ到達する。
 
-- [ ] T006 [US2] `specs/product/README.md` の ID の付け方から `docs_private/cloud-agent-workflow.md` の 7 章への参照を追加する
-- [ ] T007 [US2] `specs/product/overview.md` の EC-135、`specs/product/README.md`、`.specify/memory/constitution.md`、`docs_private/cloud-agent-workflow.md` の参照先と規則を照合する
+- [ ] T008 [US2] `specs/product/README.md` の ID の付け方から `docs_private/spec-id-conflicts.md` への参照を追加する
+- [ ] T009 [US2] `specs/product/overview.md` の FR-193・EC-135、`specs/product/README.md`、`.specify/memory/constitution.md`、`docs_private/spec-id-conflicts.md`、`docs_private/cloud-agent-workflow.md` の参照と適用範囲を照合する
 
-## Phase 4: 検証と反映
+## Phase 4: 検証・レビュー・凍結
 
-- [ ] T008 `scripts/dev/check-spec-ids.sh` と `scripts/dev/check-spec-format.py` で反映後の ID と形式を検証する
-- [ ] T009 `scripts/dev/check-all.sh` を実行し、`specs/TAK-76-spec-id-policy/quickstart.md` の照合結果と未実施の検証を報告する
-- [ ] T010 `specs/product/` の反映項目と差分を保守者に示し、コミット前の承認を得る（`docs_private/cloud-agent-workflow.md` 7 章）
-- [ ] T011 `specs/TAK-76-spec-id-policy/spec.md` の先頭に移行済み・凍結の注記を付ける
-- [ ] T012 `.specify/memory/constitution.md` の Sync Impact Report の EC-135 追従 TODO を完了済みに更新し、憲章本文とバージョンを維持する
-- [ ] T013 `specs/TAK-76-spec-id-policy/tasks.md` に完了した検証を記録し、未実施の CI・保守者確認は未チェックのまま残す
-- [ ] T014 [MANUAL] PR が作成された場合、`docs_private/cloud-agent-workflow.md` 4 章に従い macOS CI の結果を確認する
-- [ ] T015 [MANUAL] 保守者が `scripts/make-app.sh` と `open .build/Folzio.app` で起動し、3 ペインの表示を確認する
+- [ ] T010 `scripts/dev/check-spec-ids.sh` と `scripts/dev/check-spec-format.py` で反映後の ID と形式を検証する
+- [ ] T011 `scripts/dev/check-all.sh` と `specs/TAK-76-spec-id-policy/quickstart.md` の照合を実行し、未実施の検証を記録する
+- [ ] T012 `specs/product/`・`.specify/memory/constitution.md`・`docs_private/` の完成差分と反映項目を保守者に示し、コミット前に承認を得る（`docs_private/cloud-agent-workflow.md` 7 章）
+- [ ] T013 [MANUAL] `docs_private/cloud-agent-workflow.md` 4章に従い、PR の対象コミットの macOS CI を確認し、追加起動・再実行が必要なら保守者の許可を得る
+- [ ] T014 [MANUAL] 保守者が `scripts/make-app.sh` と `open .build/Folzio.app` で起動し、3 ペインの表示を確認する
+- [ ] T015 `specs/TAK-76-spec-id-policy/tasks.md` に検証と承認結果を記録し、凍結手順を除く未完了事項を解消する
+- [ ] T016 `specs/TAK-76-spec-id-policy/spec.md` に移行済み・凍結の注記を付ける前にその注記案を含む最終差分を保守者に示して承認を得る
+- [ ] T017 `specs/TAK-76-spec-id-policy/spec.md` の先頭に承認済みの移行済み・凍結注記を付け、これを同 feature ディレクトリ最後の編集とする
 
 ## 依存関係と実装戦略
 
-- T001〜T002 → US1 → US2 → 検証と反映。EC-135 と README は関連するため、個別に検証できても直列に照合する。
-- MVP は US1 の EC-135 の整合。US2 の参照経路は引き続き必須である。
-- 別のファイルを使う T004 と T006 は独立して編集できるが、Cloud では Issue 内をサブエージェントに分割しない。
-- 製品仕様への反映直前に最新の `master` を取り込み、T002 と衝突確認を行う。
+- T001〜T002 → US1 → US2 → T010〜T012。設計承認後に実装する。
+- T012 の承認対象に憲章・製品仕様・共通手順を含め、承認後に内容を変更した場合は再承認を得る。
+- T013〜T014 を済ませ、T015 で結果を記録してから T016〜T017 で凍結する。T017 の後に feature ディレクトリを編集しない。
+- T016 の承認は `tasks.md` の最後の更新として記録する。T017 は作業後に同ファイルを編集できないため未チェックのまま残し、完了は凍結注記と PR で確認できるようにする。
+- 凍結の注記のみを含む最終コミットは、検証対象コミットと異なることを PR に明記する。CI の追加起動・再実行は保守者の許可を得る。
+- 共通手順の新設と Cloud 固有部分の整理は関連するため直列に照合し、Cloud では Issue 内をサブエージェントに分割しない。
