@@ -1,5 +1,8 @@
 # Feature Specification: 製品仕様の App テストターゲット
 
+> **移行済み（2026-11-05）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-79 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `feature/tak-79-app-tests-spec`
 **Created**: 2026-11-05
 **Status**: Draft
