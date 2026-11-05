@@ -1,5 +1,12 @@
 # これは OS のアクセス制御の代替ではない。push の運用は AGENTS.md を参照する。
 prefix_rule(
+    pattern = ["brew", "install"],
+    decision = "prompt",
+    justification = "依存ツールの導入前に保守者の確認を得る。",
+    match = ["brew install webp", "brew install --cask example"],
+    not_match = ["brew list", "brew info webp"],
+)
+prefix_rule(
     pattern = ["git", "push"],
     decision = "prompt",
     justification = "フックが無効または未承認の場合にも push の確認を求める。",

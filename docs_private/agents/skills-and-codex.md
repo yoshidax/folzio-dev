@@ -17,6 +17,9 @@ AGENTS.md から参照する、スキルや各エージェントの設定を変�
 ## 権限の設定
 
 - `.codex/config.toml` と `.codex/rules/` は Codex 用。Claude（`.claude/settings.json`）／Kilo（`.kilo/kilo.jsonc`）の permissions 設定は Codex に適用されない
+- 直接の `brew install` は各エージェントの権限設定で確認を求める。Claude の `.claude/settings.json` は保守者が編集する
+- `pip install` や `npm install -g` を含む他の依存ツールの導入も、`AGENTS.md` の規則に従い事前に保守者へ確認する
+- 権限設定は OS のアクセス制御ではなく、絶対パス、ラッパー、入れ子のシェルなど全実行経路を保証しない。変更は新しいセッションから確認する
 
 ## Codex の自動実行【ローカル】
 
