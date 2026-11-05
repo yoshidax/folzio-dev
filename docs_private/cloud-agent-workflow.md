@@ -104,7 +104,7 @@ PR の作成と Draft の PR の Ready 化も CI を自動で起動するため�
 
 ## 6 ブランチ
 
-- push してよいのは、作業ブランチだけ（`claude/*`、`ci/*`、`chore/*`、`docs/*`、`feature/*`、`bugfix/*`、`agent/*`）。`master` / `main` への push、強制 push（`--force`、`-f`、`+` 付きの refspec）、リモートブランチの削除は、行わない。Claude と Codex の Bash フックは `scripts/dev/check-git-push.py` で検査する。Codex のフックは信頼の承認が必要で、MCP や直接 API 呼び出しは検査しない。`AGENTS.md` の規則と GitHub の default ブランチ保護も使う。
+- push してよいのは、作業ブランチだけ（`claude/*`、`ci/*`、`chore/*`、`docs/*`、`feature/*`、`bugfix/*`、`agent/*`）。`master` / `main` への push、強制 push（`--force`、`-f`、`+` 付きの refspec）、リモートブランチの削除は、行わない。Claude と Codex の Bash フックは `scripts/dev/check-git-push.py` で検査する。Claude は `.claude/settings.json` の deny でも禁止し、`master` と `--force` の push が `--dry-run` で拒否されることを 2026-10-30 に確認した。Codex のフックは信頼の承認が必要で、MCP や直接 API 呼び出しは検査しない。`AGENTS.md` の規則と GitHub の default ブランチ保護も使う。
 - **マージ済みのブランチは再利用しない**。PR はスカッシュマージされるため、作業ブランチの履歴は `master` と一致しなくなる。同じ名前で作り直すには強制 push が要り、禁止されている。次の作業は、最新の `master` から新しい `claude/` のブランチを作る。Cloud が指定した名前と別の名前を使うときは、保守者の許可を得る。
 - 作業の途中で `master` が先に進んだら、`git merge origin/master` で取り込んでから、PR を更新する。履歴を書き換えない。
 - 権限の設定（`.claude/settings.json`）は、**セッションの起動時に読み込まれる**。途中で設定を変えても、実行中のセッションには反映されない。反映するには新しいセッションが要る。Agent は、この設定ファイルを編集できない。

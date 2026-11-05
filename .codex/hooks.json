@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -I \"$(git rev-parse --show-toplevel)/scripts/dev/check-git-push.py\"",
+            "command": "root=$(git rev-parse --show-toplevel 2>/dev/null) && [ -f \"$root/scripts/dev/check-git-push.py\" ] || { printf '%s\\n' 'git push guard: リポジトリまたは検査スクリプトが見つかりません。作業ディレクトリとフック設定を確認してください。' >&2; exit 2; }; exec python3 -I \"$root/scripts/dev/check-git-push.py\"",
             "statusMessage": "Checking git push"
           }
         ]

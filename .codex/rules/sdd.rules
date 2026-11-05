@@ -1,5 +1,11 @@
 # これは OS のアクセス制御の代替ではない。push の運用は AGENTS.md を参照する。
 prefix_rule(
+    pattern = ["git", "push"],
+    decision = "prompt",
+    justification = "フックが無効または未承認の場合にも push の確認を求める。",
+    match = ["git push origin master", "git push origin chore/example"],
+)
+prefix_rule(
     pattern = ["scripts/dev/merge-to-master.sh"],
     decision = "forbidden",
     justification = "master へのマージと push はユーザーが実行する。",
