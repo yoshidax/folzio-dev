@@ -56,12 +56,15 @@ specs/TAK-76-spec-id-policy/
 ```text
 specs/product/overview.md            # EC-135 の正本
 specs/product/README.md              # ID の付け方と手順への参照
+AGENTS.md                            # 共通の ID 衝突時の参照先
 docs_private/spec-id-conflicts.md     # ローカルと Cloud に共通する詳細手順（新規）
 docs_private/cloud-agent-workflow.md  # Cloud 固有の手順と共通手順への参照
 .specify/memory/constitution.md      # 判断規則の正本、共通手順への参照
 ```
 
 **Structure Decision**: 判断規則は憲章にのみ定義し、操作の詳細は共通手順に集約する。Cloud 手順には PR・master 取り込みなど Cloud 固有の事項と共通手順へのリンクを残す。FR-193 は EC-135 への参照を維持する。憲章の参照先を変えるため 1.3.0 → 1.3.1 の PATCH 改定とし、改定日・Sync Impact Report に TAK-76、変更理由、影響と EC-135 追従の完了を記録する。判断規則の意味は変えない。改定日は実際の改定日とし、元の制定日を保持する。
+
+`AGENTS.md` の共通の ID 衝突時の参照先を共通手順に変える。変更前に `docs_private/agents/README.md` を読み、変更後に `scripts/dev/check-agents-md.sh` で行数と参照先を検査する。変更理由は PR 本文の「変更」に独立して記録する。
 
 ## Complexity Tracking
 

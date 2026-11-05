@@ -77,4 +77,4 @@
 |---|---|---|
 | EC-135 | 変更 | overview.md |
 
-ID を持たない文書の変更先: `specs/product/README.md`（共通手順への導線）。憲章、共通手順、Cloud 手順も変更する。
+ID を持たない文書の変更先: `specs/product/README.md` と `AGENTS.md`（共通手順への導線）。憲章、共通手順、Cloud 手順も変更する。

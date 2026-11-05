@@ -22,24 +22,25 @@
 **Independent Test**: ローカルと Cloud の双方で、FR-193・EC-135・README・憲章から適用範囲の正しい手順へ到達する。
 
 - [ ] T008 [US2] `specs/product/README.md` の ID の付け方から `docs_private/spec-id-conflicts.md` への参照を追加する
-- [ ] T009 [US2] `specs/product/overview.md` の FR-193・EC-135、`specs/product/README.md`、`.specify/memory/constitution.md`、`docs_private/spec-id-conflicts.md`、`docs_private/cloud-agent-workflow.md` の参照と適用範囲を照合する
+- [ ] T009 [US2] `docs_private/agents/README.md` を読み、`AGENTS.md` の ID 衝突時の参照先を `docs_private/spec-id-conflicts.md` に変え、`scripts/dev/check-agents-md.sh` で行数と参照先を確認し、変更理由を PR 本文に記録する
+- [ ] T010 [US2] `specs/product/overview.md` の FR-193・EC-135、`specs/product/README.md`、`AGENTS.md`、`.specify/memory/constitution.md`、`docs_private/spec-id-conflicts.md`、`docs_private/cloud-agent-workflow.md` の参照と適用範囲を照合する
 
 ## Phase 4: 検証・レビュー・凍結
 
-- [ ] T010 `scripts/dev/check-spec-ids.sh` と `scripts/dev/check-spec-format.py` で反映後の ID と形式を検証する
-- [ ] T011 `scripts/dev/check-all.sh` と `specs/TAK-76-spec-id-policy/quickstart.md` の照合を実行し、未実施の検証を記録する
-- [ ] T012 `specs/product/`・`.specify/memory/constitution.md`・`docs_private/` の完成差分と反映項目を保守者に示し、コミット前に承認を得る（`docs_private/cloud-agent-workflow.md` 7 章）
-- [ ] T013 [MANUAL] `docs_private/cloud-agent-workflow.md` 4章に従い、PR の対象コミットの macOS CI を確認し、追加起動・再実行が必要なら保守者の許可を得る
-- [ ] T014 [MANUAL] 保守者が `scripts/make-app.sh` と `open .build/Folzio.app` で起動し、3 ペインの表示を確認する
-- [ ] T015 `specs/TAK-76-spec-id-policy/tasks.md` に検証と承認結果を記録し、凍結手順を除く未完了事項を解消する
-- [ ] T016 `specs/TAK-76-spec-id-policy/spec.md` に移行済み・凍結の注記を付ける前にその注記案を含む最終差分を保守者に示して承認を得る
-- [ ] T017 `specs/TAK-76-spec-id-policy/spec.md` の先頭に承認済みの移行済み・凍結注記を付け、これを同 feature ディレクトリ最後の編集とする
+- [ ] T011 `scripts/dev/check-spec-ids.sh` と `scripts/dev/check-spec-format.py` で反映後の ID と形式を検証する
+- [ ] T012 `scripts/dev/check-all.sh` と `specs/TAK-76-spec-id-policy/quickstart.md` の照合を実行し、未実施の検証を記録する
+- [ ] T013 `specs/product/`・`AGENTS.md`・`.specify/memory/constitution.md`・`docs_private/` の完成差分と反映項目を保守者に示し、コミット前に承認を得る（`docs_private/cloud-agent-workflow.md` 7 章）
+- [ ] T014 [MANUAL] `docs_private/cloud-agent-workflow.md` 4章に従い、PR の対象コミットの macOS CI を確認し、追加起動・再実行が必要なら保守者の許可を得る
+- [ ] T015 [MANUAL] 保守者が `scripts/make-app.sh` と `open .build/Folzio.app` で起動し、3 ペインの表示を確認する
+- [ ] T016 `specs/TAK-76-spec-id-policy/tasks.md` に検証と承認結果を記録し、凍結手順を除く未完了事項を解消する
+- [ ] T017 `specs/TAK-76-spec-id-policy/spec.md` に移行済み・凍結の注記を付ける前にその注記案を含む最終差分を保守者に示して承認を得る
+- [ ] T018 `specs/TAK-76-spec-id-policy/spec.md` の先頭に承認済みの移行済み・凍結注記を付け、これを同 feature ディレクトリ最後の編集とする
 
 ## 依存関係と実装戦略
 
-- T001〜T002 → US1 → US2 → T010〜T012。設計承認後に実装する。
-- T012 の承認対象に憲章・製品仕様・共通手順を含め、承認後に内容を変更した場合は再承認を得る。
-- T013〜T014 を済ませ、T015 で結果を記録してから T016〜T017 で凍結する。T017 の後に feature ディレクトリを編集しない。
-- T016 の承認は `tasks.md` の最後の更新として記録する。T017 は作業後に同ファイルを編集できないため未チェックのまま残し、完了は凍結注記と PR で確認できるようにする。
+- T001〜T002 → US1 → US2 → T011〜T013。設計承認後に実装する。
+- T013 の承認対象に憲章・製品仕様・共通手順を含め、承認後に内容を変更した場合は再承認を得る。
+- T014〜T015 を済ませ、T016 で結果を記録してから T017〜T018 で凍結する。T018 の後に feature ディレクトリを編集しない。
+- T017 の承認は `tasks.md` の最後の更新として記録する。T018 は作業後に同ファイルを編集できないため未チェックのまま残し、完了は凍結注記と PR で確認できるようにする。
 - 凍結の注記のみを含む最終コミットは、検証対象コミットと異なることを PR に明記する。CI の追加起動・再実行は保守者の許可を得る。
 - 共通手順の新設と Cloud 固有部分の整理は関連するため直列に照合し、Cloud では Issue 内をサブエージェントに分割しない。
