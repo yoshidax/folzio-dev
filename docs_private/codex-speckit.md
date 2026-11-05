@@ -139,8 +139,13 @@ run_id を省略した `status` は従来どおり Spec Kit の一覧表示に�
   workflow は `codex exec --approve-for-me`（workspace-write を含む）を使い、
   sandbox 外の Git 操作や Swift キャッシュ書き込みなどは自動承認レビューへ渡す。
   ポリシーで拒否された操作は失敗として止まる。必要な対象・理由を確認して再開する。
-- `git push`、`git reset --hard`、`git clean` の禁止ルールを `.codex/rules/sdd.rules` に置く。
-  ルールはコマンド接頭辞を判定するもので、OS のアクセス制御の代替ではない。
+- `git reset --hard`、`git clean` の禁止ルールを `.codex/rules/sdd.rules` に置く。
+  `git push` の一律禁止は設けない。`.codex/hooks.json` の `PreToolUse` が Claude と同じ
+  `scripts/dev/check-git-push.py` を呼び、Bash の push 先・オプションを検査する。フックは
+  `origin` と作業ブランチの明示を求め、`master`・`main`、強制 push、削除などを拒否する。
+  フックは信頼の承認後に有効になり、設定変更は新しいセッションで確認する。MCP や直接 API 呼び出しは
+  この検査の対象ではない。`AGENTS.md` の規則と GitHub の default ブランチ保護も使う。
+  ルールやフックは OS のアクセス制御の代替ではない。
 - `scripts/dev/sdd-codex.py` は公式 integration の実行ファイル差し替え機能を使う。
   Codex JSONL のイベントを進捗ログへ、最終回答だけをレビュー用 stdout へ渡す。
   CLI の非 0 終了、失敗イベント、最終回答を取得できない場合は失敗にする。
@@ -190,7 +195,7 @@ specify workflow add --dev .specify/workflow-src/sdd-increment-codex.yml
 
 ```bash
 python3 -m unittest discover -s scripts/dev/tests -v
-codex execpolicy check --rules .codex/rules/sdd.rules -- git push origin master
+codex execpolicy check --rules .codex/rules/sdd.rules -- git reset --hard
 swift build
 swift test
 scripts/check-no-network.sh
