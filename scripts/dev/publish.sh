@@ -102,7 +102,7 @@ rsync -a --delete --exclude /.git --exclude /.build --exclude /.vscode "$tmp"/ "
 cd "$dest"
 swift build
 # 性能テストと同時に走らせると、Core の待ち時間のあるテストが CPU 不足で落ちるため、順に実行する
-swift test --filter FolzioCoreTests
+swift test --no-parallel --skip FolzioPerformanceTests
 swift test --filter FolzioPerformanceTests
 scripts/check-no-network.sh
 

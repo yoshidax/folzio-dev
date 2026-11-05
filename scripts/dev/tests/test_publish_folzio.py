@@ -147,6 +147,71 @@ class PublishFixture:
         return {path.name: path.read_text() for path in directory.iterdir()}
 
 
+class PublishVerificationTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        self.fixture = PublishFixture(self.root)
+        self.log = self.root / "commands.log"
+        swift = self.root / "bin/swift"
+        swift.write_text(
+            '#!/bin/sh\n'
+            'echo "swift $*" >> "$PUBLISH_TEST_LOG"\n'
+            'if [ "$*" = "$PUBLISH_TEST_FAIL" ]; then exit 1; fi\n'
+        )
+        swift.chmod(0o755)
+        self.fixture.env["PUBLISH_TEST_LOG"] = str(self.log)
+        self.fixture.env["PUBLISH_TEST_FAIL"] = ""
+        self.fixture.write("scripts/check-no-network.sh", '#!/bin/sh\necho network >> "$PUBLISH_TEST_LOG"\n')
+        self.fixture.commit()
+
+    def run_publish(self, fail=""):
+        self.fixture.env["PUBLISH_TEST_FAIL"] = fail
+        return self.fixture.publish()
+
+    def commands(self):
+        return self.log.read_text().splitlines()
+
+    def staged_files(self):
+        result = subprocess.run(
+            ["git", "-C", str(self.fixture.target), "diff", "--cached", "--name-only"],
+            check=True, capture_output=True, text=True,
+        )
+        return result.stdout.splitlines()
+
+    def test_runs_normal_and_performance_tests_before_staging(self):
+        result = self.run_publish()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.commands(), [
+            "swift build",
+            "swift test --no-parallel --skip FolzioPerformanceTests",
+            "swift test --filter FolzioPerformanceTests",
+            "network",
+        ])
+        self.assertIn("README.md", self.staged_files())
+
+    def test_failed_normal_tests_stop_after_sync_before_staging(self):
+        result = self.run_publish("test --no-parallel --skip FolzioPerformanceTests")
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.commands(), [
+            "swift build",
+            "swift test --no-parallel --skip FolzioPerformanceTests",
+        ])
+        self.assertEqual(self.staged_files(), [])
+        self.assertTrue((self.fixture.target / "README.md").exists())
+
+    def test_failed_performance_tests_stop_before_staging(self):
+        result = self.run_publish("test --filter FolzioPerformanceTests")
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.commands(), [
+            "swift build",
+            "swift test --no-parallel --skip FolzioPerformanceTests",
+            "swift test --filter FolzioPerformanceTests",
+        ])
+        self.assertEqual(self.staged_files(), [])
+
+
 def without_workflow_exclusion(text):
     return "".join(line for line in text.splitlines(keepends=True)
                    if not line.startswith("/.github/workflows "))
