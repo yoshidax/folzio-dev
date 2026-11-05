@@ -1,7 +1,7 @@
 # Folzio — Agent Notes
 
 見出しの【】は適用範囲: 【共通】はローカルと Cloud、【ローカル】は保守者の macOS、【Cloud】はリモート実行環境（Cloud が作業ブランチを指定している）。この文書を変える前に `docs_private/agents/README.md` を読む。
-仕様の正本は `specs/product/`、運用は `.specify/memory/constitution.md` の「仕様の管理」。完了した feature ディレクトリ（`specs/NNN-*`・`specs/TAK-*`）は凍結した記録で、更新しない。
+仕様の正本は `specs/product/`、運用は `.specify/memory/constitution.md` の「仕様の管理」。完了した feature ディレクトリ（`specs/NNN-*`・`specs/TAK-*`）は凍結した記録で、更新しない（マージ済み ID の重複解消時の対応表の注記を除く）。
 
 ## 設計の制約【共通】
 - 判断ロジックは `FolzioCore`（AppKit を import しない）、描画と入力は `FolzioApp` に置く
