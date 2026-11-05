@@ -1,5 +1,8 @@
 # Feature Specification: ID 重複解消規則の整合
 
+> **移行済み（2026-11-05）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-76 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `feature/tak-76-spec-id-policy`
 
 **Created**: 2026-11-05
