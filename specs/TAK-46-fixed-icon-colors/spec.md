@@ -1,5 +1,8 @@
 # Feature Specification: フォルダと zip の行頭アイコンの固定色
 
+> **移行済み（2026-11-05）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-46 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `claude/adoring-mccarthy-vgojyp`（Cloud が指定した作業ブランチ。feature ディレクトリとは独立）
 
 **Created**: 2026-11-02
