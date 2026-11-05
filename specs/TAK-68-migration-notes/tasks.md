@@ -12,10 +12,10 @@
 
 **Independent Test**: FR-018・FR-025 の追加内容が TAK-10 の仕様、実装、既存テストと一致する。
 
-- [ ] T004 [US1] 最新 `master` を取り込み、`scripts/dev/check-spec-ids.sh` で反映前に重複を確認する
-- [ ] T005 [US1] `specs/product/file-operations.md` の FR-018・FR-025 に `specs/TAK-68-migration-notes/spec.md` の不足分を反映し、既存内容を保持する
-- [ ] T006 [US1] `specs/TAK-10-unbounded-counters/spec.md`、`Sources/FolzioCore/Operations/NameValidation.swift`、`Tests/FolzioCoreTests/NameValidationTests.swift` と `Tests/FolzioCoreTests/FileOperationServiceTests.swift` に照らし、製品仕様の意味と範囲を確認する
-- [ ] T007 [US1] `scripts/dev/check-spec-ids.sh` と `scripts/dev/check-spec-format.py` で製品仕様の反映後の ID と形式を検証する
+- [x] T004 [US1] 最新 `master` を取り込み、`scripts/dev/check-spec-ids.sh` で反映前に重複を確認する
+- [x] T005 [US1] `specs/product/file-operations.md` の FR-018・FR-025 に `specs/TAK-68-migration-notes/spec.md` の不足分を反映し、既存内容を保持する
+- [x] T006 [US1] `specs/TAK-10-unbounded-counters/spec.md`、`Sources/FolzioCore/Operations/NameValidation.swift`、`Tests/FolzioCoreTests/NameValidationTests.swift` と `Tests/FolzioCoreTests/FileOperationServiceTests.swift` に照らし、製品仕様の意味と範囲を確認する
+- [x] T007 [US1] `scripts/dev/check-spec-ids.sh` と `scripts/dev/check-spec-format.py` で製品仕様の反映後の ID と形式を検証する
 
 ## Phase 3: User Story 2 - 完了済み feature を識別する (P1)
 
@@ -24,14 +24,14 @@
 - [x] T008 [US2] `specs/005-codex-speckit-support/spec.md` に製品仕様の対象外と凍結の注記を付け、現在の Codex 運用文書を示す
 - [x] T009 [US2] `specs/TAK-46-fixed-icon-colors/spec.md` の製品仕様への反映を確認し、凍結注記を付ける
 - [x] T010 [US2] `specs/TAK-49-video-seek-keys-normal-view/spec.md` の製品仕様への反映を確認し、既存の対応表を保持して凍結注記を付ける
-- [ ] T011 [US2] TAK-10 の製品仕様への反映を確認後、`specs/TAK-10-unbounded-counters/spec.md` の先頭に凍結注記を付ける
-- [ ] T012 [US2] `specs/` の完了済み feature の先頭注記と反映状況を確認し、対象4件以外の未注記があれば状態を調べて報告する
-- [ ] T013 [US2] `specs/TAK-49-video-seek-keys-normal-view/spec.md` を含む対象の差分が先頭注記のみであることを確認する
+- [x] T011 [US2] TAK-10 の製品仕様への反映を確認後、`specs/TAK-10-unbounded-counters/spec.md` の先頭に凍結注記を付ける
+- [x] T012 [US2] `specs/` の完了済み feature の先頭注記と反映状況を確認し、対象4件以外の未注記があれば状態を調べて報告する
+- [x] T013 [US2] `specs/TAK-49-video-seek-keys-normal-view/spec.md` を含む対象の差分が先頭注記のみであることを確認する
 
 ## Phase 4: 検証・レビュー・凍結
 
-- [ ] T014 `scripts/dev/check-all.sh` と `specs/TAK-68-migration-notes/quickstart.md` の照合を実行する
-- [ ] T015 `specs/product/file-operations.md` と feature 注記の完成差分を保守者に示し、コミット前の承認を得る（`docs_private/cloud-agent-workflow.md` 7章）
+- [x] T014 `scripts/dev/check-all.sh` と `specs/TAK-68-migration-notes/quickstart.md` の照合を実行する
+- [x] T015 `specs/product/file-operations.md` と feature 注記の完成差分を保守者に示し、コミット前の承認を得る（`docs_private/cloud-agent-workflow.md` 7章）
 - [ ] T016 [MANUAL] 必要な `swift build`・`swift test`・macOS CI について `docs_private/cloud-agent-workflow.md` の手順に従い、実施結果または保守者のスキップ指示を記録する
 - [ ] T017 [MANUAL] 保守者が `scripts/make-app.sh` と `open .build/Folzio.app` で起動・3ペインを確認するか、スキップを明示する
 - [ ] T018 `specs/TAK-68-migration-notes/tasks.md` に検証と保守者の判断を記録し、凍結手順を除く未完了事項を解消する
