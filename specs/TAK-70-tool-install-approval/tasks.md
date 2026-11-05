@@ -21,4 +21,6 @@
 
 追記（2026-11-06）: 保守者がコミット `103c9f6` で Claude の `permissions.ask` に `Bash(brew install *)` を追加した。Claude・Kilo の設定構文と規則、Codex の `prompt` 判定を再確認し、`scripts/dev/check-all.sh` は成功（71 テスト）。新規セッションでの確認表示は引き続き未確認。
 
+実動確認の報告（2026-11-06）: 保守者によると Claude は確認画面が表示された一方、Codex と Kilo では確認画面が表示されず実際にインストールされた。実行した正確なコマンド・設定の読み込み状態・承認モードを確認中。Cloud の `codex execpolicy check` では `brew install jq` は `prompt` と判定されるが、実セッションの動作を保証するものではない。T007 は原因と対応の確認まで未完了とする。
+
 凍結手順: 全タスクの状態を記録し、対象とならない注記案を保守者に示して承認を得てから `specs/TAK-70-tool-install-approval/spec.md` に凍結注記を付ける。注記は feature ディレクトリの最後の編集とする。
