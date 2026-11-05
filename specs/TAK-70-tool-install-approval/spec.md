@@ -1,5 +1,8 @@
 # Feature Specification: 依存ツール導入時の確認
 
+> **凍結（2026-11-06、製品仕様の反映対象外）**: この feature は開発環境の変更であり、`specs/product/` への反映対象外。
+> このファイルは TAK-70 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `chore/tak-70-tool-install-approval`
 **Created**: 2026-11-06
 **Status**: Draft
