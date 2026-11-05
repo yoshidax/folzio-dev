@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Claude Code の PreToolUse フック。Bash の `git push` を許可リスト方式で判定する。
+"""Claude Code と Codex の PreToolUse フック。Bash の `git push` を許可リスト方式で判定する。
 
-標準入力のフック JSON から tool_input.command を読み、`git push` を含むコマンドが次をすべて満たすときだけ通す。
+フック JSON は tool_name が Bash、tool_input.command が文字列であることを前提とする。
+`git push` を含むコマンドが次をすべて満たすときだけ通す。
   - リモートは origin、refspec（ブランチ名）を明示している
   - 宛先は作業ブランチ（ALLOWED_PREFIXES）で、master / main ではない
   - 強制 push・削除・ミラー・全ブランチ・`+` や `:` で始まる refspec を使わない
@@ -122,11 +123,17 @@ def check_command(command):
 def main():
     try:
         payload = json.load(sys.stdin)
-    except ValueError:
-        return 0
-    if payload.get('tool_name') != 'Bash':
-        return 0
-    command = (payload.get('tool_input') or {}).get('command') or ''
+        if not isinstance(payload, dict):
+            raise ValueError('入力が JSON オブジェクトではありません')
+        if payload.get('tool_name') != 'Bash':
+            return 0
+        tool_input = payload.get('tool_input')
+        if not isinstance(tool_input, dict) or not isinstance(tool_input.get('command'), str):
+            raise ValueError('Bash の tool_input.command が文字列ではありません')
+        command = tool_input['command']
+    except ValueError as error:
+        print(f'git push guard: フック入力を解析できません ({error})', file=sys.stderr)
+        return 2
     if 'push' not in command:
         return 0
     try:

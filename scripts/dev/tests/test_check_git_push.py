@@ -1,6 +1,7 @@
 import json
 import pathlib
 import subprocess
+import tempfile
 import unittest
 
 
@@ -75,10 +76,36 @@ class CheckGitPushTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 2)
                 self.assertIn('git push guard', result.stderr)
 
-    def test_ignores_other_tools_and_invalid_input(self):
+    def test_ignores_other_tools(self):
         self.assertEqual(run('git push origin master', tool_name='Read').returncode, 0)
+
+    def test_rejects_invalid_input(self):
         result = subprocess.run(['python3', '-I', str(SCRIPT)], input='not json', text=True, capture_output=True)
-        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.returncode, 2)
+        for command in (None, ['bash', '-lc', 'git push origin master'], 42, {}):
+            with self.subTest(command=command):
+                result = run(command)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn('tool_input.command', result.stderr)
+
+    def test_codex_hook_command(self):
+        config = json.loads((ROOT / '.codex/hooks.json').read_text())
+        entry = config['hooks']['PreToolUse'][0]
+        self.assertEqual(entry['matcher'], '^Bash$')
+        hook = entry['hooks'][0]['command']
+        for command, expected in [('git push origin chore/example', 0),
+                                  ('git push origin HEAD:master', 2),
+                                  ('git push --force origin chore/example', 2)]:
+            with self.subTest(command=command):
+                payload = json.dumps({'tool_name': 'Bash', 'tool_input': {'command': command}})
+                result = subprocess.run(hook, shell=True, cwd=ROOT, input=payload, text=True, capture_output=True)
+                self.assertEqual(result.returncode, expected, result.stderr)
+
+        with tempfile.TemporaryDirectory() as directory:
+            payload = json.dumps({'tool_name': 'Bash', 'tool_input': {'command': 'ls'}})
+            result = subprocess.run(hook, shell=True, cwd=directory, input=payload, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn('検査スクリプトが見つかりません', result.stderr)
 
 
 if __name__ == '__main__':
