@@ -88,6 +88,8 @@ PR の作成と Draft の PR の Ready 化も CI を自動で起動するため�
 
 **権限設定**: Claude Code は `.claude/settings.json` の `permissions.ask` に `mcp__github__actions_run_trigger` と `Bash(gh workflow run *)`、`Bash(gh run rerun *)` を置く（Agent は編集できないため、保守者が編集する。反映は新しいセッションから）。Kilo Code は `.kilo/kilo.jsonc`、Codex は `.codex/rules/sdd.rules` で、同じ操作を確認の対象にする。Cloud で `ask` の確認が保守者に届くかは未確認。届かなければ `deny` にして、手動起動の運用（上の 3）にする。GitHub 側の予算の上限（Stop usage）も併用する。
 
+直接の `brew install` は Claude の `permissions.ask` でも確認対象とする。Codex と Kilo の禁止設定と制約は `docs_private/agents/skills-and-codex.md` を参照する。
+
 ## 5 検証ゲート（Cloud 版）
 
 `AGENTS.md` の「Phase の検証ゲート」（【ローカル】）の Cloud 版。検査を、実行する場所で 3 つに分ける。
