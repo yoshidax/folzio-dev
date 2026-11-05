@@ -8,8 +8,8 @@ Sync Impact Report
 - 影響を受ける文書と追従方針:
   - AGENTS.md: 凍結した記録への対応表の注記を例外として明記する
   - docs_private/cloud-agent-workflow.md の 7 章: ID の振り直しと参照の追従手順を定める
-  - specs/product/overview.md の EC-135: マージ済み ID の重複解消を扱えるよう、別の feature で追従する。
-    追従までの間、矛盾する場合は憲章と 7 章に従う。FR-193 からの参照もあわせて確認する
+  - specs/product/overview.md の EC-135: マージ済み ID の重複解消を扱えるよう、別の feature で追従し、
+    ID の振り直し規則の正本の集約と FR-193 からの参照も確認する。追従までの間、矛盾する場合は憲章と 7 章に従う
 - 未解決の TODO: EC-135 の追従を別 feature で実施する
 -->
 # my_img_viewer Constitution
