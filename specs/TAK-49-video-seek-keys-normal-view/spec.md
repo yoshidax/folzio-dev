@@ -1,5 +1,8 @@
 # Feature Specification: 通常表示でも動画を < / > で5秒戻す・送る
 
+> **移行済み（2026-11-05）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-49 時点の記録として凍結しており、更新しない。
+
 > **ID の対応表（TAK-52）**: この記録は凍結しており、本文の ID は書き換えない。`specs/product/` への反映時に、`file-list.md`（TAK-46）の ID と重複したため、
 > 次のとおり振り直した。`specs/product/`・ソースのコメントでは右の新 ID を使う。
 >

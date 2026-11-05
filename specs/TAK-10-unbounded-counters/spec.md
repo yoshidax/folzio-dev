@@ -1,5 +1,8 @@
 # Feature Specification: 大きな連番のファイル操作
 
+> **移行済み（2026-11-05）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-10 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `bugfix/tak-10-unbounded-counters`
 **Created**: 2026-11-01
 **Status**: Draft
