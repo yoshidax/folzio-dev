@@ -15,7 +15,7 @@
 - [x] T004 [US1] `.codex/rules/sdd.rules` に直接の `brew install` の禁止規則を追加する。
 - [x] T005 [US1] `.claude/settings.json` の具体的な変更を保守者に提示し、保守者による変更と結果を確認する。
 - [x] T006 [US1] `docs_private/agents/skills-and-codex.md` に対象と限界、他の依存ツールと新規セッションの扱いを記す。
-- [ ] T007 [US1] `specs/TAK-70-tool-install-approval/quickstart.md` に沿って設定・判定・通常の検査を行い、保守者の編集と各エージェントの実動確認の結果または未確認理由を `specs/TAK-70-tool-install-approval/tasks.md` に記録する。
+- [x] T007 [US1] `specs/TAK-70-tool-install-approval/quickstart.md` に沿って設定・判定・通常の検査を行い、保守者の編集と各エージェントの実動確認の結果または未確認理由を `specs/TAK-70-tool-install-approval/tasks.md` に記録する。
 
 検証記録（2026-11-06）: `codex execpolicy check` は `brew install webp` を `prompt`、`brew list` を規則の対象外と判定した。Kilo の設定は JSON として読み込め、対象規則が `ask` と一致する。`scripts/dev/check-all.sh` は成功（71 テスト）。設定後の新規セッションでの確認表示は未確認。Claude の設定は保守者が PR 作成後に変更予定のため未実施。インストールは行っていない。
 
@@ -32,5 +32,7 @@
 追記（2026-11-06）: 保守者から Kilo で禁止が効いていないとの報告があった。実行環境、コマンド、禁止設定の読み込み状態を調査中。実効性を確認するまで T007 は未完了とする。
 
 実動確認の追加報告（2026-11-06）: 保守者によると、最新ブランチで Codex は禁止を確認した。Kilo は VS Code 拡張の新規セッションで `brew install zoxide` を依頼しても禁止が効かなかった。VS Code ウィンドウ自体の再読み込みと有効な権限設定の確認は未了。
+
+確認完了（2026-11-06）: 保守者より Kilo でも `brew install` が拒否されたと報告があった。Claude の確認表示、Codex と Kilo の禁止をそれぞれ実セッションで確認した。
 
 凍結手順: 全タスクの状態を記録し、対象とならない注記案を保守者に示して承認を得てから `specs/TAK-70-tool-install-approval/spec.md` に凍結注記を付ける。注記は feature ディレクトリの最後の編集とする。
