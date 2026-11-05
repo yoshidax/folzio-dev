@@ -49,12 +49,13 @@ swift build
 swift test
 ```
 
-- `swift test` は `FolzioCoreTests`（Core のロジック・異常系・FSEvents）と
-  `FolzioPerformanceTests`（性能基準）を実行します
+- `swift test` は `FolzioCoreTests`（Core のロジック・異常系・FSEvents）、
+  `FolzioAppTests`（アプリの動作）、`FolzioPerformanceTests`（性能基準）を実行します
 - 個別に実行する場合:
 
 ```bash
 swift test --filter FolzioCoreTests
+swift test --filter FolzioAppTests
 swift test --filter FolzioPerformanceTests
 ```
 
@@ -146,6 +147,7 @@ Sources/
   make-fixtures/          # フィクスチャ生成 CLI
 Tests/
   FolzioCoreTests/         # Swift Testing
+  FolzioAppTests/          # アプリの動作
   FolzioPerformanceTests/  # 性能基準
 scripts/
   make-app.sh              # .app の組み立てと署名

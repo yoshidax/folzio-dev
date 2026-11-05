@@ -49,12 +49,13 @@ swift build
 swift test
 ```
 
-- `swift test` runs `FolzioCoreTests` (Core logic, error cases, FSEvents) and
-  `FolzioPerformanceTests` (performance baselines)
+- `swift test` runs `FolzioCoreTests` (Core logic, error cases, FSEvents),
+  `FolzioAppTests` (application behavior), and `FolzioPerformanceTests` (performance baselines)
 - To run them individually:
 
 ```bash
 swift test --filter FolzioCoreTests
+swift test --filter FolzioAppTests
 swift test --filter FolzioPerformanceTests
 ```
 
@@ -146,6 +147,7 @@ Sources/
   make-fixtures/          # Fixture generation CLI
 Tests/
   FolzioCoreTests/         # Swift Testing
+  FolzioAppTests/          # Application behavior
   FolzioPerformanceTests/  # Performance baselines
 scripts/
   make-app.sh              # Assembles and signs the .app
