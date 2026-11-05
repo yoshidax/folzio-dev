@@ -36,6 +36,9 @@ jobs:
           xcode-select -p
           swift --version
 
+      - name: Test publication script
+        run: python3 -m unittest scripts.dev.tests.test_publish_folzio -v
+
       - name: Build
         run: swift build
 
