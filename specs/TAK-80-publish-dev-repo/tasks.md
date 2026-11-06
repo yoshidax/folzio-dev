@@ -83,12 +83,12 @@ CI の `test_publish_folzio` で、書き出しの README に注記がなく、�
 
 ## Phase 6: 仕様の反映と検証
 
-- [ ] T018 `git fetch origin master` と `git merge origin/master` で最新を取り込み、`scripts/dev/check-spec-ids.sh` と、
+- [x] T018 `git fetch origin master` と `git merge origin/master` で最新を取り込み、`scripts/dev/check-spec-ids.sh` と、
   開いている作業ブランチとの ID の衝突を確かめる（衝突したら `docs_private/spec-id-conflicts.md`）。
 - [ ] T019 `specs/product/overview.md` に spec.md の「反映先」の項目を反映する。FR-317〜FR-320 は新しい節「開発用リポジトリの公開」に置く。
   `specs/product/contracts/scripts.md` に README の注記の書き出しを足し、`specs/product/README.md` の件数を直す。
   `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を反映の前と後に実行する。
-- [ ] T020 `quickstart.md` の Cloud の検証を行い、結果をこのファイルの末尾に記録する。
+- [x] T020 `quickstart.md` の Cloud の検証を行い、結果をこのファイルの末尾に記録する。
 - [ ] T021 反映した項目と差分、検証の結果を保守者に示し、承認を得てからコミットする。
 - [ ] T022 保守者に依頼することを示す: `.claude/settings.json` の 3 項目の削除、ブランチ保護の設定と確認、マージ後の書き出しでの確認、
   起動スモーク（アプリは変えないが規約に従う）。確認されるまで、このタスクは未チェックのままにする。
@@ -129,4 +129,17 @@ T017（2026-11-06）: `grep -rnIi "非公開\|private リポジトリ\|private r
 - `docs_private/repository-and-release.md` の「非公開のつもりだった運用情報」: 公開前の点検の記録
 - `specs/product/overview.md` の FR-176・EC-134・A-106: T019 の反映で直す
 
-（T020 で Cloud の検証の結果を記録する）
+T018（2026-11-06）: `origin/master`（88ede54）は作業ブランチの祖先で、取り込みは不要だった。`check-spec-ids.sh` は重複なし。
+開いている PR はない。マージされていないリモートのブランチでは、`claude/friendly-ride-5inepi`（TAK-63、2026-11-04 が最後）が EC-215 を使う。
+このブランチは、すでにマージ済みの FR-311・EC-213・EC-214 とも重複しているため、マージの際に自分で振り直す側になる（憲章の「仕様の管理」）。
+TAK-80 の EC-215 は振り直さない。
+
+T020（2026-11-06、Cloud）:
+- `scripts/dev/check-all.sh`: 成功（`test_check_*.py` は 73 件）
+- `test_strip_readme_dev_note`: 15 件成功。実装の前に 14 件が失敗することを確かめた
+- `test_publish_folzio`: 17 件成功。Cloud に `rsync` がないため、scratchpad に置いたテスト用の簡単な代わり
+  （`-a --delete --exclude` だけを扱う）で実行した。`publish.sh` を変更前に戻すと、追加した 3 件のうち 2 件
+  （注記の除去、崩れた印での停止）が失敗することを確かめた。実際の `rsync` での実行は CI で確かめる
+- README の注記を `strip-readme-dev-note.sh` で除いた結果は、英語版・日本語版とも変更前の README とバイト単位で一致した
+- `check-spec-format.py`: エラー 0 件、警告 88 件（基準値と同じ）。`check-spec-ids.sh`: 重複なし。`git diff --check`: 問題なし
+- workflow の `pull_request` の `types` は `[opened, synchronize, reopened, ready_for_review]`（YAML として読み込んで確かめた）
