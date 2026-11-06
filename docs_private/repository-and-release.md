@@ -2,15 +2,16 @@
 
 **適用範囲**: 【共通】（公開の手順は保守者が行う）
 
-このリポジトリは非公開の開発用で、GitHub で公開するのは書き出した別のリポジトリだけにしている。
-Spec Kit・AI エージェントの設定・仕様書・開発記録は公開しない。このドキュメントも公開版には含めない。
+このリポジトリは開発用で、GitHub で公開している（`yoshidax/folzio-dev`。2026-11-06 に公開、TAK-80）。
+アプリを配布する公開用リポジトリ（`yoshidax/folzio`）には、ここから書き出した、Spec Kit に縛られないプレーンな内容だけを置く。
+Spec Kit・AI エージェントの設定・仕様書・開発記録は、公開用リポジトリへ書き出さない。このドキュメントも書き出さない。
 
 ## 2つのリポジトリ
 
 | | 開発用 | 公開用 |
 |---|---|---|
 | 場所 | `~/projects/folzio` | `~/projects/folzio-oss` |
-| remote | GitHub の private リポジトリ `yoshidax/folzio-dev` | GitHub（push はユーザーが行う） |
+| remote | GitHub の公開リポジトリ `yoshidax/folzio-dev` | GitHub の公開リポジトリ `yoshidax/folzio`（push はユーザーが行う） |
 | 管理対象 | すべてのファイル | アプリのソース・テスト・ビルド用スクリプト・README（英語の `README.md` と日本語の `README.ja.md`）・公開用ガイド（`docs/`）・LICENSE |
 | 履歴 | 開発の履歴をそのまま残す | 1回の公開を1コミットにする |
 | ブランチ | master と feature・bugfix などの作業ブランチ | main |
@@ -18,35 +19,28 @@ Spec Kit・AI エージェントの設定・仕様書・開発記録は公開し
 日々の開発・Spec Kit・worktree での並列実装は、すべて開発用で行う。公開用は手で編集しない。
 内容を変えるときは開発用で直してから書き出す。
 
-## 開発用 master へのマージとバックアップ
+## 開発用 master へのマージ
 
-検証と確認を終えた作業ブランチは、ユーザーが開発用 master に切り替えてから次を実行する。
-スクリプトは `origin/master` を取得して分岐を確認し、マージ後に private リポジトリへ push する。
-AI エージェントはこのスクリプトを実行せず、master に直接マージしない。
+`master` への統合は、ローカルの作業も含めて、すべて PR で行う（TAK-80）。ローカルでマージした `master` を直接 push する手順は使わない。
+`master` のブランチ保護で拒否される（「開発用リポジトリの公開とブランチ保護」）。
 
-```bash
-cd ~/projects/folzio
-git switch master
-scripts/dev/merge-to-master.sh <作業ブランチ名>
-```
-
-競合した場合は解消して変更をステージし、`scripts/dev/merge-to-master.sh --continue` を実行する。
-マージを取り消す場合は `git merge --abort` を使う。マージ後に push が失敗した場合は、
-認証・ネットワーク・remote の状態を確認し、`scripts/dev/merge-to-master.sh --push-only` で再試行する。
-remote が先に進んだ場合や履歴が分岐した場合は自動では統合せず、状態を確認してから対処する。
-push が成功するまで GitHub へのバックアップは未完了である。
+1. 作業ブランチを開発用リポジトリへ push し、PR を作る。AI エージェントは、保守者の依頼があったときだけ PR を作る
+2. PR の最新の head で CI（macOS Swift CI）が成功し、保守者がローカルで確認（起動スモークなど）してから、保守者が GitHub でスカッシュマージする。
+   AI エージェントは PR をマージしない
+3. ローカルの `master` は、`git switch master` と `git pull --ff-only` で更新する
 
 Linear Issue に対応する変更をマージした後は、Issue の URL または ID と作業ブランチを添えて
 エージェントに完了更新を依頼する。エージェントは変更が開発用 master に含まれることを確認してから
 Issue を `Done` にする。これはマージや push に連動する自動更新ではない。
 
-この規則は同じ OS ユーザーで動く Agent を技術的に識別するアクセス制御ではない。
-スクリプトを通らない直接の master 更新も自動的には push されない。
+AI エージェントの `master` への push とマージは、`AGENTS.md`、権限設定、push の検査フック（`scripts/dev/check-git-push.py`）、
+`master` のブランチ保護で止める。
 
 ## ドキュメントの配置
 
 - `docs/`: 公開用のユーザーガイド・開発ガイド。README からリンクし、公開用リポジトリにも書き出す
-- `docs_private/`: 非公開の運用手順・用語集・開発記録。このファイルを含み、公開用リポジトリには書き出さない
+- `docs_private/`: 運用手順・用語集・開発記録。このファイルを含み、公開用リポジトリには書き出さない（開発用リポジトリでは公開されている。
+  名前の `private` は、公開用リポジトリへ書き出さないという意味）
 - `shared-skills/`: Codex・Claude Code・Kilo Code で共有するスキルの手順本文。各ツールの `SKILL.md` から参照し、公開用リポジトリには書き出さない
 
 ## README の英語版と日本語版
@@ -60,6 +54,19 @@ Issue を `Done` にする。これはマージや push に連動する自動更
   片方だけが変わっていないかと、2つの構造（見出し・箇条書き・表の行・コードブロック）が一致するかを調べる
   - 訳の中身が一致しているかまでは調べない。差分を読み、両方に同じ内容が入っていることを確かめる
 - `scripts/dev/publish.sh` も書き出しの前に同じ確認を行う
+
+## README の開発用リポジトリの注記
+
+開発用リポジトリの `README.md` と `README.ja.md` には、言語の切り替えの行の後に、開発用リポジトリであることと公開用リポジトリへの
+案内を書いた注記（`> [!NOTE]`）を置く。注記は、行の全体が `<!-- dev-repo-note:start -->` の行と `<!-- dev-repo-note:end -->`
+の行で囲む。
+
+- `scripts/dev/publish.sh` は、`scripts/dev/strip-readme-dev-note.sh` で、印の範囲と、終了の印の直後の空行 1 行を書き出しから除く。
+  公開用リポジトリの README は、注記を置く前と同じ内容になる
+- 印の対応が崩れている（開始だけ、終了だけ、逆順、入れ子、2 つ以上）か、印の文字列が行の一部に残ると、公開先へ同期する前に止まる
+- 英語版と日本語版に、同じ形で注記を置く。引用と HTML コメントの行は `scripts/check-readme-sync.sh` の構造の比較の対象外なので、
+  訳が一致しているかは差分を読んで確かめる
+- 注記には、書き出さないファイル（`specs/` など）へのリンクを書かない
 
 ## 公開版から外すファイル
 
@@ -99,17 +106,18 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
    1. `scripts/check-readme-sync.sh` で、`README.md` と `README.ja.md` の構造がそろっているか確かめる
    2. `scripts/dev/check-english-comments.sh` で公開対象のソースコメントを検査する
    3. `git archive HEAD` で、`export-ignore` を除いたファイルを一時ディレクトリへ取り出す
-   4. 外したはずのファイル（開発用の `.github/workflows/` を含む）が混ざっていないか確かめる
-   5. 公開用の workflow を `scripts/dev/oss-workflows/` から一時ディレクトリの `.github/workflows/` に置き、
+   4. 一時ディレクトリの `README.md` と `README.ja.md` から、開発用リポジトリの注記を除く（「README の開発用リポジトリの注記」）
+   5. 外したはずのファイル（開発用の `.github/workflows/` を含む）が混ざっていないか確かめる
+   6. 公開用の workflow を `scripts/dev/oss-workflows/` から一時ディレクトリの `.github/workflows/` に置き、
       管理元と名前・内容が一致することを確かめる。置いた workflow の名前（なければ「公開用 workflow はありません」）を表示する
-   6. `$HOME` のパスとユーザー名が含まれていないか確かめる（公開用の workflow も対象）
-   7. `../folzio-oss` へ同期する（`.git`、`.build`、`.vscode` を保護し、それ以外は書き出し内容に合わせる）。
+   7. `$HOME` のパスとユーザー名が含まれていないか確かめる（公開用の workflow も対象）
+   8. `../folzio-oss` へ同期する（`.git`、`.build`、`.vscode` を保護し、それ以外は書き出し内容に合わせる）。
       書き出し先がなければ `git init -b main` で作る
-   8. 書き出し先で `swift build`、Core と App を含む通常テスト、性能テスト、`scripts/check-no-network.sh` を順に行う。
+   9. 書き出し先で `swift build`、Core と App を含む通常テスト、性能テスト、`scripts/check-no-network.sh` を順に行う。
       通常テストは非並列で実行し、性能テストは分けて流す（同時に流すと、Core の待ち時間のあるテストが CPU 不足で落ちることがある）。
       テストが失敗すると後続の検査とステージングを行わず終了する。同期はすでに行われているため、公開先には同期済みの未検証の変更が残る。確認せずにコミットしない。
       共有ランナーの負荷により性能テストの失敗を許容する CI と異なり、公開時は性能テストの失敗でも停止する
-   9. `git add -A` で変更をステージし、`git status` を表示する
+   10. `git add -A` で変更をステージし、`git status` を表示する
 
 3. 書き出し先で起動スモークを行う（3ペインが表示されること）
 
@@ -163,12 +171,68 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
 `.github/workflows/` を保護しない）。公開用リポジトリでコミット済みのファイルは `git status` に削除（`D`）として出るが、
 コミットしていないファイルは表示されずに消える。
 
+## 開発用リポジトリの公開とブランチ保護
+
+開発用リポジトリは 2026-11-06 に公開した（TAK-80）。公開前の点検（秘密情報・個人の情報・非公開のつもりだった運用情報）は
+TAK-80 の Issue に記録した。コミット作者のメールアドレスと履歴は、そのまま公開している（履歴は書き換えない）。
+
+公開リポジトリでは、macOS を含む GitHub の標準ランナーの使用は無料になる。そのため、CI は PR への push のたびに動かし、
+その結果を `master` の必須チェックにする。
+
+### `master` のブランチ保護（保守者が設定する）
+
+PR の CI が 1 回動いた後に、Settings → Rules → Rulesets → New ruleset → New branch ruleset で、次の ruleset を作る。
+
+| 項目 | 設定 |
+|---|---|
+| Ruleset name | `master` |
+| Enforcement status | Active |
+| Bypass list | なし（保守者を含めて適用する） |
+| Target branches | Include default branch |
+| Restrict deletions | 有効 |
+| Block force pushes | 有効 |
+| Require a pull request before merging | 有効。Required approvals は 0 |
+| Require status checks to pass | 有効。`Build and test (macOS 15 / arm64)` を加える |
+
+- 必須チェックは、名前を手で入力せず、「Add checks」の候補から、GitHub Actions のものを選ぶ。
+  候補は最近動いたチェックから出るので、先に PR で CI を 1 回動かしておく
+- 「Require branches to be up to date before merging」は使わない。`master` が進むたびに取り込みと CI の待ちが要るほどの並行はない。
+  必要になれば有効にする
+- 承認レビューを必須にしない。保守者は 1 人で、自分の PR を承認できない
+- 例外（bypass）を置かないので、保守者もローカルから `master` へ直接 push できない。統合は PR で行う（「開発用 master へのマージ」）
+
+設定した後に、次を確かめる。
+
+1. CI が成功していない PR では、マージのボタンが使えない
+2. CI が成功した自分の PR を、承認レビューなしでマージできる
+3. ruleset の画面で、上の項目が有効で、bypass の対象がない
+
+GitHub Free の公開リポジトリで rulesets が使えない場合は、Settings → Branches → Add branch protection rule（classic）で、
+`master` に同じ項目（Require a pull request before merging、Require status checks to pass before merging、
+Allow force pushes と Allow deletions は無効）を設定し、「Do not allow bypassing the above settings」を有効にする。
+classic の保護は、既定では管理者に適用されない。
+
+### 必須チェックを保つための注意
+
+- 開発用の CI の workflow には、変更されたファイルなどによる実行の条件（`paths` など）を付けない。workflow 全体がスキップされると、
+  必須チェックが Pending のまま残り、マージできなくなる
+- 必須チェックにしているジョブの名前（`.github/workflows/macos-swift-ci.yml` の `Build and test (macOS 15 / arm64)`）を変える PR では、
+  マージの前に、ruleset の必須チェックを新しい名前に替える。替えないと、保護が古い名前の結果を待ち続ける
+- workflow のトークンは、読み取りの権限だけにする（`permissions: contents: read`）
+
+### fork からの PR の workflow（保守者が設定する）
+
+README の運用方針のとおり、外部からの貢献は受け付けていない。fork からの PR で workflow が勝手に動かないように、
+Settings → Actions → General の「Approval for running fork pull request workflows from contributors」で、
+「Require approval for all external contributors」を選ぶ（既定は、初めての貢献者だけ承認が要る）。
+
 ## 公開用リポジトリの方針
 
 - 作者は `yoshidax <takehiko.yoshida.z@gmail.com>`（global の git 設定）
 - ライセンスは MIT（`LICENSE`）
 - 他の人の Issue は受け付けない。Fork・コードの利用・アプリの配布は MIT のもとで許可する
-- 開発の履歴（作者情報・ローカルのパス・作業ブランチ）は公開しない。公開版には書き出した結果だけが残る
+- 公開用リポジトリには、開発の履歴（作者情報・ローカルのパス・作業ブランチ）を含めない。書き出した結果だけが残る。
+  開発の履歴は、開発用リポジトリで公開している
 
 ## 注意
 

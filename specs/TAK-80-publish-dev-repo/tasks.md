@@ -58,26 +58,26 @@ CI の `test_publish_folzio` で、書き出しの README に注記がなく、�
 
 **Independent Test**: 手順だけを読んで、保護の項目、必須チェックの名前、fork の承認の設定を答えられる（SC-169）。
 
-- [ ] T014 [US70] `docs_private/repository-and-release.md` に節「開発用リポジトリの公開とブランチ保護」を足す（R4）:
+- [x] T014 [US70] `docs_private/repository-and-release.md` に節「開発用リポジトリの公開とブランチ保護」を足す（R4）:
   bypass なしの ruleset 1 つの項目、必須チェックの選び方（CI が 1 回動いた後に候補から選ぶ）、fork の承認の設定、
   ジョブの名前を変えるときの手順（EC-218）、workflow に実行の条件を付けない理由（EC-217）、設定後の確かめ方、
   rulesets が使えない場合の classic の代わりの設定、未確認の点。
 
 ## Phase 5: 「非公開」の前提の記述を直す（FR-317）
 
-- [ ] T015 `docs_private/repository-and-release.md` の非公開の前提を直す: 冒頭、「2つのリポジトリ」の表（remote）、
+- [x] T015 `docs_private/repository-and-release.md` の非公開の前提を直す: 冒頭、「2つのリポジトリ」の表（remote）、
   「開発用 master へのマージとバックアップ」（PR によるマージの手順に置き換える。FR-321）、「ドキュメントの配置」の `docs_private/` の説明
   （公開用リポジトリへ書き出さない文書）、「公開用リポジトリの方針」（開発の履歴は開発用リポジトリで公開している）、
   「公開の手順」に README の注記を除く手順を足す。
 - [x] T016 `AGENTS.md` の「`docs/`・README・ソースのコメントは公開される」の行を、公開用リポジトリへ書き出されることが分かる文言にする。
   行数を増やさない。理由を末尾の「PR に書く理由」に記録する。
-- [ ] T017 `grep -rnI "非公開\|private リポジトリ\|private repository\|無料枠\|使用時間"` で、現行の文書・規約・設定・スクリプトのコメントに
+- [x] T017 `grep -rnI "非公開\|private リポジトリ\|private repository\|無料枠\|使用時間"` で、現行の文書・規約・設定・スクリプトのコメントに
   残る非公開と費用の前提を洗い出して直す（凍結した記録は除く。EC-219）。`scripts/dev/merge-to-master.sh` の冒頭のコメント
   （private development repository）を含む。結果をこのファイルの末尾に記録する。
 
 ## Phase 5b: `master` への統合を PR だけにする（FR-321）
 
-- [ ] T023 `scripts/dev/merge-to-master.sh` を削除する。参照を直す: `AGENTS.md` の PR の行（行数を増やさない。理由を末尾に記録）、
+- [x] T023 `scripts/dev/merge-to-master.sh` を削除する。参照を直す: `AGENTS.md` の PR の行（行数を増やさない。理由を末尾に記録）、
   `docs_private/agents/README.md` の「`merge-to-master.sh` で `master` へ入れるとき」の項目、`docs_private/codex-speckit.md` の最後の統合、
   `.codex/rules/sdd.rules` と `.kilo/kilo.jsonc` の禁止の規則。`grep -rn merge-to-master` で、凍結した記録のほかに残らないことを確かめる。
 
@@ -120,4 +120,13 @@ CI の `test_publish_folzio` で、書き出しの README に注記がなく、�
 
 ## 検証記録
 
-（T017・T020 で記録する）
+T017（2026-11-06）: `grep -rnIi "非公開\|private リポジトリ\|private repo\|private development\|無料枠\|使用時間\|予算\|0\.062"` を、凍結した記録
+（`specs/NNN-*`・`specs/TAK-*`、`.specify/bugs/`、`docs_private/retrospective/`、`docs_private/release-notes/`）を除いて実行した。
+直したもの: `docs_private/repository-and-release.md`、`docs_private/cloud-agent-workflow.md`、`AGENTS.md`、`.codex/rules/sdd.rules`。
+`scripts/dev/merge-to-master.sh` の冒頭のコメントは、スクリプトごと削除した（T023）。残った行と、残す理由:
+- `docs_private/folzio-rename.md:17` の「非公開ディレクトリ」: 設定のバックアップの置き場所のことで、リポジトリの公開とは関係がない
+- `docs_private/agents/README.md` の `TAK-53: … 予算が 0 になり CI が止まった`: 理由の書き方の例で、過去の出来事として正しい
+- `docs_private/repository-and-release.md` の「非公開のつもりだった運用情報」: 公開前の点検の記録
+- `specs/product/overview.md` の FR-176・EC-134・A-106: T019 の反映で直す
+
+（T020 で Cloud の検証の結果を記録する）
