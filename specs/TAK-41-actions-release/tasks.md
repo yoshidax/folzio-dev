@@ -150,3 +150,5 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 - T026: 最新の check-all は129件成功、macOS / rsync 必須の29件は skip。再候補ソースは digest 付き tar で job 間転送し、実行権限を維持する回帰も成功。T027 は既存 CI の workflow_dispatch を作業ブランチで実行して確認する（PR は作成しない）。
 
 - hosted account（runner / runneradmin）の一般語による誤検出を除き、パス検査を維持する回帰を追加。両バージョン不一致と ZIP 境界・checksum の異常系も追加した。
+
+- macOS CI 42235998815: arm64 / Xcode16.0を確認。旧README注記なしのfixtureが英語版だけを更新していたため新しい構造照合で1件失敗。日英同等のfixtureへ修正して再検証する。build / Swift testは前段失敗で未実施。

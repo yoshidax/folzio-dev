@@ -368,6 +368,7 @@ class ReadmeDevNotePublishTests(unittest.TestCase):
 
     def test_publish_keeps_readme_without_note(self):
         self.fixture.write("README.md", README_WITHOUT_NOTE)
+        self.fixture.write("README.ja.md", README_JA_WITHOUT_NOTE)
         self.fixture.commit()
         result = self.fixture.publish()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
