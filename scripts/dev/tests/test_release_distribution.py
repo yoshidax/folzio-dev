@@ -14,6 +14,7 @@ def run(*args, cwd=None, env=None, check=True):
     return subprocess.run(args, cwd=cwd, env=env, text=True, capture_output=True, check=check)
 
 
+@unittest.skipUnless(os.uname().sysname == "Darwin" and os.uname().machine == "arm64", "Apple silicon macOS の配布回帰")
 class ReleaseDistributionTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -40,6 +41,15 @@ cat > .build/Folzio.app/Contents/Info.plist <<PLIST
 <plist version="1.0"><dict><key>CFBundleShortVersionString</key><string>$FOLZIO_VERSION</string><key>CFBundleVersion</key><string>$FOLZIO_BUILD_NUMBER</string></dict></plist>
 PLIST
 ''')
+        resources = """mkdir -p .build/Folzio.app/Contents/Resources/{en,ja}.lproj
+for language in en ja; do
+    echo strings > .build/Folzio.app/Contents/Resources/$language.lproj/Localizable.strings
+    echo dictionary > .build/Folzio.app/Contents/Resources/$language.lproj/Localizable.stringsdict
+done
+"""
+        app_script.write_text(app_script.read_text() + resources)
+        for name in ('package-release.sh', 'release.py'):
+            shutil.copy2(ROOT / 'scripts' / name, self.public / 'scripts' / name)
         app_script.chmod(0o755)
         run('git', 'add', '.', cwd=self.public)
         run('git', 'commit', '-m', 'public source', cwd=self.public)

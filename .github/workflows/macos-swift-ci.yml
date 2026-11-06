@@ -37,7 +37,12 @@ jobs:
           swift --version
 
       - name: Test publication script
-        run: python3 -m unittest scripts.dev.tests.test_publish_folzio scripts.dev.tests.test_strip_readme_dev_note -v
+        run: |
+          python3 -I -m unittest discover -s scripts/dev/tests -p 'test_publish_folzio.py' -v
+          python3 -I -m unittest discover -s scripts/dev/tests -p 'test_strip_readme_dev_note.py' -v
+          python3 -I -m unittest discover -s scripts/dev/tests -p 'test_package_release.py' -v
+          python3 -I -m unittest discover -s scripts/dev/tests -p 'test_release_distribution.py' -v
+          python3 -I -m unittest discover -s scripts/dev/tests -p 'test_check_*.py' -v
 
       - name: Build
         run: swift build

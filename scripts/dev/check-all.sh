@@ -29,6 +29,9 @@ run scripts/dev/check-spec-ids.sh
 run scripts/dev/check-agents-md.sh
 run python3 -I -m unittest discover -s scripts/dev/tests -p 'test_check_*.py'
 run python3 -I -m unittest discover -s scripts/dev/tests -p 'test_strip_readme_dev_note.py'
+run python3 -I -m unittest discover -s scripts/dev/tests -p 'test_publish_folzio.py'
+run python3 -I -m unittest discover -s scripts/dev/tests -p 'test_package_release.py'
+run python3 -I -m unittest discover -s scripts/dev/tests -p 'test_release_distribution.py'
 
 if ((${#failed[@]} != 0)); then
     echo "failed checks:" >&2

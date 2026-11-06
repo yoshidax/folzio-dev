@@ -296,6 +296,6 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except (ValueError, OSError, KeyError, TypeError) as error:
+    except (ValueError, OSError, KeyError, TypeError, zipfile.BadZipFile) as error:
         summary(f'Release failed: {error}')
         sys.exit(1)

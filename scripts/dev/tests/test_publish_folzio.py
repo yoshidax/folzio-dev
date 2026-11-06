@@ -437,3 +437,14 @@ class ExporterTests(unittest.TestCase):
         self.assertFalse((self.output / '.github/workflows/private.yml').exists())
         self.assertEqual((self.output / '.github/workflows/release.yml').read_text(),
                          (self.fixture.source / 'scripts/dev/oss-workflows/release.yml').read_text())
+
+
+    def test_known_synthetic_home_is_allowed_but_personal_paths_are_not(self):
+        self.fixture.write('Tests/example.swift', 'let path = "/Users/me/a"\n')
+        self.fixture.commit()
+        self.assertEqual(self.export().returncode, 0)
+        shutil.rmtree(self.output)
+        self.fixture.write('Tests/example.swift', 'let path = "/Users/personal-name/a"\n')
+        self.fixture.commit()
+        self.assertNotEqual(self.export().returncode, 0)
+        self.assertFalse(self.output.exists())

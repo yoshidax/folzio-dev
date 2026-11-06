@@ -25,45 +25,45 @@ T004 の承認前には実装しない。PR と本番設定も、今回の設計
 **Goal**: 候補を確認した PR のマージから同期し、tree が変わった場合は固定 M の再候補と確認待ちへ進める。
 **Independent Test**: 通常 PR、preview と M の一致/不一致、M+3 からの固定 M 復旧、初回 base、同時 writer を再現する。
 
-- [ ] T009 [US74] `.github/workflows/release-candidate.yml` と `scripts/dev/validate-release-candidate.sh` に PR preview と手動 source_sha の候補生成を実装する。必須検査の即時中断、性能の非ブロッキングと結果記録、30日 artifact・source/run/attempt 共通の名前を定義する（FR-311・328・340・341）
-- [ ] T010 [US74] `scripts/package-release.sh` に VERSION / BUILD / SOURCE_DIR / OUTPUT_DIR の隔離ビルド・ZIP と checksum・再展開検証を実装し、公開候補と最終配布で共用する（FR-325・340）
-- [ ] T011 [US74] `scripts/dev/tests/test_check_public_sync.py` に preview 後の別 PR マージによる tree のずれと M の再候補・確認待ち、M+3 から M を指定する復旧、手動間の HEAD 進行、候補欠落/失効/別対象、古い source と公開先競合を再現する。初回 base の欠落/不一致/一致、初期化済みの指定・不正 trailer の拒否、初期化時だけの同一 tree コミットも検証する（FR-330・333・336・338・342）
-- [ ] T012 [US74] `scripts/dev/sync-public.py` に固定 M・merged PR・候補 run の照合、候補の必須検証を再利用する静的同期、明示的 bootstrap、書き込み直前の base/source 再取得と非 force 更新を実装する（FR-335〜338・342）
-- [ ] T013 [US74] `.github/workflows/sync-public.yml` に release.json 差分の判定、tree 不一致時だけの固定 M の再候補生成・確認待ち、source_sha / candidate_run_id / bootstrap_public_base の手動再開、Secret 分離の writer を定義する。通常同期は Ubuntu だけとし、repo 共通 concurrency を使わない（FR-311・312・332・333・337）
-- [ ] T014 [US74] `scripts/dev/tests/test_check_public_sync.py` と既存 discover で、通常 push が待機中の同期を取り消さない構成、2 writer の競合と無差分・古い対象拒否を検証する。候補のコマンド記録で必須失敗後の後続停止、性能失敗後の通信検査続行・結果記録、成功 run でも必須結果不正の候補拒否を確認する（FR-311、SC-171・175〜177）
+- [x] T009 [US74] `.github/workflows/release-candidate.yml` と `scripts/dev/validate-release-candidate.sh` に PR preview と手動 source_sha の候補生成を実装する。必須検査の即時中断、性能の非ブロッキングと結果記録、30日 artifact・source/run/attempt 共通の名前を定義する（FR-311・328・340・341）
+- [x] T010 [US74] `scripts/package-release.sh` に VERSION / BUILD / SOURCE_DIR / OUTPUT_DIR の隔離ビルド・ZIP と checksum・再展開検証を実装し、公開候補と最終配布で共用する（FR-325・340）
+- [x] T011 [US74] `scripts/dev/tests/test_check_public_sync.py` に preview 後の別 PR マージによる tree のずれと M の再候補・確認待ち、M+3 から M を指定する復旧、手動間の HEAD 進行、候補欠落/失効/別対象、古い source と公開先競合を再現する。初回 base の欠落/不一致/一致、初期化済みの指定・不正 trailer の拒否、初期化時だけの同一 tree コミットも検証する（FR-330・333・336・338・342）
+- [x] T012 [US74] `scripts/dev/sync-public.py` に固定 M・merged PR・候補 run の照合、候補の必須検証を再利用する静的同期、明示的 bootstrap、書き込み直前の base/source 再取得と非 force 更新を実装する（FR-335〜338・342）
+- [x] T013 [US74] `.github/workflows/sync-public.yml` に release.json 差分の判定、tree 不一致時だけの固定 M の再候補生成・確認待ち、source_sha / candidate_run_id / bootstrap_public_base の手動再開、Secret 分離の writer を定義する。通常同期は Ubuntu だけとし、repo 共通 concurrency を使わない（FR-311・312・332・333・337）
+- [x] T014 [US74] `scripts/dev/tests/test_check_public_sync.py` と既存 discover で、通常 push が待機中の同期を取り消さない構成、2 writer の競合と無差分・古い対象拒否を検証する。候補のコマンド記録で必須失敗後の後続停止、性能失敗後の通信検査続行・結果記録、成功 run でも必須結果不正の候補拒否を確認する（FR-311、SC-171・175〜177）
 
 ## Phase 4: US71 — 公開コミットから配布（P1）
 
 **Goal**: 公開用への push から、その SHA の検証済み ZIP とドラフトを作る。
 **Independent Test**: 要求の追加/同一と、実行中の HEAD の進行を再現し、固定した SHA と添付物を照合する。
 
-- [ ] T015 [US71] `scripts/dev/tests/test_package_release.py` に既存出力保護、隔離、先頭0の拒否、arm64、両バージョン、署名、日英リソース、ZIP の余計な項目・チェックサムの異常系を追加する（FR-324・325・330）
-- [ ] T016 [US71] `scripts/release.py` に plan / draft、GitHub 状態の検証、タグ作成、ZIP と checksum だけのドラフト添付を実装し、`scripts/dev/tests/test_check_release_workflow.py` で新規/同一要求・SHA 固定を確認する（FR-173・322〜327）
-- [ ] T017 [US71] `scripts/dev/oss-workflows/release.yml` に公開 repo / default branch の照合、read-only preflight、通常テスト、公開用 SHA の archive からの package と draft を実装する（FR-322・325・328）
-- [ ] T018 [US71] `scripts/dev/tests/test_publish_folzio.py` と `.github/workflows/macos-swift-ci.yml` に公開 workflow と依存の書き出し、パッケージ・公開回帰テストを組み込む（FR-329・330）
+- [x] T015 [US71] `scripts/dev/tests/test_package_release.py` に既存出力保護、隔離、先頭0の拒否、arm64、両バージョン、署名、日英リソース、ZIP の余計な項目・チェックサムの異常系を追加する（FR-324・325・330）
+- [x] T016 [US71] `scripts/release.py` に plan / draft、GitHub 状態の検証、タグ作成、ZIP と checksum だけのドラフト添付を実装し、`scripts/dev/tests/test_check_release_workflow.py` で新規/同一要求・SHA 固定を確認する（FR-173・322〜327）
+- [x] T017 [US71] `scripts/dev/oss-workflows/release.yml` に公開 repo / default branch の照合、read-only preflight、通常テスト、公開用 SHA の archive からの package と draft を実装する（FR-322・325・328）
+- [x] T018 [US71] `scripts/dev/tests/test_publish_folzio.py` と `.github/workflows/macos-swift-ci.yml` に公開 workflow と依存の書き出し、パッケージ・公開回帰テストを組み込む（FR-329・330）
 
 ## Phase 5: US72 — 復旧（P1）
 
 **Goal**: 再実行で既存の公開内容と配布物を保護する。
 **Independent Test**: 同名タグ・Release、API 障害、競合と部分失敗を再現する。
 
-- [ ] T019 [US72] `scripts/dev/tests/test_check_release_workflow.py` に同一/別 SHA の軽量/注釈タグ、既存 draft/公開済み Release、404 と403/5xx/通信障害、タグ作成競合・部分失敗を追加する（FR-326・327・330）
-- [ ] T020 [US72] `scripts/release.py` と `scripts/dev/sync-public.py` に再照合と再開案内を整え、候補再生成と同期で source_sha=M を使い続けること、source/run/attempt の artifact 照合、bootstrap の誤用拒否、競合の可視化と安全な再実行を検証する（EC-225〜235）
-- [ ] T021 [US72] `scripts/dev/release-distribution.sh` の prepare を公開済み SHA の archive と共通 package へ委譲し、既存 CLI・出力先・release-info の4行を維持する（FR-169・339）
-- [ ] T022 [US72] `scripts/dev/tests/test_release_distribution.py` の fixture と回帰検証を共通 package に合わせ、remote HEAD・欠落ツール・不正 ZIP・既存 Release の保護を確認する（FR-330）
+- [x] T019 [US72] `scripts/dev/tests/test_check_release_workflow.py` に同一/別 SHA の軽量/注釈タグ、既存 draft/公開済み Release、404 と403/5xx/通信障害、タグ作成競合・部分失敗を追加する（FR-326・327・330）
+- [x] T020 [US72] `scripts/release.py` と `scripts/dev/sync-public.py` に再照合と再開案内を整え、候補再生成と同期で source_sha=M を使い続けること、source/run/attempt の artifact 照合、bootstrap の誤用拒否、競合の可視化と安全な再実行を検証する（EC-225〜235）
+- [x] T021 [US72] `scripts/dev/release-distribution.sh` の prepare を公開済み SHA の archive と共通 package へ委譲し、既存 CLI・出力先・release-info の4行を維持する（FR-169・339）
+- [x] T022 [US72] `scripts/dev/tests/test_release_distribution.py` の fixture と回帰検証を共通 package に合わせ、remote HEAD・欠落ツール・不正 ZIP・既存 Release の保護を確認する（FR-330）
 
 ## Phase 6: US73 — 確認と公開（P2）
 
 **Goal**: 保守者が CI の ZIP をローカルで確認し、出自を追跡して公開できる。
 **Independent Test**: preview と固定 M の新候補を取得・展開・起動し、確認待ちでは書き込まず、明示した M/run で再開できることを確認する。
 
-- [ ] T023 [US73] `release.example.json` と `docs/releasing.md` に PR preview の取得・外側 ZIP の展開・ローカル確認後のマージ、M が異なる場合の新候補の再確認と M/run 指定の再開、初期 base と復旧を説明する（FR-324・339・340・343）。実 release.json は次の配布時まで作らない
-- [ ] T024 [US73] `docs_private/repository-and-release.md`・`scripts/dev/oss-workflows/README.md` と必要な Cloud 手順を新しい経路にそろえる。master 追従不要は維持し、性能の例外・必須失敗後の中断、同期時の検証再利用、App / Secret・初期 base・保護規則の設定と復旧を説明する（FR-169・179・311・312・339）
-- [ ] T025 [US73] `scripts/release.py` と `scripts/dev/sync-public.py` の summary / metadata に source / public SHA、PR / head / run / attempt、source_kind、tree・version / build・toolchain・checksum、必須検証・性能結果と確認待ち/省略/失敗理由を示してテストする（FR-331・341）
+- [x] T023 [US73] `release.example.json` と `docs/releasing.md` に PR preview の取得・外側 ZIP の展開・ローカル確認後のマージ、M が異なる場合の新候補の再確認と M/run 指定の再開、初期 base と復旧を説明する（FR-324・339・340・343）。実 release.json は次の配布時まで作らない
+- [x] T024 [US73] `docs_private/repository-and-release.md`・`scripts/dev/oss-workflows/README.md` と必要な Cloud 手順を新しい経路にそろえる。master 追従不要は維持し、性能の例外・必須失敗後の中断、同期時の検証再利用、App / Secret・初期 base・保護規則の設定と復旧を説明する（FR-169・179・311・312・339）
+- [x] T025 [US73] `scripts/release.py` と `scripts/dev/sync-public.py` の summary / metadata に source / public SHA、PR / head / run / attempt、source_kind、tree・version / build・toolchain・checksum、必須検証・性能結果と確認待ち/省略/失敗理由を示してテストする（FR-331・341）
 
 ## Phase 7: Polish — 実装 PR の検証と反映
 
-- [ ] T026 `scripts/dev/check-all.sh` を実行し、新しい判定・同期テストを含む Cloud の結果をこの tasks.md に記録する
+- [x] T026 `scripts/dev/check-all.sh` を実行し、新しい判定・同期テストを含む Cloud の結果をこの tasks.md に記録する
 - [ ] T027 `.github/workflows/macos-swift-ci.yml` の build / test と公開・配布回帰の結果を確認し、この tasks.md に記録する
 - [ ] T028 保守者が作業ブランチで `scripts/make-app.sh` → `open .build/Folzio.app` の3ペイン・日英のマージ前スモークを確認し、この tasks.md に記録する
 - [ ] T029 最新 master と `scripts/dev/check-spec-ids.sh` を確認してから、`specs/product/overview.md` と `specs/product/contracts/scripts.md`・app-bundle.md・README.md に反映する。特に FR-311（overview.md）の検査場所・性能の例外・失敗後の即時中断と、scripts 契約の旧「同期後テスト」をそろえ、ID と形式・check-all を検査する
@@ -143,3 +143,8 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 - 2026-11-06: 保守者が spec を承認。1a87362 の改訂設計に沿った実装を開始する。
 
 - 基盤実装: exporter の Python helper を export-public.sh から呼び出す。指定 SHA・dirty worktree・既存出力保護・公開境界の3件と metadata の3件を確認。旧 publish は共通 exporter を利用する復旧用。Cloud に rsync がないため旧ローカル復旧の18件は macOS CI で確認する。
+
+- 候補・同期・配布の実装とテスト・ガイドを追加。Cloud の check-all は成功（判定系104件、README注記19件、exporter4件。macOS / rsync の28件は実行環境不足で明示的 skip）。候補のコマンド列、固定 M、API 障害、artifact digest、実 Git の非 fast-forward、部分アップロードを検証。macOS と実 workflow の導入確認は T027・T031以降で確認する。
+- 公開ツリー検査では、既存 Swift テストの架空パス /Users/me・me2・x を Tests 内だけで区別する。個人パスは拒否する回帰テストを追加した。
+
+- T026: 最新の check-all は127件成功、macOS / rsync 必須の28件は skip。再候補ソースは digest 付き tar で job 間転送し、実行権限を維持する回帰も成功。T027 は既存 CI の workflow_dispatch を作業ブランチで実行して確認する（PR は作成しない）。

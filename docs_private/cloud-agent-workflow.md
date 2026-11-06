@@ -90,7 +90,7 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 |---|---|
 | Cloud（Agent） | `scripts/dev/check-all.sh`（実行する検査はスクリプトを参照） |
 | CI | `swift build`、`swift test`（通常のテストと性能テスト） |
-| 保守者（ローカル） | 起動スモーク（`scripts/make-app.sh` の後に `open .build/Folzio.app` で 3 ペインの表示）、ローカルの最新の Swift でのビルドとテスト、`scripts/dev/tests` の公開・配布のテスト（Apple silicon の macOS と `rsync` を前提とし、Cloud では 6 件が失敗する） |
+| 保守者（ローカル） | 起動スモーク（`scripts/make-app.sh` の後に `open .build/Folzio.app` で 3 ペインの表示）、ローカルの最新の Swift でのビルドとテスト、`scripts/dev/tests` の macOS 固有のパッケージ・ローカル復旧テスト（Cloud では必要機能のない項目を明示的に skip し、macOS CI で確認する） |
 
 - **起動スモークを省略して「CI が通ったから完了」にしない**。GUI の確認は保守者に依頼し、実行するコマンドと確認する点を具体的に示す。
 - 憲章の「マージ前のゲート」（自動テストの通過）は、Cloud では**CI の成功と、保守者のローカルでの確認**で満たすと解釈する（憲章は改定しない）。
@@ -112,3 +112,10 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 - `specs/product/` への反映は、**PR の最後の作業**にする。反映の直前に、`git merge origin/master` で最新の `master` を取り込む。同じ領域ファイルで競合したら、Agent が解消する。履歴を書き換えない（強制 push は禁止）。
 - `specs/product/` の ID は並行する feature 間で衝突し得る。反映直前に取り込んだ `master` と突き合わせ、衝突があれば[仕様 ID の重複解消](spec-id-conflicts.md)に従ってから反映する。両方がマージ済みの重複も同じ共通手順で扱う（例: TAK-52）。
 - 反映した項目と差分を保守者へ示し、承認を得てからコミットする。
+
+## リリース PR の CI（TAK-41）
+
+開発用 Release candidate は確認用 ZIP を作る読み取り専用の処理で、公開先へ書き込まない。
+Publish release source は master の要求変更を判定し、候補一致時には静的検査だけで同期する。
+候補がずれた場合は固定 M の候補を作り、ローカル再確認と M/run 指定の手動再開を待つ。
+App Secret の設定や本番リリースは導入時の保守者の操作。通常開発の CI 検証のために同期・配布 workflow を起動しない。
