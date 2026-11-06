@@ -14,7 +14,7 @@
 
 ## Git と GitHub【共通】
 - push は default ブランチ（`master`）以外の作業ブランチへだけ行う。強制 push・リモートブランチの削除・履歴の書き換えはしない
-- PR は保守者の依頼があったときだけ作る。PR のマージと `master` への統合（`scripts/dev/merge-to-master.sh`）は保守者が行う
+- Issue 対応の依頼には範囲内の検証・コミット・作業ブランチへの通常 push・PR 作成／更新／Ready 化と自動 CI を含む（明示的な除外に従う）。設計・仕様のレビューは各手順に従う。マージと `master` への統合は保守者が行う
 - CI の起動・再実行（`workflow_dispatch`、rerun）は、毎回、理由と対象ブランチを示して保守者の許可を得る（macOS の使用時間を消費する）
 - Linear の Issue に着手するとき、PR を作った後、完了を更新するときは `docs_private/agents/linear.md` に従う
 

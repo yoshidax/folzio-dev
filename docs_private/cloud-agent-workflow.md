@@ -12,7 +12,7 @@ Cloud Agent（Claude / Codex）が、Cloud 環境で feature またはバグ修�
 1. Issue を指定されたら、Linear で内容を読み、`In Progress` にして、feature を始める（1、2 章）
 2. `speckit-specify` → `speckit-plan` → `speckit-tasks` → `speckit-analyze` を順に実行し、**設計のレビューを保守者に受ける**。承認の前に実装しない
 3. 実装し、Cloud でできる検査を行い、作業ブランチに push する（5、6 章）
-4. 保守者が依頼したら、PR を作り、Linear を `In Review` にする（2、3 章）
+4. Issue 対応の範囲で PR を作り、Linear を `In Review` にする（2、3 章）
 5. CI の結果を読み、失敗なら直す（4 章）
 6. 保守者がローカルで確認してマージする。完了の更新は、保守者の依頼があったときだけ行う（2、3 章）
 
@@ -52,7 +52,7 @@ Linear の Issue の読み方と状態の更新（着手、PR の作成後、完
 
 ## 3 PR とマージ
 
-- **PR は、保守者が依頼したときだけ作る**。作業が終わっても、依頼なしには作らない。作成できる状態であること（作業ブランチが push 済みで、自己検査が通っている）を保守者に報告して、待つ。CI は PR の作成時に 1 回だけ自動で動くので、作業の途中で作ると、空に近い状態で動いてしまう。
+- Issue 対応の依頼には、範囲内の検証・コミット・作業ブランチへの通常 push・PR の作成と更新・Ready 化、およびそれに伴う自動 CI を含む。操作ごとの追加依頼は求めず、明示的に除外された操作は行わない。PR は作業ブランチを push し自己検査を終えてから作る。設計レビューは実装前、製品仕様の反映差分レビューはコミット前に待つ。
 - PR のタイトルと本文に、Issue 番号（`TAK-<nn>`）を入れる。本文には、変更の概要、検証の結果、**確認していないこと**を正直に書く。
 - 本文の構成は、[.github/pull_request_template.md](../.github/pull_request_template.md) に従う（概要・変更・仕様の反映・検証・確認していないこと）。GitHub の画面から作る PR には自動で入るが、GitHub の MCP ツール `create_pull_request` で作るときは自動では入らない。Agent は、このファイルを読み、見出しを変えずに本文を作る。記入案内の HTML コメントは、記入後に消してよい。テンプレートは開発用リポジトリだけにあり、公開用リポジトリへは書き出さない（`.gitattributes` の `export-ignore`）。
 - PR を作った後、保守者に確認して、PR の購読（`subscribe_pr_activity`）をする。CI の結果とレビューのコメントが、セッションに届く。
@@ -84,7 +84,7 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 2. 許可が得られたら、`run_workflow`（`workflow_id` に `macos-swift-ci.yml`、`ref` に作業ブランチ）で `workflow_dispatch` を起動する（2026-10-30 に確認。`204` が返り、run が作られて PR に関連づけられ、約 5 分で成功した）。1 回の許可で起動するのは 1 回だけ。
 3. 許可が得られない、または確認が保守者に届かないときは、保守者に、GitHub の Actions タブの「macOS Swift CI」→「Run workflow」で、作業ブランチを選んで実行するよう頼む。
 
-PR の作成と Draft の PR の Ready 化も CI を自動で起動するため、保守者が依頼したときだけ行う（「PR とマージ」）。`cancel_workflow_run` は使用時間を増やさないので、許可は不要。
+PR の作成と Draft の PR の Ready 化に伴う自動 CI は Issue 対応の依頼に含む（「PR とマージ」）。それぞれが自動 CI を起動し得るため、不要な Ready 化は行わない。`cancel_workflow_run` は使用時間を増やさないので、許可は不要。
 
 **権限設定**: Claude Code は `.claude/settings.json` の `permissions.ask` に `mcp__github__actions_run_trigger` と `Bash(gh workflow run *)`、`Bash(gh run rerun *)` を置く（Agent は編集できないため、保守者が編集する。反映は新しいセッションから）。Kilo Code は `.kilo/kilo.jsonc`、Codex は `.codex/rules/sdd.rules` で、同じ操作を確認の対象にする。Cloud で `ask` の確認が保守者に届くかは未確認。届かなければ `deny` にして、手動起動の運用（上の 3）にする。GitHub 側の予算の上限（Stop usage）も併用する。
 
@@ -107,6 +107,7 @@ PR の作成と Draft の PR の Ready 化も CI を自動で起動するため�
 ## 6 ブランチ
 
 - push してよいのは、作業ブランチだけ（`claude/*`、`ci/*`、`chore/*`、`docs/*`、`feature/*`、`bugfix/*`、`agent/*`）。`master` / `main` への push、強制 push（`--force`、`-f`、`+` 付きの refspec）、リモートブランチの削除は、行わない。Claude と Codex の Bash フックは `scripts/dev/check-git-push.py` で検査する。Claude は `.claude/settings.json` の deny でも禁止し、`master` と `--force` の push が `--dry-run` で拒否されることを 2026-10-30 に確認した。Codex のフックは信頼の承認が必要で、MCP や直接 API 呼び出しは検査しない。`AGENTS.md` の規則と GitHub の default ブランチ保護も使う。
+- Codex の push 規則は、フックが無効・未承認でも確認を残すため `prompt` を維持する。フックの `origin` 名は実際の URL や push URL の検証ではなく、現在の作業ブランチとの一致も保証しない。操作前に push 先とブランチを確認する。Codex アプリや実行環境の承認・自動承認レビュー・ネットワーク制限は別に適用され、リポジトリの設定では無効化できない。
 - **マージ済みのブランチは再利用しない**。PR はスカッシュマージされるため、作業ブランチの履歴は `master` と一致しなくなる。同じ名前で作り直すには強制 push が要り、禁止されている。次の作業は、最新の `master` から新しい `claude/` のブランチを作る。Cloud が指定した名前と別の名前を使うときは、保守者の許可を得る。
 - 作業の途中で `master` が先に進んだら、`git merge origin/master` で取り込んでから、PR を更新する。履歴を書き換えない。
 - 権限の設定（`.claude/settings.json`）は、**セッションの起動時に読み込まれる**。途中で設定を変えても、実行中のセッションには反映されない。反映するには新しいセッションが要る。Agent は、この設定ファイルを編集できない。
