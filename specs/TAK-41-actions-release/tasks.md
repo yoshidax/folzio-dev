@@ -188,3 +188,7 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 - 修正後の Cloud 検証: check-all140件成功 / macOS・rsync29件skip。YAML構文と生成jobからのartifact ID参照、Python / Bash構文を確認。修正コードをpushし、読み取り専用public API確認を含むmacOS CIでT027を再検証する。
 
 - download-artifact@v4 の実装を確認し、ID指定の展開は merge-multiple:true で固定する。github-token と run-id を明示して、前attemptも含むREST取得を使う。既存macOS CIに小さなhandoff probeを追加し、受取jobのみ初回を意図的に失敗させる任意入力から実際のfailed-job再実行を検証する。
+
+- 実CI 42259015217 の failed-jobs 再実行で、artifact13522914846（生成attempt1）をattempt2の受取jobが再利用して成功。
+  再実行しないjobもAPIでは新ID / attempt2に複製され、runner_id・実行時刻・全stepsは元のままという実データを確認。
+  候補の照合もこの複製を元の生成attemptに結び付けるよう補強し、本当の新規buildとは区別する回帰を追加した。

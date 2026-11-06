@@ -114,10 +114,25 @@ class CandidateValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.check()
 
+    def test_api_copies_of_unrerun_jobs_preserve_the_actual_producer_attempt(self):
+        import copy
+        self.jobs[0].update(runner_id=1000000144, started_at='2026-11-06T17:09:32Z', completed_at='2026-11-06T17:09:36Z')
+        copied = copy.deepcopy(self.jobs[0])
+        copied.update(run_attempt=2)
+        self.jobs.append(copied)
+        self.run['run_attempt'] = 2
+        self.check()
+        self.assertEqual(self.sync.latest_jobs(self.jobs)['Build release candidate']['run_attempt'], 1)
+        copied.update(started_at='2026-11-06T17:18:34Z', completed_at='2026-11-06T17:18:38Z')
+        with self.assertRaises(ValueError):
+            self.check()
+
     def test_waiting_sync_is_failure_but_successful_candidate_is_usable(self):
         self.meta.update(source_kind='merged-source', source_sha=self.target)
         self.run.update(path='.github/workflows/sync-public.yml', event='push', conclusion='failure', run_attempt=2)
         self.jobs[0]['name'] = 'Rebuild release candidate'
+        self.jobs[0].update(runner_id=1000000144, started_at='2026-11-06T17:09:32Z', completed_at='2026-11-06T17:09:36Z')
+        self.jobs.append(dict(self.jobs[0], run_attempt=2))
         self.jobs.append(dict(name='Await local verification', run_attempt=2, conclusion='failure',
                               steps=[dict(name='Await local verification', conclusion='failure')]))
         self.check()
@@ -462,6 +477,8 @@ class CandidateDownloadTests(unittest.TestCase):
         self.meta.update(source_kind='merged-source', source_sha=self.target)
         self.run.update(path='.github/workflows/sync-public.yml', event='push', conclusion='failure', run_attempt=2)
         self.jobs[0]['name'] = 'Rebuild release candidate'
+        self.jobs[0].update(runner_id=1000000144, started_at='2026-11-06T17:09:32Z', completed_at='2026-11-06T17:09:36Z')
+        self.jobs.append(dict(self.jobs[0], run_attempt=2))
         self.jobs.append(dict(name='Await local verification', run_attempt=2, conclusion='failure',
                               steps=[dict(name='Await local verification', conclusion='failure')]))
         api, data, item = self.bundle()

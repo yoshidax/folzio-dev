@@ -236,7 +236,17 @@ def latest_jobs(jobs):
             latest[name] = job
         elif int(job['run_attempt']) == int(latest[name]['run_attempt']):
             raise ValueError('同じ attempt の job が重複しています')
-    return latest
+    result = {}
+    for name, job in latest.items():
+        # failed jobs だけの再実行では、実行していない job も新しい ID / attempt で複製される。
+        # API のランナー・時刻・全 step が同一なら、最初の実行に成果物を結び付ける。
+        copies = [job]
+        if job.get('runner_id') and job.get('started_at') and job.get('completed_at'):
+            copies = [other for other in jobs if other['name'] == name and all(
+                other.get(key) == job.get(key) for key in
+                ('runner_id', 'started_at', 'completed_at', 'conclusion', 'steps'))]
+        result[name] = dict(job, run_attempt=min(int(other['run_attempt']) for other in copies))
+    return result
 
 
 def candidate(api, run_id, target, pr, tree, request):

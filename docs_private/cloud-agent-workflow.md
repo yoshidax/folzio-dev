@@ -119,3 +119,18 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 Publish release source は master の要求変更を判定し、候補一致時には静的検査だけで同期する。
 候補がずれた場合は固定 M の候補を作り、ローカル再確認と M/run 指定の手動再開を待つ。
 App Secret の設定や本番リリースは導入時の保守者の操作。通常開発の CI 検証のために同期・配布 workflow を起動しない。
+
+
+### リリース artifact の部分再実行の検証（TAK-41）
+
+macOS Swift CI は読み取り専用の公開用 Release / tag API と、小さな artifact の job 間引き継ぎも確認する。
+通常の PR と手動起動では `verify_artifact_retry=false` とし、すべての job が通常どおり成功する。
+
+引き継ぎの復旧を実際に確かめるときだけ、作業ブランチの手動起動で `verify_artifact_retry=true` を指定する。
+受け取り job は内容の照合後、初回だけ意図的に失敗する。macOS job の終了とログを確認してから
+「Re-run failed jobs」を選ぶ。成功した生成 job と macOS job は再実行せず、受け取り job が前の attempt の
+出力 ID と artifact を再利用して成功することを確認する。probe は実リリースのソースや Secret を含まず、保持は1日。
+候補のローカル確認待ちに使う失敗表示は、この検査用の意図的失敗とは別のものである。
+
+APIは再実行しないjobも新ID・attemptで複製するため、候補はrunner_id・実行時刻・全stepsが同一の実行を照合し、
+実際に生成した最初のattemptへ結び付ける。整数の最新attemptだけで生成済みartifactを拒否しない。
