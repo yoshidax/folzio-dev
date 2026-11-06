@@ -116,6 +116,12 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 
 ## 検証・承認の記録
 
+- 初回候補の run 42284638995 は通常テスト1057件・通信 API 検査・production build の成功後、
+  make-app.sh が SwiftPM 6.0 の翻訳リソース配置を扱えず停止し、ZIP は未生成。
+  保守者が診断 swiftpm-resource-layout と両配置への対応を承認したため、実 make-app の回帰4件と修正を追加した。
+  Cloud は143件成功 / macOS・rsync33件skip。修正後の最新候補 CI とダウンロード候補のローカル確認は未実施で、
+  T032 は未チェックのまま維持する。最新 CI と成果物の取得先は PR #65 に記録する。
+
 - 初回リリース準備: 保守者から GitHub App・Actions の設定と公開用 main の保護規則の確認（T031）が完了したと報告を受けた。
   設定内容と App の実認証は Cloud から未検証。公開用 main は ada5f31703afab1c1ee7082326c5f345bcab74dd で、
   Development-Commit trailer がないため初回同期は bootstrap_public_base が必要。同期時に現在の SHA を再確認する。

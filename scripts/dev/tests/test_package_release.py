@@ -1,4 +1,5 @@
 import os
+import plistlib
 import shutil
 import subprocess
 import sys
@@ -7,6 +8,87 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
+
+
+@unittest.skipUnless(sys.platform == 'darwin', 'macOS の make-app / PlistBuddy 検証')
+class MakeAppResourceTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.base = Path(self.temp.name)
+        self.source, self.bin = self.base / 'source', self.base / 'bin'
+        (self.source / 'scripts').mkdir(parents=True)
+        self.bin.mkdir()
+        shutil.copy2(ROOT / 'scripts/make-app.sh', self.source / 'scripts/make-app.sh')
+        icon = self.source / 'scripts/make-icon.sh'
+        icon.write_text('#!/bin/bash\nmkdir -p .build\nprintf icon > .build/AppIcon.icns\n')
+        icon.chmod(0o755)
+        self.stub('swift', 'if [[ " $* " == *" --show-bin-path "* ]]; then printf "%s\\n" "$PWD/.build/release"; fi')
+        self.stub('codesign', 'touch "$PWD/signed"')
+        self.env = dict(os.environ, PATH=str(self.bin) + os.pathsep + os.environ['PATH'],
+                        FOLZIO_VERSION='1.0.1', FOLZIO_BUILD_NUMBER='2', FOLZIO_ARCH='arm64')
+        self.bundle = self.source / '.build/release/Folzio_FolzioLocalization.bundle'
+        self.app = self.source / '.build/Folzio.app'
+
+    def stub(self, name, body):
+        file = self.bin / name
+        file.write_text('#!/bin/bash\n' + body + '\n')
+        file.chmod(0o755)
+
+    def resources(self, nested=False, missing=None):
+        shutil.rmtree(self.bundle, ignore_errors=True)
+        folder = self.bundle / 'Contents/Resources' if nested else self.bundle
+        for language in ('en', 'ja'):
+            for name in ('Localizable.strings', 'Localizable.stringsdict'):
+                if missing in (language, (language, name)):
+                    continue
+                resource = folder / (language + '.lproj') / name
+                resource.parent.mkdir(parents=True, exist_ok=True)
+                resource.write_text(language + ':' + name)
+        executable = self.source / '.build/release/FolzioApp'
+        executable.write_text('#!/bin/bash\nexit 0\n')
+        executable.chmod(0o755)
+
+    def make_app(self):
+        return subprocess.run(['bash', str(self.source / 'scripts/make-app.sh')],
+                              env=self.env, capture_output=True, text=True)
+
+    def assert_resources_copied(self, nested):
+        self.resources(nested=nested)
+        result = self.make_app()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        for language in ('en', 'ja'):
+            for name in ('Localizable.strings', 'Localizable.stringsdict'):
+                resource = self.app / 'Contents/Resources' / (language + '.lproj') / name
+                self.assertEqual(resource.read_text(), language + ':' + name)
+        info = plistlib.loads((self.app / 'Contents/Info.plist').read_bytes())
+        self.assertEqual(info['CFBundleShortVersionString'], '1.0.1')
+        self.assertEqual(info['CFBundleVersion'], '2')
+        self.assertTrue((self.source / 'signed').exists())
+
+    def test_flat_swiftpm_bundle(self):
+        self.assert_resources_copied(nested=False)
+
+    def test_contents_resources_bundle(self):
+        self.assert_resources_copied(nested=True)
+
+    def test_missing_language_stops_before_signing(self):
+        for nested in (False, True):
+            for language in ('en', 'ja'):
+                with self.subTest(nested=nested, language=language):
+                    self.resources(nested=nested, missing=language)
+                    self.assertNotEqual(self.make_app().returncode, 0)
+                    self.assertFalse(self.app.exists())
+                    self.assertFalse((self.source / 'signed').exists())
+
+    def test_missing_stringsdict_stops_before_signing(self):
+        for nested in (False, True):
+            for language in ('en', 'ja'):
+                with self.subTest(nested=nested, language=language):
+                    self.resources(nested=nested, missing=(language, 'Localizable.stringsdict'))
+                    self.assertNotEqual(self.make_app().returncode, 0)
+                    self.assertFalse(self.app.exists())
+                    self.assertFalse((self.source / 'signed').exists())
 
 
 @unittest.skipUnless(sys.platform == 'darwin' and os.uname().machine == 'arm64', 'Apple silicon macOS のパッケージ検証')
