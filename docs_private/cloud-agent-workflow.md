@@ -66,7 +66,7 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 
 この CI は開発用で、公開用リポジトリには書き出さない（TAK-40）。開発用の workflow は `.github/workflows/`、公開用リポジトリだけで動かす workflow は `scripts/dev/oss-workflows/` に置く。詳細は [repository-and-release.md](repository-and-release.md) の「GitHub Actions の workflow」にある。
 
-**CI の構成（2026-10-30 時点）**: `macos-15` のランナー、Xcode 16.0（Swift 6.0）。`swift build` → 通常のテスト（`swift test --no-parallel --skip FolzioPerformanceTests`、10 分のタイムアウト）→ 性能テスト（失敗を許容、10 分のタイムアウト）。ジョブ全体のタイムアウトは 30 分。テストの各ステップに、ジョブ全体より短いタイムアウトがあるため、止まったテストが 30 分間ランナーを占有することはなく、止まった箇所をログから読める。通常のテストを直列で実行するのは、3 コアのランナーで並列に実行すると進まなくなったため（原因は未調査）。
+**CI の構成（2026-11-07 時点）**: `macos-15` のランナー、Xcode 16.0（Swift 6.0）。HEAD の公開ツリー検査 → 公開・配布スクリプトの回帰 → `swift build` → 通常のテスト（`swift test --no-parallel --skip FolzioPerformanceTests`、10 分のタイムアウト）→ 性能テスト（失敗を許容、10 分のタイムアウト）。ジョブ全体のタイムアウトは 30 分。テストの各ステップに、ジョブ全体より短いタイムアウトがあるため、止まったテストが 30 分間ランナーを占有することはなく、止まった箇所をログから読める。通常のテストを直列で実行するのは、3 コアのランナーで並列に実行すると進まなくなったため（原因は未調査）。
 
 **いつ動くか**: PR を作ったとき、PR に push したとき（Draft の PR を含む）、閉じた PR を開き直したとき、Draft の PR を Ready にしたときに**自動で動く**。手動でも実行できる（`workflow_dispatch`）。続けて push すると、古い実行は取り消され、最新の head の実行だけが残る（`concurrency`）。開発用リポジトリは公開リポジトリなので、macOS を含む標準ランナーの使用は無料である（TAK-80）。
 
@@ -121,16 +121,15 @@ Publish release source は master の要求変更を判定し、候補一致時�
 App Secret の設定や本番リリースは導入時の保守者の操作。通常開発の CI 検証のために同期・配布 workflow を起動しない。
 
 
-### リリース artifact の部分再実行の検証（TAK-41）
+### 通常 CI と実証の記録（TAK-41）
 
-macOS Swift CI は読み取り専用の公開用 Release / tag API と、小さな artifact の job 間引き継ぎも確認する。
-通常の PR と手動起動では `verify_artifact_retry=false` とし、すべての job が通常どおり成功する。
+通常の macOS Swift CI は、checkout した実際の HEAD を共通 exporter で書き出してから build / test へ進む。
+ホームパス・README・公開境界の不備は、release.json を変更しない PR でも検出する。
 
-引き継ぎの復旧を実際に確かめるときだけ、作業ブランチの手動起動で `verify_artifact_retry=true` を指定する。
-受け取り job は内容の照合後、初回だけ意図的に失敗する。macOS job の終了とログを確認してから
-「Re-run failed jobs」を選ぶ。成功した生成 job と macOS job は再実行せず、受け取り job が前の attempt の
-出力 ID と artifact を再利用して成功することを確認する。probe は実リリースのソースや Secret を含まず、保持は1日。
-候補のローカル確認待ちに使う失敗表示は、この検査用の意図的失敗とは別のものである。
+部分再実行は [CI 42259015217 attempt2](https://github.com/yoshidax/folzio-dev/actions/runs/42259015217/attempts/2) で実証済み。
+生成 attempt1 の artifact13522914846 を、受取 job だけが attempt2 で再利用して成功した。
+実証用の artifact-plan / artifact-retry job・verify_artifact_retry 入力と公開 API 参照 step は通常 CI から外す。
+回帰テストと、この実証結果を維持する。再実証が必要なら、通常 PR の CI に常設せず、検証用の変更として扱う。
 
-APIは再実行しないjobも新ID・attemptで複製するため、候補はrunner_id・実行時刻・全stepsが同一の実行を照合し、
-実際に生成した最初のattemptへ結び付ける。整数の最新attemptだけで生成済みartifactを拒否しない。
+API は未再実行の job も新 ID / attempt で複製するため、候補は runner_id・実行時刻・全 steps が同一の実行を照合し、
+実際に生成した最初の attempt へ結び付ける。整数の最新 attempt だけで生成済み artifact を拒否しない。

@@ -356,3 +356,14 @@ Developer ID 署名と Apple 公証は行わない。
   main の先端1コミットだけを fetch して base を再確認する。
 - Swift テストの架空ホームは `/test-homes/` を使い、exporter に fixture のユーザー名の例外を置かない。
 - README 構造は `scripts/check-readme-sync.sh --structure-only EN_FILE JA_FILE` で Git なしの候補にも共通検査する。
+
+### 通常 PR の公開検査と配布前の再確認
+
+通常の macOS CI は、実際に checkout した HEAD の公開ツリーを先頭で生成・検査する。
+release.json を変更しない PR のホームパス混入も、その PR の必須 CI で検出する。
+実証用の2つの Ubuntu job と公開 API 参照 step は通常 CI には残さず、再実行の証拠と回帰テストを保持する。
+
+公開用 plan は Ubuntu / contents read を維持するため、push 権限が必要なドラフトの一覧は保証できない。
+contents write を既に持つ release job は、checkout 直後・toolchain 選択や build / test の前に状態を再確認する。
+既存ドラフトがあれば、この時点で停止する。macOS の起動と checkout は必要だが、通常テスト・配布ビルドは行わない。
+ドラフトを作成する直前の再確認も維持し、途中の状態変化に対処する。

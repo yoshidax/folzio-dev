@@ -64,7 +64,7 @@ T004 の承認前には実装しない。PR と本番設定も、今回の設計
 ## Phase 7: Polish — 実装 PR の検証と反映
 
 - [x] T026 `scripts/dev/check-all.sh` を実行し、新しい判定・同期テストを含む Cloud の結果をこの tasks.md に記録する
-- [x] T027 `.github/workflows/macos-swift-ci.yml` の build / test と公開・配布回帰の結果を確認し、この tasks.md に記録する
+- [ ] T027 `.github/workflows/macos-swift-ci.yml` の build / test と公開・配布回帰の結果を確認し、この tasks.md に記録する
 - [x] T028 保守者が作業ブランチで `scripts/make-app.sh` → `open .build/Folzio.app` の3ペイン・日英のマージ前スモークを確認し、この tasks.md に記録する
 - [x] T029 最新 master と `scripts/dev/check-spec-ids.sh` を確認してから、`specs/product/overview.md` と `specs/product/contracts/scripts.md`・app-bundle.md・README.md に反映する。特に FR-311（overview.md）の検査場所・性能の例外・失敗後の即時中断と、scripts 契約の旧「同期後テスト」をそろえ、ID と形式・check-all を検査する
 - [x] T030 `specs/product/` の反映差分を保守者に示し、承認後にコミットする。実装 PR は保守者の依頼時だけ作成する
@@ -210,3 +210,16 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
   提示したpatchと作業ツリーの差分の完全一致を確認し、最新origin/master（03c80bc）が祖先であることを確認した。
   ID重複なし、形式エラー0・既存警告88件で増加なしを再確認し、承認差分とT029・T030の完了記録をコミットする。
   導入・実リリースのT031〜T035は未実施のまま残し、IssueはIn Progressを維持する。
+
+
+## 追加レビュー3件への対応（2026-11-07）
+
+- 通常 PR の macOS CI で、checkout した実 HEAD を共通 exporter で最初に生成・検査する。
+  release.json の変更に関係なくホームパス・README・公開境界の不備を PR 内で検出する。
+- 公開用 plan の contents read は維持し、既存の contents write を持つ release job の冒頭でも plan を実行する。
+  read-only の一覧から隠れていた draft を通常テスト・配布ビルドの前に拒否する回帰を追加する。
+  macOS 起動・checkout は残るが、ビルド後まで検出が遅れる問題を解消し、資格情報の権限を広げない。
+- 実証用 artifact-plan / artifact-retry の2 job・verify_artifact_retry 入力と公開 API 参照 step を通常 CI から削除。
+  実証結果と回帰テストを保持する。T027 は変更後の CI 確認まで未チェックへ戻す。
+
+- 追加修正のCloud検証: check-all142件成功 / macOS・rsync29件skip。CIはmacOSの1jobだけでHEAD書き出しが先頭、公開用は既存の権限のままdraft再確認が通常テスト・buildの前であることをYAML構造で確認した。製品仕様の要件・契約と権限モデルは変更しない。

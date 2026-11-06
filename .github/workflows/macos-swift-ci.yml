@@ -4,12 +4,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
-    inputs:
-      verify_artifact_retry:
-        description: Verify failed-job retry with the previous attempt's artifact
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -31,6 +25,9 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Check public source snapshot
+        run: bash scripts/dev/export-public.sh "$(git rev-parse HEAD)" "$RUNNER_TEMP/public-source"
+
       - name: Select Xcode
         run: |
           ls -d /Applications/Xcode_*.app
@@ -50,22 +47,6 @@ jobs:
           done
           exit "$status"
 
-      - name: Verify read-only public release APIs
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          python3 - <<'PYAPI'
-          import sys
-          sys.path.insert(0, 'scripts')
-          import release
-          api = release.GitHub(release.PUBLIC_REPO)
-          print('Readable public releases:', len(api.pages('releases')))
-          tags = api.api('git/matching-refs/tags/')
-          print('Readable public tags:', len(tags))
-          if tags:
-              release.tag_commit(api, tags[0]['ref'][len('refs/tags/'):])
-          PYAPI
-
       - name: Build
         run: swift build
 
@@ -80,47 +61,3 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         run: swift test --filter FolzioPerformanceTests
-
-  artifact-plan:
-    name: Produce release handoff probe
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      artifact_id: ${{ steps.upload.outputs.artifact-id }}
-    steps:
-      - name: Prepare probe
-        run: printf '%s\n' "$GITHUB_RUN_ID" > "$RUNNER_TEMP/retry-probe.txt"
-      - uses: actions/upload-artifact@v4
-        id: upload
-        with:
-          name: release-handoff-probe-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/retry-probe.txt
-          if-no-files-found: error
-          retention-days: 1
-  artifact-retry:
-    name: Verify release artifact handoff
-    needs: artifact-plan
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      actions: read
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          artifact-ids: ${{ needs.artifact-plan.outputs.artifact_id }}
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ github.run_id }}
-          merge-multiple: true
-          path: ${{ runner.temp }}/retry-probe
-      - name: Verify preserved input
-        env:
-          VERIFY_RETRY: ${{ inputs.verify_artifact_retry }}
-        run: |
-          test "$(cat "$RUNNER_TEMP/retry-probe/retry-probe.txt")" = "$GITHUB_RUN_ID"
-          if [[ "$VERIFY_RETRY" == true && "$GITHUB_RUN_ATTEMPT" == 1 ]]; then
-            echo 'Intentional first-attempt failure. Re-run failed jobs to verify the original artifact ID.'
-            exit 1
-          fi
-          echo "Verified original producer artifact on attempt $GITHUB_RUN_ATTEMPT"

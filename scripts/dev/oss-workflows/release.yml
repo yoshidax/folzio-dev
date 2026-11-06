@@ -40,6 +40,10 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Recheck release state before build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/release.py plan
       - name: Select toolchain
         run: |
           test "$(uname -m)" = arm64

@@ -245,6 +245,16 @@ class PublicPlanTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.release.public_plan(self.root, FakeAPI({}))
 
+    def test_write_token_recheck_rejects_draft_hidden_from_readonly_plan(self):
+        sha = self.request()
+        tag = {'git/ref/tags/v1.2.3': {'object': {'type': 'commit', 'sha': sha}}}
+        self.assertTrue(self.release.public_plan(self.root, FakeAPI(tag))['ready'])
+        write_view = FakeAPI(dict(tag, **{
+            'releases?per_page=100&page=1': [dict(tag_name='v1.2.3', draft=True)]}))
+        with self.assertRaisesRegex(ValueError, 'Release already exists'):
+            self.release.public_plan(self.root, write_view)
+        self.assertTrue(all(call[0] == 'GET' for call in write_view.calls))
+
     def test_dirty_metadata_never_changes_committed_request(self):
         self.request()
         (self.root / 'release.json').write_text('{}')

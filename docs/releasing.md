@@ -6,6 +6,9 @@ Ordinary development changes do not update the distribution repository.
 
 ## Prepare a release pull request
 
+Every development pull request checks the public source snapshot of its checked-out commit before building.
+Home paths, README mismatches, and excluded-file leaks are detected without waiting for a release request.
+
 1. In the development repository, copy `release.example.json` to `release.json`.
 2. Choose an unused `version`, a `build_number`, and a Markdown file under `release-notes/`.
    The candidate checks public tags and releases before building; an already used version is rejected.
@@ -74,6 +77,9 @@ This check includes drafts, which are absent from the release-by-tag endpoint an
 
 If the public source was already synchronized, repeat the original public build run to retry only the binary release.
 An identical source synchronization creates no duplicate commit. An existing tag can be reused only for the same public commit.
+The public plan uses read-only permissions, so an existing draft can be hidden from it.
+The release job rechecks with its existing write permission immediately after checkout, before tests or builds.
+An existing draft stops there; macOS startup and checkout still occur. The final check before creating a draft also remains.
 Existing draft or published releases are never overwritten. Inspect a partial draft and repair or delete it manually before retrying.
 Use a new version for a different published commit. Concurrent public updates stop with a conflict; never force the update.
 
