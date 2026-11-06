@@ -9,16 +9,16 @@
 - [x] T001 最新 master と追加要望を確認し、`specs/TAK-41-actions-release/spec.md` に release.json 変更 PR とローカル確認を反映する
 - [x] T002 `specs/TAK-41-actions-release/plan.md`・research・data-model・contracts・quickstart と品質チェックを作る
 - [x] T003 `specs/TAK-41-actions-release/tasks.md` に実装と導入検証の順序・要件対応を作る
-- [ ] T004 保守者の改訂設計のレビュー結果を `specs/TAK-41-actions-release/tasks.md` に追記する
+- [x] T004 保守者の改訂設計のレビュー結果を `specs/TAK-41-actions-release/tasks.md` に追記する
 
 T004 の承認前には実装しない。PR と本番設定も、今回の設計作業では作成・変更しない。
 
 ## Phase 2: Foundational — 共通の公開生成と要求
 
-- [ ] T005 `scripts/dev/tests/test_publish_folzio.py` に除外、README 調整、workflow 配置・内容、ホームパス、リンクと入力 source SHA の検証を追加する（FR-334）
-- [ ] T006 `scripts/dev/export-public.sh` を現行 publish から分離し、検証済み公開候補だけを生成する（FR-333・334）。`scripts/dev/publish.sh` は通常手順から外し、残す場合も共通処理へ委譲する（FR-179・339）
-- [ ] T007 `scripts/dev/tests/test_check_release_workflow.py` に metadata・ノートの不備、未知/重複キー、symlink・パス逸脱、push 比較不能・初回 before と、version の01.2.0 / 1.02.0 / 1.2.00・build の007の拒否、0単独の受理を追加する（FR-324・330）
-- [ ] T008 `scripts/release.py` に要求とイベントの共通検証を実装する。version は「文字列。`(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)` に全体一致」、build_number は「文字列。`(0|[1-9][0-9]*)` に全体一致」、notes_file は「`release-notes/` 配下の `.md` への相対パス」とし、値を補正せず data-model の全制約を検証する
+- [x] T005 `scripts/dev/tests/test_publish_folzio.py` に除外、README 調整、workflow 配置・内容、ホームパス、リンクと入力 source SHA の検証を追加する（FR-334）
+- [x] T006 `scripts/dev/export-public.sh` を現行 publish から分離し、検証済み公開候補だけを生成する（FR-333・334）。`scripts/dev/publish.sh` は通常手順から外し、残す場合も共通処理へ委譲する（FR-179・339）
+- [x] T007 `scripts/dev/tests/test_check_release_workflow.py` に metadata・ノートの不備、未知/重複キー、symlink・パス逸脱、push 比較不能・初回 before と、version の01.2.0 / 1.02.0 / 1.2.00・build の007の拒否、0単独の受理を追加する（FR-324・330）
+- [x] T008 `scripts/release.py` に要求とイベントの共通検証を実装する。version は「文字列。`(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)` に全体一致」、build_number は「文字列。`(0|[1-9][0-9]*)` に全体一致」、notes_file は「`release-notes/` 配下の `.md` への相対パス」とし、値を補正せず data-model の全制約を検証する
 
 ## Phase 3: US74 — リリース PR と同期（P1）
 
@@ -139,3 +139,7 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 コード・製品仕様の正本・既存 CI・保護規則はこの修正では変更していない。
 
 設計修正後の検証: check-all 成功（既存73件 + 19件）、文書リンク・表・タスク ID・提案 ID の衝突なし、先頭0拒否の正規表現例を確認。新機能の実 CI・GUI は未実施。
+
+- 2026-11-06: 保守者が spec を承認。1a87362 の改訂設計に沿った実装を開始する。
+
+- 基盤実装: exporter の Python helper を export-public.sh から呼び出す。指定 SHA・dirty worktree・既存出力保護・公開境界の3件と metadata の3件を確認。旧 publish は共通 exporter を利用する復旧用。Cloud に rsync がないため旧ローカル復旧の18件は macOS CI で確認する。

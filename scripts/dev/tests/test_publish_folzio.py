@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 
 
+@unittest.skipUnless(shutil.which("rsync"), "ローカル復旧の検証には rsync が必要")
 class PublishTests(unittest.TestCase):
     def exercise_publish(self, exclude_dev=True, exclude_shared=True):
         with tempfile.TemporaryDirectory() as directory:
@@ -26,6 +27,8 @@ class PublishTests(unittest.TestCase):
             (dev / "nested").mkdir(parents=True)
             shutil.copy2(ROOT / "scripts/dev/publish.sh", dev / "publish.sh")
             shutil.copy2(ROOT / "scripts/dev/strip-readme-dev-note.sh", dev / "strip-readme-dev-note.sh")
+            for name in ("export-public.sh", "export-public.py"):
+                shutil.copy2(ROOT / "scripts/dev" / name, dev / name)
             (dev / "new-private.sh").write_text("private helper\n")
             (dev / "nested/secret.txt").write_text("private nested file\n")
             shared = source / "shared-skills"
@@ -104,6 +107,8 @@ class PublishFixture:
         dev.mkdir(parents=True)
         shutil.copy2(ROOT / "scripts/dev/publish.sh", dev / "publish.sh")
         shutil.copy2(ROOT / "scripts/dev/strip-readme-dev-note.sh", dev / "strip-readme-dev-note.sh")
+        for name in ("export-public.sh", "export-public.py"):
+            shutil.copy2(ROOT / "scripts/dev" / name, dev / name)
         for path in ("scripts/check-readme-sync.sh", "scripts/dev/check-english-comments.sh",
                      "scripts/check-no-network.sh"):
             self.write(path, "#!/bin/sh\nexit 0\n")
@@ -151,6 +156,7 @@ class PublishFixture:
         return {path.name: path.read_text() for path in directory.iterdir()}
 
 
+@unittest.skipUnless(shutil.which("rsync"), "ローカル復旧の検証には rsync が必要")
 class PublishVerificationTests(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
@@ -243,6 +249,7 @@ def without_workflow_exclusion(text):
                    if not line.startswith("/.github/workflows "))
 
 
+@unittest.skipUnless(shutil.which("rsync"), "ローカル復旧の検証には rsync が必要")
 class WorkflowPublishTests(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
@@ -341,6 +348,7 @@ def with_note(readme):
     return head + separator + language + separator2 + NOTE + body
 
 
+@unittest.skipUnless(shutil.which("rsync"), "ローカル復旧の検証には rsync が必要")
 class ReadmeDevNotePublishTests(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
@@ -387,3 +395,45 @@ class ReadmeDevNotePublishTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ExporterTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.fixture = PublishFixture(Path(self.directory.name))
+        self.output = Path(self.directory.name) / 'export'
+
+    def export(self, sha=None):
+        if sha is None:
+            sha = subprocess.check_output(['git', '-C', str(self.fixture.source), 'rev-parse', 'HEAD'], text=True).strip()
+        return subprocess.run(['bash', str(ROOT / 'scripts/dev/export-public.sh'), sha, str(self.output)],
+                              cwd=self.fixture.source, capture_output=True, text=True)
+
+    def test_fixed_commit_and_dirty_worktree(self):
+        sha = subprocess.check_output(['git', '-C', str(self.fixture.source), 'rev-parse', 'HEAD'], text=True).strip()
+        self.fixture.write('README.md', 'uncommitted\n')
+        result = self.export(sha)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.output / 'README.md').read_text(), 'Folzio\n')
+        self.assertFalse((self.output / 'scripts/dev').exists())
+        self.assertNotEqual(self.export(sha).returncode, 0)
+
+    def test_bad_source_and_private_link_leave_no_output(self):
+        self.assertNotEqual(self.export('HEAD').returncode, 0)
+        self.assertFalse(self.output.exists())
+        self.fixture.write('docs/test.md', '[private](../specs/product/overview.md)\n')
+        self.fixture.commit()
+        self.assertNotEqual(self.export().returncode, 0)
+        self.assertFalse(self.output.exists())
+
+    def test_real_public_workflow_and_export_helpers(self):
+        self.fixture.write('scripts/dev/oss-workflows/release.yml',
+                           (ROOT / 'scripts/dev/oss-workflows/release.yml').read_text()
+                           if (ROOT / 'scripts/dev/oss-workflows/release.yml').exists() else 'name: Release\n')
+        self.fixture.write('.github/workflows/private.yml', 'name: private\n')
+        self.fixture.commit()
+        self.assertEqual(self.export().returncode, 0)
+        self.assertFalse((self.output / '.github/workflows/private.yml').exists())
+        self.assertEqual((self.output / '.github/workflows/release.yml').read_text(),
+                         (self.fixture.source / 'scripts/dev/oss-workflows/release.yml').read_text())
