@@ -8,7 +8,8 @@
 ## Phase 1: 設計
 
 - [x] T001 `specs/TAK-80-publish-dev-repo/` に仕様・計画・調査・契約・検証手順を作り、`speckit-analyze` で整合性を確かめる。
-- [ ] T002 `specs/TAK-80-publish-dev-repo/` の設計を保守者に示し、実装の前に承認を得る。
+- [x] T002 `specs/TAK-80-publish-dev-repo/` の設計を保守者に示し、実装の前に承認を得る。
+  2026-11-06 に承認。ブランチ保護に例外を置かず、`merge-to-master.sh` を削除する（論点 1 は案 B）。
 
 ## Phase 2: US68 開発用リポジトリを訪れた人を公開用リポジトリへ案内する (P1)
 
@@ -38,7 +39,7 @@ CI の `test_publish_folzio` で、書き出しの README に注記がなく、�
 **Independent Test**: この PR に追加の push をして、CI が自動で動くことを PR の checks で確かめる（保守者が公開した後）。
 
 - [ ] T008 [P] [US69] `.github/workflows/macos-swift-ci.yml` の `pull_request` の `types` を `[opened, synchronize, reopened, ready_for_review]` にする。
-  ほかは変えない（R3）。
+  `permissions: contents: read`（FR-319）を含め、ほかは変えない（R3）。
 - [ ] T009 [P] [US69] `.codex/rules/sdd.rules` から `gh workflow run`・`gh run rerun` の規則とコメントを消す。
   `.kilo/kilo.jsonc` から `gh workflow run *`・`gh run rerun *`・`github_actions_run_trigger` の `ask` を消す。
   関係するテスト（`scripts/dev/tests/`）が通ることを確かめる。
@@ -58,14 +59,14 @@ CI の `test_publish_folzio` で、書き出しの README に注記がなく、�
 **Independent Test**: 手順だけを読んで、保護の項目、必須チェックの名前、fork の承認の設定を答えられる（SC-169）。
 
 - [ ] T014 [US70] `docs_private/repository-and-release.md` に節「開発用リポジトリの公開とブランチ保護」を足す（R4）:
-  2 つの ruleset の項目と bypass、必須チェックの選び方（CI が 1 回動いた後に候補から選ぶ）、fork の承認の設定、
+  bypass なしの ruleset 1 つの項目、必須チェックの選び方（CI が 1 回動いた後に候補から選ぶ）、fork の承認の設定、
   ジョブの名前を変えるときの手順（EC-218）、workflow に実行の条件を付けない理由（EC-217）、設定後の確かめ方、
   rulesets が使えない場合の classic の代わりの設定、未確認の点。
 
 ## Phase 5: 「非公開」の前提の記述を直す（FR-317）
 
 - [ ] T015 `docs_private/repository-and-release.md` の非公開の前提を直す: 冒頭、「2つのリポジトリ」の表（remote）、
-  「開発用 master へのマージとバックアップ」（private リポジトリ）、「ドキュメントの配置」の `docs_private/` の説明
+  「開発用 master へのマージとバックアップ」（PR によるマージの手順に置き換える。FR-321）、「ドキュメントの配置」の `docs_private/` の説明
   （公開用リポジトリへ書き出さない文書）、「公開用リポジトリの方針」（開発の履歴は開発用リポジトリで公開している）、
   「公開の手順」に README の注記を除く手順を足す。
 - [ ] T016 `AGENTS.md` の「`docs/`・README・ソースのコメントは公開される」の行を、公開用リポジトリへ書き出されることが分かる文言にする。
@@ -73,6 +74,12 @@ CI の `test_publish_folzio` で、書き出しの README に注記がなく、�
 - [ ] T017 `grep -rnI "非公開\|private リポジトリ\|private repository\|無料枠\|使用時間"` で、現行の文書・規約・設定・スクリプトのコメントに
   残る非公開と費用の前提を洗い出して直す（凍結した記録は除く。EC-219）。`scripts/dev/merge-to-master.sh` の冒頭のコメント
   （private development repository）を含む。結果をこのファイルの末尾に記録する。
+
+## Phase 5b: `master` への統合を PR だけにする（FR-321）
+
+- [ ] T023 `scripts/dev/merge-to-master.sh` を削除する。参照を直す: `AGENTS.md` の PR の行（行数を増やさない。理由を末尾に記録）、
+  `docs_private/agents/README.md` の「`merge-to-master.sh` で `master` へ入れるとき」の項目、`docs_private/codex-speckit.md` の最後の統合、
+  `.codex/rules/sdd.rules` と `.kilo/kilo.jsonc` の禁止の規則。`grep -rn merge-to-master` で、凍結した記録のほかに残らないことを確かめる。
 
 ## Phase 6: 仕様の反映と検証
 
@@ -91,7 +98,7 @@ CI の `test_publish_folzio` で、書き出しの README に注記がなく、�
 - T002（設計の承認）の後に実装を始める。
 - US68: T003 → T004 → T005・T006 → T007。T004 は T003 のテストを通すことで完了とする。
 - US69: T008・T009・T012・T013 は独立。T010 と T011 は同じ規則を扱うので続けて行う。
-- US70 と Phase 5 の T015 は同じファイルなので、T014 → T015 の順にする。
+- US70 と Phase 5 の T015 は同じファイルなので、T014 → T015 の順にする。T023 は T015 の後（同じファイルの節を扱う）。
 - Phase 6 は、ほかのすべての後に行う。仕様の反映は PR の最後の作業にする（`docs_private/cloud-agent-workflow.md` の 7 章）。
 
 ## Implementation Strategy
@@ -101,7 +108,7 @@ CI の `test_publish_folzio` で、書き出しの README に注記がなく、�
 
 ## PR に書く理由（`AGENTS.md` の変更）
 
-（T010・T016 で記録する）
+（T010・T016・T023 で記録する）
 
 ## 検証記録
 

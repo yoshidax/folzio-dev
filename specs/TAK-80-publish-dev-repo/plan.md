@@ -12,6 +12,7 @@
   除く処理は開発専用の小さなスクリプトに分け、`publish.sh` から呼ぶ（research R1・R2）。
 - CI を PR への push のたびに動かし、CI の起動・再実行の許可の規則（TAK-53）をなくす（US69、R3・R5）。
 - `master` のブランチ保護と fork の workflow の承認の設定手順を書く。設定は保守者が行う（US70、R4）。
+  使っていない `scripts/dev/merge-to-master.sh` を削除し、`master` への統合を PR だけにする（FR-321）。
 - 「非公開」を前提にした現行の記述を直す（FR-317、R6）。
 - 最後に `specs/product/` へ反映する。
 
@@ -86,6 +87,8 @@ docs_private/cloud-agent-workflow.md          # 3・4・5 章の CI と PR の�
 docs_private/repository-and-release.md        # 非公開の前提を直し、ブランチ保護の手順と注記の書き出しを追加（FR-317・FR-318）
 docs_private/agents/README.md                 # TAK-53 の例を替える
 .github/pull_request_template.md              # CI の実行の種類の記述（workflow_dispatch の前提）を直す
+scripts/dev/merge-to-master.sh                # 削除（FR-321）
+docs_private/codex-speckit.md                 # 最後の統合を PR 経由に直す（FR-321）
 specs/product/overview.md, README.md, contracts/scripts.md   # 最後に反映
 ```
 
@@ -109,13 +112,17 @@ specs/product/overview.md, README.md, contracts/scripts.md   # 最後に反映
 
 ### ブランチ保護（R4）
 
-- `docs_private/repository-and-release.md` に「開発用リポジトリの公開とブランチ保護」の節を足し、2 つの ruleset と fork の承認の
-  設定、設定後の確かめ方（CI が成功していない PR はマージできない、`merge-to-master.sh` の push が通る、強制 push が拒否される）を書く。
-- 未確認の点（rulesets の可否、bypass の動作）は、手順の中に「確かめる」として書き、使えない場合の classic の代わりの設定も書く。
+- `docs_private/repository-and-release.md` に「開発用リポジトリの公開とブランチ保護」の節を足し、bypass なしの ruleset 1 つと
+  fork の承認の設定、設定後の確かめ方（CI が成功していない PR はマージできない、承認なしで自分の PR をマージできる）を書く。
+- 未確認の点（rulesets の可否）は、手順の中に「確かめる」として書き、使えない場合の classic の代わりの設定も書く。
+- 「開発用 master へのマージとバックアップ」の節は、PR によるマージの手順に置き換える（FR-321）。
 
 ### 規約と権限（R5）
 
-- `AGENTS.md` の行数は 46 行（上限 50、警告 45）。CI の許可の行を消すと 45 行になる。公開の文言の行は書き換えで、行数を増やさない。
+- `AGENTS.md` の行数は 46 行（上限 50、警告 45）。CI の許可の行を消すと 45 行になる。公開の文言の行と、
+  `merge-to-master.sh` を挙げた PR の行は書き換えで、行数を増やさない。
+- `.codex/rules/sdd.rules`・`.kilo/kilo.jsonc` の `merge-to-master.sh` の禁止の規則も消す。`.claude/settings.json` の deny の 2 行は
+  Agent が編集できないので、保守者に任せる（スクリプトがなければ効果はない）。
 - `AGENTS.md` の変更の理由は、PR の本文の「変更」に独立した項目で書く（`docs_private/agents/README.md` の「追加の理由を残す」）。
 
 ### 仕様の反映
@@ -126,8 +133,9 @@ specs/product/overview.md, README.md, contracts/scripts.md   # 最後に反映
 
 ## 保守者が行うこと（Agent はできない）
 
-1. この PR の前に、リポジトリを公開する（A-196）。
-2. `.claude/settings.json` の `permissions.ask` から、CI の起動・再実行の 3 項目を消す（A-198）。
+1. この PR の前に、リポジトリを公開する（A-196。2026-11-06 に公開済み）。
+2. `.claude/settings.json` の `permissions.ask` から、CI の起動・再実行の 3 項目を消す（A-198。2026-11-06 に対応済み）。
+   `merge-to-master.sh` の deny の 2 行も、必要なら消す。
 3. この PR の CI が 1 回動いた後に、手順に従ってブランチ保護と fork の承認を設定し、確かめる（A-197）。
 4. マージ後に、書き出し（`scripts/dev/publish.sh`）で README から注記が消えることを確かめる（ローカルの macOS）。
 

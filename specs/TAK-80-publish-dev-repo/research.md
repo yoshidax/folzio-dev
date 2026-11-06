@@ -49,35 +49,28 @@
 
 ## R4: `master` のブランチ保護の設定
 
-- **Decision**: GitHub の rulesets を 2 つ作る手順を、`docs_private/repository-and-release.md` に書く。設定は保守者が行う。
-  1. 「master の保持」: 対象は default ブランチ。「Restrict deletions」と「Block force pushes」。bypass の対象はなし。
-  2. 「master への PR と CI」: 対象は default ブランチ。「Require a pull request before merging」（承認の数は 0）と
-     「Require status checks to pass」（`Build and test (macOS 15 / arm64)`、GitHub Actions から）。bypass の対象に
-     Repository admin を加える。
+- **Decision**: GitHub の ruleset を 1 つ作る手順を、`docs_private/repository-and-release.md` に書く。設定は保守者が行う。
+  - 対象は default ブランチ（`master`）。bypass の対象は置かない（保守者を含めて適用する）。
+  - 規則: 「Restrict deletions」「Block force pushes」「Require a pull request before merging」（承認の数は 0）、
+    「Require status checks to pass」（`Build and test (macOS 15 / arm64)`、GitHub Actions から）。
+  - 必須チェックは、この PR の CI が 1 回動いた後に、ruleset の画面の候補から選ぶ（名前を手で入力しない）。
   - fork の workflow: Settings → Actions → General の「Approval for running fork pull request workflows from contributors」で、
     「Require approval for all external contributors」を選ぶ。
-  - 必須チェックは、この PR の CI が 1 回動いた後に、ruleset の画面の候補から選ぶ（名前を手で入力しない）。
 - **Rationale**:
-  - 保守者は `scripts/dev/merge-to-master.sh` で、ローカルでマージした `master` を直接 push する（`merge-to-master.sh` の
-    `git push origin "$commit:refs/heads/master"`）。「Require a pull request」を例外なく適用すると、このローカルの運用
-    （FR-194）が拒否される。管理者だけを bypass にすると、Agent（保守者の権限で動く GitHub App や MCP）にも同じ権限が
-    及ぶ可能性があるが、Agent の `master` への push とマージは、別の層（`scripts/dev/check-git-push.py`、
-    `.claude/settings.json` の deny、AGENTS.md）で禁止している。
-  - 強制 push と削除の禁止は、保守者のローカルの操作でも必要がないので、bypass なしの別の ruleset に分ける。
+  - 保守者は `master` への統合をすべて PR で行っており、ローカルでマージした `master` を直接 push する
+    `scripts/dev/merge-to-master.sh` は使っていない（保守者、2026-11-06）。そのため例外が要らず、スクリプトは削除する（FR-321）。
   - 承認レビューを必須にしない（保守者の決定）。保守者は 1 人で、自分の PR を承認できない。
   - 「Require branches to be up to date before merging」は使わない。PR はスカッシュマージで、`master` が進むたびに
     取り込みと CI の待ちが要るほどの並行はない。必要になれば後で有効にする。
   - README の運用方針（外部からの貢献は受け付けない）と合わせ、外部の貢献者の fork からの workflow はすべて承認制にする。
 - **Alternatives considered**:
-  - classic の branch protection: 同じことができるが、bypass の対象を細かく分けられない。公開リポジトリでは rulesets も
-    無料で使えるので、rulesets を選ぶ。
-  - bypass なしの 1 つの ruleset: `merge-to-master.sh` の push が拒否される。ローカルの運用を変える判断が要る。
+  - ruleset を 2 つに分け、PR と必須チェックの規則だけ管理者を bypass にする: `merge-to-master.sh` の直接の push を
+    残すための案だった。スクリプトを使っていないので採らない（保守者、2026-11-06）。
+  - classic の branch protection: 既定では管理者に保護が適用されない（出典 3）。rulesets が使えない場合の代わりとし、
+    そのときは「Do not allow bypassing the above settings」を有効にする。
 - **未確認（保守者が設定時に確かめる）**:
   - GitHub Free の公開リポジトリで rulesets を使えるか。公式文書（About rulesets）には、明記した文が見つからなかった。
-    使えない場合は classic の branch protection で同じ項目を設定する（classic では、管理者は既定で保護の対象外。出典 3）。
   - 必須チェックの名前がジョブの `name:` になるか。文書では確かめられなかったため、画面の候補から選ぶ手順にした。
-  - bypass の「Always allow」の管理者の直接の push が、PR と必須チェックの規則があっても通るか。文書は「For pull requests only」
-    との対比で示すだけなので、設定後に `merge-to-master.sh` の push で確かめる。
 
 ## R5: CI の起動・再実行の許可の規則（TAK-53）をなくす範囲
 
@@ -117,7 +110,7 @@
    「By default, the restrictions of a branch protection rule don't apply to people with admin permissions to the repository.」
    classic の保護で bypass の一覧を使えるのは、組織のリポジトリだけ。
 4. [Creating rulesets for a repository](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository):
-   bypass の対象に Repository admin を選べる。「For pull requests only」を選ぶと PR が必要になり、既定の「Always allow」との違いになる。
+   bypass の対象に Repository admin などを選べる（R4 では置かない）。
    「Require branches to be up to date before merging」は、選ぶと base の最新を取り込むまでマージできない（R4 では使わない）。
 5. [Available rules for rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets):
    「Restrict deletions」「Block force pushes」「Require a pull request before merging」（承認は必須でない）、

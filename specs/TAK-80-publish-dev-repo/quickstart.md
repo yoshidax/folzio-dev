@@ -31,8 +31,8 @@ git diff --check
 2. `docs_private/repository-and-release.md` の「開発用リポジトリの公開とブランチ保護」に従って設定し、次を確かめる（US70）
    - CI が成功していない PR では、マージのボタンが使えない
    - 承認レビューなしで自分の PR をマージできる
-   - `scripts/dev/merge-to-master.sh` の push が通る
-3. `.claude/settings.json` の `permissions.ask` から、CI の起動・再実行の 3 項目を消す
+   - 「Restrict deletions」「Block force pushes」が有効で、bypass の対象がない（ruleset の画面で確かめる）
+3. `.claude/settings.json` の `permissions.ask` から、CI の起動・再実行の 3 項目を消す（2026-11-06 に対応済み）
 4. マージ後に書き出して、公開先の README に注記がないことを確かめる
 
    ```bash
