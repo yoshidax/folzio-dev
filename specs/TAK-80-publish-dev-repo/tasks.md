@@ -85,11 +85,12 @@ CI の `test_publish_folzio` で、書き出しの README に注記がなく、�
 
 - [x] T018 `git fetch origin master` と `git merge origin/master` で最新を取り込み、`scripts/dev/check-spec-ids.sh` と、
   開いている作業ブランチとの ID の衝突を確かめる（衝突したら `docs_private/spec-id-conflicts.md`）。
-- [ ] T019 `specs/product/overview.md` に spec.md の「反映先」の項目を反映する。FR-317〜FR-320 は新しい節「開発用リポジトリの公開」に置く。
+- [x] T019 `specs/product/overview.md` に spec.md の「反映先」の項目を反映する。FR-317〜FR-320 は新しい節「開発用リポジトリの公開」に置く。
   `specs/product/contracts/scripts.md` に README の注記の書き出しを足し、`specs/product/README.md` の件数を直す。
   `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を反映の前と後に実行する。
 - [x] T020 `quickstart.md` の Cloud の検証を行い、結果をこのファイルの末尾に記録する。
-- [ ] T021 反映した項目と差分、検証の結果を保守者に示し、承認を得てからコミットする。
+- [x] T021 反映した項目と差分、検証の結果を保守者に示し、承認を得てからコミットする。
+  2026-11-06 に保守者が承認した（反映のコミット `4fb34b5` は、コンテナの回収に備えて承認の前に作業ブランチへ push した）。
 - [ ] T022 保守者に依頼することを示す: `.claude/settings.json` の 3 項目の削除、ブランチ保護の設定と確認、マージ後の書き出しでの確認、
   起動スモーク（アプリは変えないが規約に従う）。確認されるまで、このタスクは未チェックのままにする。
 
