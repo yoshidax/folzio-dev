@@ -144,3 +144,19 @@ T020（2026-11-06、Cloud）:
 - README の注記を `strip-readme-dev-note.sh` で除いた結果は、英語版・日本語版とも変更前の README とバイト単位で一致した
 - `check-spec-format.py`: エラー 0 件、警告 88 件（基準値と同じ）。`check-spec-ids.sh`: 重複なし。`git diff --check`: 問題なし
 - workflow の `pull_request` の `types` は `[opened, synchronize, reopened, ready_for_review]`（YAML として読み込んで確かめた）
+
+## PR のレビューへの対応（2026-11-06、PR #62 の `/code-review high` の 7 件）
+
+- test-coverage: `test_strip_readme_dev_note` を CI の「Test publication script」と `scripts/dev/check-all.sh` で実行するようにした
+- correctness（`awk -v` のエスケープ）: ファイル名を環境変数で、内容を標準入力で awk に渡すようにした。名前に `=` があるファイルを
+  awk が変数の代入と見なす問題も、あわせて直した（テストを追加）
+- correctness（末尾の改行）: 印のあるファイルでも、末尾の改行の有無を保つようにした（テストを追加）
+- correctness（CRLF）: 印の行の改行が CRLF なら、そのことを示して止めるようにした（テストを追加）
+- spec の正確さ: `specs/product/overview.md` の FR-313 の括弧書きを「同期の検査の対象外なので、差分で確かめる」に直した
+- simplification: `publish.sh` は 2 つの README を直接渡し、README がなければ同期の前に止まる（テストを追加）
+- conventions: `publish.sh` に足したコメントは、ファイルの既存のコメントに合わせて日本語のままにした（保守者の判断を求める）
+
+検証: `test_strip_readme_dev_note` 19 件、`test_publish_folzio` 18 件（Cloud では `rsync` の代わりを使用）、`check-all.sh`、
+`check-spec-format.py`（エラー 0 件、警告 88 件）が成功した。追加した 4 件のテストは、修正の前に失敗することを確かめた
+（`=` の名前のテストは、修正と同時に足したので、修正前の失敗は確かめていない）。
+

@@ -21,6 +21,7 @@ class PublishTests(unittest.TestCase):
             scripts.mkdir()
             shutil.copy2(ROOT / ".gitattributes", source / ".gitattributes")
             (source / "README.md").write_text("Folzio\n")
+            (source / "README.ja.md").write_text("Folzio\n")
             dev = scripts / "dev"
             (dev / "nested").mkdir(parents=True)
             shutil.copy2(ROOT / "scripts/dev/publish.sh", dev / "publish.sh")
@@ -98,6 +99,7 @@ class PublishFixture:
             text = attributes(text)
         self.write(".gitattributes", text)
         self.write("README.md", "Folzio\n")
+        self.write("README.ja.md", "Folzio\n")
         dev = self.source / "scripts/dev"
         dev.mkdir(parents=True)
         shutil.copy2(ROOT / "scripts/dev/publish.sh", dev / "publish.sh")
@@ -361,6 +363,15 @@ class ReadmeDevNotePublishTests(unittest.TestCase):
         result = self.fixture.publish()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((self.fixture.target / "README.md").read_text(), README_WITHOUT_NOTE)
+
+    def test_publish_rejects_missing_readme_before_sync(self):
+        self.fixture.remove("README.ja.md")
+        self.fixture.commit()
+        result = self.fixture.publish()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("README.ja.md", result.stderr)
+        self.assertEqual((self.fixture.target / "obsolete.txt").read_text(), "old\n")
+        self.assertFalse((self.fixture.target / "README.md").exists())
 
     def test_publish_rejects_broken_note_markers_before_sync(self):
         self.fixture.write("README.md", with_note(README_WITHOUT_NOTE))

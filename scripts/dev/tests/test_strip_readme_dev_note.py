@@ -90,6 +90,33 @@ class StripReadmeDevNoteTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(path.read_text(), "# Folzio\n\nNo final newline")
 
+    def test_keeps_missing_final_newline_when_removing_note(self):
+        path = self.write("README.md", f"# A\n\n{START}\n> n\n{END}\n\nB")
+        result = self.run_script(path)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(path.read_text(), "# A\n\nB")
+
+    def test_reports_crlf_marker_lines(self):
+        text = f"# A\r\n\r\n{START}\r\n> n\r\n{END}\r\n\r\nB\r\n"
+        path = self.root / "README.md"
+        path.write_bytes(text.encode())
+        result = self.run_script(path)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("CRLF", result.stderr)
+        self.assertEqual(path.read_bytes(), text.encode())
+
+    def test_reports_file_name_with_backslash_verbatim(self):
+        path = self.write("x\\ty.md", f"{START}\n> note\n")
+        result = self.run_script(path)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(str(path), result.stderr)
+
+    def test_reads_file_whose_name_contains_equals_sign(self):
+        path = self.write("x=y.md", WITH_NOTE)
+        result = self.run_script(path)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(path.read_text(), ORIGINAL)
+
     def test_processes_each_file(self):
         english = self.write("README.md", WITH_NOTE)
         japanese = self.write("README.ja.md", WITH_NOTE.replace("English", "日本語"))
