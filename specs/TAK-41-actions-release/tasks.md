@@ -64,7 +64,7 @@ T004 の承認前には実装しない。PR と本番設定も、今回の設計
 ## Phase 7: Polish — 実装 PR の検証と反映
 
 - [x] T026 `scripts/dev/check-all.sh` を実行し、新しい判定・同期テストを含む Cloud の結果をこの tasks.md に記録する
-- [ ] T027 `.github/workflows/macos-swift-ci.yml` の build / test と公開・配布回帰の結果を確認し、この tasks.md に記録する
+- [x] T027 `.github/workflows/macos-swift-ci.yml` の build / test と公開・配布回帰の結果を確認し、この tasks.md に記録する
 - [x] T028 保守者が作業ブランチで `scripts/make-app.sh` → `open .build/Folzio.app` の3ペイン・日英のマージ前スモークを確認し、この tasks.md に記録する
 - [ ] T029 最新 master と `scripts/dev/check-spec-ids.sh` を確認してから、`specs/product/overview.md` と `specs/product/contracts/scripts.md`・app-bundle.md・README.md に反映する。特に FR-311（overview.md）の検査場所・性能の例外・失敗後の即時中断と、scripts 契約の旧「同期後テスト」をそろえ、ID と形式・check-all を検査する
 - [ ] T030 `specs/product/` の反映差分を保守者に示し、承認後にコミットする。実装 PR は保守者の依頼時だけ作成する
@@ -192,3 +192,16 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 - 実CI 42259015217 の failed-jobs 再実行で、artifact13522914846（生成attempt1）をattempt2の受取jobが再利用して成功。
   再実行しないjobもAPIでは新ID / attempt2に複製され、runner_id・実行時刻・全stepsは元のままという実データを確認。
   候補の照合もこの複製を元の生成attemptに結び付けるよう補強し、本当の新規buildとは区別する回帰を追加した。
+
+- 2026-11-07 修正後の最終検証: 6bdbb2b の [CI 42261112029](https://github.com/yoshidax/folzio-dev/actions/runs/42261112029) は成功。
+  macOS arm64 / Xcode16.0 / Swift6.0でPython170件（skipなし）・Swift通常1057件成功。
+  公開用APIは開発用read-only GITHUB_TOKENから一覧とタグ（3件）を取得し、タグ解決も成功した。
+  性能27件は4件で閾値超過: JPEG0.8229s > 0.5s、rename中央値0.1196s > 0.1s、batch0.1110s > 0.1s、
+  slideshow0.2455s > 0.2s。非ブロッキングのまま実ログで確認した。
+- [CI 42259015217 attempt2](https://github.com/yoshidax/folzio-dev/actions/runs/42259015217/attempts/2)で部分再実行の引き継ぎを実証。
+  元artifact13522914846を受取jobだけが再利用し、生成・macOSの実行時刻とrunnerは変わらない。
+  複製されたAPI jobデータにも最新の照合関数を適用し、生成1・受取2・macOS1と正しく識別した。
+- 最終check-allは141件成功 / macOS・rsync29件skip、製品仕様の形式エラー0・既存警告88件で増加なし、ID重複なし。
+  新規50定義は承認済みspecと一致。最新origin/masterは03c80bcで作業ブランチに含まれる。
+  公開ツリーはdd6ad9aと6bdbb2bで同一。M固有のexporterによる書き出しも成功した。
+- 製品仕様4ファイルの更新済み差分を提示。T029・T030は承認とコミットまで未チェックとし、作業ツリーの差分を保持する。
