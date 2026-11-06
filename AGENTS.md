@@ -14,8 +14,7 @@
 
 ## Git と GitHub【共通】
 - push は default ブランチ（`master`）以外の作業ブランチへだけ行う。強制 push・リモートブランチの削除・履歴の書き換えはしない
-- PR は保守者の依頼があったときだけ作る。PR のマージと `master` への統合（`scripts/dev/merge-to-master.sh`）は保守者が行う
-- CI の起動・再実行（`workflow_dispatch`、rerun）は、毎回、理由と対象ブランチを示して保守者の許可を得る（macOS の使用時間を消費する）
+- PR は保守者の依頼があったときだけ作る。PR のマージは保守者が行う（`master` への統合は PR だけで行う）
 - Linear の Issue に着手するとき、PR を作った後、完了を更新するときは `docs_private/agents/linear.md` に従う
 
 ## AppKit UI の不変条件【共通】（起動不能の事故から）
@@ -35,7 +34,7 @@
 ## 書くときの規則【共通】
 - ソースのコメントは英語で書く。書式と用語は `docs_private/comment-translation-glossary.md`
 - `README.md` と `README.ja.md` は同じ内容の 2 言語版。同じコミットで両方を同じ内容に変える（訳の一致はスクリプトで検査されない）
-- `docs/`・README・ソースのコメントは公開される。`specs/`・`.specify/`・`docs_private/`・`shared-skills/`・`AGENTS.md` へリンクしない（公開の手順: `docs_private/repository-and-release.md`）
+- `docs/`・README・ソースのコメントは公開用リポジトリ（`yoshidax/folzio`）へ書き出される。書き出さない `specs/`・`.specify/`・`docs_private/`・`shared-skills/`・`AGENTS.md` へリンクしない（公開の手順: `docs_private/repository-and-release.md`）
 
 ## 作業別の手順（該当するときに読む）
 - 【Cloud】作業を始める前に `docs_private/cloud-agent-workflow.md`（feature の始め方、PR、CI、検証ゲート、並行する作業）

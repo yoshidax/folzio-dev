@@ -14,10 +14,7 @@
       "scripts/dev/merge-to-master.sh *": "deny",
       "scripts/dev/merge-to-master.sh": "deny",
       "git reset --hard *": "deny",
-      "git clean *": "deny",
-      "gh workflow run *": "ask",
-      "gh run rerun *": "ask"
-    },
-    "github_actions_run_trigger": "ask"
+      "git clean *": "deny"
+    }
   }
 }

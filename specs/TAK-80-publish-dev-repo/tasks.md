@@ -38,18 +38,18 @@ CI の `test_publish_folzio` で、書き出しの README に注記がなく、�
 
 **Independent Test**: この PR に追加の push をして、CI が自動で動くことを PR の checks で確かめる（保守者が公開した後）。
 
-- [ ] T008 [P] [US69] `.github/workflows/macos-swift-ci.yml` の `pull_request` の `types` を `[opened, synchronize, reopened, ready_for_review]` にする。
+- [x] T008 [P] [US69] `.github/workflows/macos-swift-ci.yml` の `pull_request` の `types` を `[opened, synchronize, reopened, ready_for_review]` にする。
   `permissions: contents: read`（FR-319）を含め、ほかは変えない（R3）。
-- [ ] T009 [P] [US69] `.codex/rules/sdd.rules` から `gh workflow run`・`gh run rerun` の規則とコメントを消す。
+- [x] T009 [P] [US69] `.codex/rules/sdd.rules` から `gh workflow run`・`gh run rerun` の規則とコメントを消す。
   `.kilo/kilo.jsonc` から `gh workflow run *`・`gh run rerun *`・`github_actions_run_trigger` の `ask` を消す。
   関係するテスト（`scripts/dev/tests/`）が通ることを確かめる。
-- [ ] T010 [US69] `AGENTS.md` の「CI の起動・再実行…許可を得る」の行を消す。`scripts/dev/check-agents-md.sh` が通ることを確かめる。
+- [x] T010 [US69] `AGENTS.md` の「CI の起動・再実行…許可を得る」の行を消す。`scripts/dev/check-agents-md.sh` が通ることを確かめる。
   変更の理由を PR の本文に書くため、このファイルの末尾の「PR に書く理由」に記録する。
-- [ ] T011 [US69] `docs_private/cloud-agent-workflow.md` を直す: 全体の流れ・3 章（PR を依頼で作る理由を、費用ではなく
+- [x] T011 [US69] `docs_private/cloud-agent-workflow.md` を直す: 全体の流れ・3 章（PR を依頼で作る理由を、費用ではなく
   レビューの準備ができた状態で作るためと書く）、4 章（いつ動くか、修正と再確認、許可と権限設定の段落の削除、
   `.claude/settings.json` は保守者が直すことの注記）、5 章の表は変えない。
-- [ ] T012 [P] [US69] `docs_private/agents/README.md` の TAK-53 の例を、今も有効な例（TAK-70 の依存ツールの導入の `deny`・`ask`）に替える。
-- [ ] T013 [P] [US69] `.github/pull_request_template.md` の「検証」の CI の記入案内を、push のたびに動く前提に直す
+- [x] T012 [P] [US69] `docs_private/agents/README.md` の TAK-53 の例を、今も有効な例（TAK-70 の依存ツールの導入の `deny`・`ask`）に替える。
+- [x] T013 [P] [US69] `.github/pull_request_template.md` の「検証」の CI の記入案内を、push のたびに動く前提に直す
   （「実行の種類（PR の作成時か、`workflow_dispatch` か）」→ 対象のコミットが PR の最新の head であること）。
 
 ## Phase 4: US70 公開後にブランチ保護を設定する (P2)
@@ -69,7 +69,7 @@ CI の `test_publish_folzio` で、書き出しの README に注記がなく、�
   「開発用 master へのマージとバックアップ」（PR によるマージの手順に置き換える。FR-321）、「ドキュメントの配置」の `docs_private/` の説明
   （公開用リポジトリへ書き出さない文書）、「公開用リポジトリの方針」（開発の履歴は開発用リポジトリで公開している）、
   「公開の手順」に README の注記を除く手順を足す。
-- [ ] T016 `AGENTS.md` の「`docs/`・README・ソースのコメントは公開される」の行を、公開用リポジトリへ書き出されることが分かる文言にする。
+- [x] T016 `AGENTS.md` の「`docs/`・README・ソースのコメントは公開される」の行を、公開用リポジトリへ書き出されることが分かる文言にする。
   行数を増やさない。理由を末尾の「PR に書く理由」に記録する。
 - [ ] T017 `grep -rnI "非公開\|private リポジトリ\|private repository\|無料枠\|使用時間"` で、現行の文書・規約・設定・スクリプトのコメントに
   残る非公開と費用の前提を洗い出して直す（凍結した記録は除く。EC-219）。`scripts/dev/merge-to-master.sh` の冒頭のコメント
@@ -108,7 +108,15 @@ CI の `test_publish_folzio` で、書き出しの README に注記がなく、�
 
 ## PR に書く理由（`AGENTS.md` の変更）
 
-（T010・T016・T023 で記録する）
+- 削除「CI の起動・再実行（`workflow_dispatch`、rerun）は、毎回…保守者の許可を得る」（T010）: TAK-53 で、2026-11-02 に Actions の
+  予算が 0 ドルになり CI が止まった件から足した行。TAK-80 で開発用リポジトリを公開し、macOS を含む標準ランナーの使用が無料になったため、
+  費用の制約がなくなった。保守者の決定（2026-11-06）で削除する。Codex・Kilo・Claude の権限設定の確認も外した（Claude は保守者が対応）。
+- 変更「PR のマージと `master` への統合（`scripts/dev/merge-to-master.sh`）は保守者が行う」→「PR のマージは保守者が行う
+  （`master` への統合は PR だけで行う）」（T023）: 保守者は `master` への統合をすべて PR で行っており、`merge-to-master.sh` は使っていない。
+  公開後のブランチ保護（PR と必須チェック）に例外を置かないため、スクリプトを削除する（保守者の決定、2026-11-06）。
+- 変更「`docs/`・README・ソースのコメントは公開される」→「公開用リポジトリ（`yoshidax/folzio`）へ書き出される。書き出さない …」
+  （T016）: 開発用リポジトリも公開されたので、「公開される」だけでは、どのリポジトリのことか分からなくなった。規則（書き出さないファイルへ
+  リンクしない）は、公開用リポジトリでリンクが切れるので維持する。
 
 ## 検証記録
 
