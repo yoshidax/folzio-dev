@@ -104,3 +104,17 @@ About ダイアログ（FR-238〜245（window-layout.md））は、実行中の�
 - `codesign --verify --deep --strict` が成功し、ビルドディレクトリの外にコピーした `.app`
   でも両言語を表示できる（SC-066）
 - アプリの設定で表示言語を切り替えると、再起動せずアプリ管理の文言が切り替わる
+
+
+### 確認用候補と最終 ZIP
+
+- `scripts/package-release.sh VERSION BUILD_NUMBER SOURCE_DIR OUTPUT_DIR` を候補と最終配布で共用する（FR-325・340）。
+  - ソースと既存の出力を変更せず、以前の build 状態を除いた隔離領域で arm64 を明示してビルドする。
+  - 実行する package は固定した対象ソースに含まれる版を使う。
+  - version・build の正規形式と埋め込まれた両バージョン、arm64、ad hoc 署名、日英リソースを検証する。
+  - `Folzio.app` だけを含む ZIP と1件の SHA256SUMS を作り、再展開後にも同じ検証を行う。
+  - 必須検査が失敗したら成果物を確定しない。
+- 確認済み候補と最終配布は公開 tree・両バージョン・toolchain を一致させる（FR-338・342）。
+  - 署名と梱包のメタデータが異なるため、ZIP のバイト列の一致は求めない。
+- 保守者はダウンロードした候補をビルド環境外で展開し、checksum・署名・3ペイン・日英・About を確認する（FR-343）。
+  - 最終ドラフトの ZIP は公開前に GUI / Gatekeeper を確認する。

@@ -66,8 +66,8 @@ T004 の承認前には実装しない。PR と本番設定も、今回の設計
 - [x] T026 `scripts/dev/check-all.sh` を実行し、新しい判定・同期テストを含む Cloud の結果をこの tasks.md に記録する
 - [x] T027 `.github/workflows/macos-swift-ci.yml` の build / test と公開・配布回帰の結果を確認し、この tasks.md に記録する
 - [x] T028 保守者が作業ブランチで `scripts/make-app.sh` → `open .build/Folzio.app` の3ペイン・日英のマージ前スモークを確認し、この tasks.md に記録する
-- [ ] T029 最新 master と `scripts/dev/check-spec-ids.sh` を確認してから、`specs/product/overview.md` と `specs/product/contracts/scripts.md`・app-bundle.md・README.md に反映する。特に FR-311（overview.md）の検査場所・性能の例外・失敗後の即時中断と、scripts 契約の旧「同期後テスト」をそろえ、ID と形式・check-all を検査する
-- [ ] T030 `specs/product/` の反映差分を保守者に示し、承認後にコミットする。実装 PR は保守者の依頼時だけ作成する
+- [x] T029 最新 master と `scripts/dev/check-spec-ids.sh` を確認してから、`specs/product/overview.md` と `specs/product/contracts/scripts.md`・app-bundle.md・README.md に反映する。特に FR-311（overview.md）の検査場所・性能の例外・失敗後の即時中断と、scripts 契約の旧「同期後テスト」をそろえ、ID と形式・check-all を検査する
+- [x] T030 `specs/product/` の反映差分を保守者に示し、承認後にコミットする。実装 PR は保守者の依頼時だけ作成する
 
 ## Phase 8: 導入・実リリースの確認（保守者、実装 PR のマージ後）
 
@@ -205,3 +205,8 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
   新規50定義は承認済みspecと一致。最新origin/masterは03c80bcで作業ブランチに含まれる。
   公開ツリーはdd6ad9aと6bdbb2bで同一。M固有のexporterによる書き出しも成功した。
 - 製品仕様4ファイルの更新済み差分を提示。T029・T030は承認とコミットまで未チェックとし、作業ツリーの差分を保持する。
+
+- 2026-11-07: 保守者が製品仕様4ファイルの更新済み差分のコミット・pushを承認。
+  提示したpatchと作業ツリーの差分の完全一致を確認し、最新origin/master（03c80bc）が祖先であることを確認した。
+  ID重複なし、形式エラー0・既存警告88件で増加なしを再確認し、承認差分とT029・T030の完了記録をコミットする。
+  導入・実リリースのT031〜T035は未実施のまま残し、IssueはIn Progressを維持する。
