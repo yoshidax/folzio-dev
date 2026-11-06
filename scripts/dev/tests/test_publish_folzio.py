@@ -402,14 +402,22 @@ class ExporterTests(unittest.TestCase):
         self.fixture = PublishFixture(Path(self.directory.name))
         self.output = Path(self.directory.name) / 'export'
 
-    def export(self, sha=None, user=None):
+    def export(self, sha=None, user=None, home=None):
         if sha is None:
             sha = subprocess.check_output(['git', '-C', str(self.fixture.source), 'rev-parse', 'HEAD'], text=True).strip()
         command = ['bash', str(ROOT / 'scripts/dev/export-public.sh'), sha, str(self.output)]
         if user:
-            command = [sys.executable, '-c',
-                       'import getpass,runpy,sys; user=sys.argv.pop(); getpass.getuser=lambda:user; sys.argv=sys.argv[1:]; runpy.run_path(sys.argv[0],run_name="__main__")',
-                       str(ROOT / 'scripts/dev/export-public.py'), sha, str(self.output), user]
+            code = (
+                'import getpass,runpy,sys\n'
+                'from pathlib import Path\n'
+                'user,home=sys.argv[-2:]\n'
+                'sys.argv=sys.argv[1:-2]\n'
+                'getpass.getuser=lambda:user\n'
+                'if home: Path.home=classmethod(lambda cls:Path(home))\n'
+                'runpy.run_path(sys.argv[0],run_name="__main__")\n'
+            )
+            command = [sys.executable, '-c', code, str(ROOT / 'scripts/dev/export-public.py'),
+                       sha, str(self.output), user, home or '']
         return subprocess.run(command, cwd=self.fixture.source, capture_output=True, text=True)
 
     def test_fixed_commit_and_dirty_worktree(self):
@@ -470,16 +478,38 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue((self.output / 'README.md').exists())
 
-    def test_hosted_account_word_is_not_a_personal_path(self):
-        self.fixture.write('Tests/example.swift', '// A busy runner can delay tests.\n')
-        self.fixture.commit()
-        result = self.export(user='runner')
-        self.assertEqual(result.returncode, 0, result.stderr)
-        shutil.rmtree(self.output)
-        self.fixture.write('Tests/example.swift', 'let path = "/Users/runner/private"\n')
-        self.fixture.commit()
-        self.assertNotEqual(self.export(user='runner').returncode, 0)
-        self.assertFalse(self.output.exists())
+    def test_username_identifier_boundaries_allow_partial_matches(self):
+        for user, text in [
+            ('yoshida', 'https://github.com/yoshidax/folzio\n_yoshida yoshida-test yoshida.name yoshida2\n'),
+            ('qa.user', 'qaXuser prefix-qa.user qa.user_suffix\n'),
+        ]:
+            with self.subTest(user=user):
+                self.fixture.write('docs/example.txt', text)
+                self.fixture.commit()
+                result = self.export(user=user)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                shutil.rmtree(self.output)
+                self.fixture.write('docs/example.txt', f'Author: ({user})\n')
+                self.fixture.commit()
+                self.assertNotEqual(self.export(user=user).returncode, 0)
+                self.assertFalse(self.output.exists())
+
+    def test_generic_account_words_are_allowed_but_home_paths_are_not(self):
+        for user in ['runner', 'runneradmin', 'root']:
+            with self.subTest(user=user):
+                self.fixture.write('Tests/example.swift', '// A busy runner and runneradmin use the root variable.\n')
+                self.fixture.commit()
+                home = '/root' if user == 'root' else f'/home/{user}'
+                result = self.export(user=user, home=home)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                shutil.rmtree(self.output)
+                paths = [f'/Users/{user}/private', f'/home/{user}/private', home + '/private']
+                for path in dict.fromkeys(paths):
+                    with self.subTest(path=path):
+                        self.fixture.write('Tests/example.swift', f'let path = "{path}"\n')
+                        self.fixture.commit()
+                        self.assertNotEqual(self.export(user=user, home=home).returncode, 0)
+                        self.assertFalse(self.output.exists())
 
 
 if __name__ == '__main__':

@@ -77,6 +77,7 @@ def export(sha, output):
             names.append(name)
         print('公開用 workflow: ' + ' '.join(names) if names else '公開用 workflow はありません')
         home, user = str(Path.home()), getpass.getuser()
+        generic = {'runner', 'runneradmin', 'root'}
         private_link = re.compile(r'(\]\(|href=")[^)"]*(specs/|\.specify/|docs_private/|shared-skills/|AGENTS\.md)')
         for file in root.rglob('*'):
             if not file.is_file():
@@ -87,8 +88,9 @@ def export(sha, output):
             text = data.decode('utf-8', errors='replace')
             path_users = re.findall(r'/(?:Users|home)/([A-Za-z0-9_.-]+)(?:/|[\"\'\s])', text)
             personal = bool(path_users)
-            # GitHub 標準アカウント名は一般語にも現れる。パス検査は省略しない。
-            username = user not in {'runner', 'runneradmin'} and user in text
+            # CI アカウント名と root は一般語・変数名にも現れる。ホーム・個人パスの検査は省略しない。
+            username = user not in generic and re.search(
+                r'(?<![A-Za-z0-9_.-])' + re.escape(user) + r'(?![A-Za-z0-9_.-])', text)
             if home in text or username or personal:
                 raise ValueError(f'ローカルのパスまたはユーザー名が含まれています: {file.relative_to(root)}')
             if file.suffix == '.md' and private_link.search(text):
