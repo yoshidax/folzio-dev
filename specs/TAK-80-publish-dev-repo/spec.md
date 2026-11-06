@@ -1,5 +1,8 @@
 # Feature Specification: 開発用リポジトリの公開の準備
 
+> **移行済み（2026-11-06）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-80 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `claude/modest-euler-2bxq9s`（Cloud の作業ブランチ。feature 用のブランチは作らない）
 
 **Created**: 2026-11-06
