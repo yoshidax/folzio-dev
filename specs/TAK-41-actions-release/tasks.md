@@ -64,9 +64,9 @@ T004 の承認前には実装しない。PR と本番設定も、今回の設計
 ## Phase 7: Polish — 実装 PR の検証と反映
 
 - [x] T026 `scripts/dev/check-all.sh` を実行し、新しい判定・同期テストを含む Cloud の結果をこの tasks.md に記録する
-- [ ] T027 `.github/workflows/macos-swift-ci.yml` の build / test と公開・配布回帰の結果を確認し、この tasks.md に記録する
+- [x] T027 `.github/workflows/macos-swift-ci.yml` の build / test と公開・配布回帰の結果を確認し、この tasks.md に記録する
 - [x] T028 保守者が作業ブランチで `scripts/make-app.sh` → `open .build/Folzio.app` の3ペイン・日英のマージ前スモークを確認し、この tasks.md に記録する
-- [ ] T029 最新 master と `scripts/dev/check-spec-ids.sh` を確認してから、`specs/product/overview.md` と `specs/product/contracts/scripts.md`・app-bundle.md・README.md に反映する。特に FR-311（overview.md）の検査場所・性能の例外・失敗後の即時中断と、scripts 契約の旧「同期後テスト」をそろえ、ID と形式・check-all を検査する
+- [x] T029 最新 master と `scripts/dev/check-spec-ids.sh` を確認してから、`specs/product/overview.md` と `specs/product/contracts/scripts.md`・app-bundle.md・README.md に反映する。特に FR-311（overview.md）の検査場所・性能の例外・失敗後の即時中断と、scripts 契約の旧「同期後テスト」をそろえ、ID と形式・check-all を検査する
 - [ ] T030 `specs/product/` の反映差分を保守者に示し、承認後にコミットする。実装 PR は保守者の依頼時だけ作成する
 
 ## Phase 8: 導入・実リリースの確認（保守者、実装 PR のマージ後）
@@ -158,3 +158,13 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 - macOS CI 42236274776: publish23件・README19件は成功。package fixture の copy2(/bin/ls) が macOS の保護属性をコピーして PermissionError。fixture を属性不要の copyfile + 実行権限に変更し、再実行する。実アプリのコピー処理は対象外。
 
 - macOS CI 42237257443: ZIP成功経路が通った後、Bash3.2で関数内の [[ ]] の失敗が errexit だけでは停止しない不具合を検出。共通 package の architecture / version / build 検査を明示的 return 1 に修正し、既存の異常系で再検証する。
+
+- T027: fd8b16f の macOS CI [42237534859](https://github.com/yoshidax/folzio-dev/actions/runs/42237534859) は成功。
+  arm64 / Xcode16.0 / Swift6.0、Python158件（Cloud skip29件を含め全成功）、Swift通常1057件成功。
+  性能27件中3件で閾値超過: 24MP JPEG 1.2117s > 0.5s、1万件フォルダ復帰1.0054s > 1s、
+  rename rebase中央値0.1523s > 0.1s。continue-on-error の success 表示だけでなくログを確認した。
+- T029: 最新 origin/master（03c80bc）を確認し、製品仕様4ファイルに承認済み要件を反映した差分を作成。
+  新規50定義の本文一致、ID重複なし、形式エラー0・既存警告88件の増加なし、check-all129件成功 / 29件skip。
+  最終コミットの公開書き出しも hosted account 条件で成功。製品仕様の差分は未コミットでT030の承認を待つ。
+- T031以降の本番App/Secret設定、初回release PR・CI成果物の取得とローカル確認、公開連鎖は未実施。
+  今回の起動スモークをダウンロード候補の実確認の代わりとは扱わず、IssueはIn Progressのままにする。
