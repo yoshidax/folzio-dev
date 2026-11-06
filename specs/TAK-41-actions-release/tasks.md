@@ -144,7 +144,9 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 
 - 基盤実装: exporter の Python helper を export-public.sh から呼び出す。指定 SHA・dirty worktree・既存出力保護・公開境界の3件と metadata の3件を確認。旧 publish は共通 exporter を利用する復旧用。Cloud に rsync がないため旧ローカル復旧の18件は macOS CI で確認する。
 
-- 候補・同期・配布の実装とテスト・ガイドを追加。Cloud の check-all は成功（判定系104件、README注記19件、exporter4件。macOS / rsync の28件は実行環境不足で明示的 skip）。候補のコマンド列、固定 M、API 障害、artifact digest、実 Git の非 fast-forward、部分アップロードを検証。macOS と実 workflow の導入確認は T027・T031以降で確認する。
+- 候補・同期・配布の実装とテスト・ガイドを追加。Cloud の check-all は成功（判定系105件、README注記19件、exporter5件。macOS / rsync の29件は実行環境不足で明示的 skip）。候補のコマンド列、固定 M、API 障害、artifact digest、実 Git の非 fast-forward、部分アップロードを検証。macOS と実 workflow の導入確認は T027・T031以降で確認する。
 - 公開ツリー検査では、既存 Swift テストの架空パス /Users/me・me2・x を Tests 内だけで区別する。個人パスは拒否する回帰テストを追加した。
 
-- T026: 最新の check-all は127件成功、macOS / rsync 必須の28件は skip。再候補ソースは digest 付き tar で job 間転送し、実行権限を維持する回帰も成功。T027 は既存 CI の workflow_dispatch を作業ブランチで実行して確認する（PR は作成しない）。
+- T026: 最新の check-all は129件成功、macOS / rsync 必須の29件は skip。再候補ソースは digest 付き tar で job 間転送し、実行権限を維持する回帰も成功。T027 は既存 CI の workflow_dispatch を作業ブランチで実行して確認する（PR は作成しない）。
+
+- hosted account（runner / runneradmin）の一般語による誤検出を除き、パス検査を維持する回帰を追加。両バージョン不一致と ZIP 境界・checksum の異常系も追加した。

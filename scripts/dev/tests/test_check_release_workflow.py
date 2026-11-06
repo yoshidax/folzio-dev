@@ -74,6 +74,34 @@ class RequestTests(unittest.TestCase):
             self.release.load_request(self.root)
 
 
+class AssetTests(unittest.TestCase):
+    def test_checksum_and_zip_boundary_are_required(self):
+        import hashlib, zipfile
+        release = module()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive = root / 'Folzio-v1.2.3-macos-arm64.zip'
+            sums = root / 'SHA256SUMS'
+            for members, valid in [(['Folzio.app/Contents/MacOS/Folzio'], True),
+                                   (['Folzio.app/Contents/MacOS/Folzio', 'extra.txt'], False),
+                                   (['Folzio.app/Contents/Info.plist'], False),
+                                   (['Folzio.app/Contents/MacOS/Folzio', 'Folzio.app/../extra'], False)]:
+                with self.subTest(members=members):
+                    with zipfile.ZipFile(archive, 'w') as stream:
+                        for member in members:
+                            stream.writestr(member, 'fixture')
+                    checksum = hashlib.sha256(archive.read_bytes()).hexdigest() + '  ' + archive.name + '\n'
+                    sums.write_text(checksum)
+                    if valid:
+                        release.verify_assets(root, '1.2.3')
+                    else:
+                        with self.assertRaises(ValueError):
+                            release.verify_assets(root, '1.2.3')
+                    sums.write_text('0' * 64 + '  ' + archive.name + '\n')
+                    with self.assertRaisesRegex(ValueError, 'Checksum'):
+                        release.verify_assets(root, '1.2.3')
+
+
 class FakeAPI:
     def __init__(self, values):
         self.values, self.calls = values, []

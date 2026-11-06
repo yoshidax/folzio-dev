@@ -103,7 +103,9 @@ def export(sha, output):
             path_users = re.findall(r'/(?:Users|home)/([A-Za-z0-9_.-]+)(?:/|[\"\'\s])', text)
             fixture = file.relative_to(root).parts[0] == 'Tests'
             personal = any(not (fixture and name in {'me', 'me2', 'x'}) for name in path_users)
-            if home in text or user in text or personal:
+            # GitHub 標準アカウント名は一般語にも現れる。パス検査は省略しない。
+            username = user not in {'runner', 'runneradmin'} and user in text
+            if home in text or username or personal:
                 raise ValueError(f'ローカルのパスまたはユーザー名が含まれています: {file.relative_to(root)}')
             if file.suffix == '.md' and private_link.search(text):
                 raise ValueError(f'公開しないファイルへのリンクがあります: {file.relative_to(root)}')

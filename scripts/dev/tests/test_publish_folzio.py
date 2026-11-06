@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -393,10 +394,6 @@ class ReadmeDevNotePublishTests(unittest.TestCase):
         self.assertFalse((self.fixture.target / "README.md").exists())
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ExporterTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -404,11 +401,15 @@ class ExporterTests(unittest.TestCase):
         self.fixture = PublishFixture(Path(self.directory.name))
         self.output = Path(self.directory.name) / 'export'
 
-    def export(self, sha=None):
+    def export(self, sha=None, user=None):
         if sha is None:
             sha = subprocess.check_output(['git', '-C', str(self.fixture.source), 'rev-parse', 'HEAD'], text=True).strip()
-        return subprocess.run(['bash', str(ROOT / 'scripts/dev/export-public.sh'), sha, str(self.output)],
-                              cwd=self.fixture.source, capture_output=True, text=True)
+        command = ['bash', str(ROOT / 'scripts/dev/export-public.sh'), sha, str(self.output)]
+        if user:
+            command = [sys.executable, '-c',
+                       'import getpass,runpy,sys; user=sys.argv.pop(); getpass.getuser=lambda:user; sys.argv=sys.argv[1:]; runpy.run_path(sys.argv[0],run_name="__main__")',
+                       str(ROOT / 'scripts/dev/export-public.py'), sha, str(self.output), user]
+        return subprocess.run(command, cwd=self.fixture.source, capture_output=True, text=True)
 
     def test_fixed_commit_and_dirty_worktree(self):
         sha = subprocess.check_output(['git', '-C', str(self.fixture.source), 'rev-parse', 'HEAD'], text=True).strip()
@@ -448,3 +449,18 @@ class ExporterTests(unittest.TestCase):
         self.fixture.commit()
         self.assertNotEqual(self.export().returncode, 0)
         self.assertFalse(self.output.exists())
+
+    def test_hosted_account_word_is_not_a_personal_path(self):
+        self.fixture.write('Tests/example.swift', '// A busy runner can delay tests.\n')
+        self.fixture.commit()
+        result = self.export(user='runner')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        shutil.rmtree(self.output)
+        self.fixture.write('Tests/example.swift', 'let path = "/Users/runner/private"\n')
+        self.fixture.commit()
+        self.assertNotEqual(self.export(user='runner').returncode, 0)
+        self.assertFalse(self.output.exists())
+
+
+if __name__ == '__main__':
+    unittest.main()

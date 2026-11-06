@@ -79,3 +79,12 @@ PYAPP
             with self.subTest(version=version, build=build):
                 self.assertNotEqual(self.package(version, build).returncode, 0)
                 self.assertFalse(self.output.exists())
+
+    def test_both_embedded_versions_must_match_request(self):
+        original = self.make_app.read_text()
+        for key in ('CFBundleShortVersionString', 'CFBundleVersion'):
+            with self.subTest(key=key):
+                self.make_app.write_text(original +
+                    f"/usr/libexec/PlistBuddy -c 'Set :{key} 99' .build/Folzio.app/Contents/Info.plist\n")
+                self.assertNotEqual(self.package().returncode, 0)
+                self.assertFalse(self.output.exists())
