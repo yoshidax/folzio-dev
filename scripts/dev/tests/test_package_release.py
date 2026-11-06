@@ -29,7 +29,8 @@ python3 - <<'PYAPP'
 import os, pathlib, plistlib, shutil
 app = pathlib.Path('.build/Folzio.app/Contents')
 (app / 'MacOS').mkdir(parents=True)
-shutil.copy2('/bin/ls', app / 'MacOS/Folzio')
+shutil.copyfile('/bin/ls', app / 'MacOS/Folzio')
+(app / 'MacOS/Folzio').chmod(0o755)
 (app / 'Info.plist').write_bytes(plistlib.dumps(dict(CFBundleShortVersionString=os.environ['FOLZIO_VERSION'],
                                                   CFBundleVersion=os.environ['FOLZIO_BUILD_NUMBER'])))
 for language in ('en', 'ja'):

@@ -65,7 +65,7 @@ T004 の承認前には実装しない。PR と本番設定も、今回の設計
 
 - [x] T026 `scripts/dev/check-all.sh` を実行し、新しい判定・同期テストを含む Cloud の結果をこの tasks.md に記録する
 - [ ] T027 `.github/workflows/macos-swift-ci.yml` の build / test と公開・配布回帰の結果を確認し、この tasks.md に記録する
-- [ ] T028 保守者が作業ブランチで `scripts/make-app.sh` → `open .build/Folzio.app` の3ペイン・日英のマージ前スモークを確認し、この tasks.md に記録する
+- [x] T028 保守者が作業ブランチで `scripts/make-app.sh` → `open .build/Folzio.app` の3ペイン・日英のマージ前スモークを確認し、この tasks.md に記録する
 - [ ] T029 最新 master と `scripts/dev/check-spec-ids.sh` を確認してから、`specs/product/overview.md` と `specs/product/contracts/scripts.md`・app-bundle.md・README.md に反映する。特に FR-311（overview.md）の検査場所・性能の例外・失敗後の即時中断と、scripts 契約の旧「同期後テスト」をそろえ、ID と形式・check-all を検査する
 - [ ] T030 `specs/product/` の反映差分を保守者に示し、承認後にコミットする。実装 PR は保守者の依頼時だけ作成する
 
@@ -152,3 +152,7 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 - hosted account（runner / runneradmin）の一般語による誤検出を除き、パス検査を維持する回帰を追加。両バージョン不一致と ZIP 境界・checksum の異常系も追加した。
 
 - macOS CI 42235998815: arm64 / Xcode16.0を確認。旧README注記なしのfixtureが英語版だけを更新していたため新しい構造照合で1件失敗。日英同等のfixtureへ修正して再検証する。build / Swift testは前段失敗で未実施。
+
+- T028: 保守者が c2d0d53 の作業ブランチで make-app → open を実行し、3ペイン・日英・About の確認ができたと回答（2026-11-06）。CIと実装マージ後のダウンロード候補確認は別ゲートとして扱う。
+
+- macOS CI 42236274776: publish23件・README19件は成功。package fixture の copy2(/bin/ls) が macOS の保護属性をコピーして PermissionError。fixture を属性不要の copyfile + 実行権限に変更し、再実行する。実アプリのコピー処理は対象外。
