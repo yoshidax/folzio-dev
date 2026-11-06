@@ -55,6 +55,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           artifact-ids: ${{ needs.plan.outputs.input_artifact_id }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
+          merge-multiple: true
           path: ${{ runner.temp }}/preview
       - name: Select toolchain
         run: |

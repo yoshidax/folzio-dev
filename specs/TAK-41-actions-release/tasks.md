@@ -186,3 +186,5 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
   既存差分を保持し、修正後の検証結果に合わせて更新する。T027も修正後のCI確認まで未チェックへ戻す。
 
 - 修正後の Cloud 検証: check-all140件成功 / macOS・rsync29件skip。YAML構文と生成jobからのartifact ID参照、Python / Bash構文を確認。修正コードをpushし、読み取り専用public API確認を含むmacOS CIでT027を再検証する。
+
+- download-artifact@v4 の実装を確認し、ID指定の展開は merge-multiple:true で固定する。github-token と run-id を明示して、前attemptも含むREST取得を使う。既存macOS CIに小さなhandoff probeを追加し、受取jobのみ初回を意図的に失敗させる任意入力から実際のfailed-job再実行を検証する。

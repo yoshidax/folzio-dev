@@ -70,6 +70,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           artifact-ids: ${{ needs.plan.outputs.input_artifact_id }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
+          merge-multiple: true
           path: ${{ runner.temp }}/sync
       - name: Restore verified source modes
         env:
@@ -109,6 +113,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           artifact-ids: ${{ needs.plan.outputs.input_artifact_id }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
+          merge-multiple: true
           path: ${{ runner.temp }}/sync
       - uses: actions/create-github-app-token@v3
         id: token
