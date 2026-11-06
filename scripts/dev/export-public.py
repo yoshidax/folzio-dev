@@ -19,23 +19,6 @@ def git(*args, binary=False):
     return result.stdout if binary else result.stdout.strip()
 
 
-def skeleton(text):
-    result, code = [], False
-    for line in text.splitlines():
-        if re.match(r'^\s*```', line):
-            code = not code
-            result.append('fence ' + line.strip())
-        elif code:
-            result.append('code ' + re.sub(r'\s*#.*$', '', line).rstrip())
-        elif re.match(r'^#+ ', line):
-            result.append('heading ' + re.match(r'^#+', line)[0])
-        elif re.match(r'^\s*([-*]|[0-9]+\.) ', line):
-            result.append('list ' + str(len(line) - len(line.lstrip())))
-        elif re.match(r'^\s*\|', line):
-            result.append('table')
-    return result
-
-
 def extract(data, root):
     with tarfile.open(fileobj=io.BytesIO(data)) as archive:
         for item in archive:
@@ -72,8 +55,10 @@ def export(sha, output):
         helper = Path(temp) / 'strip.sh'
         helper.write_bytes(git('show', f'{sha}:scripts/dev/strip-readme-dev-note.sh', binary=True))
         subprocess.run(['bash', str(helper), str(root / 'README.md'), str(root / 'README.ja.md')], check=True)
-        if skeleton((root / 'README.md').read_text()) != skeleton((root / 'README.ja.md').read_text()):
-            raise ValueError('README の構造が一致しません')
+        readme_check = Path(temp) / 'check-readme-sync.sh'
+        readme_check.write_bytes(git('show', f'{sha}:scripts/check-readme-sync.sh', binary=True))
+        subprocess.run(['bash', str(readme_check), '--structure-only', str(root / 'README.md'),
+                        str(root / 'README.ja.md')], check=True)
         definitions = git('ls-tree', '-z', sha, '--', 'scripts/dev/oss-workflows/', binary=True)
         names = []
         for entry in definitions.split(b'\0'):
@@ -101,8 +86,7 @@ def export(sha, output):
                 continue
             text = data.decode('utf-8', errors='replace')
             path_users = re.findall(r'/(?:Users|home)/([A-Za-z0-9_.-]+)(?:/|[\"\'\s])', text)
-            fixture = file.relative_to(root).parts[0] == 'Tests'
-            personal = any(not (fixture and name in {'me', 'me2', 'x'}) for name in path_users)
+            personal = bool(path_users)
             # GitHub 標準アカウント名は一般語にも現れる。パス検査は省略しない。
             username = user not in {'runner', 'runneradmin'} and user in text
             if home in text or username or personal:

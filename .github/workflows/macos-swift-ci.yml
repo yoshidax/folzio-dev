@@ -44,6 +44,22 @@ jobs:
           done
           exit "$status"
 
+      - name: Verify read-only public release APIs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PYAPI'
+          import sys
+          sys.path.insert(0, 'scripts')
+          import release
+          api = release.GitHub(release.PUBLIC_REPO)
+          print('Readable public releases:', len(api.pages('releases')))
+          tags = api.api('git/matching-refs/tags/')
+          print('Readable public tags:', len(tags))
+          if tags:
+              release.tag_commit(api, tags[0]['ref'][len('refs/tags/'):])
+          PYAPI
+
       - name: Build
         run: swift build
 

@@ -110,8 +110,8 @@ class PublishFixture:
         shutil.copy2(ROOT / "scripts/dev/strip-readme-dev-note.sh", dev / "strip-readme-dev-note.sh")
         for name in ("export-public.sh", "export-public.py"):
             shutil.copy2(ROOT / "scripts/dev" / name, dev / name)
-        for path in ("scripts/check-readme-sync.sh", "scripts/dev/check-english-comments.sh",
-                     "scripts/check-no-network.sh"):
+        shutil.copy2(ROOT / "scripts/check-readme-sync.sh", self.source / "scripts/check-readme-sync.sh")
+        for path in ("scripts/dev/check-english-comments.sh", "scripts/check-no-network.sh"):
             self.write(path, "#!/bin/sh\nexit 0\n")
             (self.source / path).chmod(0o755)
         self.git("init", "-b", "main")
@@ -441,15 +441,34 @@ class ExporterTests(unittest.TestCase):
                          (self.fixture.source / 'scripts/dev/oss-workflows/release.yml').read_text())
 
 
-    def test_known_synthetic_home_is_allowed_but_personal_paths_are_not(self):
-        self.fixture.write('Tests/example.swift', 'let path = "/Users/me/a"\n')
+    def test_explicit_fixture_paths_are_allowed_but_any_home_name_is_rejected(self):
+        self.fixture.write('Tests/example.swift', 'let path = "/test-homes/fixture-person/a"\n')
         self.fixture.commit()
         self.assertEqual(self.export().returncode, 0)
         shutil.rmtree(self.output)
-        self.fixture.write('Tests/example.swift', 'let path = "/Users/personal-name/a"\n')
+        for path in ['/Users/me/a', '/Users/me2/a', '/Users/x/a', '/Users/personal-name/a', '/home/example/a']:
+            with self.subTest(path=path):
+                self.fixture.write('Tests/example.swift', f'let path = "{path}"\n')
+                self.fixture.commit()
+                self.assertNotEqual(self.export().returncode, 0)
+                self.assertFalse(self.output.exists())
+
+    def test_structure_check_is_shared_and_leaves_no_output_on_mismatch(self):
+        self.fixture.write('README.md', '# Header\n')
+        self.fixture.write('README.ja.md', 'No heading\n')
         self.fixture.commit()
-        self.assertNotEqual(self.export().returncode, 0)
+        result = self.export()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('differ in structure', result.stderr)
         self.assertFalse(self.output.exists())
+
+    def test_export_uses_committed_rules_after_later_helper_change(self):
+        sha = subprocess.check_output(['git', '-C', str(self.fixture.source), 'rev-parse', 'HEAD'], text=True).strip()
+        self.fixture.write('scripts/dev/export-public.py', 'raise SystemExit("later exporter")\n')
+        self.fixture.commit()
+        result = self.export(sha)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue((self.output / 'README.md').exists())
 
     def test_hosted_account_word_is_not_a_personal_path(self):
         self.fixture.write('Tests/example.swift', '// A busy runner can delay tests.\n')

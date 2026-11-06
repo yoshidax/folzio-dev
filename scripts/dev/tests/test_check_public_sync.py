@@ -65,7 +65,7 @@ class CandidateValidationTests(unittest.TestCase):
                          performance='failure', toolchain='Xcode 16.0\nSwift 6.0')
         self.run = dict(id=42, run_attempt=1, status='completed', conclusion='success', event='pull_request',
                         path='.github/workflows/release-candidate.yml', head_sha=self.head)
-        self.jobs = [dict(name='Build release candidate', conclusion='success', steps=[
+        self.jobs = [dict(name='Build release candidate', run_attempt=1, conclusion='success', steps=[
             dict(name='Validate and package candidate', conclusion='success')])]
 
     def check(self):
@@ -99,11 +99,30 @@ class CandidateValidationTests(unittest.TestCase):
             self.check()
 
     def test_attempt_and_workflow_must_match(self):
-        self.run['run_attempt'] = 2
+        self.meta['run_attempt'] = 2
         with self.assertRaises(ValueError):
             self.check()
+        self.meta['run_attempt'] = 1
         self.run.update(run_attempt=1, path='.github/workflows/other.yml')
         with self.assertRaises(ValueError):
+            self.check()
+
+    def test_failed_jobs_rerun_reuses_successful_producer_attempt(self):
+        self.run['run_attempt'] = 2
+        self.check()
+        self.jobs.append(dict(name='Build release candidate', run_attempt=2, conclusion='failure', steps=[]))
+        with self.assertRaises(ValueError):
+            self.check()
+
+    def test_waiting_sync_is_failure_but_successful_candidate_is_usable(self):
+        self.meta.update(source_kind='merged-source', source_sha=self.target)
+        self.run.update(path='.github/workflows/sync-public.yml', event='push', conclusion='failure', run_attempt=2)
+        self.jobs[0]['name'] = 'Rebuild release candidate'
+        self.jobs.append(dict(name='Await local verification', run_attempt=2, conclusion='failure',
+                              steps=[dict(name='Await local verification', conclusion='failure')]))
+        self.check()
+        self.jobs.append(dict(name='plan', run_attempt=2, conclusion='failure', steps=[]))
+        with self.assertRaisesRegex(ValueError, '確認待ち以外'):
             self.check()
 
 
@@ -129,7 +148,7 @@ class CandidateCommandTests(unittest.TestCase):
                     'if [[ "$*" == "$CANDIDATE_TEST_FAIL" ]]; then exit 1; fi')
         self.script(self.source / 'scripts/check-no-network.sh', 'echo network >> "$CANDIDATE_TEST_LOG"\n'
                     'if [[ "$CANDIDATE_TEST_FAIL" == network ]]; then exit 1; fi')
-        self.script(self.root / 'scripts/package-release.sh', 'echo package >> "$CANDIDATE_TEST_LOG"\nmkdir "$4"')
+        self.script(self.source / 'scripts/package-release.sh', 'echo package >> "$CANDIDATE_TEST_LOG"\nmkdir "$4"')
 
     def script(self, path, body):
         path.write_text('#!/bin/bash\nset -e\n' + body + '\n')
@@ -221,6 +240,13 @@ class SyncIntegrationTests(unittest.TestCase):
 
         self.api = API()
         self.request = self.sync.release.load_request(self.root, self.target)
+        unused = patch.object(self.sync.release, 'require_unused_version')
+        self.unused = unused.start()
+        self.addCleanup(unused.stop)
+        snapshot = patch.object(self.sync, 'public_snapshot', return_value=('a' * 40, 'b' * 40,
+                    'Initial\n\nDevelopment-Commit: ' + self.previous, True))
+        snapshot.start()
+        self.addCleanup(snapshot.stop)
 
     def test_manual_candidate_uses_m_instead_of_m_plus_three(self):
         result = self.sync.preview_plan(self.root, self.target, self.api)
@@ -242,6 +268,22 @@ class SyncIntegrationTests(unittest.TestCase):
         self.assertFalse((self.base / 'plan/source/ordinary.txt').exists())
         self.assertEqual(self.sync.tree_id(self.base / 'plan/source'), result['public_tree'])
         self.assertTrue((self.base / 'plan/source/scripts/check-no-network.sh').stat().st_mode & 0o111)
+
+    def test_source_uses_exporter_from_m_even_if_later_exporter_is_broken(self):
+        self.fixture.write('scripts/dev/export-public.py', 'raise SystemExit("later rules must not run")\n')
+        self.fixture.commit()
+        destination = self.base / 'export-m'
+        self.sync.export(self.root, self.target, destination)
+        self.assertTrue((destination / 'release.json').is_file())
+        with self.assertRaises(ValueError):
+            self.sync.export(self.root, self.sync.release.git(self.root, 'rev-parse', 'HEAD'), self.base / 'export-head')
+
+    def test_used_version_stops_before_candidate_rebuild_or_writer(self):
+        from unittest.mock import patch
+        self.unused.side_effect = ValueError('Version already used')
+        with patch.object(self.sync, 'candidate') as candidate, self.assertRaisesRegex(ValueError, 'already used'):
+            self.sync.sync_plan(self.root, self.target, '42', '', self.base / 'plan', self.api)
+        candidate.assert_not_called()
 
     def plan_for_write(self, legacy=False):
         from unittest.mock import patch
@@ -316,6 +358,31 @@ class SyncIntegrationTests(unittest.TestCase):
         self.assertEqual(result['state'], 'bootstrap')
         self.assertFalse(result['ready'])
 
+    def test_writer_rechecks_used_version_before_public_commit_is_pushed(self):
+        import os
+        from unittest.mock import patch
+        directory, result, base = self.plan_for_write()
+        os.environ.update(EXPECTED_PLAN_DIGEST=result['plan_digest'], EXPECTED_PAYLOAD_DIGEST=result['payload_digest'],
+                          EXPECTED_SOURCE_SHA=self.target, GH_TOKEN='local-test-only')
+        self.unused.side_effect = ValueError('Version already used')
+        original = self.sync.release.run
+
+        def local_run(*args, **kwargs):
+            args = tuple(str(self.remote) if str(a) == self.sync.PUBLIC_URL else a for a in args)
+            return original(*args, **kwargs)
+
+        with patch.object(self.sync.release, 'run', side_effect=local_run), self.assertRaisesRegex(ValueError, 'already used'):
+            self.sync.write(self.root, directory)
+        self.assertEqual(self.sync.release.git(self.remote, 'rev-parse', 'refs/heads/main'), base)
+
+    def test_pr_preview_rejects_used_version_before_candidate_build(self):
+        import json, os
+        self.event.write_text(json.dumps(dict(repository=dict(default_branch='master'), pull_request=self.pr)))
+        os.environ.update(GITHUB_EVENT_NAME='pull_request', GITHUB_SHA=self.target)
+        self.unused.side_effect = ValueError('Version already used')
+        with self.assertRaisesRegex(ValueError, 'already used'):
+            self.sync.preview_plan(self.root, '', self.api)
+
     def test_real_git_race_rejects_non_fast_forward(self):
         import os
         from unittest.mock import patch
@@ -389,6 +456,18 @@ class CandidateDownloadTests(unittest.TestCase):
             item['digest'] = 'sha256:' + '0' * 64
             with self.assertRaisesRegex(ValueError, 'digest'):
                 self.sync.candidate(api, '42', self.target, self.pr, self.tree, self.request)
+
+    def test_download_uses_original_producer_after_wait_only_rerun(self):
+        from unittest.mock import patch
+        self.meta.update(source_kind='merged-source', source_sha=self.target)
+        self.run.update(path='.github/workflows/sync-public.yml', event='push', conclusion='failure', run_attempt=2)
+        self.jobs[0]['name'] = 'Rebuild release candidate'
+        self.jobs.append(dict(name='Await local verification', run_attempt=2, conclusion='failure',
+                              steps=[dict(name='Await local verification', conclusion='failure')]))
+        api, data, item = self.bundle()
+        with patch.object(self.sync.release, 'run', return_value=data):
+            result = self.sync.candidate(api, '42', self.target, self.pr, self.tree, self.request)
+        self.assertEqual(result['run_attempt'], 1)
 
     def test_expired_artifact_never_downloads(self):
         from unittest.mock import patch

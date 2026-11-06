@@ -64,9 +64,9 @@ T004 の承認前には実装しない。PR と本番設定も、今回の設計
 ## Phase 7: Polish — 実装 PR の検証と反映
 
 - [x] T026 `scripts/dev/check-all.sh` を実行し、新しい判定・同期テストを含む Cloud の結果をこの tasks.md に記録する
-- [x] T027 `.github/workflows/macos-swift-ci.yml` の build / test と公開・配布回帰の結果を確認し、この tasks.md に記録する
+- [ ] T027 `.github/workflows/macos-swift-ci.yml` の build / test と公開・配布回帰の結果を確認し、この tasks.md に記録する
 - [x] T028 保守者が作業ブランチで `scripts/make-app.sh` → `open .build/Folzio.app` の3ペイン・日英のマージ前スモークを確認し、この tasks.md に記録する
-- [x] T029 最新 master と `scripts/dev/check-spec-ids.sh` を確認してから、`specs/product/overview.md` と `specs/product/contracts/scripts.md`・app-bundle.md・README.md に反映する。特に FR-311（overview.md）の検査場所・性能の例外・失敗後の即時中断と、scripts 契約の旧「同期後テスト」をそろえ、ID と形式・check-all を検査する
+- [ ] T029 最新 master と `scripts/dev/check-spec-ids.sh` を確認してから、`specs/product/overview.md` と `specs/product/contracts/scripts.md`・app-bundle.md・README.md に反映する。特に FR-311（overview.md）の検査場所・性能の例外・失敗後の即時中断と、scripts 契約の旧「同期後テスト」をそろえ、ID と形式・check-all を検査する
 - [ ] T030 `specs/product/` の反映差分を保守者に示し、承認後にコミットする。実装 PR は保守者の依頼時だけ作成する
 
 ## Phase 8: 導入・実リリースの確認（保守者、実装 PR のマージ後）
@@ -168,3 +168,21 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
   最終コミットの公開書き出しも hosted account 条件で成功。製品仕様の差分は未コミットでT030の承認を待つ。
 - T031以降の本番App/Secret設定、初回release PR・CI成果物の取得とローカル確認、公開連鎖は未実施。
   今回の起動スモークをダウンロード候補の実確認の代わりとは扱わず、IssueはIn Progressのままにする。
+
+
+## 実装レビュー9件への対応（2026-11-07）
+
+- ドラフト検出: 公式 REST 文書の published-only と draft 一覧の権限を照合。認証済み一覧の全ページから tag を探す。
+  tag lookup が404でも2ページ目の draft を拒否し、部分添付失敗後の再実行で作成を繰り返さないテストを追加。
+- 使用済み version: PR preview・同期判定・App writer の書き込み前に照合する。read-only では見えない draft も writer で拒否する。
+- failed jobs 再実行: plan から入力 artifact ID を引き継ぎ、候補は実際に生成した最新 build job の attempt に照合する。
+- 確認待ち: 専用 job を明示的 failure / Not published とし、成功した rebuild と同期完了を区別する。
+  成功した候補 job と、待機以外の失敗がないことを API で確認してから再開に利用する。
+- ホームパス: 名前による fixture 例外を廃止し、Swift テストの仮想パスを /test-homes/ に統一する。
+- README: exporter の独自 skeleton を削除し、既存 check-readme-sync.sh の --structure-only に統合する。
+- 固定 M: exporter 自体を M から読み、共通 package も M の公開ソース側を使う。後続 HEAD の規則変更の回帰を追加する。
+- 公開履歴: 判定は blob なしの main 履歴、writer は1コミットの shallow fetch とし、全履歴の二重 clone を廃止する。
+- T029: 製品仕様4ファイルは手元の未コミット差分で、リモートにはなく承認待ち。誤解を避けて未チェックへ戻す。
+  既存差分を保持し、修正後の検証結果に合わせて更新する。T027も修正後のCI確認まで未チェックへ戻す。
+
+- 修正後の Cloud 検証: check-all140件成功 / macOS・rsync29件skip。YAML構文と生成jobからのartifact ID参照、Python / Bash構文を確認。修正コードをpushし、読み取り専用public API確認を含むmacOS CIでT027を再検証する。

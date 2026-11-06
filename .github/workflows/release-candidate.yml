@@ -20,6 +20,7 @@ jobs:
     outputs:
       ready: ${{ steps.plan.outputs.ready }}
       source_sha: ${{ steps.plan.outputs.source_sha }}
+      input_artifact_id: ${{ steps.upload.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,6 +33,7 @@ jobs:
           SOURCE_SHA: ${{ inputs.source_sha }}
         run: python3 scripts/dev/sync-public.py preview-plan --source-sha "$SOURCE_SHA" --directory "$RUNNER_TEMP/preview"
       - uses: actions/upload-artifact@v4
+        id: upload
         if: steps.plan.outputs.ready == 'true'
         with:
           name: candidate-plan-${{ github.run_id }}-${{ github.run_attempt }}
@@ -52,7 +54,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: candidate-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          artifact-ids: ${{ needs.plan.outputs.input_artifact_id }}
           path: ${{ runner.temp }}/preview
       - name: Select toolchain
         run: |
@@ -63,7 +65,7 @@ jobs:
       - name: Export public source
         env:
           SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
-        run: bash scripts/dev/export-public.sh "$SOURCE_SHA" "$RUNNER_TEMP/preview/source"
+        run: python3 scripts/dev/sync-public.py export --source-sha "$SOURCE_SHA" --directory "$RUNNER_TEMP/preview/source"
       - name: Validate and package candidate
         run: bash scripts/dev/validate-release-candidate.sh "$RUNNER_TEMP/preview/source" "$RUNNER_TEMP/preview/candidate"
       - id: record

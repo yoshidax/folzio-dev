@@ -164,8 +164,19 @@ def tag_commit(api, tag):
     raise ValueError('Tag does not resolve to a commit')
 
 
+def existing_release(api, tag):
+    # The tag endpoint only returns published releases; the authenticated list also includes drafts.
+    return next((item for item in api.pages('releases') if item['tag_name'] == tag), None)
+
+
+def require_unused_version(api, version):
+    tag = 'v' + version
+    if existing_release(api, tag) is not None or tag_commit(api, tag) is not None:
+        raise ValueError(f'Version {version} is already used in the public repository')
+
+
 def check_release_state(api, tag, sha):
-    if api.api('releases/tags/' + quote(tag, safe=''), missing=True) is not None:
+    if existing_release(api, tag) is not None:
         raise ValueError('Release already exists; inspect and repair the draft manually')
     target = tag_commit(api, tag)
     if target is not None and target != sha:
@@ -256,7 +267,7 @@ def public_draft(root, directory, api):
                 raise
     if tag_commit(api, tag) != sha:
         raise ValueError('Tag verification failed')
-    if api.api('releases/tags/' + tag, missing=True) is not None:
+    if existing_release(api, tag) is not None:
         raise ValueError('Release was created concurrently; existing assets are unchanged')
     url = f'https://github.com/{PUBLIC_REPO}/actions/runs/{os.environ["GITHUB_RUN_ID"]}'
     notes = blob(root, sha, request['notes_file']).decode('utf-8')

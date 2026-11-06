@@ -8,6 +8,7 @@ Ordinary development changes do not update the distribution repository.
 
 1. In the development repository, copy `release.example.json` to `release.json`.
 2. Choose an unused `version`, a `build_number`, and a Markdown file under `release-notes/`.
+   The candidate checks public tags and releases before building; an already used version is rejected.
    Both numeric fields are strings. Version components and the build number allow `0` alone, but reject leading zeros.
    For example, `1.02.0` and build `007` are invalid. Unknown and duplicate keys are rejected.
 3. Commit the notes and request in the same pull request. Notes must contain text and must be regular committed files.
@@ -48,7 +49,9 @@ Releases target arm64, use ad hoc signing, and are not notarized. Intel and auto
 ## A changed merge result or a failed release
 
 The base branch can advance after preview generation. When M has different published files, the sync run generates
-a new candidate for M and waits for another local check. It does not publish those unverified changes.
+a new candidate for M and waits for another local check. The **Await local verification** job deliberately ends
+with a failure status and **Not published**, so a successful candidate build cannot be mistaken for completed publication.
+This also applies when the initial public base must be confirmed. The successful candidate job remains usable for resuming.
 
 1. Download the new candidate, inspect `candidate.json`, and check it locally.
 2. Open **Publish release source** → **Run workflow**, select the default branch, and enter
@@ -59,6 +62,15 @@ a new candidate for M and waits for another local check. It does not publish tho
 If a candidate expires after 30 days, use **Release candidate** → **Run workflow** with `source_sha=M` to rebuild it.
 Then check it and resume with the same M and the new run ID. The default branch selects the workflow code;
 it does not replace the explicitly selected source.
+
+Use **Re-run failed jobs** for transient job failures. Downloads use the artifact ID saved by the successful plan job,
+including when that job ran in an earlier attempt. A candidate is bound to the latest attempt that actually ran its build job;
+a later failed build cannot fall back to an older candidate. A waiting run resumes through **Run workflow**, rather than
+re-running the waiting job.
+
+The selected commit supplies its own export rules and shared packaging script, even if the default branch has advanced.
+Before changing public main, the writer checks tags and all visible releases again with the App's public-repository access.
+This check includes drafts, which are absent from the release-by-tag endpoint and may be hidden from read-only preview jobs.
 
 If the public source was already synchronized, repeat the original public build run to retry only the binary release.
 An identical source synchronization creates no duplicate commit. An existing tag can be reused only for the same public commit.

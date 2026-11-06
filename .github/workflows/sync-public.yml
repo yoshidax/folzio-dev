@@ -32,6 +32,7 @@ jobs:
       source_sha: ${{ steps.plan.outputs.source_sha }}
       plan_digest: ${{ steps.plan.outputs.plan_digest }}
       payload_digest: ${{ steps.plan.outputs.payload_digest }}
+      input_artifact_id: ${{ steps.upload.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,6 +48,7 @@ jobs:
         run: |
           python3 scripts/dev/sync-public.py sync-plan --source-sha "$SOURCE_SHA" --candidate-run-id "$CANDIDATE_RUN_ID" --bootstrap-public-base "$BOOTSTRAP_PUBLIC_BASE" --directory "$RUNNER_TEMP/sync"
       - uses: actions/upload-artifact@v4
+        id: upload
         if: steps.plan.outputs.state == 'write' || steps.plan.outputs.state == 'rebuild'
         with:
           name: sync-input-${{ github.run_id }}-${{ github.run_attempt }}
@@ -67,7 +69,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: sync-input-${{ github.run_id }}-${{ github.run_attempt }}
+          artifact-ids: ${{ needs.plan.outputs.input_artifact_id }}
           path: ${{ runner.temp }}/sync
       - name: Restore verified source modes
         env:
@@ -89,8 +91,7 @@ jobs:
           path: ${{ runner.temp }}/sync/candidate/
           if-no-files-found: error
           retention-days: 30
-      - name: Wait for local verification
-        run: echo 'Local verification is required. Download this candidate, then resume with the fixed source SHA and this run ID.' >> "$GITHUB_STEP_SUMMARY"
+
   write:
     needs: plan
     if: needs.plan.outputs.state == 'write'
@@ -107,7 +108,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: sync-input-${{ github.run_id }}-${{ github.run_attempt }}
+          artifact-ids: ${{ needs.plan.outputs.input_artifact_id }}
           path: ${{ runner.temp }}/sync
       - uses: actions/create-github-app-token@v3
         id: token
@@ -125,3 +126,22 @@ jobs:
           EXPECTED_PLAN_DIGEST: ${{ needs.plan.outputs.plan_digest }}
           EXPECTED_PAYLOAD_DIGEST: ${{ needs.plan.outputs.payload_digest }}
         run: python3 scripts/dev/sync-public.py write --directory "$RUNNER_TEMP/sync"
+
+  await-verification:
+    name: Await local verification
+    needs: [plan, rebuild]
+    if: >-
+      always() && needs.plan.result == 'success' &&
+      (needs.plan.outputs.state == 'bootstrap' ||
+      (needs.plan.outputs.state == 'rebuild' && needs.rebuild.result == 'success'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Await local verification
+        env:
+          SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
+          STATE: ${{ needs.plan.outputs.state }}
+        run: |
+          echo "::error title=Not published::Awaiting local verification or bootstrap confirmation for $SOURCE_SHA ($STATE)."
+          echo "Not published. Check the candidate for $SOURCE_SHA, then resume with this source SHA, the checked candidate run ID, and the initial public base if required." >> "$GITHUB_STEP_SUMMARY"
+          exit 1

@@ -113,9 +113,14 @@ class FakeAPI:
             if isinstance(value, Exception):
                 raise value
             return value
+        if path.startswith('releases?'):
+            return []
         if missing:
             return None
         raise AssertionError(path)
+
+    def pages(self, path, key=None):
+        return module().GitHub.pages(self, path, key)
 
 
 class APITests(unittest.TestCase):
@@ -144,10 +149,31 @@ class APITests(unittest.TestCase):
         with self.assertRaises(ValueError):
             release.check_release_state(api, 'v1.2.3', 'c' * 40)
         for draft in (True, False):
-            api = FakeAPI({'releases/tags/v1.2.3': {'draft': draft}})
+            api = FakeAPI({'releases?per_page=100&page=1': [{'tag_name': 'v1.2.3', 'draft': draft}]})
             with self.assertRaises(ValueError):
                 release.check_release_state(api, 'v1.2.3', sha)
             self.assertEqual([c[0] for c in api.calls], ['GET'])
+
+    def test_draft_on_second_page_blocks_creation_even_when_tag_lookup_is_404(self):
+        release = module()
+        api = FakeAPI({'releases?per_page=100&page=1': [dict(tag_name=f'v0.0.{n}', draft=False) for n in range(100)],
+                       'releases?per_page=100&page=2': [dict(tag_name='v1.2.3', draft=True)]})
+        with self.assertRaisesRegex(ValueError, 'Release already exists'):
+            release.check_release_state(api, 'v1.2.3', 'a' * 40)
+        self.assertTrue(any('page=2' in call[1] for call in api.calls))
+        self.assertFalse(any(call[1].startswith('releases/tags/') for call in api.calls))
+
+    def test_unused_version_rejects_tag_or_release_and_propagates_api_errors(self):
+        release = module()
+        for values in [
+            {'git/ref/tags/v1.2.3': dict(object=dict(type='commit', sha='a' * 40))},
+            {'releases?per_page=100&page=1': [dict(tag_name='v1.2.3', draft=True)]},
+        ]:
+            with self.subTest(values=values), self.assertRaises(ValueError):
+                release.require_unused_version(FakeAPI(values), '1.2.3')
+        release.require_unused_version(FakeAPI({}), '1.2.3')
+        with self.assertRaises(release.APIError):
+            release.require_unused_version(FakeAPI({'releases?per_page=100&page=1': release.APIError('403')}), '1.2.3')
 
 
 class PublicPlanTests(unittest.TestCase):
@@ -256,6 +282,10 @@ class PublicPlanTests(unittest.TestCase):
             self.release.public_draft(self.root, output, api)
         self.assertEqual(len(calls), 1)
         self.assertFalse(any(c[0] in ('PATCH', 'DELETE') for c in api.calls))
+        api.values['releases?per_page=100&page=1'] = [dict(tag_name='v1.2.3', draft=True)]
+        with patch.object(self.release, 'run', side_effect=run), self.assertRaisesRegex(ValueError, 'Release already exists'):
+            self.release.public_draft(self.root, output, api)
+        self.assertEqual(len(calls), 1)
         (output / 'SHA256SUMS').write_text('tampered')
         api = FakeAPI({})
         with self.assertRaises(ValueError):
@@ -270,13 +300,13 @@ class PublicPlanTests(unittest.TestCase):
         release = self.release
         owner = self
 
-        class StatefulAPI:
+        class StatefulAPI(FakeAPI):
             def __init__(self, race):
                 self.tag, self.race, self.posts = None, race, 0
 
             def api(self, path, method='GET', data=None, missing=False):
-                if path.startswith('releases/tags/'):
-                    return None
+                if path.startswith('releases?'):
+                    return []
                 if path == 'git/ref/tags/v1.2.3':
                     return None if self.tag is None else dict(object=dict(type='commit', sha=self.tag))
                 if path == 'git/refs':

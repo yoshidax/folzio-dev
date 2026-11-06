@@ -43,7 +43,11 @@ def tree_id(source):
 
 
 def export(root, sha, dest):
-    release.run('bash', Path(__file__).with_name('export-public.sh'), sha, dest, cwd=root)
+    # default branch が進んでも、書き出し規則は対象コミットから読み取る。
+    with tempfile.TemporaryDirectory() as temp:
+        for name in ('export-public.sh', 'export-public.py'):
+            (Path(temp) / name).write_bytes(release.blob(root, sha, 'scripts/dev/' + name))
+        release.run('bash', Path(temp) / 'export-public.sh', sha, dest, cwd=root)
     return tree_id(dest)
 
 
@@ -153,7 +157,8 @@ def preview_plan(root, requested, api):
         if release.blob(root, merge_base, 'release.json', optional=True) == release.blob(root, head, 'release.json', optional=True):
             return dict(ready=False, reason='通常の PR: 配布要求の変更なし')
         sha = release.require_sha(os.environ['GITHUB_SHA'])
-        release.load_request(root, sha)
+        request = release.load_request(root, sha)
+        release.require_unused_version(release.GitHub(release.PUBLIC_REPO), request['version'])
         return dict(ready=True, source_sha=sha, source_kind='pr-preview', release_pr=pr['number'],
                     pr_head_sha=head, pr_base_sha=base)
     sha = release.require_sha(requested)
@@ -186,12 +191,23 @@ def validate_candidate(meta, run, jobs, target, pr, tree, request):
     release.require_sha(meta['public_tree'])
     path = run['path'].split('@')[0]
     allowed = {'.github/workflows/release-candidate.yml', '.github/workflows/sync-public.yml'}
-    if path not in allowed or run['status'] != 'completed' or run['conclusion'] != 'success':
+    if path not in allowed or run['status'] != 'completed':
         raise ValueError('信頼された成功 run の候補ではありません')
-    if int(meta['run_id']) != int(run['id']) or int(meta['run_attempt']) != int(run['run_attempt']):
-        raise ValueError('候補と run / attempt が一致しません')
+    latest = latest_jobs(jobs)
+    if run['conclusion'] != 'success':
+        waiting = latest.get('Await local verification')
+        if (path != '.github/workflows/sync-public.yml' or run['conclusion'] != 'failure'
+                or not waiting or waiting['conclusion'] != 'failure'
+                or not any(s['name'] == 'Await local verification' and s['conclusion'] == 'failure' for s in waiting['steps'])
+                or any(j['conclusion'] not in ('success', 'skipped') for name, j in latest.items() if name != 'Await local verification')):
+            raise ValueError('確認待ち以外の失敗を含む run は利用できません')
     expected_job = 'Rebuild release candidate' if path.endswith('sync-public.yml') else 'Build release candidate'
-    good = [j for j in jobs if j['name'] == expected_job and j['conclusion'] == 'success'
+    producer = latest.get(expected_job)
+    if (int(meta['run_id']) != int(run['id']) or not producer
+            or int(meta['run_attempt']) != int(producer['run_attempt'])
+            or not 1 <= int(meta['run_attempt']) <= int(run['run_attempt'])):
+        raise ValueError('候補と run / attempt が一致しません')
+    good = [j for j in [producer] if j['conclusion'] == 'success'
             and any(s['name'] == 'Validate and package candidate' and s['conclusion'] == 'success' for s in j['steps'])]
     if len(good) != 1 or meta['required_checks'] != {key: 'success' for key in REQUIRED}:
         raise ValueError('候補の必須 job / step が成功していません')
@@ -212,14 +228,29 @@ def validate_candidate(meta, run, jobs, target, pr, tree, request):
         raise ValueError('候補の toolchain が一致しません')
 
 
+def latest_jobs(jobs):
+    latest = {}
+    for job in jobs:
+        name = job['name']
+        if name not in latest or int(job['run_attempt']) > int(latest[name]['run_attempt']):
+            latest[name] = job
+        elif int(job['run_attempt']) == int(latest[name]['run_attempt']):
+            raise ValueError('同じ attempt の job が重複しています')
+    return latest
+
+
 def candidate(api, run_id, target, pr, tree, request):
     if not str(run_id).isdigit() or int(run_id) <= 0:
         raise ValueError('candidate_run_id は正の数字で指定してください')
     run = api.api(f'actions/runs/{int(run_id)}')
     if run.get('repository', {}).get('full_name') != DEV_REPO:
         raise ValueError('候補のリポジトリが一致しません')
-    attempt = int(run['run_attempt'])
-    jobs = api.pages(f'actions/runs/{run_id}/attempts/{attempt}/jobs', key='jobs')
+    jobs = api.pages(f'actions/runs/{run_id}/jobs?filter=all', key='jobs')
+    expected_job = 'Rebuild release candidate' if run['path'].split('@')[0].endswith('sync-public.yml') else 'Build release candidate'
+    producer = latest_jobs(jobs).get(expected_job)
+    if not producer:
+        raise ValueError('候補を生成した job がありません')
+    attempt = int(producer['run_attempt'])
     artifacts = api.pages(f'actions/runs/{run_id}/artifacts', key='artifacts')
     artifacts = [a for a in artifacts if not a['expired'] and re.fullmatch(
         rf'release-candidate-[0-9a-f]{{40}}-{int(run_id)}-{attempt}', a['name'])]
@@ -251,7 +282,7 @@ def public_snapshot():
     temp = tempfile.TemporaryDirectory()
     try:
         path = Path(temp.name) / 'public'
-        release.run('git', 'clone', '--bare', '--quiet', PUBLIC_URL, path)
+        release.run('git', 'clone', '--bare', '--quiet', '--filter=blob:none', '--single-branch', '--branch', 'main', PUBLIC_URL, path)
         base = release.git(path, 'rev-parse', 'refs/heads/main')
         tree = release.git(path, 'rev-parse', base + '^{tree}')
         body = release.git(path, 'show', '-s', '--format=%B', base)
@@ -281,6 +312,11 @@ def sync_plan(root, source_sha, run_id, bootstrap, output_dir, api):
     output_dir.mkdir(parents=True, exist_ok=False)
     source = output_dir / 'source'
     tree = export(root, source_sha, source)
+    base, existing_tree, body, initialized = public_snapshot()
+    decision = publication_state(base, base, body, source_sha, tree == existing_tree,
+                                 bootstrap, initialized, lambda a, b: ancestor(root, a, b))
+    if tree != existing_tree:
+        release.require_unused_version(release.GitHub(release.PUBLIC_REPO), request['version'])
     archive = output_dir / 'source.tar'
     pack_source(source, archive)
     selected = run_id
@@ -301,13 +337,11 @@ def sync_plan(root, source_sha, run_id, bootstrap, output_dir, api):
         (output_dir / 'candidate-info.json').write_text(json.dumps(info))
         shutil.rmtree(source)
         return dict(state='rebuild', ready=False, reason=str(error), public_tree=tree, payload_digest=digest(archive), **info)
-    base, existing_tree, body, initialized = public_snapshot()
-    decision = publication_state(base, base, body, source_sha, tree == existing_tree,
-                                 bootstrap, initialized, lambda a, b: ancestor(root, a, b))
     if decision in ('bootstrap', 'skip'):
         return dict(state=decision, ready=False, source_sha=source_sha, public_base=base,
                     reason='初期 base の明示が必要です' if decision == 'bootstrap' else '公開済みの同じ tree')
     plan = dict(source_sha=source_sha, public_tree=tree, expected_public_base=base,
+                public_initialized=initialized,
                 bootstrap_public_base=bootstrap, payload_digest=digest(archive),
                 candidate_run_id=int(selected), candidate=meta, release_pr=pr['number'])
     plan_file = output_dir / 'plan.json'
@@ -335,18 +369,24 @@ def write(root, directory):
         if tree_id(source) != plan['public_tree']:
             raise ValueError('payload の公開 tree が一致しません')
         public = temp / 'public'
-        release.run('git', 'clone', '--quiet', PUBLIC_URL, public)
+        release.git(temp, 'init', '--bare', '--quiet', public)
+        release.git(public, 'remote', 'add', 'origin', PUBLIC_URL)
+        release.git(public, 'fetch', '--quiet', '--depth=1', '--filter=blob:none', 'origin', 'refs/heads/main:refs/heads/main')
         base = release.git(public, 'rev-parse', 'refs/heads/main')
         body = release.git(public, 'show', '-s', '--format=%B', base)
-        initialized = 'Development-Commit:' in release.git(public, 'log', '--format=%B', 'main')
+        initialized = plan['public_initialized']
+        existing_tree = release.git(public, 'rev-parse', base + '^{tree}')
         decision = publication_state(base, plan['expected_public_base'], body, plan['source_sha'],
-                                     release.git(public, 'rev-parse', base + '^{tree}') == plan['public_tree'],
+                                     existing_tree == plan['public_tree'],
                                      plan['bootstrap_public_base'], initialized, lambda a, b: ancestor(root, a, b))
         if decision == 'skip':
             release.summary('同じ tree は公開済みです')
             return
         if decision not in ('write', 'initialize'):
             raise ValueError('初期化の明示が必要です')
+        if existing_tree != plan['public_tree']:
+            # App の資格情報でドラフトも含めて再照合し、同期前に使用済み version を拒否する。
+            release.require_unused_version(release.GitHub(release.PUBLIC_REPO), plan['candidate']['version'])
         release.git(public, 'read-tree', '--empty')
         release.git(public, '-c', 'core.autocrlf=false', '-c', 'core.filemode=true',
                     '-c', 'core.attributesFile=/dev/null', '--work-tree=' + str(source), 'add', '-f', '-A', '--', '.')
@@ -372,7 +412,7 @@ def write(root, directory):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['preview-plan', 'sync-plan', 'record', 'write', 'unpack'])
+    parser.add_argument('operation', choices=['preview-plan', 'sync-plan', 'record', 'write', 'unpack', 'export'])
     parser.add_argument('--source-sha', default='')
     parser.add_argument('--candidate-run-id', default='')
     parser.add_argument('--bootstrap-public-base', default='')
@@ -396,6 +436,8 @@ def main():
         record(root, args.directory, Path(args.directory).parent / 'candidate', info)
     elif args.operation == 'unpack':
         unpack(args.directory)
+    elif args.operation == 'export':
+        export(root, release.require_sha(args.source_sha), args.directory)
     else:
         write(root, args.directory)
 

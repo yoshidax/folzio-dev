@@ -100,7 +100,8 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
 
 1. `release.example.json` を参考に version / build_number / notes_file の3キーを持つ `release.json` とノートを用意する。
    値は文字列。version の各数値と build は0単独を除き先頭0を許さない。ノートは `release-notes/` 以下の通常ファイルにする。
-   新しい配布には未使用の version を使う。
+   新しい配布には未使用の version を使う。PR 検証と同期判定で公開用のタグ・Release を照合し、
+   writer は公開先 App の権限でドラフトも含めて書き込み前に再照合する。
 2. 開発用のリリース PR を作る。Release candidate が公開対象の tree を生成し、build → 通常 Core / App テスト →
    性能テスト → 通信 API 検査 → package を順に実行する。性能は共有環境の測定のぶれを考慮した非ブロッキングとし、
    結果・ログを残す。他の必須検査の失敗時は以降の検査と成果物の確定を行わない。
@@ -112,7 +113,8 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
    PR preview と M の公開 tree が一致すれば、候補の必須検証を再利用し、Ubuntu の静的検査と同期だけを行う。
 5. master 追従を必須にしない運用のため、preview と M が異なる場合は M の新候補を生成し「ローカル確認待ち」とする。
    新 ZIP を取得・再確認してから Publish release source の Run workflow で ref=master、source_sha=M と
-   確認した candidate_run_id を指定して再開する。起動時点の HEAD に対象を読み替えない。
+   確認した candidate_run_id を指定して再開する。起動時点の HEAD に対象を読み替えず、書き出し規則も M から取得する。
+   確認待ちは専用の Await local verification job が明示的に failure と未公開を表示する。
 6. 公開用 main へ1コミットを追加すると Build release draft が対象の公開 SHA で通常テストと最終ビルドを行い、
    ZIP と SHA256SUMS・ノート付きのタグとドラフトを作る。同期と最終配布では性能測定を繰り返さない。
    保守者が最終 ZIP とノート・タグを確認し、GUI / Gatekeeper の確認後に公開する。
@@ -342,3 +344,15 @@ Developer ID 署名と Apple 公証は行わない。
    バージョン・署名を再確認する。ユーザーが GitHub でドラフトを確認してから公開する。
    失敗時はエラーと GitHub のドラフト状態を確認する。途中でドラフトが作られた場合は、GitHub 上で
    状態を確認して修復または削除してから再実行する。同名の Release を自動上書きしない。
+
+### 部分再実行と公開用メタデータの取得
+
+- job 間の入力 artifact は生成 job の出力 ID を使う。「Re-run failed jobs」で plan が再実行されなくても参照を保つ。
+- 候補の attempt は最後に build を行った job に結び付ける。待機 job だけを再実行しても成功した候補を失わない。
+  新しい build が失敗した場合は古い成功候補へ戻らない。
+- 確認待ち以外の失敗を含む同期 run の候補は使わない。待機だけの失敗なら、成功した候補をローカル確認して M/run で再開する。
+- Release の既存確認には認証済み releases 一覧の全ページを使い、公開済みだけを返す tag 指定 API に依存しない。
+- 判定は公開用 main の blob なしの履歴だけを取得する。writer は固定 base に対応する初期化判定を再利用し、
+  main の先端1コミットだけを fetch して base を再確認する。
+- Swift テストの架空ホームは `/test-homes/` を使い、exporter に fixture のユーザー名の例外を置かない。
+- README 構造は `scripts/check-readme-sync.sh --structure-only EN_FILE JA_FILE` で Git なしの候補にも共通検査する。

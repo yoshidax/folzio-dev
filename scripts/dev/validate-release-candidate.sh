@@ -41,7 +41,7 @@ else
     echo "Performance measurement: $performance (non-blocking)" >&2
 fi
 bash scripts/check-no-network.sh
-bash "$root/scripts/package-release.sh" "$version" "$build" "$tmp/source" "$output"
+bash "$tmp/source/scripts/package-release.sh" "$version" "$build" "$tmp/source" "$output"
 cp "$tmp/performance.log" "$output/performance.log"
 python3 - "$output/checks.json" "$performance" <<'PY'
 import json, sys
