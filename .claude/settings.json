@@ -74,8 +74,6 @@
       "mcp__github__delete_repository",
       "mcp__github__create_repository",
       "mcp__github__fork_repository",
-      "Bash(scripts/dev/merge-to-master.sh *)",
-      "Bash(scripts/dev/merge-to-master.sh)",
       "Bash(git reset --hard *)",
       "Bash(git clean *)",
       "Edit(/.claude/settings.json)",
@@ -83,9 +81,6 @@
       "Edit(/scripts/dev/check-git-push.py)"
     ],
     "ask": [
-        "mcp__github__actions_run_trigger",
-        "Bash(gh workflow run *)",
-        "Bash(gh run rerun *)",
         "Bash(brew install *)"
     ]
   },

@@ -2,7 +2,7 @@ name: macOS Swift CI
 
 on:
   pull_request:
-    types: [opened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
@@ -37,7 +37,7 @@ jobs:
           swift --version
 
       - name: Test publication script
-        run: python3 -m unittest scripts.dev.tests.test_publish_folzio -v
+        run: python3 -m unittest scripts.dev.tests.test_publish_folzio scripts.dev.tests.test_strip_readme_dev_note -v
 
       - name: Build
         run: swift build

@@ -2,6 +2,14 @@
 
 [English](README.md) | 日本語
 
+<!-- dev-repo-note:start -->
+> [!NOTE]
+> これは Folzio の開発用リポジトリです。アプリのソースに加えて、Spec Kit でアプリを開発するために使っている仕様、
+> 開発の記録、AI エージェントの設定を含みます。
+> アプリのダウンロードや、これらの開発用のファイルを含まないソースは、
+> [yoshidax/folzio](https://github.com/yoshidax/folzio) を参照してください。
+<!-- dev-repo-note:end -->
+
 **フォルダにある画像や動画を、そのまま見て、整理する。**
 
 Folzio は、フォルダ移動・サムネイル一覧・プレビューをひとつのウインドウにまとめた macOS アプリです。

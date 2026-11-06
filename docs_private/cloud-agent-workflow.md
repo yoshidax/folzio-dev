@@ -52,11 +52,11 @@ Linear の Issue の読み方と状態の更新（着手、PR の作成後、完
 
 ## 3 PR とマージ
 
-- **PR は、保守者が依頼したときだけ作る**。作業が終わっても、依頼なしには作らない。作成できる状態であること（作業ブランチが push 済みで、自己検査が通っている）を保守者に報告して、待つ。CI は PR の作成時に 1 回だけ自動で動くので、作業の途中で作ると、空に近い状態で動いてしまう。
+- **PR は、保守者が依頼したときだけ作る**。作業が終わっても、依頼なしには作らない。作成できる状態であること（作業ブランチが push 済みで、自己検査が通っている）を保守者に報告して、待つ。設計のレビューと Cloud での検査を終え、保守者が見る準備ができた状態で PR を作るため。Draft の PR の Ready 化も、保守者が依頼したときだけ行う。
 - PR のタイトルと本文に、Issue 番号（`TAK-<nn>`）を入れる。本文には、変更の概要、検証の結果、**確認していないこと**を正直に書く。
 - 本文の構成は、[.github/pull_request_template.md](../.github/pull_request_template.md) に従う（概要・変更・仕様の反映・検証・確認していないこと）。GitHub の画面から作る PR には自動で入るが、GitHub の MCP ツール `create_pull_request` で作るときは自動では入らない。Agent は、このファイルを読み、見出しを変えずに本文を作る。記入案内の HTML コメントは、記入後に消してよい。テンプレートは開発用リポジトリだけにあり、公開用リポジトリへは書き出さない（`.gitattributes` の `export-ignore`）。
 - PR を作った後、保守者に確認して、PR の購読（`subscribe_pr_activity`）をする。CI の結果とレビューのコメントが、セッションに届く。
-- **マージは保守者だけが行う**。Agent は、PR をマージしない（GitHub の MCP ツール `merge_pull_request` も、権限の設定の拒否リストにある。誤ってマージされる恐れがあるため、実際に呼んで確かめてはいない）。
+- **マージは保守者だけが行う**。`master` には、PR の最新の head で CI が成功しないとマージできないブランチ保護がある（[repository-and-release.md](repository-and-release.md) の「開発用リポジトリの公開とブランチ保護」）。Agent は、PR をマージしない（GitHub の MCP ツール `merge_pull_request` も、権限の設定の拒否リストにある。誤ってマージされる恐れがあるため、実際に呼んで確かめてはいない）。
 - 保守者のローカルでの確認（起動スモークなど）が必要なことを、実行するコマンドと確認する点を具体的に示して知らせる。
 - マージ後に保守者が完了更新を依頼したら、PR が `merged` であることと、変更が `master` に含まれることを確認して、`Done` に更新する。
 
@@ -68,25 +68,17 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 
 **CI の構成（2026-10-30 時点）**: `macos-15` のランナー、Xcode 16.0（Swift 6.0）。`swift build` → 通常のテスト（`swift test --no-parallel --skip FolzioPerformanceTests`、10 分のタイムアウト）→ 性能テスト（失敗を許容、10 分のタイムアウト）。ジョブ全体のタイムアウトは 30 分。テストの各ステップに、ジョブ全体より短いタイムアウトがあるため、止まったテストが 30 分間ランナーを占有することはなく、止まった箇所をログから読める。通常のテストを直列で実行するのは、3 コアのランナーで並列に実行すると進まなくなったため（原因は未調査）。
 
-**いつ動くか**: PR を作ったときと、Draft の PR を Ready にしたときに**自動で動く**。以後の push では動かない（macOS の無料枠が小さいため）。
+**いつ動くか**: PR を作ったとき、PR に push したとき（Draft の PR を含む）、閉じた PR を開き直したとき、Draft の PR を Ready にしたときに**自動で動く**。手動でも実行できる（`workflow_dispatch`）。続けて push すると、古い実行は取り消され、最新の head の実行だけが残る（`concurrency`）。開発用リポジトリは公開リポジトリなので、macOS を含む標準ランナーの使用は無料である（TAK-80）。
 
 **結果の確認と修正**:
 
 1. 成否は、GitHub の MCP の `pull_request_read`（`get_check_runs`）で確認する。ジョブのステップごとの状態は `actions_list`（`list_workflow_jobs`）で見られる。**ただし、性能テストのステップは `continue-on-error` のため、失敗しても check もステップも `success` と表示される**。性能テストの結果は、`get_job_logs` でログの末尾を読み、`Test run with 27 tests passed` か `failed` かを確かめてから報告する（2026-10-31 に、同じコミットで 27 件中 3 件が失敗した実行と、全件成功した実行があった。共有ランナーでの測定のぶれと考えられる）。
 2. 失敗したら、`get_job_logs`（`job_id`、`return_content`、`tail_lines`）でログを読み、原因を判断する。**実行中のジョブのログは取得できない**（404）。完了またはタイムアウトを待ち、推測で修正しない。
-3. 修正は、ログを読んで原因をまとめてから行い、まとめて push する。macOS の使用時間（無料枠が小さい）を、無駄な再実行で消費しない。
+3. 修正は、ログを読んで原因をまとめてから行い、まとめて push する。push すると CI が自動で動くので、その結果で再確認する。
 4. **置き換える API は、使う前に、ヘッダーや文書で存在を確認する**。たとえば `mach_task_self()` は C のマクロで Swift から使えず、確認せずに置き換えたために CI を 1 回無駄にした。
 5. 同じ原因の失敗を 3 回直しても解決しない場合は、作業を止めて、状況を保守者へ報告する。
 
-**再確認（保守者の許可が必要）**: 追加の push の後は、CI が自動では動かない。CI の起動・再実行は、macOS の使用時間（1 分 0.062 ドル、1 回約 5 分）を消費するため、**Agent は毎回、保守者の許可を得てから行う**（TAK-53。2026-11-02 に Actions の予算が 0 ドルで CI が止まった件が発端）。対象の操作は、GitHub MCP の `actions_run_trigger`（`run_workflow`、`rerun_workflow_run`、`rerun_failed_jobs`）、`gh workflow run`、`gh run rerun`。手順は次のとおり。
-
-1. 起動する理由（直した内容）、対象の作業ブランチ、1 回の見込み時間（約 5 分）を保守者に示して許可を求める。
-2. 許可が得られたら、`run_workflow`（`workflow_id` に `macos-swift-ci.yml`、`ref` に作業ブランチ）で `workflow_dispatch` を起動する（2026-10-30 に確認。`204` が返り、run が作られて PR に関連づけられ、約 5 分で成功した）。1 回の許可で起動するのは 1 回だけ。
-3. 許可が得られない、または確認が保守者に届かないときは、保守者に、GitHub の Actions タブの「macOS Swift CI」→「Run workflow」で、作業ブランチを選んで実行するよう頼む。
-
-PR の作成と Draft の PR の Ready 化も CI を自動で起動するため、保守者が依頼したときだけ行う（「PR とマージ」）。`cancel_workflow_run` は使用時間を増やさないので、許可は不要。
-
-**権限設定**: Claude Code は `.claude/settings.json` の `permissions.ask` に `mcp__github__actions_run_trigger` と `Bash(gh workflow run *)`、`Bash(gh run rerun *)` を置く（Agent は編集できないため、保守者が編集する。反映は新しいセッションから）。Kilo Code は `.kilo/kilo.jsonc`、Codex は `.codex/rules/sdd.rules` で、同じ操作を確認の対象にする。Cloud で `ask` の確認が保守者に届くかは未確認。届かなければ `deny` にして、手動起動の運用（上の 3）にする。GitHub 側の予算の上限（Stop usage）も併用する。
+**再実行**: 共有ランナーのぶれなど、コードを変えずに確かめ直したいときは、Agent は保守者の許可を待たずに再実行してよい。GitHub MCP の `actions_run_trigger`（`rerun_failed_jobs`、`rerun_workflow_run`、`run_workflow`）を使う。`run_workflow` では `workflow_id` に `macos-swift-ci.yml`、`ref` に作業ブランチを指定する。CI の起動・再実行に保守者の許可を求めていた規則（TAK-53）は、開発用リポジトリの公開で費用の制約がなくなったため、TAK-80 で削除した。
 
 直接の `brew install` は Claude の `permissions.ask` でも確認対象とする。Codex と Kilo の禁止設定と制約は `docs_private/agents/skills-and-codex.md` を参照する。
 
