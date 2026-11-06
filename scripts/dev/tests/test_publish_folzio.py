@@ -24,6 +24,7 @@ class PublishTests(unittest.TestCase):
             dev = scripts / "dev"
             (dev / "nested").mkdir(parents=True)
             shutil.copy2(ROOT / "scripts/dev/publish.sh", dev / "publish.sh")
+            shutil.copy2(ROOT / "scripts/dev/strip-readme-dev-note.sh", dev / "strip-readme-dev-note.sh")
             (dev / "new-private.sh").write_text("private helper\n")
             (dev / "nested/secret.txt").write_text("private nested file\n")
             shared = source / "shared-skills"
@@ -100,6 +101,7 @@ class PublishFixture:
         dev = self.source / "scripts/dev"
         dev.mkdir(parents=True)
         shutil.copy2(ROOT / "scripts/dev/publish.sh", dev / "publish.sh")
+        shutil.copy2(ROOT / "scripts/dev/strip-readme-dev-note.sh", dev / "strip-readme-dev-note.sh")
         for path in ("scripts/check-readme-sync.sh", "scripts/dev/check-english-comments.sh",
                      "scripts/check-no-network.sh"):
             self.write(path, "#!/bin/sh\nexit 0\n")
@@ -320,6 +322,56 @@ class WorkflowPublishTests(unittest.TestCase):
         fixture.commit()
         self.assert_published(fixture.publish())
         self.assertEqual(fixture.published_workflows(), {"release.yml": "name: Release\n"})
+
+
+README_WITHOUT_NOTE = "# Folzio\n\nEnglish | [日本語](README.ja.md)\n\nBrowse and organize.\n"
+README_JA_WITHOUT_NOTE = "# Folzio\n\n[English](README.md) | 日本語\n\n見て、整理する。\n"
+NOTE = ("<!-- dev-repo-note:start -->\n"
+        "> [!NOTE]\n"
+        "> Development repository. See [yoshidax/folzio](https://github.com/yoshidax/folzio).\n"
+        "<!-- dev-repo-note:end -->\n"
+        "\n")
+
+
+def with_note(readme):
+    head, separator, rest = readme.partition("\n\n")
+    language, separator2, body = rest.partition("\n\n")
+    return head + separator + language + separator2 + NOTE + body
+
+
+class ReadmeDevNotePublishTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.fixture = PublishFixture(Path(directory.name))
+
+    def test_publish_removes_development_note_from_both_readmes(self):
+        self.fixture.write("README.md", with_note(README_WITHOUT_NOTE))
+        self.fixture.write("README.ja.md", with_note(README_JA_WITHOUT_NOTE))
+        self.fixture.commit()
+        result = self.fixture.publish()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.fixture.target / "README.md").read_text(), README_WITHOUT_NOTE)
+        self.assertEqual((self.fixture.target / "README.ja.md").read_text(), README_JA_WITHOUT_NOTE)
+        self.assertIn("dev-repo-note", (self.fixture.source / "README.md").read_text())
+
+    def test_publish_keeps_readme_without_note(self):
+        self.fixture.write("README.md", README_WITHOUT_NOTE)
+        self.fixture.commit()
+        result = self.fixture.publish()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.fixture.target / "README.md").read_text(), README_WITHOUT_NOTE)
+
+    def test_publish_rejects_broken_note_markers_before_sync(self):
+        self.fixture.write("README.md", with_note(README_WITHOUT_NOTE))
+        self.fixture.write("README.ja.md", with_note(README_JA_WITHOUT_NOTE).replace(
+            "<!-- dev-repo-note:end -->\n", ""))
+        self.fixture.commit()
+        result = self.fixture.publish()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("README.ja.md", result.stderr)
+        self.assertEqual((self.fixture.target / "obsolete.txt").read_text(), "old\n")
+        self.assertFalse((self.fixture.target / "README.md").exists())
 
 
 if __name__ == "__main__":

@@ -2,6 +2,14 @@
 
 English | [日本語](README.ja.md)
 
+<!-- dev-repo-note:start -->
+> [!NOTE]
+> This is the development repository for Folzio. Besides the app source, it contains the specifications,
+> development records, and AI agent settings used to build the app with Spec Kit.
+> To download the app, or to get the source without these development files, visit
+> [yoshidax/folzio](https://github.com/yoshidax/folzio).
+<!-- dev-repo-note:end -->
+
 **Browse and organize your images and videos, right in their folders.**
 
 Folzio is a native macOS app that brings folder navigation, thumbnails, and previews together in one window.

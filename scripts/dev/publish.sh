@@ -1,5 +1,6 @@
 #!/bin/bash
 # 公開用リポジトリへ HEAD の内容を書き出す。.gitattributes で export-ignore にしたファイルは含めない。
+# README の開発用リポジトリの注記は、scripts/dev/strip-readme-dev-note.sh で除く。
 # 公開用リポジトリだけで動かす workflow は、scripts/dev/oss-workflows/ から書き出しの .github/workflows/ に置く。
 # 書き出し先でビルド・テスト・ネットワーク非依存の確認を行い、変更をステージするところまで進める。
 # コミットと push は内容を確認してから手で行う
@@ -26,6 +27,20 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 git archive HEAD | tar -x -C "$tmp"
+
+# 開発用リポジトリだけに置く README の注記（dev-repo-note の印の範囲）を、書き出しの README から除く。
+# 印の対応が崩れていれば、公開先に触れる前に止まる
+readmes=()
+readme_count=0
+for readme in README.md README.ja.md; do
+    if [[ -f "$tmp/$readme" ]]; then
+        readmes+=("$tmp/$readme")
+        readme_count=$((readme_count + 1))
+    fi
+done
+if ((readme_count > 0)); then
+    scripts/dev/strip-readme-dev-note.sh "${readmes[@]}"
+fi
 
 # 開発用のファイルが混ざっていないか確かめる
 if (cd "$tmp" && find . | grep -E '^\./(\.specify|\.claude|\.agents|\.kilo|\.codex|\.vscode|specs|docs_private|shared-skills)(/|$)|^\./AGENTS\.md$|^\./\.gitattributes$|^\./scripts/dev(/|$)|^\./\.github/workflows(/|$)'); then

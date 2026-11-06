@@ -18,18 +18,18 @@
 **Independent Test**: `test_strip_readme_dev_note` で、注記を除いた結果が注記を置く前の README と一致し、崩れた印で失敗することを確かめる。
 CI の `test_publish_folzio` で、書き出しの README に注記がなく、崩れた印で同期の前に止まることを確かめる。
 
-- [ ] T003 [P] [US68] `scripts/dev/tests/test_strip_readme_dev_note.py` を新しく作る。契約（`contracts/readme-dev-note.md`）の各項目を確かめる:
+- [x] T003 [P] [US68] `scripts/dev/tests/test_strip_readme_dev_note.py` を新しく作る。契約（`contracts/readme-dev-note.md`）の各項目を確かめる:
   範囲と直後の空行の除去、注記を置く前の内容との一致、直後が空行でない場合、印がないファイルを変えないこと、
   開始だけ・終了だけ・逆順・入れ子・2 つの範囲・行の一部の印での終了コード 1 とファイルを変えないこと、ファイルがない場合、
   複数ファイルの指定。先に失敗することを確かめる。
-- [ ] T004 [US68] `scripts/dev/strip-readme-dev-note.sh` を新しく作る（bash 3.2 と BSD・GNU の awk で動く書き方、コメントは英語）。
+- [x] T004 [US68] `scripts/dev/strip-readme-dev-note.sh` を新しく作る（bash 3.2 と BSD・GNU の awk で動く書き方、コメントは英語）。
   T003 のテストを通す。実行権限を付ける。
-- [ ] T005 [US68] `scripts/dev/tests/test_publish_folzio.py` に回帰テストを足す（FR-316）: `PublishFixture` で、注記を含む `README.md` と
+- [x] T005 [US68] `scripts/dev/tests/test_publish_folzio.py` に回帰テストを足す（FR-316）: `PublishFixture` で、注記を含む `README.md` と
   `README.ja.md` を書き出すと公開先の README が注記を置く前と同じになること、崩れた印で非ゼロ終了し公開先が変わらないこと。
   `PublishFixture` と `exercise_publish` が `scripts/dev/strip-readme-dev-note.sh` を一時リポジトリへ写すようにする。
-- [ ] T006 [US68] `scripts/dev/publish.sh` で、`git archive` の展開の直後（混入の検査の前）に、一時ディレクトリの `README.md` と
+- [x] T006 [US68] `scripts/dev/publish.sh` で、`git archive` の展開の直後（混入の検査の前）に、一時ディレクトリの `README.md` と
   `README.ja.md` に `scripts/dev/strip-readme-dev-note.sh` を適用する。失敗したら同期の前に止まる。冒頭のコメントにも書く。
-- [ ] T007 [US68] `README.md` と `README.ja.md` の言語の切り替えの行の後に、契約の形で注記を置く。英語版と日本語版で同じ内容にする。
+- [x] T007 [US68] `README.md` と `README.ja.md` の言語の切り替えの行の後に、契約の形で注記を置く。英語版と日本語版で同じ内容にする。
   `scripts/check-readme-sync.sh` が通ることと、T004 のスクリプトで除くと変更前の README と一致することを確かめる。
 
 ## Phase 3: US69 PR の最新の head を CI で検証してからマージする (P1)
