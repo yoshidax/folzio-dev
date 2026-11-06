@@ -163,7 +163,7 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
 公開用の workflow の追加・変更・削除の手順:
 
 1. 開発用の作業ブランチで、`scripts/dev/oss-workflows/` の workflow を追加・変更・削除する
-2. 開発用 master にマージする（「開発用 master へのマージとバックアップ」）
+2. PR で開発用 master にマージする（「開発用 master へのマージ」）
 3. 「公開の手順」で書き出す。`publish.sh` の出力に、置いた workflow の名前が出る
 4. 書き出し先の `git status` で `.github/workflows/` の変更（追加・変更・削除）を確かめてから、「公開の手順」の 4 でコミットする
 5. 公開用リポジトリの Actions で、workflow が意図どおり動くことを確かめる
