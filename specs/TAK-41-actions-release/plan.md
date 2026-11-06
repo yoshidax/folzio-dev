@@ -1,42 +1,41 @@
 # Implementation Plan: リリース PR と CI 候補による公開
 
-**Branch**: `work` | **Date**: 2026-11-06 | **Spec**: [spec.md](spec.md)
+**Branch**: `agent/tak-41-release-design` | **Date**: 2026-11-06 | **Spec**: [spec.md](spec.md)
+**Local checkout**: `work`（同じコミットを追跡する Cloud のブランチ）
 **Input**: `specs/TAK-41-actions-release/spec.md`
 
 ## Summary
 
-release.json 変更 PR の CI で、実際に公開する構成から確認用 ZIP を作る。
-保守者は Actions から取得してローカル PC で確認し、その PR をマージする。
-マージ後に確認用候補と公開ツリーが一致することを検証し、公開用 main へ1コミットで同期する。
-公開用の push を契機に公開済みコミットから最終ビルドし、タグと Release ドラフトを作る。
-保守者が添付物を確認して公開する。通常の master 更新では同期しない。
+release.json 変更 PR の CI で公開用の構成から ZIP を作り、保守者がローカルで確認してマージする。
+実際の merge commit M と候補の公開 tree が一致すれば、候補 CI の検証を再利用して Ubuntu で同期する。
+master 追従を必須にしない既存の運用では不一致も起こるため、その場合は M に固定した候補を作り直し、
+ローカル再確認待ちとする。保守者が M と候補 run を指定して再開するまで公開用へ書き込まない。
+公開用 push から公開済み SHA の最終ビルドとドラフト作成へつなぎ、保守者が確認後に公開する。
 
 ## Technical Context
 
 **Language/Version**: Bash、Python 3.9 以降の標準ライブラリ、GitHub Actions YAML。
 **Primary Dependencies**: Git、gh、Swift / Xcode、ditto、lipo、codesign、PlistBuddy、shasum。
-公式の checkout / upload-artifact / download-artifact / create-github-app-token Action を使う。
-**Storage**: Git の要求・ノート、確認用 artifact（30日）、検証済み公開候補、GitHub のタグ・ドラフト。
-**Testing**: unittest、一時 Git、API / gh stub、macOS 配布・公開回帰テスト、実 CI とローカル確認。
-**Target Platform**: 判定・書き込みは Ubuntu、候補・検証・配布は macos-15 arm64 / Xcode 16.0。
-ランナーでツールチェーンと arm64 を確認し、合わなければ停止する。
-**Project Type**: 公開・配布の自動化。アプリの実行コード・UI は変更しない。
-**Performance Goals**: 通常の master 更新で同期・配布の macOS job を動かさない。
-**Constraints**: 2リポジトリ、単一コミット、公開除外、既存の署名・配布条件、PR への Secret 非提供。
-**Scale/Scope**: 候補・同期・配布の3 workflow、共通 exporter とパッケージ処理、状態検証、回帰検証と運用文書。
+公式 checkout / upload-artifact / download-artifact / create-github-app-token Action。
+**Storage**: 要求・ノート、候補 artifact（30日）、同期 payload、GitHub のタグ・ドラフト。
+**Testing**: 一時 Git と API / gh stub の unittest、macOS の回帰、実 CI とローカル GUI。
+**Target Platform**: 判定・同期は Ubuntu、候補と最終配布は macos-15 arm64 / Xcode 16.0。
+**Performance Goals**: 同一公開 tree の同期では macOS を再実行せず、候補と最終配布の2段階とする。
+**Constraints**: 2リポジトリ、公開除外、単一対象 SHA、PR への公開 Secret 非提供、非 force 更新。
+**Scale/Scope**: 候補・同期・配布の3 workflow、共通 exporter / 候補検証 / package、回帰と運用文書。
 
 ## Constitution Check
 
 | 原則 | 設計前・設計後 | 根拠 |
 |---|---|---|
 | I ローカル完結・プライバシー | 適合 | 通信は開発・配布ツールのみ。アプリへ追加しない |
-| II 体感パフォーマンス | 適合 | 実行コードの変更なし。既存の同期前性能テストを維持 |
+| II 体感パフォーマンス | 適合 | アプリ実装は変えず、性能測定を候補で実行し結果を残す |
 | III キーボード・アクセシビリティ | 対象外 | UI の変更なし |
-| IV テスト必須 | 適合 | 同期・配布の異常系と候補の同等性を自動検証し、GUI 確認も残す |
-| V シンプルさ | 適合 | 公開生成と package を共通化し、自動採番・強制同期・独自承認システムを追加しない |
+| IV テスト必須 | 適合 | 必須テストは失敗時に中断。性能の測定失敗は既存 CI と同じ明示的な例外 |
+| V シンプルさ | 適合 | 検証・生成を共通化。追加 DB、独自の承認 UI、強制同期を作らない |
 
-新規の公式 App-token Action は独自の署名・トークン更新を避けるため必要（research R3）。
-設計後も憲章違反はない。設計の承認前に実装しない。
+公式 App-token Action は独自の署名・トークン更新を避けるため必要（research R5）。
+設計の承認前に実装しない。製品仕様の正本への反映は実装後のレビュー対象とする。
 
 ## Project Structure
 
@@ -48,71 +47,78 @@ contracts/release-workflow、背景の github-publishing-proposal をこの feat
 ### Source Code (repository root)
 
 ```text
-.github/workflows/release-candidate.yml      # PR の確認用 ZIP、Secret なし
-.github/workflows/sync-public.yml            # リリース PR のマージ後同期、復旧 dispatch
-.github/workflows/macos-swift-ci.yml         # 新しい公開・配布回帰テストを組み込む
-scripts/dev/export-public.sh                # source SHA → 公開候補、検査
-scripts/dev/sync-public.py                  # 候補照合・PR / run 検証・同期、書き込みを分離
-scripts/dev/publish.sh                      # 通常操作から外し、残すなら復旧 wrapper
-scripts/dev/oss-workflows/release.yml        # 公開用の最終ビルドと draft
-scripts/dev/oss-workflows/README.md          # 管理元の説明
-scripts/dev/release-distribution.sh         # ローカル復旧、package へ委譲
-scripts/release.py                          # 公開用の plan / draft
-scripts/package-release.sh                  # 候補と最終配布で共通のアプリ ZIP 生成
-scripts/dev/tests/test_check_release_workflow.py # 判定・API・候補同等性の異常系
-scripts/dev/tests/test_check_public_sync.py  # 同期の状態遷移と公開保護
-scripts/dev/tests/test_package_release.py    # macOS のパッケージ検査
-scripts/dev/tests/test_release_distribution.py # 復旧 CLI 回帰
-scripts/dev/tests/test_publish_folzio.py     # exporter と公開境界の回帰
-release.example.json                        # 記入例。実際の要求は次のリリース PR で追加
-release.json / release-notes/vX.Y.Z.md       # 保守者がリリース PR で管理
-docs/releasing.md                           # 公開ガイド、要求・ZIP の取得・公開と復旧
-docs_private/repository-and-release.md      # 日本語の運用と App 設定
-specs/product/overview.md                   # 実装後、最後に反映
+.github/workflows/release-candidate.yml       # PR preview / source_sha 指定の候補生成
+.github/workflows/sync-public.yml             # 同期判定、必要時だけ M の再候補、手動再開
+.github/workflows/macos-swift-ci.yml          # 公開・配布回帰テストを組み込む
+scripts/dev/export-public.sh                 # 固定 SHA → 公開用 tree と静的検査
+scripts/dev/validate-release-candidate.sh     # 共通の build / 通常 / 性能 / 通信検査と package
+scripts/dev/sync-public.py                   # 対象・候補・初期 base の照合と書き込みを分離
+scripts/dev/publish.sh                       # 通常経路から外し、残すなら共通処理へ委譲
+scripts/dev/oss-workflows/release.yml         # 公開用の最終ビルドと draft
+scripts/dev/release-distribution.sh          # ローカル復旧
+scripts/release.py / scripts/package-release.sh # 公開用 CLI
+scripts/dev/tests/test_check_release_workflow.py
+scripts/dev/tests/test_check_public_sync.py
+scripts/dev/tests/test_package_release.py
+scripts/dev/tests/test_release_distribution.py
+scripts/dev/tests/test_publish_folzio.py
+release.example.json                        # 例だけ同梱。実要求とノートはリリース PR で追加
+docs/releasing.md / docs_private/repository-and-release.md
+scripts/dev/oss-workflows/README.md
+specs/product/{overview,README}.md
 specs/product/contracts/{scripts,app-bundle}.md
 ```
 
-**Structure Decision**: 公開ファイルだけで配布を動かす。dev の workflow は書き出さない。
-公開されるコード・workflow のコメントは英語、書き出さない開発専用コードは日本語。
-README の従来の入手先は同じ。変更する場合は日英を同時更新する。
+**Structure Decision**: 公開用は公開ファイルだけで動かし、dev workflow は書き出さない。
+公開コード・workflow のコメントは英語、書き出さない開発専用コードは日本語。
+README を変える場合は日英を同時更新する。
 
 ## Phase 0: Research
 
-[research.md](research.md) R1〜R6。過去のローカル publish 前提の案を、保守者の追加要望に合わせて置き換える。
-同等性は commit SHA ではなく、変換後の公開 tree と version / build / toolchain で確認する。
+[research.md](research.md) R1〜R6。既存の master 追従不要と性能測定の非ブロッキングを踏まえる。
+元の公開ツリーが同じ場合に必須検証を再利用し、異なるコードを既確認とは扱わない。
 
 ## Phase 1: Design
 
-[data-model.md](data-model.md) と [contracts/release-workflow.md](contracts/release-workflow.md) を契約とする。
+契約は [data-model.md](data-model.md) と [contracts/release-workflow.md](contracts/release-workflow.md)。
 
-1. リリース PR では現在の PR に対するテスト用 merge SHA を checkout し、公開用ツリーを生成する。
-   要求と候補を検査し、共有 package で確認用 ZIP / SHA256SUMS / candidate.json を artifact にする。
-2. 保守者が最新の artifact をローカルで確認して PR をマージする。
-   PR の更新後は再生成した artifact を確認する。マージを確認後の進行操作とする。
-3. master push の release.json 差分と merged PR を確認し、PR の最新 head に対する成功した candidate run を特定する。
-   公開ツリーが一致しなければ、公開用へ書く前に停止する。master が先へ進んでも対象 SHA は読み替えない。
-4. 公開候補で従来の同期前検査をすべて実行し、候補と digest を artifact で writer へ渡す。
-5. writer だけが App Secret を受け取る。候補をコードとして実行せず、digest・source・base を検証し、
-   公開用 main を親にしたコミットを作る。無差分は省略、古い候補と競合は停止、force は使わない。
-6. App による公開用 push が公開用 release workflow を起動する。
-   この workflow は公開用 SHA の git archive を隔離した source として package に渡す。
-   通常テストと最終パッケージ検証に成功後、タグと2添付物のドラフトを作る。
-7. 同名 Release は自動更新せず、タグのみ同一 SHA の場合に再利用する。復旧は元の run を再実行する。
+1. PR preview はテスト用 merge SHA に固定し、公開 tree を生成する。
+   共通の候補検証で build → 通常テスト → 性能（非ブロッキング）→ 通信 API → package を実行し、
+   ZIP / SHA256SUMS / candidate.json を保持する。他の必須検査の失敗時は後続を実行しない。
+2. 保守者が preview を確認して PR をマージする。同期の Ubuntu 判定は実際の対象 M と merged PR を照合する。
+   通常 push は判定だけで省略する。同期全体に共通の concurrency group を置かない。
+3. preview の必須検証・head と PR の関係・公開 tree が M と一致すれば、その結果を使う。
+   不一致・欠落・失効なら sync 内の条件付き macOS job で M の候補を作り、writer を起動せず確認待ちとする。
+   これは master 追従不要の規則で起こり得る通常分岐として扱う。
+4. 新候補をローカル確認した保守者は default branch の同期 workflow に source_sha=M と candidate_run_id を渡す。
+   手動の候補生成にも同じ source_sha を要求する。起動時点の HEAD へ読み替えず、M+3 の混入を防ぐ。
+5. Ubuntu で M の公開 tree を再生成し、静的検査と候補照合を行う。候補 CI の build・テストはここでは繰り返さない。
+   public main を expected_public_base として記録し、照合済み payload を writer へ渡す。
+6. writer だけに App Secret を渡す。書き込み直前の public base と source を再取得して照合し、
+   public main だけを親にしたコミットを非 force push する。同時更新が先に成功したら競合として停止する。
+   古い M は拒否、無差分は省略する。共通 concurrency の pending 置換で要求を失わせない。
+7. trailer のない初回は初期化待ち。保守者が bootstrap_public_base を明示した手動同期に限り一致を検証し、
+   最初の source trailer を作る。候補や M の検査は省略しない。
+8. 公開用の push は公開用 SHA に固定して通常テストと最終 package を実行し、タグと2添付物のドラフトを作る。
+   性能を再実行せず、既存 Release も自動上書きしない。GUI と最終公開は保守者が行う。
 
-PR と本番の source は同じ公開 tree とするが、最終 ZIP は公開済みコミットから再ビルドする。
-署名や ZIP の時刻を含めたバイト列の一致を保証する設計ではない。
+通常は macOS 2段階。M が preview と違う場合だけ、別のコードを確認するため候補の追加ビルドがある。
+最終 ZIP は公開済みコミットから再ビルドし、tree・両バージョン・toolchain を照合する。バイト列の一致は要求しない。
 
 ## 検証と導入順序
 
-1. Cloud で check-all と同期・配布判断のテスト、macOS CI で build / test / package・公開回帰を確認する。
+1. Cloud で check-all・一時 Git の状態遷移、macOS CI で build / test / package・回帰を確認する。
 2. 実装 PR のマージ前に保守者が既存の起動スモークを行う。
-3. 製品仕様の反映前に最新 master と ID を照合し、反映後は ID・形式を検査する。
-   差分を示して承認後にコミットする。
-4. 実装 PR のマージ後、App・Secret と保護規則を設定する。最初のリリース PR で実 candidate を取得し、
-   保守者のローカル確認後にマージして、同期と公開用ビルドの連鎖を確かめる。
-5. 公開側の実行・ZIP の確認は後続の導入検証として未完了で残し、確認まで Issue を Done・feature を凍結しない。
+3. 製品仕様反映前に最新 master と ID を照合する。
+   FR-311（overview.md）の検査場所・性能の例外・即時中断を contracts/scripts.md にも反映する。
+   反映後に ID・形式を検査し、差分を示して承認後にコミットする。
+4. 実装 PR のマージ後、App / Secret・公開先の保護規則を設定する。初回の候補確認後、
+   明示的な bootstrap_public_base による同期を検証する。
+5. 通常経路に加え、preview 後に別 PR をマージした場合、M+3 から M を指定する復旧、
+   pending 置換を起こさない構成、競合、性能失敗時の継続と必須失敗時の中断を確認する。
+   実 CI・ローカル・公開の確認までは Issue を完了・feature を凍結しない。
 
 ## Complexity Tracking
 
-候補・同期・配布を分けるのは、公開前のローカル確認、2リポジトリ、PR への Secret 非提供に必要。
-追加の状態 DB と専用承認 UI は作らず、Git tree・CI run・保守者による PR マージを使う。
+候補の再生成と手動再開は、マージ結果が変わったコードを未確認で配布しないために必要。
+独自の承認 UI と状態 DB を追加せず、固定 SHA・CI run と明示的な手動入力を使う。

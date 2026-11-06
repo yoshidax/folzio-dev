@@ -1,68 +1,64 @@
 # Research: リリース PR から公開と配布へ
 
-## R1 開始操作
+## R1 開始操作と master の追従
 
-- Decision: release.json 変更 PR の master へのマージを開始点とする。
-  開発用 master の全 push を同期する案と、通常手順を手動 dispatch だけにする案は採用しない。
-- Rationale: 保守者は2リポジトリを維持し、任意のリリース時期を選びたいと回答した。
-  さらに release.json 変更 PR を起点にしたいと指定した。PR のレビューとマージが時期の決定になる。
-- Alternatives: 全変更の同期、1リポジトリへの統合、ローカル publish の維持。
+- Decision: release.json 変更 PR のマージをリリース開始にする。通常の master 更新では公開しない。
+  既存の「マージ前に最新 master へ追従させない」規則は変えない。
+- Rationale: 保守者が2リポジトリと任意のリリース時期・PR 起点を指定した。
+  preview と実際のマージ結果の差は通常起こり得るため、差があれば M の新候補を作ってローカル再確認を待つ。
+  不一致だけで復旧不能にする案や、全 PR に strict な最新化を要求する案は採用しない。
 
-## R2 イベントと公開境界
+## R2 対象の固定と再開
 
-- Decision: 開発用の PR 検証は読み取りと公開候補の検査のみ。
-  master push の before / after で release.json の変更を検出し、マージ後の SHA を固定して同期する。
-  復旧用 workflow_dispatch では default branch のコミットを固定し、要求が有効なら同期を試みる。
-- Rationale: タグや公開コミットを PR の未マージ内容から作らない。
-  on.push.paths だけに依存せず、イベントの比較元を Git で確認する。
-- Alternatives: PR 作成時の公開、最新 HEAD の再取得による対象変更。採用しない。
+- Decision: 同期の対象はリリース PR の merge commit M。手動候補と同期も source_sha=M を必須にする。
+  候補の run と M を指定する操作を、ローカルで再確認後に進める操作にする。
+- Rationale: dispatch する workflow の ref と、処理対象の SHA は別物。
+  master が M+3 になっていても M を再現し、候補生成と同期の間に HEAD が進んでも内容を変えない。
+  artifact 名は PR イベントに依存しない source / run / attempt で定義する。
 
-## R3 同期と認証
+## R3 検証と macOS の実行回数
 
-- Decision: 検証 job と書き込み job を分ける。書き込み job だけが GitHub App の短期トークンを使う。
-  App は公開用のみへインストールし、Contents write / Workflows write に限定する。
-- Rationale: GITHUB_TOKEN の権限は実行元リポジトリに限られる。
-  App の push は公開用の push workflow につながり、追加 dispatch を通常経路に要しない。
-  公開 workflow の同期にも権限が必要となる。
-- Alternatives: 長期 PAT、SSH deploy key と追加 dispatch、公開用に開発用全履歴をコピーする方式。
-  対象限定・短期認証と運用の単純さから App を選ぶ。
-- 新規外部依存: 公式 actions/create-github-app-token（調査時の公式例は v3）。
-  独自 JWT 署名・トークン管理を実装しないために必要。実装時に使うリビジョンと入力仕様を確認する。
+- Decision: PR preview または固定 M の候補 CI で build → 通常テスト → 性能テスト → 通信 API → package。
+  性能テストは既存 macOS CI と同じ非ブロッキングとし、結果・ログを残す。
+  他の必須検査は失敗した時点で中断し、その先の検査・確定・同期を行わない。
+- Rationale: `.github/workflows/macos-swift-ci.yml` は共有ランナーの測定のぶれを理由に性能を continue-on-error にしている。
+  前案は FR-311（overview.md）の厳格なローカル検証をそのまま同期へ移し、CI の実情と整合していなかった。
+  新しい FR-311 では性能失敗の例外と、その他の fail-fast を明文化する。
+- Decision: source と公開 tree が一致した候補の必須検証を同期で再利用し、同期は Ubuntu の静的検査だけにする。
+  最終配布は公開済みコミットで通常テストと package を行う。通常は macOS 2段階。
+  preview と M が違う場合だけ、別のコード M を確認するために追加の候補を作る。
 
-## R4 既存 publish の分解
+## R4 同期の競合と初期化
 
-- Decision: export-public.sh に選別・README 調整・workflow 配置・静的検査を分け、公開候補を作る。
-  macOS job で候補の build → 通常テスト → 性能テスト → 通信 API 検査を行ってから公開先を更新する。
-- Rationale: 現行 FR-311 の性能テストを必須から外さない。
-  ローカルパス検査はランナーの HOME / ユーザー名だけでは保守者の環境を検出できないため、
-  既存の検査にホームパス表現の検査を追加する案を契約で定義する。
-- Alternatives: publish.sh をそのままランナーで呼ぶ。初期化・同期・ステージまで行い、
-  検証前に書き出し先を変更する現行動作を GitHub 公開へ直結させないため分離する。
+- Decision: repo 共通の concurrency group を同期に置かない。
+  書き込み直前に public main と source を再取得し、固定 base・祖先関係を検証して非 force で更新する。
+- Rationale: cancel-in-progress: false でも既定の pending は置換される。
+  最新の GitHub には queue オプションもあるが、ここでは待機列の機能・順序・上限を安全性の前提にしない。
+  通常 push によるリリースの取り消しを避け、競合は可視化して再実行できるようにする。
+- Decision: trailer のない初回は自動同期せず、bootstrap_public_base を指定した手動実行だけを許可する。
+  入力の欠落・不一致・初期化済みでの指定を拒否し、候補や対象の検査を省略しない。
+- Rationale: 移行前の履歴に source の対応がないことを、通常の祖先保護の抜け道にしない。
 
-## R5 再実行と配布
+## R5 認証・公開境界・配布
 
-- Decision: 無差分はコミットを作らず、公開済み source より古い候補は拒否する。
-  配布は公開用 SHA に固定し、同一 SHA のタグのみ再利用、既存 Release は自動更新しない。
-  package-release.sh を公開ツールとして共通化し、ローカル配布の復旧 CLI からも使う。
-- Rationale: 同期の再実行と配布の再実行を区別し、確認済み ZIP とタグを保護する。
-- Alternatives: 強制同期、既存ドラフトの自動修復、最終公開の自動化。不要な状態管理を増やすため採用しない。
+- Decision: exporter と package を共通化し、writer だけが公開用に限定した GitHub App の短期トークンを使う。
+  PR・候補・静的検査には公開用の Secret を渡さない。Contents write / Workflows write を必要最小限とする。
+- 新規依存: 公式 create-github-app-token Action は独自 JWT 署名・トークン更新を避けるため必要。
+  公開用の push から先は公開用自身の GITHUB_TOKEN でタグとドラフトを作る。
+- Decision: 同一 SHA のタグだけ再利用し、既存 Release は自動上書きしない。
+  公開済みソースから最終ビルドするため、ローカル確認用 ZIP のバイト列の同一性は要求しない。
+  公開 tree・version / build・toolchain を照合し、GUI 確認と最終公開は保守者が行う。
 
-## R6 リリース前のローカル確認
+## R6 表記と記録
 
-- Decision: release-candidate workflow で PR の公開用ツリーから確認用 ZIP を作り、
-  SHA256SUMS と候補 metadata を同じ Actions artifact として30日間保持する。
-  保守者は取得した ZIP をローカルで試し、最新の候補を確認してからマージする。
-- Rationale: 保守者は CI ビルド成果物をローカル PC で確認できる仕組みを明示的に求めた。
-  マージを確認後の進行操作とし、独自の承認システムは追加しない。
-- 同等性: PR のテスト用 merge コミットと、実際の master の公開用ツリーの Git tree ID を照合する。
-  元の commit SHA 自体は squash merge で変わり得るため一致条件にはしない。
-  CI run と PR head の関連も検証し、別 run の自己申告 metadata だけを信用しない。
-- Alternatives: ローカルで再ビルド、マージ後に初めて確認、自動テストだけで公開。要望を満たさない。
-  確認用 ZIP のそのままの昇格も検討したが、FR-170 に沿って公開済みコミットから最終ビルドする。
-  公開ツリー・ツールチェーン・ビルド条件を一致させ、ZIP のバイト列の同一性までは要求しない。
+- Decision: version の各数値と build_number は、0 単独を除く先頭の0を拒否する。
+  自動正規化しない。01.2.0 / 1.02.0 / 007 を受理して別タグを作ることを防ぐ。
+- Decision: 文書の Feature Branch は agent/tak-41-release-design、Cloud のローカル checkout は work と区別する。
+  既存要件への参照には領域ファイルを付け、FR-311（overview.md）の契約変更を反映先へ明記する。
 
-## 根拠
+## 根拠と確認範囲
 
-現行ソースと仕様は 03c80bc。リポジトリ情報で公開先 yoshidax/folzio / main を確認した。
-一次資料のリンクと背景は [設計変更メモ](github-publishing-proposal.md) を参照。
-実 Actions、認証設定、同期 push、タグ・Release の作成は未実施。
+基準は origin/master の03c80bc。リポジトリの保護規則・既存 CI・FR-311 の実文を照合した。
+[GitHub の concurrency の公式資料](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)で
+pending の既定の置換動作を確認した。認証の一次資料は [背景メモ](github-publishing-proposal.md) に記載。
+今回は設計文書の修正のみ。実装・workflow 起動・Secret 設定・本番の同期は行っていない。
