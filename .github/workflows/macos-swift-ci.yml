@@ -25,6 +25,9 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Check public source snapshot
+        run: bash scripts/dev/export-public.sh "$(git rev-parse HEAD)" "$RUNNER_TEMP/public-source"
+
       - name: Select Xcode
         run: |
           ls -d /Applications/Xcode_*.app
@@ -37,7 +40,12 @@ jobs:
           swift --version
 
       - name: Test publication script
-        run: python3 -m unittest scripts.dev.tests.test_publish_folzio scripts.dev.tests.test_strip_readme_dev_note -v
+        run: |
+          status=0
+          for pattern in test_publish_folzio.py test_strip_readme_dev_note.py test_package_release.py test_release_distribution.py 'test_check_*.py'; do
+            python3 -I -m unittest discover -s scripts/dev/tests -p "$pattern" -v || status=1
+          done
+          exit "$status"
 
       - name: Build
         run: swift build

@@ -11,3 +11,10 @@
   動作の確認は、公開用リポジトリで行う
 - 公開用リポジトリの `.github/workflows/` を直接編集しない。次の書き出しで、このディレクトリの内容に置き換わる
 - 開発用リポジトリだけで動かす workflow（`macos-swift-ci.yml` など）は、ここではなく `.github/workflows/` に置く。書き出しには含まれない
+
+## 配布 workflow
+
+`release.yml` は公開用 main の push と手動実行で動き、公開済み SHA から arm64 の ZIP と SHA256SUMS を作って
+ドラフトへ添付する。開発用の Release candidate / Publish release source は `.github/workflows/` 側に置く。
+通常は release.json 変更 PR とローカル確認を起点に公開用へ同期する。
+初回 App / base、候補の再確認と復旧の手順は上記の運用文書を参照する。

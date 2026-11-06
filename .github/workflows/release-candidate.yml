@@ -1,0 +1,82 @@
+name: Release candidate
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Merged release PR commit (complete SHA)
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+jobs:
+  plan:
+    if: github.repository == 'yoshidax/folzio-dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.plan.outputs.ready }}
+      source_sha: ${{ steps.plan.outputs.source_sha }}
+      input_artifact_id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: python3 scripts/dev/sync-public.py preview-plan --source-sha "$SOURCE_SHA" --directory "$RUNNER_TEMP/preview"
+      - uses: actions/upload-artifact@v4
+        id: upload
+        if: steps.plan.outputs.ready == 'true'
+        with:
+          name: candidate-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/preview/candidate-info.json
+          if-no-files-found: error
+          retention-days: 30
+  candidate:
+    name: Build release candidate
+    needs: plan
+    if: needs.plan.outputs.ready == 'true'
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.plan.outputs.input_artifact_id }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/preview
+      - name: Select toolchain
+        run: |
+          test "$(uname -m)" = arm64
+          sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
+          xcodebuild -version
+          swift --version
+      - name: Export public source
+        env:
+          SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
+        run: python3 scripts/dev/sync-public.py export --source-sha "$SOURCE_SHA" --directory "$RUNNER_TEMP/preview/source"
+      - name: Validate and package candidate
+        run: bash scripts/dev/validate-release-candidate.sh "$RUNNER_TEMP/preview/source" "$RUNNER_TEMP/preview/candidate"
+      - id: record
+        run: python3 scripts/dev/sync-public.py record --directory "$RUNNER_TEMP/preview/source" --info "$RUNNER_TEMP/preview/candidate-info.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.record.outputs.artifact_name }}
+          path: ${{ runner.temp }}/preview/candidate/
+          if-no-files-found: error
+          retention-days: 30

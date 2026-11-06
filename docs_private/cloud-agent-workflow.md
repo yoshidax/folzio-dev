@@ -66,7 +66,7 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 
 この CI は開発用で、公開用リポジトリには書き出さない（TAK-40）。開発用の workflow は `.github/workflows/`、公開用リポジトリだけで動かす workflow は `scripts/dev/oss-workflows/` に置く。詳細は [repository-and-release.md](repository-and-release.md) の「GitHub Actions の workflow」にある。
 
-**CI の構成（2026-10-30 時点）**: `macos-15` のランナー、Xcode 16.0（Swift 6.0）。`swift build` → 通常のテスト（`swift test --no-parallel --skip FolzioPerformanceTests`、10 分のタイムアウト）→ 性能テスト（失敗を許容、10 分のタイムアウト）。ジョブ全体のタイムアウトは 30 分。テストの各ステップに、ジョブ全体より短いタイムアウトがあるため、止まったテストが 30 分間ランナーを占有することはなく、止まった箇所をログから読める。通常のテストを直列で実行するのは、3 コアのランナーで並列に実行すると進まなくなったため（原因は未調査）。
+**CI の構成（2026-11-07 時点）**: `macos-15` のランナー、Xcode 16.0（Swift 6.0）。HEAD の公開ツリー検査 → 公開・配布スクリプトの回帰 → `swift build` → 通常のテスト（`swift test --no-parallel --skip FolzioPerformanceTests`、10 分のタイムアウト）→ 性能テスト（失敗を許容、10 分のタイムアウト）。ジョブ全体のタイムアウトは 30 分。テストの各ステップに、ジョブ全体より短いタイムアウトがあるため、止まったテストが 30 分間ランナーを占有することはなく、止まった箇所をログから読める。通常のテストを直列で実行するのは、3 コアのランナーで並列に実行すると進まなくなったため（原因は未調査）。
 
 **いつ動くか**: PR を作ったとき、PR に push したとき（Draft の PR を含む）、閉じた PR を開き直したとき、Draft の PR を Ready にしたときに**自動で動く**。手動でも実行できる（`workflow_dispatch`）。続けて push すると、古い実行は取り消され、最新の head の実行だけが残る（`concurrency`）。開発用リポジトリは公開リポジトリなので、macOS を含む標準ランナーの使用は無料である（TAK-80）。
 
@@ -90,7 +90,7 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 |---|---|
 | Cloud（Agent） | `scripts/dev/check-all.sh`（実行する検査はスクリプトを参照） |
 | CI | `swift build`、`swift test`（通常のテストと性能テスト） |
-| 保守者（ローカル） | 起動スモーク（`scripts/make-app.sh` の後に `open .build/Folzio.app` で 3 ペインの表示）、ローカルの最新の Swift でのビルドとテスト、`scripts/dev/tests` の公開・配布のテスト（Apple silicon の macOS と `rsync` を前提とし、Cloud では 6 件が失敗する） |
+| 保守者（ローカル） | 起動スモーク（`scripts/make-app.sh` の後に `open .build/Folzio.app` で 3 ペインの表示）、ローカルの最新の Swift でのビルドとテスト、`scripts/dev/tests` の macOS 固有のパッケージ・ローカル復旧テスト（Cloud では必要機能のない項目を明示的に skip し、macOS CI で確認する） |
 
 - **起動スモークを省略して「CI が通ったから完了」にしない**。GUI の確認は保守者に依頼し、実行するコマンドと確認する点を具体的に示す。
 - 憲章の「マージ前のゲート」（自動テストの通過）は、Cloud では**CI の成功と、保守者のローカルでの確認**で満たすと解釈する（憲章は改定しない）。
@@ -112,3 +112,24 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 - `specs/product/` への反映は、**PR の最後の作業**にする。反映の直前に、`git merge origin/master` で最新の `master` を取り込む。同じ領域ファイルで競合したら、Agent が解消する。履歴を書き換えない（強制 push は禁止）。
 - `specs/product/` の ID は並行する feature 間で衝突し得る。反映直前に取り込んだ `master` と突き合わせ、衝突があれば[仕様 ID の重複解消](spec-id-conflicts.md)に従ってから反映する。両方がマージ済みの重複も同じ共通手順で扱う（例: TAK-52）。
 - 反映した項目と差分を保守者へ示し、承認を得てからコミットする。
+
+## リリース PR の CI（TAK-41）
+
+開発用 Release candidate は確認用 ZIP を作る読み取り専用の処理で、公開先へ書き込まない。
+Publish release source は master の要求変更を判定し、候補一致時には静的検査だけで同期する。
+候補がずれた場合は固定 M の候補を作り、ローカル再確認と M/run 指定の手動再開を待つ。
+App Secret の設定や本番リリースは導入時の保守者の操作。通常開発の CI 検証のために同期・配布 workflow を起動しない。
+
+
+### 通常 CI と実証の記録（TAK-41）
+
+通常の macOS Swift CI は、checkout した実際の HEAD を共通 exporter で書き出してから build / test へ進む。
+ホームパス・README・公開境界の不備は、release.json を変更しない PR でも検出する。
+
+部分再実行は [CI 42259015217 attempt2](https://github.com/yoshidax/folzio-dev/actions/runs/42259015217/attempts/2) で実証済み。
+生成 attempt1 の artifact13522914846 を、受取 job だけが attempt2 で再利用して成功した。
+実証用の artifact-plan / artifact-retry job・verify_artifact_retry 入力と公開 API 参照 step は通常 CI から外す。
+回帰テストと、この実証結果を維持する。再実証が必要なら、通常 PR の CI に常設せず、検証用の変更として扱う。
+
+API は未再実行の job も新 ID / attempt で複製するため、候補は runner_id・実行時刻・全 steps が同一の実行を照合し、
+実際に生成した最初の attempt へ結び付ける。整数の最新 attempt だけで生成済み artifact を拒否しない。

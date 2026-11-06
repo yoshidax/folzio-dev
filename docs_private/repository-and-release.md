@@ -11,7 +11,7 @@ Spec Kit・AI エージェントの設定・仕様書・開発記録は、公開
 | | 開発用 | 公開用 |
 |---|---|---|
 | 場所 | `~/projects/folzio` | `~/projects/folzio-oss` |
-| remote | GitHub の公開リポジトリ `yoshidax/folzio-dev` | GitHub の公開リポジトリ `yoshidax/folzio`（push はユーザーが行う） |
+| remote | GitHub の公開リポジトリ `yoshidax/folzio-dev` | GitHub の公開リポジトリ `yoshidax/folzio`（通常の同期は GitHub Actions が行う） |
 | 管理対象 | すべてのファイル | アプリのソース・テスト・ビルド用スクリプト・README（英語の `README.md` と日本語の `README.ja.md`）・公開用ガイド（`docs/`）・LICENSE |
 | 履歴 | 開発の履歴をそのまま残す | 1回の公開を1コミットにする |
 | ブランチ | master と feature・bugfix などの作業ブランチ | main |
@@ -92,7 +92,61 @@ AI エージェントの `master` への push とマージは、`AGENTS.md`、�
 Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore` ではなく `.specify/.gitignore` に置く。
 ソースのコメントにある仕様の ID（`FR-xxx` など）や quickstart への言及は、公開版でも残している。
 
-## 公開の手順
+## 通常の公開: リリース PR と CI 候補
+
+通常の公開ではローカルの `publish.sh`、公開用への手動コミット・push を行わない。
+開発用の `release.json` 変更 PR を起点に、公開用への同期と配布ドラフト作成を GitHub 内で進める。
+通常の master 更新は公開用を変更しない。
+
+1. `release.example.json` を参考に version / build_number / notes_file の3キーを持つ `release.json` とノートを用意する。
+   値は文字列。version の各数値と build は0単独を除き先頭0を許さない。ノートは `release-notes/` 以下の通常ファイルにする。
+   新しい配布には未使用の version を使う。PR 検証と同期判定で公開用のタグ・Release を照合し、
+   writer は公開先 App の権限でドラフトも含めて書き込み前に再照合する。
+2. 開発用のリリース PR を作る。Release candidate が公開対象の tree を生成し、build → 通常 Core / App テスト →
+   性能テスト → 通信 API 検査 → package を順に実行する。性能は共有環境の測定のぶれを考慮した非ブロッキングとし、
+   結果・ログを残す。他の必須検査の失敗時は以降の検査と成果物の確定を行わない。
+3. Actions の該当 run の Artifacts から `release-candidate-<source_sha>-<run_id>-<run_attempt>` を取得する。
+   外側の ZIP を展開するとアプリ ZIP・SHA256SUMS・candidate.json・性能ログがある。
+   checksum と対象・両バージョンを照合し、Apple silicon Mac で展開したアプリの3ペイン・日英・About を確認する。
+   PR を更新したら最新の候補で確認し直す。
+4. 保守者が PR を master にマージする。Publish release source は実際のマージ済み SHA を M に固定する。
+   PR preview と M の公開 tree が一致すれば、候補の必須検証を再利用し、Ubuntu の静的検査と同期だけを行う。
+5. master 追従を必須にしない運用のため、preview と M が異なる場合は M の新候補を生成し「ローカル確認待ち」とする。
+   新 ZIP を取得・再確認してから Publish release source の Run workflow で ref=master、source_sha=M と
+   確認した candidate_run_id を指定して再開する。起動時点の HEAD に対象を読み替えず、書き出し規則も M から取得する。
+   確認待ちは専用の Await local verification job が明示的に failure と未公開を表示する。
+6. 公開用 main へ1コミットを追加すると Build release draft が対象の公開 SHA で通常テストと最終ビルドを行い、
+   ZIP と SHA256SUMS・ノート付きのタグとドラフトを作る。同期と最終配布では性能測定を繰り返さない。
+   保守者が最終 ZIP とノート・タグを確認し、GUI / Gatekeeper の確認後に公開する。
+
+同期 writer に共通の concurrency group は置かず、公開先 base / source の再取得と非 force 更新で競合を拒否する。
+通常 push による pending の置換でリリースを失わせない。古い対象の巻き戻しと既存 Release の自動上書きは行わない。
+
+### GitHub App と初回同期（保守者が設定する）
+
+- 公開用 `yoshidax/folzio` だけに GitHub App をインストールし、Contents write と Workflows write を許可する。
+- 開発用の Actions variable `PUBLIC_SYNC_APP_CLIENT_ID` と secret `PUBLIC_SYNC_APP_PRIVATE_KEY` を設定する。
+  Cloud セッションのトークンは、GitHub Actions に設定済みの Secret ではない。
+- 公開用 main の保護規則が App の通常更新を許可するか確認する。拒否された場合に workflow が保護を自動で緩めることはない。
+- App の短期トークンは writer だけに渡し、PR・候補・静的検査には渡さない。公開用の配布は公開用自身の GITHUB_TOKEN を使う。
+
+source trailer がない初回は自動更新せず、summary に初期化待ちと公開用 main の SHA を表示する。
+保守者は公開用の現在の SHA を確認し、source_sha=M / candidate_run_id に加えて `bootstrap_public_base` を指定して
+同期を手動起動する。入力がない・不一致・不正なら公開用を変更しない。
+初回だけは tree が同じでも source 対応付けコミットを1つ作り、以後はこの入力を空にする。
+初期化済みの指定と、不正な trailer を初回と見なす操作は拒否する。
+
+### 失敗からの復旧
+
+- 対象 M と run は失敗した実行の summary から取得する。master が M+3 でも M を使い続ける。
+- 候補が失効したら Release candidate の Run workflow を ref=master / source_sha=M で実行する。
+  取得・ローカル確認後、同じ M と新しい run ID で同期を再開する。
+- 同期だけ成功して配布が失敗した場合は、公開用の元の run を再実行する。同期コミットを増やさない。
+- 同じ公開 tree の再同期は省略する。並行更新・古い対象は理由を表示して停止し、force せず対象を確認する。
+- 同名の draft / Release は上書きしない。不完全な draft は保守者が修復または削除後に再実行する。
+- Actions 全体の障害時だけ、以下のローカル公開・配布を復旧経路として利用する。
+
+## ローカル公開の復旧手順（通常は使わない）
 
 1. 開発用の master で、公開する変更をマージし終えておく。未コミットの変更があると書き出しは止まる
 2. 書き出す
@@ -151,7 +205,7 @@ Spec Kit の実行時ファイルの ignore 指定は、公開版の `.gitignore
 | 元のファイル（管理元） | 開発用の `.github/workflows/` | 開発用の `scripts/dev/oss-workflows/`（直下の `*.yml`・`*.yaml`） |
 | 動く場所 | 開発用リポジトリ（`yoshidax/folzio-dev`）だけ | 公開用リポジトリだけ |
 | 書き出しでの扱い | 書き出さない（`.gitattributes` の `/.github/workflows export-ignore`） | 公開用リポジトリの `.github/workflows/` に、同じ名前・内容で置く |
-| 例 | `macos-swift-ci.yml`（PR の作成時などのビルドとテスト） | TAK-41 のアプリのビルドと Release への添付（まだない） |
+| 例 | `macos-swift-ci.yml`（PR の作成時などのビルドとテスト） | `release.yml`（アプリの最終ビルドと Release ドラフト） |
 
 - 開発用の workflow を足すときは、開発用の `.github/workflows/` に置くだけでよい。ディレクトリごと除外しているので、除外の指定は要らない
 - 公開用の workflow として置くのは、管理元の**直下**にある、名前が `.yml` または `.yaml` で終わる通常ファイルだけ。
@@ -243,7 +297,10 @@ Settings → Actions → General の「Approval for running fork pull request wo
 - 公開版に出るファイルに `$HOME` の絶対パスを書かない。`scripts/dev/publish.sh` の確認で止まる
 - 公開前の全履歴は `~/projects/my_img_viewer-backup.bundle` にある（作者情報を書き換える前の状態）
 
-## GitHub Releases の配布物
+## ローカル配布の復旧手順
+
+通常は「通常の公開: リリース PR と CI 候補」で進める。以下は Actions 全体の障害時の代替経路。
+公開済みコミットに共通の `scripts/package-release.sh` が含まれていることを前提にする。
 
 複数の feature を開発用 master にマージしてから一度だけ書き出し、1つの公開コミットと Release にまとめられる。
 配布対象は macOS 15 以降の Apple silicon（arm64）のみ。Intel Mac は対象外。配布物は ad hoc 署名で、
@@ -287,3 +344,26 @@ Developer ID 署名と Apple 公証は行わない。
    バージョン・署名を再確認する。ユーザーが GitHub でドラフトを確認してから公開する。
    失敗時はエラーと GitHub のドラフト状態を確認する。途中でドラフトが作られた場合は、GitHub 上で
    状態を確認して修復または削除してから再実行する。同名の Release を自動上書きしない。
+
+### 部分再実行と公開用メタデータの取得
+
+- job 間の入力 artifact は生成 job の出力 ID を使う。「Re-run failed jobs」で plan が再実行されなくても参照を保つ。
+- 候補の attempt は最後に build を行った job に結び付ける。待機 job だけを再実行しても成功した候補を失わない。
+  新しい build が失敗した場合は古い成功候補へ戻らない。
+- 確認待ち以外の失敗を含む同期 run の候補は使わない。待機だけの失敗なら、成功した候補をローカル確認して M/run で再開する。
+- Release の既存確認には認証済み releases 一覧の全ページを使い、公開済みだけを返す tag 指定 API に依存しない。
+- 判定は公開用 main の blob なしの履歴だけを取得する。writer は固定 base に対応する初期化判定を再利用し、
+  main の先端1コミットだけを fetch して base を再確認する。
+- Swift テストの架空ホームは `/test-homes/` を使い、exporter に fixture のユーザー名の例外を置かない。
+- README 構造は `scripts/check-readme-sync.sh --structure-only EN_FILE JA_FILE` で Git なしの候補にも共通検査する。
+
+### 通常 PR の公開検査と配布前の再確認
+
+通常の macOS CI は、実際に checkout した HEAD の公開ツリーを先頭で生成・検査する。
+release.json を変更しない PR のホームパス混入も、その PR の必須 CI で検出する。
+実証用の2つの Ubuntu job と公開 API 参照 step は通常 CI には残さず、再実行の証拠と回帰テストを保持する。
+
+公開用 plan は Ubuntu / contents read を維持するため、push 権限が必要なドラフトの一覧は保証できない。
+contents write を既に持つ release job は、checkout 直後・toolchain 選択や build / test の前に状態を再確認する。
+既存ドラフトがあれば、この時点で停止する。macOS の起動と checkout は必要だが、通常テスト・配布ビルドは行わない。
+ドラフトを作成する直前の再確認も維持し、途中の状態変化に対処する。
