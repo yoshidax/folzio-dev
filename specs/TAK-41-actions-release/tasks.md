@@ -64,7 +64,7 @@ T004 の承認前には実装しない。PR と本番設定も、今回の設計
 ## Phase 7: Polish — 実装 PR の検証と反映
 
 - [x] T026 `scripts/dev/check-all.sh` を実行し、新しい判定・同期テストを含む Cloud の結果をこの tasks.md に記録する
-- [ ] T027 `.github/workflows/macos-swift-ci.yml` の build / test と公開・配布回帰の結果を確認し、この tasks.md に記録する
+- [x] T027 `.github/workflows/macos-swift-ci.yml` の build / test と公開・配布回帰の結果を確認し、この tasks.md に記録する
 - [x] T028 保守者が作業ブランチで `scripts/make-app.sh` → `open .build/Folzio.app` の3ペイン・日英のマージ前スモークを確認し、この tasks.md に記録する
 - [x] T029 最新 master と `scripts/dev/check-spec-ids.sh` を確認してから、`specs/product/overview.md` と `specs/product/contracts/scripts.md`・app-bundle.md・README.md に反映する。特に FR-311（overview.md）の検査場所・性能の例外・失敗後の即時中断と、scripts 契約の旧「同期後テスト」をそろえ、ID と形式・check-all を検査する
 - [x] T030 `specs/product/` の反映差分を保守者に示し、承認後にコミットする。実装 PR は保守者の依頼時だけ作成する
@@ -223,3 +223,10 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
   実証結果と回帰テストを保持する。T027 は変更後の CI 確認まで未チェックへ戻す。
 
 - 追加修正のCloud検証: check-all142件成功 / macOS・rsync29件skip。CIはmacOSの1jobだけでHEAD書き出しが先頭、公開用は既存の権限のままdraft再確認が通常テスト・buildの前であることをYAML構造で確認した。製品仕様の要件・契約と権限モデルは変更しない。
+
+- 追加レビュー後の [CI 42266691659](https://github.com/yoshidax/folzio-dev/actions/runs/42266691659) は84df885で成功。
+  実HEADの公開ツリー検査が先頭で成功し、macOSの1jobのみで実行された。
+  Python171件（skipなし）・Swift通常1057件が成功。Cloudは142件成功 / macOS・rsync29件skip。
+  性能27件中4件で閾値超過: JPEG0.5678s > 0.5s、rename中央値0.1057s > 0.1s、batch0.1537s > 0.1s、
+  slideshow0.2420s > 0.2s。continue-on-error の結果を実ログで確認した。
+  公開用workflowのdraft再確認はAPI権限差の回帰とstep順序で検証し、本番workflowの起動は行っていない。
