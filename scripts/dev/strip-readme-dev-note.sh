@@ -1,16 +1,14 @@
 #!/bin/bash
-# Remove the development repository note from README files before they are published.
+# 公開用リポジトリへ書き出す README から、開発用リポジトリの注記を除く。
 #
 #   scripts/dev/strip-readme-dev-note.sh <file>...
 #
-# The note is the range from a line that is exactly "<!-- dev-repo-note:start -->" to a line that is
-# exactly "<!-- dev-repo-note:end -->", both included. A blank line right after the end marker is
-# removed too, so the result matches the README without the note. The final newline (or its absence)
-# is kept. A file without markers is left as is.
+# 注記は、行の全体が "<!-- dev-repo-note:start -->" の行から "<!-- dev-repo-note:end -->" の行まで（両方を含む）。
+# 終了の印の直後の空行 1 行も除くので、結果は注記を置く前の README と同じになる。末尾の改行の有無は変えない。
+# 印のないファイルは変えない。
 #
-# Every file is checked before any file is changed. If a file is missing, has unbalanced, nested,
-# or repeated markers, has a marker line with a CRLF line ending, or still contains the marker text
-# after the removal, no file is changed and the script exits with status 1.
+# どのファイルも、書き換える前にすべて確かめる。ファイルがない、印の対応が崩れている（入れ子、2 つ以上を含む）、
+# 印の行の改行が CRLF、除いた後に印の文字列が残る、のどれかに当たれば、どのファイルも変えずに終了コード 1 で終わる。
 set -euo pipefail
 
 if (($# == 0)); then
@@ -31,13 +29,13 @@ for file in "$@"; do
         continue
     fi
     output="$tmp/$index"
-    # Keep the final newline as it is: awk prints one after every line.
+    # awk は各行の後に改行を出すので、元のファイルの末尾に改行がなければ、最後の行の後に出さない
     final_newline=1
     if [[ -n "$(tail -c 1 "$file")" ]]; then
         final_newline=0
     fi
-    # Pass the name through the environment and the file on stdin, so awk neither interprets
-    # escapes in the name nor treats a name with "=" as a variable assignment.
+    # ファイル名は環境変数で、内容は標準入力で渡す。awk -v は名前のエスケープを解釈し、
+    # 引数に渡すと "=" を含む名前を変数の代入と見なすため
     if ! STRIP_FILE="$file" STRIP_FINAL_NEWLINE="$final_newline" awk '
         function fail(message) {
             print ENVIRON["STRIP_FILE"] ":" NR ": " message > "/dev/stderr"
@@ -94,7 +92,7 @@ for file in "$@"; do
         echo "$file: marker text remains outside a whole marker line" >&2
         failed=1
     elif ! grep -qxF -e "<!-- dev-repo-note:start -->" -e "<!-- dev-repo-note:end -->" "$file"; then
-        # Keep a file without markers byte for byte (awk would add a missing final newline).
+        # 印のないファイルは、バイト単位でそのまま残す
         cp "$file" "$output"
     fi
 done

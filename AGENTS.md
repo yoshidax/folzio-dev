@@ -32,7 +32,7 @@
 - 依存ツールの導入・更新は保守者に確認する。Codex・Kilo の `brew install`・`reinstall`・`upgrade`・`bundle` は保守者に依頼して実行してもらう
 
 ## 書くときの規則【共通】
-- ソースのコメントは英語で書く。書式と用語は `docs_private/comment-translation-glossary.md`
+- ソースのコメントは、公開用リポジトリへ書き出すコードでは英語（書式と用語は `docs_private/comment-translation-glossary.md`）、書き出さない開発専用のコード（`scripts/dev/` など）では日本語で書く
 - `README.md` と `README.ja.md` は同じ内容の 2 言語版。同じコミットで両方を同じ内容に変える（訳の一致はスクリプトで検査されない）
 - `docs/`・README・ソースのコメントは公開用リポジトリ（`yoshidax/folzio`）へ書き出される。書き出さない `specs/`・`.specify/`・`docs_private/`・`shared-skills/`・`AGENTS.md` へリンクしない（公開の手順: `docs_private/repository-and-release.md`）
 
