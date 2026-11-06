@@ -156,3 +156,5 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 - T028: 保守者が c2d0d53 の作業ブランチで make-app → open を実行し、3ペイン・日英・About の確認ができたと回答（2026-11-06）。CIと実装マージ後のダウンロード候補確認は別ゲートとして扱う。
 
 - macOS CI 42236274776: publish23件・README19件は成功。package fixture の copy2(/bin/ls) が macOS の保護属性をコピーして PermissionError。fixture を属性不要の copyfile + 実行権限に変更し、再実行する。実アプリのコピー処理は対象外。
+
+- macOS CI 42237257443: ZIP成功経路が通った後、Bash3.2で関数内の [[ ]] の失敗が errexit だけでは停止しない不具合を検出。共通 package の architecture / version / build 検査を明示的 return 1 に修正し、既存の異常系で再検証する。

@@ -28,12 +28,13 @@ PY
 (cd "$tmp/source" && FOLZIO_VERSION="$version" FOLZIO_BUILD_NUMBER="$build" FOLZIO_ARCH=arm64 bash scripts/make-app.sh)
 verify() {
     local app="$1"
-    [[ "$(lipo -archs "$app/Contents/MacOS/Folzio")" == arm64 ]]
-    [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" == "$version" ]]
-    [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")" == "$build" ]]
+    # Bash 3.2 does not consistently apply errexit to conditional commands inside functions.
+    [[ "$(lipo -archs "$app/Contents/MacOS/Folzio")" == arm64 ]] || { echo 'ZIP executable must be arm64-only' >&2; return 1; }
+    [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" == "$version" ]] || { echo 'App version mismatch' >&2; return 1; }
+    [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")" == "$build" ]] || { echo 'App build number mismatch' >&2; return 1; }
     for language in en ja; do
-        test -s "$app/Contents/Resources/$language.lproj/Localizable.strings"
-        test -s "$app/Contents/Resources/$language.lproj/Localizable.stringsdict"
+        test -s "$app/Contents/Resources/$language.lproj/Localizable.strings" || return 1
+        test -s "$app/Contents/Resources/$language.lproj/Localizable.stringsdict" || return 1
     done
     codesign --verify --deep --strict "$app"
 }

@@ -38,11 +38,11 @@ jobs:
 
       - name: Test publication script
         run: |
-          python3 -I -m unittest discover -s scripts/dev/tests -p 'test_publish_folzio.py' -v
-          python3 -I -m unittest discover -s scripts/dev/tests -p 'test_strip_readme_dev_note.py' -v
-          python3 -I -m unittest discover -s scripts/dev/tests -p 'test_package_release.py' -v
-          python3 -I -m unittest discover -s scripts/dev/tests -p 'test_release_distribution.py' -v
-          python3 -I -m unittest discover -s scripts/dev/tests -p 'test_check_*.py' -v
+          status=0
+          for pattern in test_publish_folzio.py test_strip_readme_dev_note.py test_package_release.py test_release_distribution.py 'test_check_*.py'; do
+            python3 -I -m unittest discover -s scripts/dev/tests -p "$pattern" -v || status=1
+          done
+          exit "$status"
 
       - name: Build
         run: swift build
