@@ -131,3 +131,7 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
 - 2026-11-07: 3回目の設計レビューを反映した。FSEvents の除外で結果の行のファイルだけを記録すると、フォルダごと移動されたときに同じフォルダの別のファイルの遅れた結果が出るため、
   一番上の消えた祖先のフォルダ（検索のルートまで）を記録するようにした（spec の Clarifications・EC-236、R8、data-model、T013・T014）
 - 2026-11-07: 保守者が設計を承認（T003）。T014 に、検索のルートを detached task の前に取り出す注意を加えた（保守者の指摘。設計の変更なし）
+- 2026-11-07: T004 を実装（`6e8f2a3`。`ExternalDrag.sourceOperationMaskOutsideApp` を3つのビューのアプリ外向けのマスクにした）。`check-all.sh` 成功。
+  CI（workflow_dispatch、run 42375125145 attempt 1）: build 成功、通常のテスト 1057 件すべて成功、性能テスト 27 件中 1 件失敗
+  （`didRenameFolder` 10,000 件の中央値 0.107 秒、基準 0.1 秒。`PerformanceBaselineTests.swift:367`）。T004 は `BrowserModel` に触れていないため、共有ランナーのぶれと考え、
+  コードを変えずに再実行した（docs_private/cloud-agent-workflow.md の 4 章）
