@@ -71,7 +71,7 @@ T004 の承認前には実装しない。PR と本番設定も、今回の設計
 
 ## Phase 8: 導入・実リリースの確認（保守者、実装 PR のマージ後）
 
-- [ ] T031 `docs_private/repository-and-release.md` の手順で保守者が App / Secret と公開用 main の保護規則、初回 bootstrap_public_base を確認する。Cloud のトークンを Actions 設定済みとは扱わない
+- [x] T031 `docs_private/repository-and-release.md` の手順で保守者が App / Secret と公開用 main の保護規則、初回 bootstrap_public_base を確認する。Cloud のトークンを Actions 設定済みとは扱わない
 - [x] T032 保守者が初回の release.json 変更 PR を作り、`specs/TAK-41-actions-release/quickstart.md` の CI artifact を取得してローカル PC で checksum・3ペイン・日英・About を確認し、この tasks.md に記録する
 - [ ] T033 保守者が確認した PR をマージし、`specs/TAK-41-actions-release/quickstart.md` の初回 base の明示と同期・配布の連鎖を確認する。preview 後の他 PR マージでは M の新候補を再確認して手動再開し、M+3 から M を復旧する場合も検証して tasks.md に記録する
 - [ ] T034 保守者が公開用ドラフトの最終 ZIP とノート・タグを確認し、GUI / Gatekeeper の確認後に公開して、この tasks.md に記録する
@@ -115,6 +115,23 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 本番の push・認証設定をせずに大部分を一時 Git と stub で確認し、最後に保守者が導入・実リリースを検証する。
 
 ## 検証・承認の記録
+
+- 2026-11-07（日本時間）: 保守者が App の権限更新を installation 側で承認したと報告した。
+  公開用 main の base が ada5f31703afab1c1ee7082326c5f345bcab74dd のままであることを確認し、
+  run 42331626203 の failed jobs を再実行（attempt 3）。前 attempt の入力 artifact を再利用し、
+  App token 作成・writer・token 失効まで成功したため T031 を完了とした。
+  公開用 main は d351e0f3d5ed4f1ade89c0892eba6c5232f2363d に更新され、親は上記 base、
+  Development-Commit trailer は c8840c850628c3b437f89c3a0cae7c08e524f657。
+  M 固有の exporter で再生成した tree fd6614fc571caa0dca1101778c8e8bde9a219b42 と公開 tree の一致を確認した。
+  公開側の Build release draft run 42332962032 はこの公開 SHA で成功。
+  Swift 通常1057件・production build・arm64 / 両バージョン / 日英 / 署名 / ZIP再展開の検証が成功し、
+  タグ v1.0.1 が同じ公開 SHA を指すことを確認した。
+  ドラフト437291898（v1.0.1 / build 2）に ZIP2136052 bytes と SHA256SUMS96 bytes が添付済み。
+  ZIP のSHA-256は db969ab8b37f53349d693f555cbe45983cf89cad01b4316e56329cf660c73062。
+  ノートが M の release-notes/v1.0.1.md と一致し、公開SHA・version・build・run の出自があることを確認した。
+  ドラフト: https://github.com/yoshidax/folzio/releases/tag/untagged-082f5d93370336cbbb40
+  T033 は初回同期成功の一部確認にとどまり、preview 不一致の再確認・M+3 復旧の実確認は未実施。
+  T034 の最終 ZIP・GUI / Gatekeeper・公開と T035 の凍結は未実施のまま残す。
 
 - 2026-11-07（日本時間）: PR #65 のマージを保守者が報告し、master の
   c8840c850628c3b437f89c3a0cae7c08e524f657 に含まれることを確認した。
