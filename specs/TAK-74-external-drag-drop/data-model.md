@@ -53,7 +53,7 @@
 
 ## BrowserModel（FolzioCore、変更）
 
-- 追加: `didRemoveItemsExternally(_ urls: [URL]) async` — 検索結果の表示中に、元の場所にもうない項目を detached task で調べ、`didMoveSearchItems` と同じく記録して外す（EC-236、research.md R8）
+- 変更: `pruneMissingResults(under:)`（private）が、消えた結果を外すときに `movedSearchPaths` にも記録する（EC-236、research.md R8）。公開のメソッドは増やさない
 
 ## ドラッグ元のマスク（FolzioApp、変更）
 

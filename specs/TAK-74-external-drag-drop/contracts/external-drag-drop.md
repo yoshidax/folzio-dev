@@ -50,7 +50,8 @@
 
 - ファイルリストの ⌘C は選んだ項目の file URL を一般のペーストボードに置く（`FileListViewController.copy(_:)`）。Finder の ⌘V・⌥⌘V でコピー・移動できる
 - ツリーには ⌘C がない。ツリーのフォルダは、ファイルリストで親フォルダの一覧を表示し、そのフォルダを選んで ⌘C する
-- Finder の ⌘C の後、ファイルリストの ⌘V・⌥⌘V（FR-019）で、表示中のフォルダへコピー・移動できる（`FileListViewController.paste(_:)`）。
+- Finder の ⌘C の後、ファイルリストの ⌘V・⌥⌘V（FR-019）で表示中のフォルダへ（`FileListViewController.paste(_:)`）、
+  ツリーの ⌘V・⌥⌘V で選んだフォルダへ（`DirectoryTreeViewController.paste(_:)`・`movePaste(_:)`）、コピー・移動できる。
   お気に入りはペースト先にならない（A-20）ので、お気に入りのフォルダをファイルリストに表示してから貼る
 
 ## 変えないこと

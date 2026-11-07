@@ -64,13 +64,13 @@
 - `Sources/FolzioApp/Shared/ExternalDrag.swift`（新規）: アプリ外の file URL の判定、アプリ外の操作の決め方、アプリ外向けのマスクの定数（R1・R2・R6）
 - `Sources/FolzioApp/Shared/InternalDrag.swift`: キャッシュを `DropOperationCache` へ移す。Folzio のビューで受け取った印（R7）
 - `Sources/FolzioApp/Operations/FileOperationCoordinator.swift`: `internalDrop` を `drop` に改名（R5）。`pasteboardFileURLs` を共通の関数に置き換える
-- `Sources/FolzioCore/Browser/BrowserModel.swift`: `didRemoveItemsExternally(_:)` を追加（R8）
+- `Sources/FolzioCore/Browser/BrowserModel.swift`: `pruneMissingResults(under:)` で消えた結果を `movedSearchPaths` にも記録する（R8）
 - `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift`: アプリ外向けのマスク（R2）。`validateDrop`・`acceptDrop` のアプリ外の経路を `ExternalDrag` に置き換え、
   利用可能なお気に入りも宛先にする（FR-345）。ドラッグの終了で、Folzio で受け取らなかったときは `pendingOperationSources` を消す（R7）
 - `Sources/FolzioApp/FileList/ListModeView.swift`・`ThumbnailModeView.swift`: マスク（R2）、アプリ外の `validateDrop`・`acceptDrop` を追加（FR-345）、受け取った印（R7）
 - `Sources/FolzioApp/FileList/FileListViewController.swift`: リスト形式・サムネイル形式からのドロップを coordinator へつなぐ
 - `Tests/FolzioCoreTests/ExternalDropPolicyTests.swift`（新規）
-- `Tests/FolzioCoreTests/BrowserModelSearchTests.swift`: アプリ外へ移動した項目と、遅れて届く古い結果のテスト（R8）
+- `Tests/FolzioCoreTests/BrowserModelSearchTests.swift`: FSEvents の経路で、アプリ外で消えたフォルダの配下の遅れた結果が表示されないことのテスト（R8）
 - `Tests/FolzioAppTests/ExternalDragTests.swift`（新規）: マスク、登録した型、file URL の判定（名前付きの `NSPasteboard` を使う）、受け取った印
 - `README.md`・`README.ja.md`・`docs/usage.md`・`docs/usage.ja.md`: Finder・ブラウザとのドラッグ&ドロップの説明（2 言語を同じコミットで）
 
@@ -82,16 +82,16 @@
 1. 先に行う確認: アプリ外向けのマスクだけを変えた版を push し、保守者が macOS で確かめ、結果で仕様を確定する（R2）
 2. Core: `ExternalDropPolicy` とテスト
 3. App: キャッシュの共通化（`DropOperationCache`・`PasteboardFileURLs`）。アプリ内のドラッグの動作は変えない
-4. App: 受け取った印と検索結果の記録（US75）
+4. Core・App: 検索結果の記録（Core）と受け取った印（App）（US75）
 5. App: `ExternalDrag`・3つのビューの file URL の受け取り（US76）
-4. 文書（README・usage）と、検証の後の `specs/product/` への反映（PR の最後）
+6. 文書（README・usage）と、検証の後の `specs/product/` への反映（PR の最後）
 
 ## 未検証の点（保守者の macOS で確かめる）
 
 - Finder・Dock のゴミ箱が、追加したマスクで期待どおりに移動・コピー・ゴミ箱を行うか。Option と ⌘ の同時の挙動（R2。実装の最初に確かめる）
 - 別のボリュームと混在の場合のボリュームの判定（R4。CI では確かめられない）
 - ブラウザの画像のドラッグが file URL を含まないか（R6）
-- 検索結果からアプリ外へ移動した行が外れるか、ドラッグの終了の時点で移動が終わっているか（R8）
+- 検索結果からアプリ外へ移動した行が外れ、検索中に遅れて届く古い結果が出ないか（R8）
 
 ## Complexity Tracking
 

@@ -93,12 +93,14 @@ Apple の文書の記述に基づく。macOS で確かめる点は「未検証�
 
 ## R8 アプリ外へ移動した項目の検索結果からの除外（EC-236、分析の U2）
 
-- **Decision**: ファイルリスト（リスト形式・サムネイル形式）とツリーのドラッグが、Folzio で受け取られずに操作ありで終わったとき（R7 の印がないとき）、
-  ドラッグした項目のうち元の場所にもうないものを detached task で調べ、`BrowserModel` に渡す。`BrowserModel` は、アプリ内の移動と同じく
-  `didMoveSearchItems(_:)` で記録して結果から外す。新しい公開メソッド（例: `didRemoveItemsExternally(_:) async`。存在の確認を Core で行う）を加える。
-  FSEvents による既存の除外（`handleFileSystemEvent` → `pruneMissingResults`、`BrowserModel.swift:865-870`）はそのまま残す。
+- **Decision**: `BrowserModel.pruneMissingResults(under:)`（`BrowserModel.swift:1473`）が、元の場所にもうない結果を外すときに、
+  その場所を `movedSearchPaths` にも記録する（アプリ内の移動の `didMoveSearchItems` と同じ記録）。ドラッグの終了での受け渡しは行わない。
+  - 呼び出し元は FSEvents の報告（`handleFileSystemEvent`、869 行）と、検索結果の表示中の再読み込み（`reloadCurrentFolder`、806 行）の2つで、どちらでも記録する
+  - 記録は新しい検索を始めると消える（1090 行）
+- **経緯**: 最初の設計は、ドラッグの終了の時点で消えた項目を調べて記録していた。設計レビューで、Finder が移動を非同期で行うと考えられ、
+  ドラッグの終了の時点では項目がまだ元の場所にあって記録されない恐れがある、と指摘された。保守者の決定で、FSEvents の除外で記録する方式に改めた（spec の Clarifications）
 - **Rationale**: `pruneMissingResults` は今の結果から外すだけで、`movedSearchPaths` に記録しない（`BrowserModel.swift:1473-1527`）。検索中に移動元のフォルダの列挙が続いていると、
   遅れて届いた古い場所の結果が再び表示される（設計レビューの指摘）。`didMoveSearchItems` は記録して遅れた結果も外す（`BrowserModel.swift:1531-1536`、
   テストは `Tests/FolzioCoreTests/BrowserModelSearchTests.swift:9`）。
-- **未検証**: ドラッグの終了の時点で、ドロップ先（Finder）の移動が終わっているか。終わっていなければ項目はまだあり、記録されない（FSEvents の除外だけになる）。
-  quickstart.md の手順で確かめ、問題があれば FSEvents の報告のときにも記録する方式を検討する。
+- **副作用（保守者が受け入れた）**: 検索の途中で項目が元の場所に戻されると、その場所の遅れた結果も表示しなくなる。今も FSEvents では結果を足さないため、影響は小さい。
+- **Alternatives considered**: ドラッグの終了で記録する案（Finder の移動が終わっていないと働かない）、両方で記録する案（経路が2つになる）。どちらも採らない。

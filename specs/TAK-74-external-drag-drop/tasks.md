@@ -53,11 +53,11 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
   ツリー・リスト形式・サムネイル形式のアプリ内の `acceptDrop` で印を残す。ツリーの `draggingSession(_:endedAt:operation:)`（1762 行付近）で、
   操作がない場合に加えて印がない場合（アプリ外へドロップした場合）も `pendingOperationSources` を消す。`.delete` で終わっても Folzio は何も削除せず、
   結果は FSEvents に任せる旨をコメントに書く（FR-219・FR-344・EC-236、R2・R7）
-- [ ] T013 [US75] `Tests/FolzioCoreTests/BrowserModelSearchTests.swift` に、検索結果の表示中に項目を外部で消して `didRemoveItemsExternally` を呼ぶと、その行が外れ、
-  その配下の古い場所の結果が遅れて届いても表示されないこと（既存の 9 行目のテストと同じ方法）、まだある項目は外れないことをテストする（EC-236、先に失敗させる）
-- [ ] T014 [US75] `Sources/FolzioCore/Browser/BrowserModel.swift` に `didRemoveItemsExternally(_:) async` を実装して T013 を通す（存在の確認は detached task、
-  消えた項目を `didMoveSearchItems` に渡す。R8）。リスト形式・サムネイル形式・ツリーのドラッグが操作ありで終わり、T012 の印がないときに、ドラッグした URL を渡す
-  （`ListModeView`・`ThumbnailModeView` の `draggingSession(_:endedAt:operation:)` と、`FileListViewController.swift` でのつなぎ）
+- [ ] T013 [US75] `Tests/FolzioCoreTests/BrowserModelSearchTests.swift` に、検索の途中でフォルダを外部で消し（移動・削除）、`handleFileSystemEvent` でその親を報告すると、
+  そのフォルダの配下の行が外れ、その後に遅れて届く古い場所の結果も表示されないこと（既存の 9 行目のテストと同じ方法）、まだある項目は外れないこと、
+  新しい検索を始めると記録が消えることをテストする（EC-236、先に失敗させる）
+- [ ] T014 [US75] `Sources/FolzioCore/Browser/BrowserModel.swift` の `pruneMissingResults(under:)`（1473 行付近）で、外す結果（`missing`）の場所を `movedSearchPaths` にも加え、
+  T013 を通す（R8）。既存の `BrowserModelSearchTests` が通ること
 - [ ] T015 [US75] `Tests/FolzioAppTests/ExternalDragTests.swift` に、3つのビューの `draggingSourceOperationMask(forLocal: false)` が T004（T005 で直した場合はその値）、
   `forLocal: true` が `[.copy, .move]` であることと、T012 の印が通し番号ごとに分かれることのテストを加える
 
@@ -122,3 +122,6 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   マスクだけの版で先に確かめる（Phase 2）。そのほか、Option と ⌘ の同時を OS の許可に従うよう改めた（FR-346）、EC-238 の補足、ドロップ時はキャッシュを使う、
   キャッシュと file URL の読み出しの共通化、ツリーの ⌘ の押し方（A-132）、衝突の中止で完了済みの項目が残ること（SC-182）、検索結果の遅れた結果の抑止（R8・T013・T014）、
   US76-AS6・SC-183 を file URL を持たないドラッグに限ったこと、キーボードの手段（ツリー・お気に入り）の記述を直した
+- 2026-11-07: 2回目の設計レビュー（5 件）を反映した。保守者の決定: 遅れた検索結果を防ぐ記録は、ドラッグの終了ではなく FSEvents の除外（`pruneMissingResults`）で行う
+  （R8・T013・T014。Finder の移動が非同期で、ドラッグの終了の時点では記録できない恐れがあるため）。そのほか、SC-182 の根拠をテストに直し、EC-238 の ⌘ を `.generic` と明記し、
+  plan の実装の順序の番号を直し、contracts のキーボードの手段にツリーの ⌘V・⌥⌘V を加えた
