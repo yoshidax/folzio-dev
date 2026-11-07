@@ -1488,9 +1488,11 @@ public final class BrowserModel {
         guard !targets.isEmpty else { return }
 
         let generation = navigationGeneration
+        // `listing` belongs to the main actor, so read the root before the detached task.
+        let searchRoot = listing.search?.root
         // Reads the content version together with the existence check, so results replaced at the same path are
         // refreshed like rows of a folder listing (FR-232, research.md R6).
-        let (missing, versions) = await Task.detached(priority: .userInitiated) {
+        let (missing, versions, removedScopes) = await Task.detached(priority: .userInitiated) {
             var missing = Set<URL>()
             var versions: [URL: FileContentVersion] = [:]
             for url in targets {
@@ -1500,7 +1502,17 @@ public final class BrowserModel {
                     missing.insert(url)
                 }
             }
-            return (missing, versions)
+            // Records the topmost missing folder of each removed result, so that late results from a folder moved
+            // away outside the app stay hidden, as after a move inside the app (TAK-74, EC-236).
+            var known: [String: Bool] = [:]
+            var removedScopes = Set<String>()
+            for url in missing {
+                let scope = SearchRemovalScope.topmostMissing(url, root: searchRoot, known: &known) { candidate in
+                    FileManager.default.fileExists(atPath: candidate.path)
+                }
+                removedScopes.insert(scope.standardizedFileURL.path)
+            }
+            return (missing, versions, removedScopes)
         }.value
         guard generation == navigationGeneration else { return }
 
@@ -1519,7 +1531,10 @@ public final class BrowserModel {
         }
 
         if !missing.isEmpty {
-            removeSearchResults(missing)
+            movedSearchPaths.formUnion(removedScopes)
+            // Rows under a recorded folder are gone too, even when they were not among the checked targets.
+            let underRemovedFolders = allFiles.lazy.filter { self.isMovedSearchPath($0.url) }.map(\.url)
+            removeSearchResults(missing.union(underRemovedFolders))
         } else if !changed.isEmpty {
             rebuildListing()
         }
