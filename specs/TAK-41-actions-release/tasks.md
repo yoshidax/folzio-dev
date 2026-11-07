@@ -71,7 +71,7 @@ T004 の承認前には実装しない。PR と本番設定も、今回の設計
 
 ## Phase 8: 導入・実リリースの確認（保守者、実装 PR のマージ後）
 
-- [ ] T031 `docs_private/repository-and-release.md` の手順で保守者が App / Secret と公開用 main の保護規則、初回 bootstrap_public_base を確認する。Cloud のトークンを Actions 設定済みとは扱わない
+- [x] T031 `docs_private/repository-and-release.md` の手順で保守者が App / Secret と公開用 main の保護規則、初回 bootstrap_public_base を確認する。Cloud のトークンを Actions 設定済みとは扱わない
 - [ ] T032 保守者が初回の release.json 変更 PR を作り、`specs/TAK-41-actions-release/quickstart.md` の CI artifact を取得してローカル PC で checksum・3ペイン・日英・About を確認し、この tasks.md に記録する
 - [ ] T033 保守者が確認した PR をマージし、`specs/TAK-41-actions-release/quickstart.md` の初回 base の明示と同期・配布の連鎖を確認する。preview 後の他 PR マージでは M の新候補を再確認して手動再開し、M+3 から M を復旧する場合も検証して tasks.md に記録する
 - [ ] T034 保守者が公開用ドラフトの最終 ZIP とノート・タグを確認し、GUI / Gatekeeper の確認後に公開して、この tasks.md に記録する
@@ -115,6 +115,18 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 本番の push・認証設定をせずに大部分を一時 Git と stub で確認し、最後に保守者が導入・実リリースを検証する。
 
 ## 検証・承認の記録
+
+- 初回候補の run 42284638995 は通常テスト1057件・通信 API 検査・production build の成功後、
+  make-app.sh が SwiftPM 6.0 の翻訳リソース配置を扱えず停止し、ZIP は未生成。
+  保守者が診断 swiftpm-resource-layout と両配置への対応を承認したため、実 make-app の回帰4件と修正を追加した。
+  Cloud は143件成功 / macOS・rsync33件skip。修正後の最新候補 CI とダウンロード候補のローカル確認は未実施で、
+  T032 は未チェックのまま維持する。最新 CI と成果物の取得先は PR #65 に記録する。
+
+- 初回リリース準備: 保守者から GitHub App・Actions の設定と公開用 main の保護規則の確認（T031）が完了したと報告を受けた。
+  設定内容と App の実認証は Cloud から未検証。公開用 main は ada5f31703afab1c1ee7082326c5f345bcab74dd で、
+  Development-Commit trailer がないため初回同期は bootstrap_public_base が必要。同期時に現在の SHA を再確認する。
+  v1.0.0 は既存のタグとドラフトがあるため、初回の Actions リリース PR は未使用の v1.0.1 / build 2 を使う。
+  T032 は候補の取得・ローカル PC での確認まで未チェック。T033〜T035 も未実施のまま残す。
 
 - 2026-11-06: 2リポジトリ維持、release.json 変更 PR 起点、CI 成果物によるローカル確認の要望を反映。
 - 設計段階の既存 check-all は成功（規則検査、unittest 73件と19件）。新機能の実装・実 CI・GUI は未確認。
