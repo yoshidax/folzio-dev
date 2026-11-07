@@ -144,3 +144,6 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   保守者の先の決定どおり Dock のゴミ箱には対応しないことにし、`.delete` をマスクから外し、FR-079 の変更を取り下げた（spec・research・data-model・plan・contracts・quickstart）。
   Option と ⌘ の同時は、Finder へは受け付けられず（A-206 と合う）、Finder から Folzio へはコピーになる（FR-346 に追記）。
   `.delete` を外した後に Dock のゴミ箱が受け付けないことは T024 で確かめる
+- 2026-11-07: `b6858dd`（`.delete` を外した版）の CI（workflow_dispatch、run 42377626115）: build・通常のテスト成功、性能テスト 27 件中 2 件失敗
+  （24 MP の JPEG のデコード 0.541 秒（基準 0.5 秒）、`didRenameFolder` 中央値 0.137 秒（基準 0.1 秒））。どちらも TAK-74 より前の run 42287354217 で失敗しているテストで、
+  TAK-74 の変更によるものではない
