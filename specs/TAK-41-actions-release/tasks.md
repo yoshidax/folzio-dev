@@ -71,8 +71,8 @@ T004 の承認前には実装しない。PR と本番設定も、今回の設計
 
 ## Phase 8: 導入・実リリースの確認（保守者、実装 PR のマージ後）
 
-- [x] T031 `docs_private/repository-and-release.md` の手順で保守者が App / Secret と公開用 main の保護規則、初回 bootstrap_public_base を確認する。Cloud のトークンを Actions 設定済みとは扱わない
-- [ ] T032 保守者が初回の release.json 変更 PR を作り、`specs/TAK-41-actions-release/quickstart.md` の CI artifact を取得してローカル PC で checksum・3ペイン・日英・About を確認し、この tasks.md に記録する
+- [ ] T031 `docs_private/repository-and-release.md` の手順で保守者が App / Secret と公開用 main の保護規則、初回 bootstrap_public_base を確認する。Cloud のトークンを Actions 設定済みとは扱わない
+- [x] T032 保守者が初回の release.json 変更 PR を作り、`specs/TAK-41-actions-release/quickstart.md` の CI artifact を取得してローカル PC で checksum・3ペイン・日英・About を確認し、この tasks.md に記録する
 - [ ] T033 保守者が確認した PR をマージし、`specs/TAK-41-actions-release/quickstart.md` の初回 base の明示と同期・配布の連鎖を確認する。preview 後の他 PR マージでは M の新候補を再確認して手動再開し、M+3 から M を復旧する場合も検証して tasks.md に記録する
 - [ ] T034 保守者が公開用ドラフトの最終 ZIP とノート・タグを確認し、GUI / Gatekeeper の確認後に公開して、この tasks.md に記録する
 - [ ] T035 実確認がそろった後、`specs/TAK-41-actions-release/spec.md` に移行・凍結の注記を追記する
@@ -115,6 +115,26 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 本番の push・認証設定をせずに大部分を一時 Git と stub で確認し、最後に保守者が導入・実リリースを検証する。
 
 ## 検証・承認の記録
+
+- 2026-11-07（日本時間）: PR #65 のマージを保守者が報告し、master の
+  c8840c850628c3b437f89c3a0cae7c08e524f657 に含まれることを確認した。
+  push の同期 run 42331407257 は確認済み候補の照合を通過し、初回 base の明示待ちで停止した。
+  公開用 main の現在値 ada5f31703afab1c1ee7082326c5f345bcab74dd を取得し、
+  source_sha=c8840c850628c3b437f89c3a0cae7c08e524f657 / candidate_run_id=42287354274 /
+  bootstrap_public_base=ada5f31703afab1c1ee7082326c5f345bcab74dd で手動同期 run 42331626203 を開始した。
+  plan は成功したが、writer の App token 作成で HTTP 422
+  "The permissions requested are not granted to this installation." が返り、公開書き込みは未実施。
+  Contents write / Workflows write の App 定義と installation の承認を保守者が再確認する必要があるため、
+  T031 を未チェックに戻した。T032 は完了、T033〜T035 は未完了のまま。
+  公開用の最終ビルド・ドラフトは今回の実行からは作成されていない。
+
+- 2026-11-07（日本時間）: 保守者から v1.0.1 / build 2 の CI 候補について、checksum 成功と
+  3ペイン・日英切り替え・About 1.0.1 の表示に問題なしとの報告を受け、T032 を完了とした。
+  対象は PR #65 の HEAD 968951c06310242a09e123e46219c299b0e395ba、
+  preview 60dc03cfa26e866ce45cc510143b74828ca770f9、run 42287354274 / attempt 1 / artifact 13538018754。
+  PC 構成の詳細は未確認。最終配布 ZIP の GUI / Gatekeeper 確認（T034）は別途必要。
+  確認結果は PR #65 と Linear にも記録した。確認済みリリース PR の HEAD は変更せず、
+  マージ後の agent/tak-41-release-rollout で導入記録と合わせてコミットする。T033〜T035 は未実施のまま残す。
 
 - 初回候補の run 42284638995 は通常テスト1057件・通信 API 検査・production build の成功後、
   make-app.sh が SwiftPM 6.0 の翻訳リソース配置を扱えず停止し、ZIP は未生成。
