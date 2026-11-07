@@ -70,3 +70,17 @@
 ## 登録する型（変更なし）
 
 - 3つのビューとも `[.fileURL]` のまま（research.md R6）
+
+## FileListDropTarget（FolzioCore、新規）
+
+ファイルリストのドロップの宛先（FR-163（変更）・FR-349、research.md R9）。
+
+| ポインタの下の項目 | 宛先 |
+|---|---|
+| フォルダ（`.folder`） | そのフォルダ（`folder(index)`） |
+| `..`（`.parent`）、zip の中のディレクトリ（`.directory`） | なし |
+| メディアファイル（`.media`）、zip ファイル（`.archive`）、項目なし | 表示中のフォルダ（`displayedFolder`）。ただし下記のときはなし |
+
+- 表示中のフォルダを宛先にしないとき: zip の中を表示中、検索結果を表示中、一覧の状態が `.denied`・`.failed`
+- zip の中を表示中は、フォルダの行も含めて宛先にしない（今と同じ）
+

@@ -85,7 +85,23 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
 - [ ] T020 [US76] `Tests/FolzioCoreTests/InternalDropValidationTests.swift` に、アプリ外から受け取る場合と同じ入力（Folzio の表示と関係のない場所の項目を、表示中のフォルダへ移動・コピー、
   元の親への移動）のケースが既存のテストで足りるかを確かめ、足りなければ追加する（EC-16・EC-121、US76-AS5）
 
-## Phase 6: Polish & Cross-Cutting
+## Phase 6: ファイルリストの背景へのドロップ（FR-349。保守者の追加の決定）
+
+**Goal**: アプリ内とアプリ外からのドラッグを、ファイルリストの背景とフォルダでない項目の上へ落として、表示中のフォルダへ移動・コピーできる
+
+**Independent Test**: quickstart.md の「ファイルリストの背景へのドロップ」
+
+- [ ] T026 `Tests/FolzioCoreTests/FileListDropTargetTests.swift` を作り、data-model.md の `FileListDropTarget` の表のすべての種類（フォルダ・`..`・zip の中のディレクトリ・
+  メディア・zip ファイル・項目なし）と、表示中のフォルダを宛先にしない状態（zip の中・検索結果・`.denied`・`.failed`）、検索結果のフォルダの行はそのフォルダになることをテストする（先に失敗させる）
+- [ ] T027 `Sources/FolzioCore/Model/FileListDropTarget.swift` を実装して T026 を通す（FR-349、R9）
+- [ ] T028 `ListModeView.swift` の `validateDrop`・`acceptDrop` を `FileListDropTarget` で決めるように変える。表示中のフォルダが宛先のときは
+  `setDropRow(-1, dropOperation: .on)` にし、宛先の URL は `model.listing.folder`。アプリ内は `InternalDrag`、アプリ外は `ExternalDrag` の今の経路を使う（FR-349、R9）
+- [ ] T029 `ThumbnailModeView.swift` の `validateDrop`・`acceptDrop` を同じく変える。表示中のフォルダが宛先のときは `dropOperation` を `.before` にし、
+  `ThumbnailCollectionView` に背景の強調の枠を描かせ、`acceptDrop`・`draggingExited(_:)`・`draggingEnded(_:)` で外す。
+  フロー・レイアウトをサブクラスにして `layoutAttributesForInterItemGap(before:)` が nil を返すようにする（R9）
+- [ ] T030 [MANUAL] 保守者に quickstart.md の「ファイルリストの背景へのドロップ」を確かめてもらう（T024 と一緒に行ってよい）
+
+## Phase 7: Polish & Cross-Cutting
 
 - [ ] T021 `docs/usage.ja.md`・`docs/usage.md` のドラッグ&ドロップの説明に、Finder・ブラウザとの受け渡し（移動・コピーの決まり方、ツリーから ⌘ で移動するときの押し方、
   Dock のゴミ箱には対応しないこと）を
@@ -100,7 +116,7 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
 
 ## Dependencies & Execution Order
 
-T001 → T002 → T003（承認）→ T004 → T005（保守者の確認）→ T006〜T011 → US75（T012〜T015）→ US76（T016〜T020）→ T021〜T025
+T001 → T002 → T003（承認）→ T004 → T005（保守者の確認）→ T006〜T011 → US75（T012〜T015）→ US76（T016〜T020）→ 背景へのドロップ（T026〜T030）→ T021〜T025
 
 - T005 の結果で仕様が変わる場合は、T006 以降の前に spec・research・tasks を直す
 - T009（キャッシュの共通化）は US75・US76 の前提。アプリ内のドラッグの動作を変えないことを、既存のテストと T024（SC-184）で確かめる
@@ -164,3 +180,6 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   行の上だけ（行間は不可）にそろえた。T017 の登録した型は、3つのビューが `[.fileURL]` のままであることをコードで確かめた（ビューを作るテストは T015 と同じ理由で書けない）。
   T020 は、既存の `InternalDropValidationTests` が、Folzio の表示と関係のない場所の項目の移動・コピー（valid）・元の親への移動（sameParent）・自身と配下（intoItself）・
   親子の同時（overlappingSources）を確かめており、検証は表示に依存しないため、テストを加えなかった
+- 2026-11-07: 保守者の追加の決定で、ファイルリストの背景へのドロップを、アプリ内とアプリ外の両方で受け付けることにした。フォルダでない項目の上も背景として扱う
+  （spec の Clarifications、FR-163（変更）・FR-345・FR-349・US76-AS4・US76-AS7〜AS8・SC-185・A-207、research.md R9、data-model.md、contracts、quickstart、T026〜T030）
+

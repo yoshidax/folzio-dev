@@ -121,3 +121,20 @@ Apple の文書の記述に基づく。macOS で確かめる点は「未検証�
   テストは `Tests/FolzioCoreTests/BrowserModelSearchTests.swift:9`）。
 - **副作用（保守者が受け入れた）**: 検索の途中で項目が元の場所に戻されると、その場所の遅れた結果も表示しなくなる。今も FSEvents では結果を足さないため、影響は小さい。
 - **Alternatives considered**: ドラッグの終了で記録する案（Finder の移動が終わっていないと働かない）、両方で記録する案（経路が2つになる）。どちらも採らない。
+
+## R9 ファイルリストの背景へのドロップ（FR-349、A-207）
+
+- **Decision**: ポインタの下の項目から宛先を決める判断を、Core の `FileListDropTarget.resolve` に置く。
+  - フォルダ（`.folder`）→ そのフォルダ。`..`（`.parent`）と zip の中のディレクトリ（`.directory`）→ 受け付けない
+  - メディアファイル・zip ファイル・項目なし → 表示中のフォルダ。ただし、zip の中・検索結果を表示中、一覧の状態が `.denied`・`.failed` のときは受け付けない
+    （「新規フォルダ」の可否（`ListItemCommands.allowsNewFolder` と `FileListViewController.swift:221-227`）と同じ条件）
+- **リスト形式**: `validateDrop` の `proposedRow`・`dropOperation` から項目を決める（`.above` は行間なので項目なし）。表示中のフォルダが宛先のときは
+  `setDropRow(-1, dropOperation: .on)` で一覧全体を強調する（`NSTableView` の文書の、行 -1 と `.on` で表全体を対象にする指定）。`acceptDrop` も同じ規則で決める（行 -1 は背景）
+- **サムネイル形式**: `NSCollectionView` には一覧全体を強調する仕組みがない。表示中のフォルダが宛先のときは、`dropOperation` を `.before` にして項目の強調を出さず、
+  `ThumbnailCollectionView` に背景の強調の枠を描かせる。`.before` で出る項目の間の挿入位置の表示は、フロー・レイアウトのサブクラスで
+  `layoutAttributesForInterItemGap(before:)` が nil を返して出さない（今のアプリ内のドラッグは `.before` を使わないので影響しない）。
+  強調の枠は、`validateDrop` の結果ごとに付け外しし、`acceptDrop`・`draggingExited(_:)`・`draggingEnded(_:)` で外す。`acceptDrop` の `.before` は背景
+- **Rationale**: 宛先の規則を Core の純粋な関数にして、項目の種類と表示の状態の組み合わせを Swift Testing で確かめる（AGENTS.md の設計の制約）。
+  検証（EC-16・EC-121）と実行は、アプリ内は `InternalDrag`、アプリ外は `ExternalDrag` の今の経路をそのまま使い、宛先の URL だけを表示中のフォルダにする
+- **未検証（T030 で確かめる）**: リスト形式の表全体の強調が見えること。サムネイル形式で、挿入位置の表示が出ず、背景の強調の枠が出て、ドラッグの中止・宛先の外への移動で消えること
+

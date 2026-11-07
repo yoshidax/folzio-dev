@@ -72,6 +72,10 @@
 - `Tests/FolzioCoreTests/ExternalDropPolicyTests.swift`（新規）
 - `Tests/FolzioCoreTests/BrowserModelSearchTests.swift`: FSEvents の経路で、アプリ外で消えたフォルダの配下の遅れた結果が表示されないことのテスト（R8）
 - `Tests/FolzioAppTests/ExternalDragTests.swift`（新規）: マスク、登録した型、file URL の判定（名前付きの `NSPasteboard` を使う）、受け取った印
+- `Sources/FolzioCore/Model/FileListDropTarget.swift`（新規）: ファイルリストのドロップの宛先（フォルダ・表示中のフォルダ・なし）の判断（R9）
+- `Sources/FolzioApp/FileList/ListModeView.swift`・`ThumbnailModeView.swift`: 宛先の判断を `FileListDropTarget` に置き換え、背景を宛先にする。
+  リスト形式は表全体の強調、サムネイル形式は強調の枠と挿入位置の表示の抑止（R9）
+- `Tests/FolzioCoreTests/FileListDropTargetTests.swift`（新規）
 - `README.md`・`README.ja.md`・`docs/usage.md`・`docs/usage.ja.md`: Finder・ブラウザとのドラッグ&ドロップの説明（2 言語を同じコミットで）
 
 **Structure Decision**: 判断（操作の決定）は `FolzioCore`、ペーストボード・ドラッグは `FolzioApp`（AGENTS.md の設計の制約）。
@@ -84,7 +88,8 @@
 3. App: キャッシュの共通化（`DropOperationCache`・`PasteboardFileURLs`）。アプリ内のドラッグの動作は変えない
 4. Core・App: 検索結果の記録（Core）と受け取った印（App）（US75）
 5. App: `ExternalDrag`・3つのビューの file URL の受け取り（US76）
-6. 文書（README・usage）と、検証の後の `specs/product/` への反映（PR の最後）
+6. Core・App: ファイルリストの背景へのドロップ（FR-349、R9。保守者の追加の決定）
+7. 文書（README・usage）と、検証の後の `specs/product/` への反映（PR の最後）
 
 ## 未検証の点（保守者の macOS で確かめる）
 
@@ -92,6 +97,7 @@
 - 別のボリュームと混在の場合のボリュームの判定（R4。CI では確かめられない）
 - ブラウザの画像のドラッグが file URL を含まないか（R6）
 - 検索結果からアプリ外へ移動した行が外れ、検索中に遅れて届く古い結果が出ないか（R8）
+- リスト形式の表全体の強調と、サムネイル形式の背景の強調の枠・挿入位置の表示の抑止（R9）
 
 ## Complexity Tracking
 
