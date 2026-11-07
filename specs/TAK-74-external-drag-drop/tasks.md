@@ -198,3 +198,4 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
 - 2026-11-07: T025 の反映を保守者が承認。最新の master（`c8840c8`）を含むことを確かめ、file-operations.md（FR-024・FR-163 の変更、FR-344〜FR-349・US75〜US76・
   EC-236〜EC-238・SC-180〜SC-185・A-202〜A-207 の追加、主なエンティティ）、directory-tree.md（A-20・A-129）、README.md（FR の件数）に反映し、spec.md に移行済み・凍結の注記を入れた。
   反映の前と後に `check-spec-ids.sh`（重複なし）、反映後に `check-spec-format.py`（エラー 0、警告は基準値 88 のまま）
+- 2026-11-07: PR yoshidax/folzio-dev#66 を作成し、Linear の TAK-74 を In Review にした。保守者から、ローカルの確認のすべての項目に問題がないことを確かめたと報告を受けた（`checklists/validation.md`）
