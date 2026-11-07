@@ -27,20 +27,20 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
 
 ## Phase 3: Foundational（全ストーリーの前提）
 
-- [ ] T006 `Tests/FolzioCoreTests/ExternalDropPolicyTests.swift` を作り、data-model.md の表のすべての組み合わせ（option・command・allOnSameVolume）と、
+- [x] T006 `Tests/FolzioCoreTests/ExternalDropPolicyTests.swift` を作り、data-model.md の表のすべての組み合わせ（option・command・allOnSameVolume）と、
   優先する操作が許可されないときの切り替え・`nil`（EC-238）、Option と ⌘ の同時で `allowsMove`・`allowsCopy` がどちらも false のときの `nil` をテストする（FR-346）。
   `allOnSameVolume` は、一時フォルダの中の項目で true、存在しない項目を含むときに false（値が取れなければ false。EC-237）をテストする（先に失敗させる）
-- [ ] T007 `Sources/FolzioCore/Operations/ExternalDropPolicy.swift` を実装して T006 を通す（FR-346・EC-237・EC-238、R3・R4）。
+- [x] T007 `Sources/FolzioCore/Operations/ExternalDropPolicy.swift` を実装して T006 を通す（FR-346・EC-237・EC-238、R3・R4）。
   `operation(option:command:allOnSameVolume:allowsMove:allowsCopy:) -> Operation?` と `allOnSameVolume(_:destination:) -> Bool`
   （`URLResourceValues.volumeIdentifier` を比べる。UI スレッドで呼ばない旨をコメントに書く）
-- [ ] T008 `Sources/FolzioApp/Shared/PasteboardFileURLs.swift` を作り、`InternalDrag.urls`・`FileOperationCoordinator.pasteboardFileURLs`・
+- [x] T008 `Sources/FolzioApp/Shared/PasteboardFileURLs.swift` を作り、`InternalDrag.urls`・`FileOperationCoordinator.pasteboardFileURLs`・
   `DirectoryTreeViewController.fileURLs(from:)` の file URL の読み出しを `fileURLs(in:)` にまとめる（R4・R6。動作は変えない）
-- [ ] T009 `Sources/FolzioApp/Shared/DropOperationCache.swift` を作り、`InternalDrag` の通し番号ごとのキャッシュ（`cache`・`pending`・`currentSequence`）を移す。
+- [x] T009 `Sources/FolzioApp/Shared/DropOperationCache.swift` を作り、`InternalDrag` の通し番号ごとのキャッシュ（`cache`・`pending`・`currentSequence`）を移す。
   通し番号ごとに URL の配列も1回だけ読んで保持する。「操作の決め方」を渡せるようにし、`InternalDrag.operation` はアプリ内の決め方（Option でコピー、なければ移動）を渡す。
   ドロップ時に使う `cachedOperation`（キャッシュがなければ nil。ファイルシステムを読まない）を加え、アプリ内の `acceptDrop` もそれを使う（data-model.md、R4。アプリ内の動作は変えない）
-- [ ] T010 `Tests/FolzioAppTests/ExternalDragTests.swift` を作り、`DropOperationCache` が通し番号の変化でキャッシュと URL を捨てること、同じ通し番号では URL を読み直さないこと、
+- [x] T010 `Tests/FolzioAppTests/ExternalDragTests.swift` を作り、`DropOperationCache` が通し番号の変化でキャッシュと URL を捨てること、同じ通し番号では URL を読み直さないこと、
   `cachedOperation` が結果の前は nil を返すことをテストする
-- [ ] T011 `Sources/FolzioApp/Operations/FileOperationCoordinator.swift` の `internalDrop(_:to:copy:)` を `drop(_:to:copy:)` に改名し、
+- [x] T011 `Sources/FolzioApp/Operations/FileOperationCoordinator.swift` の `internalDrop(_:to:copy:)` を `drop(_:to:copy:)` に改名し、
   `DirectoryTreeViewController.swift` と `Sources/FolzioApp/FileList/FileListViewController.swift` の呼び出しを直す（FR-347、R5。動作は変えない）
 
 ## Phase 4: User Story 75 - Folzio の項目を他のアプリへ渡す (P1)
@@ -147,3 +147,6 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
 - 2026-11-07: `b6858dd`（`.delete` を外した版）の CI（workflow_dispatch、run 42377626115）: build・通常のテスト成功、性能テスト 27 件中 2 件失敗
   （24 MP の JPEG のデコード 0.541 秒（基準 0.5 秒）、`didRenameFolder` 中央値 0.137 秒（基準 0.1 秒））。どちらも TAK-74 より前の run 42287354217 で失敗しているテストで、
   TAK-74 の変更によるものではない
+- 2026-11-07: T006〜T011 を実装（`891ff4f`）。CI（workflow_dispatch、run 42379002585）: build 成功、通常のテスト 1064 件すべて成功（前回の 1057 件に、
+  `ExternalDropPolicyTests` 4 件と `DropOperationCacheTests` 3 件を加えた数と一致）、性能テスト 27 件中 1 件失敗（`didRenameFolder` 中央値 0.105 秒。TAK-74 以前から失敗しているテスト）。
+  Cloud のネットワーク設定でログの全文をダウンロードできないため、新しいテストの個別の結果は、件数の一致で確かめた
