@@ -110,7 +110,7 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
 - [ ] T023 macOS CI で `swift build`・`swift test` を確認する（`workflow_dispatch`、または保守者の依頼で作った PR）。性能テストはログの末尾で件数を確かめる
 - [x] T024 [MANUAL] 保守者に、起動スモークと quickstart.md の「手動の確認」をローカルで実行してもらい、結果と未検証の点（research.md R4・R6・R8）の答えを
   `checklists/validation.md` に記録する。期待と違う点があれば、仕様か設計を直してから進める
-- [ ] T025 検証の完了後に最新の master を取り込み、spec.md の「反映先」の項目を `specs/product/file-operations.md`・`directory-tree.md` へ反映する。
+- [x] T025 検証の完了後に最新の master を取り込み、spec.md の「反映先」の項目を `specs/product/file-operations.md`・`directory-tree.md` へ反映する。
   反映の前と後に `scripts/dev/check-spec-ids.sh`、反映後に `python3 scripts/dev/check-spec-format.py` を実行する。ID が衝突すればこの feature の ID を振り直す。
   差分を保守者に示し、承認後にコミットして spec.md を凍結する
 
@@ -195,4 +195,7 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   T022 は、各コミットで `scripts/dev/check-all.sh` が成功している（最後は `ed2b3dc`）。`ed2b3dc` の CI（run 42393014081）は実行中
 - 2026-11-07: `ed2b3dc` の CI（workflow_dispatch、run 42393014081）: build 成功、通常のテスト 1082 件すべて成功、性能テスト 27 件すべて成功（`Test run with 27 tests passed`）。
   T025 の `specs/product/` への反映の差分を保守者に示した（承認待ち。差分はコミットせず、パッチとして保存）
+- 2026-11-07: T025 の反映を保守者が承認。最新の master（`c8840c8`）を含むことを確かめ、file-operations.md（FR-024・FR-163 の変更、FR-344〜FR-349・US75〜US76・
+  EC-236〜EC-238・SC-180〜SC-185・A-202〜A-207 の追加、主なエンティティ）、directory-tree.md（A-20・A-129）、README.md（FR の件数）に反映し、spec.md に移行済み・凍結の注記を入れた。
+  反映の前と後に `check-spec-ids.sh`（重複なし）、反映後に `check-spec-format.py`（エラー 0、警告は基準値 88 のまま）
 

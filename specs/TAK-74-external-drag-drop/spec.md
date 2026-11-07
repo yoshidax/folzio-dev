@@ -1,10 +1,14 @@
 # Feature Specification: 他のアプリとのドラッグ&ドロップ
 
+> **移行済み（2026-11-07）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-74 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+> 検証結果と未確認の範囲は [tasks.md](tasks.md) と [checklists/validation.md](checklists/validation.md) を参照。
+
 **Feature Branch**: `claude/affectionate-carson-yaiayj`
 
 **Created**: 2026-11-07
 
-**Status**: Draft
+**Status**: Approved — product へ移行済み（未確認の検証範囲は tasks.md を参照）
 
 **Input**: TAK-74 https://linear.app/takyoshida/issue/TAK-74 — Finder のように、Folzio から他のアプリへ、他のアプリから Folzio へ、
 ファイルやフォルダをドラッグ&ドロップで受け渡せるようにする（ブラウザのアップロード欄への画像のドラッグ、Finder との移動・コピー、
