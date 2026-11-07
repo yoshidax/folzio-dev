@@ -74,7 +74,7 @@ T004 の承認前には実装しない。PR と本番設定も、今回の設計
 - [x] T031 `docs_private/repository-and-release.md` の手順で保守者が App / Secret と公開用 main の保護規則、初回 bootstrap_public_base を確認する。Cloud のトークンを Actions 設定済みとは扱わない
 - [x] T032 保守者が初回の release.json 変更 PR を作り、`specs/TAK-41-actions-release/quickstart.md` の CI artifact を取得してローカル PC で checksum・3ペイン・日英・About を確認し、この tasks.md に記録する
 - [ ] T033 保守者が確認した PR をマージし、`specs/TAK-41-actions-release/quickstart.md` の初回 base の明示と同期・配布の連鎖を確認する。preview 後の他 PR マージでは M の新候補を再確認して手動再開し、M+3 から M を復旧する場合も検証して tasks.md に記録する
-- [ ] T034 保守者が公開用ドラフトの最終 ZIP とノート・タグを確認し、GUI / Gatekeeper の確認後に公開して、この tasks.md に記録する
+- [x] T034 保守者が公開用ドラフトの最終 ZIP とノート・タグを確認し、GUI / Gatekeeper の確認後に公開して、この tasks.md に記録する
 - [ ] T035 実確認がそろった後、`specs/TAK-41-actions-release/spec.md` に移行・凍結の注記を追記する
 
 T031〜T034 は保守者による実際の確認まで未チェックにする。未確認の間は Issue を Done にしない。
@@ -115,6 +115,15 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
 本番の push・認証設定をせずに大部分を一時 Git と stub で確認し、最後に保守者が導入・実リリースを検証する。
 
 ## 検証・承認の記録
+
+- 2026-11-07 12:47（日本時間）: 保守者から公開完了の報告を受け、Release437291898 が
+  draft=false / published_at=2026-11-07T03:47:02Z であることを GitHub API で確認し、T034 を完了とした。
+  公開URL: https://github.com/yoshidax/folzio/releases/tag/v1.0.1
+  ZIP719449521 と SHA256SUMS719449523 は確認済みの ID・digest のまま uploaded、
+  タグ v1.0.1 は公開コミット d351e0f3d5ed4f1ade89c0892eba6c5232f2363d を指している。
+  初回 release.json PR → CI候補 → ローカル確認 → マージ → 初回同期 → 最終CI → GUI確認 → 公開の経路は完了。
+  T033 の preview 不一致の再確認と M+3 復旧の実確認は未実施のため、同項目と T035 は未チェックのまま。
+  feature 凍結と Issue Done は行わず、導入記録を agent/tak-41-release-rollout へ push する。
 
 - 2026-11-07（日本時間）: 保守者が公開用ドラフト437291898の最終 ZIP について、
   起動・3ペイン・日英切り替え・About 1.0.1 の表示に問題なしと報告した。
