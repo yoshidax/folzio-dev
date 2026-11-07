@@ -24,23 +24,36 @@
 | false | false | false | コピー |
 
 - 優先する操作が許可されていなければ、もう一方が許可されていればそれを返し、どちらもなければ `nil`（EC-238）
+- Option と ⌘ の同時は、OS がマスクをリンクだけに絞ると `allowsMove`・`allowsCopy` がどちらも false になり、`nil` になる（FR-346）
 - `allOnSameVolume(_ sources: [URL], destination: URL) -> Bool`: ファイルシステムを読むので、UI スレッドで呼ばない
 
-## ExternalDrag（FolzioApp、新規）
+## PasteboardFileURLs（FolzioApp、新規。既存の3か所をまとめる）
 
-アプリ外からのドラッグの受け取り（FR-345・FR-346・FR-348、research.md R1・R4・R6）。
+- `fileURLs(in pasteboard: NSPasteboard) -> [URL]`: `.urlReadingFileURLsOnly` で file URL だけを読む（FR-348、research.md R4・R6）
+- `InternalDrag`・`ExternalDrag`・`FileOperationCoordinator` の一般のペーストボードからの読み出しが使う
 
-- `urls(_ info) -> [URL]?`: `InternalDrag.urls(info)` が nil で、ペーストボードに file URL があるときだけ、その URL の配列を返す
-- `operation(_ info, destination) -> NSDragOperation`: ホバー中の操作。検証とボリュームの判定を detached task で求め、次のキーごとにキャッシュする
-  - キー: `draggingSequenceNumber`・URL の配列・宛先・Option・⌘
-  - 結果が出るまでは `[]`（宛先を有効にしない）
-  - 移動を返すときは、マスクに `.move` があれば `.move`、なければ `.generic`
-- `dropOperation(_ info, destination) -> InternalDropValidation.Kind?`: ドロップ時の操作（ホバー中と同じ規則で決め直す）
+## DropOperationCache（FolzioApp、新規。InternalDrag のキャッシュを移す）
 
-## InternalDrag（FolzioApp、変更）
+ホバー中の操作の決定を、ドラッグの通し番号ごとにキャッシュする（research.md R4）。アプリ内とアプリ外で共有する。
 
-- 追加: 通し番号ごとに「Folzio のビューで受け取った」印を残す `markAccepted(_ sequence:)` と、それを読む `wasAccepted(_ sequence:) -> Bool`（research.md R7）
-- ツリー・リスト形式・サムネイル形式の、アプリ内のドラッグの `acceptDrop` で印を残す
+- 通し番号が変わったら、キャッシュ・計算中の集合・URL を捨てる
+- 通し番号ごとに、ペーストボードから読んだ URL の配列を1回だけ保持する
+- キー: URL の配列・宛先・Option・⌘。値: 決まった操作（`InternalDropValidation.Kind?`）
+- 結果が出るまでは `[]`（宛先を有効にしない）。計算は detached task で行い、渡された「操作の決め方」を使う
+  - アプリ内: Option ならコピー、なければ移動。`InternalDropValidation.validate` が `.valid` のときだけ
+  - アプリ外: `ExternalDropPolicy.operation` と `allOnSameVolume`、`InternalDropValidation.validate`
+- `cachedOperation(...)`: ドロップ時に使う。キャッシュがなければ nil（受け付けない）。ファイルシステムを読まない
+- 移動を返すときは、マスクに `.move` があれば `.move`、なければ `.generic`
+
+## InternalDrag・ExternalDrag（FolzioApp）
+
+- `InternalDrag`（変更）: キャッシュを `DropOperationCache` に移す。通し番号ごとに「Folzio のビューで受け取った」印を残す `markAccepted(_:)` と
+  `wasAccepted(_:) -> Bool` を加える（research.md R7）。ツリー・リスト形式・サムネイル形式のアプリ内の `acceptDrop` で印を残す
+- `ExternalDrag`（新規）: `urls(_:)`（`InternalDrag.urls` が nil で file URL があるときだけ）、アプリ外の「操作の決め方」、アプリ外向けのマスクの定数
+
+## BrowserModel（FolzioCore、変更）
+
+- 追加: `didRemoveItemsExternally(_ urls: [URL]) async` — 検索結果の表示中に、元の場所にもうない項目を detached task で調べ、`didMoveSearchItems` と同じく記録して外す（EC-236、research.md R8）
 
 ## ドラッグ元のマスク（FolzioApp、変更）
 

@@ -24,16 +24,22 @@ Apple の文書の記述に基づく。macOS で確かめる点は「未検証�
     Finder がドラッグ元に `.generic` を求める場合に備えて含める。
   - Dock のゴミ箱へのドロップは、保守者の決定（spec の Clarifications）で許可する。ゴミ箱は `.delete` を使うため含める。
   - `.link`（エイリアス）は A-206 で対象外にするため含めない。
-- **未検証**: Finder が同じボリュームで移動し、Option でコピーし、別のボリュームでコピーすること。Dock のゴミ箱が受け付けて、ファイルをゴミ箱へ移すこと。
-  ゴミ箱へ移す処理をドロップ先（Dock/Finder）が行い、ドラッグ元の Folzio に削除を求めないこと（`draggingSession(_:endedAt:operation:)` が `.delete` で終わっても、
-  Folzio は何も削除しない）。ドロップ先が移した結果は、FSEvents（EC-13・EC-236）で反映する。
+- **未検証（実装の最初に確かめる。tasks.md の Phase 2）**:
+  - Finder が同じボリュームで移動し、Option でコピーし、別のボリュームでコピーし、⌘ で移動すること
+  - Dock のゴミ箱が受け付けて、ファイルをゴミ箱へ移すこと。Apple の文書は `NSDragOperation.delete` を「ドラッグ元が削除する」操作と説明しているため、
+    Dock がドラッグ元に削除を任せる可能性がある（`draggingSession(_:endedAt:operation:)` が `.delete` で終わり、ファイルが元の場所に残る）
+  - Option と ⌘ を同時に押したとき、OS がマスクをリンクだけに絞るか（Finder のエイリアスの操作）
+- **未検証の結果による分岐（保守者の決定、spec の Clarifications）**: Dock がドラッグ元に削除を任せる場合は、`.delete` をマスクから外し、Dock のゴミ箱には対応しない。
+  Folzio はドロップの後に削除や確認を行わない。ドロップ先が移した結果は、FSEvents（EC-13・EC-236）で反映する。
+- **注意（A-132）**: ツリーは ⌘ を押したまま行からドラッグを始められない（選択の変更として扱う）。ツリーから ⌘ で移動するには、ドラッグを始めてから ⌘ を押す。
 - **Alternatives considered**: `.every` を許可する案。`.link` と `.private` を含み、A-206 と合わないため採らない。
 
 ## R3 アプリ外からの file URL の操作の決め方（FR-346・EC-237・EC-238）
 
 - **Decision**: Core に `ExternalDropPolicy.operation(_:)` を置き、入力（Option・⌘ の有無、すべての項目が宛先と同じボリュームか、
   ドラッグ元が移動とコピーを許可しているか）から `.move`・`.copy`・`nil` を返す純粋な関数にする。
-  - 修飾キー: Option → コピー、⌘ → 移動（両方押したときは Option を優先してコピー。FR-346）
+  - 修飾キー: Option → コピー、⌘ → 移動。両方押したときは Option を優先してコピーを選ぶが、OS がマスクをリンクだけに絞っていれば
+    コピーも移動も許可されず `nil` になる（FR-346。R2 の未検証）
   - 修飾キーなし: すべてが同じボリューム → 移動、それ以外 → コピー
   - ドラッグ元が許可しない場合: もう一方が許可されていればそれ、どちらもなければ `nil`（EC-238）
   - 移動が許可されているかは、マスクに `.move` か `.generic` があるかで判断する（R2 の ⌘ による `.generic` のため）
@@ -44,9 +50,14 @@ Apple の文書の記述に基づく。macOS で確かめる点は「未検証�
 ## R4 ボリュームの判定とホバー中の検証
 
 - **Decision**: Core の `ExternalDropPolicy.allOnSameVolume(_:destination:)` が `URLResourceValues.volumeIdentifier` を比べる。
-  値が取れない項目があれば `false`（コピー。元を消さない側に倒す）。呼び出しは detached task で行い、
-  `InternalDrag.operation(_:destination:)` と同じく、ドラッグの通し番号（`draggingSequenceNumber`）ごとに結果をキャッシュする。
-  宛先の検証は既存の `InternalDropValidation.validate(sources:destination:kind:)` をそのまま使う（EC-16・EC-121）。
+  値が取れない項目があれば `false`（コピー。元を消さない側に倒す）。宛先の検証は既存の `InternalDropValidation.validate(sources:destination:kind:)` をそのまま使う（EC-16・EC-121）。
+  - **キャッシュは1つにまとめる**: `InternalDrag` の通し番号ごとのキャッシュ（`cache`・`pending`・`currentSequence`）を、アプリ内とアプリ外で共有する仕組み（`DropOperationCache`）に移す。
+    違いは「操作の決め方」だけにする（アプリ内: Option でコピー、なければ移動。アプリ外: `ExternalDropPolicy`）。重複する仕組みを作らない（設計レビューの指摘 8）
+  - **ペーストボードの URL も通し番号ごとにキャッシュする**: ホバー中の更新のたびにペーストボードを読み直さない（指摘 9）
+  - **file URL の読み出しを1つの関数にまとめる**: 今は `InternalDrag.urls`・`FileOperationCoordinator.pasteboardFileURLs`・`DirectoryTreeViewController.fileURLs(from:)` の3か所にある（指摘 10）。
+    `NSPasteboard` を受け取る関数にして、テストでは名前付きのペーストボードを渡す
+  - **ドロップ時はホバー中の結果を使う**: `acceptDrop` は同期で結果を返す必要があり、ボリュームの判定（ファイルシステムの読み出し）を UI スレッドで行えない。
+    ドロップ時の Option・⌘ に対応するキャッシュの結果を使い、まだ結果がなければ受け付けない（指摘 6）。実行の直前には、既存の `transfer` が検証し直す（R5）
 - **Rationale**: ホバー中に UI スレッドでファイルシステムを読まない（AGENTS.md、014 の plan）。既存の仕組みと同じ方式にすると、Option・⌘ の変更で検証し直す挙動（FR-164）も同じになる。
 - **未検証（CI の制約）**: CI のランナーには1つのボリュームしかないため、別のボリュームの場合（`false`）と混在の場合（EC-237）は、値が取れない場合の `false` だけを自動テストで確かめ、
   実際の別のボリュームは保守者が quickstart.md で確かめる。
@@ -82,7 +93,12 @@ Apple の文書の記述に基づく。macOS で確かめる点は「未検証�
 
 ## R8 アプリ外へ移動した項目の検索結果からの除外（EC-236、分析の U2）
 
-- **Decision**: 新しい処理を加えない。既存の `BrowserModel.handleFileSystemEvent(_:)` が、検索結果の表示中は報告されたフォルダの下で消えた結果を外す
-  （`pruneMissingResults`、`BrowserModel.swift:865-870`）。
-- **Rationale**: ドロップ先のアプリが移動・削除した結果は、FSEvents で元の親フォルダの変更として報告される。アプリ内の移動（`didMoveSearchItems`）と結果が同じになる。
-- **未検証**: 検索結果の表示中に Finder へ移動したとき、FSEvents の報告から実際に行が外れるまでの時間。
+- **Decision**: ファイルリスト（リスト形式・サムネイル形式）とツリーのドラッグが、Folzio で受け取られずに操作ありで終わったとき（R7 の印がないとき）、
+  ドラッグした項目のうち元の場所にもうないものを detached task で調べ、`BrowserModel` に渡す。`BrowserModel` は、アプリ内の移動と同じく
+  `didMoveSearchItems(_:)` で記録して結果から外す。新しい公開メソッド（例: `didRemoveItemsExternally(_:) async`。存在の確認を Core で行う）を加える。
+  FSEvents による既存の除外（`handleFileSystemEvent` → `pruneMissingResults`、`BrowserModel.swift:865-870`）はそのまま残す。
+- **Rationale**: `pruneMissingResults` は今の結果から外すだけで、`movedSearchPaths` に記録しない（`BrowserModel.swift:1473-1527`）。検索中に移動元のフォルダの列挙が続いていると、
+  遅れて届いた古い場所の結果が再び表示される（設計レビューの指摘）。`didMoveSearchItems` は記録して遅れた結果も外す（`BrowserModel.swift:1531-1536`、
+  テストは `Tests/FolzioCoreTests/BrowserModelSearchTests.swift:9`）。
+- **未検証**: ドラッグの終了の時点で、ドロップ先（Finder）の移動が終わっているか。終わっていなければ項目はまだあり、記録されない（FSEvents の除外だけになる）。
+  quickstart.md の手順で確かめ、問題があれば FSEvents の報告のときにも記録する方式を検討する。

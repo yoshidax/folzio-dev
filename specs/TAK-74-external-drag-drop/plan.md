@@ -10,6 +10,8 @@
 アプリ外へのドラッグは、3つのビューのアプリ外向けのマスクを `[.copy, .move, .generic, .delete]` にそろえ、操作は Finder などのドロップ先に任せる（R2）。
 アプリ外から受け取る file URL は、Core の `ExternalDropPolicy` が修飾キー・ボリューム・ドラッグ元のマスクから移動かコピーかを決め（R3・R4）、
 既存の `FileOperationCoordinator` のドロップの経路（確認・衝突・失敗・再検証）で実行する（R5）。
+ホバー中の検証のキャッシュは、アプリ内の `InternalDrag` の仕組みを `DropOperationCache` にまとめて共有し、操作の決め方だけを差し替える（R4）。
+マスクの変更だけで Finder・Dock が期待どおりに動くかは、実装の最初に保守者の macOS で確かめ、その結果で仕様を確定する（R2、tasks.md の Phase 2）。
 受け付けるのは file URL だけで、ブラウザの画像の取り込みは憲章 原則 III のため別の Issue で扱う（spec の A-204）。
 
 ## Technical Context
@@ -39,9 +41,9 @@
 
 | 原則 | Phase 0 / Phase 1 の確認 |
 |---|---|
-| I ローカル完結・破壊的操作の確認 | 適合。通信なし（FR-348）。アプリ外から受け取る移動は常に確認する（FR-024）。アプリ外への移動・ゴミ箱は、ユーザーが明示的にドロップ先を選ぶ操作で、Finder の取り消しとゴミ箱で取り消せる（A-202） |
+| I ローカル完結・破壊的操作の確認 | 適合。通信なし（FR-348）。アプリ外から受け取る移動は常に確認する（FR-024）。アプリ外への移動・ゴミ箱は、ユーザーが明示的にドロップ先を選ぶ操作で、Finder の取り消しとゴミ箱で取り消せる（A-202）。確認の規則（FR-024・FR-079）は、この例外を明記して変更する。Folzio はドラッグ元として削除しない（FR-344） |
 | II 性能・UI スレッド | 適合。ボリュームと宛先の検証は detached task で、通し番号ごとにキャッシュする（R4） |
-| III キーボード操作 | 適合。Folzio と Finder の間の受け渡しは、既存の ⌘C（file URL を一般のペーストボードに置く。`FileListViewController.swift:929-935`）と ⌘V・⌥⌘V（`FileOperationCoordinator.paste(into:move:)`）で行える（contracts の「キーボードの手段」）。キーボードの手段のないブラウザの画像の取り込みは範囲外にした（A-204） |
+| III キーボード操作 | 適合。Folzio と Finder の間の受け渡しは、ファイルリストの既存の ⌘C（file URL を一般のペーストボードに置く。`FileListViewController.swift:929-935`）と ⌘V・⌥⌘V（表示中のフォルダへ貼る。`FileListViewController.swift:950-966`）で行える。ツリーには ⌘C がなく、お気に入りはペースト先にならないため、どちらもファイルリストに表示して同じキーで行う（A-204、contracts の「キーボードの手段」）。キーボードの手段のないブラウザの画像の取り込みは範囲外にした（A-204） |
 | IV テスト | 適合する計画。Core の操作の決定を Swift Testing で網羅し、App のマスク・file URL の判定をテストする。GUI は quickstart.md で保守者が確かめる。まだ実行していない |
 | V YAGNI | 適合。新しい依存・設定・確認モーダルの種類を追加しない。受け取りは既存のドロップの経路を使う |
 | 仕様の管理 | 適合。変更はこの feature に記録し、検証後に `specs/product/` へ反映する |
@@ -57,14 +59,18 @@
 ### Source Code (repository root)
 
 - `Sources/FolzioCore/Operations/ExternalDropPolicy.swift`（新規）: 操作の決定とボリュームの判定（R3・R4）
-- `Sources/FolzioApp/Shared/ExternalDrag.swift`（新規）: アプリ外の file URL の読み出し、ホバー中とドロップ時の操作の決定とキャッシュ（R1・R4・R6）、アプリ外向けのマスクの定数（R2）
-- `Sources/FolzioApp/Shared/InternalDrag.swift`: Folzio のビューで受け取った印（R7）
-- `Sources/FolzioApp/Operations/FileOperationCoordinator.swift`: `internalDrop` を `drop` に改名（R5）
+- `Sources/FolzioApp/Shared/DropOperationCache.swift`（新規）: `InternalDrag` から移す、通し番号ごとの操作・URL のキャッシュ（R4）
+- `Sources/FolzioApp/Shared/PasteboardFileURLs.swift`（新規）: file URL の読み出しを1つにまとめる（R4・R6）
+- `Sources/FolzioApp/Shared/ExternalDrag.swift`（新規）: アプリ外の file URL の判定、アプリ外の操作の決め方、アプリ外向けのマスクの定数（R1・R2・R6）
+- `Sources/FolzioApp/Shared/InternalDrag.swift`: キャッシュを `DropOperationCache` へ移す。Folzio のビューで受け取った印（R7）
+- `Sources/FolzioApp/Operations/FileOperationCoordinator.swift`: `internalDrop` を `drop` に改名（R5）。`pasteboardFileURLs` を共通の関数に置き換える
+- `Sources/FolzioCore/Browser/BrowserModel.swift`: `didRemoveItemsExternally(_:)` を追加（R8）
 - `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift`: アプリ外向けのマスク（R2）。`validateDrop`・`acceptDrop` のアプリ外の経路を `ExternalDrag` に置き換え、
   利用可能なお気に入りも宛先にする（FR-345）。ドラッグの終了で、Folzio で受け取らなかったときは `pendingOperationSources` を消す（R7）
 - `Sources/FolzioApp/FileList/ListModeView.swift`・`ThumbnailModeView.swift`: マスク（R2）、アプリ外の `validateDrop`・`acceptDrop` を追加（FR-345）、受け取った印（R7）
 - `Sources/FolzioApp/FileList/FileListViewController.swift`: リスト形式・サムネイル形式からのドロップを coordinator へつなぐ
 - `Tests/FolzioCoreTests/ExternalDropPolicyTests.swift`（新規）
+- `Tests/FolzioCoreTests/BrowserModelSearchTests.swift`: アプリ外へ移動した項目と、遅れて届く古い結果のテスト（R8）
 - `Tests/FolzioAppTests/ExternalDragTests.swift`（新規）: マスク、登録した型、file URL の判定（名前付きの `NSPasteboard` を使う）、受け取った印
 - `README.md`・`README.ja.md`・`docs/usage.md`・`docs/usage.ja.md`: Finder・ブラウザとのドラッグ&ドロップの説明（2 言語を同じコミットで）
 
@@ -73,17 +79,19 @@
 
 ## 実装の順序
 
-1. Core: `ExternalDropPolicy` とテスト
-2. App: マスクと受け取った印（US75）
-3. App: `ExternalDrag`・3つのビューの file URL の受け取り（US76）
+1. 先に行う確認: アプリ外向けのマスクだけを変えた版を push し、保守者が macOS で確かめ、結果で仕様を確定する（R2）
+2. Core: `ExternalDropPolicy` とテスト
+3. App: キャッシュの共通化（`DropOperationCache`・`PasteboardFileURLs`）。アプリ内のドラッグの動作は変えない
+4. App: 受け取った印と検索結果の記録（US75）
+5. App: `ExternalDrag`・3つのビューの file URL の受け取り（US76）
 4. 文書（README・usage）と、検証の後の `specs/product/` への反映（PR の最後）
 
 ## 未検証の点（保守者の macOS で確かめる）
 
-- Finder・Dock のゴミ箱が、追加したマスクで期待どおりに移動・コピー・ゴミ箱を行うか（R2）
+- Finder・Dock のゴミ箱が、追加したマスクで期待どおりに移動・コピー・ゴミ箱を行うか。Option と ⌘ の同時の挙動（R2。実装の最初に確かめる）
 - 別のボリュームと混在の場合のボリュームの判定（R4。CI では確かめられない）
 - ブラウザの画像のドラッグが file URL を含まないか（R6）
-- 検索結果からアプリ外へ移動した行が外れるか（R8）
+- 検索結果からアプリ外へ移動した行が外れるか、ドラッグの終了の時点で移動が終わっているか（R8）
 
 ## Complexity Tracking
 
