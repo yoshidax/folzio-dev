@@ -5,6 +5,27 @@ import Quartz
 
 @MainActor
 private final class ThumbnailCollectionView: NSCollectionView {
+    /// Shows that a drop goes into the displayed folder (the background), which `NSCollectionView` cannot show by
+    /// itself (FR-349, research.md R9). Drawn on the scroll view so it frames the visible area.
+    var showsBackgroundDropTarget = false {
+        didSet {
+            guard showsBackgroundDropTarget != oldValue, let scrollView = enclosingScrollView else { return }
+            scrollView.wantsLayer = true
+            scrollView.layer?.borderColor = NSColor.selectedContentBackgroundColor.cgColor
+            scrollView.layer?.borderWidth = showsBackgroundDropTarget ? 3 : 0
+        }
+    }
+
+    override func draggingExited(_ sender: (any NSDraggingInfo)?) {
+        showsBackgroundDropTarget = false
+        super.draggingExited(sender)
+    }
+
+    override func draggingEnded(_ sender: any NSDraggingInfo) {
+        showsBackgroundDropTarget = false
+        super.draggingEnded(sender)
+    }
+
     var onSpace: ((NSEvent) -> Bool)?
     /// Takes control of the Quick Look panel while this view has the focus (FR-247, research.md R2).
     var quickLook: QuickLookCoordinator?
@@ -78,6 +99,14 @@ private final class ThumbnailCollectionView: NSCollectionView {
             }
         }
         super.keyDown(with: event)
+    }
+}
+
+/// A background drop uses `.before` so that no item is highlighted; hiding the gap indicator keeps it from showing an
+/// insertion point that does not exist (FR-349, research.md R9). Drags inside the app never use `.before` otherwise.
+private final class ThumbnailFlowLayout: NSCollectionViewFlowLayout {
+    override func layoutAttributesForInterItemGap(before indexPath: IndexPath) -> NSCollectionViewLayoutAttributes? {
+        nil
     }
 }
 
@@ -367,7 +396,7 @@ final class ThumbnailModeView: NSView {
     private let provider: any ThumbnailProviding
     private let scrollView = NSScrollView()
     private let collectionView = ThumbnailCollectionView()
-    private let flowLayout = NSCollectionViewFlowLayout()
+    private let flowLayout = ThumbnailFlowLayout()
 
     private var storedThumbnailSize: Double
     private var lastURLs: [URL] = []
@@ -1043,27 +1072,56 @@ final class ThumbnailModeView: NSView {
 }
 
 extension ThumbnailModeView: NSCollectionViewDataSource {
+    /// The destination of a drop on the item at `index`, or on empty space when `index` is nil: a folder item, or the
+    /// displayed folder for empty space and items that are not folders (FR-163, FR-349).
+    private func dropTarget(itemAt index: Int?) -> FileListDropTarget? {
+        let files = model.listing.files
+        let index = index.flatMap { files.indices.contains($0) ? $0 : nil }
+        return FileListDropTarget.resolve(
+            kind: index.map { files[$0].kind },
+            index: index,
+            isBrowsingArchive: model.isBrowsingArchive,
+            isShowingSearchResults: model.isShowingSearchResults,
+            state: model.listing.state
+        )
+    }
+
+    private func dropURL(for target: FileListDropTarget) -> URL {
+        switch target {
+        case .folder(let index): return model.listing.files[index].url
+        case .displayedFolder: return model.listing.folder
+        }
+    }
+
     func collectionView(_ collectionView: NSCollectionView, validateDrop info: any NSDraggingInfo, proposedIndexPath: AutoreleasingUnsafeMutablePointer<NSIndexPath>, dropOperation: UnsafeMutablePointer<NSCollectionView.DropOperation>) -> NSDragOperation {
         // The flow layout may propose `.before` near item edges, so resolve the target from the item under the
-        // pointer instead. Gaps and the background stay invalid (FR-163).
+        // pointer instead.
         let location = collectionView.convert(info.draggingLocation, from: nil)
-        guard !model.isBrowsingArchive,
-              let indexPath = collectionView.indexPathForItem(at: location) else { return [] }
-        let index = indexPath.item
-        guard model.listing.files.indices.contains(index), model.listing.files[index].kind == .folder else { return [] }
-        proposedIndexPath.pointee = indexPath as NSIndexPath
-        dropOperation.pointee = .on
-        let destination = model.listing.files[index].url
-        return InternalDrag.urls(info) != nil
+        guard let target = dropTarget(itemAt: collectionView.indexPathForItem(at: location)?.item) else {
+            self.collectionView.showsBackgroundDropTarget = false
+            return []
+        }
+        switch target {
+        case .folder(let index):
+            proposedIndexPath.pointee = IndexPath(item: index, section: 0) as NSIndexPath
+            dropOperation.pointee = .on
+        case .displayedFolder:
+            // `.before` keeps the item under the pointer from being highlighted; the frame shows the target instead.
+            dropOperation.pointee = .before
+        }
+        let destination = dropURL(for: target)
+        let operation = InternalDrag.urls(info) != nil
             ? InternalDrag.operation(info, destination: destination)
             : ExternalDrag.operation(info, destination: destination)
+        self.collectionView.showsBackgroundDropTarget = target == .displayedFolder && !operation.isEmpty
+        return operation
     }
 
     func collectionView(_ collectionView: NSCollectionView, acceptDrop info: any NSDraggingInfo, indexPath: IndexPath, dropOperation: NSCollectionView.DropOperation) -> Bool {
-        let index = indexPath.item
-        guard dropOperation == .on, !model.isBrowsingArchive,
-              model.listing.files.indices.contains(index), model.listing.files[index].kind == .folder else { return false }
-        let destination = model.listing.files[index].url
+        self.collectionView.showsBackgroundDropTarget = false
+        // `.before` is a background drop (see `validateDrop`).
+        guard let target = dropTarget(itemAt: dropOperation == .on ? indexPath.item : nil) else { return false }
+        let destination = dropURL(for: target)
         if let urls = InternalDrag.urls(info) {
             guard !InternalDrag.operation(info, destination: destination).isEmpty else { return false }
             InternalDrag.markAccepted(info.draggingSequenceNumber)
