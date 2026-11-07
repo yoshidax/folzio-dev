@@ -1796,7 +1796,8 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
         guard let role = role(for: item), FavoriteCommands.acceptsFiles(role) else { return [] }
         guard let node = item as? Node,
               node.folder.accessState != .denied,
-              let urls = fileURLs(from: info.draggingPasteboard) else {
+              case let urls = PasteboardFileURLs.fileURLs(in: info.draggingPasteboard),
+              !urls.isEmpty else {
             return []
         }
         // A folder cannot be dropped onto itself or a descendant (spec Edge Cases, R32).
@@ -1834,14 +1835,14 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
             guard !InternalDrag.operation(info, destination: destination).isEmpty else { return false }
             let copy = NSEvent.modifierFlags.contains(.option)
             Task { @MainActor in
-                await coordinator.internalDrop(urls, to: destination, copy: copy)
+                await coordinator.drop(urls, to: destination, copy: copy)
             }
             return true
         }
         guard let role = role(for: item), FavoriteCommands.acceptsFiles(role) else { return false }
         guard let node = item as? Node,
               node.folder.accessState != .denied,
-              let urls = fileURLs(from: info.draggingPasteboard),
+              case let urls = PasteboardFileURLs.fileURLs(in: info.draggingPasteboard),
               !urls.isEmpty else {
             return false
         }
@@ -1856,23 +1857,6 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
             }
         }
         return true
-    }
-
-    private func fileURLs(from pasteboard: NSPasteboard) -> [URL]? {
-        let options: [NSPasteboard.ReadingOptionKey: Any] = [
-            .urlReadingFileURLsOnly: true,
-        ]
-        guard pasteboard.canReadObject(
-            forClasses: [NSURL.self],
-            options: options
-        ) else {
-            return nil
-        }
-        let objects = pasteboard.readObjects(
-            forClasses: [NSURL.self],
-            options: options
-        ) as? [NSURL]
-        return objects?.map { $0 as URL }
     }
 }
 
