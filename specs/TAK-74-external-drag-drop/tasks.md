@@ -17,7 +17,7 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
 
 ## Phase 2: 先に行う確認（実装の前提を macOS で確かめる）
 
-- [ ] T004 `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift`（1061 行付近）・`Sources/FolzioApp/FileList/ListModeView.swift`（263 行付近）・
+- [x] T004 `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift`（1061 行付近）・`Sources/FolzioApp/FileList/ListModeView.swift`（263 行付近）・
   `Sources/FolzioApp/FileList/ThumbnailModeView.swift`（600 行付近）の `setDraggingSourceOperationMask(_:forLocal: false)` を `[.copy, .move, .generic, .delete]` にする
   （サムネイル形式は新しく設定する）。`forLocal: true` は変えない（FR-344、R2）。共通の値は `Sources/FolzioApp/Shared/ExternalDrag.swift` の定数にする。
   この変更だけをコミットして push し、CI（`workflow_dispatch`）で build とテストを確かめる
@@ -99,16 +99,16 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
 - [x] T029 `ThumbnailModeView.swift` の `validateDrop`・`acceptDrop` を同じく変える。表示中のフォルダが宛先のときは `dropOperation` を `.before` にし、
   `ThumbnailCollectionView` に背景の強調の枠を描かせ、`acceptDrop`・`draggingExited(_:)`・`draggingEnded(_:)` で外す。
   フロー・レイアウトをサブクラスにして `layoutAttributesForInterItemGap(before:)` が nil を返すようにする（R9）
-- [ ] T030 [MANUAL] 保守者に quickstart.md の「ファイルリストの背景へのドロップ」を確かめてもらう（T024 と一緒に行ってよい）
+- [x] T030 [MANUAL] 保守者に quickstart.md の「ファイルリストの背景へのドロップ」を確かめてもらう（T024 と一緒に行ってよい）
 
 ## Phase 7: Polish & Cross-Cutting
 
 - [x] T021 `docs/usage.ja.md`・`docs/usage.md` のドラッグ&ドロップの説明に、Finder・ブラウザとの受け渡し（移動・コピーの決まり方、ツリーから ⌘ で移動するときの押し方、
   Dock のゴミ箱には対応しないこと）を
   両方に同じ構成で追記する。`README.md`・`README.ja.md` の機能の概要（29 行・28 行付近）に、他のアプリとの受け渡しを同じ内容で加える（同じコミット）
-- [ ] T022 Cloud で `scripts/dev/check-all.sh` を実行し、結果をこの tasks.md の Execution Notes に記録する
+- [x] T022 Cloud で `scripts/dev/check-all.sh` を実行し、結果をこの tasks.md の Execution Notes に記録する
 - [ ] T023 macOS CI で `swift build`・`swift test` を確認する（`workflow_dispatch`、または保守者の依頼で作った PR）。性能テストはログの末尾で件数を確かめる
-- [ ] T024 [MANUAL] 保守者に、起動スモークと quickstart.md の「手動の確認」をローカルで実行してもらい、結果と未検証の点（research.md R4・R6・R8）の答えを
+- [x] T024 [MANUAL] 保守者に、起動スモークと quickstart.md の「手動の確認」をローカルで実行してもらい、結果と未検証の点（research.md R4・R6・R8）の答えを
   `checklists/validation.md` に記録する。期待と違う点があれば、仕様か設計を直してから進める
 - [ ] T025 検証の完了後に最新の master を取り込み、spec.md の「反映先」の項目を `specs/product/file-operations.md`・`directory-tree.md` へ反映する。
   反映の前と後に `scripts/dev/check-spec-ids.sh`、反映後に `python3 scripts/dev/check-spec-format.py` を実行する。ID が衝突すればこの feature の ID を振り直す。
@@ -191,4 +191,6 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
 - 2026-11-07: 保守者の GUI の確認（T030 の一部）で、サムネイル形式の背景へのドラッグで挿入位置の線が出た（quickstart の期待と違う）。
   `layoutAttributesForInterItemGap(before:)` が nil を返す方法では消えなかったため、保守者の決定で、線の表示の種類に隠したビュー（`HiddenGapIndicator`）を登録して
   データソースから返す方法に改め、フロー・レイアウトのサブクラスを外した（research.md R9）。再確認は T030 で行う
+- 2026-11-07: 保守者が、ローカルの確認（起動スモークと quickstart.md の手動の確認のすべて）が完了したと報告（`checklists/validation.md`）。T024・T030 をチェックした。
+  T022 は、各コミットで `scripts/dev/check-all.sh` が成功している（最後は `ed2b3dc`）。`ed2b3dc` の CI（run 42393014081）は実行中
 
