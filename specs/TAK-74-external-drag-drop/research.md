@@ -3,11 +3,14 @@
 Cloud の環境（Linux）には macOS と Swift がないため、AppKit の挙動は実行して確かめていない。各項目の「根拠」は、現行のコードと
 Apple の文書の記述に基づく。macOS で確かめる点は「未検証」に書き、quickstart.md の手順で保守者が確かめる。
 
+ブラウザの画像の取り込みは、憲章 原則 III のため範囲外にした（spec の A-204）。そのための調査（file promise・画像データ・ファイル名）は、
+別の Issue へ引き継ぐ（spec の Clarifications）。
+
 ## R1 アプリ内とアプリ外のドラッグの区別
 
 - **Decision**: 既存の `InternalDrag.urls(_:)`（ドラッグ元が Folzio の登録済みのビューかどうか）で区別する。`nil` のときだけ、新しい `ExternalDrag` で扱う。
 - **Rationale**: 014 の research（`specs/014-internal-drag-drop/research.md` の最初の項目）で、URL だけで区別しない方針を決めている。
-  アプリ内の規則（FR-020・FR-162〜FR-165）を変えない（SC-185）ために、判定の入口を分ける。
+  アプリ内の規則（FR-020・FR-162〜FR-165）を変えない（SC-184）ために、判定の入口を分ける。
 - **Alternatives considered**: ドラッグ元のアプリのバンドル ID で区別する案。`NSDraggingInfo` からは取れず、ビューの同一性で足りるので採らない。
 
 ## R2 アプリ外へのドラッグで許可する操作（FR-344）
@@ -30,7 +33,7 @@ Apple の文書の記述に基づく。macOS で確かめる点は「未検証�
 
 - **Decision**: Core に `ExternalDropPolicy.operation(_:)` を置き、入力（Option・⌘ の有無、すべての項目が宛先と同じボリュームか、
   ドラッグ元が移動とコピーを許可しているか）から `.move`・`.copy`・`nil` を返す純粋な関数にする。
-  - 修飾キー: Option → コピー、⌘ → 移動（両方押したときは Finder の表示に合わせて Option を優先し、コピー）
+  - 修飾キー: Option → コピー、⌘ → 移動（両方押したときは Option を優先してコピー。FR-346）
   - 修飾キーなし: すべてが同じボリューム → 移動、それ以外 → コピー
   - ドラッグ元が許可しない場合: もう一方が許可されていればそれ、どちらもなければ `nil`（EC-238）
   - 移動が許可されているかは、マスクに `.move` か `.generic` があるかで判断する（R2 の ⌘ による `.generic` のため）
@@ -45,6 +48,8 @@ Apple の文書の記述に基づく。macOS で確かめる点は「未検証�
   `InternalDrag.operation(_:destination:)` と同じく、ドラッグの通し番号（`draggingSequenceNumber`）ごとに結果をキャッシュする。
   宛先の検証は既存の `InternalDropValidation.validate(sources:destination:kind:)` をそのまま使う（EC-16・EC-121）。
 - **Rationale**: ホバー中に UI スレッドでファイルシステムを読まない（AGENTS.md、014 の plan）。既存の仕組みと同じ方式にすると、Option・⌘ の変更で検証し直す挙動（FR-164）も同じになる。
+- **未検証（CI の制約）**: CI のランナーには1つのボリュームしかないため、別のボリュームの場合（`false`）と混在の場合（EC-237）は、値が取れない場合の `false` だけを自動テストで確かめ、
+  実際の別のボリュームは保守者が quickstart.md で確かめる。
 - **Alternatives considered**: パスの先頭（`/Volumes/…`）で判定する案。ファームリンクや APFS のボリュームで誤るので採らない。
 
 ## R5 アプリ外からの受け取りの経路（FR-347）
@@ -53,55 +58,31 @@ Apple の文書の記述に基づく。macOS で確かめる点は「未検証�
   確認・衝突・失敗・反映・実行直前の再検証（`validateInternalDrop`）は今の `transfer(_:to:kind:validateDrop:)` のまま。
 - **Rationale**: FR-347 は既存の確認・衝突・失敗・反映の規則に従うことを求めている。今の `transfer` がそれを満たしており、新しい経路を作る理由がない。
   今のツリーのアプリ外からのドロップは `copy`・`move` を直接呼ぶため（`DirectoryTreeViewController.swift:1849-1855`）、EC-121 の実行時の再検証を通らない。これもそろう。
+  移動元の親フォルダは `notifyFoldersChanged` が含めるので、元の場所が Folzio に表示中なら FSEvents を待たずに反映される（FR-347）。
 - **Alternatives considered**: `externalDrop` を別に作る案。中身が同じになるので採らない。
 
-## R6 ファイルの書き出しの約束（file promise）の受け取り（FR-348・EC-239・EC-240）
+## R6 受け付けるペーストボードの型（FR-348）
 
-- **Decision**: `acceptDrop` の中で、ペーストボードから `NSFilePromiseReceiver` を読み出す（ペーストボードはドロップの間しか読めないため、同期的に読む）。
-  宛先と同じボリュームの一時フォルダ（`FileManager.url(for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: 宛先, create: true)`）を作り、
-  `receivePromisedFiles(atDestination:options:operationQueue:reader:)` で書き出させる。書き出しは専用の `OperationQueue` で待ち、すべての約束の結果（URL か Error）がそろったら、
-  書き出されたファイルを既存のコピーの経路（確認・衝突・失敗）で宛先へ入れる。最後に一時フォルダを必ず消す（成功・キャンセル・失敗のどれでも）。
-  - 書き出しが 60 秒で終わらない約束は失敗として扱う（EC-239）。
-  - 失敗した約束は、ファイル名が分かればその名前、分からなければ既定の名前（R8）で、FR-026 の結果表示に含める。
-- **Rationale**: 宛先へ直接書き出させると、確認モーダルのキャンセル（US77-AS5）と衝突の「両方残す」（FR-025）を守れない。一時フォルダを経ると、既存のコピーと同じ規則を使える。
-  `itemReplacementDirectory` は宛先と同じボリュームに作られるので、コピーの時間が短い。Apple の文書は、受け取り側がドロップの後で書き出しを待つ方式を示しており、
-  ブラウザが画像を取得する通信はブラウザ側で行われる（FR-351）。
-- **未検証**: Safari と Chrome が画像のドラッグで file promise を渡すか、ファイル名と拡張子に何を使うか、書き出しにかかる時間。
-- **Alternatives considered**: 確認を先に出し、確定後に書き出させる案。確認モーダルにファイル名を出せず（書き出すまで名前が確定しないことがある）、衝突も書き出し後でないと分からないので採らない。
+- **Decision**: 3つのビューの `registerForDraggedTypes` は今の `[.fileURL]` のまま変えない。`ExternalDrag` は file URL だけを読み（`.urlReadingFileURLsOnly`）、
+  なければ宛先を有効にしない。
+- **Rationale**: 画像のデータや file promise の型を登録しなければ、ブラウザの画像・リンク・文字列のドラッグでビューが反応しない（US76-AS6・SC-183）。
+  リスト形式とサムネイル形式は既に `.fileURL` を登録しているが（`ListModeView.swift:260`、`ThumbnailModeView.swift:599`）、ドロップの処理が `InternalDrag` だけを見ている（`ListModeView.swift:684`、
+  `ThumbnailModeView.swift:1043`）ので、処理だけを加えればよい。
+- **未検証**: ブラウザの画像のドラッグが file URL を含まないこと（含む場合は、そのファイルを受け取る移動・コピーになる）。
 
-## R7 画像データの保存（FR-349・FR-350）
+## R7 ツリーからアプリ外へドロップしたときの記録の消去（分析の U1）
 
-- **Decision**: file URL も file promise もないとき、`acceptDrop` の中でペーストボードの PNG または TIFF のデータと、同じドラッグにある URL（file URL 以外）を同期的に読み出す。
-  PNG への変換と一時フォルダへの書き込みは detached task で ImageIO（`CGImageSource`・`CGImageDestination`）を使って行い、以後は R6 と同じくコピーの経路で宛先へ入れる。
-- **Rationale**: ImageIO はスレッドを問わず使え、UI スレッドで変換しない（AGENTS.md）。既に PNG のデータなら再エンコードせずにそのまま書く。
-- **未検証**: ブラウザが file promise を渡さずに画像データだけを渡す場面があるか（Chrome の一部の画像、ほかのアプリの画像など）。
+- **Decision**: ツリーは `pendingOperationSources`（FR-219 の選択の更新のための、ドラッグしたフォルダの記録）を、今は操作なしで終わったドラッグでだけ消す
+  （`DirectoryTreeViewController.swift:1762-1769`）。アプリ内の `acceptDrop`（ツリー・リスト形式・サムネイル形式）が coordinator の操作を始めたかどうかを、
+  `InternalDrag` に「この通し番号のドラッグを Folzio で受け取った」という印として残し、`draggingSession(_:endedAt:operation:)` で印がなければ記録を消す。
+- **Rationale**: アプリ外へのドロップは coordinator を通らないので、`onOperationFinished` が呼ばれず、記録が残る。残った記録は、次の無関係な操作の終了で
+  ツリーの選択を誤って変える恐れがある（TAK-21 の tasks.md の Execution Notes の「懸念2」と同じ種類の問題）。
+- **Alternatives considered**: 操作が `.delete` か、ドロップの位置がウインドウの外かで判断する案。Finder へのドロップも `.move` や `.copy` で終わり、
+  位置はウインドウの重なりで誤るので採らない。
 
-## R8 画像データのファイル名（FR-350）
+## R8 アプリ外へ移動した項目の検索結果からの除外（EC-236、分析の U2）
 
-- **Decision**: Core に `ImportedImageName.fileName(sourceURL:date:basePrefix:)` を置く。
-  - URL の最後のパスの要素を、パーセントエンコードを解いて取り出し、拡張子を除いて `.png` を付ける（`https://example.com/a/cat.jpg?w=1` → `cat.png`）。
-  - 名前が空、`.` で始まる、`/` を含む、既存の名前の検証（`validateNewName`。`Sources/FolzioCore/Operations/NameValidation.swift`）で不正な場合は、日時の名前にする。
-  - 日時の名前は `<接頭辞> yyyy-MM-dd HH.mm.ss.png`。接頭辞は表示言語の「画像」/`Image`（新しい翻訳のキー）、日時はローカルのタイムゾーンで、数字は ASCII にする。
-- **Rationale**: 規則を純粋な関数にして、URL の形・不正な名前・日時の書式を Swift Testing で確かめる。URL を文字列として解析するだけで通信しない（FR-351）。
-- **Alternatives considered**: `NSURL` の `lastPathComponent` を使う案。それで取り出し、検証を加える（同じ意味）。
-
-## R9 受け付けるペーストボードの型（FR-345・EC-241・FR-351）
-
-- **Decision**: 3つのビューの `registerForDraggedTypes` に、`.fileURL` に加えて `NSFilePromiseReceiver.readableDraggedTypes`、`.png`、`.tiff` を登録する。
-  `ExternalDrag.payload(from:)` が、file URL → file promise → 画像データの順に1つを選ぶ（EC-241）。どれもなければ `nil` で、宛先を有効にしない（URL・文字列だけのドラッグ）。
-- **Rationale**: `.URL` や文字列の型は登録しない。登録しなければ、URL だけのドラッグでビューが反応しない。
-- **未検証**: 型の登録を増やしても、アプリ内のドラッグと、サムネイルの画像のビューが登録を持たないこと（`ThumbnailDropTargetTests`）に影響しないこと。
-
-## R10 アプリ外からの受け取りの結果の反映
-
-- **Decision**: 既存の `transfer` の後処理（`reloadCurrentFolder`・`notifyFoldersChanged`・`onOperationFinished`）をそのまま使う。
-  一時フォルダからのコピーでは、一時フォルダを `notifyFoldersChanged` の対象から外す（ツリーにない場所を更新させない）。
-  移動元が Folzio に表示中のフォルダにある場合は、`notifyFoldersChanged` が元の親フォルダを含めるので、FSEvents を待たずに反映される（FR-347、EC-13）。
-- **Rationale**: FR-027 の即時の反映は既存の経路で満たされている。
-
-## R11 ローカライズ
-
-- **Decision**: `TextKey` に、画像の既定の接頭辞（「画像」/`Image`）と、書き出しが時間内に終わらなかった理由（`OperationFailureReason` の新しい case `importTimedOut`）の文言。
-  ドラッグ元のアプリが返したエラーは、既存の `systemFailure(systemReason:)` でそのまま示す（EC-111 と同じく訳し直さない）を加え、
-  `ja.lproj`・`en.lproj` の `Localizable.strings` に訳を加える。
-- **Rationale**: 既存の新規フォルダの既定名（`folder.defaultName`）と同じ方式（`specs/product/contracts/localization.md`）。
+- **Decision**: 新しい処理を加えない。既存の `BrowserModel.handleFileSystemEvent(_:)` が、検索結果の表示中は報告されたフォルダの下で消えた結果を外す
+  （`pruneMissingResults`、`BrowserModel.swift:865-870`）。
+- **Rationale**: ドロップ先のアプリが移動・削除した結果は、FSEvents で元の親フォルダの変更として報告される。アプリ内の移動（`didMoveSearchItems`）と結果が同じになる。
+- **未検証**: 検索結果の表示中に Finder へ移動したとき、FSEvents の報告から実際に行が外れるまでの時間。
