@@ -1061,6 +1061,7 @@ extension ThumbnailModeView: NSCollectionViewDataSource {
               let urls = InternalDrag.urls(info) else { return false }
         let destination = model.listing.files[index].url
         guard !InternalDrag.operation(info, destination: destination).isEmpty else { return false }
+        InternalDrag.markAccepted(info.draggingSequenceNumber)
         onInternalDrop?(urls, destination, NSEvent.modifierFlags.contains(.option))
         return true
     }

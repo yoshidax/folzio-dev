@@ -10,10 +10,22 @@ enum InternalDrag {
     }
     private static var sources: [WeakView] = []
     private static let operations = DropOperationCache()
+    private static var acceptedSequence: Int?
 
     static func register(_ view: NSView) {
         sources.removeAll { $0.view == nil }
         sources.append(WeakView(view))
+    }
+
+    /// Records that one of this app's views accepted the drop of the drag session `sequence` and started an operation.
+    /// A drag that ends without this mark was dropped outside the app (TAK-74).
+    static func markAccepted(_ sequence: Int) {
+        acceptedSequence = sequence
+    }
+
+    /// Whether one of this app's views accepted the drop of the drag session `sequence`.
+    static func wasAccepted(_ sequence: Int) -> Bool {
+        acceptedSequence == sequence
     }
 
     static func urls(_ info: any NSDraggingInfo) -> [URL]? {

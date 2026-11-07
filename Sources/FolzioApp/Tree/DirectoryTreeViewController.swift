@@ -1755,15 +1755,17 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
         pendingOperationSources = draggedItems.compactMap { ($0 as? Node)?.url }
     }
 
-    /// A drag that ends without a drop (cancelled or refused) starts no operation, so forget its folders. A drop is
-    /// finished by `didFinishOperation(sources:removed:)` (FR-219).
+    /// A drag that ends without a drop (cancelled or refused), or with a drop outside the app, starts no operation in
+    /// this app, so forget its folders. A drop on this app's views is finished by `didFinishOperation(sources:removed:)`
+    /// (FR-219). For a drop outside the app, the destination app performs the operation and this app deletes nothing;
+    /// file system events show the result (FR-344, EC-236).
     func outlineView(
         _ outlineView: NSOutlineView,
         draggingSession session: NSDraggingSession,
         endedAt screenPoint: NSPoint,
         operation: NSDragOperation
     ) {
-        if operation.isEmpty {
+        if operation.isEmpty || !InternalDrag.wasAccepted(session.draggingSequenceNumber) {
             pendingOperationSources = []
         }
     }
@@ -1834,6 +1836,7 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
             } else { return false }
             guard !InternalDrag.operation(info, destination: destination).isEmpty else { return false }
             let copy = NSEvent.modifierFlags.contains(.option)
+            InternalDrag.markAccepted(info.draggingSequenceNumber)
             Task { @MainActor in
                 await coordinator.drop(urls, to: destination, copy: copy)
             }

@@ -79,6 +79,32 @@ struct DropOperationCacheTests {
     }
 }
 
+@Suite("Drags to other apps")
+@MainActor
+struct DragsToOtherAppsTests {
+    @Test("Offers copy, move, and the Command move outside the app, but not delete or alias (FR-344, A-206)")
+    func operationMaskOutsideApp() {
+        let mask = ExternalDrag.sourceOperationMaskOutsideApp
+        #expect(mask.contains(.copy))
+        #expect(mask.contains(.move))
+        #expect(mask.contains(.generic))
+        // The Dock Trash leaves the deletion to the drag source, which this app does not perform (T005).
+        #expect(!mask.contains(.delete))
+        #expect(!mask.contains(.link))
+    }
+
+    @Test("Remembers which drag session this app accepted, so a drag dropped outside the app is told apart (FR-219)")
+    func acceptedSessions() {
+        InternalDrag.markAccepted(101)
+        #expect(InternalDrag.wasAccepted(101))
+        // Another session, such as a later drag dropped on Finder, was not accepted by this app.
+        #expect(!InternalDrag.wasAccepted(102))
+        InternalDrag.markAccepted(102)
+        #expect(InternalDrag.wasAccepted(102))
+        #expect(!InternalDrag.wasAccepted(101))
+    }
+}
+
 /// A thread-safe counter for decisions that run in a detached task.
 private final class Counter: @unchecked Sendable {
     private let lock = NSLock()

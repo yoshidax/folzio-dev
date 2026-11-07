@@ -150,3 +150,9 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
 - 2026-11-07: T006〜T011 を実装（`891ff4f`）。CI（workflow_dispatch、run 42379002585）: build 成功、通常のテスト 1064 件すべて成功（前回の 1057 件に、
   `ExternalDropPolicyTests` 4 件と `DropOperationCacheTests` 3 件を加えた数と一致）、性能テスト 27 件中 1 件失敗（`didRenameFolder` 中央値 0.105 秒。TAK-74 以前から失敗しているテスト）。
   Cloud のネットワーク設定でログの全文をダウンロードできないため、新しいテストの個別の結果は、件数の一致で確かめた
+- 2026-11-07: T012〜T015 を実装。T014 の一番上の消えた祖先を求める処理は、data-model.md のとおり純粋な関数 `SearchRemovalScope.topmostMissing`
+  （`Sources/FolzioCore/Search/SearchRemovalScope.swift`）に分け、ルートの外へたどらないこと（T013 の（3））はこの関数の単体テスト（`SearchRemovalScopeTests`）で確かめた。
+  `BrowserModel` を通すテストでは、すべての結果がルートの下にあるため、この違いが外から見えない。記録したフォルダの下にある表示中の行も、`didMoveSearchItems` と同じく外す。
+  T015 は、3つのビューを作るのに `BrowserModel` が要り、`FolzioAppTests` は `FixtureKit` に依存しないため、ビューごとのマスクではなく、共通の定数
+  （`ExternalDrag.sourceOperationMaskOutsideApp`）と受け取った印をテストした。ビューごとのマスクは、3か所がこの定数を使うことをコードで確かめ、GUI（T024）で確かめる。
+  ツリーの `draggingSession(_:endedAt:operation:)` は、AppKit がドロップ先の `acceptDrop` を終えてからドラッグ元に知らせるため、アプリ内のドロップでは印が先に残る前提にした
