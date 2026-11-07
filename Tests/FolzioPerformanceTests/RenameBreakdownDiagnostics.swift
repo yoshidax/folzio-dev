@@ -55,7 +55,7 @@ struct RenameBreakdownDiagnostics {
         }
 
         print("[diag] rows \(files.count), sort \(order)")
-        measure("sorted(10,101 rows) by current order") { _ = FolzioCore.sorted(files, by: order) }
+        measure("sorted(10,101 rows) by current order") { _ = sorted(files, by: order) }
         var compareCount = 0
         measure("10,101 x name.localizedStandardCompare(neighbor)") {
             for index in 1 ..< files.count {
