@@ -193,4 +193,6 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   データソースから返す方法に改め、フロー・レイアウトのサブクラスを外した（research.md R9）。再確認は T030 で行う
 - 2026-11-07: 保守者が、ローカルの確認（起動スモークと quickstart.md の手動の確認のすべて）が完了したと報告（`checklists/validation.md`）。T024・T030 をチェックした。
   T022 は、各コミットで `scripts/dev/check-all.sh` が成功している（最後は `ed2b3dc`）。`ed2b3dc` の CI（run 42393014081）は実行中
+- 2026-11-07: `ed2b3dc` の CI（workflow_dispatch、run 42393014081）: build 成功、通常のテスト 1082 件すべて成功、性能テスト 27 件すべて成功（`Test run with 27 tests passed`）。
+  T025 の `specs/product/` への反映の差分を保守者に示した（承認待ち。差分はコミットせず、パッチとして保存）
 
