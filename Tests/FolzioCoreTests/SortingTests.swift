@@ -248,6 +248,46 @@ struct SortingTests {
         }
     }
 
+    @Test("resorted matches sorted after renaming one row, including ties")
+    func resortedMatchesSorted() {
+        var generator = SeededGenerator(seed: 0x2E50_47ED)
+        let dates: [Date?] = [nil, Date(timeIntervalSince1970: 100), Date(timeIntervalSince1970: 200)]
+        // Few distinct names so renamed rows often tie with other rows.
+        let names = ["a.jpg", "b.png", "img10.mp4", "img2.jpg", "Cat.mov"]
+        let folders = ["/r/a", "/r/a2", "/r/b"]
+        let types = ["JPEG イメージ", "PNG イメージ", "ムービー"]
+        var serial = 0
+        func randomFile() -> MediaFile {
+            serial += 1
+            let name = names.randomElement(using: &generator)!
+            return MediaFile(
+                url: URL(fileURLWithPath: "\(folders.randomElement(using: &generator)!)/\(name)"),
+                name: name,
+                kind: Int.random(in: 0..<4, using: &generator) == 0
+                    ? .folder
+                    : .media(MediaKind(fileExtension: (name as NSString).pathExtension) ?? .jpeg),
+                typeDescription: types.randomElement(using: &generator)!,
+                creationDate: dates.randomElement(using: &generator)!,
+                // A sequence number that identifies rows. Size sorting compares it, so ties come from the other columns.
+                fileSize: Int64(serial)
+            )
+        }
+
+        for column in SortColumn.allCases where column != .location {
+            for ascending in [true, false] {
+                let order = SortOrder(column: column, ascending: ascending)
+                for _ in 0..<100 {
+                    var files = sorted((0..<Int.random(in: 1...40, using: &generator)).map { _ in randomFile() }, by: order)
+                    let index = Int.random(in: 0..<files.count, using: &generator)
+                    files[index].name = names.randomElement(using: &generator)!
+                    let expected = sorted(files, by: order)
+                    let actual = resorted(files, changedAt: index, by: order)
+                    #expect(actual.map(\.fileSize) == expected.map(\.fileSize), "column=\(column) ascending=\(ascending)")
+                }
+            }
+        }
+    }
+
     @Test("sortedMerge also matches when either input is empty")
     func sortedMergeWithEmptySide() {
         let order = SortOrder(column: .name, ascending: true)

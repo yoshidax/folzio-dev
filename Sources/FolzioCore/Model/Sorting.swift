@@ -14,6 +14,43 @@ public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile] {
     }.map(\.element)
 }
 
+/// Returns the same array as `sorted(files, by: order)` when `files` is already sorted by `order` except for the
+/// row at `index`, whose sort key changed. Moves only that row, with a binary search, instead of sorting every row
+/// again (renaming a folder row among 10,000 search results; R67). For ties, places the row where the stable sort
+/// would, by its original position. Falls back to a full sort for `..` (.parent) rows.
+public func resorted(_ files: [MediaFile], changedAt index: Int, by order: SortOrder) -> [MediaFile] {
+    let row = files[index]
+    guard row.kind != .parent else { return sorted(files, by: order) }
+    var rest = files
+    rest.remove(at: index)
+
+    // First position whose row does not strictly precede `row`, and first position that `row` strictly precedes.
+    var low = 0
+    var high = rest.count
+    while low < high {
+        let middle = (low + high) / 2
+        if precedes(rest[middle], row, by: order) == true {
+            low = middle + 1
+        } else {
+            high = middle
+        }
+    }
+    let tieStart = low
+    high = rest.count
+    while low < high {
+        let middle = (low + high) / 2
+        if precedes(row, rest[middle], by: order) == true {
+            high = middle
+        } else {
+            low = middle + 1
+        }
+    }
+    let tieEnd = low
+    // Within the tie range, rows before `index` came before `row` and rows after it came after (stable order).
+    rest.insert(row, at: min(max(index, tieStart), tieEnd))
+    return rest
+}
+
 /// Builds an array in the same order as `sorted(existing + incoming, by: order)` from two sorted arrays in
 /// a single pass. For ties, `existing` comes first (R36). Assumes `..` (.parent) rows are not passed in.
 public func sortedMerge(_ existing: [MediaFile], _ incoming: [MediaFile], by order: SortOrder) -> [MediaFile] {

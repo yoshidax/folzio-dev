@@ -449,11 +449,12 @@ public final class BrowserModel {
         }
 
         var filesChanged = false
-        var namesChanged = false
+        // Positions of rows whose name changed (the renamed folder's own row).
+        var renamedRowIndices: [Int] = []
         // Keep the original and new URLs so rebasing the search result index does not rebase the same URL twice (R67).
         let collectsMoves = isShowingSearchResults
         var moves: [(URL, URL)] = []
-        let files = allFiles.map { file -> MediaFile in
+        let files = allFiles.enumerated().map { offset, file -> MediaFile in
             guard let url = renamed.rebase(file.url) else { return file }
             filesChanged = true
             if collectsMoves {
@@ -463,7 +464,7 @@ public final class BrowserModel {
             moved.url = url
             if file.kind == .folder, file.url.standardizedFileURL.path == oldName {
                 moved.name = newURL.lastPathComponent
-                namesChanged = true
+                renamedRowIndices.append(offset)
             }
             return moved
         }
@@ -520,8 +521,14 @@ public final class BrowserModel {
         }
         if filesChanged {
             // Files below the folder do not change names, so the order changes only when a row name changes or when
-            // sorting by Location.
-            allFiles = namesChanged || sortOrder.column == .location ? sorted(files, by: sortOrder) : files
+            // sorting by Location. A single renamed row moves by a binary search instead of sorting every row (R67).
+            if sortOrder.column == .location || renamedRowIndices.count > 1 {
+                allFiles = sorted(files, by: sortOrder)
+            } else if let index = renamedRowIndices.first {
+                allFiles = resorted(files, changedAt: index, by: sortOrder)
+            } else {
+                allFiles = files
+            }
         }
         if isShowingSearchResults, filesChanged {
             rebaseSearchIndex(renamed, moved: Dictionary(moves, uniquingKeysWith: { first, _ in first }))
