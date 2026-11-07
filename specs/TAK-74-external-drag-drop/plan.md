@@ -64,7 +64,7 @@
 - `Sources/FolzioApp/Shared/ExternalDrag.swift`（新規）: アプリ外の file URL の判定、アプリ外の操作の決め方、アプリ外向けのマスクの定数（R1・R2・R6）
 - `Sources/FolzioApp/Shared/InternalDrag.swift`: キャッシュを `DropOperationCache` へ移す。Folzio のビューで受け取った印（R7）
 - `Sources/FolzioApp/Operations/FileOperationCoordinator.swift`: `internalDrop` を `drop` に改名（R5）。`pasteboardFileURLs` を共通の関数に置き換える
-- `Sources/FolzioCore/Browser/BrowserModel.swift`: `pruneMissingResults(under:)` で消えた結果を `movedSearchPaths` にも記録する（R8）
+- `Sources/FolzioCore/Browser/BrowserModel.swift`: `pruneMissingResults(under:)` で、消えた結果の一番上の消えた祖先（検索のルートまで）を `movedSearchPaths` に記録する（R8）
 - `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift`: アプリ外向けのマスク（R2）。`validateDrop`・`acceptDrop` のアプリ外の経路を `ExternalDrag` に置き換え、
   利用可能なお気に入りも宛先にする（FR-345）。ドラッグの終了で、Folzio で受け取らなかったときは `pendingOperationSources` を消す（R7）
 - `Sources/FolzioApp/FileList/ListModeView.swift`・`ThumbnailModeView.swift`: マスク（R2）、アプリ外の `validateDrop`・`acceptDrop` を追加（FR-345）、受け取った印（R7）

@@ -53,7 +53,9 @@
 
 ## BrowserModel（FolzioCore、変更）
 
-- 変更: `pruneMissingResults(under:)`（private）が、消えた結果を外すときに `movedSearchPaths` にも記録する（EC-236、research.md R8）。公開のメソッドは増やさない
+- 変更: `pruneMissingResults(under:)`（private）が、消えた結果を外すときに、消えた祖先のうち一番上のフォルダ（検索のルートまで。ファイルだけが消えたときはそのファイル）を
+  `movedSearchPaths` に記録する（EC-236、research.md R8）。公開のメソッドは増やさない
+- 追加（任意）: 一番上の消えた祖先を求める処理は、ファイルシステムの存在の確認を引数で渡せる純粋な関数にして、単体でテストできるようにする
 
 ## ドラッグ元のマスク（FolzioApp、変更）
 

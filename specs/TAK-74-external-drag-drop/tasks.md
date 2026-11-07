@@ -53,11 +53,14 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
   ツリー・リスト形式・サムネイル形式のアプリ内の `acceptDrop` で印を残す。ツリーの `draggingSession(_:endedAt:operation:)`（1762 行付近）で、
   操作がない場合に加えて印がない場合（アプリ外へドロップした場合）も `pendingOperationSources` を消す。`.delete` で終わっても Folzio は何も削除せず、
   結果は FSEvents に任せる旨をコメントに書く（FR-219・FR-344・EC-236、R2・R7）
-- [ ] T013 [US75] `Tests/FolzioCoreTests/BrowserModelSearchTests.swift` に、検索の途中でフォルダを外部で消し（移動・削除）、`handleFileSystemEvent` でその親を報告すると、
-  そのフォルダの配下の行が外れ、その後に遅れて届く古い場所の結果も表示されないこと（既存の 9 行目のテストと同じ方法）、まだある項目は外れないこと、
-  新しい検索を始めると記録が消えることをテストする（EC-236、先に失敗させる）
-- [ ] T014 [US75] `Sources/FolzioCore/Browser/BrowserModel.swift` の `pruneMissingResults(under:)`（1473 行付近）で、外す結果（`missing`）の場所を `movedSearchPaths` にも加え、
-  T013 を通す（R8）。既存の `BrowserModelSearchTests` が通ること
+- [ ] T013 [US75] `Tests/FolzioCoreTests/BrowserModelSearchTests.swift` に、次をテストする（EC-236、先に失敗させる）。
+  （1）検索の途中でフォルダ `trip/day1` を外部で移動し、`handleFileSystemEvent` でその親を報告すると、配下の行 `trip/day1/cat.jpg` が外れ、
+  その後に遅れて届く同じフォルダの別のファイル `trip/day1/bird.jpg`（外れた行とは別のファイル）が表示されない。
+  （2）ファイル `trip/day2/a.jpg` だけを消したときは、同じフォルダのまだある結果と、後から届く `trip/day2/b.jpg` は表示される（フォルダを記録しない）。
+  （3）検索のルートの外へはたどらない。（4）新しい検索を始めると記録が消える。既存の 9 行目のテストは、遅れた結果に同じファイルを送るため、この確認には使わない
+- [ ] T014 [US75] `Sources/FolzioCore/Browser/BrowserModel.swift` の `pruneMissingResults(under:)`（1473 行付近）の detached task の中で、`missing` の各 URL の親をたどり、
+  まだある親の直下の消えたもの（一番上の消えた祖先。検索のルート（`listing.search?.root`）まで、ルートが消えていればルート）を求め、`movedSearchPaths` に加えて T013 を通す
+  （R8）。1回の呼び出しの中で確かめたフォルダの結果を覚えて、同じフォルダを繰り返し調べない。既存の `BrowserModelSearchTests` が通ること
 - [ ] T015 [US75] `Tests/FolzioAppTests/ExternalDragTests.swift` に、3つのビューの `draggingSourceOperationMask(forLocal: false)` が T004（T005 で直した場合はその値）、
   `forLocal: true` が `[.copy, .move]` であることと、T012 の印が通し番号ごとに分かれることのテストを加える
 
@@ -125,3 +128,5 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
 - 2026-11-07: 2回目の設計レビュー（5 件）を反映した。保守者の決定: 遅れた検索結果を防ぐ記録は、ドラッグの終了ではなく FSEvents の除外（`pruneMissingResults`）で行う
   （R8・T013・T014。Finder の移動が非同期で、ドラッグの終了の時点では記録できない恐れがあるため）。そのほか、SC-182 の根拠をテストに直し、EC-238 の ⌘ を `.generic` と明記し、
   plan の実装の順序の番号を直し、contracts のキーボードの手段にツリーの ⌘V・⌥⌘V を加えた
+- 2026-11-07: 3回目の設計レビューを反映した。FSEvents の除外で結果の行のファイルだけを記録すると、フォルダごと移動されたときに同じフォルダの別のファイルの遅れた結果が出るため、
+  一番上の消えた祖先のフォルダ（検索のルートまで）を記録するようにした（spec の Clarifications・EC-236、R8、data-model、T013・T014）
