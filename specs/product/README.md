@@ -13,7 +13,7 @@ Folzio の現在の仕様（Living spec）を領域ごとに分けたもの。`s
 | [directory-tree.md](directory-tree.md) | ディレクトリツリー | ディレクトリツリー（14）、お気に入り（13） |
 | [file-list.md](file-list.md) | ファイルリスト | 下記 |
 | [zip.md](zip.md) | zip ファイル | zip ファイル（8）、zip ファイルの表示制御（4） |
-| [file-operations.md](file-operations.md) | ファイル操作 | ファイル操作（25） |
+| [file-operations.md](file-operations.md) | ファイル操作 | ファイル操作（31） |
 | [search.md](search.md) | 検索 | 検索（17） |
 | [preview.md](preview.md) | プレビュー | プレビュー（16）、フルスクリーン（6）、スライドショー（20）、表示倍率（7） |
 
