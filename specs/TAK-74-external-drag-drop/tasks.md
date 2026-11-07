@@ -70,19 +70,19 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
 
 **Independent Test**: quickstart.md の「Finder から Folzio へ」と「file URL 以外のドラッグ」
 
-- [ ] T016 [US76] `Sources/FolzioApp/Shared/ExternalDrag.swift` に、`urls(_:)`（`InternalDrag.urls(_:)` が nil で、`PasteboardFileURLs.fileURLs(in:)` が空でないときだけ返す。FR-348、R6）と、
+- [x] T016 [US76] `Sources/FolzioApp/Shared/ExternalDrag.swift` に、`urls(_:)`（`InternalDrag.urls(_:)` が nil で、`PasteboardFileURLs.fileURLs(in:)` が空でないときだけ返す。FR-348、R6）と、
   アプリ外の「操作の決め方」（マスクから `allowsMove`（`.move` か `.generic`）・`allowsCopy` を求め、`ExternalDropPolicy.allOnSameVolume`・`operation` と
   `InternalDropValidation.validate` を使う）を実装し、`DropOperationCache` に渡す（FR-345・FR-346、R3・R4）。移動を返すときは、マスクに `.move` があれば `.move`、なければ `.generic`
-- [ ] T017 [US76] `Tests/FolzioAppTests/ExternalDragTests.swift` に、名前付きの `NSPasteboard`（`NSPasteboard(name:)`、テストの後に `releaseGlobally()`）を使い、
+- [x] T017 [US76] `Tests/FolzioAppTests/ExternalDragTests.swift` に、名前付きの `NSPasteboard`（`NSPasteboard(name:)`、テストの後に `releaseGlobally()`）を使い、
   file URL だけ・file URL と画像データ・画像データだけ・file URL でない URL だけ・文字列だけの場合に、`PasteboardFileURLs.fileURLs(in:)` が file URL だけを返すことをテストする
   （FR-348・US76-AS6）。3つのビューの登録した型が `[.fileURL]` のままであることも確かめる（R6）
-- [ ] T018 [US76] `DirectoryTreeViewController.swift` の `validateDrop`・`acceptDrop`（1777〜1857 行付近）のアプリ外の経路を `ExternalDrag` に置き換える。
+- [x] T018 [US76] `DirectoryTreeViewController.swift` の `validateDrop`・`acceptDrop`（1777〜1857 行付近）のアプリ外の経路を `ExternalDrag` に置き換える。
   宛先はアプリ内と同じ判定（実在するフォルダ行・利用可能なお気に入り。FR-345）を共通の関数にして両方で使う。ドロップ時は `cachedOperation` の結果を使い、なければ受け付けない（R4）。
   受け取りは `coordinator.drop(urls, to:, copy:)`（FR-347、R5）
-- [ ] T019 [US76] `ListModeView.swift`（684〜700 行付近）と `ThumbnailModeView.swift`（1043〜1065 行付近）の `validateDrop`・`acceptDrop` に、アプリ外の経路を加える
+- [x] T019 [US76] `ListModeView.swift`（684〜700 行付近）と `ThumbnailModeView.swift`（1043〜1065 行付近）の `validateDrop`・`acceptDrop` に、アプリ外の経路を加える
   （FR-345・FR-346）。宛先の判定（フォルダの行・アイコンだけ、zip の中を除く）はアプリ内と同じ。ドロップ時は `cachedOperation` を使う。
   受け取りはアプリ内と同じ `onInternalDrop` の経路（`FileListViewController.swift` の 128〜135 行付近）を使い、名前を `onDrop` に変える
-- [ ] T020 [US76] `Tests/FolzioCoreTests/InternalDropValidationTests.swift` に、アプリ外から受け取る場合と同じ入力（Folzio の表示と関係のない場所の項目を、表示中のフォルダへ移動・コピー、
+- [x] T020 [US76] `Tests/FolzioCoreTests/InternalDropValidationTests.swift` に、アプリ外から受け取る場合と同じ入力（Folzio の表示と関係のない場所の項目を、表示中のフォルダへ移動・コピー、
   元の親への移動）のケースが既存のテストで足りるかを確かめ、足りなければ追加する（EC-16・EC-121、US76-AS5）
 
 ## Phase 6: ファイルリストの背景へのドロップ（FR-349。保守者の追加の決定）
@@ -91,12 +91,12 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
 
 **Independent Test**: quickstart.md の「ファイルリストの背景へのドロップ」
 
-- [ ] T026 `Tests/FolzioCoreTests/FileListDropTargetTests.swift` を作り、data-model.md の `FileListDropTarget` の表のすべての種類（フォルダ・`..`・zip の中のディレクトリ・
+- [x] T026 `Tests/FolzioCoreTests/FileListDropTargetTests.swift` を作り、data-model.md の `FileListDropTarget` の表のすべての種類（フォルダ・`..`・zip の中のディレクトリ・
   メディア・zip ファイル・項目なし）と、表示中のフォルダを宛先にしない状態（zip の中・検索結果・`.denied`・`.failed`）、検索結果のフォルダの行はそのフォルダになることをテストする（先に失敗させる）
-- [ ] T027 `Sources/FolzioCore/Model/FileListDropTarget.swift` を実装して T026 を通す（FR-349、R9）
-- [ ] T028 `ListModeView.swift` の `validateDrop`・`acceptDrop` を `FileListDropTarget` で決めるように変える。表示中のフォルダが宛先のときは
+- [x] T027 `Sources/FolzioCore/Model/FileListDropTarget.swift` を実装して T026 を通す（FR-349、R9）
+- [x] T028 `ListModeView.swift` の `validateDrop`・`acceptDrop` を `FileListDropTarget` で決めるように変える。表示中のフォルダが宛先のときは
   `setDropRow(-1, dropOperation: .on)` にし、宛先の URL は `model.listing.folder`。アプリ内は `InternalDrag`、アプリ外は `ExternalDrag` の今の経路を使う（FR-349、R9）
-- [ ] T029 `ThumbnailModeView.swift` の `validateDrop`・`acceptDrop` を同じく変える。表示中のフォルダが宛先のときは `dropOperation` を `.before` にし、
+- [x] T029 `ThumbnailModeView.swift` の `validateDrop`・`acceptDrop` を同じく変える。表示中のフォルダが宛先のときは `dropOperation` を `.before` にし、
   `ThumbnailCollectionView` に背景の強調の枠を描かせ、`acceptDrop`・`draggingExited(_:)`・`draggingEnded(_:)` で外す。
   フロー・レイアウトをサブクラスにして `layoutAttributesForInterItemGap(before:)` が nil を返すようにする（R9）
 - [ ] T030 [MANUAL] 保守者に quickstart.md の「ファイルリストの背景へのドロップ」を確かめてもらう（T024 と一緒に行ってよい）
@@ -184,4 +184,8 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   （spec の Clarifications、FR-163（変更）・FR-345・FR-349・US76-AS4・US76-AS7〜AS8・SC-185・A-207、research.md R9、data-model.md、contracts、quickstart、T026〜T030）
 - 2026-11-07: T021 を実装。`docs/usage.ja.md`・`docs/usage.md` の「ドラッグ＆ドロップ」にファイルリストの背景へのドロップを加え、「他のアプリとのドラッグ＆ドロップ」の節を
   両方に同じ構成で加えた。`README.ja.md`・`README.md` の「見ながら整理する」に Finder・Web ブラウザとのドラッグ＆ドロップを1文加えた（`check-readme-sync.sh` 成功）
+- 2026-11-07: CI（workflow_dispatch）。`5904a01`（T016〜T020）の run 42381228438 は成功。`4b3c55a`（T016〜T020 と T026〜T029）の run 42382997332:
+  build 成功、通常のテスト 1082 件すべて成功（1073 件に `PasteboardFileURLsTests` 3 件・`DropsFromOtherAppsTests` 1 件・`FileListDropTargetTests` 5 件を加えた数と一致）。
+  性能テスト 27 件中 3 件失敗（24 MP の JPEG のデコード 0.594 秒、`didRenameFolder` 中央値 0.103 秒、スライドショー 200,000 件 0.244 秒。いずれも TAK-74 以前から失敗している種類）。
+  `91a56ee`（T021）は文書だけの変更のため CI を実行していない。残りは T022（Cloud の検査は各コミットで成功）、T023（PR の CI）、T024・T030（保守者の GUI 確認）、T025（反映）
 
