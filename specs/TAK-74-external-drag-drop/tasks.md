@@ -49,19 +49,19 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
 
 **Independent Test**: quickstart.md の「Folzio からアプリ外へ」
 
-- [ ] T012 [US75] `Sources/FolzioApp/Shared/InternalDrag.swift` に、通し番号ごとの「Folzio のビューで受け取った」印（`markAccepted(_:)`・`wasAccepted(_:)`）を加え、
+- [x] T012 [US75] `Sources/FolzioApp/Shared/InternalDrag.swift` に、通し番号ごとの「Folzio のビューで受け取った」印（`markAccepted(_:)`・`wasAccepted(_:)`）を加え、
   ツリー・リスト形式・サムネイル形式のアプリ内の `acceptDrop` で印を残す。ツリーの `draggingSession(_:endedAt:operation:)`（1762 行付近）で、
   操作がない場合に加えて印がない場合（アプリ外へドロップした場合）も `pendingOperationSources` を消す。アプリ外へのドロップでは Folzio は何も削除せず、
   結果は FSEvents に任せる旨をコメントに書く（FR-219・FR-344・EC-236、R2・R7）
-- [ ] T013 [US75] `Tests/FolzioCoreTests/BrowserModelSearchTests.swift` に、次をテストする（EC-236、先に失敗させる）。
+- [x] T013 [US75] `Tests/FolzioCoreTests/BrowserModelSearchTests.swift` に、次をテストする（EC-236、先に失敗させる）。
   （1）検索の途中でフォルダ `trip/day1` を外部で移動し、`handleFileSystemEvent` でその親を報告すると、配下の行 `trip/day1/cat.jpg` が外れ、
   その後に遅れて届く同じフォルダの別のファイル `trip/day1/bird.jpg`（外れた行とは別のファイル）が表示されない。
   （2）ファイル `trip/day2/a.jpg` だけを消したときは、同じフォルダのまだある結果と、後から届く `trip/day2/b.jpg` は表示される（フォルダを記録しない）。
   （3）検索のルートの外へはたどらない。（4）新しい検索を始めると記録が消える。既存の 9 行目のテストは、遅れた結果に同じファイルを送るため、この確認には使わない
-- [ ] T014 [US75] `Sources/FolzioCore/Browser/BrowserModel.swift` の `pruneMissingResults(under:)`（1473 行付近）の detached task の中で、`missing` の各 URL の親をたどり、
+- [x] T014 [US75] `Sources/FolzioCore/Browser/BrowserModel.swift` の `pruneMissingResults(under:)`（1473 行付近）の detached task の中で、`missing` の各 URL の親をたどり、
   まだある親の直下の消えたもの（一番上の消えた祖先。検索のルート（`listing.search?.root`。`listing` は MainActor の状態なので、detached task を始める前に値として取り出して渡す）まで、ルートが消えていればルート）を求め、`movedSearchPaths` に加えて T013 を通す
   （R8）。1回の呼び出しの中で確かめたフォルダの結果を覚えて、同じフォルダを繰り返し調べない。既存の `BrowserModelSearchTests` が通ること
-- [ ] T015 [US75] `Tests/FolzioAppTests/ExternalDragTests.swift` に、3つのビューの `draggingSourceOperationMask(forLocal: false)` が T004（T005 で直した場合はその値）、
+- [x] T015 [US75] `Tests/FolzioAppTests/ExternalDragTests.swift` に、3つのビューの `draggingSourceOperationMask(forLocal: false)` が T004（T005 で直した場合はその値）、
   `forLocal: true` が `[.copy, .move]` であることと、T012 の印が通し番号ごとに分かれることのテストを加える
 
 ## Phase 5: User Story 76 - Finder の項目を Folzio のフォルダへ受け取る (P1)
@@ -156,3 +156,7 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   T015 は、3つのビューを作るのに `BrowserModel` が要り、`FolzioAppTests` は `FixtureKit` に依存しないため、ビューごとのマスクではなく、共通の定数
   （`ExternalDrag.sourceOperationMaskOutsideApp`）と受け取った印をテストした。ビューごとのマスクは、3か所がこの定数を使うことをコードで確かめ、GUI（T024）で確かめる。
   ツリーの `draggingSession(_:endedAt:operation:)` は、AppKit がドロップ先の `acceptDrop` を終えてからドラッグ元に知らせるため、アプリ内のドロップでは印が先に残る前提にした
+- 2026-11-07: T012〜T015（`5d3648a`）の CI（workflow_dispatch、run 42380089056）: build 成功、通常のテスト 1073 件すべて成功（1064 件に `SearchRemovalScopeTests` 5 件、
+  `BrowserModelSearchTests` 2 件、`DragsToOtherAppsTests` 2 件を加えた数と一致）。性能テスト 27 件中 6 件失敗（ランナー全体が遅かった。10,000 件の検索 0.875 秒、
+  1 GB のストリーム 122 秒）。今回初めて失敗した「Enumerates and sorts huge(10,000)」（1.105 秒）は `DirectoryLister` を測るテストで、T012〜T015 は触れていない。
+  ほかの 5 件は TAK-74 以前から失敗している種類
