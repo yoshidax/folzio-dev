@@ -103,7 +103,7 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T021 `docs/usage.ja.md`・`docs/usage.md` のドラッグ&ドロップの説明に、Finder・ブラウザとの受け渡し（移動・コピーの決まり方、ツリーから ⌘ で移動するときの押し方、
+- [x] T021 `docs/usage.ja.md`・`docs/usage.md` のドラッグ&ドロップの説明に、Finder・ブラウザとの受け渡し（移動・コピーの決まり方、ツリーから ⌘ で移動するときの押し方、
   Dock のゴミ箱には対応しないこと）を
   両方に同じ構成で追記する。`README.md`・`README.ja.md` の機能の概要（29 行・28 行付近）に、他のアプリとの受け渡しを同じ内容で加える（同じコミット）
 - [ ] T022 Cloud で `scripts/dev/check-all.sh` を実行し、結果をこの tasks.md の Execution Notes に記録する
@@ -182,4 +182,6 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   親子の同時（overlappingSources）を確かめており、検証は表示に依存しないため、テストを加えなかった
 - 2026-11-07: 保守者の追加の決定で、ファイルリストの背景へのドロップを、アプリ内とアプリ外の両方で受け付けることにした。フォルダでない項目の上も背景として扱う
   （spec の Clarifications、FR-163（変更）・FR-345・FR-349・US76-AS4・US76-AS7〜AS8・SC-185・A-207、research.md R9、data-model.md、contracts、quickstart、T026〜T030）
+- 2026-11-07: T021 を実装。`docs/usage.ja.md`・`docs/usage.md` の「ドラッグ＆ドロップ」にファイルリストの背景へのドロップを加え、「他のアプリとのドラッグ＆ドロップ」の節を
+  両方に同じ構成で加えた。`README.ja.md`・`README.md` の「見ながら整理する」に Finder・Web ブラウザとのドラッグ＆ドロップを1文加えた（`check-readme-sync.sh` 成功）
 
