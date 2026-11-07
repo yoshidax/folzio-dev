@@ -14,41 +14,55 @@ public func sorted(_ files: [MediaFile], by order: SortOrder) -> [MediaFile] {
     }.map(\.element)
 }
 
-/// Returns the same array as `sorted(files, by: order)` when `files` is already sorted by `order` except for the
-/// row at `index`, whose sort key changed. Moves only that row, with a binary search, instead of sorting every row
-/// again (renaming a folder row among 10,000 search results; R67). For ties, places the row where the stable sort
-/// would, by its original position. Falls back to a full sort for `..` (.parent) rows.
-public func resorted(_ files: [MediaFile], changedAt index: Int, by order: SortOrder) -> [MediaFile] {
+/// Reorders `files` in place to the same order as `sorted(files, by: order)`, when `files` is already sorted by
+/// `order` except for the row at `index`, whose sort key changed. Moves only that row, found with a binary search,
+/// and shifts only the rows between its old and new positions, instead of sorting every row again (renaming one
+/// row among 10,000 search results; R67). For ties, places the row where the stable sort would, by its original
+/// position. Falls back to a full sort for `..` (.parent) rows.
+public func resortRow(in files: inout [MediaFile], at index: Int, by order: SortOrder) {
     let row = files[index]
-    guard row.kind != .parent else { return sorted(files, by: order) }
-    var rest = files
-    rest.remove(at: index)
-
-    // First position whose row does not strictly precede `row`, and first position that `row` strictly precedes.
-    var low = 0
-    var high = rest.count
-    while low < high {
-        let middle = (low + high) / 2
-        if precedes(rest[middle], row, by: order) == true {
-            low = middle + 1
-        } else {
-            high = middle
-        }
+    guard row.kind != .parent else {
+        files = sorted(files, by: order)
+        return
     }
-    let tieStart = low
-    high = rest.count
-    while low < high {
-        let middle = (low + high) / 2
-        if precedes(row, rest[middle], by: order) == true {
-            high = middle
-        } else {
-            low = middle + 1
-        }
+    // Searches the other rows, in order, without the changed row: position `p` among them is `files[p]` before
+    // `index` and `files[p + 1]` from `index` on. The rows that strictly precede `row` come first, then the rows that
+    // tie with it, then the rows it precedes.
+    let restCount = files.count - 1
+    let tieStart = partitionIndex(in: 0 ..< restCount) { position in
+        precedes(files[position < index ? position : position + 1], row, by: order) == true
     }
-    let tieEnd = low
+    let tieEnd = partitionIndex(in: tieStart ..< restCount) { position in
+        precedes(row, files[position < index ? position : position + 1], by: order) != true
+    }
     // Within the tie range, rows before `index` came before `row` and rows after it came after (stable order).
-    rest.insert(row, at: min(max(index, tieStart), tieEnd))
-    return rest
+    let target = min(max(index, tieStart), tieEnd)
+    if target < index {
+        for position in stride(from: index, to: target, by: -1) {
+            files[position] = files[position - 1]
+        }
+    } else {
+        for position in index ..< target {
+            files[position] = files[position + 1]
+        }
+    }
+    files[target] = row
+}
+
+/// Returns the first position in `range` where `isBefore` is false, given that `isBefore` is true for a prefix of
+/// `range` and false for the rest (binary search).
+private func partitionIndex(in range: Range<Int>, where isBefore: (Int) -> Bool) -> Int {
+    var low = range.lowerBound
+    var high = range.upperBound
+    while low < high {
+        let middle = low + (high - low) / 2
+        if isBefore(middle) {
+            low = middle + 1
+        } else {
+            high = middle
+        }
+    }
+    return low
 }
 
 /// Builds an array in the same order as `sorted(existing + incoming, by: order)` from two sorted arrays in

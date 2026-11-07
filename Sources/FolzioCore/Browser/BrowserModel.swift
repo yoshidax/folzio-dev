@@ -124,8 +124,10 @@ public final class BrowserModel {
                 settings.viewSettings = settingsValue
             }
 
+            // Always keep `allFiles` sorted by the current order, whatever the state: renames move a single row by a
+            // binary search that relies on it (`resortRow`, R67).
+            allFiles = sorted(allFiles, by: sortOrder)
             if listing.state == .loaded || listing.state == .empty || listing.state == .noMatches {
-                allFiles = sorted(allFiles, by: sortOrder)
                 rebuildListing()
             }
         }
@@ -406,10 +408,13 @@ public final class BrowserModel {
         renamed.kind = newKind
         renamed.typeDescription = (try? newURL.resourceValues(forKeys: [.localizedTypeDescriptionKey]))?
             .localizedTypeDescription ?? old.typeDescription
-        allFiles[index] = renamed
+        // Only this row's sort key changes, so move just this row instead of sorting every result (R67).
+        var files = allFiles
+        files[index] = renamed
+        resortRow(in: &files, at: index, by: sortOrder)
+        allFiles = files
         removeFromSearchIndex(oldURL)
         addToSearchIndex(newURL)
-        allFiles = sorted(allFiles, by: sortOrder)
         rebuildListing()
 
         var selected = selection.selected
@@ -454,7 +459,7 @@ public final class BrowserModel {
         // Keep the original and new URLs so rebasing the search result index does not rebase the same URL twice (R67).
         let collectsMoves = isShowingSearchResults
         var moves: [(URL, URL)] = []
-        let files = allFiles.enumerated().map { offset, file -> MediaFile in
+        var files = allFiles.enumerated().map { offset, file -> MediaFile in
             guard let url = renamed.rebase(file.url) else { return file }
             filesChanged = true
             if collectsMoves {
@@ -523,12 +528,11 @@ public final class BrowserModel {
             // Files below the folder do not change names, so the order changes only when a row name changes or when
             // sorting by Location. A single renamed row moves by a binary search instead of sorting every row (R67).
             if sortOrder.column == .location || renamedRowIndices.count > 1 {
-                allFiles = sorted(files, by: sortOrder)
+                files = sorted(files, by: sortOrder)
             } else if let index = renamedRowIndices.first {
-                allFiles = resorted(files, changedAt: index, by: sortOrder)
-            } else {
-                allFiles = files
+                resortRow(in: &files, at: index, by: sortOrder)
             }
+            allFiles = files
         }
         if isShowingSearchResults, filesChanged {
             rebaseSearchIndex(renamed, moved: Dictionary(moves, uniquingKeysWith: { first, _ in first }))
