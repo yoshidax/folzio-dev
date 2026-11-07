@@ -438,7 +438,9 @@ final class ThumbnailModeView: NSView {
         return window.convertToScreen(source.convert(source.bounds, to: nil))
     }
 
-    var onInternalDrop: (([URL], URL, Bool) -> Void)?
+    /// A drop on a folder item, from this app's views or from another app: the URLs, the destination folder, and
+    /// whether to copy (FR-020, FR-345, FR-346).
+    var onDrop: (([URL], URL, Bool) -> Void)?
     /// Esc. Returns true when handled (ends search results; FR-086).
     var onEscape: (() -> Bool)? {
         get { collectionView.onEscape }
@@ -1051,18 +1053,26 @@ extension ThumbnailModeView: NSCollectionViewDataSource {
         guard model.listing.files.indices.contains(index), model.listing.files[index].kind == .folder else { return [] }
         proposedIndexPath.pointee = indexPath as NSIndexPath
         dropOperation.pointee = .on
-        return InternalDrag.operation(info, destination: model.listing.files[index].url)
+        let destination = model.listing.files[index].url
+        return InternalDrag.urls(info) != nil
+            ? InternalDrag.operation(info, destination: destination)
+            : ExternalDrag.operation(info, destination: destination)
     }
 
     func collectionView(_ collectionView: NSCollectionView, acceptDrop info: any NSDraggingInfo, indexPath: IndexPath, dropOperation: NSCollectionView.DropOperation) -> Bool {
         let index = indexPath.item
         guard dropOperation == .on, !model.isBrowsingArchive,
-              model.listing.files.indices.contains(index), model.listing.files[index].kind == .folder,
-              let urls = InternalDrag.urls(info) else { return false }
+              model.listing.files.indices.contains(index), model.listing.files[index].kind == .folder else { return false }
         let destination = model.listing.files[index].url
-        guard !InternalDrag.operation(info, destination: destination).isEmpty else { return false }
-        InternalDrag.markAccepted(info.draggingSequenceNumber)
-        onInternalDrop?(urls, destination, NSEvent.modifierFlags.contains(.option))
+        if let urls = InternalDrag.urls(info) {
+            guard !InternalDrag.operation(info, destination: destination).isEmpty else { return false }
+            InternalDrag.markAccepted(info.draggingSequenceNumber)
+            onDrop?(urls, destination, NSEvent.modifierFlags.contains(.option))
+            return true
+        }
+        // A drop from another app, such as Finder (FR-345, FR-346).
+        guard let drop = ExternalDrag.dropOperation(info, destination: destination) else { return false }
+        onDrop?(drop.urls, destination, drop.kind == .copy)
         return true
     }
 

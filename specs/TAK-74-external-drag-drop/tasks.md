@@ -160,3 +160,7 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   `BrowserModelSearchTests` 2 件、`DragsToOtherAppsTests` 2 件を加えた数と一致）。性能テスト 27 件中 6 件失敗（ランナー全体が遅かった。10,000 件の検索 0.875 秒、
   1 GB のストリーム 122 秒）。今回初めて失敗した「Enumerates and sorts huge(10,000)」（1.105 秒）は `DirectoryLister` を測るテストで、T012〜T015 は触れていない。
   ほかの 5 件は TAK-74 以前から失敗している種類
+- 2026-11-07: T016〜T020 を実装。ツリーのアプリ外からのドロップは、アプリ内と同じ宛先の判定（`dropDestination(for:)`。利用可能なお気に入りを含む）と、
+  行の上だけ（行間は不可）にそろえた。T017 の登録した型は、3つのビューが `[.fileURL]` のままであることをコードで確かめた（ビューを作るテストは T015 と同じ理由で書けない）。
+  T020 は、既存の `InternalDropValidationTests` が、Folzio の表示と関係のない場所の項目の移動・コピー（valid）・元の親への移動（sameParent）・自身と配下（intoItself）・
+  親子の同時（overlappingSources）を確かめており、検証は表示に依存しないため、テストを加えなかった

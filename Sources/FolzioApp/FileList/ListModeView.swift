@@ -125,7 +125,9 @@ final class ListModeView: NSView {
     /// Commits the name of a folder created with New Folder, without the rename confirmation (FR-211).
     var onRenameNewFolder: ((URL, String) async -> Void)?
     var onOpenItem: ((URL) -> Void)?
-    var onInternalDrop: (([URL], URL, Bool) -> Void)?
+    /// A drop on a folder item, from this app's views or from another app: the URLs, the destination folder, and
+    /// whether to copy (FR-020, FR-345, FR-346).
+    var onDrop: (([URL], URL, Bool) -> Void)?
     /// Esc. Returns true when handled (ends search results; FR-086).
     var onEscape: (() -> Bool)? {
         get { tableView.onEscape }
@@ -684,19 +686,27 @@ extension ListModeView: NSTableViewDataSource {
     func tableView(_ tableView: NSTableView, validateDrop info: any NSDraggingInfo, proposedRow row: Int, proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
         guard dropOperation == .on, !model.isBrowsingArchive,
               model.listing.files.indices.contains(row), model.listing.files[row].kind == .folder else { return [] }
-        let operation = InternalDrag.operation(info, destination: model.listing.files[row].url)
+        let destination = model.listing.files[row].url
+        let operation = InternalDrag.urls(info) != nil
+            ? InternalDrag.operation(info, destination: destination)
+            : ExternalDrag.operation(info, destination: destination)
         if !operation.isEmpty { tableView.setDropRow(row, dropOperation: .on) }
         return operation
     }
 
     func tableView(_ tableView: NSTableView, acceptDrop info: any NSDraggingInfo, row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
         guard dropOperation == .on, !model.isBrowsingArchive,
-              model.listing.files.indices.contains(row), model.listing.files[row].kind == .folder,
-              let urls = InternalDrag.urls(info) else { return false }
+              model.listing.files.indices.contains(row), model.listing.files[row].kind == .folder else { return false }
         let destination = model.listing.files[row].url
-        guard !InternalDrag.operation(info, destination: destination).isEmpty else { return false }
-        InternalDrag.markAccepted(info.draggingSequenceNumber)
-        onInternalDrop?(urls, destination, NSEvent.modifierFlags.contains(.option))
+        if let urls = InternalDrag.urls(info) {
+            guard !InternalDrag.operation(info, destination: destination).isEmpty else { return false }
+            InternalDrag.markAccepted(info.draggingSequenceNumber)
+            onDrop?(urls, destination, NSEvent.modifierFlags.contains(.option))
+            return true
+        }
+        // A drop from another app, such as Finder (FR-345, FR-346).
+        guard let drop = ExternalDrag.dropOperation(info, destination: destination) else { return false }
+        onDrop?(drop.urls, destination, drop.kind == .copy)
         return true
     }
 

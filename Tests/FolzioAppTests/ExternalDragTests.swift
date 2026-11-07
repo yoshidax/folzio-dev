@@ -105,6 +105,67 @@ struct DragsToOtherAppsTests {
     }
 }
 
+@Suite("File URLs on the pasteboard", .serialized)
+@MainActor
+struct PasteboardFileURLsTests {
+    private let file = URL(fileURLWithPath: "/tmp/TAK-74/cat.jpg")
+
+    /// Runs `body` with a private pasteboard, so the tests do not touch the general pasteboard.
+    private func withPasteboard(_ body: (NSPasteboard) -> Void) {
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("FolzioTests.\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.clearContents()
+        body(pasteboard)
+    }
+
+    @Test("Reads file URLs (FR-348)")
+    func fileURLs() {
+        withPasteboard { pasteboard in
+            pasteboard.writeObjects([file as NSURL])
+            #expect(PasteboardFileURLs.fileURLs(in: pasteboard) == [file])
+        }
+    }
+
+    @Test("Reads only the file URL when a drag also carries image data (FR-348)")
+    func fileURLWithImageData() {
+        withPasteboard { pasteboard in
+            let item = NSPasteboardItem()
+            item.setString(file.absoluteString, forType: .fileURL)
+            item.setData(Data([0x4D, 0x4D, 0x00, 0x2A]), forType: .tiff)
+            pasteboard.writeObjects([item])
+            #expect(PasteboardFileURLs.fileURLs(in: pasteboard) == [file])
+        }
+    }
+
+    @Test("Ignores drags without file URLs, such as web images, links, and text (FR-348, US76-AS6)")
+    func nothingWithoutFileURLs() {
+        withPasteboard { pasteboard in
+            pasteboard.setData(Data([0x4D, 0x4D, 0x00, 0x2A]), forType: .tiff)
+            #expect(PasteboardFileURLs.fileURLs(in: pasteboard).isEmpty)
+        }
+        withPasteboard { pasteboard in
+            pasteboard.writeObjects([NSURL(string: "https://example.com/images/cat.jpg")!])
+            #expect(PasteboardFileURLs.fileURLs(in: pasteboard).isEmpty)
+        }
+        withPasteboard { pasteboard in
+            pasteboard.setString("cat.jpg", forType: .string)
+            #expect(PasteboardFileURLs.fileURLs(in: pasteboard).isEmpty)
+        }
+    }
+}
+
+@Suite("Drops from other apps")
+@MainActor
+struct DropsFromOtherAppsTests {
+    @Test("Shows a move as move when the source allows it, otherwise as the Command move (FR-346)")
+    func dragOperationForMove() {
+        #expect(ExternalDrag.dragOperation(.move, mask: [.copy, .move, .generic]) == .move)
+        // While Command is held, the system narrows the source's mask to `.generic`.
+        #expect(ExternalDrag.dragOperation(.move, mask: .generic) == .generic)
+        #expect(ExternalDrag.dragOperation(.copy, mask: [.copy, .move]) == .copy)
+    }
+}
+
 /// A thread-safe counter for decisions that run in a detached task.
 private final class Counter: @unchecked Sendable {
     private let lock = NSLock()
