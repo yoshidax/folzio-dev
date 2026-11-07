@@ -16,15 +16,23 @@ Apple の文書の記述に基づく。macOS で確かめる点は「未検証�
 ## R2 アプリ外へのドラッグで許可する操作（FR-344）
 
 - **Decision**: ツリー（`NSOutlineView`）・リスト形式（`NSTableView`）・サムネイル形式（`NSCollectionView`）の
-  `setDraggingSourceOperationMask(_:forLocal: false)` を `[.copy, .move, .generic, .delete]` にする。`forLocal: true` は今の `[.copy, .move]` のまま。
+  `setDraggingSourceOperationMask(_:forLocal: false)` を `[.copy, .move, .generic]` にする。`forLocal: true` は今の `[.copy, .move]` のまま。
+  最初は `.delete` も含めたが、T005 の確認で Dock のゴミ箱がドラッグ元に削除を任せると分かったため外した（下記）。
 - **Rationale**:
   - 今はツリーとリスト形式が `.copy` だけ（`DirectoryTreeViewController.swift:1061`、`ListModeView.swift:263`）で、Finder は移動できない。
     サムネイル形式はアプリ外向けの設定がない（`ThumbnailModeView.swift:600`）。3つをそろえる。
   - `NSDraggingInfo.draggingSourceOperationMask` の文書は、⌘ を押すとマスクが `.generic` に絞られると説明している（Option は `.copy`、Control は `.link`）。
     Finder がドラッグ元に `.generic` を求める場合に備えて含める。
-  - Dock のゴミ箱へのドロップは、保守者の決定（spec の Clarifications）で許可する。ゴミ箱は `.delete` を使うため含める。
+  - Dock のゴミ箱には対応しない（T005 の確認の結果と保守者の決定）。そのため `.delete` を含めない。
   - `.link`（エイリアス）は A-206 で対象外にするため含めない。
-- **未検証（実装の最初に確かめる。tasks.md の Phase 2）**:
+- **確認の結果（T005、`6e8f2a3` の版、`checklists/validation.md`）**:
+  - Finder（同じボリューム）: 修飾キーなしで移動、Option でコピー、⌘ で移動。Finder（別のボリューム）: 修飾キーなしでコピー、⌘ で移動。設計どおり
+  - Dock のゴミ箱: ファイルは元の場所に残った。Dock はドラッグ元に削除を任せる（Apple の文書の説明どおり）
+  - Option と ⌘ の同時で Finder へ: 受け付けられなかった（エイリアスの操作。`.link` を含めていないため）
+  - Finder から Option と ⌘ の同時で Folzio のツリーへ: 宛先が強調された。Finder はこのときもコピーを許可している
+- **残る未検証（T024）**: `.delete` を外した後、Dock のゴミ箱がドロップを受け付けないこと（移動として受け付けて、ゴミ箱へ移さないこと）。
+  移動として受け付けてゴミ箱へ移す場合は、Folzio の確認なしにゴミ箱へ入るので、保守者に報告して扱いを決める
+- **確認の前の未検証の点（記録として残す）**:
   - Finder が同じボリュームで移動し、Option でコピーし、別のボリュームでコピーし、⌘ で移動すること
   - Dock のゴミ箱が受け付けて、ファイルをゴミ箱へ移すこと。Apple の文書は `NSDragOperation.delete` を「ドラッグ元が削除する」操作と説明しているため、
     Dock がドラッグ元に削除を任せる可能性がある（`draggingSession(_:endedAt:operation:)` が `.delete` で終わり、ファイルが元の場所に残る）

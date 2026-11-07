@@ -61,9 +61,11 @@
 
 | ビュー | `forLocal: true` | `forLocal: false`（変更後） |
 |---|---|---|
-| ツリー | `[.copy, .move]`（変更なし） | `[.copy, .move, .generic, .delete]`（今は `.copy`） |
-| リスト形式 | `[.copy, .move]`（変更なし） | `[.copy, .move, .generic, .delete]`（今は `.copy`） |
-| サムネイル形式 | `[.copy, .move]`（変更なし） | `[.copy, .move, .generic, .delete]`（今は未設定） |
+| ツリー | `[.copy, .move]`（変更なし） | `[.copy, .move, .generic]`（変更前は `.copy`） |
+| リスト形式 | `[.copy, .move]`（変更なし） | `[.copy, .move, .generic]`（変更前は `.copy`） |
+| サムネイル形式 | `[.copy, .move]`（変更なし） | `[.copy, .move, .generic]`（変更前は未設定） |
+
+- `.delete` は含めない。Dock のゴミ箱はドラッグ元に削除を任せるため（T005）、Dock のゴミ箱には対応しない（FR-344）
 
 ## 登録する型（変更なし）
 

@@ -21,7 +21,7 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
   `Sources/FolzioApp/FileList/ThumbnailModeView.swift`（600 行付近）の `setDraggingSourceOperationMask(_:forLocal: false)` を `[.copy, .move, .generic, .delete]` にする
   （サムネイル形式は新しく設定する）。`forLocal: true` は変えない（FR-344、R2）。共通の値は `Sources/FolzioApp/Shared/ExternalDrag.swift` の定数にする。
   この変更だけをコミットして push し、CI（`workflow_dispatch`）で build とテストを確かめる
-- [ ] T005 [MANUAL] 保守者に、quickstart.md の「先に行う確認」を T004 の版で実行してもらい、結果を `checklists/validation.md` に記録する。
+- [x] T005 [MANUAL] 保守者に、quickstart.md の「先に行う確認」を T004 の版で実行してもらい、結果を `checklists/validation.md` に記録する。
   Dock のゴミ箱がファイルを移さない場合は `.delete` をマスクから外し、spec の FR-344・US75-AS5・FR-079（変更）と contracts・quickstart を直す（保守者の決定）。
   Option と ⌘ の同時、Finder の移動・コピーの結果が設計と違う場合は、spec・research を直して保守者に確かめてから T006 に進む
 
@@ -45,13 +45,13 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
 
 ## Phase 4: User Story 75 - Folzio の項目を他のアプリへ渡す (P1)
 
-**Goal**: ツリー・リスト形式・サムネイル形式から、Finder・ブラウザ・Dock のゴミ箱へドラッグして移動・コピー・アップロード・ゴミ箱を行える
+**Goal**: ツリー・リスト形式・サムネイル形式から、Finder・ブラウザへドラッグして移動・コピー・アップロードを行える。Dock のゴミ箱には対応しない
 
 **Independent Test**: quickstart.md の「Folzio からアプリ外へ」
 
 - [ ] T012 [US75] `Sources/FolzioApp/Shared/InternalDrag.swift` に、通し番号ごとの「Folzio のビューで受け取った」印（`markAccepted(_:)`・`wasAccepted(_:)`）を加え、
   ツリー・リスト形式・サムネイル形式のアプリ内の `acceptDrop` で印を残す。ツリーの `draggingSession(_:endedAt:operation:)`（1762 行付近）で、
-  操作がない場合に加えて印がない場合（アプリ外へドロップした場合）も `pendingOperationSources` を消す。`.delete` で終わっても Folzio は何も削除せず、
+  操作がない場合に加えて印がない場合（アプリ外へドロップした場合）も `pendingOperationSources` を消す。アプリ外へのドロップでは Folzio は何も削除せず、
   結果は FSEvents に任せる旨をコメントに書く（FR-219・FR-344・EC-236、R2・R7）
 - [ ] T013 [US75] `Tests/FolzioCoreTests/BrowserModelSearchTests.swift` に、次をテストする（EC-236、先に失敗させる）。
   （1）検索の途中でフォルダ `trip/day1` を外部で移動し、`handleFileSystemEvent` でその親を報告すると、配下の行 `trip/day1/cat.jpg` が外れ、
@@ -87,7 +87,8 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T021 `docs/usage.ja.md`・`docs/usage.md` のドラッグ&ドロップの説明に、Finder・ブラウザ・ゴミ箱との受け渡し（移動・コピーの決まり方、ツリーから ⌘ で移動するときの押し方）を
+- [ ] T021 `docs/usage.ja.md`・`docs/usage.md` のドラッグ&ドロップの説明に、Finder・ブラウザとの受け渡し（移動・コピーの決まり方、ツリーから ⌘ で移動するときの押し方、
+  Dock のゴミ箱には対応しないこと）を
   両方に同じ構成で追記する。`README.md`・`README.ja.md` の機能の概要（29 行・28 行付近）に、他のアプリとの受け渡しを同じ内容で加える（同じコミット）
 - [ ] T022 Cloud で `scripts/dev/check-all.sh` を実行し、結果をこの tasks.md の Execution Notes に記録する
 - [ ] T023 macOS CI で `swift build`・`swift test` を確認する（`workflow_dispatch`、または保守者の依頼で作った PR）。性能テストはログの末尾で件数を確かめる
@@ -135,3 +136,8 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   CI（workflow_dispatch、run 42375125145 attempt 1）: build 成功、通常のテスト 1057 件すべて成功、性能テスト 27 件中 1 件失敗
   （`didRenameFolder` 10,000 件の中央値 0.107 秒、基準 0.1 秒。`PerformanceBaselineTests.swift:367`）。T004 は `BrowserModel` に触れていないため、共有ランナーのぶれと考え、
   コードを変えずに再実行した（docs_private/cloud-agent-workflow.md の 4 章）
+- 2026-11-07: CI の再実行（run 42375125145 attempt 2）の結果は、確認の予約（13:35 UTC）で記録する
+- 2026-11-07: T005 の確認の結果を保守者から受け取った（`checklists/validation.md`）。Finder の移動・コピーは設計どおり。Dock のゴミ箱はファイルが元の場所に残ったため、
+  保守者の先の決定どおり Dock のゴミ箱には対応しないことにし、`.delete` をマスクから外し、FR-079 の変更を取り下げた（spec・research・data-model・plan・contracts・quickstart）。
+  Option と ⌘ の同時は、Finder へは受け付けられず（A-206 と合う）、Finder から Folzio へはコピーになる（FR-346 に追記）。
+  `.delete` を外した後に Dock のゴミ箱が受け付けないことは T024 で確かめる
