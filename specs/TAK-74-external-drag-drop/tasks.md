@@ -136,7 +136,10 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   CI（workflow_dispatch、run 42375125145 attempt 1）: build 成功、通常のテスト 1057 件すべて成功、性能テスト 27 件中 1 件失敗
   （`didRenameFolder` 10,000 件の中央値 0.107 秒、基準 0.1 秒。`PerformanceBaselineTests.swift:367`）。T004 は `BrowserModel` に触れていないため、共有ランナーのぶれと考え、
   コードを変えずに再実行した（docs_private/cloud-agent-workflow.md の 4 章）
-- 2026-11-07: CI の再実行（run 42375125145 attempt 2）の結果は、確認の予約（13:35 UTC）で記録する
+- 2026-11-07: CI の再実行（run 42375125145 attempt 2、`6e8f2a3`）: build・通常のテスト成功、性能テスト 27 件中 4 件失敗（`didRenameFolder` 中央値 0.175 秒、
+  256 件のバッチ 0.102 秒、スライドショー 50,000 件 0.131 秒、200,000 件 0.255 秒）。ランナー全体が遅かった（10,000 件の検索 0.98 秒。attempt 1 は 0.52 秒）。
+  TAK-74 より前の run 42287354217（`968951c`、TAK-41）でも同じ4件を含む5件が失敗しており（`didRenameFolder` 中央値 0.164 秒）、TAK-74 の変更によるものではない。
+  `didRenameFolder` は3回とも基準 0.1 秒を超えている（0.164・0.107・0.175 秒）ため、TAK-74 とは別に保守者へ報告する。これ以上の再実行はしない
 - 2026-11-07: T005 の確認の結果を保守者から受け取った（`checklists/validation.md`）。Finder の移動・コピーは設計どおり。Dock のゴミ箱はファイルが元の場所に残ったため、
   保守者の先の決定どおり Dock のゴミ箱には対応しないことにし、`.delete` をマスクから外し、FR-079 の変更を取り下げた（spec・research・data-model・plan・contracts・quickstart）。
   Option と ⌘ の同時は、Finder へは受け付けられず（A-206 と合う）、Finder から Folzio へはコピーになる（FR-346 に追記）。
