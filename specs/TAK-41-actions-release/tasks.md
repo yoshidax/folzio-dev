@@ -127,6 +127,12 @@ Cloud の規約に従いサブエージェントで分割しない。[P] の指�
   Contents write / Workflows write の App 定義と installation の承認を保守者が再確認する必要があるため、
   T031 を未チェックに戻した。T032 は完了、T033〜T035 は未完了のまま。
   公開用の最終ビルド・ドラフトは今回の実行からは作成されていない。
+  その後、保守者から Contents 権限の修正報告を受け、公開用 main が同じ SHA であることを確認して
+  run 42331626203 の failed jobs を再実行した（attempt 2）。前 attempt の入力 artifact 取得は成功したが、
+  App token 作成で同じ HTTP 422 が返り、公開書き込みは引き続き未実施。
+  実際の対象 installation は 179372623、Actions の Client ID は Iv23liFeoQ6vm9wGlubj。
+  https://github.com/settings/installations/179372623 で Contents / Workflows の Read and write と
+  権限変更の承認を保守者が確認する。App 定義の変更だけで installation の権限更新済みとは判断しない。
 
 - 2026-11-07（日本時間）: 保守者から v1.0.1 / build 2 の CI 候補について、checksum 成功と
   3ペイン・日英切り替え・About 1.0.1 の表示に問題なしとの報告を受け、T032 を完了とした。
