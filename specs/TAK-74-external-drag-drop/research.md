@@ -131,8 +131,11 @@ Apple の文書の記述に基づく。macOS で確かめる点は「未検証�
 - **リスト形式**: `validateDrop` の `proposedRow`・`dropOperation` から項目を決める（`.above` は行間なので項目なし）。表示中のフォルダが宛先のときは
   `setDropRow(-1, dropOperation: .on)` で一覧全体を強調する（`NSTableView` の文書の、行 -1 と `.on` で表全体を対象にする指定）。`acceptDrop` も同じ規則で決める（行 -1 は背景）
 - **サムネイル形式**: `NSCollectionView` には一覧全体を強調する仕組みがない。表示中のフォルダが宛先のときは、`dropOperation` を `.before` にして項目の強調を出さず、
-  `ThumbnailCollectionView` に背景の強調の枠を描かせる。`.before` で出る項目の間の挿入位置の表示は、フロー・レイアウトのサブクラスで
-  `layoutAttributesForInterItemGap(before:)` が nil を返して出さない（今のアプリ内のドラッグは `.before` を使わないので影響しない）。
+  `ThumbnailCollectionView` に背景の強調の枠を描かせる。`.before` で出る項目の間の挿入位置の表示（並び替えのための標準の表示）は、
+  その表示の種類（`NSCollectionView.elementKindInterItemGapIndicator`）に隠したビューを登録し、データソースの
+  `collectionView(_:viewForSupplementaryElementOfKind:at:)` で返して見えなくする（今のアプリ内のドラッグは `.before` を使わないので影響しない）。
+  - 最初は、フロー・レイアウトのサブクラスで `layoutAttributesForInterItemGap(before:)` が nil を返す方法にしたが、保守者の GUI の確認で線が出た（T030）。
+    nil を返すと、AppKit が既定の線を描くと考えられる。保守者の決定で、表示を隠したビューに差し替える方法に改めた
   強調の枠は、`validateDrop` の結果ごとに付け外しし、`acceptDrop`・`draggingExited(_:)`・`draggingEnded(_:)` で外す。`acceptDrop` の `.before` は背景
 - **Rationale**: 宛先の規則を Core の純粋な関数にして、項目の種類と表示の状態の組み合わせを Swift Testing で確かめる（AGENTS.md の設計の制約）。
   検証（EC-16・EC-121）と実行は、アプリ内は `InternalDrag`、アプリ外は `ExternalDrag` の今の経路をそのまま使い、宛先の URL だけを表示中のフォルダにする

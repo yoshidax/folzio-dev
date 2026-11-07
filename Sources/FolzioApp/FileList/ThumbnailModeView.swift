@@ -102,11 +102,17 @@ private final class ThumbnailCollectionView: NSCollectionView {
     }
 }
 
-/// A background drop uses `.before` so that no item is highlighted; hiding the gap indicator keeps it from showing an
-/// insertion point that does not exist (FR-349, research.md R9). Drags inside the app never use `.before` otherwise.
-private final class ThumbnailFlowLayout: NSCollectionViewFlowLayout {
-    override func layoutAttributesForInterItemGap(before indexPath: IndexPath) -> NSCollectionViewLayoutAttributes? {
-        nil
+/// Replaces the collection view's inter-item gap indicator, which marks where a dragged item would be inserted when
+/// reordering. The thumbnails are sorted and never reordered, and a background drop uses `.before` only so that no item
+/// is highlighted, so the indicator stays hidden (FR-349, research.md R9).
+private final class HiddenGapIndicator: NSView, NSCollectionViewElement {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        isHidden = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
     }
 }
 
@@ -389,6 +395,7 @@ final class ThumbnailModeView: NSView {
     }
 
     private static let itemIdentifier = NSUserInterfaceItemIdentifier("ThumbnailItem")
+    private static let gapIndicatorIdentifier = NSUserInterfaceItemIdentifier("ThumbnailGapIndicator")
     private static let spacing: CGFloat = 12
     private static let sectionInset = NSEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
 
@@ -396,7 +403,7 @@ final class ThumbnailModeView: NSView {
     private let provider: any ThumbnailProviding
     private let scrollView = NSScrollView()
     private let collectionView = ThumbnailCollectionView()
-    private let flowLayout = ThumbnailFlowLayout()
+    private let flowLayout = NSCollectionViewFlowLayout()
 
     private var storedThumbnailSize: Double
     private var lastURLs: [URL] = []
@@ -626,6 +633,11 @@ final class ThumbnailModeView: NSView {
         collectionView.register(
             ThumbnailItemView.self,
             forItemWithIdentifier: Self.itemIdentifier
+        )
+        collectionView.register(
+            HiddenGapIndicator.self,
+            forSupplementaryViewOfKind: NSCollectionView.elementKindInterItemGapIndicator,
+            withIdentifier: Self.gapIndicatorIdentifier
         )
         collectionView.registerForDraggedTypes([.fileURL])
         collectionView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
@@ -1139,6 +1151,16 @@ extension ThumbnailModeView: NSCollectionViewDataSource {
         numberOfItemsInSection section: Int
     ) -> Int {
         model.listing.files.count
+    }
+
+    /// The only supplementary element is the inter-item gap indicator of a drag, which stays hidden (FR-349,
+    /// research.md R9).
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        viewForSupplementaryElementOfKind kind: NSCollectionView.SupplementaryElementKind,
+        at indexPath: IndexPath
+    ) -> NSView {
+        collectionView.makeSupplementaryView(ofKind: kind, withIdentifier: Self.gapIndicatorIdentifier, for: indexPath)
     }
 
     func collectionView(

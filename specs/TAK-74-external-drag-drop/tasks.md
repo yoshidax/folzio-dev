@@ -188,4 +188,7 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   build 成功、通常のテスト 1082 件すべて成功（1073 件に `PasteboardFileURLsTests` 3 件・`DropsFromOtherAppsTests` 1 件・`FileListDropTargetTests` 5 件を加えた数と一致）。
   性能テスト 27 件中 3 件失敗（24 MP の JPEG のデコード 0.594 秒、`didRenameFolder` 中央値 0.103 秒、スライドショー 200,000 件 0.244 秒。いずれも TAK-74 以前から失敗している種類）。
   `91a56ee`（T021）は文書だけの変更のため CI を実行していない。残りは T022（Cloud の検査は各コミットで成功）、T023（PR の CI）、T024・T030（保守者の GUI 確認）、T025（反映）
+- 2026-11-07: 保守者の GUI の確認（T030 の一部）で、サムネイル形式の背景へのドラッグで挿入位置の線が出た（quickstart の期待と違う）。
+  `layoutAttributesForInterItemGap(before:)` が nil を返す方法では消えなかったため、保守者の決定で、線の表示の種類に隠したビュー（`HiddenGapIndicator`）を登録して
+  データソースから返す方法に改め、フロー・レイアウトのサブクラスを外した（research.md R9）。再確認は T030 で行う
 
