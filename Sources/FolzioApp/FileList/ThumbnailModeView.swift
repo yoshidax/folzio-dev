@@ -598,6 +598,7 @@ final class ThumbnailModeView: NSView {
         )
         collectionView.registerForDraggedTypes([.fileURL])
         collectionView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
+        collectionView.setDraggingSourceOperationMask(ExternalDrag.sourceOperationMaskOutsideApp, forLocal: false)
         InternalDrag.register(collectionView)
         collectionView.onArrowKey = { [weak self] key, modifiers in
             self?.handleArrowKey(key, modifiers: modifiers) ?? false

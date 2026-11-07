@@ -1058,7 +1058,7 @@ final class DirectoryTreeViewController: NSViewController {
         }
         outlineView.registerForDraggedTypes([.fileURL])
         outlineView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
-        outlineView.setDraggingSourceOperationMask(.copy, forLocal: false)
+        outlineView.setDraggingSourceOperationMask(ExternalDrag.sourceOperationMaskOutsideApp, forLocal: false)
         InternalDrag.register(outlineView)
         outlineView.menu = makeContextMenu()
         outlineView.target = self

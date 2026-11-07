@@ -13,7 +13,7 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
 
 - [x] T001 `specs/TAK-74-external-drag-drop/spec.md` と `checklists/requirements.md` を作り、TAK-74 と保守者の決定（Clarifications）を記録する
 - [x] T002 `plan.md`・`research.md`・`data-model.md`・`contracts/external-drag-drop.md`・`quickstart.md` に設計と検証方法を記録する
-- [ ] T003 保守者の設計レビューと実装の承認を得る。承認がなければ T004 以降に進まない
+- [x] T003 保守者の設計レビューと実装の承認を得る。承認がなければ T004 以降に進まない
 
 ## Phase 2: 先に行う確認（実装の前提を macOS で確かめる）
 
@@ -59,7 +59,7 @@ GUI は保守者がローカルで確認する。実装は保守者の設計承�
   （2）ファイル `trip/day2/a.jpg` だけを消したときは、同じフォルダのまだある結果と、後から届く `trip/day2/b.jpg` は表示される（フォルダを記録しない）。
   （3）検索のルートの外へはたどらない。（4）新しい検索を始めると記録が消える。既存の 9 行目のテストは、遅れた結果に同じファイルを送るため、この確認には使わない
 - [ ] T014 [US75] `Sources/FolzioCore/Browser/BrowserModel.swift` の `pruneMissingResults(under:)`（1473 行付近）の detached task の中で、`missing` の各 URL の親をたどり、
-  まだある親の直下の消えたもの（一番上の消えた祖先。検索のルート（`listing.search?.root`）まで、ルートが消えていればルート）を求め、`movedSearchPaths` に加えて T013 を通す
+  まだある親の直下の消えたもの（一番上の消えた祖先。検索のルート（`listing.search?.root`。`listing` は MainActor の状態なので、detached task を始める前に値として取り出して渡す）まで、ルートが消えていればルート）を求め、`movedSearchPaths` に加えて T013 を通す
   （R8）。1回の呼び出しの中で確かめたフォルダの結果を覚えて、同じフォルダを繰り返し調べない。既存の `BrowserModelSearchTests` が通ること
 - [ ] T015 [US75] `Tests/FolzioAppTests/ExternalDragTests.swift` に、3つのビューの `draggingSourceOperationMask(forLocal: false)` が T004（T005 で直した場合はその値）、
   `forLocal: true` が `[.copy, .move]` であることと、T012 の印が通し番号ごとに分かれることのテストを加える
@@ -130,3 +130,4 @@ Cloud ではタスクを分割して並列実装しない（AGENTS.md）。[P] �
   plan の実装の順序の番号を直し、contracts のキーボードの手段にツリーの ⌘V・⌥⌘V を加えた
 - 2026-11-07: 3回目の設計レビューを反映した。FSEvents の除外で結果の行のファイルだけを記録すると、フォルダごと移動されたときに同じフォルダの別のファイルの遅れた結果が出るため、
   一番上の消えた祖先のフォルダ（検索のルートまで）を記録するようにした（spec の Clarifications・EC-236、R8、data-model、T013・T014）
+- 2026-11-07: 保守者が設計を承認（T003）。T014 に、検索のルートを detached task の前に取り出す注意を加えた（保守者の指摘。設計の変更なし）

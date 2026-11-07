@@ -260,7 +260,7 @@ final class ListModeView: NSView {
         tableView.registerForDraggedTypes([.fileURL])
         InternalDrag.register(tableView)
         tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
-        tableView.setDraggingSourceOperationMask(.copy, forLocal: false)
+        tableView.setDraggingSourceOperationMask(ExternalDrag.sourceOperationMaskOutsideApp, forLocal: false)
         // Space toggles the Quick Look panel instead of video playback (FR-247, FR-248).
         tableView.onSpace = { [weak self] event in
             self?.quickLook?.handleSpace(event) ?? false
