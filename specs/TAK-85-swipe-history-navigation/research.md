@@ -13,7 +13,8 @@ Cloud 環境には macOS と Swift がないため、AppKit の振る舞いは A
     で有効かを返す（AppKit の API 文書）。読むたびに今の設定を返すため、再起動せずに設定の変更が反映される（FR-350）。
   - `trackSwipeEvent` は、指の量に合わせた `gestureAmount`（-1〜1）と、終了の `phase`（`.ended` は成立、`.cancelled` は取り消し）を返す。
     実行に必要な量と、指を戻したときの取り消しの判定は OS が行う（spec の Assumptions。独自のしきい値を持たない）。
-  - `dampenAmountThresholdMin` / `max` に、使えない向きを 0 で渡すと、その向きには量が伸びない。
+  - `dampenAmountThresholdMin` / `max` に、使えない向きを 0 で渡すと、その向きには量が伸びない。追跡を始めるときに `min = canGoForward ? -1 : 0`、
+    `max = canGoBack ? 1 : 0` を渡し、どちらの向きかを自分で決めずに OS の `gestureAmount` に従う（R4）。
 - **Alternatives considered**:
   - スクロールの量を自分で積算してしきい値で判定する: 慣性・取り消しの振る舞いが標準のアプリと変わり、しきい値を独自に決めることになるため採らない。
   - `NSPanGestureRecognizer`: トラックパッドの 2 本指のスクロールは pan として認識されないため使えない。
@@ -48,18 +49,21 @@ Cloud 環境には macOS と Swift がないため、AppKit の振る舞いは A
 - **Decision**: 1 回のスクロール（`phase` が `.began` から `.ended` / `.cancelled` まで。慣性の `momentumPhase` を含む）ごとに、Core の
   `SwipeGestureTracker` が状態を持つ。
   - `.began` のとき、ポインタの下のペインが左右にあとどれだけスクロールできるか（`HorizontalScrollRoom`）を記録する。
-  - その後、左右の動きが主（|dx| > |dy|）の最初のイベントで、向きを決める（EC-239）。
-    `scrollingDeltaX > 0`（内容が右へ動き、左側が見える向き）を戻る、`< 0` を進むとする。
-  - `.began` で記録した余地が、その向きに残っていなければスワイプとして追跡し、残っていれば、その 1 回のスクロールの終わりまで横スクロールとして扱う（FR-351、
-    US7-AS19）。
+  - その後、左右の動きが主（|dx| > |dy|）の最初のイベントで決める（EC-239）。`.began` のイベント自体に動きがあれば、そのイベントで決める。
+  - 横スクロールの余地は、`scrollingDeltaX` の符号の向き（`> 0` は左側が見える向き）で調べる。`.began` で記録した余地がその向きに残っていなければスワイプとして追跡し、
+    残っていれば、その 1 回のスクロールの終わりまで横スクロールとして扱う（FR-351、US7-AS19）。
+  - 戻る・進むの向きは、`scrollingDeltaX` からは決めず、追跡中の `gestureAmount` の符号だけで決める（data-model.md の「向きの扱い」）。
+    向きの情報源を 1 つにして、OS の判定と食い違わないようにするため。
+  - 新しい `.began` を受け取ったら、前の追跡が終わっていなくても判定し直す。追跡を終えた後の同じジェスチャの慣性は、次の `.began` まで渡さない。
   - 上下の動きが主のとき、慣性のイベント、`.began` を受け取っていないスクロール（マウスホイールなど、`phase` のないもの）は、スワイプにしない。
 - **Rationale**:
   - 「端に着いた状態で新しく始めたスワイプだけ」（保守者の決定）は、`.began` の時点の余地で判定すれば満たせる。スクロールの途中で端に着いても、
     同じ 1 回のスクロールの状態は横スクロールのまま変わらない。
-  - `scrollingDeltaX` は、OS のスクロールの方向の設定（ナチュラル）を反映した値（`ImagePreviewView.swift:223` のコメントと同じ）。内容の動きの向きで
-    「左側が見える＝前のページ」と決めると、端の判定と戻る・進むの向きが一致する。
-- **未確認**: ナチュラルなスクロールをオフにしたときの向きが Safari と同じか（quickstart.md の Q2）。`trackSwipeEvent` の `gestureAmount`
-  の符号（正を戻るとする。Firefox の実装と同じ）も同じ項目で確かめる。
+  - `scrollingDeltaX` は、OS のスクロールの方向の設定（ナチュラル）を反映した値（`ImagePreviewView.swift:223` のコメントと同じ）。ビューのスクロールも
+    同じ値で動くため、余地の判定には `scrollingDeltaX` の符号がそのまま使える。
+  - 戻る・進むの向きを `scrollingDeltaX` から決めると、ナチュラルなスクロールの設定で OS の判定（`gestureAmount`）と食い違う恐れがあるため、使わない。
+- **未確認**: `gestureAmount` の符号（正を戻るとする。Firefox の実装と同じ）が、ナチュラルなスクロールのオン・オフのどちらでも Safari の向きと同じか（quickstart.md の Q2）。
+  あわせて、端の判定の向き（余地の向き）と、OS が戻る・進むと判定する向きの組み合わせが、オン・オフで期待どおりか（左端に着いた画像で戻るになるか）を確かめる。
 
 ## R5 スクロールできる余地の求め方
 
@@ -84,6 +88,8 @@ Cloud 環境には macOS と Swift がないため、AppKit の振る舞いは A
   - ウインドウの `contentViewController` は `MainSplitViewController` で、`contentView` は `NSSplitView` そのもの（`MainWindowController.swift:35`）。
     `NSSplitView` に部品を `addSubview` すると、ペインとして扱われる恐れがある。AGENTS.md の AppKit UI の不変条件（起動不能の事故）に触れる構成の変更を避ける。
   - 子ウインドウは、既存のビュー階層と制約に触れず、親ウインドウと一緒に動く。
+  - 子ウインドウを `orderOut` すると親から外れるため、表示するたびに `addChildWindow(_:ordered:)` で付け、その時点の `splitView` の範囲にフレームを合わせる。
+    隠すときは `removeChildWindow(_:)` してから `orderOut` する。
 - **Alternatives considered**:
   - `contentViewController` を、`MainSplitViewController` を子に持つ入れ物に変える: ウインドウの構成とフォーカス・フルスクリーンの処理（`MainSplitViewController`）
     への影響が大きいため採らない。
@@ -93,8 +99,11 @@ Cloud 環境には macOS と Swift がないため、AppKit の振る舞いは A
 ## R7 使えるかどうかの判定
 
 - **Decision**: 既存の `paneCommands.canNavigateHistory` と `historyNavigator.canGoBack` / `canGoForward`（`MainSplitViewController.swift:1054-1063`）
-  を、追跡を始めるとき（使えない向きは追跡しない）と、スワイプが成立したとき（EC-240）の 2 回読む。成立したら既存の `goBack(_:)` / `goForward(_:)` を呼ぶ。
-  - 加えて、メインウインドウにシートがない、アプリのモーダルがない、イベントがメインウインドウのもの、を条件にする（EC-244）。
+  を、追跡を始めるときに読み、`trackSwipeEvent` の min / max に渡す（使えない向きには量が伸びず、矢印も出ない）。スワイプが成立したら既存の
+  `goBack(_:)` / `goForward(_:)` を呼び、終わりの時点の判定（EC-240）はその guard に任せる（Core に同じ条件を重ねて持たない）。
+  - 加えて、メインウインドウにシートがない、アプリのモーダルがない、イベントがメインウインドウのもの、ドラッグの途中でない、を条件にする（EC-244）。
+  - ドラッグの途中は、マウスのボタンが押されている（`NSEvent.pressedMouseButtons` が 0 でない）か、Folzio のビューから始めたドラッグの途中か、で判定する。
+    ボタンを押さないドラッグ（アクセシビリティの 3 本指のドラッグなど）でスワイプのイベントが届くかは未確認で、quickstart.md で確かめる。
 - **Rationale**: ⌘[ / ⌘] と同じ条件（FR-112・FR-113）を、同じ関数で満たす。`goBack(_:)` の中でも同じ判定をしているため、二重に実行されない。
   検索結果の表示中の「戻る」（FR-113）も `historyNavigator.canGoBack` がすでに扱っている（`HistoryNavigator.swift:30-37`）。
 

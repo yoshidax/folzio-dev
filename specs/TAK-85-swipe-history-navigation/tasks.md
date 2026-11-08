@@ -21,21 +21,24 @@
 - [ ] T004 [P] `Tests/FolzioCoreTests/SwipeNavigationTests.swift` を作り、次をテストする（先に失敗させる）。
   - `HorizontalScrollRoom(visibleMinX:visibleMaxX:contentMinX:contentMaxX:)`: 内容が広く中央にあるとき両方 true、左端・右端に着いたとき片方だけ true、
     「差が 0.5pt 以下なら端に着いているとする」、内容が狭いとき両方 false（`none` と等しい）
-  - `HistoryDirection`: `scrollingDeltaX > 0` を `back`、`< 0` を `forward`。3 本指の `deltaX > 0` を `back`、`< 0` を `forward`、0 は nil
-  - `SwipeGestureTracker`: `began` → 左右が主の `changed` で、余地なし・使える向きなら `startSwipe(direction)` を 1 回だけ返し、その後の同じ 1 回のイベントは `consume`
+  - 向きの対応（data-model.md の「向きの扱い」）: `scrollingDeltaX > 0` を `revealsLeft`、`< 0` を `revealsRight`。`gestureAmount > 0` を `back`、`< 0` を `forward`。
+    3 本指の `deltaX > 0` を `back`、`< 0` を `forward`、0 は nil。戻る・進むの向きは既存の `HistoryDirection` を使う
+  - `NSEvent.Phase` 相当の値の対応: `.stationary` は `changed`、`.mayBegin` は `ignored`（状態を変えずに `passThrough`）
+  - `SwipeGestureTracker`: `began` → 左右が主の `changed` で、余地なし・どちらかの向きが使えるなら `startSwipe` を 1 回だけ返し、その後の同じ 1 回のイベントは `consume`
   - `began` のイベント自体に左右が主の動きがあるときは、そのイベントで同じ判定をする（`startSwipe` または `passThrough`）
   - `began` の余地がその向きにあれば、その 1 回の終わりまで `passThrough`。途中のイベントの余地が変わっても（端に着いても）`passThrough` のまま（US7-AS19）
   - 次の `began` で、端に着いた余地を記録し直せば `startSwipe` になる（US7-AS20）。反対の向き（余地あり）は `passThrough`
   - 上下が主（|deltaY| >= |deltaX|）の最初の動きでは、その 1 回は `passThrough`（EC-239）。左右・上下とも 0 のイベントでは向きを決めない
   - `isMomentum` のイベント、`phase` が `none` のイベント、`began` を受け取っていないイベントは `passThrough`
-  - `isSwipeTrackingEnabled` が false、またはその向きが使えない（`canGoBack` / `canGoForward` が false）ときは `passThrough`（FR-350・US7-AS21）
-  - `finishSwipe()` の後は `idle` に戻り、次の `began` から判定する
-  - `SwipeOutcome`: `completed` でその時点の `SwipeAvailability` が使えるときだけ実行の対象、`cancelled` と使えないときは実行しない（EC-240）
-  - `SwipeArrowState`: `progress` は `abs(gestureAmount)` を 0〜1 に収める。`back` は左端、`forward` は右端
+  - `isSwipeTrackingEnabled` が false、または `canGoBack`・`canGoForward` がどちらも false のときは `passThrough`（FR-350・US7-AS21）
+  - `finishSwipe()` の後は `afterSwipe` になり、同じジェスチャの慣性のイベントは `consume`。次の `began` から判定する
+  - `swiping` のまま（`finishSwipe()` の前）に次の `began` を受け取ったら、判定し直す（EC-241。前の追跡が終わらなくても状態が残らない）
+  - `SwipeArrowState(gestureAmount:)`: `progress` は `abs(gestureAmount)` を 0〜1 に収める。正は `back`（左端）、負は `forward`（右端）。0 では `isVisible` が false
 - [ ] T005 [P] `Tests/FolzioCoreTests/PreviewScrollLayoutTests.swift` に、`horizontalRoom(viewportWidth:)` のテストを加える（先に失敗させる）。
   横にはみ出す画像で中央・左端・右端のとき、はみ出さない画像のとき、不正な寸法（`frame` が `.zero`）のとき
-- [ ] T006 `Sources/FolzioCore/History/SwipeNavigation.swift` を作り、data-model.md の `HistoryDirection`・`HorizontalScrollRoom`・`ScrollSample`・`SwipeAvailability`・
-  `SwipeGestureTracker`・`SwipeDecision`・`SwipeOutcome`・`SwipeArrowState` を実装して T004 を通す。AppKit を import しない。型は `Sendable`・`Equatable` にする
+- [ ] T006 `Sources/FolzioCore/History/SwipeNavigation.swift` を作り、data-model.md の `ScrollReveal`・`HorizontalScrollRoom`・`ScrollSample`・`SwipeAvailability`・
+  `SwipeGestureTracker`・`SwipeDecision`・`SwipeArrowState` と、向きの対応の関数を実装して T004 を通す。戻る・進むの向きは既存の `HistoryDirection`
+  （`Sources/FolzioCore/History/HistoryEntry.swift:97`）を使い、同じ名前の型を新しく作らない。AppKit を import しない。型は `Sendable`・`Equatable` にする
 - [ ] T007 `Sources/FolzioCore/Layout/PreviewScrollLayout.swift` に `horizontalRoom(viewportWidth:) -> HorizontalScrollRoom`（`frame.minX < 0` で左、`frame.maxX > viewportWidth` で右。
   T006 の 0.5pt の規則を使う）を加えて T005 を通す
 - [ ] T008 作業ブランチに push し、CI（`workflow_dispatch`、`ref` は作業ブランチ）で build と Core のテストを確かめる
@@ -49,7 +52,9 @@
     `previewViewController.view`）の中、のときだけ扱う（EC-244・EC-245）。`treeViewController`・`previewViewController` は `private` のため、
     3 つのビューと、使えるかどうか・`goBack`・`goForward` は、`MainSplitViewController` から init の引数（ビューの配列とクロージャ）で渡す
   - `.scrollWheel` は `SwipeGestureTracker` に渡し、`startSwipe` で `trackSwipeEvent(options: [.lockDirection, .clampGestureAmount], dampenAmountThresholdMin:max:)`
-    を呼ぶ。min / max は使えない向きを 0 にする（R1）。`.ended` で `goBack(_:)` / `goForward(_:)`、`.cancelled` で何もしない。`isComplete` で `finishSwipe()`
+    を呼ぶ。min は `canGoForward ? -1 : 0`、max は `canGoBack ? 1 : 0`（R1・R7）。`.ended` で、最後の `gestureAmount` の符号の向きの `goBack(_:)` / `goForward(_:)`
+    を呼ぶ（使えるかの再判定はその guard に任せる。EC-240）。`.cancelled` で何もしない。`isComplete` で `finishSwipe()`
+  - 追跡ごとに通し番号を振り、次の `began` で判定し直した後に届いた前の追跡の handler の呼び出しは無視する（data-model.md の規則）
   - `.swipe` は `deltaX` の対応で `goBack(_:)` / `goForward(_:)` を呼ぶ（R2）
   - 使えるかどうかは `paneCommands.canNavigateHistory && historyNavigator.canGoBack`（`canGoForward`）で求める（R7）
   - 確認用に、向き・`gestureAmount`・`phase`・`deltaX` を `NSLog` で出す（T012 で消す）
@@ -66,10 +71,11 @@
 
 - [ ] T012 [US1] T009 の確認用の `NSLog` を消す
 - [ ] T013 [US1] `Sources/FolzioApp/App/SwipeArrowOverlay.swift` を作る（R6）。
-  - 枠なし・透明・`ignoresMouseEvents`・影なしの子ウインドウを、メインウインドウに `addChildWindow(_:ordered: .above)` で付け、`splitView` の画面上の範囲に合わせる。
-    スワイプの間だけ `orderFront` し、終わったら `orderOut` する。ウインドウとビューの操作は MainActor で行う（AGENTS.md）
+  - 枠なし・透明・`ignoresMouseEvents`・影なしの子ウインドウを作る。表示するたびに、メインウインドウに `addChildWindow(_:ordered: .above)` で付け、
+    その時点の `splitView` の画面上の範囲にフレームを合わせる。隠すときは `removeChildWindow(_:)` してから `orderOut` する（`orderOut` で親から外れるため。R6）。
+    ウインドウとビューの操作は MainActor で行う（AGENTS.md）
   - 矢印のビュー: 円の背景に SF Symbols の `chevron.left` / `chevron.right`。文字を含まない。アクセシビリティの要素にしない
-  - `SwipeArrowState` の `progress` で大きさと不透明度を変える。`back` は左端、`forward` は右端（FR-352）
+  - `SwipeArrowState` の `progress` で大きさと不透明度を変える。`back` は左端に左向き、`forward` は右端に右向き。`isVisible` が false の間は出さない（FR-352）
   - 消すときは短いフェード。`NSWorkspace.shared.accessibilityDisplayShouldReduceMotion` が true ならフェードせずに消す
   - 3 本指のスワイプでは、`progress` 1 で短い時間（0.3 秒程度）だけ表示する（EC-242）
   - 子ウインドウは `NSSplitView` とペインのビューに部品を加えない（AppKit UI の不変条件）
@@ -91,7 +97,9 @@
   - 3 ペインのルートより上にはたどらない（ルートの外の `NSScrollView` を使わない）
 - [ ] T017 [US2] `Sources/FolzioApp/Preview/ImagePreviewView.swift` に `HorizontalScrollRoomProviding` の適合を加え、`scrollLayout.horizontalRoom(viewportWidth: bounds.width)` を返す
   （画像を表示していないとき・横にはみ出さないときは `none`。R5）。動画のビューは適合させず、余地は `none` のままにする（EC-246）
-- [ ] T018 [US2] `SwipeNavigationController.swift` に、ポインタの位置で `hitTest` したビューから 3 ペインのルートまで上へたどり、最初に見つかった `HorizontalScrollRoomProviding` または
+- [ ] T018 [US2] `SwipeNavigationController.swift` に、ポインタの位置で `hitTest` したビューから 3 ペインのルートまで上へたどり、
+  （`hitTest(_:)` は superview の座標を取る。`PreviewViewController.swift:580-583` と同じく、`event.locationInWindow` を各ペインのルートの superview の座標に
+  変換してから呼ぶ）最初に見つかった `HorizontalScrollRoomProviding` または
   `NSScrollView` の余地を求める関数を加え、`began` のイベントで `SwipeGestureTracker` に渡して T016 を通す（FR-351・EC-243・A-208）。
   `HorizontalScrollRoomProviding` は `Sources/FolzioApp/App/SwipeNavigationController.swift` に置く
 
@@ -105,8 +113,9 @@
   実行しないことを確かめる（FR-112・EC-240・US7-AS21）。検索結果の表示中の「戻る」が `historyNavigator.canGoBack` で使え、「進む」が使えないこと（FR-113・US7-AS22）を
   コードで確かめ、`goBack(_:)` の既存の経路を通ることをコメントに書く
 - [ ] T020 [US3] `SwipeNavigationController.swift` の対象の判定で、`window.attachedSheet`・`NSApp.modalWindow`・イベントのウインドウ・ペインの境界線とツールバーの除外
-  （ポインタの下のビューが 3 ペインのビューの中にないとき）を確かめる（EC-244・EC-245）。ドラッグ＆ドロップの途中（`NSEvent.pressedMouseButtons` が 0 でないとき）は
-  扱わない（EC-244）
+  （ポインタの下のビューが 3 ペインのビューの中にないとき）を確かめる（EC-244・EC-245）。ドラッグ＆ドロップの途中は扱わない（EC-244）。
+  ドラッグの途中は、`NSEvent.pressedMouseButtons` が 0 でないとき、または Folzio のビュー（ツリー・リスト形式・サムネイル形式）から始めたドラッグのセッションの途中
+  （`Sources/FolzioApp/Shared/InternalDrag.swift` に、セッションの開始と終了で切り替える印を加える）とする（R7）
 
 ## Phase 7: Polish
 

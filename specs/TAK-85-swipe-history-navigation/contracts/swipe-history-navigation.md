@@ -28,4 +28,4 @@
 2. ポインタの下のビューが、ツリー・ファイルリスト・プレビューのどれかのビューの中にあること（EC-245）。ツールバー・境界線は除く。
 3. `.swipe`（3 本指）: `deltaX` の向きが使えれば、すぐに `goBack` / `goForward` を呼び、矢印を短く表示する。
 4. `.scrollWheel`: `SwipeGestureTracker`（data-model.md）の結果に従う。`startSwipe` のときだけ `trackSwipeEvent` を始め、
-   `.ended` で使えるかをもう一度判定してから `goBack` / `goForward` を呼ぶ。
+   `.ended` で `gestureAmount` の符号の向きの `goBack` / `goForward` を呼ぶ（使えるかの再判定はその guard が行う）。

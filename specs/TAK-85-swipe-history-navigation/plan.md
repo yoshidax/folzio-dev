@@ -58,14 +58,15 @@ AppKit UI の不変条件（AGENTS.md）を守り、`NSSplitView` に部品を�
 
 ### Source Code (repository root)
 
-- `Sources/FolzioCore/History/SwipeNavigation.swift`（新規）: `HistoryDirection`、`HorizontalScrollRoom`、`ScrollSample`、`SwipeGestureTracker`、
-  3 本指の `deltaX` の対応、矢印の表示の量（data-model.md）
+- `Sources/FolzioCore/History/SwipeNavigation.swift`（新規）: `ScrollReveal`、`HorizontalScrollRoom`、`ScrollSample`、`SwipeGestureTracker`、
+  `gestureAmount`・3 本指の `deltaX` から既存の `HistoryDirection`（`HistoryEntry.swift:97`）への対応、矢印の表示の量（data-model.md）
 - `Sources/FolzioCore/Layout/PreviewScrollLayout.swift`: 表示中の画像の左右の余地を返す（R5）
 - `Sources/FolzioApp/App/SwipeNavigationController.swift`（新規）: ローカルモニタ、3 ペインの判定、余地の読み取り、`trackSwipeEvent` の呼び出し、
   矢印の子ウインドウ（R1〜R7）
 - `Sources/FolzioApp/App/SwipeArrowOverlay.swift`（新規）: 矢印の子ウインドウとビュー（R6）
 - `Sources/FolzioApp/App/MainSplitViewController.swift`: `SwipeNavigationController` を作り、使えるかどうかと `goBack`・`goForward` をつなぐ
 - `Sources/FolzioApp/Preview/ImagePreviewView.swift`: `HorizontalScrollRoomProviding` に適合する（R5）
+- `Sources/FolzioApp/Shared/InternalDrag.swift`: Folzio のビューから始めたドラッグのセッションの途中を示す印（R7・EC-244）
 - `Tests/FolzioCoreTests/SwipeNavigationTests.swift`（新規）
 - `Tests/FolzioCoreTests/PreviewScrollLayoutTests.swift`: 余地のテストを加える
 - `Tests/FolzioAppTests/SwipeScrollRoomTests.swift`（新規）: `NSScrollView` と `ImagePreviewView` の余地の読み取り
