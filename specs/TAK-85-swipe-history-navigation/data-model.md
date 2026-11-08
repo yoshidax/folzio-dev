@@ -47,7 +47,7 @@ App が `NSEvent` から作る、1 つのスクロールのイベントの値。
 | 状態 | 意味 | 次の状態 |
 |---|---|---|
 | `idle` | スクロールの外 | `began` で `pending(room)` |
-| `pending(room)` | 始まりの余地を記録し、向きを決める前 | 左右が主の動きで `swiping(direction)` または `scrolling`。上下が主の動きで `scrolling` |
+| `pending(room)` | 始まりの余地を記録し、向きを決める前 | 左右が主の動きで `swiping(direction)` または `scrolling`。上下が主の動きで `scrolling`。`began` のイベント自体に動きがあれば、そのイベントで決める |
 | `scrolling` | この 1 回は普通のスクロール | `ended` / `cancelled` の後、次の `began` で `pending` |
 | `swiping(direction)` | AppKit の追跡に渡した | 追跡の終わり（App が `finishSwipe()` を呼ぶ）で `idle` |
 
@@ -80,7 +80,7 @@ App が `NSEvent` から作る、1 つのスクロールのイベントの値。
 
 | 項目 | 意味 |
 |---|---|
-| `direction` | 矢印を出す側（`back` は左端、`forward` は右端。FR-352）|
+| `direction` | 矢印を出す側（`back` は左端に左向き、`forward` は右端に右向き。指の向き・スクロールの方向の設定によらない。FR-352）|
 | `progress` | `abs(gestureAmount)` を 0〜1 に収めたもの。大きさと不透明度に使う |
 | `isVisible` | 追跡中は true。終わったら false |
 

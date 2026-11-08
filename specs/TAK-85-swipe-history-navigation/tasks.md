@@ -23,6 +23,7 @@
     「差が 0.5pt 以下なら端に着いているとする」、内容が狭いとき両方 false（`none` と等しい）
   - `HistoryDirection`: `scrollingDeltaX > 0` を `back`、`< 0` を `forward`。3 本指の `deltaX > 0` を `back`、`< 0` を `forward`、0 は nil
   - `SwipeGestureTracker`: `began` → 左右が主の `changed` で、余地なし・使える向きなら `startSwipe(direction)` を 1 回だけ返し、その後の同じ 1 回のイベントは `consume`
+  - `began` のイベント自体に左右が主の動きがあるときは、そのイベントで同じ判定をする（`startSwipe` または `passThrough`）
   - `began` の余地がその向きにあれば、その 1 回の終わりまで `passThrough`。途中のイベントの余地が変わっても（端に着いても）`passThrough` のまま（US7-AS19）
   - 次の `began` で、端に着いた余地を記録し直せば `startSwipe` になる（US7-AS20）。反対の向き（余地あり）は `passThrough`
   - 上下が主（|deltaY| >= |deltaX|）の最初の動きでは、その 1 回は `passThrough`（EC-239）。左右・上下とも 0 のイベントでは向きを決めない
@@ -45,7 +46,8 @@
   - `NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .swipe])` を 1 つ置き、`MainSplitViewController.viewDidLoad()` から作る。
     既存の `installVideoSeekKeyMonitor()`（`MainSplitViewController.swift:839`）と同じく `MainActor.assumeIsolated` で処理し、ビューが消えたらモニタを外す
   - メインウインドウのイベント・シートとモーダルがない・ポインタの下のビューが 3 ペインのビュー（`treeViewController.view`・`fileListViewController.view`・
-    `previewViewController.view`）の中、のときだけ扱う（EC-244・EC-245）
+    `previewViewController.view`）の中、のときだけ扱う（EC-244・EC-245）。`treeViewController`・`previewViewController` は `private` のため、
+    3 つのビューと、使えるかどうか・`goBack`・`goForward` は、`MainSplitViewController` から init の引数（ビューの配列とクロージャ）で渡す
   - `.scrollWheel` は `SwipeGestureTracker` に渡し、`startSwipe` で `trackSwipeEvent(options: [.lockDirection, .clampGestureAmount], dampenAmountThresholdMin:max:)`
     を呼ぶ。min / max は使えない向きを 0 にする（R1）。`.ended` で `goBack(_:)` / `goForward(_:)`、`.cancelled` で何もしない。`isComplete` で `finishSwipe()`
   - `.swipe` は `deltaX` の対応で `goBack(_:)` / `goForward(_:)` を呼ぶ（R2）
@@ -88,7 +90,7 @@
   - `ImagePreviewView` が画像を表示していないとき `none`
   - 3 ペインのルートより上にはたどらない（ルートの外の `NSScrollView` を使わない）
 - [ ] T017 [US2] `Sources/FolzioApp/Preview/ImagePreviewView.swift` に `HorizontalScrollRoomProviding` の適合を加え、`scrollLayout.horizontalRoom(viewportWidth: bounds.width)` を返す
-  （画像を表示していないとき・横にはみ出さないときは `none`。R5）
+  （画像を表示していないとき・横にはみ出さないときは `none`。R5）。動画のビューは適合させず、余地は `none` のままにする（EC-246）
 - [ ] T018 [US2] `SwipeNavigationController.swift` に、ポインタの位置で `hitTest` したビューから 3 ペインのルートまで上へたどり、最初に見つかった `HorizontalScrollRoomProviding` または
   `NSScrollView` の余地を求める関数を加え、`began` のイベントで `SwipeGestureTracker` に渡して T016 を通す（FR-351・EC-243・A-208）。
   `HorizontalScrollRoomProviding` は `Sources/FolzioApp/App/SwipeNavigationController.swift` に置く
@@ -103,7 +105,8 @@
   実行しないことを確かめる（FR-112・EC-240・US7-AS21）。検索結果の表示中の「戻る」が `historyNavigator.canGoBack` で使え、「進む」が使えないこと（FR-113・US7-AS22）を
   コードで確かめ、`goBack(_:)` の既存の経路を通ることをコメントに書く
 - [ ] T020 [US3] `SwipeNavigationController.swift` の対象の判定で、`window.attachedSheet`・`NSApp.modalWindow`・イベントのウインドウ・ペインの境界線とツールバーの除外
-  （ポインタの下のビューが 3 ペインのビューの中にないとき）を確かめる（EC-244・EC-245）
+  （ポインタの下のビューが 3 ペインのビューの中にないとき）を確かめる（EC-244・EC-245）。ドラッグ＆ドロップの途中（`NSEvent.pressedMouseButtons` が 0 でないとき）は
+  扱わない（EC-244）
 
 ## Phase 7: Polish
 
