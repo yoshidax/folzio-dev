@@ -24,6 +24,8 @@
   AppKit を import しない。コメントは英語で、要件の ID（FR-350〜FR-352）を書く（R1）
 - [ ] T006 [P] `Sources/FolzioLocalization/TextKey.swift` に `toolbarStopSlideshowHelp = "toolbar.stopSlideshowHelp"` を加える。
   引数なし（`arguments` は既定の空）。翻訳者向けの説明を加える（「実行中のスライドショーのボタンのツールチップとアクセシビリティの説明。Esc は固定のキー」）。
+  あわせて、同じファイルの翻訳者向けの説明で、`toolbarSlideshowLabel` をグループ名の case から別の case に分け、
+  「ツールバーのスライドショーの項目名。ボタンのアクセシビリティラベルを兼ね、VoiceOver が状態によらず読む」と書く（A-211。コードレビューの指摘）。
   `Sources/FolzioLocalization/Resources/ja.lproj/Localizable.strings` に「スライドショーを停止（Esc）」、
   `Sources/FolzioLocalization/Resources/en.lproj/Localizable.strings` に `Stop Slideshow (Esc)` を加える（FR-353、R6、contracts）
 - [ ] T007 `Tests/FolzioCoreTests/Localization/ShortcutSettingsTextTests.swift` に、T006 のキーが両言語で訳され、`%` を含まず、引数がないことのテストを加える
@@ -59,7 +61,8 @@
 
 ## Phase 4: Polish & Cross-Cutting Concerns
 
-- [ ] T014 `scripts/dev/check-all.sh` を実行して成功させる（Cloud の検査。docs_private/cloud-agent-workflow.md の 5 章）
+- [ ] T014 `scripts/dev/check-all.sh` を実行して成功させる（Cloud の検査。docs_private/cloud-agent-workflow.md の 5 章）。
+  T017・T018 の後にも、それぞれもう一度実行する（仕様の ID の検査と公開用の書き出しの検査を含むため。コードレビューの指摘）
 - [ ] T015 作業ブランチに push し、CI（`macos-swift-ci.yml`。PR がなければ `workflow_dispatch`）で `swift build` と `swift test` の成功を確かめる。性能テストはログの末尾で件数を確かめる
 - [ ] T016 [MANUAL] 保守者に quickstart.md の GUI 確認（1〜10）を依頼し、結果を `checklists/validation.md` に記録する。確認されるまでこのタスクは未チェックのまま残す
 - [ ] T017 ユーザーガイドと開発の手順書を更新する。日本語と英語を同じコミットで同じ内容にする（コードレビューの指摘。TAK-74 の T021 と同じ扱い）。
@@ -69,10 +72,11 @@
     ツールバーのボタンが終了にも使えることを書く
   - `docs/development.ja.md`・`docs/development.md` の手動の確認「スライドショー」（117 行付近）に、ツールバーのボタンで開始と終了ができ、ボタンのオン・オフが実行状態と一致することを加える
   - 公開用リポジトリへ書き出される文書なので、`specs/`・`docs_private/` へリンクしない（AGENTS.md の「書くときの規則」）
+  - 更新の後に `scripts/dev/check-all.sh` を実行して成功させてからコミットする
 - [ ] T018 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり（FR-114・FR-134 の変更を含む）`specs/product/preview.md`・`window-layout.md`・
   `contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映する（`specs/product/README.md` の「書き方のルール」に従う。
   1行が160桁を超える文は分け、feature の中だけの参照（research.md の節など）は製品仕様に残さない。GUI の確認で未確認の項目（R9）が決まっていれば、その結果で直してから移す）。
-  反映の後に `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行し、反映した項目と差分を保守者に示して承認を得てからコミットする
+  反映の後に `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-all.sh`（`check-spec-ids.sh` を含む）を実行し、反映した項目と差分を保守者に示して承認を得てからコミットする
 - [ ] T019 反映が終わったら、spec.md の冒頭に移行済み・凍結の注記を入れる（`specs/product/README.md` の「feature の spec.md の書き方」）
 
 ## Dependencies & Execution Order
