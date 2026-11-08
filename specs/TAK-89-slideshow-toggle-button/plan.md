@@ -81,8 +81,8 @@ Sources/FolzioLocalization/
 └── Resources/{ja,en}.lproj/Localizable.strings
 
 docs/
-├── usage.md・usage.ja.md              # スライドショーの節とショートカットの表に、ボタンでの終了を加える（T017）
-└── development.md・development.ja.md  # 手動の確認にボタンでの開始と終了を加える（T017）
+├── usage.md・usage.ja.md              # スライドショーの節とショートカットの表に、ボタンでの終了を加える（T018）
+└── development.md・development.ja.md  # 手動の確認にボタンでの開始と終了を加える（T018）
 
 Tests/FolzioCoreTests/
 ├── SlideshowToggleStateTests.swift     # 追加。真理値表（R1）
