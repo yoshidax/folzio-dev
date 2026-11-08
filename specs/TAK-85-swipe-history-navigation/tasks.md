@@ -56,7 +56,7 @@
 
 ## Phase 3: 先に行う確認（実機での追跡と向き）
 
-- [ ] T009 `Sources/FolzioApp/App/SwipeNavigationController.swift` を作り、確認用の最小の版を実装する（矢印なし、余地は常に `none`）。
+- [x] T009 `Sources/FolzioApp/App/SwipeNavigationController.swift` を作り、確認用の最小の版を実装する（矢印なし、余地は常に `none`）。
   - `NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .swipe])` を 1 つ置き、`MainSplitViewController.viewDidLoad()` から作る。
     既存の `installVideoSeekKeyMonitor()`（`MainSplitViewController.swift:839`）と同じく `MainActor.assumeIsolated` で処理する。モニタは、既存のモニタと同じく `MainSplitViewController` が生きている間は外さない（実装時に変更。既存の `videoSeekKeyMonitor` も外していない）。`MainActor.assumeIsolated` の戻り値は Sendable でなければならないため、`NSEvent` ではなく「捨てるかどうか」の Bool を返す
   - 1 回のスクロールの `began`（と 3 本指の `.swipe`）のときだけ、メインウインドウのイベント・メインウインドウがキーウインドウ（`window.isKeyWindow`）・シートとモーダルがない・ポインタの下のビューが 3 ペインのビュー
@@ -75,7 +75,7 @@
   - 使えるかどうかは `paneCommands.canNavigateHistory && historyNavigator.canGoBack`（`canGoForward`）で求める（R7）
   - `NSEvent.isSwipeTrackingFromScrollEventsEnabled` をイベントごとに読み、`SwipeAvailability.isSwipeTrackingEnabled` に渡す（FR-350。再起動なしで設定の変更が反映される）
   - 確認用に、向き・`gestureAmount`・`phase`・`deltaX` を `NSLog` で出す（T012 で消す）
-- [ ] T010 push し、CI で build とテストを確かめる
+- [x] T010 push し、CI で build とテストを確かめる（2026-11-08、`c9df989` の実行 42503474387 で build と通常のテスト 1110 件が成功。性能テストは 1 回目に 7 件、再実行で 3 件が基準を超えた。`7d7229c` から Core と性能テストに差分はなく（性能テストは FolzioCore と FixtureKit だけに依存）、通常のテストの所要時間も 128 秒から 170〜199 秒に延びていたため、共有ランナーの測定のぶれと判断した）
 - [ ] T011 [MANUAL] 保守者に、quickstart.md の「先に行う確認」（Q1〜Q3）を T009 の版で実行してもらい、結果を `checklists/validation.md` に記録する。
   Q1 が動かなければ research.md R3 の代わり（`NSWindow` のサブクラスの `sendEvent(_:)`）に切り替える方針を保守者に確かめる。
   Q2・Q3 の向きが逆なら、T006 の対応と T004 のテストを直す。結果に合わせて research・data-model を直してから T012 に進む
