@@ -59,7 +59,7 @@
 - [ ] T009 `Sources/FolzioApp/App/SwipeNavigationController.swift` を作り、確認用の最小の版を実装する（矢印なし、余地は常に `none`）。
   - `NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .swipe])` を 1 つ置き、`MainSplitViewController.viewDidLoad()` から作る。
     既存の `installVideoSeekKeyMonitor()`（`MainSplitViewController.swift:839`）と同じく `MainActor.assumeIsolated` で処理し、ビューが消えたらモニタを外す
-  - 1 回のスクロールの `began`（と 3 本指の `.swipe`）のときだけ、メインウインドウのイベント・シートとモーダルがない・ポインタの下のビューが 3 ペインのビュー
+  - 1 回のスクロールの `began`（と 3 本指の `.swipe`）のときだけ、メインウインドウのイベント・メインウインドウがキーウインドウ（`window.isKeyWindow`）・シートとモーダルがない・ポインタの下のビューが 3 ペインのビュー
     （`treeViewController.view`・`fileListViewController.view`・`previewViewController.view`）の中、を判定する（EC-244・EC-245）。
     対象の中なら、そのペイン（既存の `Pane`）と余地を `SwipeTarget` として渡し、対象の外なら `nil` を渡す。`began` 以外のイベントは判定せずに `SwipeGestureTracker` に渡す（data-model.md の規則）。`treeViewController`・`previewViewController` は `private` のため、
     3 つのビューと、使えるかどうか・`goBack`・`goForward` は、`MainSplitViewController` から init の引数（ビューの配列とクロージャ）で渡す
@@ -70,7 +70,8 @@
   - `trackSwipeEvent` の handler は MainActor と宣言されていないクロージャのため、中の処理（`goBack(_:)`・`goForward(_:)`・`finishSwipe()`・矢印の更新）は、
     モニタと同じく `MainActor.assumeIsolated` で包む（Swift 6 の並行性の検査）
   - `swiping` の間の同じジェスチャの `ended` / `cancelled` はビューへ渡す（data-model.md）。確認用に、それがモニタに届いたかを `NSLog` で出す（Q4）
-  - `.swipe` は `deltaX` の対応で `goBack(_:)` / `goForward(_:)` を呼ぶ（R2）
+  - `.swipe` は `deltaX` の対応で `goBack(_:)` / `goForward(_:)` を呼ぶ（R2）。その向きが使えて実行したときだけモニタで `nil` を返してイベントを捨て、
+    対象の外・使えない向き・`deltaX` が 0 のときはそのまま渡す
   - 使えるかどうかは `paneCommands.canNavigateHistory && historyNavigator.canGoBack`（`canGoForward`）で求める（R7）
   - `NSEvent.isSwipeTrackingFromScrollEventsEnabled` をイベントごとに読み、`SwipeAvailability.isSwipeTrackingEnabled` に渡す（FR-350。再起動なしで設定の変更が反映される）
   - 確認用に、向き・`gestureAmount`・`phase`・`deltaX` を `NSLog` で出す（T012 で消す）
@@ -128,7 +129,8 @@ T015 は欠番（設定の読み取りは、確認用の版でも要るため T0
 - [ ] T019 [US3] `SwipeNavigationController.swift` で、追跡を始めるときの `SwipeAvailability` が min / max に正しく渡り（使えない向きは 0）、使えない向きには矢印が出ないこと、
   `.ended` では `goBack(_:)` / `goForward(_:)` の guard だけで再判定していること（Core に同じ条件を重ねない）を確かめる（FR-112・EC-240・US7-AS21。data-model.md）。検索結果の表示中の「戻る」が `historyNavigator.canGoBack` で使え、「進む」が使えないこと（FR-113・US7-AS22）を
   コードで確かめ、`goBack(_:)` の既存の経路を通ることをコメントに書く
-- [ ] T020 [US3] `SwipeNavigationController.swift` の対象の判定で、`window.attachedSheet`・`NSApp.modalWindow`・イベントのウインドウ・ペインの境界線とツールバーの除外
+- [ ] T020 [US3] `SwipeNavigationController.swift` の対象の判定で、`window.isKeyWindow`（設定・ショートカット一覧・Quick Look などが前面のときは false）・
+  `window.attachedSheet`・`NSApp.modalWindow`・イベントのウインドウ・ペインの境界線とツールバーの除外
   （ポインタの下のビューが 3 ペインのビューの中にないとき）を確かめる（EC-244・EC-245）。ドラッグ＆ドロップの途中は扱わない（EC-244）。
   ドラッグの途中は、`NSEvent.pressedMouseButtons` が 0 でないとき、または Folzio のビュー（ツリー・リスト形式・サムネイル形式）から始めたドラッグのセッションの途中
   （`Sources/FolzioApp/Shared/InternalDrag.swift` に、セッションの開始と終了で切り替える印を加える）とする（R7）
