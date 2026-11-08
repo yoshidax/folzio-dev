@@ -31,7 +31,9 @@
   - 上下が主（|deltaY| >= |deltaX|）の最初の動きでは、その 1 回は `passThrough`（EC-239）。左右・上下とも 0 のイベントでは向きを決めない
   - `isMomentum` のイベント、`phase` が `none` のイベント、`began` を受け取っていないイベントは `passThrough`
   - `isSwipeTrackingEnabled` が false、または `canGoBack`・`canGoForward` がどちらも false のときは `passThrough`（FR-350・US7-AS21）
-  - `finishSwipe()` の後は `afterSwipe` になり、同じジェスチャの慣性のイベントは `consume`。次の `began` から判定する
+  - `finishSwipe()` の後は `afterSwipe` になり、同じジェスチャの慣性のイベントは `consume`。慣性でない `phase` なしのイベント（マウスホイール）は `passThrough` で `idle` に戻る。
+    次の `began` から判定する
+  - `began` で `room` が `nil`（対象の外）なら、その 1 回は終わりまで `passThrough`。`began` 以外のイベントでは `room` を使わない
   - `swiping` のまま（`finishSwipe()` の前）に次の `began` を受け取ったら、判定し直す（EC-241。前の追跡が終わらなくても状態が残らない）
   - `SwipeArrowState(gestureAmount:)`: `progress` は `abs(gestureAmount)` を 0〜1 に収める。正は `back`（左端）、負は `forward`（右端）。0 では `isVisible` が false
 - [ ] T005 [P] `Tests/FolzioCoreTests/PreviewScrollLayoutTests.swift` に、`horizontalRoom(viewportWidth:)` のテストを加える（先に失敗させる）。
@@ -48,8 +50,9 @@
 - [ ] T009 `Sources/FolzioApp/App/SwipeNavigationController.swift` を作り、確認用の最小の版を実装する（矢印なし、余地は常に `none`）。
   - `NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .swipe])` を 1 つ置き、`MainSplitViewController.viewDidLoad()` から作る。
     既存の `installVideoSeekKeyMonitor()`（`MainSplitViewController.swift:839`）と同じく `MainActor.assumeIsolated` で処理し、ビューが消えたらモニタを外す
-  - メインウインドウのイベント・シートとモーダルがない・ポインタの下のビューが 3 ペインのビュー（`treeViewController.view`・`fileListViewController.view`・
-    `previewViewController.view`）の中、のときだけ扱う（EC-244・EC-245）。`treeViewController`・`previewViewController` は `private` のため、
+  - 1 回のスクロールの `began`（と 3 本指の `.swipe`）のときだけ、メインウインドウのイベント・シートとモーダルがない・ポインタの下のビューが 3 ペインのビュー
+    （`treeViewController.view`・`fileListViewController.view`・`previewViewController.view`）の中、を判定する（EC-244・EC-245）。
+    対象の外なら `room` に `nil` を渡す。`began` 以外のイベントは判定せずに `SwipeGestureTracker` に渡す（data-model.md の規則）。`treeViewController`・`previewViewController` は `private` のため、
     3 つのビューと、使えるかどうか・`goBack`・`goForward` は、`MainSplitViewController` から init の引数（ビューの配列とクロージャ）で渡す
   - `.scrollWheel` は `SwipeGestureTracker` に渡し、`startSwipe` で `trackSwipeEvent(options: [.lockDirection, .clampGestureAmount], dampenAmountThresholdMin:max:)`
     を呼ぶ。min は `canGoForward ? -1 : 0`、max は `canGoBack ? 1 : 0`（R1・R7）。`.ended` で、最後の `gestureAmount` の符号の向きの `goBack(_:)` / `goForward(_:)`
@@ -57,6 +60,7 @@
   - 追跡ごとに通し番号を振り、次の `began` で判定し直した後に届いた前の追跡の handler の呼び出しは無視する（data-model.md の規則）
   - `.swipe` は `deltaX` の対応で `goBack(_:)` / `goForward(_:)` を呼ぶ（R2）
   - 使えるかどうかは `paneCommands.canNavigateHistory && historyNavigator.canGoBack`（`canGoForward`）で求める（R7）
+  - `NSEvent.isSwipeTrackingFromScrollEventsEnabled` をイベントごとに読み、`SwipeAvailability.isSwipeTrackingEnabled` に渡す（FR-350。再起動なしで設定の変更が反映される）
   - 確認用に、向き・`gestureAmount`・`phase`・`deltaX` を `NSLog` で出す（T012 で消す）
 - [ ] T010 push し、CI で build とテストを確かめる
 - [ ] T011 [MANUAL] 保守者に、quickstart.md の「先に行う確認」（Q1〜Q3）を T009 の版で実行してもらい、結果を `checklists/validation.md` に記録する。
@@ -80,9 +84,9 @@
   - 3 本指のスワイプでは、`progress` 1 で短い時間（0.3 秒程度）だけ表示する（EC-242）
   - 子ウインドウは `NSSplitView` とペインのビューに部品を加えない（AppKit UI の不変条件）
 - [ ] T014 [US1] `SwipeNavigationController.swift` の `trackSwipeEvent` の handler から `SwipeArrowOverlay` を更新し、`.ended` / `.cancelled` と `isComplete` で消す（FR-352・US7-AS16）。
-  3 本指のスワイプで短く表示する
-- [ ] T015 [US1] `SwipeNavigationController.swift` で、`NSEvent.isSwipeTrackingFromScrollEventsEnabled` をイベントごとに読み、`SwipeAvailability.isSwipeTrackingEnabled` に渡す（FR-350。
-  再起動なしで設定の変更が反映される）
+  新しい `began` で判定し直すときも、矢印を消す（前の追跡の終わりが届かなくても残さない）。
+  3 本指のスワイプでは、その向きが使える（`canGoBack` / `canGoForward`）ときだけ、短く表示してから `goBack(_:)` / `goForward(_:)` を呼ぶ（FR-352・US7-AS21）
+T015 は欠番（設定の読み取りは、確認用の版でも要るため T009 に含めた）。
 
 ## Phase 5: User Story 2 - 横スクロールとぶつからない (P1)
 
@@ -109,8 +113,8 @@
 
 **Independent Test**: quickstart.md の「使えないとき」
 
-- [ ] T019 [US3] `SwipeNavigationController.swift` で、追跡を始める前と `.ended` の時点の両方で `SwipeAvailability` を求め直し、使えない向きでは追跡を始めない・矢印を出さない・
-  実行しないことを確かめる（FR-112・EC-240・US7-AS21）。検索結果の表示中の「戻る」が `historyNavigator.canGoBack` で使え、「進む」が使えないこと（FR-113・US7-AS22）を
+- [ ] T019 [US3] `SwipeNavigationController.swift` で、追跡を始めるときの `SwipeAvailability` が min / max に正しく渡り（使えない向きは 0）、使えない向きには矢印が出ないこと、
+  `.ended` では `goBack(_:)` / `goForward(_:)` の guard だけで再判定していること（Core に同じ条件を重ねない）を確かめる（FR-112・EC-240・US7-AS21。data-model.md）。検索結果の表示中の「戻る」が `historyNavigator.canGoBack` で使え、「進む」が使えないこと（FR-113・US7-AS22）を
   コードで確かめ、`goBack(_:)` の既存の経路を通ることをコメントに書く
 - [ ] T020 [US3] `SwipeNavigationController.swift` の対象の判定で、`window.attachedSheet`・`NSApp.modalWindow`・イベントのウインドウ・ペインの境界線とツールバーの除外
   （ポインタの下のビューが 3 ペインのビューの中にないとき）を確かめる（EC-244・EC-245）。ドラッグ＆ドロップの途中は扱わない（EC-244）。
@@ -124,7 +128,7 @@
 - [ ] T022 新しいソースのコメントを英語で書いたこと（公開用リポジトリへ書き出すコード。`docs_private/comment-translation-glossary.md`）と、`specs/`・`docs_private/` へのリンクがないことを確かめる
 - [ ] T023 `scripts/dev/check-all.sh` を実行し、通ることを確かめる
 - [ ] T024 push し、CI で build・通常のテスト・性能テスト（ログの末尾で `passed` / `failed` を確かめる）を確かめる
-- [ ] T025 [MANUAL] 保守者に、起動スモークと quickstart.md の「手動の確認」をすべて実行してもらう。確認されるまで GUI のタスク（T013〜T015・T017〜T020）の完了を報告しない
+- [ ] T025 [MANUAL] 保守者に、起動スモークと quickstart.md の「手動の確認」をすべて実行してもらう。確認されるまで GUI のタスク（T013・T014・T017〜T020）の完了を報告しない
 - [ ] T026 保守者が PR を依頼したら、`.github/pull_request_template.md` の見出しで PR を作り、Linear の TAK-85 に PR のリンクを加えて `In Review` にする（docs_private/agents/linear.md）
 - [ ] T027 PR の最後に、`git merge origin/master` で最新の `master` を取り込み、`scripts/dev/check-spec-ids.sh` で ID の衝突を確かめる（衝突したら `docs_private/spec-id-conflicts.md`）。
   spec.md の「反映先」の表のとおり `specs/product/navigation-history.md` と `specs/product/contracts/keyboard-and-menus.md` に反映し、

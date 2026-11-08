@@ -76,9 +76,11 @@ App が `NSEvent` から作る、1 つのスクロールのイベントの値。
 | `pending(room)` | 始まりの余地を記録し、決める前 | 左右が主の動きで `swiping` または `scrolling`。上下が主の動きで `scrolling`。`began` のイベント自体に動きがあれば、そのイベントで決める |
 | `scrolling` | この 1 回は普通のスクロール | 次の `began` で `pending` |
 | `swiping` | AppKit の追跡に渡した | App が `finishSwipe()` を呼ぶと `afterSwipe`。次の `began` が来たら、`finishSwipe()` の前でも `pending` |
-| `afterSwipe` | 追跡は終わったが、同じジェスチャの慣性が残る | 次の `began` で `pending` |
+| `afterSwipe` | 追跡は終わったが、同じジェスチャの慣性が残る | 次の `began` で `pending`。慣性でないイベント（`phase` が `none` で `isMomentum` が false のマウスホイールなど）で `idle` |
 
-`handle(_ sample: ScrollSample, availability: SwipeAvailability, room: HorizontalScrollRoom) -> SwipeDecision` の結果:
+`handle(_ sample: ScrollSample, availability: SwipeAvailability, room: HorizontalScrollRoom?) -> SwipeDecision` の結果。
+`room` は、`began` のときだけ App が渡す。`began` が対象の外（3 ペインの外・シート・モーダル・ドラッグの途中。EC-244・EC-245）なら `nil` を渡し、
+その 1 回は `scrolling`（終わりまで `passThrough`）にする。`began` 以外のイベントでは、App は対象の判定をせずに渡す（値は使わない）。
 
 | 結果 | App の動作 |
 |---|---|
@@ -91,13 +93,18 @@ App が `NSEvent` から作る、1 つのスクロールのイベントの値。
 - どの状態でも、`began` を受け取ったら `pending(room)` から判定し直す。
   - 前のスワイプの追跡が終わっていない（`finishSwipe()` の前）、または終わらなかった場合でも、状態が残らないようにするため（EC-241）。
   - App は、前の追跡の handler の後からの呼び出しを、通し番号で無視する。
+  - App は、判定し直すときに矢印を隠す（前の追跡の終わりが届かなくても、矢印を残さない）。
+- 1 回のスクロールの途中でポインタがペインの外（境界線・ツールバー）へ動いても、そのスクロールのイベントは終わりまで判定を続ける（対象かどうかは `began` のときだけ決める）。
 - `pending` から `swiping` にするのは、次をすべて満たすときだけ。
   - `isSwipeTrackingEnabled` が true。
   - `isMomentum` が false で、|deltaX| > |deltaY|（EC-239）。
   - `canGoBack` または `canGoForward` が true（US7-AS21）。
+    - 戻る・進むの向きは追跡が始まるまで分からないため（「向きの扱い」）、片方だけが使えるときも追跡する。使えない向きは量が 0 のままで、何も起きない。
+    - このとき、その 1 回の上下の動きもビューに渡さない（EC-239 の「左右が主の動きはスワイプとして扱う」の結果。spec の EC-239 に明記）。
   - `room.allows(reveal)` が false（FR-351。`reveal` は `deltaX` の符号、`room` は `began` のときに記録したもの）。
 - それ以外の左右・上下の動きは `scrolling` にし、その 1 回の終わりまで `passThrough`（US7-AS18・US7-AS19）。
-- `swiping` と `afterSwipe` の間のイベントは、慣性を含めて `consume`（移った先の一覧を残りの慣性で動かさない）。
+- `swiping` の間のイベントは `consume`。`afterSwipe` の間は、慣性のイベント（`isMomentum` が true）だけを `consume` する（移った先の一覧を残りの慣性で動かさない）。
+  慣性でないイベントを受け取ったら `idle` に戻し、そのイベントは `passThrough`（マウスホイールのスクロールを止めない）。
 - `phase` が `ignored` のイベントは、状態を変えずに `passThrough`。
 - `idle` で `phase` が `none` のイベント・`began` を受け取っていないイベントは、`passThrough`。
 
