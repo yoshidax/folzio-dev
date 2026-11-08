@@ -37,7 +37,10 @@
   - `pending` のまま動きなしで `ended` / `cancelled` を受け取ると `idle`。`pending` で `phase` が `none` のイベント（左右が主でも）は `passThrough` で、`startSwipe` にしない
   - `scrolling` の後に `phase` なしのマウスホイールのイベントが来ても `passThrough`
   - `swiping` の間の、慣性でない `ended` / `cancelled` は `passThrough`。それ以外は `consume`
-  - 慣性のイベントの `timestamp` から 0.1 秒以内の `began` は、余地がなくても `scrolling`（`startSwipe` にしない）。0.1 秒を超えた `began` は通常どおり判定する
+  - `scrolling` でビューへ渡した慣性のイベントの `timestamp` から 0.1 秒以内に、同じペインで受け取った `began` は、余地がなくても `scrolling`（`startSwipe` にしない）。
+    0.1 秒を超えた `began` は通常どおり判定する
+  - `swiping`・`afterSwipe` で `consume` した慣性の直後（0.1 秒以内）の `began` は、通常どおり判定して `startSwipe` になる（EC-241。連続したスワイプを妨げない）
+  - 別のペインの慣性の直後（0.1 秒以内）の `began` は、通常どおり判定する
   - `swiping` のまま（`finishSwipe()` の前）に次の `began` を受け取ったら、判定し直す（EC-241。前の追跡が終わらなくても状態が残らない）
   - `SwipeArrowState(gestureAmount:)`: `progress` は `abs(gestureAmount)` を 0〜1 に収める。正は `back`（左端）、負は `forward`（右端）。0 では `isVisible` が false
 - [ ] T005 [P] `Tests/FolzioCoreTests/PreviewScrollLayoutTests.swift` に、`horizontalRoom(viewportWidth:)` のテストを加える（先に失敗させる）。
@@ -56,7 +59,7 @@
     既存の `installVideoSeekKeyMonitor()`（`MainSplitViewController.swift:839`）と同じく `MainActor.assumeIsolated` で処理し、ビューが消えたらモニタを外す
   - 1 回のスクロールの `began`（と 3 本指の `.swipe`）のときだけ、メインウインドウのイベント・シートとモーダルがない・ポインタの下のビューが 3 ペインのビュー
     （`treeViewController.view`・`fileListViewController.view`・`previewViewController.view`）の中、を判定する（EC-244・EC-245）。
-    対象の外なら `room` に `nil` を渡す。`began` 以外のイベントは判定せずに `SwipeGestureTracker` に渡す（data-model.md の規則）。`treeViewController`・`previewViewController` は `private` のため、
+    対象の中なら、そのペイン（既存の `Pane`）と余地を `SwipeTarget` として渡し、対象の外なら `nil` を渡す。`began` 以外のイベントは判定せずに `SwipeGestureTracker` に渡す（data-model.md の規則）。`treeViewController`・`previewViewController` は `private` のため、
     3 つのビューと、使えるかどうか・`goBack`・`goForward` は、`MainSplitViewController` から init の引数（ビューの配列とクロージャ）で渡す
   - `.scrollWheel` は `SwipeGestureTracker` に渡し、`startSwipe` で `trackSwipeEvent(options: [.lockDirection, .clampGestureAmount], dampenAmountThresholdMin:max:)`
     を呼ぶ。min は `canGoForward ? -1 : 0`、max は `canGoBack ? 1 : 0`（R1・R7）。`.ended` で、最後の `gestureAmount` の符号の向きの `goBack(_:)` / `goForward(_:)`
@@ -111,7 +114,7 @@ T015 は欠番（設定の読み取りは、確認用の版でも要るため T0
 - [ ] T018 [US2] `SwipeNavigationController.swift` に、ポインタの位置で `hitTest` したビューから 3 ペインのルートまで上へたどり、
   （`hitTest(_:)` は superview の座標を取る。`PreviewViewController.swift:580-583` と同じく、`event.locationInWindow` を各ペインのルートの superview の座標に
   変換してから呼ぶ）最初に見つかった `HorizontalScrollRoomProviding` または
-  `NSScrollView` の余地を求める関数を加え、`began` のイベントで `SwipeGestureTracker` に渡して T016 を通す（FR-351・EC-243・A-208）。
+  `NSScrollView` の余地を求める関数を加え、`began` のイベントで `SwipeTarget` の余地として `SwipeGestureTracker` に渡して T016 を通す（FR-351・EC-243・A-208）。
   `HorizontalScrollRoomProviding` は `Sources/FolzioApp/App/SwipeNavigationController.swift` に置く
 
 ## Phase 6: User Story 3 - 使えないときは何も起きない (P2)

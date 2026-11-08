@@ -79,8 +79,9 @@ App が `NSEvent` から作る、1 つのスクロールのイベントの値。
 | `swiping` | AppKit の追跡に渡した | App が `finishSwipe()` を呼ぶと `afterSwipe`。次の `began` が来たら、`finishSwipe()` の前でも `pending` |
 | `afterSwipe` | 追跡は終わったが、同じジェスチャの慣性が残る | 次の `began` で `pending`。慣性でないイベント（`phase` が `none` で `isMomentum` が false のマウスホイールなど）で `idle` |
 
-`handle(_ sample: ScrollSample, availability: SwipeAvailability, room: HorizontalScrollRoom?) -> SwipeDecision` の結果。
-`room` は、`began` のときだけ App が渡す。`began` が対象の外（3 ペインの外・シート・モーダル・ドラッグの途中。EC-244・EC-245）なら `nil` を渡し、
+`handle(_ sample: ScrollSample, availability: SwipeAvailability, target: SwipeTarget?) -> SwipeDecision` の結果。
+`SwipeTarget` は、`began` のときのポインタの下のペイン（既存の `Pane`。`Sources/FolzioCore/Model/PaneLayout.swift:3`）と、そのペインの `HorizontalScrollRoom` の組。
+`target` は、`began` のときだけ App が渡す。`began` が対象の外（3 ペインの外・シート・モーダル・ドラッグの途中。EC-244・EC-245）なら `nil` を渡し、
 その 1 回は `scrolling`（終わりまで `passThrough`）にする。`began` 以外のイベントでは、App は対象の判定をせずに渡す（値は使わない）。
 
 | 結果 | App の動作 |
@@ -97,8 +98,11 @@ App が `NSEvent` から作る、1 つのスクロールのイベントの値。
   - App は、判定し直すときに矢印を隠す（前の追跡の終わりが届かなくても、矢印を残さない）。
 - 向きと `startSwipe` の判定に使うのは、`phase` が `began` / `changed` で `isMomentum` が false のイベントだけ。`pending` で `phase` が `none` のイベント
   （マウスホイール・横ホイール）は、状態を変えずに `passThrough`（ジェスチャでないイベントで `trackSwipeEvent` を呼ばない）。
-- 慣性の途中に始めたスクロール: 最後に受け取った慣性のイベントの `timestamp` から 0.1 秒以内に `began` を受け取ったら、そのスクロールは `pending` にせず `scrolling`
-  にする（spec の FR-351。慣性のイベントは画面の更新ごとに届くため、0.1 秒以内なら慣性で表示が動いている途中と見なす）。
+- 慣性の途中に始めたスクロール: `scrolling` の状態で `passThrough` にした（ビューへ渡した）慣性のイベントについて、そのスクロールのペインと最後の `timestamp`
+  を覚える。同じペインで、その `timestamp` から 0.1 秒以内に `began` を受け取ったら、そのスクロールは `pending` にせず `scrolling` にする
+  （spec の FR-351。慣性のイベントは画面の更新ごとに届くため、0.1 秒以内なら慣性で表示が動いている途中と見なす）。
+  - `swiping`・`afterSwipe` で `consume` した慣性（表示を動かしていない）は覚えない。スワイプの直後に続けて始めたスワイプを妨げないため（EC-241）。
+  - 別のペインで始めたスクロールには使わない（そのペインの表示は動いていない）。
   - この 0.1 秒は、スワイプの成立の判定（OS に任せる）ではなく、慣性が続いているかの判定に使う。
 - 1 回のスクロールの途中でポインタがペインの外（境界線・ツールバー）へ動いても、そのスクロールのイベントは終わりまで判定を続ける（対象かどうかは `began` のときだけ決める）。
 - `pending` から `swiping` にするのは、次をすべて満たすときだけ。
