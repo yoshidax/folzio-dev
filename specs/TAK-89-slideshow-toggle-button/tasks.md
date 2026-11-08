@@ -44,7 +44,8 @@
 - [ ] T010 [US77] `Sources/FolzioApp/App/MainToolbarController.swift` のボタンの生成（`slideshowIdentifier` の case）で、`button.setButtonType(.pushOnPushOff)` にし、
   ボタンとツールバー項目の target を `self`、action を新しい `@objc private func slideshowToggled(_:)` にする。`slideshowToggled` は `panes.toggleSlideshow(sender)` を呼んだ後、
   `updateSlideshowAvailability()` でボタンの `state` を実際の実行状態で上書きする（R2）
-- [ ] T011 [US77] 同じファイルに `applySlideshowState(to item: NSToolbarItem)` を加え、`panes.slideshowToggleState` から、ボタンの `isEnabled`・`state`（オンなら `.on`）、
+- [ ] T011 [US77] 同じファイルに `applySlideshowState(to item: NSToolbarItem)` を加え、`panes.slideshowToggleState` から、項目の `isEnabled` とボタンの `isEnabled`
+  （両方に設定する。文字だけの形式は項目を使うため。既存の `applyZoomAvailability(to:)` と同じ）、ボタンの `state`（オンなら `.on`）、
   アクセシビリティラベル（オフ `menuViewStartSlideshow` / オン `toolbarStopSlideshow`）、ツールチップとアクセシビリティの説明（オフ `ToolbarShortcutText.text(.toolbarStartSlideshowHelp)` /
   オン `l10n.text(.toolbarStopSlideshowHelp)`）、項目の `toolTip` を適用する。項目の `label`・`paletteLabel` は `toolbarSlideshowLabel` のまま（FR-350・FR-353）。
   `applyState(to:)`・`updateSlideshowAvailability()`・`validateToolbarItem(_:)`・文言の更新のループ（164 行付近）の slideshow の処理を、この関数を呼ぶ形にする（R4）

@@ -32,4 +32,4 @@
 | 表示の復帰中 | オフ | 無効 | スライドショーを開始 / スライドショーを開始（⇧⌘S） |
 
 - `isActive` と `isRestoring` は同時に真にならない（`SlideshowCoordinator.stop()` が `isActive = false` の後に `isRestoring = true` にする）。
-  同時に真の入力でも、`isOn` は偽、`isEnabled` は `canStart`（復帰中は偽）として扱う
+  同時に真の入力でも、`isOn` は偽、`isEnabled` は偽（停止中の式の `!isRestoring` による）として扱う
