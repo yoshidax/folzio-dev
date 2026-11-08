@@ -59,7 +59,8 @@ AppKit UI の不変条件（AGENTS.md）を守り、`NSSplitView` に部品を�
 
 ### Source Code (repository root)
 
-- `Sources/FolzioCore/History/SwipeNavigation.swift`（新規）: `ScrollReveal`、`HorizontalScrollRoom`、`ScrollSample`、`SwipeGestureTracker`、
+- `Sources/FolzioCore/History/SwipeNavigation.swift`（新規）: `ScrollReveal`、`HorizontalScrollRoom`、`ScrollSample`、`SwipeTarget`（既存の `Pane` と余地）、
+  `SwipeGestureTracker`、
   `gestureAmount`・3 本指の `deltaX` から既存の `HistoryDirection`（`HistoryEntry.swift:97`）への対応、矢印の表示の量（data-model.md）
 - `Sources/FolzioCore/Layout/PreviewScrollLayout.swift`: 表示中の画像の左右の余地を返す（R5）
 - `Sources/FolzioApp/App/SwipeNavigationController.swift`（新規）: ローカルモニタ、3 ペインの判定、余地の読み取り、`trackSwipeEvent` の呼び出し、

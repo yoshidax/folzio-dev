@@ -41,12 +41,14 @@
     0.1 秒を超えた `began` は通常どおり判定する
   - `swiping`・`afterSwipe` で `consume` した慣性の直後（0.1 秒以内）の `began` は、通常どおり判定して `startSwipe` になる（EC-241。連続したスワイプを妨げない）
   - 別のペインの慣性の直後（0.1 秒以内）の `began` は、通常どおり判定する
+  - 余地が `none` のペイン（縦だけの一覧）の慣性の直後（0.1 秒以内）の `began` は、通常どおり判定して `startSwipe` になる
+  - `target` が `nil`（対象の外）で始めたスクロールの慣性は覚えず、その直後の `began` は通常どおり判定する
   - `swiping` のまま（`finishSwipe()` の前）に次の `began` を受け取ったら、判定し直す（EC-241。前の追跡が終わらなくても状態が残らない）
   - `SwipeArrowState(gestureAmount:)`: `progress` は `abs(gestureAmount)` を 0〜1 に収める。正は `back`（左端）、負は `forward`（右端）。0 では `isVisible` が false
 - [ ] T005 [P] `Tests/FolzioCoreTests/PreviewScrollLayoutTests.swift` に、`horizontalRoom(viewportWidth:)` のテストを加える（先に失敗させる）。
   横にはみ出す画像で中央・左端・右端のとき、はみ出さない画像のとき、不正な寸法（`frame` が `.zero`）のとき
 - [ ] T006 `Sources/FolzioCore/History/SwipeNavigation.swift` を作り、data-model.md の `ScrollReveal`・`HorizontalScrollRoom`・`ScrollSample`・`SwipeAvailability`・
-  `SwipeGestureTracker`・`SwipeDecision`・`SwipeArrowState` と、向きの対応の関数を実装して T004 を通す。戻る・進むの向きは既存の `HistoryDirection`
+  `SwipeTarget`（既存の `Pane` と `HorizontalScrollRoom` の組）・`SwipeGestureTracker`（`handle(_:availability:target:)`）・`SwipeDecision`・`SwipeArrowState` と、向きの対応の関数を実装して T004 を通す。戻る・進むの向きは既存の `HistoryDirection`
   （`Sources/FolzioCore/History/HistoryEntry.swift:97`）を使い、同じ名前の型を新しく作らない。AppKit を import しない。型は `Sendable`・`Equatable` にする
 - [ ] T007 `Sources/FolzioCore/Layout/PreviewScrollLayout.swift` に `horizontalRoom(viewportWidth:) -> HorizontalScrollRoom`（`frame.minX < 0` で左、`frame.maxX > viewportWidth` で右。
   T006 の 0.5pt の規則を使う）を加えて T005 を通す
