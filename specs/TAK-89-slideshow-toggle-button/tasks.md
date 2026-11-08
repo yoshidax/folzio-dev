@@ -30,7 +30,7 @@
   `Sources/FolzioLocalization/Resources/en.lproj/Localizable.strings` に `Stop Slideshow (Esc)` を加える（FR-353、R6、contracts）
 - [x] T007 `Tests/FolzioCoreTests/Localization/ShortcutSettingsTextTests.swift` に、T006 のキーが両言語で訳され、`%` を含まず、引数がないことのテストを加える
   （既存の `plainTextsAreTranslated` と同じ方法。別の配列 `toolbarPlainKeys` にする）
-- [ ] T008 作業ブランチに push し、CI（`macos-swift-ci.yml`。PR がなければ `workflow_dispatch` で作業ブランチを指定）で `swift build` と `swift test` の成功を確かめる。
+- [x] T008 作業ブランチに push し、CI（`macos-swift-ci.yml`。PR がなければ `workflow_dispatch` で作業ブランチを指定）で `swift build` と `swift test` の成功を確かめる。
   Cloud には Swift がないため、Core の型（T005）と文言（T006）を App の変更の前に確かめ、失敗の原因を App の変更と切り分ける（Implementation Strategy）。
   失敗したらログを読んで直し、Phase 3 に進まない
 
