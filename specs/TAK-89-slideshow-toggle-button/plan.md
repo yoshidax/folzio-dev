@@ -80,6 +80,10 @@ Sources/FolzioLocalization/
 ├── TextKey.swift                       # toolbarStopSlideshowHelp を追加（R6）
 └── Resources/{ja,en}.lproj/Localizable.strings
 
+docs/
+├── usage.md・usage.ja.md              # スライドショーの節とショートカットの表に、ボタンでの終了を加える（T017）
+└── development.md・development.ja.md  # 手動の確認にボタンでの開始と終了を加える（T017）
+
 Tests/FolzioCoreTests/
 ├── SlideshowToggleStateTests.swift     # 追加。真理値表（R1）
 └── Localization/ShortcutSettingsTextTests.swift などの翻訳の検査に新しいキーを加える（R6）

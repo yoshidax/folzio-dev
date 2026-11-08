@@ -62,18 +62,25 @@
 - [ ] T014 `scripts/dev/check-all.sh` を実行して成功させる（Cloud の検査。docs_private/cloud-agent-workflow.md の 5 章）
 - [ ] T015 作業ブランチに push し、CI（`macos-swift-ci.yml`。PR がなければ `workflow_dispatch`）で `swift build` と `swift test` の成功を確かめる。性能テストはログの末尾で件数を確かめる
 - [ ] T016 [MANUAL] 保守者に quickstart.md の GUI 確認（1〜10）を依頼し、結果を `checklists/validation.md` に記録する。確認されるまでこのタスクは未チェックのまま残す
-- [ ] T017 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり（FR-114・FR-134 の変更を含む）`specs/product/preview.md`・`window-layout.md`・
+- [ ] T017 ユーザーガイドと開発の手順書を更新する。日本語と英語を同じコミットで同じ内容にする（コードレビューの指摘。TAK-74 の T021 と同じ扱い）。
+  - `docs/usage.ja.md`・`docs/usage.md` の「スライドショー」の「開始と操作」（182 行付近）: ツールバーの再生ボタンは、実行中はオンになり、もう一度押すと終了することを加える。
+    「スライドショー中は」の項目の Esc の終了に、ツールバーのボタンでも終了できることを加える
+  - 同じ 2 つのファイルのショートカットの表「スライドショーと動画」（`docs/usage.ja.md` の 433 行付近）の「スライドショーを開始／終了」の行に、
+    ツールバーのボタンが終了にも使えることを書く
+  - `docs/development.ja.md`・`docs/development.md` の手動の確認「スライドショー」（117 行付近）に、ツールバーのボタンで開始と終了ができ、ボタンのオン・オフが実行状態と一致することを加える
+  - 公開用リポジトリへ書き出される文書なので、`specs/`・`docs_private/` へリンクしない（AGENTS.md の「書くときの規則」）
+- [ ] T018 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり（FR-114・FR-134 の変更を含む）`specs/product/preview.md`・`window-layout.md`・
   `contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映する（`specs/product/README.md` の「書き方のルール」に従う。
   1行が160桁を超える文は分け、feature の中だけの参照（research.md の節など）は製品仕様に残さない。GUI の確認で未確認の項目（R9）が決まっていれば、その結果で直してから移す）。
   反映の後に `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行し、反映した項目と差分を保守者に示して承認を得てからコミットする
-- [ ] T018 反映が終わったら、spec.md の冒頭に移行済み・凍結の注記を入れる（`specs/product/README.md` の「feature の spec.md の書き方」）
+- [ ] T019 反映が終わったら、spec.md の冒頭に移行済み・凍結の注記を入れる（`specs/product/README.md` の「feature の spec.md の書き方」）
 
 ## Dependencies & Execution Order
 
 - T003（設計の承認）→ Phase 2 → Phase 3 → Phase 4
 - Phase 2: T004 → T005。T006 → T007。T004 と T006 は別のファイルなので並行できる
 - Phase 3: T008 → T009 → T010 → T011 → T012。T013 は T011 の後（`updateSlideshowAvailability()` の変更を使う）
-- Phase 4: T014・T015 は Phase 3 の後。T016 は T015 の後。T017・T018 は PR の最後の作業（docs_private/cloud-agent-workflow.md の 7 章）
+- Phase 4: T014・T015 は Phase 3 の後。T016 は T015 の後。T017 は Phase 3 の後。T018・T019 は PR の最後の作業（docs_private/cloud-agent-workflow.md の 7 章）
 
 ## Parallel Example
 
