@@ -8,13 +8,18 @@
   `hasSheet`、`hasAppModal`、`isEditingText` の 6 つ。出力は `isOn`、`isEnabled`、`action`（`.start` か `.stop`）。
   - `isOn = isActive && !isRestoring`（FR-350。復帰中はオフ）
   - `action = isOn ? .stop : .start`
-  - 実行中の `isEnabled = !hasSheet && !hasAppModal && !isEditingText`（FR-352。キー入力先の条件は含めない）
-  - 停止中の `isEnabled = canStart`（復帰中は `SlideshowStartPolicy` が `false` を返す。`PaneLayout.swift:276`）
+  - 実行中の `isEnabled = !hasSheet && !hasAppModal && !isEditingText`（FR-352。キー入力先の条件は含めない）。
+    型の中で `SlideshowInputPolicy(isActive:isRestoring:isTargetWindowKey: true, hasSheet:hasAppModal:isEditingText:menuOwnsInput: false).acceptsKeys` として求める
+  - 停止中の `isEnabled = canStart && !isRestoring`。今も復帰中は `SlideshowStartPolicy` が `false` を返す（`PaneLayout.swift:276`）が、
+    型の中で「復帰中は無効」（FR-352・EC-239）を保証する（コードレビューの指摘）
 - **Rationale**: 憲章 原則 IV の「コアロジックは UI から分離し、単体でテスト可能に保つ」。今の `SlideshowInputPolicy`・`SlideshowStartPolicy`
   （`Sources/FolzioCore/Model/PaneLayout.swift`）と同じ形にし、真理値表でテストできる（`Tests/FolzioCoreTests/SlideshowInputPolicyTests.swift` と同じ方法）。
+  - 実行中の条件を `SlideshowInputPolicy` から求めるのは、A-209 が「Esc の受理の条件と揃える」と決めており、条件の出どころを1つにするため。
+    FR-123 の条件が後で変わったとき、ボタンの条件だけが古いまま残らない（コードレビューの指摘）
 - **Alternatives considered**:
-  - `SlideshowInputPolicy` を `isTargetWindowKey: true` で流用する: 「メニューがキーを処理中」（`menuOwnsInput`）などキー入力向けの条件を含み、
-    ボタンの条件の意図が読み取りにくい。採らない
+  - App 側で `SlideshowInputPolicy` を `isTargetWindowKey: true` で直接使う: ボタンの判断（オン・オフ、押したときの操作、停止中の条件）が App に散らばる。
+    `SlideshowToggleState` の中に閉じ込めて使う。キー入力向けの `menuOwnsInput` は、型の中で `false` に固定する
+  - `SlideshowToggleState` の中で 3 つの条件を書き直す: Esc の条件と二重になり、片方だけ変わる恐れがある。採らない
   - App 側で直接 `if` を書く: テストできない。採らない
 
 ## R2 ボタンを OS 標準のトグルにし、ツールバーのコントローラで受ける
@@ -84,6 +89,16 @@
 - **Rationale**: ビューを持つ項目のあふれたメニューの既定の表示が、状態をどう扱うかは確かめていない。明示した項目なら、メニューの検証の経路（`NSMenuItemValidation`）で状態を決められる。
   - 文字だけの形式は OS が項目名を描き、オン・オフの印を独自に描かない（A-210）。押したときの操作は `action` で同じになる
 - **未確認**: あふれたメニューと文字だけの形式での表示と動作は、保守者の GUI 確認で確かめる（quickstart.md の 6）
+
+## R9 キー入力先でないウインドウへの最初のクリック（未確認）
+
+- **Decision**: US77-AS7（設定ウインドウが前面のときにボタンで止める）は、1 回のクリックで止まるかを保守者の GUI 確認（quickstart.md の 6）で確かめ、
+  結果に応じて扱いを決める。確認の前に、`acceptsFirstMouse(for:)` を上書きするボタンの派生型は作らない（憲章 原則 V）。
+- **Rationale**: `NSView.acceptsFirstMouse(for:)` の既定は `false` で、キー入力先でないウインドウへの最初のクリックは、ウインドウを前面にするだけで
+  ビューへ届かないことがある。ツールバーのボタンがこれにどう従うかは、確かめていない（コードレビューの指摘）。
+  - 1 回で止まらなくても、最初のクリックでメインウインドウがキー入力先になるため、2 回目のクリックか Esc で止められる。FR-352 の「キー入力先でないことでは無効にしない」は、
+    無効の表示にしないという意味で、どちらの結果でも成り立つ
+- **確認の後**: 1 回で止まらなければ、保守者と相談する。US77-AS7 を「2 回目のクリックで止まる」に直すか、ボタンを派生型にして最初のクリックを受けるかを決める
 
 ## R8 テストの範囲
 

@@ -17,7 +17,10 @@
 |---|---|---|
 | `isOn` | `isActive && !isRestoring` | FR-350 |
 | `action` | `isOn` なら `.stop`、それ以外は `.start` | FR-351 |
-| `isEnabled` | `isOn` なら `!hasSheet && !hasAppModal && !isEditingText`、それ以外は `canStart` | FR-352 |
+| `isEnabled` | `isOn` なら `!hasSheet && !hasAppModal && !isEditingText`、それ以外は `canStart && !isRestoring` | FR-352 |
+
+- 実行中の条件は、`SlideshowInputPolicy` に `isTargetWindowKey: true`・`menuOwnsInput: false` を渡した `acceptsKeys` で求め、Esc の受理の条件と出どころを1つにする（A-209、research.md の R1）
+- 停止中の条件に `!isRestoring` を含めるのは、`canStart` の計算に頼らず、型の中で「復帰中は無効」（FR-352・EC-239）を保証するため
 
 ## 状態の遷移（ボタンから見た表示）
 
