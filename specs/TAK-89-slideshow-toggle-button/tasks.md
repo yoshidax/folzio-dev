@@ -22,13 +22,13 @@
 - [x] T005 `Sources/FolzioCore/Slideshow/SlideshowToggleState.swift` に `public struct SlideshowToggleState: Sendable, Equatable` と `public enum Action { case start, stop }` を実装して T004 を通す。
   実行中の `isEnabled` は、型の中で `SlideshowInputPolicy` に `isTargetWindowKey: true`・`menuOwnsInput: false` を渡した `acceptsKeys` で求め、3 つの条件を書き直さない。
   AppKit を import しない。コメントは英語で、要件の ID（FR-350〜FR-352）を書く（R1）
-- [ ] T006 [P] `Sources/FolzioLocalization/TextKey.swift` に `toolbarStopSlideshowHelp = "toolbar.stopSlideshowHelp"` を加える。
+- [x] T006 [P] `Sources/FolzioLocalization/TextKey.swift` に `toolbarStopSlideshowHelp = "toolbar.stopSlideshowHelp"` を加える。
   引数なし（`arguments` は既定の空）。翻訳者向けの説明を加える（「実行中のスライドショーのボタンのツールチップとアクセシビリティの説明。Esc は固定のキー」）。
   あわせて、同じファイルの翻訳者向けの説明で、`toolbarSlideshowLabel` をグループ名の case から別の case に分け、
   「ツールバーのスライドショーの項目名。ボタンのアクセシビリティラベルを兼ね、VoiceOver が状態によらず読む」と書く（A-211。コードレビューの指摘）。
   `Sources/FolzioLocalization/Resources/ja.lproj/Localizable.strings` に「スライドショーを停止（Esc）」、
   `Sources/FolzioLocalization/Resources/en.lproj/Localizable.strings` に `Stop Slideshow (Esc)` を加える（FR-353、R6、contracts）
-- [ ] T007 `Tests/FolzioCoreTests/Localization/ShortcutSettingsTextTests.swift` に、T006 のキーが両言語で訳され、`%` を含まず、引数がないことのテストを加える
+- [x] T007 `Tests/FolzioCoreTests/Localization/ShortcutSettingsTextTests.swift` に、T006 のキーが両言語で訳され、`%` を含まず、引数がないことのテストを加える
   （既存の `plainTextsAreTranslated` と同じ方法。別の配列 `toolbarPlainKeys` にする）
 - [ ] T008 作業ブランチに push し、CI（`macos-swift-ci.yml`。PR がなければ `workflow_dispatch` で作業ブランチを指定）で `swift build` と `swift test` の成功を確かめる。
   Cloud には Swift がないため、Core の型（T005）と文言（T006）を App の変更の前に確かめ、失敗の原因を App の変更と切り分ける（Implementation Strategy）。
@@ -40,24 +40,24 @@
 
 **Independent Test**: quickstart.md の 1〜9
 
-- [ ] T009 [US77] `Sources/FolzioApp/App/MainSplitViewController.swift` に `var slideshowToggleState: SlideshowToggleState` を加える。入力は data-model.md の表のとおり
+- [x] T009 [US77] `Sources/FolzioApp/App/MainSplitViewController.swift` に `var slideshowToggleState: SlideshowToggleState` を加える。入力は data-model.md の表のとおり
   （`canStart: canStartSlideshow`、`slideshowCoordinator.isActive`・`isRestoring`、`view.window?.attachedSheet != nil`、`NSApp.modalWindow != nil`、`fileListViewController.isEditingText`）。
   ウインドウがないときは、`canStart` を false とし、シートなしとして計算する（R1）
-- [ ] T010 [US77] 同じファイルに `@objc func toggleSlideshow(_ sender: Any?)` を加える。押した時点で `slideshowToggleState` を計算し直し、`isEnabled` でなければ何もしない。
+- [x] T010 [US77] 同じファイルに `@objc func toggleSlideshow(_ sender: Any?)` を加える。押した時点で `slideshowToggleState` を計算し直し、`isEnabled` でなければ何もしない。
   `.start` なら `startSlideshow(sender)`、`.stop` なら `slideshowCoordinator.stop()` を呼ぶ。Esc の受理の関数（`handleSlideshowEscapeFallback`）は使わない
   （キー入力先の条件を含むため。FR-351・FR-352・EC-239、R3）。`startSlideshow(_:)` と `validateMenuItem` の `startSlideshow` の扱いは変えない（SC-189）
-- [ ] T011 [US77] `Sources/FolzioApp/App/MainToolbarController.swift` のボタンの生成（`slideshowIdentifier` の case）で、`button.setButtonType(.pushOnPushOff)` にし、
+- [x] T011 [US77] `Sources/FolzioApp/App/MainToolbarController.swift` のボタンの生成（`slideshowIdentifier` の case）で、`button.setButtonType(.pushOnPushOff)` にし、
   ボタンとツールバー項目の target を `self`、action を新しい `@objc private func slideshowToggled(_:)` にする。`slideshowToggled` は `panes.toggleSlideshow(sender)` を呼んだ後、
   `updateSlideshowAvailability()` でボタンの `state` を実際の実行状態で上書きする（R2）
-- [ ] T012 [US77] 同じファイルに `applySlideshowState(to item: NSToolbarItem)` を加え、`panes.slideshowToggleState` から、項目の `isEnabled` とボタンの `isEnabled`
+- [x] T012 [US77] 同じファイルに `applySlideshowState(to item: NSToolbarItem)` を加え、`panes.slideshowToggleState` から、項目の `isEnabled` とボタンの `isEnabled`
   （両方に設定する。文字だけの形式は項目を使うため。既存の `applyZoomAvailability(to:)` と同じ）、ボタンの `state`（オンなら `.on`）、
   アクセシビリティラベル（どちらの状態でも `toolbarSlideshowLabel`。A-211）、ツールチップとアクセシビリティの説明（オフ `ToolbarShortcutText.text(.toolbarStartSlideshowHelp)` /
   オン `l10n.text(.toolbarStopSlideshowHelp)`）、項目の `toolTip` を適用する。項目の `label`・`paletteLabel` は `toolbarSlideshowLabel` のまま（FR-350・FR-353）。
   `applyState(to:)`・`updateSlideshowAvailability()`・`validateToolbarItem(_:)`・文言の更新のループ（164 行付近）の slideshow の処理を、この関数を呼ぶ形にする（R4）
-- [ ] T013 [US77] 同じファイルで、ツールバー項目に `menuFormRepresentation` を設定する（名前 `toolbarSlideshowLabel`、action `slideshowToggled(_:)`、target `self`）。
+- [x] T013 [US77] 同じファイルで、ツールバー項目に `menuFormRepresentation` を設定する（名前 `toolbarSlideshowLabel`、action `slideshowToggled(_:)`、target `self`）。
   `MainToolbarController` を `NSMenuItemValidation` に適合させ、`validateMenuItem(_:)` で `slideshowToggled` の項目に `state`（オンなら `.on`）を設定し、`isEnabled` を返す。
   文言の更新で項目の名前も更新する（EC-240・A-210、R7）
-- [ ] T014 [US77] 同じファイルに、メインウインドウの `NSWindow.willBeginSheetNotification` と `NSWindow.didEndSheetNotification` の監視を加え、
+- [x] T014 [US77] 同じファイルに、メインウインドウの `NSWindow.willBeginSheetNotification` と `NSWindow.didEndSheetNotification` の監視を加え、
   `DispatchQueue.main.async` で 1 回遅らせて `updateSlideshowAvailability()` を呼ぶ（通知の時点ではシートがまだ付いていない恐れがあるため。分析の C2）。
   監視は `editingObservers` と同じく保持し、ウインドウは `panes.view.window` が決まった後の時点（監視の対象は `object` にそのウインドウ）で登録する。
   登録の時点でウインドウがなければ、`object: nil` で受けて、通知のウインドウがメインウインドウのときだけ処理する（FR-352・US77-AS6、R5）
@@ -68,7 +68,7 @@
   T018・T019 の後にも、それぞれもう一度実行する（仕様の ID の検査と公開用の書き出しの検査を含むため。コードレビューの指摘）
 - [ ] T016 作業ブランチに push し、CI（`macos-swift-ci.yml`。PR がなければ `workflow_dispatch`）で `swift build` と `swift test` の成功を確かめる。性能テストはログの末尾で件数を確かめる
 - [ ] T017 [MANUAL] 保守者に quickstart.md の GUI 確認（1〜10）を依頼し、結果を `checklists/validation.md` に記録する。確認されるまでこのタスクは未チェックのまま残す
-- [ ] T018 ユーザーガイドと開発の手順書を更新する。日本語と英語を同じコミットで同じ内容にする（コードレビューの指摘。TAK-74 の T021 と同じ扱い）。
+- [x] T018 ユーザーガイドと開発の手順書を更新する。日本語と英語を同じコミットで同じ内容にする（コードレビューの指摘。TAK-74 の T021 と同じ扱い）。
   - `docs/usage.ja.md`・`docs/usage.md` の「スライドショー」の「開始と操作」（182 行付近）: ツールバーの再生ボタンは、実行中はオンになり、もう一度押すと終了することを加える。
     「スライドショー中は」の項目の Esc の終了に、ツールバーのボタンでも終了できることを加える
   - 同じ 2 つのファイルのショートカットの表「スライドショーと動画」（`docs/usage.ja.md` の 433 行付近）の「スライドショーを開始／終了」の行に、
