@@ -11,15 +11,15 @@
 
 - [x] T001 `specs/TAK-89-slideshow-toggle-button/spec.md` と `checklists/requirements.md` を作り、TAK-89 と保守者の決定（Clarifications）を記録する
 - [x] T002 `plan.md`・`research.md`・`data-model.md`・`contracts/toolbar-slideshow-toggle.md`・`quickstart.md` に設計と検証方法を記録する
-- [ ] T003 保守者の設計レビューと実装の承認を得る。承認がなければ T004 以降に進まない
+- [x] T003 保守者の設計レビューと実装の承認を得る。承認がなければ T004 以降に進まない
 
 ## Phase 2: Foundational（判断と文言）
 
-- [ ] T004 [P] `Tests/FolzioCoreTests/SlideshowToggleStateTests.swift` を作り、6 つの入力（`canStart`・`isActive`・`isRestoring`・`hasSheet`・`hasAppModal`・`isEditingText`）の
+- [x] T004 [P] `Tests/FolzioCoreTests/SlideshowToggleStateTests.swift` を作り、6 つの入力（`canStart`・`isActive`・`isRestoring`・`hasSheet`・`hasAppModal`・`isEditingText`）の
   64 通りで、`isOn` が「`isActive && !isRestoring`」、`action` が「`isOn` なら `.stop`、それ以外は `.start`」、`isEnabled` が
   「`isOn` なら `!hasSheet && !hasAppModal && !isEditingText`、それ以外は `canStart && !isRestoring`」であることをテストする（data-model.md、FR-350〜FR-352。先に失敗させる）。
   あわせて、実行中（`isActive` が真、`isRestoring` が偽）の `isEnabled` が、同じ入力で `isTargetWindowKey: true` とした `SlideshowInputPolicy.acceptsKeys` と一致することを確かめる（A-209）
-- [ ] T005 `Sources/FolzioCore/Slideshow/SlideshowToggleState.swift` に `public struct SlideshowToggleState: Sendable, Equatable` と `public enum Action { case start, stop }` を実装して T004 を通す。
+- [x] T005 `Sources/FolzioCore/Slideshow/SlideshowToggleState.swift` に `public struct SlideshowToggleState: Sendable, Equatable` と `public enum Action { case start, stop }` を実装して T004 を通す。
   実行中の `isEnabled` は、型の中で `SlideshowInputPolicy` に `isTargetWindowKey: true`・`menuOwnsInput: false` を渡した `acceptsKeys` で求め、3 つの条件を書き直さない。
   AppKit を import しない。コメントは英語で、要件の ID（FR-350〜FR-352）を書く（R1）
 - [ ] T006 [P] `Sources/FolzioLocalization/TextKey.swift` に `toolbarStopSlideshowHelp = "toolbar.stopSlideshowHelp"` を加える。
