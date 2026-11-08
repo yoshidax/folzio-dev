@@ -43,6 +43,7 @@ App が `NSEvent` から作る、1 つのスクロールのイベントの値。
 | `phase` | `began` / `changed` / `ended` / `cancelled` / `ignored` / `none` |
 | `isMomentum` | 慣性のイベント（`momentumPhase` が空でない）|
 | `deltaX`・`deltaY` | `scrollingDeltaX`・`scrollingDeltaY` |
+| `timestamp` | `NSEvent.timestamp`（秒）。慣性の途中かどうかの判定に使う |
 
 `NSEvent.Phase` からの対応:
 
@@ -73,8 +74,8 @@ App が `NSEvent` から作る、1 つのスクロールのイベントの値。
 | 状態 | 意味 | 次の状態 |
 |---|---|---|
 | `idle` | スクロールの外 | `began` で `pending(room)` |
-| `pending(room)` | 始まりの余地を記録し、決める前 | 左右が主の動きで `swiping` または `scrolling`。上下が主の動きで `scrolling`。`began` のイベント自体に動きがあれば、そのイベントで決める |
-| `scrolling` | この 1 回は普通のスクロール | 次の `began` で `pending` |
+| `pending(room)` | 始まりの余地を記録し、決める前 | `began` / `changed` の左右が主の動きで `swiping` または `scrolling`。上下が主の動きで `scrolling`。`began` のイベント自体に動きがあれば、そのイベントで決める。動きのないまま `ended` / `cancelled` で `idle` |
+| `scrolling` | この 1 回は普通のスクロール | 次の `began` で `pending`（慣性の途中なら `scrolling` のまま。下の規則）|
 | `swiping` | AppKit の追跡に渡した | App が `finishSwipe()` を呼ぶと `afterSwipe`。次の `began` が来たら、`finishSwipe()` の前でも `pending` |
 | `afterSwipe` | 追跡は終わったが、同じジェスチャの慣性が残る | 次の `began` で `pending`。慣性でないイベント（`phase` が `none` で `isMomentum` が false のマウスホイールなど）で `idle` |
 
@@ -94,6 +95,11 @@ App が `NSEvent` から作る、1 つのスクロールのイベントの値。
   - 前のスワイプの追跡が終わっていない（`finishSwipe()` の前）、または終わらなかった場合でも、状態が残らないようにするため（EC-241）。
   - App は、前の追跡の handler の後からの呼び出しを、通し番号で無視する。
   - App は、判定し直すときに矢印を隠す（前の追跡の終わりが届かなくても、矢印を残さない）。
+- 向きと `startSwipe` の判定に使うのは、`phase` が `began` / `changed` で `isMomentum` が false のイベントだけ。`pending` で `phase` が `none` のイベント
+  （マウスホイール・横ホイール）は、状態を変えずに `passThrough`（ジェスチャでないイベントで `trackSwipeEvent` を呼ばない）。
+- 慣性の途中に始めたスクロール: 最後に受け取った慣性のイベントの `timestamp` から 0.1 秒以内に `began` を受け取ったら、そのスクロールは `pending` にせず `scrolling`
+  にする（spec の FR-351。慣性のイベントは画面の更新ごとに届くため、0.1 秒以内なら慣性で表示が動いている途中と見なす）。
+  - この 0.1 秒は、スワイプの成立の判定（OS に任せる）ではなく、慣性が続いているかの判定に使う。
 - 1 回のスクロールの途中でポインタがペインの外（境界線・ツールバー）へ動いても、そのスクロールのイベントは終わりまで判定を続ける（対象かどうかは `began` のときだけ決める）。
 - `pending` から `swiping` にするのは、次をすべて満たすときだけ。
   - `isSwipeTrackingEnabled` が true。
@@ -103,7 +109,8 @@ App が `NSEvent` から作る、1 つのスクロールのイベントの値。
     - このとき、その 1 回の上下の動きもビューに渡さない（EC-239 の「左右が主の動きはスワイプとして扱う」の結果。spec の EC-239 に明記）。
   - `room.allows(reveal)` が false（FR-351。`reveal` は `deltaX` の符号、`room` は `began` のときに記録したもの）。
 - それ以外の左右・上下の動きは `scrolling` にし、その 1 回の終わりまで `passThrough`（US7-AS18・US7-AS19）。
-- `swiping` の間のイベントは `consume`。`afterSwipe` の間は、慣性のイベント（`isMomentum` が true）だけを `consume` する（移った先の一覧を残りの慣性で動かさない）。
+- `swiping` の間のイベントは `consume`。ただし、同じジェスチャの `ended` / `cancelled`（慣性でないもの）は `passThrough` にして、`began` を受け取ったビュー
+  （`NSScrollView`）にスクロールの終わりを渡す（始まりだけを受け取ったビューの状態を残さない。research.md の R4）。`afterSwipe` の間は、慣性のイベント（`isMomentum` が true）だけを `consume` する（移った先の一覧を残りの慣性で動かさない）。
   慣性でないイベントを受け取ったら `idle` に戻し、そのイベントは `passThrough`（マウスホイールのスクロールを止めない）。
 - `phase` が `ignored` のイベントは、状態を変えずに `passThrough`。
 - `idle` で `phase` が `none` のイベント・`began` を受け取っていないイベントは、`passThrough`。

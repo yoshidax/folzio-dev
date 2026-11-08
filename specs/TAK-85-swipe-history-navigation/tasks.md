@@ -34,6 +34,10 @@
   - `finishSwipe()` の後は `afterSwipe` になり、同じジェスチャの慣性のイベントは `consume`。慣性でない `phase` なしのイベント（マウスホイール）は `passThrough` で `idle` に戻る。
     次の `began` から判定する
   - `began` で `room` が `nil`（対象の外）なら、その 1 回は終わりまで `passThrough`。`began` 以外のイベントでは `room` を使わない
+  - `pending` のまま動きなしで `ended` / `cancelled` を受け取ると `idle`。`pending` で `phase` が `none` のイベント（左右が主でも）は `passThrough` で、`startSwipe` にしない
+  - `scrolling` の後に `phase` なしのマウスホイールのイベントが来ても `passThrough`
+  - `swiping` の間の、慣性でない `ended` / `cancelled` は `passThrough`。それ以外は `consume`
+  - 慣性のイベントの `timestamp` から 0.1 秒以内の `began` は、余地がなくても `scrolling`（`startSwipe` にしない）。0.1 秒を超えた `began` は通常どおり判定する
   - `swiping` のまま（`finishSwipe()` の前）に次の `began` を受け取ったら、判定し直す（EC-241。前の追跡が終わらなくても状態が残らない）
   - `SwipeArrowState(gestureAmount:)`: `progress` は `abs(gestureAmount)` を 0〜1 に収める。正は `back`（左端）、負は `forward`（右端）。0 では `isVisible` が false
 - [ ] T005 [P] `Tests/FolzioCoreTests/PreviewScrollLayoutTests.swift` に、`horizontalRoom(viewportWidth:)` のテストを加える（先に失敗させる）。
@@ -58,6 +62,9 @@
     を呼ぶ。min は `canGoForward ? -1 : 0`、max は `canGoBack ? 1 : 0`（R1・R7）。`.ended` で、最後の `gestureAmount` の符号の向きの `goBack(_:)` / `goForward(_:)`
     を呼ぶ（使えるかの再判定はその guard に任せる。EC-240）。`.cancelled` で何もしない。`isComplete` で `finishSwipe()`
   - 追跡ごとに通し番号を振り、次の `began` で判定し直した後に届いた前の追跡の handler の呼び出しは無視する（data-model.md の規則）
+  - `trackSwipeEvent` の handler は MainActor と宣言されていないクロージャのため、中の処理（`goBack(_:)`・`goForward(_:)`・`finishSwipe()`・矢印の更新）は、
+    モニタと同じく `MainActor.assumeIsolated` で包む（Swift 6 の並行性の検査）
+  - `swiping` の間の同じジェスチャの `ended` / `cancelled` はビューへ渡す（data-model.md）。確認用に、それがモニタに届いたかを `NSLog` で出す（Q4）
   - `.swipe` は `deltaX` の対応で `goBack(_:)` / `goForward(_:)` を呼ぶ（R2）
   - 使えるかどうかは `paneCommands.canNavigateHistory && historyNavigator.canGoBack`（`canGoForward`）で求める（R7）
   - `NSEvent.isSwipeTrackingFromScrollEventsEnabled` をイベントごとに読み、`SwipeAvailability.isSwipeTrackingEnabled` に渡す（FR-350。再起動なしで設定の変更が反映される）
