@@ -18,7 +18,7 @@
 
 ## Phase 2: Foundational（Core の判定）
 
-- [ ] T004 [P] `Tests/FolzioCoreTests/SwipeNavigationTests.swift` を作り、次をテストする（先に失敗させる）。
+- [x] T004 [P] `Tests/FolzioCoreTests/SwipeNavigationTests.swift` を作り、次をテストする（先に失敗させる）。
   - `HorizontalScrollRoom(visibleMinX:visibleMaxX:contentMinX:contentMaxX:)`: 内容が広く中央にあるとき両方 true、左端・右端に着いたとき片方だけ true、
     「差が 0.5pt 以下なら端に着いているとする」、内容が狭いとき両方 false（`none` と等しい）
   - 向きの対応（data-model.md の「向きの扱い」）: `scrollingDeltaX > 0` を `revealsLeft`、`< 0` を `revealsRight`。`gestureAmount > 0` を `back`、`< 0` を `forward`。
@@ -45,14 +45,14 @@
   - `target` が `nil`（対象の外）で始めたスクロールの慣性は覚えず、その直後の `began` は通常どおり判定する
   - `swiping` のまま（`finishSwipe()` の前）に次の `began` を受け取ったら、判定し直す（EC-241。前の追跡が終わらなくても状態が残らない）
   - `SwipeArrowState(gestureAmount:)`: `progress` は `abs(gestureAmount)` を 0〜1 に収める。正は `back`（左端）、負は `forward`（右端）。0 では `isVisible` が false
-- [ ] T005 [P] `Tests/FolzioCoreTests/PreviewScrollLayoutTests.swift` に、`horizontalRoom(viewportWidth:)` のテストを加える（先に失敗させる）。
+- [x] T005 [P] `Tests/FolzioCoreTests/PreviewScrollLayoutTests.swift` に、`horizontalRoom(viewportWidth:)` のテストを加える（先に失敗させる）。
   横にはみ出す画像で中央・左端・右端のとき、はみ出さない画像のとき、不正な寸法（`frame` が `.zero`）のとき
-- [ ] T006 `Sources/FolzioCore/History/SwipeNavigation.swift` を作り、data-model.md の `ScrollReveal`・`HorizontalScrollRoom`・`ScrollSample`・`SwipeAvailability`・
+- [x] T006 `Sources/FolzioCore/History/SwipeNavigation.swift` を作り、data-model.md の `ScrollReveal`・`HorizontalScrollRoom`・`ScrollSample`・`SwipeAvailability`・
   `SwipeTarget`（既存の `Pane` と `HorizontalScrollRoom` の組）・`SwipeGestureTracker`（`handle(_:availability:target:)`）・`SwipeDecision`・`SwipeArrowState` と、向きの対応の関数を実装して T004 を通す。戻る・進むの向きは既存の `HistoryDirection`
   （`Sources/FolzioCore/History/HistoryEntry.swift:97`）を使い、同じ名前の型を新しく作らない。AppKit を import しない。型は `Sendable`・`Equatable` にする
-- [ ] T007 `Sources/FolzioCore/Layout/PreviewScrollLayout.swift` に `horizontalRoom(viewportWidth:) -> HorizontalScrollRoom`（`frame.minX < 0` で左、`frame.maxX > viewportWidth` で右。
+- [x] T007 `Sources/FolzioCore/Layout/PreviewScrollLayout.swift` に `horizontalRoom(viewportWidth:) -> HorizontalScrollRoom`（`frame.minX < 0` で左、`frame.maxX > viewportWidth` で右。
   T006 の 0.5pt の規則を使う）を加えて T005 を通す
-- [ ] T008 作業ブランチに push し、CI（`workflow_dispatch`、`ref` は作業ブランチ）で build と Core のテストを確かめる
+- [x] T008 作業ブランチに push し、CI（`workflow_dispatch`、`ref` は作業ブランチ）で build と Core のテストを確かめる（2026-11-08、`7d7229c` の実行 42502926635 で build・通常のテスト 1109 件・性能テスト 27 件が成功）
 
 ## Phase 3: 先に行う確認（実機での追跡と向き）
 
