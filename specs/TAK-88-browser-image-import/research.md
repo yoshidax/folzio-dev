@@ -93,6 +93,10 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
     今の拡張子が同じ形式で、かつ `MediaKind(fileExtension:)` が認める（`Sources/FolzioCore/Model/MediaKind.swift`）か標準の拡張子と大文字小文字だけ違うときは残す
   - `uniqueNames(_:)`: 1回の操作の中で重なる名前に、既存の `uniqueName(for:existingNames:)`（`NameValidation.swift`）で連番を付ける
 - **Rationale**: 名前の規則は入力が細工される場所なので、純粋な関数にして境界の値を網羅的にテストする。既存の連番の関数を再利用する。
+- **通信の検査との関係**: `scripts/check-no-network.sh` は `Sources` の中の語 `http` と `https://` を、コメントを含めて拒否する。
+  スキームの比較に `"http"` の文字列が要るため、`AboutInfo.swift` の例外と同じ形で、`Sources/FolzioCore/Operations/ImportedFileName.swift` の
+  `"http"` と `"https"` の2つのリテラルだけを許す例外を加える（文字列として比べるだけで、通信しない）。
+  検査を変えることになるので、設計レビューで保守者の承認を得る。承認されなければ、http・https を見分けられないので、URL から名前を取らず、常に日時の名前にする（FR-352 を改める）。
 
 ## R7 保存の実行と確認（FR-347・FR-350・FR-356）
 
