@@ -25,6 +25,23 @@ struct PreviewScrollLayoutTests {
         #expect(abs(edge.frame.minX + 200) < 0.0001 && abs(edge.frame.minY + 100) < 0.0001)
     }
 
+    @Test("Horizontal room of the shown image for swipe navigation (FR-351)")
+    func horizontalRoom() {
+        let image = CGSize(width: 400, height: 100)
+        let viewport = CGSize(width: 200, height: 200)
+        let middle = PreviewScrollLayout(imageSize: image, viewport: viewport, center: CGPoint(x: 0.5, y: 0.5))
+        #expect(middle.horizontalRoom(viewportWidth: viewport.width) == HorizontalScrollRoom(canRevealLeft: true, canRevealRight: true))
+        let left = PreviewScrollLayout(imageSize: image, viewport: viewport, center: CGPoint(x: 0, y: 0.5))
+        #expect(left.horizontalRoom(viewportWidth: viewport.width) == HorizontalScrollRoom(canRevealLeft: false, canRevealRight: true))
+        let right = PreviewScrollLayout(imageSize: image, viewport: viewport, center: CGPoint(x: 1, y: 0.5))
+        #expect(right.horizontalRoom(viewportWidth: viewport.width) == HorizontalScrollRoom(canRevealLeft: true, canRevealRight: false))
+        let fit = PreviewScrollLayout(imageSize: CGSize(width: 200, height: 400), viewport: viewport, center: CGPoint(x: 0.5, y: 0.5))
+        #expect(fit.horizontalRoom(viewportWidth: viewport.width) == .none)
+        let invalid = PreviewScrollLayout(imageSize: .zero, viewport: viewport, center: .zero)
+        #expect(invalid.frame == .zero)
+        #expect(invalid.horizontalRoom(viewportWidth: viewport.width) == .none)
+    }
+
     @Test("Handles equal and invalid dimensions safely")
     func invalidAndFit() {
         let fit = PreviewScrollLayout(imageSize: CGSize(width: 200, height: 100), viewport: CGSize(width: 200, height: 200), center: CGPoint(x: 0, y: 0))

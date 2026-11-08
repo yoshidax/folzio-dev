@@ -29,4 +29,16 @@ public struct PreviewScrollLayout: Sendable {
         horizontal = x.2
         vertical = y.2
     }
+
+    /// Horizontal room of the shown image within a viewport of this width, for swipe navigation (FR-351).
+    /// An image that fits horizontally, or an invalid layout, has no room.
+    public func horizontalRoom(viewportWidth: CGFloat) -> HorizontalScrollRoom {
+        guard horizontal else { return .none }
+        return HorizontalScrollRoom(
+            visibleMinX: 0,
+            visibleMaxX: viewportWidth,
+            contentMinX: frame.minX,
+            contentMaxX: frame.maxX
+        )
+    }
 }

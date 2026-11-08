@@ -14,7 +14,7 @@
 
 - [x] T001 `specs/TAK-85-swipe-history-navigation/spec.md` と `checklists/requirements.md` を作り、TAK-85 と保守者の決定（Clarifications）を記録する
 - [x] T002 `plan.md`・`research.md`・`data-model.md`・`contracts/swipe-history-navigation.md`・`quickstart.md` に設計と検証方法を記録する
-- [ ] T003 保守者の設計レビューと実装の承認を得る。承認がなければ T004 以降に進まない
+- [x] T003 保守者の設計レビューと実装の承認を得る。承認がなければ T004 以降に進まない（2026-11-08、5 回の設計レビューの後に保守者が承認）
 
 ## Phase 2: Foundational（Core の判定）
 
