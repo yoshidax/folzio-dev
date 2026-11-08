@@ -58,7 +58,7 @@
 
 - [ ] T009 `Sources/FolzioApp/App/SwipeNavigationController.swift` を作り、確認用の最小の版を実装する（矢印なし、余地は常に `none`）。
   - `NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .swipe])` を 1 つ置き、`MainSplitViewController.viewDidLoad()` から作る。
-    既存の `installVideoSeekKeyMonitor()`（`MainSplitViewController.swift:839`）と同じく `MainActor.assumeIsolated` で処理し、ビューが消えたらモニタを外す
+    既存の `installVideoSeekKeyMonitor()`（`MainSplitViewController.swift:839`）と同じく `MainActor.assumeIsolated` で処理する。モニタは、既存のモニタと同じく `MainSplitViewController` が生きている間は外さない（実装時に変更。既存の `videoSeekKeyMonitor` も外していない）。`MainActor.assumeIsolated` の戻り値は Sendable でなければならないため、`NSEvent` ではなく「捨てるかどうか」の Bool を返す
   - 1 回のスクロールの `began`（と 3 本指の `.swipe`）のときだけ、メインウインドウのイベント・メインウインドウがキーウインドウ（`window.isKeyWindow`）・シートとモーダルがない・ポインタの下のビューが 3 ペインのビュー
     （`treeViewController.view`・`fileListViewController.view`・`previewViewController.view`）の中、を判定する（EC-244・EC-245）。
     対象の中なら、そのペイン（既存の `Pane`）と余地を `SwipeTarget` として渡し、対象の外なら `nil` を渡す。`began` 以外のイベントは判定せずに `SwipeGestureTracker` に渡す（data-model.md の規則）。`treeViewController`・`previewViewController` は `private` のため、

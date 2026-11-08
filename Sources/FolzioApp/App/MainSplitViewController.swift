@@ -78,6 +78,30 @@ final class MainSplitViewController: NSSplitViewController {
     private var hiddenListKeyMonitor: Any?
     /// Monitor for `<` / `>` video seeking while the file list and the preview are both visible (FR-287).
     private var videoSeekKeyMonitor: Any?
+    /// Back and Forward by the system swipe gestures over the three panes (FR-350).
+    private lazy var swipeNavigation = SwipeNavigationController(
+        hooks: SwipeNavigationController.Hooks(
+            window: { [weak self] in self?.view.window },
+            paneViews: { [weak self] in
+                guard let self else { return [] }
+                return [
+                    (pane: .tree, view: self.treeViewController.view),
+                    (pane: .fileList, view: self.fileListViewController.view),
+                    (pane: .preview, view: self.previewViewController.view),
+                ]
+            },
+            availability: { [weak self] in
+                guard let self else { return (canGoBack: false, canGoForward: false) }
+                let canNavigate = self.paneCommands.canNavigateHistory
+                return (
+                    canGoBack: canNavigate && self.historyNavigator.canGoBack,
+                    canGoForward: canNavigate && self.historyNavigator.canGoForward
+                )
+            },
+            goBack: { [weak self] in self?.goBack(nil) },
+            goForward: { [weak self] in self?.goForward(nil) }
+        )
+    )
     /// Keyword from the previous search in the same launch. Not persisted (FR-081, R39).
     private var lastSearchKeyword: String?
     private var pendingKindNames: KindNames?
@@ -244,6 +268,7 @@ final class MainSplitViewController: NSSplitViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         installVideoSeekKeyMonitor()
+        swipeNavigation.install()
 
         NotificationCenter.default.addObserver(
             self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
