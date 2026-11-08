@@ -78,14 +78,18 @@
 
 ## R6 文言
 
-- **Decision**: `TextKey` に 2 つ加える。
-  - `toolbarStopSlideshow`（`toolbar.stopSlideshow`）: 「スライドショーを停止」 / 「Stop Slideshow」。アクセシビリティラベル
+- **Decision**: `TextKey` に 1 つ加える。
   - `toolbarStopSlideshowHelp`（`toolbar.stopSlideshowHelp`）: 「スライドショーを停止（Esc）」 / 「Stop Slideshow (Esc)」。ツールチップとアクセシビリティの説明。引数なし
 - **Rationale**: Esc はスライドショーの終了の固定のキーで、割り当てを変えられない（`ShortcutCatalog.swift:160` の `slideshowStop` はコマンドを持たない）。
-  そのため、開始の文言（`toolbar.startSlideshowHelp`、引数でキーを受ける）と違い、引数を取らない。停止中の文言は今のまま（`menuViewStartSlideshow`・`toolbarStartSlideshowHelp`）。
+  そのため、開始の文言（`toolbar.startSlideshowHelp`、引数でキーを受ける）と違い、引数を取らない。停止中の説明は今のまま（`toolbarStartSlideshowHelp`）。
+  - アクセシビリティラベルは、どちらの状態でも項目名と同じ `toolbarSlideshowLabel`（「スライドショー」）にする（A-211）。今の `menuViewStartSlideshow` の使用はやめる。
+    トグルのボタンは VoiceOver がオン・オフの値も読むため、ラベルで状態を伝えると二重になる（設計のレビュー）
   - 翻訳の検査（`CatalogConsistencyTests` の両言語の網羅・書式の一致・参照・翻訳者向けの説明）に自動で含まれる。
     説明（`TextKey` の翻訳者向けの記述）を加える
-- **Alternatives considered**: メニューの「スライドショーを開始」のキー（`menuViewStartSlideshow`）に合わせて `menuViewStopSlideshow` を作る: メニューには停止の項目を置かない（A-208）。採らない
+- **Alternatives considered**:
+  - メニューの「スライドショーを開始」のキー（`menuViewStartSlideshow`）に合わせて `menuViewStopSlideshow` を作る: メニューには停止の項目を置かない（A-208）。採らない
+  - アクセシビリティラベルを「スライドショーを停止」に切り替え、トグルの値を出さない（役割を普通のボタンにする）: 役割を上書きする処理が増える。
+    状態を値で伝える、トグルの一般的な形にしない理由がない。採らない（保守者の決定）
 
 ## R7 あふれたメニューと文字だけの形式
 
@@ -110,4 +114,5 @@
   ビューへ届かないことがある。ツールバーのボタンがこれにどう従うかは、確かめていない（コードレビューの指摘）。
   - 1 回で止まらなくても、最初のクリックでメインウインドウがキー入力先になるため、2 回目のクリックか Esc で止められる。FR-352 の「キー入力先でないことでは無効にしない」は、
     無効の表示にしないという意味で、どちらの結果でも成り立つ
-- **確認の後**: 1 回で止まらなければ、保守者と相談する。US77-AS7 を「2 回目のクリックで止まる」に直すか、ボタンを派生型にして最初のクリックを受けるかを決める
+- **確認の後**: 1 回で止まらなければ、保守者と相談する。US77-AS7 を「2 回目のクリックで止まる」に直すか、ボタンを派生型にして最初のクリックを受けるかを決める。
+  前者なら、A-209 の「最初のクリックが届くかは確かめていない」の項目も、確かめた結果に直す

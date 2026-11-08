@@ -33,7 +33,7 @@
 **Constraints**: 判断ロジックは FolzioCore（AppKit を import しない）、描画と入力は FolzioApp に置く（AGENTS.md）。
 メニューと ⇧⌘S の動作を変えない（SC-189）。ネットワーク API を使わない
 
-**Scale/Scope**: ツールバーの「スライドショー」ボタン 1 つ（あふれたメニュー・文字だけの形式を含む）と、その文言 2 つ（日英）
+**Scale/Scope**: ツールバーの「スライドショー」ボタン 1 つ（あふれたメニュー・文字だけの形式を含む）と、その文言 1 つ（日英）
 
 ## Constitution Check
 
@@ -43,7 +43,7 @@
 |---|---|---|
 | I. ローカル完結・プライバシー | 適合 | ネットワーク・ファイル操作を加えない |
 | II. 体感パフォーマンス | 適合 | 状態の判定は真偽値の計算だけ。デコード・列挙に触れない |
-| III. キーボードファースト & アクセシビリティ | 適合 | 停止のキーボードの手段は既存の Esc（A-208）。ボタンは状態に合ったアクセシビリティラベルと説明を持ち、トグルの値（オン・オフ）を VoiceOver へ渡す（FR-353） |
+| III. キーボードファースト & アクセシビリティ | 適合 | 停止のキーボードの手段は既存の Esc（A-208）。ボタンは固定のアクセシビリティラベル「スライドショー」と、状態に合った説明を持ち、トグルの値（オン・オフ）を VoiceOver へ渡す（FR-353・A-211） |
 | IV. テスト必須 | 適合 | 判断を `SlideshowToggleState` に分け、真理値表のテストを書く。文言は既存の翻訳の検査に加える（R6） |
 | V. シンプルさ | 適合 | 新しい型は値型 1 つ。メニューと ⇧⌘S は変えない。あふれたメニューの名前は切り替えない（spec の EC-240） |
 
@@ -77,7 +77,7 @@ Sources/FolzioApp/App/
 └── MainToolbarController.swift         # ボタンをトグルにし、状態と文言を適用する（R2・R4）。あふれたメニュー（R7）
 
 Sources/FolzioLocalization/
-├── TextKey.swift                       # toolbarStopSlideshow・toolbarStopSlideshowHelp を追加（R6）
+├── TextKey.swift                       # toolbarStopSlideshowHelp を追加（R6）
 └── Resources/{ja,en}.lproj/Localizable.strings
 
 Tests/FolzioCoreTests/

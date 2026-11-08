@@ -22,11 +22,11 @@
 - [ ] T005 `Sources/FolzioCore/Slideshow/SlideshowToggleState.swift` に `public struct SlideshowToggleState: Sendable, Equatable` と `public enum Action { case start, stop }` を実装して T004 を通す。
   実行中の `isEnabled` は、型の中で `SlideshowInputPolicy` に `isTargetWindowKey: true`・`menuOwnsInput: false` を渡した `acceptsKeys` で求め、3 つの条件を書き直さない。
   AppKit を import しない。コメントは英語で、要件の ID（FR-350〜FR-352）を書く（R1）
-- [ ] T006 [P] `Sources/FolzioLocalization/TextKey.swift` に `toolbarStopSlideshow = "toolbar.stopSlideshow"` と `toolbarStopSlideshowHelp = "toolbar.stopSlideshowHelp"` を加える。
-  どちらも引数なし（`arguments` は既定の空）。翻訳者向けの説明を加える（ラベルは「実行中のスライドショーのボタンのアクセシビリティラベル」、説明は「実行中のツールチップ。Esc は固定のキー」）。
-  `Sources/FolzioLocalization/Resources/ja.lproj/Localizable.strings` に「スライドショーを停止」「スライドショーを停止（Esc）」、
-  `Sources/FolzioLocalization/Resources/en.lproj/Localizable.strings` に `Stop Slideshow`・`Stop Slideshow (Esc)` を加える（FR-353、R6、contracts）
-- [ ] T007 `Tests/FolzioCoreTests/Localization/ShortcutSettingsTextTests.swift` に、T006 の 2 つのキーが両言語で訳され、`%` を含まず、引数がないことのテストを加える
+- [ ] T006 [P] `Sources/FolzioLocalization/TextKey.swift` に `toolbarStopSlideshowHelp = "toolbar.stopSlideshowHelp"` を加える。
+  引数なし（`arguments` は既定の空）。翻訳者向けの説明を加える（「実行中のスライドショーのボタンのツールチップとアクセシビリティの説明。Esc は固定のキー」）。
+  `Sources/FolzioLocalization/Resources/ja.lproj/Localizable.strings` に「スライドショーを停止（Esc）」、
+  `Sources/FolzioLocalization/Resources/en.lproj/Localizable.strings` に `Stop Slideshow (Esc)` を加える（FR-353、R6、contracts）
+- [ ] T007 `Tests/FolzioCoreTests/Localization/ShortcutSettingsTextTests.swift` に、T006 のキーが両言語で訳され、`%` を含まず、引数がないことのテストを加える
   （既存の `plainTextsAreTranslated` と同じ方法。別の配列 `toolbarPlainKeys` にする）
 
 ## Phase 3: User Story 77 - ツールバーのボタンでスライドショーを止める (P1)
@@ -46,7 +46,7 @@
   `updateSlideshowAvailability()` でボタンの `state` を実際の実行状態で上書きする（R2）
 - [ ] T011 [US77] 同じファイルに `applySlideshowState(to item: NSToolbarItem)` を加え、`panes.slideshowToggleState` から、項目の `isEnabled` とボタンの `isEnabled`
   （両方に設定する。文字だけの形式は項目を使うため。既存の `applyZoomAvailability(to:)` と同じ）、ボタンの `state`（オンなら `.on`）、
-  アクセシビリティラベル（オフ `menuViewStartSlideshow` / オン `toolbarStopSlideshow`）、ツールチップとアクセシビリティの説明（オフ `ToolbarShortcutText.text(.toolbarStartSlideshowHelp)` /
+  アクセシビリティラベル（どちらの状態でも `toolbarSlideshowLabel`。A-211）、ツールチップとアクセシビリティの説明（オフ `ToolbarShortcutText.text(.toolbarStartSlideshowHelp)` /
   オン `l10n.text(.toolbarStopSlideshowHelp)`）、項目の `toolTip` を適用する。項目の `label`・`paletteLabel` は `toolbarSlideshowLabel` のまま（FR-350・FR-353）。
   `applyState(to:)`・`updateSlideshowAvailability()`・`validateToolbarItem(_:)`・文言の更新のループ（164 行付近）の slideshow の処理を、この関数を呼ぶ形にする（R4）
 - [ ] T012 [US77] 同じファイルで、ツールバー項目に `menuFormRepresentation` を設定する（名前 `toolbarSlideshowLabel`、action `slideshowToggled(_:)`、target `self`）。
@@ -63,7 +63,8 @@
 - [ ] T015 作業ブランチに push し、CI（`macos-swift-ci.yml`。PR がなければ `workflow_dispatch`）で `swift build` と `swift test` の成功を確かめる。性能テストはログの末尾で件数を確かめる
 - [ ] T016 [MANUAL] 保守者に quickstart.md の GUI 確認（1〜10）を依頼し、結果を `checklists/validation.md` に記録する。確認されるまでこのタスクは未チェックのまま残す
 - [ ] T017 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり（FR-114・FR-134 の変更を含む）`specs/product/preview.md`・`window-layout.md`・
-  `contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映する（`specs/product/README.md` の「書き方のルール」に従う）。
+  `contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映する（`specs/product/README.md` の「書き方のルール」に従う。
+  1行が160桁を超える文は分け、feature の中だけの参照（research.md の節など）は製品仕様に残さない。GUI の確認で未確認の項目（R9）が決まっていれば、その結果で直してから移す）。
   反映の後に `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行し、反映した項目と差分を保守者に示して承認を得てからコミットする
 - [ ] T018 反映が終わったら、spec.md の冒頭に移行済み・凍結の注記を入れる（`specs/product/README.md` の「feature の spec.md の書き方」）
 
