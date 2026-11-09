@@ -92,11 +92,15 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
   `Sources/FolzioLocalization/TextKey.swift` と `Sources/FolzioLocalization/Resources/{en,ja}.lproj/Localizable.strings` に、
   spec の「新しい文言（追加）」の表のキーを両言語で加える（R12・A-213）。既存のローカライズのテスト（`Tests/FolzioCoreTests/Localization`）を通す。
   `timedOut(seconds:)` の文言を画像・不明の 60 秒、動画の 600 秒について両言語で確かめる。条件に合わない名前は日時の名前に直し、`nameTooLong` は加えない（FR-360）
-- [ ] T020 `scripts/dev/check-all.sh` を実行し、Phase 2 をコミットして push する。CI（`workflow_dispatch`）で build とテストの結果を確かめる
+- [x] T020 `scripts/dev/check-all.sh` を実行し、Phase 2 をコミットして push する。CI（`workflow_dispatch`）で build とテストの結果を確かめる
   （ローカル: `swift build`成功、`swift test`はCore 1,078件・App 28件・性能27件の計1,133件成功。
   `check-all.sh`は179件のPython検査を含め全件成功。`scripts/make-app.sh`で起動確認用アプリを作成済み。
   保守者がこのチャットで「表示されました」と報告し、3ペインの起動スモークも成功。
-  コミット・push・CIの確認を進めており、CIの結果を確認するまでT020は未完了。
+  Phase 1は`3f87ee4`、Phase 2実装は`caead23`として作業ブランチへpush済み。
+  [`caead23`のmacOS CI](https://github.com/yoshidax/folzio-dev/actions/runs/42619448294)も成功。
+  Xcode 16.0 / Swift 6.0でbuild・確認スクリプトの自己検査・通常テスト1,106件・性能テスト27件が成功し、
+  性能テストは非ブロッキングのステップ状態だけでなくジョブログ末尾で全件成功を確認した。
+  この後の進捗記録コミットはtasks.mdだけの変更で、CIの対象は実装コミット`caead23`。Phase 3以降は未着手。
   ログ: `/tmp/folzio-tak88-phase2/{build.log,full-tests-2.log,check-all.log,make-app.log}`）
 
 **Checkpoint**: Core の判断と検査がテストで確かめられた
