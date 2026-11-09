@@ -62,7 +62,7 @@ final class SamplePromise: NSObject, NSFilePromiseProviderDelegate, @unchecked S
 
     init(sample: Sample) { self.sample = sample }
 
-    func filePromiseProvider(_ provider: NSFilePromiseProvider, fileNameForType fileType: String) -> String {
+    nonisolated func filePromiseProvider(_ provider: NSFilePromiseProvider, fileNameForType fileType: String) -> String {
         sample.name
     }
 
