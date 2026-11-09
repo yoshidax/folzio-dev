@@ -28,7 +28,7 @@ enum ExternalDrag {
     /// The operation shown while hovering over `destination`: move or copy by the Finder rules (FR-346), or none until
     /// the decision made off the UI thread is ready or when the drop is invalid (EC-16, EC-121, EC-238).
     static func operation(_ info: any NSDraggingInfo, destination: URL) -> NSDragOperation {
-        guard let urls = urls(info) else { return [] }
+        guard let urls = urls(info) else { return ExternalImageDrag.operation(info) }
         let context = context(info, urls: urls, destination: destination)
         guard case .accepted(let kind)? = operations.outcome(
             sequence: info.draggingSequenceNumber,

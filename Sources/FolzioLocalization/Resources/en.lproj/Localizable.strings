@@ -1017,3 +1017,5 @@
 "import.receiving.stage" = "Receiving";
 "import.checking.stage" = "Checking";
 "menu.edit.cancelReceiving" = "Cancel Receiving";
+
+"shortcuts.condition.cancelReceiving" = "While receiving; available outside text editing, sheets, and dialogs";

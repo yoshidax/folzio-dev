@@ -1056,7 +1056,7 @@ final class DirectoryTreeViewController: NSViewController {
         outlineView.canDragRowsHandler = { [weak self] rows, point in
             self?.canDragRows(rows, at: point) ?? false
         }
-        outlineView.registerForDraggedTypes([.fileURL])
+        outlineView.registerForDraggedTypes(ExternalImageDrag.registeredTypes)
         outlineView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
         outlineView.setDraggingSourceOperationMask(ExternalDrag.sourceOperationMaskOutsideApp, forLocal: false)
         InternalDrag.register(outlineView)
@@ -1820,7 +1820,7 @@ extension DirectoryTreeViewController: NSOutlineViewDataSource {
             return true
         }
         // A drop from another app, such as Finder: move or copy by the Finder rules (FR-346, FR-347).
-        guard let drop = ExternalDrag.dropOperation(info, destination: destination) else { return false }
+        guard let drop = ExternalDrag.dropOperation(info, destination: destination) else { return coordinator.importDrop(info, to: destination) }
         Task { @MainActor in
             await coordinator.drop(drop.urls, to: destination, copy: drop.kind == .copy)
         }

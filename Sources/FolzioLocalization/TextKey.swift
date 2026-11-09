@@ -30,6 +30,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case receivingCancel = "import.receiving.cancel"
     case receivingStage = "import.receiving.stage"
     case checkingStage = "import.checking.stage"
+    case shortcutCancelReceivingCondition = "shortcuts.condition.cancelReceiving"
     case menuCancelReceiving = "menu.edit.cancelReceiving"
 
     // MARK: - Core Values
@@ -453,7 +454,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     /// Translator-facing description (where the string is used and what each value means).
     public var comment: String {
         switch self {
-        case .importImagePrefix, .errorImportNotImageOrVideo, .errorImportUnsupportedImage, .errorImportUnsupportedVideo, .errorImportNotRegularFile, .errorImportTooLargeImage, .errorImportTooLargeVideo, .errorImportTooManyPixels, .errorImportTimedOut, .errorImportSourceFailed, .receivingProgress, .receivingCancel, .receivingStage, .checkingStage, .menuCancelReceiving:
+        case .shortcutCancelReceivingCondition, .importImagePrefix, .errorImportNotImageOrVideo, .errorImportUnsupportedImage, .errorImportUnsupportedVideo, .errorImportNotRegularFile, .errorImportTooLargeImage, .errorImportTooLargeVideo, .errorImportTooManyPixels, .errorImportTimedOut, .errorImportSourceFailed, .receivingProgress, .receivingCancel, .receivingStage, .checkingStage, .menuCancelReceiving:
             return "Text for receiving an external image or video. Timeout takes seconds; progress takes total, completed, and formatted size."
         case .menuFileShortcuts:
             return "File menu item that opens the shortcut reference"

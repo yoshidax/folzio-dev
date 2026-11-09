@@ -30,6 +30,79 @@ final class FileOperationCoordinator {
         self.conflictPrompt = ConflictPrompt()
     }
 
+    func importDrop(_ info: any NSDraggingInfo, to destination: URL) -> Bool {
+        ExternalImageDrag.accept(info, destination: destination) { [self] request, control in
+            await saveReceived(request, control: control)
+        }
+    }
+
+    func saveReceived(_ urls: [URL], to destination: URL, sameVolume: Bool) async -> ImportSaveOutcome {
+        await saveReceived(ImportSaveRequest(files: urls, failures: [], destination: destination, sameVolume: sameVolume),
+            control: ImportSaveControl(isActive: { true }, willConfirm: {}, didConfirm: {}))
+    }
+
+    func saveReceived(_ request: ImportSaveRequest, control: ImportSaveControl) async -> ImportSaveOutcome {
+        await ImportConfirmationQueue.shared.perform { [self] in
+            // An existing sheet belongs to another operation; let it finish without blocking the main thread.
+            while control.isActive(), NSApp?.modalWindow != nil || NSApp?.keyWindow?.attachedSheet != nil || NSApp?.mainWindow?.attachedSheet != nil {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+            guard control.isActive() else { return .cancelled }
+            let (result, outcome) = await Self.transferReceived(request, service: service,
+                confirm: { [confirmation] in await confirmation.confirm($0) },
+                resolveConflict: { [conflictPrompt] conflicts, destination, allowReplace in
+                    await conflictPrompt.resolve(conflictingNames: conflicts.map(\.lastPathComponent),
+                        destination: destination, allowReplace: allowReplace)
+                }, control: control)
+            if control.isActive() { await presentFailures(result) }
+            if !result.succeeded.isEmpty {
+                await model.reloadCurrentFolder()
+                onFoldersChanged?([request.destination.standardizedFileURL])
+            }
+            return outcome
+        }
+    }
+
+    static func transferReceived(
+        _ request: ImportSaveRequest, service: any FileOperating,
+        confirm: (FileOperation) async -> Bool,
+        resolveConflict: ([URL], URL, Bool) async -> ConflictPrompt.Choice,
+        control: ImportSaveControl
+    ) async -> (FileOperationResult, ImportSaveOutcome) {
+        guard control.isActive() else { return (FileOperationResult(), .cancelled) }
+        control.willConfirm()
+        var result = FileOperationResult(failed: request.failures)
+        let initialFailure = await Task.detached { receivedDestinationFailure(request.destination) }.value
+        if let reason = initialFailure {
+            result.failed.append(contentsOf: request.files.map { ($0, reason) })
+            if result.failed.isEmpty { result.failed.append((request.destination, reason)) }
+            return (result, .failed)
+        }
+        guard !request.files.isEmpty else { return (result, .failed) }
+        guard await confirm(FileOperation(kind: .copy, sources: request.files, destination: request.destination)),
+              control.isActive() else { return (FileOperationResult(), .cancelled) }
+        if let reason = await Task.detached(operation: { receivedDestinationFailure(request.destination) }).value {
+            result.failed.append(contentsOf: request.files.map { ($0, reason) })
+            return (result, .failed)
+        }
+        control.didConfirm()
+        let (saved, _) = await transferItems(request.files, to: request.destination,
+            kind: request.sameVolume ? .move : .copy, service: service, resolveConflict: resolveConflict,
+            validate: { _ in control.isActive() })
+        result.succeeded.append(contentsOf: saved.succeeded)
+        result.failed.append(contentsOf: saved.failed)
+        return (result, result.succeeded.isEmpty && !result.failed.isEmpty ? .failed : .finished)
+    }
+
+    nonisolated static func receivedDestinationFailure(_ destination: URL) -> OperationFailureReason? {
+        var directory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: destination.path, isDirectory: &directory), directory.boolValue else {
+            return .destinationNotFound
+        }
+        return FileManager.default.isWritableFile(atPath: destination.path)
+            ? nil : .systemFailure(systemReason: CocoaError(.fileWriteNoPermission).localizedDescription)
+    }
+
     func copy(_ urls: [URL], to destination: URL) async {
         await transfer(urls, to: destination, kind: .copy)
     }

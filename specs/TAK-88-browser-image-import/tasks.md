@@ -111,15 +111,15 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 
 **Independent Test**: quickstart.md の「ドラッグ」の表を、Safari・Chrome・写真アプリで確かめる
 
-- [ ] T021 [P] [US1] `Tests/FolzioAppTests/ExternalImageDragTests.swift` を作り、先に失敗させる。3つのビューが登録する型に `.fileURL`・
+- [x] T021 [P] [US1] `Tests/FolzioAppTests/ExternalImageDragTests.swift` を作り、先に失敗させる。3つのビューが登録する型に `.fileURL`・
   `NSFilePromiseReceiver.readableDraggedTypes`・PNG・JPEG・TIFF（T007で確定した型）が含まれること、名前付きの `NSPasteboard` に置いた画像データ・URL だけ・文字列だけ・
   PDF を示す約束で、受け取るデータの判定が `ImportPayloadPolicy` と一致すること、マスクに `.copy` がないときに操作が空になることを確かめる（R2・FR-348・FR-356）
-- [ ] T022 [US1] `Sources/FolzioApp/Shared/ExternalImageDrag.swift` を作り、ドラッグの通し番号ごとに1回だけペーストボードの型を調べて `ImportPayload` を保持し、
+- [x] T022 [US1] `Sources/FolzioApp/Shared/ExternalImageDrag.swift` を作り、ドラッグの通し番号ごとに1回だけペーストボードの型を調べて `ImportPayload` を保持し、
   ホバー中は `.copy` を返す（修飾キーで変えない。約束は準備済みフォルダがある場合だけ）。ドロップ中にNSFilePromiseReceiverの配列を読み、ImportSessionの全要求を始めてから返す。画像データは各項目のPNG → JPEG → TIFFから同期取得する（R2・R3・R5）。T021を通す
-- [ ] T023 [US1] `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift`（1059 行付近）・`Sources/FolzioApp/FileList/ListModeView.swift`（262 行付近）・
+- [x] T023 [US1] `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift`（1059 行付近）・`Sources/FolzioApp/FileList/ListModeView.swift`（262 行付近）・
   `Sources/FolzioApp/FileList/ThumbnailModeView.swift`（642 行付近）の `registerForDraggedTypes` に T022 の型を加え、`validateDrop`・`acceptDrop` で
   file URL がないときに `ExternalImageDrag` へ分ける。アプリ内のドラッグと file URL の経路は変えない（R13・SC-192）
-- [ ] T024 [US1] `Sources/FolzioApp/Operations/ImportSession.swift` を作り、data-model.md の状態の移り変わりのとおり、事前作成したImportStagingの同期的な確保と背景での補充（T017）、
+- [x] T024 [US1] `Sources/FolzioApp/Operations/ImportSession.swift` を作り、data-model.md の状態の移り変わりのとおり、事前作成したImportStagingの同期的な確保と背景での補充（T017）、
   全約束に共通宛先でドロップ内から行うreceivePromisedFiles（readerは専用のOperationQueue）、待つ時間（画像・不明 60 秒、動画 10 分）、1 秒ごとの大きさの見張り（「約束ごとの上限の合計」）、
   readerが報告したファイルの通知中の構造確認・複製と、複製だけの背景検査（T013）、画像データの書き込み（T015）、名前の連番（T009）、最後の一時的なフォルダの削除と記録の削除を行う（R3〜R6・FR-350・FR-355・FR-359）。
   打ち切り・取り消しの後に届いた結果は捨てる。期限・容量・状態の判断は T043 の Core の型に任せる。
@@ -131,22 +131,22 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
   - 待つ間・確認の間に宛先が消えた・書き込めなくなった場合、T025 とつないで失敗を表示し、掃除する（EC-245）
   - 2つの宛先への同時の受け取りで、期限・結果・一時的なフォルダが独立し、片方の取り消しが他方に影響しない。
     T025・T027・T028 とつないで、確認が1つずつ表示され、パネルは行ごとに取り消せて、⌘. は最後に始めた操作だけを取り消すことを確かめる（EC-246）
-- [ ] T025 [US1] `Sources/FolzioApp/Operations/FileOperationCoordinator.swift` に `saveReceived(_:to:sameVolume:)` を加える。`.copy` の `FileOperation` で確認し、
+- [x] T025 [US1] `Sources/FolzioApp/Operations/FileOperationCoordinator.swift` に `saveReceived(_:to:sameVolume:)` を加える。`.copy` の `FileOperation` で確認し、
   `transferItems`（229 行付近）を同じボリュームなら `.move`、そうでなければ `.copy` で呼ぶ。後処理はコピーと同じ（宛先だけの `onFoldersChanged`、
   `didMoveSearchItems` と履歴の削除をしない）。失敗は `presentFailures` で示し、取り消しは示さない（R7・FR-347）。
   複数の受け取りの確認モーダル・衝突のダイアログを1つずつ表示し、宛先の消失・書き込み不可を含め、T024 のテストで確かめる（EC-245・EC-246）
-- [ ] T026 [US1] `Sources/FolzioApp/FileList/FileListViewController.swift` と `DirectoryTreeViewController.swift` で、`ExternalImageDrag` のドロップを
+- [x] T026 [US1] `Sources/FolzioApp/FileList/FileListViewController.swift` と `DirectoryTreeViewController.swift` で、`ExternalImageDrag` のドロップを
   `ImportSession` と `saveReceived` へつなぐ。宛先はドロップの位置の宛先（FR-345・FR-349）
-- [ ] T027 [US1] `Sources/FolzioApp/Operations/ReceivingPanelController.swift` を作り、R9 のとおり、1つの `NSPanel`（`.nonactivatingPanel`・`becomesKeyOnlyIfNeeded`）に、
+- [x] T027 [US1] `Sources/FolzioApp/Operations/ReceivingPanelController.swift` を作り、R9 のとおり、1つの `NSPanel`（`.nonactivatingPanel`・`becomesKeyOnlyIfNeeded`）に、
   2 秒を超えた操作の行（宛先の名前・件数・書き出し済みの件数・大きさ・段階・「取り消す」）を出す。複製と検査の間も出し、確認モーダルの直前に行を消す。
   ボタンにアクセシビリティのラベルを付ける（FR-363・憲章 原則 III）
-- [ ] T028 [US1] `Sources/FolzioApp/App/MainMenu.swift` の編集メニューに「受け取りを取り消す」（キー ⌘.）を、移動ペーストの後に加える。`validateMenuItem` は、待っている操作があり、キーのウインドウにシートがなく、
+- [x] T028 [US1] `Sources/FolzioApp/App/MainMenu.swift` の編集メニューに「受け取りを取り消す」（キー ⌘.）を、移動ペーストの後に加える。`validateMenuItem` は、待っている操作があり、キーのウインドウにシートがなく、
   モーダルがなく、最初の応答者が `NSText` でないときだけ有効にし、最後に始めた操作を取り消す。
   `Sources/FolzioCore/Shortcuts/ShortcutCommand.swift` の `ReservedShortcutKeys.combinations` に ⌘. を加え、
   `Sources/FolzioCore/Shortcuts/ShortcutCatalog.swift` の「選択とファイル操作」に載せる（R9・FR-363・A-124（変更））。
   `Tests/FolzioCoreTests/ShortcutCatalogTests.swift` の順序と件数（46 → 47）、`Shortcuts/ShortcutAssignmentsTests.swift` の予約キー、
   `Localization/ShortcutTextTests.swift` の文言を更新する。`Tests/FolzioAppTests/ImportSessionTests.swift` に有効な条件と最後の操作を取り消すテストを加える
-- [ ] T029 [US1] `Sources/FolzioApp/App/AppDelegate.swift` の起動の後に、ImportCleanupRecordの掃除を背景で行い、その完了後に2組の受け取り先を事前作成する。正常終了時は未使用の待機用も掃除する（R10・FR-361）
+- [x] T029 [US1] `Sources/FolzioApp/App/AppDelegate.swift` の起動の後に、ImportCleanupRecordの掃除を背景で行い、その完了後に2組の受け取り先を事前作成する。正常終了時は未使用の待機用も掃除する（R10・FR-361）
 - [ ] T030 [US1] `scripts/dev/check-all.sh` を実行し、Phase 3 をコミットして push する。CI で build とテスト（性能テストのログの末尾を含む）の結果を確かめる
 - [ ] T031 [MANUAL] [US1] 保守者に、quickstart.md の準備と「ドラッグ」の表、「安全性」の保守者の確認、起動スモーク（3 ペインの表示）を実行してもらい、
   結果を `checklists/validation.md` に記録する。「受け取りの流れと性能」で、宛先の消失・書き込み不可と同時の受け取り（EC-245・EC-246）、

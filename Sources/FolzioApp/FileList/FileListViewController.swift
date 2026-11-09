@@ -133,6 +133,11 @@ final class FileListViewController: NSViewController {
         }
         listModeView.onDrop = handleDrop
         thumbnailModeView.onDrop = handleDrop
+        let imageDrop: (any NSDraggingInfo, URL) -> Bool = { [weak coordinator] info, destination in
+            coordinator?.importDrop(info, to: destination) ?? false
+        }
+        listModeView.onImageDrop = imageDrop
+        thumbnailModeView.onImageDrop = imageDrop
         listModeView.onOpenItem = { [weak self] url in
             self?.openItem(url)
         }

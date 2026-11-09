@@ -1017,3 +1017,5 @@
 "import.receiving.stage" = "書き出し中";
 "import.checking.stage" = "確認中";
 "menu.edit.cancelReceiving" = "受け取りを取り消す";
+
+"shortcuts.condition.cancelReceiving" = "受け取り中。文字の編集・シート・ダイアログの外で有効";
