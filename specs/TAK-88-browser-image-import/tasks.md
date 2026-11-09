@@ -18,7 +18,8 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 
 - [x] T001 `spec.md` と `checklists/requirements.md` を作り、TAK-88 と保守者の決定（Clarifications）を記録する
 - [x] T002 `plan.md`・`research.md`・`data-model.md`・`contracts/browser-image-import.md`・`quickstart.md` に設計と検証方法を記録する
-- [ ] T003 保守者の設計レビューと実装の承認を得る。`scripts/check-no-network.sh` の例外（R6）の承認も得る。承認がなければ T004 以降に進まない
+- [x] T003 保守者の設計レビューと実装の承認を得る。`scripts/check-no-network.sh` の例外（R6）の承認も得る。承認がなければ T004 以降に進まない
+  （2026-11-09、このチャットで設計と R6 の例外を示した確認に対し、保守者が「進めてください」と承認）
 
 ## Phase 1: Setup（先に行う確認。R1）
 

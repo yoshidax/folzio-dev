@@ -27,6 +27,32 @@ swift scripts/dev/pasteboard-probe.swift
 - 各アプリで「コピー」した後に、スクリプトのクリップボードの表示を記録する
 - 200 MB 程度の TIFF をクリップボードに置いたときの、読み出しの時間を記録する
 
+### 確認スクリプトの使い方
+
+- 「確認するケース」にアプリ・形式・操作を書く（例: `Safari / JPEG / ドラッグ`）。ログを保存するときは次で起動する
+
+```bash
+swift scripts/dev/pasteboard-probe.swift | tee /tmp/folzio-pasteboard-probe.log
+```
+
+- ドロップすると型・マスクと、選んだ画像の型の `bytes`・`readSeconds` が出る。
+  型は「自動」または PNG・JPEG・HEIC・TIFF から選べる。PNG と TIFF の両方があるときは、型を切り替えて同じ操作を繰り返す
+- コピーを調べるときは、まず「クリップボードを調べる」を押す。各項目の各型について容量と UI スレッドでの読み出し時間が出る。
+  約束の有無と書き出しは、別の「クリップボードの約束を書き出す」ボタンで確かめる
+- 約束の `fileNames(before)` は空でも失敗としない。`fileNames(requested)`・`fileNames(after)` と、
+  `readerCount`・`seconds`・書き出された名前と大きさ、またはエラーを記録する。複数ファイルの約束では `readerCount` が増える
+- 「200 MB TIFF をコピー」「256 MB TIFF をコピー」は、非圧縮 TIFF をバックグラウンドで作り、一般のクリップボードを置き換える。
+  実際の容量は `generatedTIFF bytes` を記録し、生成後に「クリップボードを調べる」で読む。実アプリからの遅延提供とは別の測定として記録する
+- 下の2つの「ここからドラッグ」は、ともに PNG の約束を渡す。`cat.png` の中身は JPEG、`logo.svg` の中身は PNG。
+  この段階ではこのスクリプト自身のドロップ欄へドラッグし、受け取りとファイルの名前を確かめる。Folzio への保存は T031 で確かめる
+- 約束はログの `destination` の一時フォルダへ書き出す。同じドラッグの約束には共通の宛先を渡す。
+  受け取りごとのフォルダは終了後も残すので、確認後に Finder で削除する
+- 結果は `checklists/validation.md` の「T006 の実測結果」にまとめる。GUI を使わない確認用画像の自己検査は次で実行できる
+
+```bash
+swift -swift-version 6 scripts/dev/pasteboard-probe.swift --self-test
+```
+
 ## ドラッグ（US77）
 
 | 確かめる操作 | 期待する結果 |

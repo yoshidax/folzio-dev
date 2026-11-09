@@ -50,6 +50,9 @@ jobs:
       - name: Build
         run: swift build
 
+      - name: Check pasteboard probe
+        run: swift -swift-version 6 scripts/dev/pasteboard-probe.swift --self-test
+
       # A hung test would otherwise hold the macOS runner until the 30-minute job limit.
       - name: Test (excluding performance tests)
         timeout-minutes: 10
