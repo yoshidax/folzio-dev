@@ -4,13 +4,15 @@
 
 **Prerequisites**: spec.md / plan.md / research.md / data-model.md / contracts/browser-image-import.md / quickstart.md
 
-**Tests**: 憲章 原則 IV に従い、Core の判断（受け取るデータの選び方・名前・中身の判別・構造・大きさ・記録）と、App のペーストボードの判定・
-メニューの有効・無効に自動テストを付ける。ブラウザ・写真アプリとの受け渡しと GUI は、保守者が macOS で確かめる（`[MANUAL]`）。
+**Tests**: 憲章 原則 IV に従い、Core の判断（受け取るデータの選び方・名前・中身の判別・構造・大きさ・記録・期限・状態）と、App のペーストボードの判定・
+メニューの有効・無効・受け取りの流れに自動テストを付ける。ブラウザ・写真アプリとの受け渡しと GUI は、保守者が macOS で確かめる（`[MANUAL]`）。
 Cloud では `swift` を実行できないので、build とテストは macOS CI で確かめる（`docs_private/cloud-agent-workflow.md` の 4 章・5 章）。
 
 **注意**: `scripts/check-no-network.sh` は `Sources` の中の語 `http` と `https://` を、コメントを含めて拒否する。URL の例は `Tests` にだけ書く（R6）。
 
 **ストーリーの対応**: [US1] = spec の US77（ドラッグ）、[US2] = spec の US78（ペースト）。
+
+**タスクの番号**: 全 43 件。分析 C1 の修正で T042・T043 を Phase 2 に加えた。既存の番号は変えず、番号の大小ではなく Phase と依存関係の順に実行する。
 
 ## Phase 0: 設計
 
@@ -72,11 +74,18 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
   記録の追加と削除、起動時の掃除で、ボリュームの識別子が違う記録・名前の形が違う記録（ホームのフォルダを指す記録を含む）・30 日を過ぎた記録を消さずに外すこと、
   ボリュームがない記録を持ち越すこと、型が不正な要素を捨てることを確かめる。`UserDefaults` はテスト用のスイートを使う
 - [ ] T017 `Sources/FolzioCore/Operations/ImportStaging.swift` と `ImportCleanupRecord.swift` を実装して T016 を通す（キー `internal.pendingImportFolders`）
+- [ ] T042 [P] `Tests/FolzioCoreTests/ImportBudgetTests.swift` と `ImportReceptionStateTests.swift` を作り、先に失敗させる（R3・FR-355・FR-359・FR-363）。
+  経過時間を値で渡し、画像・不明の 60 秒、動画の 600 秒の直前と期限ちょうど、画像・動画が混在する約束の期限を確かめる。
+  容量は約束ごとの上限の合計と同じ値を許し、1 バイト超過で操作全体を打ち切ることを確かめる。
+  正常な状態の移り変わり、画像データは `checking` から始まること、取り消し・失敗・完了の後の結果や重複した通知で状態が変わらないことを確かめる
+- [ ] T043 `Sources/FolzioCore/Operations/ImportBudget.swift` と `ImportReceptionState.swift` を実装して T042 を通す。
+  時計・タイマー・ファイル操作・AppKit を持たず、経過時間・観測した大きさ・イベントから判断する（data-model.md・R3）。T024 はこの判断を使う
 - [ ] T018 [P] quarantine の印のテストを `Tests/FolzioCoreTests/ImportInspectorTests.swift` に加える（R8・FR-358・SC-191）。印のない複製に付けた印が
   `LSQuarantineAgentName` が `Folzio` で、`LSQuarantineDataURL`・`LSQuarantineOriginURL` を含まないこと、すでにある印を変えないことを確かめ、実装する
 - [ ] T019 `Sources/FolzioCore/Operations/OperationFailureReason.swift` に `importRejected(ImportRejection)` を加え、
   `Sources/FolzioLocalization/TextKey.swift` と `Sources/FolzioLocalization/Resources/{en,ja}.lproj/Localizable.strings` に、
-  spec の「新しい文言（追加）」の表のキーを両言語で加える（R12・A-213）。既存のローカライズのテスト（`Tests/FolzioCoreTests/Localization`）を通す
+  spec の「新しい文言（追加）」の表のキーを両言語で加える（R12・A-213）。既存のローカライズのテスト（`Tests/FolzioCoreTests/Localization`）を通す。
+  `timedOut(seconds:)` の文言を画像・不明の 60 秒、動画の 600 秒について両言語で確かめる。条件に合わない名前は日時の名前に直し、`nameTooLong` は加えない（FR-360）
 - [ ] T020 `scripts/dev/check-all.sh` を実行し、Phase 2 をコミットして push する。CI（`workflow_dispatch`）で build とテストの結果を確かめる
 
 **Checkpoint**: Core の判断と検査がテストで確かめられた
@@ -98,22 +107,33 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 - [ ] T024 [US1] `Sources/FolzioApp/Operations/ImportSession.swift` を作り、data-model.md の状態の移り変わりのとおり、一時的なフォルダの作成（T017）、
   約束ごとの `receivePromisedFiles`（専用の `OperationQueue`）、待つ時間（画像・不明 60 秒、動画 10 分）、1 秒ごとの大きさの見張り（「約束ごとの上限の合計」）、
   `reader` が報告したファイルだけの検査（T013）、画像データの書き込み（T015）、名前の連番（T009）、最後の一時的なフォルダの削除と記録の削除を行う（R3〜R6・FR-350・FR-355・FR-359）。
-  打ち切り・取り消しの後に届いた結果は捨てる
+  打ち切り・取り消しの後に届いた結果は捨てる。期限・容量・状態の判断は T043 の Core の型に任せる。
+  実装の前に `Tests/FolzioAppTests/ImportSessionTests.swift` を作り、時計・約束の受け取り・確認を差し替えて、実時間を待たずに次を確かめる
+  - 正常な受け取り、画像 60 秒・動画 600 秒での打ち切り、1 秒ごとの見張りの超過、受け取り中・検査中の取り消し
+  - 打ち切り・取り消しの後に届く結果は保存と確認を始めず、残った一時的なファイルを掃除する。失敗・取り消し・完了で記録が残らず、取り消しは失敗の表示を出さない
+  - 待つ間・確認の間に宛先が消えた・書き込めなくなった場合、T025 とつないで失敗を表示し、掃除する（EC-245）
+  - 2つの宛先への同時の受け取りで、期限・結果・一時的なフォルダが独立し、片方の取り消しが他方に影響しない。
+    T025・T027・T028 とつないで、確認が1つずつ表示され、パネルは行ごとに取り消せて、⌘. は最後に始めた操作だけを取り消すことを確かめる（EC-246）
 - [ ] T025 [US1] `Sources/FolzioApp/Operations/FileOperationCoordinator.swift` に `saveReceived(_:to:sameVolume:)` を加える。`.copy` の `FileOperation` で確認し、
   `transferItems`（229 行付近）を同じボリュームなら `.move`、そうでなければ `.copy` で呼ぶ。後処理はコピーと同じ（宛先だけの `onFoldersChanged`、
-  `didMoveSearchItems` と履歴の削除をしない）。失敗は `presentFailures` で示し、取り消しは示さない（R7・FR-347）
+  `didMoveSearchItems` と履歴の削除をしない）。失敗は `presentFailures` で示し、取り消しは示さない（R7・FR-347）。
+  複数の受け取りの確認モーダル・衝突のダイアログを1つずつ表示し、宛先の消失・書き込み不可を含め、T024 のテストで確かめる（EC-245・EC-246）
 - [ ] T026 [US1] `Sources/FolzioApp/FileList/FileListViewController.swift` と `DirectoryTreeViewController.swift` で、`ExternalImageDrag` のドロップを
   `ImportSession` と `saveReceived` へつなぐ。宛先はドロップの位置の宛先（FR-345・FR-349）
 - [ ] T027 [US1] `Sources/FolzioApp/Operations/ReceivingPanelController.swift` を作り、R9 のとおり、1つの `NSPanel`（`.nonactivatingPanel`・`becomesKeyOnlyIfNeeded`）に、
   2 秒を超えた操作の行（宛先の名前・件数・書き出し済みの件数・大きさ・段階・「取り消す」）を出す。複製と検査の間も出し、確認モーダルの直前に行を消す。
   ボタンにアクセシビリティのラベルを付ける（FR-363・憲章 原則 III）
-- [ ] T028 [US1] 編集メニューに「受け取りを取り消す」（キー ⌘.）を、移動ペーストの後に加える。`validateMenuItem` は、待っている操作があり、キーのウインドウにシートがなく、
-  モーダルがなく、最初の応答者が `NSText` でないときだけ有効にし、最後に始めた操作を取り消す。ショートカットの割り当ての予約キーに ⌘. を加え、
-  ショートカット一覧の「選択とファイル操作」に載せる（R9・FR-363・A-124（変更））。`Tests/FolzioAppTests` に有効な条件のテストを加える
+- [ ] T028 [US1] `Sources/FolzioApp/App/MainMenu.swift` の編集メニューに「受け取りを取り消す」（キー ⌘.）を、移動ペーストの後に加える。`validateMenuItem` は、待っている操作があり、キーのウインドウにシートがなく、
+  モーダルがなく、最初の応答者が `NSText` でないときだけ有効にし、最後に始めた操作を取り消す。
+  `Sources/FolzioCore/Shortcuts/ShortcutCommand.swift` の `ReservedShortcutKeys.combinations` に ⌘. を加え、
+  `Sources/FolzioCore/Shortcuts/ShortcutCatalog.swift` の「選択とファイル操作」に載せる（R9・FR-363・A-124（変更））。
+  `Tests/FolzioCoreTests/ShortcutCatalogTests.swift` の順序と件数（46 → 47）、`Shortcuts/ShortcutAssignmentsTests.swift` の予約キー、
+  `Localization/ShortcutTextTests.swift` の文言を更新する。`Tests/FolzioAppTests/ImportSessionTests.swift` に有効な条件と最後の操作を取り消すテストを加える
 - [ ] T029 [US1] `Sources/FolzioApp/App/AppDelegate.swift` の起動の後に、`ImportCleanupRecord` の掃除を detached task で行う（R10・FR-361）
 - [ ] T030 [US1] `scripts/dev/check-all.sh` を実行し、Phase 3 をコミットして push する。CI で build とテスト（性能テストのログの末尾を含む）の結果を確かめる
 - [ ] T031 [MANUAL] [US1] 保守者に、quickstart.md の準備と「ドラッグ」の表、「安全性」の保守者の確認、起動スモーク（3 ペインの表示）を実行してもらい、
-  結果を `checklists/validation.md` に記録する
+  結果を `checklists/validation.md` に記録する。「受け取りの流れと性能」で、宛先の消失・書き込み不可と同時の受け取り（EC-245・EC-246）、
+  検索結果のフォルダへのドラッグ（SC-186）、入力から表示が変わり始めるまで 1 秒以内（SC-189）、変更前後のドラッグの反応も測る
 
 **Checkpoint**: ドラッグで画像・動画を保存できる（MVP）
 
@@ -140,7 +160,9 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 - [ ] T038 [P] `README.md`・`README.ja.md`・`docs/usage.md`・`docs/usage.ja.md` に、ブラウザの画像の保存（ドラッグ・⌘V）と取り消し（⌘.）の説明を、2 言語で同じ内容に、同じコミットで加える。
   `specs/`・`docs_private/` へリンクしない（AGENTS.md の書くときの規則）
 - [ ] T039 `scripts/dev/check-all.sh` と `scripts/check-no-network.sh` を実行し、公開用の書き出し（`scripts/dev/export-public.py`）に `scripts/dev/pasteboard-probe.swift` が含まれないことを確かめる
-- [ ] T040 保守者の依頼があれば PR を作り、Linear の TAK-88 に PR のリンクを加えて `In Review` にする（`docs_private/agents/linear.md`）
+- [ ] T040 T006 の画像データの読み出し時間と T031 のドラッグの反応・SC-189 の計測を、条件（macOS・機種・データの型と大きさ・変更前後のコミット）とともに
+  `checklists/validation.md` にまとめ、PR の検証欄へ記載する本文を用意する（憲章 原則 II）。計測していない項目は未確認とする。
+  保守者の依頼があれば PR を作り、この計測結果を記載し、Linear の TAK-88 に PR のリンクを加えて `In Review` にする（`docs_private/agents/linear.md`）
 - [ ] T041 PR の最後に、`git merge origin/master` で最新の master を取り込み、`scripts/dev/check-spec-ids.sh` で ID の衝突を確かめてから、spec の「反映先」の表のとおり
   `specs/product/file-operations.md`・`contracts/keyboard-and-menus.md`・`contracts/settings.md`・`contracts/localization.md` へ反映する。
   `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を反映の後にも実行し、反映した項目と差分を保守者に示して承認を得てからコミットする
@@ -150,11 +172,12 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 
 - Phase 0 → Phase 1（T006 の保守者の確認と T007 の確定まで） → Phase 2 → Phase 3（US1） → Phase 4（US2） → Phase 5
 - Phase 4 は Phase 3 の `ImportSession`（T024）と `saveReceived`（T025）を使う。憲章 原則 III により、US1 と US2 は同じ PR で提供する
+- T042 → T043 → T024。T024 の接続のテストは T025・T027・T028 と合わせて通し、T030 の CI で確かめる
 - T041（product への反映）は PR の最後の作業
 
 ## Parallel Opportunities
 
-- Phase 2 のテストの作成（T008・T010・T012・T014・T016・T018）は、別のファイルなので並行できる。Cloud ではサブエージェントで分けず、1つのセッションで順に行う
+- Phase 2 のテストの作成（T008・T010・T012・T014・T016・T018・T042）は、別のファイルなので並行できる。Cloud ではサブエージェントで分けず、1つのセッションで順に行う
   （AGENTS.md の作業別の手順）
 - Phase 3 の T021 と Phase 4 の T032 は別のファイルで、テストの作成だけなら並行できる
 
