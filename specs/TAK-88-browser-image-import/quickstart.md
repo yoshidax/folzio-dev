@@ -19,6 +19,8 @@ open .build/Folzio.app
 
 ## 先に行う確認（R1）
 
+この段階では確認スクリプトだけを起動する。上の Folzio のビルド・起動は、後のアプリの動作確認で行う。
+
 ```bash
 swift scripts/dev/pasteboard-probe.swift
 ```

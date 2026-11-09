@@ -25,13 +25,14 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 
 **Purpose**: ブラウザ・写真アプリが渡すものを確かめ、結果で spec・plan を確定する。確定するまで Phase 2 以降を始めない
 
-- [ ] T004 `scripts/dev/pasteboard-probe.swift` を作る（開発用。コメントは日本語。公開用リポジトリへ書き出さないことを `scripts/dev/export-public.py` の除外で確かめる）。
+- [x] T004 `scripts/dev/pasteboard-probe.swift` を作る（開発用。コメントは日本語。公開用リポジトリへ書き出さないことを `scripts/dev/export-public.py` の除外で確かめる）。
   `swift scripts/dev/pasteboard-probe.swift` で開くウインドウが、(1) ドロップされたドラッグの型、`NSFilePromiseReceiver` の `fileTypes`・`fileNames`、
   ドラッグ元のマスク、約束を一時フォルダへ書き出させた結果（名前・大きさ・かかった時間・`reader` が呼ばれた回数）、
   (2) ボタンで一般のペーストボードの型と大きさ、一般のペーストボードから `NSFilePromiseReceiver` を読み出して書き出させた結果、
   (3) 選んだ型の `data(forType:)` を UI スレッドで読むのにかかった時間、を表示する。
   (4) 中身が JPEG で名前が `cat.png` のファイルと、名前が `logo.svg` で中身が PNG のファイルを約束で渡すドラッグ元のビューを持つ（R4 の確認用）
-- [ ] T005 `scripts/dev/check-all.sh` を実行し、T004 をコミットして作業ブランチへ push する
+- [x] T005 `scripts/dev/check-all.sh` を実行し、T004 をコミットして作業ブランチへ push する
+  （`10590ed`・`ff748f5`。macOS CI に Swift 6 でのコンパイルと確認用画像の自己検査も追加。GUI と実アプリの確認は T006 で行う）
 - [ ] T006 [MANUAL] 保守者に、quickstart.md の「先に行う確認」を実行してもらい、結果を `specs/TAK-88-browser-image-import/checklists/validation.md` に記録する
   （Safari・Chrome の画像のドラッグとコピー、写真アプリの写真・動画のドラッグとコピー、200 MB 程度の TIFF の読み出しの時間）
 - [ ] T007 T006 の結果で spec・plan・research・contracts を確定する。特に次を決め、変えた点を保守者に示して確かめる
