@@ -49,50 +49,55 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 
 **Purpose**: `FolzioCore`（AppKit を import しない）に、細工された入力を拒む判断を置き、テストで網羅する
 
-- [ ] T008 [P] `Tests/FolzioCoreTests/ImportedFileNameTests.swift` を作り、先に失敗させる（R6・FR-352・FR-357・FR-360・EC-243）。
+- [x] T008 [P] `Tests/FolzioCoreTests/ImportedFileNameTests.swift` を作り、先に失敗させる（R6・FR-352・FR-357・FR-360・EC-243）。
   `isAcceptable` は「空でない、`/`・`:` を含まない、`.` で始まらない、`Cc`・`Cf` の文字を含まない、UTF-8 で 200 バイト以下」を、
   境界（200 バイトと 201 バイト、U+202E・U+2066・U+200E・NUL・改行、`..`、全角の名前）で確かめる。
   `nameFromURL` は `https://example.com/a/cat.jpg?w=1` → `cat.png`、`%2F`・`%00` を含む名前、`data:`・`blob:`・`file:`・`ftp:` の URL、
   パスのない URL、最後の要素が `..` の URL を確かめる。`datedName` はタイムゾーンとロケール（`ja_JP`・`ar`）に依らず ASCII の数字になること。
   `corrected` は spec の FR-360 の例（`cat.png`・`photo.jpg_large`・`download`・`photo.jpg.command`・`cat.JPG`・`.jpeg`・`.jfif`・`.jpe`）と、動画（`.mov`・`.mp4`）。
   `uniqueNames` は同じ名前・大文字小文字だけ違う名前に、既存の `uniqueName(for:existingNames:)` と同じ連番が付くこと
-- [ ] T009 `Sources/FolzioCore/Operations/ImportedFileName.swift` を実装して T008 を通す。`scripts/check-no-network.sh` に、
+- [x] T009 `Sources/FolzioCore/Operations/ImportedFileName.swift` を実装して T008 を通す。`scripts/check-no-network.sh` に、
   このファイルの `"http"` と `"https"` のリテラルだけを許す例外を、`AboutInfo.swift` と同じ形で加える（T003 で承認されたとき。R6）
-- [ ] T010 [P] `Tests/FolzioCoreTests/ImportPayloadPolicyTests.swift` を作り、先に失敗させる（R2・R5・R11・FR-348・FR-351・EC-241）。
+- [x] T010 [P] `Tests/FolzioCoreTests/ImportPayloadPolicyTests.swift` を作り、先に失敗させる（R2・R5・R11・FR-348・FR-351・EC-241）。
   file URL があるとき常に `.fileURLs`、約束の種類（画像・動画・不明・`public.data`・空・PDF だけ・PDF と画像）、画像データの型の選び方（PNG → JPEG → TIFF。項目にない合成TIFFと未観測の直接HEICは対象にしない）、
   どれもないとき `nil` を確かめる
-- [ ] T011 `Sources/FolzioCore/Operations/ImportPayloadPolicy.swift` を実装して T010 を通す（data-model.md の `ImportPayloadPolicy`・`ExpectedKind`）
-- [ ] T012 [P] `Tests/FolzioCoreTests/ImportInspectorTests.swift` を作り、先に失敗させる（R4・FR-357・FR-359・FR-362・SC-190・SC-196）。
+- [x] T011 `Sources/FolzioCore/Operations/ImportPayloadPolicy.swift` を実装して T010 を通す（data-model.md の `ImportPayloadPolicy`・`ExpectedKind`）
+- [x] T012 [P] `Tests/FolzioCoreTests/ImportInspectorTests.swift` を作り、先に失敗させる（R4・FR-357・FR-359・FR-362・SC-190・SC-196）。
   テストの中で作るファイルで、PNG・JPEG・GIF・TIFF（ImageIO で書き出す）、SVG・PDF の中身、画像でない中身（スクリプトの文字列）、
   `ftyp` が `qt  `・`isom`・`mp42` の先頭、`moov` で始まる QuickTime、AVI の先頭（`RIFF`）、シンボリックリンク、フォルダ、`.app` の名前のフォルダ、
   共通の受け取り用フォルダの外を指すリンク、256 MB を超える画像の大きさ（`ftruncate` で疎なファイルを作る）、4 GB を超える動画の大きさを確かめる。
   複製を作った後に元のファイルを書き換えても、検査と保存の対象（複製）が変わらないこと、元のファイルの拡張属性（テストで付けた
   `com.apple.quarantine`）が複製に残ることを確かめる
-- [ ] T013 `Sources/FolzioCore/Operations/ImportInspector.swift` を実装して T012 を通す。`lstat`・`isAliasFile`・`realpath` による構造の検査、
+- [x] T013 `Sources/FolzioCore/Operations/ImportInspector.swift` を実装して T012 を通す。`lstat`・`isAliasFile`・`realpath` による構造の検査、
   `copyfile(_:_:nil, COPYFILE_CLONE | COPYFILE_ALL)` の複製、`CGImageSourceGetType`・`CGImageSourceGetCount` と先頭 64 バイトによる判別（画像を展開せず、動画を再生しない）、
   中身の種類の上限（「画像 256 MB、動画 4 GB」）を実装する。構造確認と複製はreaderの専用キューから同期的に呼べるように分け、readerを返す前に完了する。結果は data-model.md の `ImportRejection` で返す
-- [ ] T014 [P] `Tests/FolzioCoreTests/ImageDataWriterTests.swift` を作り、先に失敗させる（R5・FR-351・FR-359・EC-244）。
+- [x] T014 [P] `Tests/FolzioCoreTests/ImageDataWriterTests.swift` を作り、先に失敗させる（R5・FR-351・FR-359・EC-244）。
   PNG のデータがバイト単位で同じに書かれること、TIFF（複数ページを含む）が 1 枚目だけの PNG になること、
   1 枚目が 1 億画素を超える TIFF の情報で `tooManyPixels`（画像を展開しない）、256 MB を超えるデータで `tooLarge`、壊れたデータで `notImageOrVideo` を確かめる
-- [ ] T015 `Sources/FolzioCore/Operations/ImageDataWriter.swift` を実装して T014 を通す（ImageIO の `CGImageSource`・`CGImageDestination`）
-- [ ] T016 [P] `Tests/FolzioCoreTests/ImportStagingTests.swift` と `ImportCleanupRecordTests.swift` を作り、先に失敗させる（R3・R10・FR-350・FR-361・SC-188・SC-196）。
+- [x] T015 `Sources/FolzioCore/Operations/ImageDataWriter.swift` を実装して T014 を通す（ImageIO の `CGImageSource`・`CGImageDestination`）
+- [x] T016 [P] `Tests/FolzioCoreTests/ImportStagingTests.swift` と `ImportCleanupRecordTests.swift` を作り、先に失敗させる（R3・R10・FR-350・FR-361・SC-188・SC-196）。
   起動ディスクの `Folzio-Import/<UUID>` の作成、共通の受け取り用と検査用のフォルダ、宛先との同一 / 別ボリューム判定、受け取り用だけの大きさの合計、`remove()` の後に何も残らないこと、
   記録の追加と削除、起動時の掃除で、ボリュームの識別子が違う記録・名前の形が違う記録（ホームのフォルダを指す記録を含む）・30 日を過ぎた記録を消さずに外すこと、
   ボリュームがない記録を持ち越すこと、型が不正な要素を捨てることを確かめる。`UserDefaults` はテスト用のスイートを使う
-- [ ] T017 `Sources/FolzioCore/Operations/ImportStaging.swift` と `ImportCleanupRecord.swift` を実装して T016 を通す（キー `internal.pendingImportFolders`）
-- [ ] T042 [P] `Tests/FolzioCoreTests/ImportBudgetTests.swift` と `ImportReceptionStateTests.swift` を作り、先に失敗させる（R3・FR-355・FR-359・FR-363）。
+- [x] T017 `Sources/FolzioCore/Operations/ImportStaging.swift` と `ImportCleanupRecord.swift` を実装して T016 を通す（キー `internal.pendingImportFolders`）
+- [x] T042 [P] `Tests/FolzioCoreTests/ImportBudgetTests.swift` と `ImportReceptionStateTests.swift` を作り、先に失敗させる（R3・FR-355・FR-359・FR-363）。
   経過時間を値で渡し、画像・不明の 60 秒、動画の 600 秒の直前と期限ちょうど、画像・動画が混在する約束の期限を確かめる。
   容量は約束ごとの上限の合計と同じ値を許し、1 バイト超過で操作全体を打ち切ることを確かめる。
   正常な状態の移り変わり、画像データは `checking` から始まること、取り消し・失敗・完了の後の結果や重複した通知で状態が変わらないことを確かめる
-- [ ] T043 `Sources/FolzioCore/Operations/ImportBudget.swift` と `ImportReceptionState.swift` を実装して T042 を通す。
+- [x] T043 `Sources/FolzioCore/Operations/ImportBudget.swift` と `ImportReceptionState.swift` を実装して T042 を通す。
   時計・タイマー・ファイル操作・AppKit を持たず、経過時間・観測した大きさ・イベントから判断する（data-model.md・R3）。T024 はこの判断を使う
-- [ ] T018 [P] quarantine の印のテストを `Tests/FolzioCoreTests/ImportInspectorTests.swift` に加える（R8・FR-358・SC-191）。印のない複製に付けた印が
+- [x] T018 [P] quarantine の印のテストを `Tests/FolzioCoreTests/ImportInspectorTests.swift` に加える（R8・FR-358・SC-191）。印のない複製に付けた印が
   `LSQuarantineAgentName` が `Folzio` で、`LSQuarantineDataURL`・`LSQuarantineOriginURL` を含まないこと、すでにある印を変えないことを確かめ、実装する
-- [ ] T019 `Sources/FolzioCore/Operations/OperationFailureReason.swift` に `importRejected(ImportRejection)` を加え、
+- [x] T019 `Sources/FolzioCore/Operations/OperationFailureReason.swift` に `importRejected(ImportRejection)` を加え、
   `Sources/FolzioLocalization/TextKey.swift` と `Sources/FolzioLocalization/Resources/{en,ja}.lproj/Localizable.strings` に、
   spec の「新しい文言（追加）」の表のキーを両言語で加える（R12・A-213）。既存のローカライズのテスト（`Tests/FolzioCoreTests/Localization`）を通す。
   `timedOut(seconds:)` の文言を画像・不明の 60 秒、動画の 600 秒について両言語で確かめる。条件に合わない名前は日時の名前に直し、`nameTooLong` は加えない（FR-360）
 - [ ] T020 `scripts/dev/check-all.sh` を実行し、Phase 2 をコミットして push する。CI（`workflow_dispatch`）で build とテストの結果を確かめる
+  （ローカル: `swift build`成功、`swift test`はCore 1,078件・App 28件・性能27件の計1,133件成功。
+  `check-all.sh`は179件のPython検査を含め全件成功。`scripts/make-app.sh`で起動確認用アプリを作成済み。
+  保守者がこのチャットで「表示されました」と報告し、3ペインの起動スモークも成功。
+  コミット・push・CIの確認を進めており、CIの結果を確認するまでT020は未完了。
+  ログ: `/tmp/folzio-tak88-phase2/{build.log,full-tests-2.log,check-all.log,make-app.log}`）
 
 **Checkpoint**: Core の判断と検査がテストで確かめられた
 
