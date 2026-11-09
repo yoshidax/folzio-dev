@@ -29,3 +29,23 @@ struct ImportPayloadPolicyTests {
         #expect(ImportPayloadPolicy.select(promiseDeclaredTypes: [["com.adobe.pdf"]], imageDataTypes: [["public.png"]]) == nil)
     }
 }
+
+
+extension ImportPayloadPolicyTests {
+    @Test(arguments: ["com.apple.quicktime-movie", "public.mpeg-4", "public.jpeg", "public.heic"])
+    func photosDragPrefersUsablePromises(type: String) {
+        let kind = ImportPayloadPolicy.expectedKind(declaredTypes: [type])!
+        #expect(ImportPayloadPolicy.select(hasFileURLs: true, isPhotosDrag: true,
+            promiseDeclaredTypes: [[type]], imageDataTypes: [["public.jpeg"]]) == .promises([kind]))
+        #expect(ImportPayloadPolicy.select(hasFileURLs: true,
+            promiseDeclaredTypes: [[type]], imageDataTypes: [["public.jpeg"]]) == .fileURLs)
+    }
+
+    @Test func photosDragWithoutUsablePromisesKeepsFileURLs() {
+        #expect(ImportPayloadPolicy.select(hasFileURLs: true, isPhotosDrag: true) == .fileURLs)
+        #expect(ImportPayloadPolicy.select(hasFileURLs: true, isPhotosDrag: true,
+            promiseDeclaredTypes: [["com.adobe.pdf"]]) == .fileURLs)
+        #expect(ImportPayloadPolicy.select(isPhotosDrag: true, promiseDeclaredTypes: [["com.adobe.pdf"]],
+            imageDataTypes: [["public.png"]]) == nil)
+    }
+}

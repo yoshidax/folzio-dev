@@ -16,10 +16,19 @@ final class ExternalImageDrag {
 
     static func payload(in board: NSPasteboard) -> ImportPayload? {
         let items = board.pasteboardItems ?? []
-        if items.contains(where: { $0.types.contains(.fileURL) }) { return .fileURLs }
+        let hasFileURLs = items.contains { $0.types.contains(.fileURL) }
+        let isPhotosDrag = !items.isEmpty && items.allSatisfy {
+            $0.types.contains(.init("com.apple.photos.object-reference.asset"))
+        }
+        if hasFileURLs && !isPhotosDrag { return .fileURLs }
         let promises = (board.readObjects(forClasses: [NSFilePromiseReceiver.self], options: nil) as? [NSFilePromiseReceiver]) ?? []
-        return ImportPayloadPolicy.select(promiseDeclaredTypes: promises.map(\.fileTypes),
+        return ImportPayloadPolicy.select(hasFileURLs: hasFileURLs, isPhotosDrag: isPhotosDrag,
+            promiseDeclaredTypes: promises.map(\.fileTypes),
             imageDataTypes: items.map { $0.types.map(\.rawValue) })
+    }
+
+    static func payload(in board: NSPasteboard, sequence: Int) -> ImportPayload? {
+        cache.payload(sequence: sequence) { Self.payload(in: board) }
     }
 
     static func operation(payload: ImportPayload?, mask: NSDragOperation, hasStaging: Bool) -> NSDragOperation {
@@ -32,7 +41,7 @@ final class ExternalImageDrag {
     }
 
     static func operation(_ info: any NSDraggingInfo) -> NSDragOperation {
-        let payload = cache.payload(sequence: info.draggingSequenceNumber) { Self.payload(in: info.draggingPasteboard) }
+        let payload = payload(in: info.draggingPasteboard, sequence: info.draggingSequenceNumber)
         return operation(payload: payload, mask: info.draggingSourceOperationMask, hasStaging: !ImportSessionManager.shared.pool.ready.isEmpty)
     }
 

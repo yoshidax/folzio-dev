@@ -9,6 +9,7 @@
 | 入力 | 内容 |
 |---|---|
 | `hasFileURLs` | ペーストボードに file URL があるか |
+| `isPhotosDrag` | Appが写真アプリの項目の型を観測したドラッグか（既定false。一般クリップボードではfalse） |
 | `promiseDeclaredTypes` | file promise が示す種類の識別子の配列（約束ごと） |
 | `imageDataTypes` | 項目ごとの画像データの型の識別子 |
 
@@ -19,7 +20,7 @@
 | `ImportPayload.imageData([String])` | 各項目のtypesからPNG → JPEG → TIFFで選んだ型（R5） |
 | `nil` | 受け付けない（宛先を有効にしない・ペーストを無効にする） |
 
-- 一般クリップボードのAppアダプターはpromiseDeclaredTypes=[]を渡し、file URL → 画像データの順とする。約束だけならnil、約束と画像データならimageData。ドラッグではfile URL → 約束 → 画像データ（EC-241）
+- 一般クリップボードのAppアダプターはpromiseDeclaredTypes=[]を渡し、file URL → 画像データの順とする。約束だけならnil、約束と画像データならimageData。ドラッグではfile URL → 約束 → 画像データを基本とするが、isPhotosDragかつ受け取り可能な約束がある場合は約束を優先する。約束がないか対象外の場合だけ既存のfile URL経路を維持する（EC-241）
 - 約束は、示す種類がすべて画像・動画でない（PDF など）ときに受け付けない（FR-348）
 - `ExpectedKind` は待つ時間（60 秒・10 分）と書き出し中の上限（256 MB・4 GB）を決める。保存の上限には使わない（FR-359）
 

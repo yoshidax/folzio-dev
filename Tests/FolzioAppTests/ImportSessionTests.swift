@@ -10,12 +10,14 @@ private final class FakeImportPromise {
     var destination: URL?
     var stage: ImportStaging?
     var report: (@MainActor @Sendable (Result<ImportSnapshot, ImportRejection>) -> Void)?
+    var delivery: (@MainActor @Sendable (ImportPromiseDelivery) -> Void)?
     init(_ names: [String]) { self.names = names }
     func source(_ type: String = "public.png") -> ImportPromise {
         ImportPromise(declaredTypes: [type], names: { self.names }, request: { stage, _, report in
             self.stage = stage
             self.destination = stage.receptionFolder
-            self.report = report
+            self.delivery = report
+            self.report = { result in report(ImportPromiseDelivery(result: result)) }
         })
     }
     func send(_ name: String) async throws {
@@ -182,7 +184,7 @@ extension ImportSessionTests {
             let stage = try #require(manager.pool.take())
             let cancellation = ImportCancellation()
             var result: Result<ImportSnapshot, ImportRejection>?
-            let reader = makeImportPromiseReader(staging: stage, cancellation: cancellation) { result = $0 }
+            let reader = makeImportPromiseReader(staging: stage, cancellation: cancellation) { result = $0.result }
             let original = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==")!
             let cloneCount = try await Task.detached {
                 let url = stage.receptionFolder.appendingPathComponent("a.png")
@@ -259,6 +261,8 @@ extension ImportSessionTests {
             #expect(manager.rows.map(\.id) == [one.id])
             manager.cancel(one.id)
             #expect(manager.rows.isEmpty)
+            try await first.send("one.png")
+            try await second.send("two.png")
         }
     }
 }
@@ -292,22 +296,18 @@ extension ImportSessionTests {
             let session = try #require(pending)
             let stage = try #require(promise.stage)
             manager.cancel(session.id)
-            await ImportStagingPool.remove(stage)
-            // A producer can recreate its folder after cancellation; the late reader must sweep it again.
-            let cancellation = session.cancellation
+            let report = try #require(promise.delivery)
+            let reader = makeImportPromiseReader(staging: stage, cancellation: session.cancellation, report: report)
             try await Task.detached {
-                try FileManager.default.createDirectory(at: stage.receptionFolder, withIntermediateDirectories: true)
                 let url = stage.receptionFolder.appendingPathComponent("late.png")
                 try Data([1]).write(to: url)
-                let reader = makeImportPromiseReader(staging: stage, cancellation: cancellation) { _ in
-                    Issue.record("Cancelled reader must not report")
-                }
                 reader(url, nil)
-                #expect(!FileManager.default.fileExists(atPath: stage.root.path))
             }.value
+            try await eventually { !FileManager.default.fileExists(atPath: stage.root.path) }
             #expect(saves == 0)
         }
     }
+
 }
 
 extension ImportSessionTests {
@@ -369,6 +369,245 @@ extension ImportSessionTests {
             response?.resume(); response = nil
             await session.task?.value
             await shutdown.value
+        }
+    }
+}
+
+
+extension ImportSessionTests {
+    @Test func failedVideoPromiseDoesNotSaveAnImageRepresentation() async throws {
+        try await withManager { manager, root in
+            let video = FakeImportPromise(["video.mov"])
+            var called = false
+            let pending = manager.beginPromises([video.source("com.apple.quicktime-movie")], destination: root,
+                save: { request, control in
+                    called = true
+                    #expect(request.files.isEmpty)
+                    #expect(request.failures.count == 1)
+                    control.willConfirm()
+                    return .failed
+                })
+            let session = try #require(pending)
+            video.report?(.failure(.sourceFailed))
+            try await eventually { called && session.state.phase == .failed }
+            #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == ["Folzio-Import"])
+        }
+    }
+}
+
+
+extension ImportSessionTests {
+    @Test func cancelledProducerKeepsDestinationUntilItsCallback() async throws {
+        try await withManager { manager, root in
+            let source = FakeImportPromise(["late.png"])
+            var saves = 0
+            let pending = manager.beginPromises([source.source()], destination: root, save: { _, _ in saves += 1; return .failed })
+            let session = try #require(pending)
+            let stage = try #require(source.stage)
+            manager.cancel(session.id)
+            // Flush already-scheduled cleanup without ending the simulated producer.
+            await manager.shutdown()
+            try #require(FileManager.default.fileExists(atPath: stage.receptionFolder.path))
+            try await source.send("late.png")
+            try await eventually { !FileManager.default.fileExists(atPath: stage.root.path) }
+            #expect(saves == 0)
+            #expect(session.state.phase == .cancelled)
+        }
+    }
+
+    @Test func cancelledReaderStillAcknowledgesCompletionWithoutCloning() async throws {
+        try await withManager { manager, _ in
+            let stage = try #require(manager.pool.take())
+            let token = ImportCancellation()
+            token.cancel()
+            var acknowledged = false
+            let reader = makeImportPromiseReader(staging: stage, cancellation: token) { _ in acknowledged = true }
+            try await Task.detached {
+                let url = stage.receptionFolder.appendingPathComponent("late.png")
+                try Data([1, 2, 3]).write(to: url)
+                reader(url, nil)
+            }.value
+            try #require(FileManager.default.fileExists(atPath: stage.receptionFolder.path))
+            try await eventually { acknowledged }
+            #expect(try FileManager.default.contentsOfDirectory(atPath: stage.inspectionFolder.path).isEmpty)
+            await ImportStagingPool.remove(stage)
+        }
+    }
+}
+
+
+extension ImportSessionTests {
+    @Test func cancellationWaitsForAllReceiversAndDeduplicatesTheirFiles() async throws {
+        try await withManager { manager, root in
+            let first = FakeImportPromise(["one.png", "two.png"])
+            let second = FakeImportPromise(["three.png"])
+            var saves = 0
+            let pending = manager.beginPromises([first.source(), second.source()], destination: root,
+                save: { _, _ in saves += 1; return .failed })
+            let session = try #require(pending)
+            let stage = try #require(first.stage)
+            manager.cancel(session.id)
+            await manager.shutdown()
+            #expect(manager.retiringSessions[session.id] != nil)
+            try await first.send("one.png")
+            try await first.send("one.png")
+            try await first.send("two.png")
+            #expect(FileManager.default.fileExists(atPath: stage.root.path))
+            #expect(manager.retiringSessions[session.id] != nil)
+            try await second.send("three.png")
+            try await eventually { !FileManager.default.fileExists(atPath: stage.root.path) }
+            #expect(manager.retiringSessions.isEmpty)
+            #expect(saves == 0)
+        }
+    }
+
+    @Test func retiringReceiversKeepCapacityAndDeadlineLimits() async throws {
+        try await withManager { manager, root in
+            var time = 0.0
+            manager.now = { time }
+            let image = FakeImportPromise(["image.png"])
+            let video = FakeImportPromise(["video.mov"])
+            var saves = 0
+            let pending = manager.beginPromises([image.source(), video.source("com.apple.quicktime-movie")], destination: root,
+                save: { _, _ in saves += 1; return .failed })
+            let session = try #require(pending)
+            let stage = try #require(image.stage)
+            manager.cancel(session.id)
+            time = 60
+            await manager.tick()
+            #expect(FileManager.default.fileExists(atPath: stage.root.path))
+            time = 600
+            await manager.tick()
+            try await eventually { !FileManager.default.fileExists(atPath: stage.root.path) }
+            #expect(manager.retiringSessions.isEmpty)
+            await manager.pool.prepare()
+            time = 0
+            let huge = FakeImportPromise(["huge.png"])
+            let pendingHuge = manager.beginPromises([huge.source()], destination: root,
+                save: { _, _ in saves += 1; return .failed })
+            let hugeSession = try #require(pendingHuge)
+            let hugeStage = try #require(huge.stage)
+            manager.cancel(hugeSession.id)
+            try await Task.detached {
+                let url = hugeStage.receptionFolder.appendingPathComponent("growing")
+                FileManager.default.createFile(atPath: url.path, contents: nil)
+                let handle = try FileHandle(forWritingTo: url)
+                try handle.truncate(atOffset: 256_000_001)
+                try handle.close()
+            }.value
+            await manager.tick()
+            try await eventually { !FileManager.default.fileExists(atPath: hugeStage.root.path) }
+            #expect(manager.retiringSessions.isEmpty)
+            #expect(saves == 0)
+        }
+    }
+
+    @Test func cancelledSessionRetainsItsProducerUntilCompletion() async throws {
+        try await withManager { manager, root in
+            weak var producer: FakeImportPromise?
+            var report: (@MainActor @Sendable (Result<ImportSnapshot, ImportRejection>) -> Void)?
+            @MainActor func start() throws -> ImportSession {
+                let source = FakeImportPromise(["late.png"])
+                producer = source
+                let pending = manager.beginPromises([source.source()], destination: root, save: save)
+                report = source.report
+                return try #require(pending)
+            }
+            var session: ImportSession? = try start()
+            let id = try #require(session?.id)
+            manager.cancel(id)
+            await manager.shutdown()
+            #expect(producer != nil)
+            report?(.failure(.sourceFailed))
+            session = nil
+            try await eventually { producer == nil }
+            #expect(manager.retiringSessions.isEmpty)
+        }
+    }
+
+    @Test func timingSeparatesReceptionCheckingAndSaving() async throws {
+        try await withManager { manager, root in
+            var time = 0.0
+            manager.now = { time }
+            var events: [ImportTiming] = []
+            manager.onTiming = { events.append($0) }
+            let source = FakeImportPromise(["one.png"])
+            let pending = manager.beginPromises([source.source()], destination: root, save: { _, control in
+                control.willConfirm()
+                time = 26
+                control.didConfirm()
+                time = 27
+                return .finished
+            })
+            let session = try #require(pending)
+            time = 23
+            try await source.send("one.png")
+            try await eventually { session.state.phase == .finished }
+            #expect(events.first?.stage == .requested)
+            #expect(events.first(where: { $0.stage == .reader })?.elapsed == 23)
+            #expect(events.contains(where: { $0.stage == .checking }))
+            #expect(events.contains(where: { $0.stage == .confirming }))
+            #expect(events.first(where: { $0.stage == .saving })?.elapsed == 26)
+            #expect(events.first(where: { $0.stage == .finished })?.duration == 1)
+            #expect(events.allSatisfy { $0.sessionID == session.id })
+        }
+    }
+}
+
+
+extension ImportSessionTests {
+    @Test func lateProducerAfterDeadlineIsSweptWithoutSaving() async throws {
+        try await withManager { manager, root in
+            var time = 0.0
+            manager.now = { time }
+            let source = FakeImportPromise(["late.png"])
+            var saves = 0
+            let pending = manager.beginPromises([source.source()], destination: root,
+                save: { _, _ in saves += 1; return .failed })
+            let session = try #require(pending)
+            let stage = try #require(source.stage)
+            manager.cancel(session.id)
+            time = 60
+            await manager.tick()
+            try await eventually { !FileManager.default.fileExists(atPath: stage.root.path) }
+            let report = try #require(source.delivery)
+            let reader = makeImportPromiseReader(staging: stage, cancellation: session.cancellation, report: report)
+            try await Task.detached {
+                try FileManager.default.createDirectory(at: stage.receptionFolder, withIntermediateDirectories: true)
+                let url = stage.receptionFolder.appendingPathComponent("late.png")
+                try Data([1]).write(to: url)
+                reader(url, nil)
+            }.value
+            try await eventually { !FileManager.default.fileExists(atPath: stage.root.path) }
+            #expect(manager.retiringSessions.isEmpty)
+            #expect(saves == 0)
+        }
+    }
+
+    @Test func capacityFailureDoesNotRetireAgainAfterItsAlertEnds() async throws {
+        try await withManager { manager, root in
+            let source = FakeImportPromise(["huge.png"])
+            var response: CheckedContinuation<Void, Never>?
+            defer { response?.resume() }
+            let pending = manager.beginPromises([source.source()], destination: root, save: { _, _ in
+                await withCheckedContinuation { response = $0 }
+                return .failed
+            })
+            let session = try #require(pending)
+            let stage = try #require(source.stage)
+            try await Task.detached {
+                let url = stage.receptionFolder.appendingPathComponent("growing")
+                FileManager.default.createFile(atPath: url.path, contents: nil)
+                let handle = try FileHandle(forWritingTo: url)
+                try handle.truncate(atOffset: 256_000_001)
+                try handle.close()
+            }.value
+            await manager.tick()
+            try await eventually { response != nil && !FileManager.default.fileExists(atPath: stage.root.path) }
+            response?.resume(); response = nil
+            for _ in 0..<20 { await Task.yield() }
+            #expect(session.state.phase == .failed)
+            #expect(manager.retiringSessions.isEmpty)
         }
     }
 }

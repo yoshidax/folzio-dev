@@ -17,13 +17,15 @@ public enum ImportPayloadPolicy {
     public static let imageDataTypes = ["public.png", "public.jpeg", "public.tiff"]
 
     public static func select(
-        hasFileURLs: Bool = false, promiseDeclaredTypes: [[String]] = [], imageDataTypes: [[String]] = []
+        hasFileURLs: Bool = false, isPhotosDrag: Bool = false, promiseDeclaredTypes: [[String]] = [], imageDataTypes: [[String]] = []
     ) -> ImportPayload? {
-        if hasFileURLs { return .fileURLs }
+        if hasFileURLs && !isPhotosDrag { return .fileURLs }
         if !promiseDeclaredTypes.isEmpty {
             let kinds = promiseDeclaredTypes.compactMap { expectedKind(declaredTypes: $0) }
-            return kinds.count == promiseDeclaredTypes.count ? .promises(kinds) : nil
+            if kinds.count == promiseDeclaredTypes.count { return .promises(kinds) }
+            return hasFileURLs ? .fileURLs : nil
         }
+        if hasFileURLs { return .fileURLs }
         let chosen = imageDataTypes.compactMap { available in Self.imageDataTypes.first { available.contains($0) } }
         return chosen.isEmpty ? nil : .imageData(chosen)
     }

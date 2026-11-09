@@ -134,3 +134,56 @@ private final class ImportTestPromiseProvider: NSObject, NSFilePromiseProviderDe
     func filePromiseProvider(_ filePromiseProvider: NSFilePromiseProvider, writePromiseTo url: URL,
                              completionHandler: @escaping (Error?) -> Void) { completionHandler(nil) }
 }
+
+
+private final class ImportTestPhotosPromise: NSFilePromiseProvider {
+    var representsPhotos = true
+    override func writableTypes(for pasteboard: NSPasteboard) -> [NSPasteboard.PasteboardType] {
+        super.writableTypes(for: pasteboard) + [.fileURL] + (representsPhotos ? [.init("com.apple.photos.object-reference.asset")] : [])
+    }
+    override func pasteboardPropertyList(forType type: NSPasteboard.PasteboardType) -> Any? {
+        if type == .fileURL { return "file:///tmp/thumbnail.jpg" }
+        if type.rawValue == "com.apple.photos.object-reference.asset" { return Data() }
+        return super.pasteboardPropertyList(forType: type)
+    }
+}
+
+extension ExternalImageDragTests {
+    private static var sequence = 1_000_000
+    private func nextSequence() -> Int { Self.sequence += 1; return Self.sequence }
+
+    @Test(arguments: ["com.apple.quicktime-movie", "public.mpeg-4", "public.jpeg", "public.heic"])
+    func photosPromisesBypassThumbnailFileURLs(type: String) throws {
+        let board = NSPasteboard(name: .init(UUID().uuidString))
+        defer { board.releaseGlobally() }
+        let delegate = ImportTestPromiseProvider()
+        defer { withExtendedLifetime(delegate) {} }
+        let provider = ImportTestPhotosPromise(fileType: type, delegate: delegate)
+        #expect(board.writeObjects([provider]))
+        let kind = try #require(ImportPayloadPolicy.expectedKind(declaredTypes: [type]))
+        #expect(ExternalImageDrag.payload(in: board) == .promises([kind]))
+        #expect(ExternalDrag.fileURLs(in: board, sequence: nextSequence()) == nil)
+        #expect(ExternalImageDrag.operation(payload: .promises([kind]), mask: .copy, hasStaging: false).isEmpty)
+    }
+
+    @Test func otherAppsAndUnavailablePhotosPromisesKeepFileURLs() {
+        let delegate = ImportTestPromiseProvider()
+        defer { withExtendedLifetime(delegate) {} }
+        for (type, photos) in [("public.mpeg-4", false), ("com.adobe.pdf", true)] {
+            let board = NSPasteboard(name: .init(UUID().uuidString))
+            defer { board.releaseGlobally() }
+            let provider = ImportTestPhotosPromise(fileType: type, delegate: delegate)
+            provider.representsPhotos = photos
+            #expect(board.writeObjects([provider]))
+            #expect(ExternalImageDrag.payload(in: board) == .fileURLs)
+            #expect(ExternalDrag.fileURLs(in: board, sequence: nextSequence()) == [URL(fileURLWithPath: "/tmp/thumbnail.jpg")])
+        }
+        let board = NSPasteboard(name: .init(UUID().uuidString))
+        defer { board.releaseGlobally() }
+        let item = NSPasteboardItem()
+        item.setString("file:///tmp/thumbnail.jpg", forType: .fileURL)
+        item.setData(Data(), forType: .init("com.apple.photos.object-reference.asset"))
+        #expect(board.writeObjects([item]))
+        #expect(ExternalImageDrag.payload(in: board) == .fileURLs)
+    }
+}

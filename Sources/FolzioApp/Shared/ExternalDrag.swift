@@ -17,10 +17,17 @@ enum ExternalDrag {
 
     /// The file URLs of a drag that did not start in this app's views, or nil for drags inside the app and for drags
     /// without file URLs, such as images, links, and text from a web browser (FR-348).
+    /// Photos promises take priority over any accompanying thumbnail file URL.
     static func urls(_ info: any NSDraggingInfo) -> [URL]? {
         guard InternalDrag.urls(info) == nil else { return nil }
-        let urls = operations.urls(sequence: info.draggingSequenceNumber) {
-            PasteboardFileURLs.fileURLs(in: info.draggingPasteboard)
+        return fileURLs(in: info.draggingPasteboard, sequence: info.draggingSequenceNumber)
+    }
+
+    static func fileURLs(in board: NSPasteboard, sequence: Int) -> [URL]? {
+        // Photos can advertise a thumbnail file URL beside a promise for the actual video.
+        if case .promises = ExternalImageDrag.payload(in: board, sequence: sequence) { return nil }
+        let urls = operations.urls(sequence: sequence) {
+            PasteboardFileURLs.fileURLs(in: board)
         }
         return urls.isEmpty ? nil : urls
     }

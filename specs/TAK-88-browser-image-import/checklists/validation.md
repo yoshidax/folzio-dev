@@ -249,3 +249,70 @@ T006の実測に基づく以下の案を保守者が「OKです。」と承認�
 - ローカルログ: `/tmp/folzio-tak88-phase3/` の`build-final.log`・`tests-final.log`・`check-all.log`。初回の通常・性能テストは`tests.log`、直列の1回目は`tests-serial.log`、性能の再実行は`performance.log`。
 - `scripts/make-app.sh` 成功。保守者にFolzioを終了してから`open .build/Folzio.app`で起動し、3ペインの表示とSafariのPNGのフォルダへのドロップ保存を確認するよう依頼し、「できました」と回答を得た。T031のうち、この2点を成功として記録する。画像の容量・保存先・バイト一致・quarantineは未確認。
 - T031の残るブラウザ形式と写真アプリからの保存、宛先ごとの操作、進捗パネルとキャンセル、宛先の失敗、同時操作、安全性、検索結果へのドラッグ、反応時間の手動確認は保守者の実施待ち。ペーストの実装・確認（Phase 4）には未着手。
+
+
+## Phase 3のCIと追加手動確認（2026-11-10記録）
+
+- 実装コミット `6c139d05dc75b76d05104ded76e4cf70cf59be18` を指定ブランチへpush。GitHub CLIで新規実行し、結果・ログ取得と再実行はGitHub MCPで行った。
+- [macOS Swift CI 42635155008](https://github.com/yoshidax/folzio-dev/actions/runs/42635155008) はmacOS 15 / arm64、Xcode 16.0 / Swift 6.0で実行。両方の試行で対象SHAをcheckoutしたことをログで確認した。公開用書き出し、build、確認スクリプトの自己検査、通常テスト1,130件が成功。
+- 初回job `129221267446` は性能テスト27件中24件成功・3件失敗。再実行job `129282094366` は25件成功・2件失敗。ステップがcontinue-on-errorのためジョブ全体はsuccessだが、性能テスト全成功とは扱わない。2回とも全ログの結果と末尾を読んで確認した。
+
+| 試行 | 基準を超過した性能テスト | 実測 | 基準 |
+|---|---|---|---|
+| 初回 | 24 MP JPEGのデコード | 0.669743291秒 | 0.5秒未満 |
+| 初回 | フォルダ名変更後の検索結果10,000件の反映 | 中央値0.103652542秒 | 0.1秒未満 |
+| 初回 | zip 200,000件からのスライドショー候補抽出 | 0.247167417秒 | 0.2秒未満 |
+| 再実行 | 50,000件に対する256件のバッチ処理 | 0.138958375秒 | 0.1秒未満 |
+| 再実行 | zip 200,000件からのスライドショー候補抽出 | 0.221263292秒 | 0.2秒未満 |
+
+- 性能で失敗する項目は試行で変わった。原因は未確定で、変更前との同条件での比較は未実施。6c139d0で変わったCoreはShortcutCatalog・ShortcutCommandだけで、性能テストと上記の処理本体は変更していない。しきい値は変更していない。
+
+### T031の追加確認
+
+| 保守者がFolzio本体で行った確認 | 報告 | 実体の追加確認 |
+|---|---|---|
+| Chrome JPEG・PNGのドラッグ | 両方保存できた | 下記の保存先でJPEG・PNGのヘッダーとquarantineを確認 |
+| Safari JPEG・GIF・WebP、Chrome GIF・WebPのドラッグ | すべて保存できた | JPEG・GIFのファイルは下記に存在。WebPは別の保存先のため未検査 |
+| 写真アプリのJPEG・HEIC | どちらもJPEGとして保存された | 元のHEIC形式を保持する保証はないため、JPEGへの変化を失敗には数えない |
+| 写真アプリのMOV・MP4 | どちらもサムネイルのJPEGとして保存された | **動画保存は失敗**。動画の実体の成功・再生成功には数えない |
+
+`/Users/igachan/Desktop/pics` で読み取り確認したファイル:
+
+| ファイル | バイト | fileの判定 | quarantineの印 |
+|---|---|---|---|
+| image01.jpg | 872744 | image/jpeg | 有・Chrome |
+| image02.jpg | 738666 | image/jpeg | 有・Chrome |
+| image03.gif | 30692 | image/gif | 有・Chrome |
+| sample.png | 188 | image/png | 有・Chrome |
+| sample-128.gif | 292 | image/gif | 有・Chrome |
+
+- sample.pngとsample-128.gifは `/tmp/folzio-tak88-fixtures/` の同名fixtureとバイト一致。これらのファイルだけでは各ブラウザ・各操作への対応を断定しない。
+- 保守者が示したWebPの保存先は `/Users/igachan/Downloads/release-candidate-1eff687e4529038bc6bdaea5cddc4518911d08cb-42448877124-1/名称未設定フォルダ/chrome`。権限を指定してもディレクトリ列挙がOperation not permittedとなり、中身・quarantineは未確認。保存できたという報告と実体の検査を区別する。
+- 写真アプリの失敗を受け、実行中のアプリが `/Users/igachan/projects/folzio/.build/Folzio.app/Contents/MacOS/Folzio` であることを読み取り確認した。
+
+### 写真アプリの優先順位の明確化と修正（photos-video-thumbnail）
+
+- 診断: `.specify/bugs/photos-video-thumbnail/assessment.md`。US77-AS8の動画保存と、file URLの無条件優先が衝突するため、仕様の明確化として扱う。
+- 2026-11-10、保守者が記録IDと「写真アプリのドラッグに受け取り可能な約束があればfile URLより優先する」変更を「このIDと変更案で進める」と承認。specのSession 2026-11-10、計画・契約・データモデル・quickstart・T044/T045に反映した。品質チェックは16/16を維持。形式エラー0、既存警告88件はbaselineと同数、ID重複なし。
+- CoreにisPhotosDrag（既定false）を追加し、Appは全項目にPhotosの型があるかを渡す。ExternalDragのfile URL取得前とExternalImageDragは同じ通し番号のキャッシュを使う。写真アプリの約束を選んだ後にJPEGやfile URLへ切り替えない。Finderなど写真アプリ以外のfile URL、一般クリップボードの規則は維持する。
+- 回帰テストを先に追加し、旧コードでは新しい選択APIが未実装で失敗することを確認。Core/Appの対象29件が成功し、正式なゲートでswift build、全通常テスト1,135件（Core 1,080・App 55）、規約チェック（Python 179件）が成功した。ログは `/tmp/folzio-tak88-photos-fix/`。
+- 修正ビルドでのMOV・MP4の保存・再生と、起動の手動再確認は未実施。上記CIは6c139d0に対するものであり、今回の修正のCIではない。修正のコミット・push・CIを行うT030と、残る手動確認のT031は未チェック。Phase 4は未着手。
+- 進捗・取り消し・宛先の失敗を確認するため、既存確認スクリプトのドラッグ元から `/tmp/folzio-tak88-phase3/delayed-provider.swift` を用意した。書き出しは専用キューで20秒後に行う。型検査とGUIを開かないJPEG/PNGの自己検査は成功。GUIでこのドラッグ元からFolzioへ渡す確認は未実施。
+
+
+## T031: MOVの書き出し時間と取消後のエラー（2026-11-10）
+
+- 保守者は約40秒の携帯動画のコピーを試し、1回は約1分の受信後にFolzioの「取り消す」を押してエラー画面が出たと報告した。追加確認で、アプリは終了していないと回答。Folzio・Photosのプロセスは両方存在し、新しい両アプリのクラッシュレポートも未検出。クラッシュが再現したとは扱わない。
+- スクショの「書き出し結果」はIMG_1134.MOVの出力先UUID内のreceivedに保存するアクセス権がないと表示。Folzioのエラー画面と文言・構成が違い、写真アプリ側の表示と考えられる。調査時にそのUUIDの一時領域は消えていた。
+- 速度の追加比較: 保守者が約40秒・432 MBの素材について、**写真アプリ→Finder**は約23秒、写真アプリ→Folzioも同程度と報告。Finderでは処理中の状態が分からず、Folzioでは進捗が分かるためUXが良いとの評価。比較先は写真アプリ→Finderとの訂正を受領した。初回の約1分と約23秒の比較は別々の観測として残し、異常なFolzioの速度低下が再現したとは断定しない。
+- Desktop/picsに存在する7件の動画をfileで読み取り確認し、6件がvideo/quicktime、1件（02-video-1s.mp4）がvideo/mp4だった。すべてPhotosのquarantine属性あり。IMG_1134.MOVは145803301 bytes。この保存ファイルと432 MBと報告された元の素材のバイト対応は未検査であり、同一サイズを保持したとは扱わない。写真アプリの動画がJPEGになる問題の修正後、動画の実体が保存されることは確認できている。
+- 取消の診断・承認は `.specify/bugs/promise-cancel-cleanup/assessment.md`、実装はfix.md、検証はtest.mdに記録。受け取り先の削除を最後のwriterの完了まで遅らせ、receiverを保持する。取消時にUIと保存は止める。保持中の期限・容量を監視し、打ち切り後の遅い通知も掃除する。
+- 修正前の2件の自動再現はフォルダ消失で失敗。修正後の全通常テスト1,145件（Core 1,082件・App 63件）、ビルド、規約チェック（Python 179件）、make-appが成功した。続いて保守者による下記のGUI確認で元の取消症状が解消した。T030の修正分のコミット・CIとT031全体は未完了、Phase 4は未着手。
+- ローカル診断はLoggerのsubsystem `local.folzio.Folzio` / category `Import`。段階と時間だけを記録し、元のURL・ファイル名・保存先は含めない。reader.durationは複製、checked.durationは検査と準備、finished.durationはsaving以降（衝突の判断待ちを含む）。confirmingからsavingの間で確認待ちを区別する。
+
+### 取消修正後のGUI再確認（2026-11-10）
+
+- 保守者へ修正した `.build/Folzio.app` で同じPhotos MOVを空の `/Users/igachan/Desktop/pics/TAK88-cancel-check` へドラッグし、Folzioの受け取りパネルで取り消し、約1分待つ確認を依頼。「写真アプリにエラーが出ず、保存先が空のまま」に対し「期待通りです」と回答を得た。
+- こちらの読み取り確認でも保存先は空。pendingImportFoldersの記録は未使用の待機用2組だけで、各フォルダには空のreceivedとcheckedのみ存在した。今回の取消操作のデータや保存ファイルは残っていない。
+- Loggerの実機イベントは捕捉できなかったため、今回の受信・検査・保存時間の数値は未計測とする。自動テストの時間を実測値の代用にはしない。
+- promise-cancel-cleanupの元症状はローカル検証済み。T030の修正後CIと、T031の宛先・同時受信・キーボード取消・安全性・性能など残る項目は未完了。Phase 4には進まない。

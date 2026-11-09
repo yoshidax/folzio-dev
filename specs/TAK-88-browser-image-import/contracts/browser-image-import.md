@@ -12,6 +12,7 @@
 - **ドラッグ**（登録・読み出す型）: `.fileURL`、`NSFilePromiseReceiver.readableDraggedTypes`、`.png`、`NSPasteboard.PasteboardType(UTType.jpeg.identifier)`、`.tiff`
 - **ペースト**（登録・読み出す型）: 一般のペーストボードのfile URL・PNG・JPEG・TIFF。約束は対象に含めない（R11）
 - 複数があるときの順: ドラッグはfile URL → 約束 → 画像データ、ペーストはfile URL → 画像データ（EC-241）
+- 写真アプリのドラッグで受け取り可能な約束がある場合は、file URLよりその約束を優先する。AppはPhotosの項目の型と宣言型をCoreへ渡し、通し番号ごとの同じ判断をfile URL取得前と画像・動画の受信で使う。失敗時にJPEGへ切り替えない
 - ドラッグの約束は、示す種類が画像・対応形式の動画・不明のときだけ受け付ける（FR-348）
 - 直接の画像データは各項目のtypesからPNG → JPEG → TIFFで1つ選ぶ。全体のtypesに合成された型だけでは選ばない
 - file URLの経路で失敗しても、縮小した画像表現へ切り替えない。写真の元のHEIC等の形式の保持は保証しない

@@ -33,7 +33,8 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
 - **Decision**: 3つのビュー（`DirectoryTreeViewController.swift:1059`、`ListModeView.swift:262`、`ThumbnailModeView.swift:642`）の
   `registerForDraggedTypes` に、`.fileURL` に加えて `NSFilePromiseReceiver.readableDraggedTypes`、`.png`、`NSPasteboard.PasteboardType(UTType.jpeg.identifier)`、`.tiff` を登録する。
   App の `ExternalImageDrag` が、ドラッグの通し番号ごとに1回だけペーストボードを調べ、受け取るデータ（`ImportPayload`。data-model.md）を決める。
-  - file URL があれば、今の `ExternalDrag`（TAK-74）の経路のまま（EC-241）
+  - 写真アプリの `com.apple.photos.object-reference.asset` 型を持つドラッグで受け取り可能な約束があれば、その約束をfile URLより優先する（2026-11-10承認、EC-241）。Appが型の有無を渡しCoreで選び、ExternalDragのfile URL取得前にも通し番号ごとのキャッシュから同じ判断を使う。
+  - それ以外でfile URL があれば、今の `ExternalDrag`（TAK-74）の経路のまま（EC-241）。選んだ約束の失敗でJPEGの経路へ切り替えない
   - file promise は、`NSFilePromiseReceiver` を読み出し、`fileTypes` を Core の `ImportPayloadPolicy.acceptsPromise(declaredTypes:)` で判定する
     （画像・対応形式の動画・不明だけを受け付ける。FR-348）
   - 画像データは各NSPasteboardItem.typesだけを見てPNG → JPEG → TIFFを選び、ホバー中にデータを読まない。全体のpasteboard.typesに合成された型だけでは選ばない
@@ -179,5 +180,5 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
 
 ## R13 変えないもの
 
-- アプリ内のドラッグ（`InternalDrag`）と、アプリ外の file URL の受け取り（`ExternalDrag`・`ExternalDropPolicy`）の規則と経路は変えない（SC-192）
+- アプリ内のドラッグ（`InternalDrag`）と、写真アプリの受け取り可能な約束の例外以外のfile URLの受け取り（`ExternalDrag`・`ExternalDropPolicy`）の規則と経路は変えない（SC-192）
 - Folzio からアプリ外へ渡すデータは file URL だけのまま（A-205）
