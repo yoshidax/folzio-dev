@@ -33,13 +33,17 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
   (4) 中身が JPEG で名前が `cat.png` のファイルと、名前が `logo.svg` で中身が PNG のファイルを約束で渡すドラッグ元のビューを持つ（R4 の確認用）
 - [x] T005 `scripts/dev/check-all.sh` を実行し、T004 をコミットして作業ブランチへ push する
   （`10590ed`・`ff748f5`。macOS CI に Swift 6 でのコンパイルと確認用画像の自己検査も追加。GUI と実アプリの確認は T006 で行う）
-- [ ] T006 [MANUAL] 保守者に、quickstart.md の「先に行う確認」を実行してもらい、結果を `specs/TAK-88-browser-image-import/checklists/validation.md` に記録する
+- [x] T006 [MANUAL] 保守者に、quickstart.md の「先に行う確認」を実行してもらい、結果を `specs/TAK-88-browser-image-import/checklists/validation.md` に記録する
   （Safari・Chrome の画像のドラッグとコピー、写真アプリの写真・動画のドラッグとコピー、200 MB 程度の TIFF の読み出しの時間）
-- [ ] T007 T006 の結果で spec・plan・research・contracts を確定する。特に次を決め、変えた点を保守者に示して確かめる
+  （2026-11-09、保守者が各ケースと追加3件を実施。失敗・再試行・診断版の成功も validation.md に記録。
+  測定完了であり、製品の動作保証・SIGBUSの原因解消を意味しない。T007の変更案は同日の「OKです。」で承認済み）
+- [x] T007 T006 の結果で spec・plan・research・contracts を確定する。特に次を決め、変えた点を保守者に示して確かめる
   - 登録する画像の型（R2・R5）と、約束が示す種類の実際の値（FR-348）
   - 一般のペーストボードの約束を使えるか（R11）。使えなければ EC-241・US78-AS8・FR-354 を改める
   - 画像データの読み出しを UI スレッドで行うか（0.2 秒を超えれば R5 の代わりの方法）
   - ブラウザのマスクに `.copy` があるか（FR-356）
+  （2026-11-09、保守者がvalidation.mdの変更案に「OKです。」と承認。spec・plan・research・contractsを確定し、
+  data-model・quickstart・後続タスクも整合させた。Phase 2以降は未着手）
 
 ## Phase 2: Foundational（Core の判断と検査。全ストーリーの前提）
 
@@ -55,24 +59,24 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 - [ ] T009 `Sources/FolzioCore/Operations/ImportedFileName.swift` を実装して T008 を通す。`scripts/check-no-network.sh` に、
   このファイルの `"http"` と `"https"` のリテラルだけを許す例外を、`AboutInfo.swift` と同じ形で加える（T003 で承認されたとき。R6）
 - [ ] T010 [P] `Tests/FolzioCoreTests/ImportPayloadPolicyTests.swift` を作り、先に失敗させる（R2・R5・R11・FR-348・FR-351・EC-241）。
-  file URL があるとき常に `.fileURLs`、約束の種類（画像・動画・不明・`public.data`・空・PDF だけ・PDF と画像）、画像データの型の選び方（PNG と TIFF があれば PNG）、
+  file URL があるとき常に `.fileURLs`、約束の種類（画像・動画・不明・`public.data`・空・PDF だけ・PDF と画像）、画像データの型の選び方（PNG → JPEG → TIFF。項目にない合成TIFFと未観測の直接HEICは対象にしない）、
   どれもないとき `nil` を確かめる
 - [ ] T011 `Sources/FolzioCore/Operations/ImportPayloadPolicy.swift` を実装して T010 を通す（data-model.md の `ImportPayloadPolicy`・`ExpectedKind`）
 - [ ] T012 [P] `Tests/FolzioCoreTests/ImportInspectorTests.swift` を作り、先に失敗させる（R4・FR-357・FR-359・FR-362・SC-190・SC-196）。
   テストの中で作るファイルで、PNG・JPEG・GIF・TIFF（ImageIO で書き出す）、SVG・PDF の中身、画像でない中身（スクリプトの文字列）、
   `ftyp` が `qt  `・`isom`・`mp42` の先頭、`moov` で始まる QuickTime、AVI の先頭（`RIFF`）、シンボリックリンク、フォルダ、`.app` の名前のフォルダ、
-  約束のフォルダの外を指すリンク、256 MB を超える画像の大きさ（`ftruncate` で疎なファイルを作る）、4 GB を超える動画の大きさを確かめる。
+  共通の受け取り用フォルダの外を指すリンク、256 MB を超える画像の大きさ（`ftruncate` で疎なファイルを作る）、4 GB を超える動画の大きさを確かめる。
   複製を作った後に元のファイルを書き換えても、検査と保存の対象（複製）が変わらないこと、元のファイルの拡張属性（テストで付けた
   `com.apple.quarantine`）が複製に残ることを確かめる
 - [ ] T013 `Sources/FolzioCore/Operations/ImportInspector.swift` を実装して T012 を通す。`lstat`・`isAliasFile`・`realpath` による構造の検査、
   `copyfile(_:_:nil, COPYFILE_CLONE | COPYFILE_ALL)` の複製、`CGImageSourceGetType`・`CGImageSourceGetCount` と先頭 64 バイトによる判別（画像を展開せず、動画を再生しない）、
-  中身の種類の上限（「画像 256 MB、動画 4 GB」）を実装する。結果は data-model.md の `ImportRejection` で返す
+  中身の種類の上限（「画像 256 MB、動画 4 GB」）を実装する。構造確認と複製はreaderの専用キューから同期的に呼べるように分け、readerを返す前に完了する。結果は data-model.md の `ImportRejection` で返す
 - [ ] T014 [P] `Tests/FolzioCoreTests/ImageDataWriterTests.swift` を作り、先に失敗させる（R5・FR-351・FR-359・EC-244）。
   PNG のデータがバイト単位で同じに書かれること、TIFF（複数ページを含む）が 1 枚目だけの PNG になること、
   1 枚目が 1 億画素を超える TIFF の情報で `tooManyPixels`（画像を展開しない）、256 MB を超えるデータで `tooLarge`、壊れたデータで `notImageOrVideo` を確かめる
 - [ ] T015 `Sources/FolzioCore/Operations/ImageDataWriter.swift` を実装して T014 を通す（ImageIO の `CGImageSource`・`CGImageDestination`）
 - [ ] T016 [P] `Tests/FolzioCoreTests/ImportStagingTests.swift` と `ImportCleanupRecordTests.swift` を作り、先に失敗させる（R3・R10・FR-350・FR-361・SC-188・SC-196）。
-  一時的なフォルダの作成（同じボリュームの場所と、使えないときの `Folzio-Import/<UUID>`）、約束のフォルダと検査用のフォルダ、大きさの合計、`remove()` の後に何も残らないこと、
+  起動ディスクの `Folzio-Import/<UUID>` の作成、共通の受け取り用と検査用のフォルダ、宛先との同一 / 別ボリューム判定、受け取り用だけの大きさの合計、`remove()` の後に何も残らないこと、
   記録の追加と削除、起動時の掃除で、ボリュームの識別子が違う記録・名前の形が違う記録（ホームのフォルダを指す記録を含む）・30 日を過ぎた記録を消さずに外すこと、
   ボリュームがない記録を持ち越すこと、型が不正な要素を捨てることを確かめる。`UserDefaults` はテスト用のスイートを使う
 - [ ] T017 `Sources/FolzioCore/Operations/ImportStaging.swift` と `ImportCleanupRecord.swift` を実装して T016 を通す（キー `internal.pendingImportFolders`）
@@ -99,18 +103,20 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 **Independent Test**: quickstart.md の「ドラッグ」の表を、Safari・Chrome・写真アプリで確かめる
 
 - [ ] T021 [P] [US1] `Tests/FolzioAppTests/ExternalImageDragTests.swift` を作り、先に失敗させる。3つのビューが登録する型に `.fileURL`・
-  `NSFilePromiseReceiver.readableDraggedTypes`・`.png`・`.tiff`（T007 で決めた型）が含まれること、名前付きの `NSPasteboard` に置いた画像データ・URL だけ・文字列だけ・
+  `NSFilePromiseReceiver.readableDraggedTypes`・PNG・JPEG・TIFF（T007で確定した型）が含まれること、名前付きの `NSPasteboard` に置いた画像データ・URL だけ・文字列だけ・
   PDF を示す約束で、受け取るデータの判定が `ImportPayloadPolicy` と一致すること、マスクに `.copy` がないときに操作が空になることを確かめる（R2・FR-348・FR-356）
 - [ ] T022 [US1] `Sources/FolzioApp/Shared/ExternalImageDrag.swift` を作り、ドラッグの通し番号ごとに1回だけペーストボードの型を調べて `ImportPayload` を保持し、
-  ホバー中は `.copy` を返す（修飾キーで変えない）。ドロップの中で約束の `NSFilePromiseReceiver` の配列と画像データ（T007 の方法）を読み出す（R2・R3・R5）。T021 を通す
+  ホバー中は `.copy` を返す（修飾キーで変えない。約束は準備済みフォルダがある場合だけ）。ドロップ中にNSFilePromiseReceiverの配列を読み、ImportSessionの全要求を始めてから返す。画像データは各項目のPNG → JPEG → TIFFから同期取得する（R2・R3・R5）。T021を通す
 - [ ] T023 [US1] `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift`（1059 行付近）・`Sources/FolzioApp/FileList/ListModeView.swift`（262 行付近）・
   `Sources/FolzioApp/FileList/ThumbnailModeView.swift`（642 行付近）の `registerForDraggedTypes` に T022 の型を加え、`validateDrop`・`acceptDrop` で
   file URL がないときに `ExternalImageDrag` へ分ける。アプリ内のドラッグと file URL の経路は変えない（R13・SC-192）
-- [ ] T024 [US1] `Sources/FolzioApp/Operations/ImportSession.swift` を作り、data-model.md の状態の移り変わりのとおり、一時的なフォルダの作成（T017）、
-  約束ごとの `receivePromisedFiles`（専用の `OperationQueue`）、待つ時間（画像・不明 60 秒、動画 10 分）、1 秒ごとの大きさの見張り（「約束ごとの上限の合計」）、
-  `reader` が報告したファイルだけの検査（T013）、画像データの書き込み（T015）、名前の連番（T009）、最後の一時的なフォルダの削除と記録の削除を行う（R3〜R6・FR-350・FR-355・FR-359）。
+- [ ] T024 [US1] `Sources/FolzioApp/Operations/ImportSession.swift` を作り、data-model.md の状態の移り変わりのとおり、事前作成したImportStagingの同期的な確保と背景での補充（T017）、
+  全約束に共通宛先でドロップ内から行うreceivePromisedFiles（readerは専用のOperationQueue）、待つ時間（画像・不明 60 秒、動画 10 分）、1 秒ごとの大きさの見張り（「約束ごとの上限の合計」）、
+  readerが報告したファイルの通知中の構造確認・複製と、複製だけの背景検査（T013）、画像データの書き込み（T015）、名前の連番（T009）、最後の一時的なフォルダの削除と記録の削除を行う（R3〜R6・FR-350・FR-355・FR-359）。
   打ち切り・取り消しの後に届いた結果は捨てる。期限・容量・状態の判断は T043 の Core の型に任せる。
   実装の前に `Tests/FolzioAppTests/ImportSessionTests.swift` を作り、時計・約束の受け取り・確認を差し替えて、実時間を待たずに次を確かめる
+  - 受け取り先の背景での事前作成・補充、未準備時のドロップ拒否、全要求がドロップを返す前に始まり共通の宛先を使うこと
+  - readerを返す前に別名の複製が作られること、単一receiverの複数ファイル、同じreceiverの重複通知、別receiverの同じ実体パスはsourceFailedとして全体を失敗にすること
   - 正常な受け取り、画像 60 秒・動画 600 秒での打ち切り、1 秒ごとの見張りの超過、受け取り中・検査中の取り消し
   - 打ち切り・取り消しの後に届く結果は保存と確認を始めず、残った一時的なファイルを掃除する。失敗・取り消し・完了で記録が残らず、取り消しは失敗の表示を出さない
   - 待つ間・確認の間に宛先が消えた・書き込めなくなった場合、T025 とつないで失敗を表示し、掃除する（EC-245）
@@ -131,7 +137,7 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
   `Sources/FolzioCore/Shortcuts/ShortcutCatalog.swift` の「選択とファイル操作」に載せる（R9・FR-363・A-124（変更））。
   `Tests/FolzioCoreTests/ShortcutCatalogTests.swift` の順序と件数（46 → 47）、`Shortcuts/ShortcutAssignmentsTests.swift` の予約キー、
   `Localization/ShortcutTextTests.swift` の文言を更新する。`Tests/FolzioAppTests/ImportSessionTests.swift` に有効な条件と最後の操作を取り消すテストを加える
-- [ ] T029 [US1] `Sources/FolzioApp/App/AppDelegate.swift` の起動の後に、`ImportCleanupRecord` の掃除を detached task で行う（R10・FR-361）
+- [ ] T029 [US1] `Sources/FolzioApp/App/AppDelegate.swift` の起動の後に、ImportCleanupRecordの掃除を背景で行い、その完了後に2組の受け取り先を事前作成する。正常終了時は未使用の待機用も掃除する（R10・FR-361）
 - [ ] T030 [US1] `scripts/dev/check-all.sh` を実行し、Phase 3 をコミットして push する。CI で build とテスト（性能テストのログの末尾を含む）の結果を確かめる
 - [ ] T031 [MANUAL] [US1] 保守者に、quickstart.md の準備と「ドラッグ」の表、「安全性」の保守者の確認、起動スモーク（3 ペインの表示）を実行してもらい、
   結果を `checklists/validation.md` に記録する。「受け取りの流れと性能」で、宛先の消失・書き込み不可と同時の受け取り（EC-245・EC-246）、
@@ -146,8 +152,8 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 **Independent Test**: quickstart.md の「ペースト」の表を確かめる
 
 - [ ] T032 [P] [US2] `Tests/FolzioAppTests/PasteboardImportTests.swift` を作り、先に失敗させる。名前付きの `NSPasteboard` で、file URL・約束・画像データ・URL だけ・文字列だけの
-  ときの `availability` と、ペースト・移動ペーストの有効・無効（「ペースト」は `none` 以外、「移動ペースト」は file URL だけ）、型の判定でデータを読まないことを確かめる（R11・FR-354）
-- [ ] T033 [US2] `Sources/FolzioApp/Shared/PasteboardImport.swift` を作り、T032 を通す。一般のペーストボードの約束は T007 の結果に従う
+  ときの `availability` と、ペースト・移動ペーストの有効・無効（「ペースト」は `none` 以外、「移動ペースト」は file URL だけ）、型の判定でデータを読まないことを確かめる。約束だけならnone、約束と画像データならimageDataになることも確かめる（R11・FR-354）
+- [ ] T033 [US2] `Sources/FolzioApp/Shared/PasteboardImport.swift` を作り、T032 を通す。一般クリップボードの約束は使わず、CoreへpromiseDeclaredTypes=[]を渡す。file URL → 画像データの順とする（T007確定、R11）
 - [ ] T034 [US2] `Sources/FolzioApp/FileList/FileContextMenu.swift`（37 行・73 行付近）、`FileListViewController.swift`（`validateMenuItem`・`paste`）、
   `DirectoryTreeViewController.swift`（`validateMenuItem`・`paste`）のペーストの有効・無効を `PasteboardImport.availability` に置き換える
 - [ ] T035 [US2] `FileOperationCoordinator.paste(into:move:)`（111 行付近）で、file URL がなければ `ImportSession` を始め、`saveReceived` で保存する。

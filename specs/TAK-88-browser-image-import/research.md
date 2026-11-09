@@ -16,15 +16,29 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
 - **Alternatives considered**: Folzio に診断用の機能を入れる案。製品のコードに開発用の機能を残さないため採らない。
   スクリプトは `swift scripts/dev/pasteboard-probe.swift` で実行でき、Xcode を要しない。
 
+### T006の結果とT007の承認（2026-11-09）
+
+測定と修正後のGUI確認を完了し、保守者が変更案に「OKです。」と承認した。実測値とログはchecklists/validation.mdにある。
+以下のR2〜R5・R10・R11をこの結果で確定した。測定の完了は製品実装の完了を意味しない。
+
+- ドラッグの約束の型はpublic.png / public.jpeg / org.webmproject.webp / com.compuserve.gif / com.apple.quicktime-movie / public.mpeg-4を観測。
+  写真HEICケースの提供はJPEG、写真2枚はPNGの組とPNG / JPEGの組だった。元の形式の保持は保証しない。
+- コピーは全ケースreceivers=0。一般クリップボードの約束を今回の範囲に含めない。Photosのfile URLの実体と製品への保存は未確認で、T031・T037に残す。
+- Safari・写真のマスクはcopy、Chromeはcopyを含む全マスク。copy必須の規則を維持する。
+- 旧版の要求時機ではキャンセルがあり、事前作成先へドロップ内で要求する診断版と通常版で成功した。全キャンセルの原因が時機だけとは断定しない。
+- 17:59のSIGBUSの原因は未確定。要求時機の修正で解消したとは扱わない。
+
 ## R2 受け付ける型とホバー中の判定（FR-348・FR-356）
 
 - **Decision**: 3つのビュー（`DirectoryTreeViewController.swift:1059`、`ListModeView.swift:262`、`ThumbnailModeView.swift:642`）の
-  `registerForDraggedTypes` に、`.fileURL` に加えて `NSFilePromiseReceiver.readableDraggedTypes`、`.png`、`.tiff` を登録する。
+  `registerForDraggedTypes` に、`.fileURL` に加えて `NSFilePromiseReceiver.readableDraggedTypes`、`.png`、`NSPasteboard.PasteboardType(UTType.jpeg.identifier)`、`.tiff` を登録する。
   App の `ExternalImageDrag` が、ドラッグの通し番号ごとに1回だけペーストボードを調べ、受け取るデータ（`ImportPayload`。data-model.md）を決める。
   - file URL があれば、今の `ExternalDrag`（TAK-74）の経路のまま（EC-241）
   - file promise は、`NSFilePromiseReceiver` を読み出し、`fileTypes` を Core の `ImportPayloadPolicy.acceptsPromise(declaredTypes:)` で判定する
     （画像・対応形式の動画・不明だけを受け付ける。FR-348）
-  - 画像データは、型の一覧だけを見て、データを読まない
+  - 画像データは各NSPasteboardItem.typesだけを見てPNG → JPEG → TIFFを選び、ホバー中にデータを読まない。全体のpasteboard.typesに合成された型だけでは選ばない
+  - HEICの直接データは今回未観測のため固定リストに加えない。約束の型はUTTypeの適合で判定し、固定の文字列一覧に制限しない
+  - 約束を選んだ場合は、準備済みのImportStagingがあるときだけ受け付ける（R3・R10）
   - 受け付けるときの操作は `.copy`（ドラッグ元のマスクが `.copy` を含むときだけ）。修飾キーで変えない（FR-356）
   - 宛先の有効性は、今の各ビューの宛先の判断（`FileListDropTarget` など）をそのまま使う。画像の保存は自分自身・配下への転送の検査
     （`InternalDropValidation`）を要しないので、ファイルシステムを読まずに即答する
@@ -34,32 +48,28 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
 
 ## R3 受け取りの流れと打ち切り（FR-350・FR-355・FR-359・FR-363）
 
-- **Decision**: App の `ImportSession`（MainActor）が1回のドロップ・ペーストを担う。
-  1. `acceptDrop` の中で、受け取るデータを同期的に読む（file promise は `NSFilePromiseReceiver` の配列、画像データは R5）。ペーストボードはドロップの間しか確かでない
-  2. Core の `ImportStaging` で、一時的なフォルダを detached task で作る（R10）。約束ごとに「約束のフォルダ」を、全体に1つ「検査用のフォルダ」を作る
-  3. 約束ごとに `receivePromisedFiles(atDestination: 約束のフォルダ, options: [:], operationQueue: 専用のキュー, reader:)` を呼ぶ
-  4. 待つ時間は、約束が示す種類で 60 秒（画像・不明）または 10 分（動画）。打ち切り・取り消しの後に届いた結果は捨てる
-  5. 待つ間、1 秒ごとに一時的なフォルダの大きさの合計を detached task で調べ、約束ごとの上限（画像・不明 256 MB、動画 4 GB）の合計を超えたら全体を打ち切る
-  6. すべての約束の結果がそろったら、R4 の検査と複製、R7 の確認と保存へ進む
-  7. 成功・失敗・取り消しのどれでも、最後に一時的なフォルダを消し、R10 の記録から外す
-- **判断と副作用の分離**（分析 C1・C2 の修正案）: Core の純粋な型 `ImportBudget` に期限と大きさの合計の判断を、
-  `ImportReceptionState` に状態の移り変わりと遅れて届く結果の拒否を置く。AppKit・タイマー・ファイル操作は持たせず、
-  `ImportSession` が単調増加する時計からの経過時間と観測値を渡す。Core のテストで 60 秒・600 秒と容量の境界、取り消し、終わった状態から遷移しないことを確かめる。
-  App のテストは時計・約束の受け取り・確認を差し替え、実時間を待たずに、遅い結果が保存されないことと一時的なフォルダの掃除、
-  宛先の消失・書き込み不可（EC-245）、同時の受け取りの独立と確認の直列化（EC-246）を確かめる
-- **1つの約束が複数のファイルを書き出す場合**（spec の5回目のレビューで plan に回した点）: `reader` が呼ばれるたびに1件のファイルとして扱う。
-  `reader` が報告しないで約束のフォルダに書かれたファイル（付随するファイルなど）は使わず、一時的なフォルダとともに消す。
-  報告されたファイルは、それぞれ FR-357 で検査する（Live Photo で静止画と動画が報告されれば、両方が対象になる）。
-- **Rationale**: Apple の文書は、受け取り側がドロップの後で書き出しを待つ方式を示している。`reader` が報告したものだけを使うと、
-  ドラッグ元が何を渡したかが明確になる。打ち切りの後に書き出されたファイルは、一時的なフォルダを消すことで残らない。
-- **Alternatives considered**: 約束のフォルダにあるファイルをすべて受け取る案。報告されないファイル（作業用のファイルなど）を保存するおそれがあるため採らない。
+- **Decision**: AppのImportSession（MainActor）が1回のドロップ、または画像データのペーストを担う。
+  1. R10で背景作成しておいたImportStagingを、約束のドロップ中に同期的に1組確保する。未準備ならドロップを拒否し、要求を後へ保留しない
+  2. acceptDropの中でNSFilePromiseReceiverの配列を読み、全receiverへ共通のreceptionFolderを渡してreceivePromisedFilesを呼んでから返す。フォルダ作成やTaskの後まで要求を遅らせない。readerには専用のOperationQueueを渡す
+  3. readerはMainActorを引き継がない明示的な非隔離のSendableコールバックとする。エラーならURLを使わない。成功ならreaderが返る前にR4の構造確認と複製を専用キュー上で行い、MainActorへは複製の結果だけを渡す
+  4. 待つ時間は約束の種類で60秒（画像・不明）または10分（動画）。打ち切り・取り消し後の結果は保存に加えない
+  5. 待つ間は1秒ごとにreceptionFolderの大きさを背景で調べ、約束ごとの上限（画像・不明256 MB、動画4 GB）の合計を超えたら全体を打ち切る。自分で作る検査用複製は書き出し量へ二重計上しない
+  6. 全約束の結果がそろったら、R4で複製の中身を検査し、R7で確認して保存する。画像データだけの経路はcheckingから始め、フォルダ作成・書き込みを背景で行う
+  7. 成功・失敗・取り消しのどれでも一時フォルダを削除してR10の記録から外す。遅い通知でも宛先へ保存せず、残った一時ファイルを掃除する
+- **判断と副作用の分離**: CoreのImportBudgetが期限・容量を、ImportReceptionStateが状態と遅い結果の拒否を判断する。AppKit・時計・タイマーは持たせず、Appが経過時間と観測値を渡す。
+  Appのテストでは時計・受け取り・確認を差し替え、共通宛先、要求がドロップ内で始まること、未準備時の拒否、取り消し、掃除、宛先の失敗、同時操作の独立と確認の直列化を確かめる。
+- **複数のファイルと同名**: readerが報告したファイルだけを対象とする。報告されない付随ファイルは保存しない。1つのreceiverが複数のファイルを返す場合も通知ごとに別の複製を作り、全ファイルを検査する。
+  別のreceiverが同じrealpathのファイルを報告した場合はsourceFailedとして操作全体を失敗にし、複製済みの分も宛先へ保存しない（EC-243）。同じreceiverの重複通知は二重に数えない。
+- **Rationale**: 現行macOS 27.2 SDKのNSFilePromiseReceiver.hは同じドラッグの全receiverに共通のdestinationを要求する。readerの呼び出しはNSFilePromiseProviderの場合は協調読み出しで保護されるので、その有効期間に複製する。
+  通常版のGUIでSafari PNGと写真2枚の成功、全request-beginがdrop-returnより前であること、背景でのフォルダ補充を確認した。
+- **Alternatives considered**: 約束ごとの別宛先はSDKの契約に反するため採らない。フォルダ作成後に要求する旧版の方法も採らない。単一receiverの複数ファイルと同一パス衝突は実測できていないため、実装時の自動テストで固定する。
 
 ## R4 検査と複製（FR-357・FR-360・FR-359、拡張属性）
 
-- **Decision**: Core の `ImportInspector` が、報告されたファイルごとに detached task で次を行う。
+- **Decision**: CoreのImportInspectorが、複製と中身の検査を分けて次を行う。構造確認と複製はreaderの専用キュー上で、その通知が返る前に同期的に実行し、中身の検査は複製に対して背景で行う。
   1. 構造: `lstat` でシンボリックリンクをたどらずに通常のファイルであること、パッケージ・エイリアス（`URLResourceValues.isAliasFile`）でないこと、
-     親のフォルダがその約束のフォルダであること（`standardizedFileURL` の比較ではなく、`realpath` で解いた親）
-  2. 複製: 検査用のフォルダへ `copyfile(_:_:nil, COPYFILE_CLONE | COPYFILE_ALL)` で複製する。
+     親のフォルダが共通のreceptionFolderであること（`standardizedFileURL` の比較ではなく、`realpath` で解いた親）
+  2. 複製: ドラッグ元へ知らせないinspectionFolderへ、通知ごとのUUID等の別名で `copyfile(_:_:nil, COPYFILE_CLONE | COPYFILE_ALL)` により複製する。
      APFS では内容を共有する複製になり、ほかのボリュームでは通常の複製になる（`COPYFILE_CLONE` は複製できないときに複製へ切り替わる）。
      `COPYFILE_ALL` で拡張属性（ブラウザが付けた quarantine の印を含む）を保つ（spec の5回目のレビューで plan に回した点）
   3. 大きさ: 複製の大きさ（`stat`）を、中身の種類の上限（画像 256 MB・動画 4 GB）と比べる（FR-359）
@@ -77,15 +87,15 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
 
 ## R5 画像データの読み出しと変換（FR-351・FR-352・FR-355・FR-359）
 
-- **Decision**: ペーストボードの項目ごとに、型を PNG、その他の画素を持つ画像の型（`public.jpeg`・`public.heic` など、R1 の結果で確定）、TIFF の順に選ぶ。
+- **Decision**: 各NSPasteboardItem.typesからPNG、JPEG、TIFFの順に1つ選ぶ。全体のtypesにだけある合成TIFFは選ばない。
   - 読み出し: ドロップ（`acceptDrop`）とペーストの中で、選んだ型の `NSPasteboardItem.data(forType:)` を UI スレッドで読む。
     同じ項目の `public.url`（http・https）の文字列も読む。HTML・リッチテキストは読まない（FR-353）
   - 256 MB を超えるデータは、読んだ直後に捨てて失敗とする
   - 変換と書き込みは detached task で、ImageIO の `CGImageSource`・`CGImageDestination` を使う。PNG のデータはそのまま書く。
     ほかの形式は、1 枚目の画像の画素数をプロパティで調べ、1 億以下なら PNG に変換する（FR-359）
-- **Rationale**: ドロップのペーストボードは、ドロップを返した後に読める保証がない。Web の画像は通常数 MB で、UI スレッドで読む時間は短いと見込む。
-- **未検証と代わりの方法**: 大きなデータの読み出しで UI が止まらないか（R1 の 4）。目安の 0.2 秒を超える場合は、ドロップの間に
-  `NSPasteboardItem` の型の一覧だけを確かめ、データは `NSPasteboard(name: .drag)` から detached task で読む方式に切り替え、保守者に結果を示す。
+- **Rationale**: ドロップを返した後のペーストボードの有効性に依存しない。実アプリの画像表現は最大2480836 bytes、取得時間の最大値は0.032769秒だった。即時提供の200013546 bytes TIFFは0.008885秒、256016210 bytes TIFFは0.013577秒で、今回の全実測は0.2秒未満。
+- **限界と再評価**: 大きなTIFFの値は生成済みデータの即時提供で、実アプリの遅延提供とは別の条件。上限検査は取得直後であり、取得前の確保量や待ち時間を制限するものではない。
+  将来0.2秒超を観測した場合は取得方法を再評価して保守者へ示す。ドロップ後のNSPasteboard(name: .drag)を背景から読めるとは検証していないため、その方式へ自動的には切り替えない。
 
 ## R6 名前（FR-352・FR-357・FR-360・EC-243）
 
@@ -109,7 +119,7 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
   - 確認: `FileOperation(kind: .copy, sources: staged, destination: destination)` で `ConfirmationPresenter.confirm` を呼ぶ。
     確認モーダルは項目の名前（`lastPathComponent`。`ConfirmationPresenter.swift:125-126`）と宛先を示すので、検査用のフォルダの場所は出ない（FR-347）
   - 実行: 既存の `transferItems`（`FileOperationCoordinator.swift:229`）を、同じボリュームなら `.move`（名前の変更で移す）、
-    起動ディスクの一時的な場所を使ったときは `.copy` で呼ぶ。衝突は既存の `ConflictPrompt` で扱う（FR-025）
+    宛先が別のボリュームなら `.copy` で呼ぶ。衝突は既存の `ConflictPrompt` で扱う（FR-025）
   - 後処理: コピーと同じく `reloadCurrentFolder` と、宛先だけの `onFoldersChanged`。一時的なフォルダを通知に含めない。
     移動の後処理（`didMoveSearchItems`・履歴からの削除）は行わない
   - 動画も同じ経路で、コピーとして扱う。spec の FR-347 の文言を「画像・動画の保存」に直す（spec の5回目のレビューで plan に回した点）
@@ -141,27 +151,24 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
 
 ## R10 一時的なフォルダと起動時の掃除（FR-350・FR-361）
 
-- **Decision**: Core の `ImportStaging` が作る。
-  - 場所: `FileManager.url(for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: 宛先, create: true)`。
-    作れない、または宛先と別のボリュームが返ったときは、`FileManager.default.temporaryDirectory` の中の `Folzio-Import/<UUID>` を使い、宛先へは複製する（FR-350）
-  - 記録: `UserDefaults` のキー `internal.pendingImportFolders` に、`[path, volumeUUID, createdAt]` の配列を保存する。
-    作った直後に加え、消した後に外す。設定ではないので、設定ウインドウ・設定のキーの一覧（`contracts/settings.md`）の「設定」には入れず、内部の記録として載せる
-  - 起動時: `AppDelegate` の起動の後に detached task で、記録ごとにボリュームの識別子（`URLResourceValues.volumeUUIDString`）を比べ、
-    名前が OS の置き換え用のフォルダの形（`(A Document Being Saved By Folzio` で始まる）か `Folzio-Import` の中の UUID であることを確かめてから、
-    `FileManager.removeItem` で消す。確かめられない・30 日を過ぎたものは消さずに外す。ボリュームがないものは持ち越す
-- **Rationale**: 設定ストア（`Sources/FolzioCore/Settings/SettingsStore.swift`）と同じ `UserDefaults` を使えば、新しいファイルの保存場所を作らずに済む。
-  名前とボリュームの確認で、記録が書き換えられても一時的なフォルダ以外を消さない。
-- **Alternatives considered**: `Application Support` に記録のファイルを置く案。Folzio はまだこの場所を使っておらず、作成・権限の扱いが増えるため採らない。
+- **Decision**: CoreのImportStagingを背景で作り、AppのMainActor上の準備済みフォルダのプールへ渡す。
+  - 場所はFileManager.default.temporaryDirectory内のFolzio-Import/<UUID>。各rootに共通のreceptionFolderと、ドラッグ元へ知らせないinspectionFolderを作る。宛先が決まる前に準備するので、itemReplacementDirectoryによる宛先ボリュームの優先は行わない
+  - 起動時に残存フォルダの掃除を終えてから2組を作り、消費後は背景で補充する。空なら約束のドラッグを受け付けない。ホバーではファイル操作をせず、準備済みの有無だけで判断する
+  - 宛先へ保存するときの同一ボリューム判定は背景で行う。同一ならmove、異なるならcopyで保存する（R7）。別ボリュームへの保存は一時領域と宛先の両方の容量を使う
+  - 記録はUserDefaultsのinternal.pendingImportFoldersに[path, volumeUUID, createdAt]の配列として保存する。待機用も作成直後に加え、消した後に外す。記録更新は直列化する。設定の書き出し・初期化の対象にしない
+  - 起動時の掃除はAppDelegateが背景で行う。記録のvolumeUUIDと実体のボリューム、OSの一時領域内のFolzio-Import/<UUID>であることを確認してから消す。確かめられない・30日超は消さずに外し、ボリュームがないものは持ち越す
+  - 操作の終了時と、正常終了時に残る未使用の待機用フォルダも掃除する。打ち切り後に遅く届く書き込みを保存へ進めず、残存分を掃除する規則は維持する
+- **Rationale**: 宛先未確定でも受け取り先を用意でき、ドロップ内の要求とUIスレッドでファイル操作を行わない制約を両立する。名前とボリュームの確認で、記録の改変による一時領域外の削除を防ぐ。
+- **Alternatives considered**: ドロップ後に宛先ボリュームの一時フォルダを作って要求する旧案は採らない。Application Supportに新しい記録ファイルも作らず、既存のUserDefaultsを使う。
 
 ## R11 ペーストとメニューの有効・無効（FR-354）
 
-- **Decision**: `FileContextMenu.pasteboardHasFileURLs()`（`FileContextMenu.swift:37`）と、ツリー・ファイルリストの `validateMenuItem` の条件を、
-  App の `PasteboardImport.availability(.general)` に置き換える。型の一覧だけを見て、`fileURLs`・`promise`・`imageData`・`none` を返す。
-  - 「ペースト」「ここにペースト」は `none` 以外で有効、「移動ペースト」「ここに移動ペースト」は `fileURLs` だけで有効
-  - ペーストの実行（`FileOperationCoordinator.paste`。`FileOperationCoordinator.swift:111`）は、file URL があれば今のまま、
-    なければ R3（約束）または R5（画像データ）の `ImportSession` を始める
-  - 一般のペーストボードの約束（写真アプリのコピー）は、R1 の 3 で読み出せることを確かめてから実装する。読み出せなければ、spec の EC-241 と US78-AS8 を改め、画像データを使う
-- **Rationale**: メニューの有効・無効でデータを読まない（FR-354）。判定を1か所にまとめ、ツリーとファイルリストで食い違わないようにする。
+- **Decision**: FileContextMenuとツリー・ファイルリストの有効条件を、AppのPasteboardImport.availability(.general)にまとめる。各項目の型だけを見てfileURLs・imageData・noneを返し、データを読まない。
+  - 一般クリップボードの約束は対象に含めず、CoreのImportPayloadPolicyへpromiseDeclaredTypes=[]を渡す。約束だけならnone、約束と画像データならimageDataになる
+  - ペースト / ここにペーストはnone以外で有効。移動ペースト / ここに移動ペーストはfileURLsだけで有効
+  - 実行時はfile URLがあれば既存のコピー経路へ渡し、失敗しても縮小JPEG等へ切り替えない。file URLがなければR5の画像データのImportSessionを始める
+  - 写真アプリのコピーにはfile URLとJPEG表現を観測し、全コピーでreceivers=0だった。元のHEIC形式の保持は約束せず、file URLでの保存自体はT037で確認する
+- **Rationale**: EC-241・US78-AS8・FR-354を実測に合わせる。一般クリップボードでAPIが一切使えないと証明したものではなく、今回の対象アプリから約束が提供されなかったため範囲から外す。動画のJPEG表現を動画取得として扱わない。
 
 ## R12 ローカライズ（A-213）
 

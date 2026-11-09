@@ -1,6 +1,6 @@
 # Data Model: TAK-88 ブラウザの画像をフォルダへ保存する
 
-新しい永続データは、起動時の掃除の記録（`ImportCleanupRecord`）だけ。ほかは1回の受け取りの間だけ持つ値。
+新しい永続データは、起動時の掃除の記録（`ImportCleanupRecord`）だけ。ほかは準備済みフォルダのプール、または1回の受け取りの間だけ持つ値。
 
 ## Core（`FolzioCore`。AppKit を import しない）
 
@@ -16,9 +16,10 @@
 |---|---|
 | `ImportPayload.fileURLs` | 今の file URL の経路（TAK-74）へ渡す |
 | `ImportPayload.promises([ExpectedKind])` | 約束ごとの、示す種類から見た `image`・`video`・`unknown` |
-| `ImportPayload.imageData([String])` | 項目ごとに選んだ型（PNG を先に。R5） |
+| `ImportPayload.imageData([String])` | 各項目のtypesからPNG → JPEG → TIFFで選んだ型（R5） |
 | `nil` | 受け付けない（宛先を有効にしない・ペーストを無効にする） |
 
+- 一般クリップボードのAppアダプターはpromiseDeclaredTypes=[]を渡し、file URL → 画像データの順とする。約束だけならnil、約束と画像データならimageData。ドラッグではfile URL → 約束 → 画像データ（EC-241）
 - 約束は、示す種類がすべて画像・動画でない（PDF など）ときに受け付けない（FR-348）
 - `ExpectedKind` は待つ時間（60 秒・10 分）と書き出し中の上限（256 MB・4 GB）を決める。保存の上限には使わない（FR-359）
 
@@ -44,13 +45,15 @@
 
 - **isAcceptable**（規則）: 空でない、`/`・`:` を含まない、`.` で始まらない、`Cc`・`Cf` の文字を含まない、UTF-8 で 200 バイト以下（FR-357）
 
-### ImportInspector（ファイルの検査。detached task で使う。R4）
+### ImportInspector（受け取り通知中の複製と、背景での検査。R4）
 
 | 結果 | 内容 |
 |---|---|
 | `.accepted(InspectedFile)` | 検査用のフォルダの複製、中身の種類（`ContentKind`）、宛先に作る名前 |
 | `.rejected(ImportRejection)` | 保存しない理由 |
 
+- 構造確認と複製はreaderの有効期間中に専用キュー上で同期的に行い、通知ごとの別名でinspectionFolderへ作る。AppKitはCoreへ持ち込まない。後の検査はこの複製だけを対象にする
+- 別receiverによる同じrealpathの再利用はsourceFailedとして操作全体を失敗にする。同じreceiverの重複通知は二重に数えない（R3・EC-243）
 - `ContentKind`: `.image(UTType)`・`.video(MediaKind)`（`.mp4`・`.mov`）
 
 ### ImportRejection（失敗の理由。R12）
@@ -74,12 +77,15 @@
 
 | 項目 | 内容 |
 |---|---|
-| `root` | 一時的なフォルダ（宛先と同じボリューム、または起動ディスクの `Folzio-Import/<UUID>`） |
-| `sameVolumeAsDestination` | 宛先へ移すか（`true`）、複製するか（`false`） |
-| `promiseFolder(index:)` | 約束ごとのフォルダ |
+| `root` | 起動ディスクのOSの一時領域内の `Folzio-Import/<UUID>`。宛先決定前に背景で作成する |
+| `sameVolumeAsDestination` | 操作へ割り当て後に背景で調べる。同じボリュームなら移動（`true`）、異なるならコピー（`false`） |
+| `receptionFolder` | 同じドラッグの全receiverへ渡す共通の受け取り用フォルダ |
 | `inspectionFolder` | 検査用のフォルダ（ドラッグ元に知らせない） |
-| `currentSize()` | 中身の大きさの合計（1 秒ごとの見張り） |
+| `currentSize()` | receptionFolderの大きさの合計（1秒ごとの見張り。自分で作る検査用複製を二重計上しない） |
 | `remove()` | フォルダと中身を消し、記録から外す |
+
+- AppのMainActor上のプールが2組を準備し、消費後に背景で補充する。未準備なら約束のドロップを拒否し、要求をTaskの後へ遅らせない。画像データだけなら実行後の背景作成でもよい
+- 待機用も作成直後から記録し、未使用分は正常終了時に掃除する。起動時の残存フォルダ掃除の後に、新しい待機用を作る（R10）
 
 ### ImportCleanupRecord（永続。`UserDefaults` の `internal.pendingImportFolders`。R10）
 
@@ -89,10 +95,15 @@
 | `volumeUUID` | String |
 | `createdAt` | Date |
 
-- 起動時に、ボリュームの識別子と名前の形を確かめてから消す。確かめられない・30 日を過ぎたものは消さずに外す。ボリュームがないものは持ち越す（FR-361）
+- 起動時に、ボリュームの識別子とOSの一時領域内のFolzio-Import/<UUID>という名前の形を確かめてから消す。確かめられない・30 日を過ぎたものは消さずに外す。ボリュームがないものは持ち越す（FR-361）
 - 読み込みで型が不正な項目は捨てる（今の設定の読み込みと同じ方針。`contracts/settings.md`）
 
 ## App（`FolzioApp`）
+
+### 準備済みフォルダのプール（MainActor。R3・R10）
+
+- 背景で作ったImportStagingを2組保持し、操作ごとに1組を同期的に確保して背景で補充する。空のときは約束のドラッグを有効にしない
+- AppDelegateが残存フォルダの掃除の後に準備を始める。作成と掃除、記録の更新は競合しないように順序を守る
 
 ### ImportSession（1回の受け取り。MainActor。R3）
 
@@ -103,6 +114,7 @@
 | `confirming` | `saving`、`failed`（宛先の消失・書き込み不可など）、`cancelled`（確認のキャンセル・衝突の中止） |
 | `saving` | `finished` |
 
+- ドロップ内で準備済みImportStagingを取得し、全receiverへ共通宛先でreceivePromisedFilesを呼んでから返す。reader中の複製を終えた結果だけをMainActorへ通知する
 - **receiving**（次の状態）: すべての約束の結果がそろうと `checking`。打ち切り・大きさの超過で `failed`、取り消しで `cancelled`
 - 画像データの受け取りは `checking` から始まる（変換と書き込み）
 - `finished`・`failed`・`cancelled` で一時的なフォルダを消す。`failed` は FR-026 で表示し、`cancelled` は表示しない

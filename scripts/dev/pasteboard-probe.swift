@@ -66,7 +66,8 @@ final class SamplePromise: NSObject, NSFilePromiseProviderDelegate, @unchecked S
         sample.name
     }
 
-    func operationQueue(for provider: NSFilePromiseProvider) -> OperationQueue { queue }
+    // Foundation がファイル調整のキューから問い合わせるため、UI の隔離を引き継がない。
+    nonisolated func operationQueue(for provider: NSFilePromiseProvider) -> OperationQueue { queue }
 
     func filePromiseProvider(
         _ provider: NSFilePromiseProvider, writePromiseTo url: URL,
@@ -169,11 +170,12 @@ final class DropView: NSView {
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         guard sender.draggingSourceOperationMask.contains(.copy), let controller else { return false }
-        // データはドロップを返す前に読み、約束の受け取り側もこの間に確保する。
+        // データの取得と約束の要求は、どちらもドロップを返す前に行う。
         let start = ProcessInfo.processInfo.systemUptime
         controller.inspect(sender.draggingPasteboard, label: "drop", readData: true)
-        controller.receivePromises(from: sender.draggingPasteboard, startedAt: start)
-        return true
+        let accepted = controller.receivePromises(from: sender.draggingPasteboard, startedAt: start)
+        controller.log("drop-return accepted=\(accepted)（request-begin はこの行より前）")
+        return accepted
     }
 
     private func maskNames(_ mask: NSDragOperation) -> String {
@@ -185,9 +187,78 @@ final class DropView: NSView {
     }
 }
 
+// AppKit は reader を指定した OperationQueue で呼ぶ。MainActor の隔離を引き継がない。
+// UI に渡すのは値だけとし、ファイルの情報は reader が有効な間に読む。
+func makePromiseReader(
+    startedAt: TimeInterval,
+    report: @escaping @MainActor @Sendable (TimeInterval, String, Bool) -> Void
+) -> @Sendable (URL, Error?) -> Void {
+    { @Sendable url, error in
+        let elapsed = ProcessInfo.processInfo.systemUptime - startedAt
+        let result: String
+        if let error {
+            // エラーのときの URL は API の契約に従って使わない。
+            result = "error=\(String(describing: error))"
+        } else {
+            do {
+                let values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+                result = "name=\(url.lastPathComponent.debugDescription) bytes=\(values.fileSize.map { String($0) } ?? "unknown") regular=\(values.isRegularFile == true)"
+            } catch {
+                result = "metadataError=\(String(describing: error))"
+            }
+        }
+        let readOnMainThread = Thread.isMainThread
+        Task { @MainActor in report(elapsed, result, readOnMainThread) }
+    }
+}
+
+// 宛先は起動時と補充時にバックグラウンドで作る。ドロップでは作成を待たずに取り出す。
+@MainActor
+final class PreparedProbeFolders {
+    private(set) var folders: [URL] = []
+    private(set) var isPreparing = false
+    private let targetCount: Int
+    private let create: @Sendable () throws -> URL
+    private let report: @MainActor (String) -> Void
+
+    init(targetCount: Int = 2, create: @escaping @Sendable () throws -> URL = {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Folzio-Pasteboard-Probe-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+        return folder
+    }, report: @escaping @MainActor (String) -> Void) {
+        self.targetCount = targetCount
+        self.create = create
+        self.report = report
+    }
+
+    func replenish() {
+        guard !isPreparing, folders.count < targetCount else { return }
+        isPreparing = true
+        Task { [self] in
+            do {
+                let folder = try await Task.detached { [create] in try create() }.value
+                folders.append(folder)
+                isPreparing = false
+                report("受け取りフォルダ準備完了（待機数=\(folders.count)）")
+                replenish()
+            } catch {
+                isPreparing = false
+                report("受け取りフォルダ準備失敗: \(error)")
+            }
+        }
+    }
+
+    func take() -> URL? {
+        defer { replenish() }
+        guard !folders.isEmpty else { return nil }
+        return folders.removeFirst()
+    }
+}
+
 @MainActor
 final class ProbeController: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
+    private var preparedFolders: PreparedProbeFolders?
     private let output = NSTextView()
     private let caseName = NSTextField(string: "")
     private let selectedType = NSPopUpButton()
@@ -281,6 +352,9 @@ final class ProbeController: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
         log("macOS=\(ProcessInfo.processInfo.operatingSystemVersionString)")
         log("ログはウインドウと標準出力の両方へ表示。容量はバイト、時間は秒。約束の reader の回数を受け取りごとに記録します。")
+        preparedFolders = PreparedProbeFolders { [weak self] message in self?.log(message) }
+        preparedFolders?.replenish()
+        log("「受け取りフォルダ準備完了」の表示後にドロップしてください。")
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
@@ -295,7 +369,7 @@ final class ProbeController: NSObject, NSApplicationDelegate {
         let line = "\(ISO8601DateFormatter().string(from: Date())) \(text)\n"
         output.textStorage?.append(NSAttributedString(string: line))
         output.scrollToEndOfDocument(nil)
-        print(line, terminator: "")
+        FileHandle.standardOutput.write(Data(line.utf8))
     }
 
     @objc private func clearLog() { output.string = "" }
@@ -305,7 +379,7 @@ final class ProbeController: NSObject, NSApplicationDelegate {
     @objc private func receiveClipboard() {
         let start = ProcessInfo.processInfo.systemUptime
         inspect(.general, label: "clipboard-promises", readData: false)
-        receivePromises(from: .general, startedAt: start)
+        _ = receivePromises(from: .general, startedAt: start)
     }
 
     func inspect(_ pasteboard: NSPasteboard, label: String, readData: Bool, allTypes: Bool = false) {
@@ -336,57 +410,36 @@ final class ProbeController: NSObject, NSApplicationDelegate {
         }
     }
 
-    func receivePromises(from pasteboard: NSPasteboard, startedAt: TimeInterval) {
+    func receivePromises(from pasteboard: NSPasteboard, startedAt: TimeInterval) -> Bool {
         let promises = (pasteboard.readObjects(forClasses: [NSFilePromiseReceiver.self], options: nil) as? [NSFilePromiseReceiver]) ?? []
         let id = UUID()
         let tag = String(id.uuidString.prefix(8))
         log("receive[\(tag)] receivers=\(promises.count) case=\(caseName.stringValue.debugDescription)")
-        guard !promises.isEmpty else { return }
+        guard !promises.isEmpty else { return true }
+        guard let folder = preparedFolders?.take() else {
+            log("receive[\(tag)] 受け取りフォルダ準備中。準備完了の表示後にもう一度ドロップしてください。")
+            return false
+        }
         receivers[id] = promises
         callbackCounts[id] = [:]
+        log("receive[\(tag)] destination=\(folder.path.debugDescription)（事前作成済み・終了後も残す）")
+        // 同じドラッグの約束には共通の宛先を渡す。要求を Task へ遅らせない。
         for (index, receiver) in promises.enumerated() {
             log("receive[\(tag)] receiver[\(index)] fileTypes=\(receiver.fileTypes) fileNames(before)=\(receiver.fileNames)")
-        }
-        Task {
-            do {
-                let folder = try await Task.detached {
-                    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Folzio-Pasteboard-Probe-\(id.uuidString)", isDirectory: true)
-                    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
-                    return folder
-                }.value
-                log("receive[\(tag)] destination=\(folder.path.debugDescription)（終了後も残す）")
-                // NSFilePromiseReceiver の契約に従い、同じドラッグの約束には共通の宛先を渡す。
-                for (index, receiver) in promises.enumerated() {
-                    receiver.receivePromisedFiles(atDestination: folder, options: [:], operationQueue: receiverQueue) { [weak self] url, error in
-                        let elapsed = ProcessInfo.processInfo.systemUptime - startedAt
-                        let result: String
-                        if let error {
-                            // エラーのときの URL は API の契約に従って使わない。
-                            result = "error=\(String(describing: error))"
-                        } else {
-                            do {
-                                let values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
-                                result = "name=\(url.lastPathComponent.debugDescription) bytes=\(values.fileSize.map { String($0) } ?? "unknown") regular=\(values.isRegularFile == true)"
-                            } catch {
-                                result = "metadataError=\(String(describing: error))"
-                            }
-                        }
-                        Task { @MainActor [weak self] in
-                            guard let self else { return }
-                            self.callbackCounts[id, default: [:]][index, default: 0] += 1
-                            let count = self.callbackCounts[id]?[index] ?? 0
-                            self.log("receive[\(tag)] receiver[\(index)] readerCount=\(count) seconds=\(String(format: "%.6f", elapsed)) \(result)")
-                            if let receiver = self.receivers[id]?[index] {
-                                self.log("receive[\(tag)] receiver[\(index)] fileNames(after)=\(receiver.fileNames)")
-                            }
-                        }
-                    }
-                    log("receive[\(tag)] receiver[\(index)] fileNames(requested)=\(receiver.fileNames)")
+            let reader = makePromiseReader(startedAt: startedAt) { [weak self] elapsed, result, readOnMainThread in
+                guard let self else { return }
+                self.callbackCounts[id, default: [:]][index, default: 0] += 1
+                let count = self.callbackCounts[id]?[index] ?? 0
+                self.log("receive[\(tag)] receiver[\(index)] readerCount=\(count) seconds=\(String(format: "%.6f", elapsed)) \(result) readerMainThread=\(readOnMainThread)")
+                if let receiver = self.receivers[id]?[index] {
+                    self.log("receive[\(tag)] receiver[\(index)] fileNames(after)=\(receiver.fileNames)")
                 }
-            } catch {
-                log("receive[\(tag)] setupError=\(String(describing: error))")
             }
+            log("receive[\(tag)] receiver[\(index)] request-begin mainThread=\(Thread.isMainThread)")
+            receiver.receivePromisedFiles(atDestination: folder, options: [:], operationQueue: receiverQueue, reader: reader)
+            log("receive[\(tag)] receiver[\(index)] fileNames(requested)=\(receiver.fileNames)")
         }
+        return true
     }
 
     @objc private func copyLargeTIFF(_ sender: NSButton) {
@@ -442,18 +495,152 @@ func checkFixtures() throws {
     print("OK: 非圧縮 TIFF の生成。file promise の実際の受け渡しは macOS で手動確認してください。")
 }
 
-if CommandLine.arguments.contains("--self-test") {
-    do {
-        try checkFixtures()
-    } catch {
-        print("自己検査失敗: \(error)")
-        exit(1)
+// GUI なしで、実際に使う reader をバックグラウンドから複数回呼ぶ。
+@MainActor
+func checkPromiseReader() throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Folzio-Probe-ReaderTest-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let file = folder.appendingPathComponent("reader.png")
+    try Data([1, 2, 3]).write(to: file)
+    var results: [(TimeInterval, String, Bool)] = []
+    let reader = makePromiseReader(startedAt: ProcessInfo.processInfo.systemUptime) { elapsed, result, onMain in
+        MainActor.assertIsolated()
+        results.append((elapsed, result, onMain))
     }
-} else {
-    let app = NSApplication.shared
-    let controller = ProbeController()
-    app.setActivationPolicy(.regular)
-    app.delegate = controller
-    app.run()
-    withExtendedLifetime(controller) {}
+    let queue = OperationQueue()
+    queue.addOperation { reader(file, nil) }
+    queue.addOperation { reader(file, NSError(domain: "Folzio.Probe.Test", code: 1)) }
+    queue.addOperation { reader(folder.appendingPathComponent("missing"), nil) }
+    let deadline = Date().addingTimeInterval(5)
+    while results.count < 3 && Date() < deadline {
+        RunLoop.main.run(until: min(deadline, Date().addingTimeInterval(0.01)))
+    }
+    guard results.count == 3,
+          results.allSatisfy({ $0.0 >= 0 && !$0.2 }),
+          results.contains(where: { $0.1 == "name=\"reader.png\" bytes=3 regular=true" }),
+          results.contains(where: { $0.1.hasPrefix("error=") }),
+          results.contains(where: { $0.1.hasPrefix("metadataError=") }) else {
+        throw ProbeError.unexpectedFixture("background reader: \(results)")
+    }
+    print("OK: バックグラウンド reader の成功・受け取りエラー・情報取得エラー。通知は MainActor。")
+}
+
+// Foundation と同じ Objective-C の入口をバックグラウンドから呼ぶ。
+// Swift の直接呼び出しでは、delegate の actor 検査を通らないことがある。
+@MainActor
+func checkPromiseProvider() throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Folzio-Probe-ProviderTest-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    var results: [String] = []
+    let report: @MainActor @Sendable (String) -> Void = { results.append($0) }
+    let worker = OperationQueue()
+    for sample in Sample.allCases {
+        worker.addOperation {
+            let result: String
+            do {
+                precondition(!Thread.isMainThread)
+                let delegate = SamplePromise(sample: sample)
+                let provider = NSFilePromiseProvider(fileType: sample.declaredType.identifier, delegate: delegate)
+                guard let queue = delegate.perform(
+                    #selector(NSFilePromiseProviderDelegate.operationQueue(for:)), with: provider
+                )?.takeUnretainedValue() as? OperationQueue,
+                      queue.name == "Folzio.PasteboardProbe.Writer", queue !== OperationQueue.main else {
+                    throw ProbeError.unexpectedFixture("provider queue")
+                }
+                guard let name = delegate.perform(
+                    #selector(NSFilePromiseProviderDelegate.filePromiseProvider(_:fileNameForType:)),
+                    with: provider, with: sample.declaredType.identifier
+                )?.takeUnretainedValue() as? String, name == sample.name else {
+                    throw ProbeError.unexpectedFixture("provider name")
+                }
+                let url = folder.appendingPathComponent(name)
+                // 書き出しの専用キューも実際に使い、完了と中身を検査する。
+                queue.addOperation {
+                    let writingProvider = NSFilePromiseProvider(fileType: sample.declaredType.identifier, delegate: delegate)
+                    delegate.filePromiseProvider(writingProvider, writePromiseTo: url) { error in
+                        let message: String
+                        if let error {
+                            message = "error: \(error)"
+                        } else if Thread.isMainThread {
+                            message = "error: provider write on main thread"
+                        } else if let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+                                  CGImageSourceGetType(source) as String? == sample.contentType.identifier {
+                            message = "OK: \(sample.name)"
+                        } else {
+                            message = "error: provider content"
+                        }
+                        Task { @MainActor in report(message) }
+                    }
+                }
+                queue.waitUntilAllOperationsAreFinished()
+                result = "queue: \(sample.name)"
+            } catch {
+                result = "error: \(error)"
+            }
+            Task { @MainActor in report(result) }
+        }
+    }
+    let deadline = Date().addingTimeInterval(5)
+    while results.count < Sample.allCases.count * 2 && Date() < deadline {
+        RunLoop.main.run(until: min(deadline, Date().addingTimeInterval(0.01)))
+    }
+    guard results.sorted() == ["OK: cat.png", "OK: logo.svg", "queue: cat.png", "queue: logo.svg"].sorted() else {
+        throw ProbeError.unexpectedFixture("background provider: \(results)")
+    }
+    print("OK: provider のキュー・名前の Objective-C 呼び出しと専用キューの書き出し（2画像）。")
+}
+
+// 事前作成・空のときの拒否・消費後の補充を、実際のバックグラウンド作成で確かめる。
+@MainActor
+func checkPreparedFolders() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent("Folzio-Probe-FolderTest-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let pool = PreparedProbeFolders(create: {
+        guard !Thread.isMainThread else { throw ProbeError.unexpectedFixture("folder creation on main thread") }
+        let folder = root.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder
+    }, report: { _ in })
+    guard pool.take() == nil else { throw ProbeError.unexpectedFixture("unprepared folder accepted") }
+    func waitUntilReady() throws {
+        let deadline = Date().addingTimeInterval(5)
+        while (pool.folders.count != 2 || pool.isPreparing) && Date() < deadline {
+            RunLoop.main.run(until: min(deadline, Date().addingTimeInterval(0.01)))
+        }
+        guard pool.folders.count == 2, !pool.isPreparing else {
+            throw ProbeError.unexpectedFixture("folder preparation timed out")
+        }
+    }
+    try waitUntilReady()
+    guard let first = pool.take() else { throw ProbeError.unexpectedFixture("prepared folder missing") }
+    try waitUntilReady()
+    let all = [first] + pool.folders
+    guard Set(all).count == 3,
+          all.allSatisfy({ (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }) else {
+        throw ProbeError.unexpectedFixture("folder reuse or missing directory")
+    }
+    print("OK: 受け取りフォルダの事前作成・未準備の拒否・補充（作成はバックグラウンド）。")
+}
+
+MainActor.assumeIsolated {
+    if CommandLine.arguments.contains("--self-test") {
+        do {
+            try checkFixtures()
+            try checkPromiseReader()
+            try checkPromiseProvider()
+            try checkPreparedFolders()
+        } catch {
+            print("自己検査失敗: \(error)")
+            exit(1)
+        }
+    } else {
+        let app = NSApplication.shared
+        let controller = ProbeController()
+        app.setActivationPolicy(.regular)
+        app.delegate = controller
+        app.run()
+        withExtendedLifetime(controller) {}
+    }
 }

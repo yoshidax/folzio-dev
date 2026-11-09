@@ -3,6 +3,7 @@
 ## 設計の承認
 
 - 2026-11-09: このチャットで、分析の指摘を反映した設計（`9b8102e`）と R6 の検査例外を示した確認に対し、保守者が「進めてください」と承認（T003）
+- 2026-11-09: T006完了後に示したT007の変更案に、保守者が「OKです。」と承認。共通宛先・事前作成・クリップボードの約束の除外・PNG → JPEG → TIFF・同一実体パスの拒否を含めて仕様と関連計画を確定した。Phase 2以降は未着手
 - R6 は `ImportedFileName.swift` のスキームの文字列比較だけの例外。通信する機能の追加は含まない
 
 ## Cloud と CI
@@ -25,46 +26,199 @@ CI の対象はスクリプトを含む実装コミット `ff748f5`。この後�
 
 ## T006 の実測結果（保守者の macOS）
 
-**状態**: 未実施。下記は記入欄であり、観測結果ではない。
+**状態**: T006 の実測完了（2026-11-09 19:21 JSTまで）。Safari・ChromeのJPEG・PNG・GIF・WebPのドラッグと画像コピー、写真アプリのJPEG・HEIC・MOV・MP4のドラッグとコピー、生成した200 / 256 MB TIFFの読み出しを記録。追加のTIFF指定2ブラウザと写真2枚の共通宛先での書き出しも確認した。成功・キャンセル・クラッシュ・再試行を区別する。T007の変更案も保守者の「OKです。」で承認され、仕様と関連計画へ反映した。Phase 2以降は未着手。
 
-- コミット:
-- macOS・機種・メモリ:
-- Swift の版:
-- Safari・Chrome・写真アプリの版:
-- ログの保存先:
+以下の途中経過にある「未確認」「未完了」は、その測定時点の記録。現在の判定はこの段落と末尾の「T007 の確定事項」を正とする。製品への保存（T031・T037）、実アプリから遅延提供される大きなTIFF、単一receiverから複数ファイルが届く場合、SIGBUSの原因は未確認のまま残す。
+
+- 対象: `claude/clever-knuth-udimb8` / `6f97268` と、このチャットで適用した確認スクリプトの未コミット修正
+- 測定環境: macOS 26.6.2（25G83）、Mac15,12、メモリ 16 GiB、Swift 6.4.2。Safari 26.6.2、Chrome 157.0.8103.39、写真 11.0
+- 現在のログ: `/tmp/folzio-pasteboard-probe.log`。16:36 JST の Safari JPEG のドラッグを `/tmp/folzio-tak88-probe-fix/safari-jpeg-drag-20261109-1636.log` に複製して保存。16:09 JST の初回クラッシュはこのチャットとバグ記録に要約（初回のブラウザ名は未特定）
+- 先に、言語モード指定なしの起動で `ProbeController()` の MainActor 初期化エラーを確認。`-swift-version 6` で画面は表示できた
+- JPEG のドロップ後、`_dispatch_assert_queue_fail`・`_swift_task_checkIsolatedSwift`・`NSBlockOperation main` を含むスタックで SIGTRAP。これは受け渡しの成功や file promise の非対応を示す結果としては扱わない
+- reader を明示的な非隔離の `@Sendable` コールバックへ変更し、MainActor へ値だけを通知する修正を適用。起動部の MainActor も明示し、標準出力を即時出力に変更
+- 修正後の自己検査: 画像の名前と中身、非圧縮 TIFF、バックグラウンド reader の成功・受け取りエラー・情報取得エラーと MainActor への通知が成功。通常モードと Swift 6 の型検査も警告なしで成功
+- 修正後の Safari JPEG ドラッグでクラッシュせず、`readerCount=1`、`readerMainThread=false` を確認。ただし書き出しは `NSCocoaErrorDomain Code=3072`。Safari JPEG の画像コピーは下表のとおり確認。生成した200 / 256 MB TIFF は下表のとおり確認。他の形式・アプリや実アプリからの大きな TIFF は未確認。T006・T007 は未チェック。詳細は `.specify/bugs/tak-88-probe-actor-crash/` に記録する
+
+
+- コミット: `6f97268` + このチャットの未コミットの確認スクリプト修正
+- macOS・機種・メモリ: macOS 26.6.2（25G83）/ Mac15,12 / 16 GiB
+- Swift の版: 6.4.2（実行は `-swift-version 6`）
+- Safari・Chrome・写真アプリの版: 26.6.2 / 157.0.8103.39 / 11.0
+- ログの保存先: 上記
 
 | アプリ | データ | 操作 | 項目ごとの型・約束の fileTypes | マスク | 書き出された名前・容量・時間・readerCount またはエラー |
 |---|---|---|---|---|---|
-| Safari | JPEG・PNG・GIF・WebP | それぞれドラッグ | 未確認 | 未確認 | 未確認 |
-| Chrome | JPEG・PNG・GIF・WebP | それぞれドラッグ | 未確認 | 未確認 | 未確認 |
-| 写真 | HEIC・JPEG | それぞれドラッグ | 未確認 | 未確認 | 未確認 |
-| 写真 | MOV・MP4 | それぞれドラッグ | 未確認 | 未確認 | 未確認 |
-| Safari | JPEG・PNG・GIF・WebP | それぞれコピー | 未確認 | 対象外 | 未確認 |
-| Chrome | JPEG・PNG・GIF・WebP | それぞれコピー | 未確認 | 対象外 | 未確認 |
-| 写真 | HEIC・JPEG・MOV・MP4 | それぞれコピー | 未確認 | 対象外 | 未確認 |
+| Safari | JPEG | ドラッグ（16:36 JST） | 1項目。`public.jpeg`・`public.tiff`・URL・文字列・WebKit の型・約束の型。file URL なし。receivers=1、fileTypes=[public.jpeg] | 1（copy） | readerCount=1、0.038413秒、NSCocoaErrorDomain Code=3072（キャンセル）、readerMainThread=false。fileNames(before/requested/after) はすべて空、書き出された名前・容量は未取得 |
+| Safari | JPEG | ドラッグ再試行（17:11 JST） | 1項目。public.jpeg・public.tiff・URL・文字列・WebKit・約束の型。file URL なし。receivers=1、fileTypes=[public.jpeg] | 1（copy） | fileNames(before/requested)=[]。約94秒後は通知なし・宛先空。その後17:19:41 JSTにreaderCount=1、seconds=511.181290、NSCocoaErrorDomain Code=3072（キャンセル）、readerMainThread=false、fileNames(after)=[]。名前・容量は未取得 |
+| Safari | WebP（ケース名はPNG） | ドラッグ（17:31 JST） | 1項目。org.webmproject.webp・public.tiff・URL・WebKit・約束の型。receivers=1、fileTypes=[org.webmproject.webp]、file URL なし | 1（copy） | TIFF 2480836 bytes、readSeconds=0.032769。約束はfileNames(before/requested/after)=[]、readerCount=1、78.915685秒でNSCocoaErrorDomain Code=3072、readerMainThread=false |
+| Safari | PNG（ローカルHTTP / 32×32） | ドラッグ（17:38 JST） | 1項目。public.png・public.tiff・WebKit・URL・約束の型。file URLなし。receivers=1、fileTypes=[public.png] | 1（copy） | PNG 188 bytes、readSeconds=0.000840、mainThread=true。fileNames(before/requested/after)=[]、readerCount=1、34.237098秒でNSCocoaErrorDomain Code=3072、readerMainThread=false |
+| Safari | GIF（ローカルHTTP / 1×1） | ドラッグ（17:44 JST） | 1項目。com.compuserve.gif・public.tiff・WebKit・URL・約束の型。receivers=1、fileTypes=[com.compuserve.gif] | 1（copy） | TIFF 3370 bytes、readSeconds=0.008071、mainThread=true。fileNames(before/requested)=[]。現記録範囲ではreaderの通知・fileNames(after)・出力名なし |
+| Safari | PNG（ローカルHTTP / 32×32、要求時機の診断版） | ドラッグ（19:04 JST） | public.png・public.tiff・WebKit・URL・約束の型。receivers=1、fileTypes=[public.png] | 1（copy） | PNG 188 bytes、readSeconds=0.001004。request-beginがdrop-returnより前。fileNames(before)=[]、requested/after=[sample.png]、readerCount=1、0.294085秒、188 bytes、regular=true、readerMainThread=false。元のPNGとcmpでバイト一致 |
+| Chrome | JPEG | ドラッグ（17:19 JST） | 1項目。public.jpeg・public.url・約束の型・org.chromium.*。一般の types には public.tiff もあるが item[0].types にはない。receivers=1、fileTypes=[public.jpeg]、file URL なし | 18446744073709551615（copyを含む全マスク） | fileNames(before)=[]、requested/after=[image01.jpg]。readerCount=1、0.319460秒、image01.jpg、872744 bytes、regular=true、readerMainThread=false。file コマンドで JPEG / 1024×768 を確認 |
+| Chrome | WebP（ケース名はPNG） | ドラッグ（17:33 JST） | 1項目。org.webmproject.webp・URL・org.chromium.*・約束の型。一般のtypesにはpublic.tiffもあるがitem[0].typesにはない。receivers=1、fileTypes=[org.webmproject.webp] | 18446744073709551615（copyを含む全マスク） | 選んだ画像の型なし（PNG等の直接読み出しなし）。fileNames(before)=[]、requested/after=[Nature-Positive-Travel-Tourism-in-Action-April-2024_Page_01_Image_0001-e1713779436322.webp]、1048620 bytes、regular=true、readerCount=1、0.300560秒、readerMainThread=false。fileコマンドでWebPを確認 |
+| Chrome | PNG（ローカルHTTP / 32×32） | ドラッグ（17:38 JST） | 1項目。public.png・URL・org.chromium.*・約束の型。一般のtypesにはTIFFもあるがitem[0]にはない。file URLなし。receivers=1、fileTypes=[public.png] | 18446744073709551615（copyを含む全マスク） | PNG 188 bytes、readSeconds=0.000661。fileNames(before)=[]、requested/after=[sample.png]。readerCount=1、0.349061秒、188 bytes、regular=true、readerMainThread=false。実ファイルはPNG、元のsample.pngとcmpでバイト一致 |
+| Chrome | GIF（ローカルHTTP / 1×1） | ドラッグ試行 | ドロップ欄へのdrag-enter記録なし | 未取得 | 保守者が「画像を動かしてもドラッグが始まらない」と回答。受信拒否・書き出し失敗とは扱わない。128×96のGIFでは後述の再試行でドラッグ・書き出し成功 |
+| Chrome | GIF（ローカルHTTP / 128×96） | ドラッグ（17:59 JST） | com.compuserve.gif・URL・org.chromium.*・約束の型。receivers=1、fileTypes=[com.compuserve.gif] | 18446744073709551615（copyを含む全マスク） | 選んだ画像の型なし。fileNames(before)=[]、宛先の作成まで記録。requested/after・readerの通知・出力ファイルは未取得。次の画像コピー確認でプロセスがクラッシュ |
+| Chrome | GIF（ローカルHTTP / 128×96） | 再起動後のドラッグ試行（18:13 JST） | drag-enterにはcom.compuserve.gif・URL・org.chromium.*・約束の型あり | 18446744073709551615（copyを含む全マスク） | drag-enterのみでdrop・receiveの記録なし。ドロップと書き出しは未確認 |
+| Chrome | GIF（ローカルHTTP / 128×96） | ドラッグ再試行（18:23 JST） | 1項目。com.compuserve.gif・URL・org.chromium.*・約束の型。receivers=1、fileTypes=[com.compuserve.gif]。一般のtypesにTIFFもあるがitem[0]にはない | 18446744073709551615（copyを含む全マスク） | 選んだ画像の型なし（直接読み出しなし）。fileNames(before)=[]、requested/after=[sample-128.gif]。readerCount=1、0.308312秒、292 bytes、regular=true、readerMainThread=false。fileコマンドでGIF87a / 128×96、元ファイルとcmpでバイト一致を確認 |
+| 写真 | JPEG（保守者指定） | ドラッグ（18:43 JST） | 1項目。public.jpeg・public.file-url・com.apple.photos.object-reference.asset・約束の型。receivers=1、fileTypes=[public.jpeg]。一般のtypesにはTIFFもあるがitem[0]にはない | 1（copy） | JPEG 50764 bytes、readSeconds=0.002396。fileNames(before/requested/after)=[]。readerCount=1、84.708279秒でNSCocoaErrorDomain Code=3072、readerMainThread=false。書き出し名・容量は未取得 |
+| 写真 | HEIC（保守者指定、提供型はJPEG） | ドラッグ（18:45 JST） | 1項目。public.jpeg・public.file-url・com.apple.photos.object-reference.asset・約束の型。receivers=1、fileTypes=[public.jpeg]。一般のtypesにはTIFFもあるがitem[0]にはない | 1（copy） | 直接のJPEGデータは145272 bytes、readSeconds=0.001872。約束はfileNames(before)=[]、requested/after=[IMG_2454.jpeg]、readerCount=1、1.316468秒、2776034 bytes、regular=true、readerMainThread=false。sipsで出力がJPEG / 5712×4284と確認 |
+| 写真 | MOV（保守者指定） | ドラッグ（18:50 JST） | 1項目。public.jpeg・public.file-url・com.apple.photos.object-reference.asset・約束の型。receivers=1、fileTypes=[com.apple.quicktime-movie] | 1（copy） | 画像表現はJPEG 471039 bytes、readSeconds=0.001322。約束はfileNames(before)=[]、requested/after=[IMG_2448.MOV]、readerCount=1、4.342186秒、4493346 bytes、regular=true、readerMainThread=false。fileコマンドでQuickTimeコンテナを確認 |
+| 写真 | MP4（保守者指定） | ドラッグ（18:55 JST） | 1項目。public.jpeg・public.file-url・com.apple.photos.object-reference.asset・約束の型。receivers=1、fileTypes=[public.mpeg-4] | 1（copy） | JPEG表現6127 bytes、readSeconds=0.001339、mainThread=true。約束はfileNames(before/requested/after)=[]、readerCount=1、0.038567秒でNSCocoaErrorDomain Code=3072、readerMainThread=false。動画の書き出し名・容量は未取得 |
+| 写真 | MP4（要求時機の診断版） | ドラッグ（19:10 JST） | Photosの型・public.jpeg・public.file-url・約束の型。receivers=1、fileTypes=[public.mpeg-4] | 1（copy） | JPEG表現6127 bytes、readSeconds=0.001735。request-beginがdrop-returnより前。fileNames(before)=[]、requested/after=[02-video-1s.mp4]、readerCount=1、0.379456秒、9584 bytes、regular=true、readerMainThread=false。fileコマンドでMP4コンテナを確認 |
+| Safari | PNG（TIFF指定、要求時機の診断版） | ドラッグ（19:19 JST） | 項目にpublic.pngとpublic.tiff。receivers=1、fileTypes=[public.png] | 1（copy） | TIFF 7462 bytes、readSeconds=0.005270。request-beginがdrop-returnより前。fileNames(before)=[]、requested/after=[sample.png]。PNG 188 bytes、0.300809秒、readerCount=1、readerMainThread=false |
+| Chrome | PNG（TIFF指定、要求時機の診断版） | ドラッグ（19:20 JST） | 全体のtypesにはTIFF、item[0].typesにはTIFFなし。receivers=1、fileTypes=[public.png] | 18446744073709551615（copyを含む全マスク） | 「選んだ画像の型なし」でデータは読んでいない。TIFFのnil・0秒とは扱わない。request-beginがdrop-returnより前。fileNames(before)=[]、requested/after=[sample.png]。PNG 188 bytes、0.287712秒、readerCount=1、readerMainThread=false |
+| 写真 | 2枚選択（元形式は未特定、要求時機の診断版） | ドラッグ（19:21 JST） | 2項目にJPEG表現とfile URL。receivers=2、両方fileTypes=[public.png] | 1（copy） | 共通宛先04へ各1回の通知。receiver[0]はIMG_2442.PNG / 423589 bytes / 1.711105秒、receiver[1]はIMG_2450.PNG / 386001 bytes / 1.199418秒。両方regular=true、readerMainThread=false、before=[]、requested/afterに各名。両要求がdrop-returnより前 |
+| Safari | PNG（通常版の要求時機修正後） | ドラッグ（19:47:25 JST） | 項目にPNG・TIFF・WebKitの型。receivers=1、fileTypes=[public.png] | 1（copy） | PNG 188 bytes、readSeconds=0.001045。request-beginがdrop-returnより前、accepted=true。fileNames(before)=[]、requested/after=[sample.png]。readerCount=1、0.298310秒、188 bytes、regular=true、readerMainThread=false。元PNGとcmpで一致。消費後に待機数2へ補充 |
+| 写真 | 2枚選択（通常版の要求時機修正後） | ドラッグ（19:47:42 JST） | 2項目にPhotosの型・JPEG表現・file URL。receivers=2、fileTypesは[public.png]と[public.jpeg] | 1（copy） | 共通宛先にIMG_2450.PNG / 386001 bytes / 0.418679秒、image01.jpg / 872744 bytes / 0.440082秒。各readerCount=1、regular=true、readerMainThread=false。両request-beginがdrop-returnより前、accepted=true。before=[]、requested/afterに各名。消費後に待機数2へ補充 |
+| Safari | JPEG の画像アドレス | アドレスコピー（17:11:46 / 17:11:52 JST） | 1項目。public.url・public.url-name・public.utf8-plain-text と WebURLsWithTitles 系の動的型。画像の型・約束の型なし | 対象外 | clipboard と clipboard-promises は changeCount=2116 で一致。receivers=0。保守者が「画像のアドレスをコピー」を選んだと回答。画像コピーの結果には算入しない |
+| Safari | JPEG | 画像コピー（17:15:19 / 17:15:22 JST） | 1項目。public.tiff・com.apple.flat-rtfd・com.apple.webarchive・public.html。PNG・JPEG・file URL・約束の型なし | 対象外 | changeCount=2118で両ボタンの結果が一致。TIFF 2362798 bytes、readSeconds=0.002281、mainThread=true。receivers=0（約束なし） |
+| Safari | WebP（ケース名はPNG） | 画像コピー（17:32:25 / 17:32:27 JST） | 1項目。public.tiff・com.apple.flat-rtfd・com.apple.webarchive・public.html | 対象外 | changeCount=2129で両ボタンの結果が一致。TIFF 2480836 bytes、readSeconds=0.002340、mainThread=true。receivers=0 |
+| Safari | PNG（ローカルHTTP / 32×32） | 画像コピー（17:38:28 / 17:38:29 JST） | 1項目。public.tiff・com.apple.flat-rtfd・com.apple.webarchive・public.html | 対象外 | changeCount=2134で両ボタンの結果が一致。TIFF 7462 bytes、readSeconds=0.000541、mainThread=true。receivers=0 |
+| Safari | GIF（ローカルHTTP / 1×1） | 画像コピー（17:45:12 / 17:45:13 JST） | 1項目。public.tiff・com.apple.flat-rtfd・com.apple.webarchive・public.html | 対象外 | changeCount=2139で両ボタンの結果が一致。TIFF 3370 bytes、readSeconds=0.000478、mainThread=true。receivers=0 |
+| Chrome | JPEG | 画像コピー（17:20:10 / 17:20:11 JST） | 1項目。item[0] は public.png・public.html・org.chromium.internal.source-rfh-token・org.chromium.source-url。一般の types には public.tiff もあるが item[0].types にはない | 対象外 | changeCount=2121で両ボタンの結果が一致。PNG 1529491 bytes、readSeconds=0.000883、mainThread=true。receivers=0（約束なし） |
+| Chrome | WebP（ケース名はPNG） | 画像コピー（17:33:20 / 17:33:21 JST） | 1項目。public.png・public.html・org.chromium.internal.source-rfh-token・org.chromium.source-url。一般のtypesにはpublic.tiffもあるがitem[0].typesにはない | 対象外 | changeCount=2131で両ボタンの結果が一致。PNG 1358880 bytes、readSeconds=0.003031、mainThread=true。receivers=0 |
+| Chrome | PNG（ローカルHTTP / 32×32） | 画像コピー（17:39:21 / 17:39:22 JST） | 1項目。public.png・public.html・org.chromium.internal.source-rfh-token・org.chromium.source-url。一般のtypesにはTIFFもあるがitem[0]にはない | 対象外 | changeCount=2136で両ボタンの結果が一致。PNG 200 bytes、readSeconds=0.000447、mainThread=true。receivers=0。ケース名はChromだが、保守者の報告とorg.chromium.*の型からChromeと特定 |
+| Chrome | GIF（ローカルHTTP / 128×96） | 画像コピー初回（17:59:23 JST） | public.png・public.html・org.chromium.internal.source-rfh-token・org.chromium.source-urlを列挙 | 対象外 | changeCount=2142。最初のPNGのbytes/readSecondsログ前にEXC_BAD_ACCESS / SIGBUSでクラッシュ。画像の読み出し完了も約束の受け取りも未確認 |
+| Chrome | GIF（ローカルHTTP / 128×96） | 再起動後の画像コピー（18:13:26 / 18:13:28 JST） | item[0]はpublic.png・public.html・org.chromium.internal.source-rfh-token・org.chromium.source-url。一般のtypesにはTIFFもあるがitem[0]にはない | 対象外 | changeCount=2144で両ボタンの結果が一致。PNG 677 bytes、readSeconds=0.000637、mainThread=true。receivers=0。保守者が再起動後の成功を報告 |
+| 写真 | JPEG（保守者指定） | コピー（18:43:57 / 18:43:58 JST） | item[0]はcom.apple.photos.object-reference.asset・public.jpeg・public.file-url・Photosの動的cookie型。一般のtypesにはTIFF等もあるがitem[0]にはない | 対象外 | changeCount=2146で一致。JPEG 50764 bytes、readSeconds=0.002960、mainThread=true。file URL型のデータは144 bytes、0.000644秒。receivers=0 |
+| 写真 | HEIC（保守者指定、提供型はJPEG） | コピー（18:45:14 / 18:45:15 JST） | item[0]はcom.apple.photos.object-reference.asset・public.jpeg・public.file-url・Photosの動的cookie型。一般のtypesにはTIFF等もあるがitem[0]にはない | 対象外 | changeCount=2147で一致。JPEG 145272 bytes、readSeconds=0.002251、mainThread=true。file URL型のデータは135 bytes、0.001338秒。receivers=0 |
+| 写真 | MOV（保守者指定） | コピー（18:50:44 / 18:50:45 JST） | item[0]はcom.apple.photos.object-reference.asset・public.jpeg・public.file-url・Photosのcookie型。一般のtypesにはTIFF等もあるがitem[0]にはない | 対象外 | changeCount=2149で一致。画像表現はJPEG 471039 bytes、readSeconds=0.002705、mainThread=true。file URL型のデータ135 bytes、0.000630秒。receivers=0 |
+| 写真 | MP4（保守者指定） | コピー（18:55:59 / 18:56:01 JST） | item[0]はcom.apple.photos.object-reference.asset・public.jpeg・public.file-url・Photosのcookie型。一般のtypesにはTIFF等もあるがitem[0]にはない | 対象外 | changeCount=2151で一致。JPEG表現6127 bytes、readSeconds=0.001673、mainThread=true。file URL型のデータ144 bytes、0.000549秒。receivers=0 |
 
+- 要求時機の診断版で写真MP4の書き出しが19:10 JSTに成功。ケース名はSafari / MP4だが、保守者の報告とPhotosの型から写真アプリと特定。ログを `/tmp/folzio-tak88-sync-probe/photos-mp4-success-20261109-1910.log` に複製。旧版と直接のJPEG表現の容量6127 bytesが一致し、同じ素材の再試行として記録する。ただしソースの元ファイルとのバイト比較はしていない
+- 診断版では旧版でキャンセルとなったSafari PNGと写真MP4の2件で書き出しが成功した。要求をドロップ内で行い、宛先を先に用意する設計を採用する根拠になるが、全形式の再検証や一度のSIGBUSの解消を証明したとは扱わない。診断用コピーはリポジトリのスクリプトへまだ適用していない
+- 写真MP4のログを `/tmp/folzio-tak88-clipboard-crash/photos-mp4-20261109-1856.log` に複製。約束の型public.mpeg-4は確認できたが、書き出しはキャンセル。画像表現のJPEGを動画そのものの受け取り成功とは扱わない。コピーの非画像型の容量 / readSecondsはcom.apple.photos.object-reference.asset=342 / 0.002742、cookie型=42 / 0.000540（bytes / 秒）
+- 呼び出し時機の診断用コピーを `/tmp/folzio-tak88-sync-probe/pasteboard-probe-sync.swift` に作成。receivePromisedFilesを外側のTaskへ送らず、performDragOperationが返る前に呼ぶ。受け取りフォルダは `/tmp/folzio-tak88-sync-probe/run-sync-probe.py` がSwift起動前に16個作るため、UIスレッドでのフォルダ作成はしない。同じドラッグの受け取り先は共通。request-beginとdrop-returnの順序もログに出す。元のリポジトリのスクリプトには未適用
+- 診断用コピーの通常モード / Swift 6 の警告なし型検査と、画像・TIFF・reader・providerの全自己検査は成功。19:04 JSTに保守者がSafari PNGを実行し、ドロップ内で要求した順序と書き出し成功をログで確認した。元の確認画像とのバイト一致も確認。ログ保存先は `/tmp/folzio-pasteboard-probe-sync.log`、複製は `/tmp/folzio-tak88-sync-probe/safari-png-success-20261109-1904.log`。旧版との違いは要求時機に加え、事前に作った一時フォルダを使うことも含むため、1回の比較だけで因果関係や他ケースの解消まで断定しない
+- T006のアプリ・形式の主項目は試行して観測を記録したが、Safari等の約束のキャンセルと、未完了要求の後に一度起きたSIGBUSの原因は未確定。現行スクリプトではドロップを返した後のTaskとフォルダ作成を経てreceivePromisedFilesを呼ぶため、呼び出し時機の影響を切り分ける前に非対応と判断しない。PNG / TIFF両表現の型切り替え再測定も未実施。T006は未チェックで維持する
+- 写真MOVのログを `/tmp/folzio-tak88-clipboard-crash/photos-mov-20261109-1850.log` に複製。public.jpegの表現もあるが、約束はcom.apple.quicktime-movieで、MOVの書き出しが成功。JPEGの読み出し時間を動画そのものの取得時間として扱わない
+- 写真MOVコピーの非画像型の容量 / readSecondsはcom.apple.photos.object-reference.asset=345 / 0.005048、cookie型=42 / 0.000331（bytes / 秒）。約束ボタンの後に追加のPhotos cookie型が現れたが、receivers=0
+- 写真アプリのJPEG・HEICのログを `/tmp/folzio-tak88-clipboard-crash/photos-jpeg-heic-20261109-1845.log` に複製。元の形式は保守者が選んだケース名による。HEICの元ファイル自体は検査していないが、実際に提供された画像の型と約束の型はJPEG、書き出しの中身もJPEGだった
+- 写真HEICケースの直接JPEGデータ145272 bytesと、約束で書き出されたJPEG 2776034 bytesは別の表現として記録。同じものや同じ解像度とは扱わない
+- 写真JPEGの約束のキャンセルは、HEICケースのドロップと同時刻に通知された。因果関係は未確認
+- 両コピーにpublic.file-urlがあり、既存設計のfile URLを優先する経路に関係する。追加のGUIなし確認でfile URLの実体を解決しようとしたが、クリップボードが2147から2148へ変化していたため実行をスキップ。file URL型があることと、指すファイルの実体が確認できたことは区別する。パスや画像の中身は出力していない
+- 写真JPEGコピーの非画像型の容量 / readSecondsはcom.apple.photos.object-reference.asset=338 / 0.005487、cookie型=42 / 0.000250。HEICケースは同型が339 / 0.002335、42 / 0.001372。約束ボタン時には追加のPhotos cookie型も現れたが、両ケースともreceivers=0（bytes / 秒）
+- 18:23 JSTにChrome GIFのドロップと約束の書き出しが成功。ログを `/tmp/folzio-tak88-clipboard-crash/chrome-gif-drop-20261109-1823.log` に複製。画像コピーの成功と合わせ、再起動後の各操作の観測として記録する。再起動前のクラッシュがソース修正で解消したとは扱わない
+- 17:59 JSTのChrome GIFのドラッグと画像コピーでクラッシュしたログは `/tmp/folzio-tak88-provider-fix/chrome-gif-crash-20261109-1759.log`、ダンプは `/Users/igachan/Library/Logs/DiagnosticReports/swift-frontend-2026-11-09-175929.ips`。メインスレッドのEXC_BAD_ACCESS / SIGBUSで、前2件のactor違反SIGTRAPとは区別。原因は未確定。詳細は `.specify/bugs/tak-88-probe-clipboard-crash/assessment.md`
+- 保守者が再起動後に成功と報告し、18:13 JSTの画像コピーの成功をログで確認。ログは `/tmp/folzio-tak88-clipboard-crash/chrome-gif-restart-20261109-1813.log` に複製。非画像型の容量 / readSecondsはpublic.html=100 / 0.000500、org.chromium.internal.source-rfh-token=24 / 0.000488、org.chromium.source-url=22 / 0.000515（bytes / 秒）。再起動しただけで、今回のクラッシュに対するソース修正は行っていない
+- 18:13 JSTのドラッグはdrag-enterのみでdropの記録がなかったが、18:23 JSTの再試行でドロップ・書き出し成功を確認。旧プロセスで待機していたSafari GIFの約束は、終了のため最終結果を取得できていない
+- 1×1のGIFのSafariの結果と、Chromeでドラッグが始まらなかった観測のログを `/tmp/folzio-tak88-provider-fix/gif-small-20261109-1745.log` に複製。Safariの非画像型の容量 / readSecondsはcom.apple.flat-rtfd=603 / 0.000451、com.apple.webarchive=1957 / 0.000376、public.html=689 / 0.000574（bytes / 秒）
+- 最初の1×1のGIFはsipsによるPNGへのデコードに成功したが、Chromeがドラッグを始めない原因はまだ未確定。ChromeのGIF非対応とは断定しない
+- サイズなどの条件を切り分けるため、ImageIOで青地に黄色い四角の128×96のGIFを `/tmp/folzio-tak88-fixtures/sample-128.gif` に生成（292 bytes）。ImageIOでGIF型と画像のデコード・寸法を検査し、fileコマンドでGIF87a / 128×96、HTTP 200 / Content-type: image/gif / Content-Length: 292も確認。確認ページのGIF画像をこの新しいURLへ変更。Chromeで再試行し、画像コピーは再起動後に成功。18:23 JSTにはドラッグの書き出しも成功
+- 確認ページのPNGのログを `/tmp/folzio-tak88-provider-fix/local-png-20261109-1739.log` に複製。Safariの約束のキャンセルはChromeのドロップと同時刻。ローカルHTTPの既知のPNGでもSafariの約束がキャンセルになったが、スクリプトの呼び出し時機はまだ切り分けておらず、Safari全体の非対応とは判断しない
+- PNGコピーでの非画像型の容量 / readSecondsは、Safariがcom.apple.flat-rtfd=751 / 0.000363、com.apple.webarchive=2104 / 0.000351、public.html=689 / 0.000526。Chromeがpublic.html=96 / 0.000352、org.chromium.internal.source-rfh-token=24 / 0.000328、org.chromium.source-url=22 / 0.000333（bytes / 秒）
+- 続くGIF確認用に、標準的な1×1のGIF89aの42 bytesを `/tmp/folzio-tak88-fixtures/sample.gif` に用意し、同じページへ追加。fileコマンドとHTTP 200 / Content-type: image/gif / Content-Length: 42を確認。Safariでは上表のとおり確認し、Chromeではドラッグが始まらなかった。型の受け渡し用の小さな静止画像であり、性能やアニメーションの検査ではない
+- PNGのつもりで行った17:31〜17:33 JSTの操作は、ドラッグのfileTypesが両ブラウザともorg.webmproject.webpであり、Chromeの出力もWebPだったためWebPとして記録。PNGの元画像の確認には算入しない。コピー時のPNGやTIFFは提供された表現の型で、元画像がPNGであることを示さない
+- 上記のログは `/tmp/folzio-tak88-provider-fix/intended-png-webp-20261109-1733.log` に複製。Safariの約束はChromeのドロップと同時刻に78.915685秒でキャンセル通知を受信。因果関係は未確認
+- Safari WebPコピーの非画像型の容量 / readSecondsは、com.apple.flat-rtfdが1065004 / 0.001043、com.apple.webarchiveが1699099 / 0.001535、public.htmlが1847 / 0.000485。Chromeはpublic.htmlが194 / 0.001041、org.chromium.internal.source-rfh-tokenが24 / 0.000779、org.chromium.source-urlが159 / 0.000476（bytes / 秒）
+- 次のPNG切り分け用に、自己生成サンプルlogo.svgの中身（PNG）を `/tmp/folzio-tak88-fixtures/sample.png` へ複製。fileコマンドでPNG / 32×32 / 188 bytesを確認。標準のPython HTTPサーバーを127.0.0.1:8878に限定して起動し、`/sample.png` のHTTP 200 / Content-type: image/png / Content-Length: 188を確認。ページは `http://127.0.0.1:8878/`。17:38〜17:39 JSTに両ブラウザで確認し、結果は上表に記録。ローカルHTTPでの切り分けとして一般のWebページの測定と区別し、性能測定の代替にはしない
+- Chrome JPEG のログを `/tmp/folzio-tak88-provider-fix/chrome-jpeg-20261109-1720.log` に複製。ケース名は Safari のままだが、保守者の「Chrome JPEG 完了」の報告と org.chromium.* の型から Chrome の操作として記録
+- Chrome JPEG のドラッグでは、JPEG データ872744 bytesを0.001136秒で読み出し、その後 file promise でも同じ容量の image01.jpg の書き出しが成功。コピーでは public.html が132 bytes / 0.000220秒、org.chromium.internal.source-rfh-token が24 / 0.000132、org.chromium.source-url が79 / 0.000112。PNG 以外の値は画像の読み出し時間とは扱わない
+- Safari の再試行の receive[1726BDAC] は、Chrome のドロップと同時刻に511.181290秒でキャンセル通知を受信。両者の因果関係は未確認。これは約束の非対応やスクリプトのタイムアウトを証明する結果としては扱わない
+- 17:15 JST に画像そのもののコピーを確認。ログは `/tmp/folzio-tak88-provider-fix/safari-jpeg-image-copy-20261109-1715.log` に複製。TIFF 以外の容量 / readSeconds は、com.apple.flat-rtfd が889128 / 0.001872、com.apple.webarchive が875072 / 0.000928、public.html が590 / 0.000273（bytes / 秒）
+- 17:11 JST のコピーは、保守者の回答により画像アドレスのコピーと確定。URL・文字列のみの結果は、その操作の観測として記録する
+- 17:11 JST のドラッグ再試行・コピーのログを `/tmp/folzio-tak88-provider-fix/safari-jpeg-drag-copy-20261109-1711.log` に複製。コピーでの容量 / readSeconds は、WebURLsWithTitles 系の動的型が146 / 0.000503と129 / 0.000373、public.url が79 / 0.000381、public.url-name が11 / 0.000511、public.utf8-plain-text が79 / 0.072388（bytes / 秒）。画像の読み出し時間としては扱わない
+- Safari のドラッグの約束がキャンセルになった原因は未確定。確認スクリプトの呼び出し時機や別の画像での受け渡しは切り分けていない。17:12:43 JST の宛先フォルダ確認は読み取りのみ
+- 16:37 JST の `clipboard` はケース名がドラッグのまま、`public.utf8-plain-text` 135 bytes だけを示した。「画像をコピー」の実施は確認できていないので、Safari JPEG コピーの結果には算入しない。
 - コピーの後には「クリップボードを調べる」と「クリップボードの約束を書き出す」の両方を確かめる。
   `receivers=0` の場合も、その観測を記録する。上表はアプリ・形式・操作ごとに行を分け、実測値を記入する
 - `fileNames(before)` が空でも、それだけでは約束が使えないとは判断しない
 
 | 読み出すデータ | 生成元／アプリ | 実際の容量（bytes） | 型 | UI スレッドでの readSeconds | R5 の 0.2 秒の判断 |
 |---|---|---|---|---|---|
-| 通常の Web の画像（数 MB） | 未記入 | 未計測 | 未確認 | 未計測 | 未判断 |
-| 約 200 MB の TIFF | スクリプトの即時提供 | 未計測 | public.tiff | 未計測 | 未判断 |
-| 約 256 MB の TIFF | スクリプトの即時提供 | 未計測 | public.tiff | 未計測 | 未判断 |
+| Safari の JPEG（今回の1画像） | Safari のドラッグ | 872744 | public.jpeg | 0.001321 | この1回は0.2秒未満。大きな画像や他の型を含めた採用判断は未確定 |
+| Safari の JPEG（再試行） | Safari のドラッグ | 872744 | public.jpeg | 0.001274 | この1回も0.2秒未満。全体の採用判断は未確定 |
+| Safari JPEG の画像コピー | Safari の画像コピー（実アプリからの提供） | 2362798 | public.tiff | 0.002281 | この1回は0.2秒未満。大きな画像の採用判断は未確定 |
+| Chrome の JPEG | Chrome のドラッグ | 872744 | public.jpeg | 0.001136 | この1回は0.2秒未満。全体の採用判断は未確定 |
+| Chrome JPEG の画像コピー | Chrome の画像コピー（実アプリからの提供） | 1529491 | public.png | 0.000883 | この1回は0.2秒未満。全体の採用判断は未確定 |
+| Safari の WebP（ケース名PNG） | Safari のドラッグ | 2480836 | public.tiff | 0.032769 | この1回は0.2秒未満。全体の採用判断は未確定 |
+| Safari WebP の画像コピー | Safari の画像コピー | 2480836 | public.tiff | 0.002340 | この1回は0.2秒未満。全体の採用判断は未確定 |
+| Chrome WebP の画像コピー | Chrome の画像コピー | 1358880 | public.png | 0.003031 | この1回は0.2秒未満。全体の採用判断は未確定 |
+| Safari のPNG（ローカル確認画像） | Safariのドラッグ | 188 | public.png | 0.000840 | 小さなfixtureによる型の確認。大きな画像の採用判断には使わない |
+| Safari PNGの画像コピー（ローカル確認画像） | Safariの画像コピー | 7462 | public.tiff | 0.000541 | 同上 |
+| Chrome のPNG（ローカル確認画像） | Chromeのドラッグ | 188 | public.png | 0.000661 | 同上 |
+| Chrome PNGの画像コピー（ローカル確認画像） | Chromeの画像コピー | 200 | public.png | 0.000447 | 同上 |
+| Safari のGIF（ローカル確認画像1×1） | Safariのドラッグ | 3370 | public.tiff | 0.008071 | 小さなfixtureによる型の確認。大きな画像の採用判断には使わない |
+| Safari GIFの画像コピー（ローカル確認画像1×1） | Safariの画像コピー | 3370 | public.tiff | 0.000478 | 同上 |
+| Chrome GIFの画像コピー（ローカル確認画像128×96、再起動後） | Chromeの画像コピー | 677 | public.png | 0.000637 | 小さなfixtureによる型の確認。大きな画像の採用判断には使わない |
+| 写真JPEG | 写真アプリのドラッグ | 50764 | public.jpeg | 0.002396 | この1回は0.2秒未満。全体の採用判断は未確定 |
+| 写真JPEGのコピー | 写真アプリのコピー | 50764 | public.jpeg | 0.002960 | 同上 |
+| 写真HEICケース（提供型JPEG） | 写真アプリのドラッグ | 145272 | public.jpeg | 0.001872 | 同上 |
+| 写真HEICケースのコピー（提供型JPEG） | 写真アプリのコピー | 145272 | public.jpeg | 0.002251 | 同上 |
+| 写真MOVの画像表現 | 写真アプリのドラッグ | 471039 | public.jpeg | 0.001322 | JPEG表現の読み出し。この1回は0.2秒未満。動画の取得時間とは別 |
+| 写真MOVコピーの画像表現 | 写真アプリのコピー | 471039 | public.jpeg | 0.002705 | 同上 |
+| 写真MP4の画像表現 | 写真アプリのドラッグ | 6127 | public.jpeg | 0.001339 | JPEG表現の読み出し。この1回は0.2秒未満。動画の取得時間とは別 |
+| 写真MP4コピーの画像表現 | 写真アプリのコピー | 6127 | public.jpeg | 0.001673 | 同上 |
+| Safari PNG（ローカル確認画像、要求時機の診断版） | Safariのドラッグ | 188 | public.png | 0.001004 | 小さなfixtureの参考値。大きな画像の採用判断には使わない |
+| 写真MP4の画像表現（要求時機の診断版） | 写真アプリのドラッグ | 6127 | public.jpeg | 0.001735 | JPEG表現の読み出し。動画の取得時間とは別 |
+| Safari PNGのTIFF指定（要求時機の診断版） | Safariのドラッグ | 7462 | public.tiff | 0.005270 | 小さなfixtureの型切り替え確認。0.2秒未満 |
+| 写真2枚のJPEG表現・項目0（要求時機の診断版） | 写真アプリのドラッグ | 156915 | public.jpeg | 0.004361 | PNGでの約束の書き出しとは別の表現。0.2秒未満 |
+| 写真2枚のJPEG表現・項目1（要求時機の診断版） | 写真アプリのドラッグ | 103874 | public.jpeg | 0.002911 | 同上 |
+| Safari PNG（通常版の要求時機修正後） | Safariのドラッグ | 188 | public.png | 0.001045 | 小さなfixtureの参考値 |
+| 写真2枚のJPEG表現・項目0（通常版の要求時機修正後） | 写真アプリのドラッグ | 103874 | public.jpeg | 0.003301 | PNGの書き出し結果とは別の表現。0.2秒未満 |
+| 写真2枚のJPEG表現・項目1（通常版の要求時機修正後） | 写真アプリのドラッグ | 872744 | public.jpeg | 0.008024 | 約束での取得時間とは別。0.2秒未満 |
+| 通常のWeb画像の数MBの表現 | 上記Safari JPEG / WebPコピー等 | 2362798 / 2480836 | public.tiff | 0.002281 / 0.002340 | 上記の実測を参照。異なる画像・遅延条件全般は保証しない |
+| 約 200 MB の TIFF | スクリプトの即時提供（17:24 JST） | 200013546 | public.tiff | 0.008885 | この1回は0.2秒未満。実アプリの遅延提供の結果とは分ける |
+| 約 256 MB の TIFF | スクリプトの即時提供（17:24 JST） | 256016210 | public.tiff | 0.013577 | この1回は0.2秒未満。実アプリの遅延提供の結果とは分ける |
 | 大きな TIFF（実アプリからコピーできる場合） | 未記入 | 未計測 | 未確認 | 未計測 | 未判断 |
 
+- 200 / 256 MB TIFF のログを `/tmp/folzio-tak88-provider-fix/generated-tiff-20261109-1724.log` に複製。両方とも generatedTIFF の容量と読み出し容量が一致し、clipboardWrite=true、mainThread=true。各1回の測定
+- 200 MB: 17:24:09 JST に生成・書き込み、writeSeconds=0.101820、17:24:24 JST に読み出し（changeCount=2123）。256 MB: 17:24:43 JST に生成・書き込み、writeSeconds=0.104785、17:24:47 JST に読み出し（changeCount=2124）。書き込み時間と読み出し時間は別に扱う
 - 即時提供の結果を、ブラウザ・写真アプリの遅延提供の計測結果として扱わない
-- `cat.png`（JPEG）と `logo.svg`（PNG）の約束を、このスクリプト自身で受け取った結果: 未確認
+- `cat.png`（JPEG）の自己ドラッグ（2026-11-09 16:40 JST）: receivers=1、fileTypes=[public.png]、マスク=1（copy）、fileNames(before)=[]、fileNames(requested)=[cat.png]。その後、書き出し側のキュー問い合わせで SIGTRAP。fileNames(after)・readerCount・ファイルの結果は未取得。ケース名は Safari JPEG のままだが、保守者の報告と requested の名前から自己ドラッグと特定
+- 上記のログを `/tmp/folzio-tak88-provider-fix/cat-crash-20261109-1640.log` に複製。ダンプでは `com.apple.FileCoordination.3` / `NSFileProviderXPCMessenger` / `_checkExpectedExecutor` を確認
+- キュー問い合わせの nonisolated 指定と、Objective-C 入口を通る provider の回帰確認を追加。2026-11-09 16:59 JST、保守者から「落ちずに動作しました」と報告。ログで両方の自己ドラッグの書き出し成功を確認。詳細は `.specify/bugs/tak-88-probe-provider-actor/`
+- 成功ログの複製: `/tmp/folzio-tak88-provider-fix/self-drag-success-20261109-1659.log`。ケース名は空だが requested・after の名前と実ファイルからサンプルを特定
+
+| 自己ドラッグのサンプル | 約束の型 | マスク | fileNames（before → requested → after） | 書き出し結果 | readerCount / readerMainThread | 実ファイルの中身 |
+|---|---|---|---|---|---|---|
+| cat.png | public.png、receivers=1 | 1（copy） | [] → [cat.png] → [cat.png] | regular=true、719 bytes、0.041559秒 | 1 / false | file コマンドで JPEG / 32×32 を確認 |
+| logo.svg | public.png、receivers=1 | 1（copy） | [] → [logo.svg] → [logo.svg] | regular=true、188 bytes、0.034727秒 | 1 / false | file コマンドで PNG / 32×32 を確認 |
+
+- 19:19〜19:21 JSTの追加3件を `/tmp/folzio-tak88-t006-final/additional-three-20261109-1921.log` に保存。ケース名の「PING」はPNG、「Chrom」はChromeとして、既知の確認画像・保守者の操作・アプリ固有の型から整理した。
+- 追加3件の宛先は `/tmp/Folzio-Probe-Sync-h2yixv4e/{02,03,04}`。`file`で02/03のsample.pngはPNG / 32×32、04の2枚はともにPNG / 1179×2556と確認。画像の中身を表示せずメタデータだけ検査した。
+- 写真2枚は「2つのreceiverが各1ファイルを返した」成功であり、「1つのreceiverが複数回readerを呼ぶ」実測とは区別する。2枚の元形式は未特定。縮小JPEG表現とPNGの出力ファイルは別に扱う。
+- T006は測定・記録完了。診断版での成功は、旧版の全キャンセルやSIGBUSの原因が解明・修正されたことを意味しない。製品への保存と回帰はT031・T037で確認する。
+- 通常版の修正後GUIを保守者が実施（19:47 JST）。ケース名は空だが、依頼した2ケースの完了報告、WebKit / Photosの型、出力名から上表へ整理。ログを `/tmp/folzio-tak88-t006-final/regular-probe-gui-success-20261109-1947.log` に保存した。
+- 通常版の実ファイルは `file` でsample.png=PNG / 32×32、IMG_2450.PNG=PNG / 1179×2556、image01.jpg=JPEG / 1024×768と確認。Safariのsample.pngは元の確認画像とバイト一致。写真の2つの出力はPNGとJPEGであり、診断版の2枚ともPNGだった選択とは区別する。
+- 通常版でも起動時に待機数2、各ドロップ後に待機数2への補充をログで確認。GUIで書き出し要求と結果まで確認できた。以前のキャンセル全件やSIGBUSの原因が解明したとの判断はしない。
+- 要求時機修正後の `scripts/dev/check-all.sh` は176件のPython検査を含め全件成功（ログ `/tmp/folzio-tak88-t006-final/check-all.log`）。その後は検証記録だけを更新し、製品Sources / Testsは変更していない。
 - 複数のファイルを書き出す約束（利用できる場合）での `readerCount`: 未確認
 
-## T007 で確定する事項
+## T007 の確定事項（2026-11-09・保守者承認済み）
 
-- 登録する画像の型と、約束が示す種類の実際の値: 未確定
-- 一般のペーストボードの約束を使えるか: 未確定
-- UI スレッドでの画像データの読み出しを採用できるか: 未確定
-- ブラウザのマスクに `.copy` があるか: 未確定
-- 参照した [macOS 11.3 SDK の `NSFilePromiseReceiver.h`](https://github.com/phracker/MacOSX-SDKs/blob/master/MacOSX11.3.sdk/System/Library/Frameworks/AppKit.framework/Versions/C/Headers/NSFilePromiseReceiver.h) の API コメントは、同じドラッグの約束に共通の書き出し先を要求する。
-  スクリプトはこの契約に従う。R3 の「約束ごとのフォルダ」との両立を、現行 SDK と T006 の結果で確認し、設計を確定する前に保守者へ示す
+T006の実測に基づく以下の案を保守者が「OKです。」と承認した。spec・plan・research・contractsへ反映し、data-model・後続タスク・quickstartも整合させてT007をチェックした。製品のSources / Testsは変更していない。
 
-T006 の結果を得て T007 を確定するまで、Phase 2 以降は開始しない。
+| 論点 | 確定した内容 | 実測と限界 |
+|---|---|---|
+| 登録する画像の型（R2・R5） | file URL・NSFilePromiseReceiver.readableDraggedTypesにPNG・JPEG・TIFFを追加。直接データは各項目のtypesからPNG → JPEG → TIFFで1つ選ぶ | PNG・JPEG・TIFFを実測。全体のtypesに合成されるTIFFだけでは読み出しを選ばない。HEICの直接データは今回未観測で、固定リストへ追加しない |
+| 約束の種類（FR-348） | 識別子の文字列列挙ではなくUTTypeの適合で画像・対応動画を判定し、従来案どおり不明も許す。PDF・SVG等の除外と最終的な中身の検査は残す | public.png / public.jpeg / org.webmproject.webp / com.compuserve.gif / com.apple.quicktime-movie / public.mpeg-4を観測。写真HEICケースも提供はJPEGだった |
+| 一般のペーストボード（R11） | 今回の対象に一般クリップボードの約束の受け取りは含めない。file URL → 画像データの順。約束だけではペーストを有効にしない | 全コピーでreceivers=0。API全般が一般クリップボードで使えないと証明したのではなく、今回の対象アプリから提供がなかったという判断 |
+| UIスレッドでの読み出し（R5） | ドロップ / ペーストの実行中に選んだNSPasteboardItemのデータだけを同期取得し、デコード・変換・書き込みはバックグラウンド。256 MB超は取得直後に拒否 | 実アプリの画像表現は最大2480836 bytes・0.032769秒、即時提供TIFFは200013546 bytes / 0.008885秒、256016210 bytes / 0.013577秒。すべて0.2秒未満。遅延提供の大きなTIFFは未測定で、将来0.2秒超を観測したら再評価する |
+| マスク（FR-356） | .copy必須、修飾キーで変えない | Safari・写真は1、Chromeは全マスク。全てcopyを含む |
+| 約束の要求時機（R3） | 事前作成した受け取り先を使い、全receiverへのreceivePromisedFilesをacceptDrop内で呼んでから返す。readerの完了だけを非同期に待つ | 診断版でSafari PNG・写真MP4・追加3件が成功。要求をTaskとフォルダ作成後まで遅らせない。旧版との比較には宛先の準備方法・場所の違いも含む |
+
+### 共通の宛先と一時フォルダ（FR-350・FR-357・R3・R4・R10の確定内容）
+
+現行のmacOS 27.2 SDKのNSFilePromiseReceiver.hも「同じドラッグの全receiverへ同じdestination」を要求する。実測でも写真2枚を共通宛先へ各1回の通知で書き出せた。従来案の「約束ごとの別フォルダへ書き出させる」は取り下げ、次の本文へ改める。
+
+- **FR-350の確定内容**: 起動ディスクのOSの一時領域のFolzio-Import/<UUID>に、受け取り用と検査用のフォルダをバックグラウンドで事前作成する。ドラッグ元へ知らせるのは受け取り用フォルダだけ。同じドラッグの全ての約束へ、この共通フォルダを渡し、ドロップ処理を返す前に書き出しを要求する。
+- 準備済みのフォルダを操作ごとに1組確保して背景で補充する。準備できていない間は約束のドラッグを受け付けず、ホバーやドロップのUIスレッドでフォルダを作らない。起動時の残存フォルダの掃除と新規フォルダの作成は順に行う。
+- 宛先と同じボリュームへの事前作成は宛先未確定のため行わない。検査済みファイルと宛先が同一ボリュームなら移動、異なるならコピーする。旧案の「宛先と同じボリュームを優先する」条件はこの受け取りについて改める。外部ボリュームへは一時領域と宛先の両方に容量が必要となる。
+- **FR-357の確定内容**: readerが報告した通常ファイルだけを対象とし、realpathで解いた親が共通の受け取り用フォルダであることを確認する。readerが有効な間に、専用キュー上で通知ごとの別名の複製を検査用フォルダへ作る。MainActorへ通知してreaderを返した後に元ファイルを読み始めない。検査と保存はその複製だけを使い、拡張属性を保つ。
+- **同名の約束（EC-243の補足）**: 別のreceiverが同じ実体パスを報告した場合は、上書き前の内容を確実に保存できないため操作全体を失敗とし、宛先へ保存しない。ドラッグ元が別の出力名へ解決した場合と、検査後の拡張子補正で宛先名が重なる場合は、従来どおり連番にする。共通宛先で同名の出力を上書きさせずに受け取れるとは保証しない。
+- 待機用を含むフォルダの記録・容量監視・取り消し・打ち切り後の掃除は既存のR3・R10の制約を維持する。単一receiverから複数ファイルが届く場合と同名衝突は、今後の自動テストで固定する（今回の2枚の実測では未検証）。
+
+### コピーの契約（EC-241・US78-AS8・FR-354・R11の確定内容）
+
+- **EC-241の確定内容**: ドラッグはfile URL → 約束 → 画像データ。一般クリップボードはfile URL → 画像データとする。file URLがあれば既存経路を優先し、その失敗を画像表現への切り替えで隠さない。
+- **US78-AS8の確定内容**: 写真アプリからコピーし、file URLと縮小した画像データがあるときは、file URLの項目を既存のコピー経路で保存し、縮小画像を使わない。元のHEIC等の形式が保たれるとは約束しない。
+- **FR-354の確定内容**: file URLがないときは、一般クリップボードの画像データをPNGで保存できる。約束だけでは有効にしない。移動ペーストは従来どおりfile URLがあるときだけ有効。
+- 写真のコピーにfile URL型があることは実測したが、指すファイルの実体・保存結果までは確認していない。動画のコピーにもJPEG表現があるため、それを動画の取得成功と扱わない。file URL経路での実際の保存はT037、ドラッグでの優先経路はT031で必ず確かめる。
+
+### 残る確認とゲート
+
+- 確認スクリプトの要求時機の修正候補を `/tmp/folzio-tak88-t006-final/pasteboard-probe-ready.swift`、差分を同じ場所のprobe-ready.patchに用意した。起動後に受け取りフォルダを背景で2個用意・消費後に補充し、準備不足時はドロップを拒否する。16個を外部スクリプトで事前作成する診断版の制限を除く。通常の確認スクリプトへ同じ候補を適用した。通常モード / Swift 6の警告なし型検査と、Swift 6の全自己検査（フォルダ準備の背景実行・未準備時の拒否・補充を含む）は成功。適用後の通常スクリプトそのものも、19:47 JSTにSafari PNG・写真2枚で要求順序・書き出し・フォルダ補充の成功を確認した。記録は `.specify/bugs/tak-88-probe-request-timing/`。
+- 17:59のSIGBUSは原因未確定の別件として残す。上記の変更で修正されたとは扱わない。LLDBの再試行は行わない。
+- 保守者の承認を仕様本文と関連計画へ反映し、T007を完了にした。この引き継ぎ作業ではPhase 2以降へ進まない。製品のGUI確認はT031・T037として残す。

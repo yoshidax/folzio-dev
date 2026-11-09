@@ -6,12 +6,12 @@
 
 ## Summary
 
-アプリ外からのドラッグとペーストで、file URL がないときに、ファイルの書き出しの約束（file promise）と画像データを受け取り、画像と対応形式の動画をファイルとして保存する。
+file URLがないアプリ外からのドラッグでは約束（file promise）と画像データを、一般クリップボードのペーストでは画像データを受け取る。約束は画像と対応動画、画像データはPNGとして保存する。
 受け取るデータの選び方・名前・中身の判別・一時的なフォルダと、期限・容量・状態の判断は `FolzioCore` に置き（R2〜R4・R6・R10）、ペーストボード・ドラッグ・パネルは `FolzioApp` に置く（R2・R3・R9）。
-約束は宛先と同じボリュームの一時的なフォルダへ書き出させ、ドラッグ元が書き込めない複製を検査してから、既存のコピーの確認・衝突の経路で宛先へ移す（R3・R4・R7）。
+約束は起動ディスクで事前作成した共通フォルダへドロップ内で要求する。readerが有効な間に別名の複製を作って検査し、既存の確認・衝突の経路で、宛先と同じボリュームなら移動、異なるならコピーする（R3・R4・R7）。
 画像データは PNG で書く（R5）。ネットワークへ通信せず、細工された名前・種類・大きさ・構造を拒み、quarantine の印を付ける（R4・R6・R8）。
 2 秒を超える受け取りはパネルで示し、ボタンと ⌘. で取り消せる（R9）。強制終了で残った一時的なフォルダは、次の起動で確かめてから消す（R10）。
-ブラウザが渡すものは未検証なので、実装の最初に保守者が確認スクリプトで確かめ、結果で仕様を確定する（R1）。
+2026-11-09に保守者が確認スクリプトでT006を完了し、T007の変更案を承認した。実測と制約はvalidation.mdとR1に記録し、製品実装は未着手。
 
 ## Technical Context
 
@@ -28,7 +28,7 @@
 **Project Type**: Swift Package のデスクトップアプリ
 
 **Performance Goals**: ホバー中にファイルシステムを読まない（R2）。書き出し・複製・検査・変換は UI スレッドで行わない。
-画像データの読み出しは UI スレッドで行うが、R1 で 200 MB の時間を測り、0.2 秒を超えれば R5 の代わりの方法に切り替える。
+画像データは各項目のPNG → JPEG → TIFFから選び、実行中にUIスレッドで取得する。200 / 256 MBの即時提供TIFFを含むT006の実測は0.2秒未満。遅延提供の大きなTIFFは未測定で、0.2秒超を観測したらR5の取得方法を再評価する。
 書き出しを待つ間、フォルダの切り替え・プレビューへの入力から表示が変わり始めるまでを 1 秒以内にする（SC-189）。
 読み出しの時間と、変更前後のドラッグの反応の計測条件・結果を `checklists/validation.md` に記録し、PR に記載する（憲章 原則 II）
 
@@ -53,14 +53,14 @@
 - **I ローカル完結・破壊的操作の確認**（Phase 0 / Phase 1 の確認）: 適合。Folzio は通信せず、URL は名前の文字列としてだけ使う（FR-353）。
   - 保存は既存のファイルを変えないコピーとして確認し、同じ名前は常に衝突のダイアログで選ばせる（FR-025・FR-347）
   - 起動時の掃除は、確かめた一時的なフォルダだけを消し、ユーザーの項目を消さない（R10）
-- **II 性能・UI スレッド**（Phase 0 / Phase 1 の確認）: 適合する計画。重い処理は detached task（R3〜R5）。
-  - 画像データの読み出しだけは、ペーストボードの制約で UI スレッドで行う。R1 で測り、遅ければ切り替える（R5）
+- **II 性能・UI スレッド**（Phase 0 / Phase 1 の確認）: 適合する計画。ファイル操作・検査・変換は背景で行う（R3〜R5）。reader中の複製は指定したOperationQueue上で同期的に完了する。
+  - 画像データの読み出しだけは、ペーストボードの制約で UI スレッドで行う。R1の実測で採用し、未測定の遅延提供はリスクとして残す（R5）
 - **III キーボード操作**（Phase 0 / Phase 1 の確認）: 適合。ドラッグと同じ保存を ⌘V・「ここにペースト」で行える（FR-354）。
   - 取り消しは編集メニューの項目と ⌘. で行える（R9）。パネルの行はボタンのアクセシビリティのラベルを持つ
 - **IV テスト**（Phase 0 / Phase 1 の確認）: 適合する計画。名前・中身の判別・構造の検査・記録・受け取るデータの選び方を Swift Testing で網羅する。
   - 期限・容量・状態の判断は Core の純粋な型をテストする。App の時計・約束・確認を差し替えたテストで、遅い結果の拒否と掃除、宛先の消失、同時の受け取りを確かめる（R3）
   - ペーストボードの型の判定とメニューの有効・無効は、名前付きの `NSPasteboard` で App のテストにする
-  - ブラウザ・写真アプリとの受け渡しは、quickstart.md で保守者が確かめる。まだ実行していない
+  - T006の確認スクリプトでの受け渡しは実施済み。製品への保存とGUIはT031・T037で保守者が確かめる
 - **V YAGNI**（Phase 0 / Phase 1 の確認）: 適合。新しい確認の種類を作らず、既存の `transferItems` と `ConfirmationPresenter` を使う（R7）。
   - 新しい依存はない。設定項目を増やさない（記録は内部のもの）
 
@@ -95,7 +95,7 @@
 - `Sources/FolzioApp/FileList/FileContextMenu.swift`・`FileListViewController.swift`・`Tree/DirectoryTreeViewController.swift`: ペーストの有効・無効（R11）
 - `Sources/FolzioApp/App/MainMenu.swift`（または編集メニューを作る場所）: 「受け取りを取り消す」（R9）
 - `Sources/FolzioCore/Shortcuts/ShortcutCatalog.swift`・`ShortcutCommand.swift`: ショートカット一覧と `ReservedShortcutKeys.combinations` に ⌘. を加える
-- `Sources/FolzioApp/App/AppDelegate.swift`: 起動時の掃除（R10）
+- `Sources/FolzioApp/App/AppDelegate.swift`: 起動時の掃除と、その後の受け取り先の事前作成・未使用分の終了時掃除（R10）
 - `Sources/FolzioLocalization/TextKey.swift`・`Resources/{en,ja}.lproj/Localizable.strings`: 新しい文言（R12）
 - `Tests/FolzioCoreTests/ImportPayloadPolicyTests.swift`・`ImportedFileNameTests.swift`・`ImportInspectorTests.swift`・
   `ImportStagingTests.swift`・`ImportCleanupRecordTests.swift`・`ImageDataWriterTests.swift`（新規）
@@ -120,9 +120,9 @@
 
 ## 未検証の点（保守者の macOS で確かめる）
 
-- Safari・Chrome・写真アプリが渡す型・約束の種類・マスク・名前（R1）
-- 一般のペーストボードの約束を読み出せるか（R1 の 3・R11）
-- 画像データの読み出しの時間（R1 の 4・R5）
+- 製品の優先経路での実際の保存、特に写真アプリが提供するfile URLの実体とコピー結果（T031・T037）
+- 実アプリから遅延提供される大きなTIFFの取得時間。生成した即時提供TIFFの実測と混同しない（R5）
+- 単一receiverが複数ファイルを返す場合と、別receiverが同じ実体パスを返す場合（R3）。共通宛先に2つのreceiverが各1ファイルを返すことは実測済み
 - `copyfile` の複製が exFAT・SMB で切り替わること、拡張属性を保存できないボリュームでの動き（R4・R8）
 - パネルが操作を妨げず、⌘. が名前の変更・シート・ダイアログで優先されること（R9）
 
