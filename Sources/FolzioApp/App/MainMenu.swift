@@ -40,7 +40,7 @@ final class MainMenu {
     /// Passed explicitly so the actions operate on the main window's preview regardless of which window has key
     /// focus (FR-135, A-73).
     static func install(zoomTarget: AppDelegate) {
-        let mainMenu = NSMenu()
+        let mainMenu = MainApplicationMenu()
 
         let appMenuItem = NSMenuItem()
         mainMenu.addItem(appMenuItem)
