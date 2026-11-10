@@ -349,3 +349,18 @@ T006の実測に基づく以下の案を保守者が「OKです。」と承認�
   - logo.svgをBへ受信し、編集中でないFolzioで⌘.を押すと受信が取り消され、20秒以上後もBは空。
 - こちらの読み取り確認でもAのcat.jpg・cat 2.jpg・新しいcat 3.jpgは各719 bytesのimage/jpegでquarantineあり。Bは空。一時フォルダの記録は未使用の待機用2組だけで、それぞれ空のreceived・checkedのみだった。
 - rename-cancel-shortcutの元症状はローカルの自動・GUI確認で解消。今回の修正のコミット・push・CIをT030で確認する。T031の他の宛先、宛先失敗、確認の直列化、強制終了後の掃除、性能などは未完了。Phase 4へは進まない。
+
+### 編集取消のSwift 6.0互換修正と宛先の確認（2026-11-10）
+
+- 799e09eをpushし、[CI 42701811275](https://github.com/yoshidax/folzio-dev/actions/runs/42701811275)、job 129448170376のログを確認。このSHA・Swift 6.0 / Xcode 16.0で公開用書き出し等は成功したが、NSMenuの非隔離overrideからMainActorのプロパティ・メソッドへのアクセスでbuild失敗。通常・性能テストは未実行。
+- メニューのキー処理をnonisolatedにし、UIでの編集取消だけを実行時にMainActorを検証しつつ同期実行する互換修正を追加。NSEventを隔離の境界へ渡さず、メニューの局所aliasだけをnonisolated(unsafe)とする。
+- build成功後の通常テスト初回はzip内PNG/MP4のキャッシュ同一性2件で失敗（Core 1,082件中2件、App 69件成功）。未変更の箇所で原因未確定。単独2件は同じコードで成功し、全通常再実行も1,151件すべて成功（Core 101.617秒・App 1.710秒）。規約チェック（Python 179件）・make-app・diff --check成功。初回失敗も含むログは `/tmp/folzio-tak88-rename-fix/compat-*.log` に保存。互換修正版のGUIとCIは未確認。
+- Safari・Chromeそれぞれについて、ツリー・お気に入り・リストの行・サムネイルのフォルダ・検索結果のフォルダ・一覧の背景へのドロップ操作は問題なしと保守者が回答した。保存先は `/Users/igachan/Desktop/pics/TAK88-routes/` 内のTAK88-tree、TAK88-favorite、TAK88-list、TAK88-thumbnail、TAK88-search、TAK88-background。
+- 読み取り確認では上の6フォルダに各1件のsample.png（188 bytes、image/png）が存在した。一方、保守者は「同名ドロップの置換・両方残す・中止の確認が表示されなくなった」と報告。「表示される」は「表示されない」への訂正を受領した。2回目の同名保存の成否や、各ファイルと各ブラウザの対応は未確定であり、両ブラウザから別々に2件保存できたとは扱わない。衝突確認の不具合を追加調査する。
+- コードに、確認の親ウインドウが取得できない場合にConflictPromptが黙ってabortを返す経路がある。ブラウザからのドロップの非同期処理時に起きる可能性を調べる。上書きを確認したわけではない。T030・T031は未チェック、Phase 4は未着手。
+
+### Swift 6.0互換修正版の起動確認（2026-11-10）
+
+- 保守者が互換修正版の `.build/Folzio.app` へ起動し直し、「3ペインが表示され、編集も取り消された」と回答した。受信を始めずに既存cat.jpgの名前の編集中に⌘.を押し、元の名前のままと確認済み。
+- 互換修正のソースとrename-cancel-shortcutの記録を追加コミット・pushし、Swift 6.0 CIを確認する。通常テストの初回キャッシュ失敗の記録は維持する。
+- 同名時の確認が表示されない件は、保守者が診断ID `drop-conflict-parent` と「受信開始時のドロップ先ウインドウを確認・衝突ダイアログへ渡す」方針を承認。別のバグ記録として回帰テストと修正を進める。T031・Phase 4以降は未完了。

@@ -37,8 +37,15 @@
 - 修正前の本再現: 受信の有無の2ケースとも編集が続き、元の名前に戻らず失敗（0.474秒、4 issues）。最初のテストは隠れたウインドウのkeyWindowがnilとなる準備不足もあったため、状態の差し替えを入れた後の結果を本再現とする。
 - 修正後の対象: swift test --filter 'MainMenuCancellationTests|ThumbnailRenameTests|ImportSessionTests'で33件成功（1.019秒）。
 - swift build成功。全通常テストはCore 1,082件・App 69件、計1,151件成功。Core 97.007秒・App 0.809秒。
-- 規約チェック成功（Python 179件）、scripts/make-app.sh成功、git diff --check成功。元のGUI症状は最新アプリで保守者が再確認し、受信なし・ありの編集取消と非編集中の受信取消がすべて成功（2026-11-10）。今回のコードのCIは未実施。
+- 規約チェック成功（Python 179件）、scripts/make-app.sh成功、git diff --check成功。元のGUI症状は最新アプリで保守者が再確認し、受信なし・ありの編集取消と非編集中の受信取消がすべて成功（2026-11-10）。799e09eのCIはSwift 6.0でのbuildに失敗したため、下記の互換修正を追加した。
 - ログは /tmp/folzio-tak88-rename-fix/ のred-tests.log、green-tests.log、build.log、tests.log、check-all.log、make-app.log。
+
+## Swift 6.0互換修正（2026-11-10）
+
+- [CI 42701811275](https://github.com/yoshidax/folzio-dev/actions/runs/42701811275)は799e09eをcheckoutしたが、Swift 6.0 / Xcode 16.0のNSMenu.performKeyEquivalentは非隔離のためcancellationContext・firstResponder・doCommandへのMainActorアクセスでbuild失敗。通常・性能テストは未実行。
+- overrideをnonisolatedにし、イベントの値をその場で調べ、編集取消のUI部分だけをMainActor.assumeIsolatedで同期実行する。非SendableなNSMenuのaliasだけをメソッド内のnonisolated(unsafe)に限定し、型全体のSendable化やNSEventの受け渡しはしない。実行時にMainActorを検証し、awaitやTaskによる遅延は加えない。参考: [Swiftの段階的移行ガイド](https://www.swift.org/migration/documentation/swift-6-concurrency-migration-guide/incrementaladoption/)。
+- 最終コードのbuild成功。通常テスト初回は未変更のzip内PNG/MP4のキャッシュ同一性2件で失敗。該当2件は同じコードの単独実行で成功し、全通常テスト再実行はCore 1,082件（101.617秒）・App 69件（1.710秒）すべて成功。原因は未確定のまま失敗ログも保存した。
+- 規約チェック（Python 179件）・make-app・git diff --check成功。互換修正版のGUIは保守者が3ペイン表示と編集取消の成功を確認（2026-11-10）。CIは確認待ち。ログはcompat-で始まる各ファイル。
 
 ## Deviations from Assessment
 
@@ -46,4 +53,4 @@
 
 ## Follow-ups
 
-保守者が最新の.build/Folzio.appへ起動し直し、3ペインの表示、受信なし・ありの両方の編集中の⌘.と、非編集中の受信取消の3項目すべてを成功と確認した。今回の修正のCIとT031の残る確認を進め、Phase 4へ進まない。直前a3e9065のCI（通常1,145件成功、性能5件超過）を今回のCIと混同しない。
+保守者が最新の.build/Folzio.appへ起動し直し、3ペインの表示、受信なし・ありの両方の編集中の⌘.と、非編集中の受信取消の3項目すべてを成功と確認した。Swift 6.0互換修正版の起動・編集取消も保守者が成功と確認した。今回の修正のCIとT031の残る確認を進め、Phase 4へ進まない。直前a3e9065のCI（通常1,145件成功、性能5件超過）を今回のCIと混同しない。
