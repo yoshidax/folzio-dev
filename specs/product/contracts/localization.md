@@ -201,12 +201,23 @@
 |---|---|---|
 | 履歴のグループ | 履歴 / 戻る / 進む | Back/Forward / Back / Forward |
 | ペインのグループ | ペイン / ファイルリストのみ表示 / プレビューのみ表示 | Panes / Show File List Only / Show Preview Only |
-| スライドショー | スライドショーを開始 / スライドショーを開始（⇧⌘S） | Start Slideshow / Start Slideshow (⇧⌘S) |
+| スライドショー | 下記 | 下記 |
 | 拡大・縮小のグループ | 拡大・縮小 / 拡大（⌘+） / 表示領域に合わせる（⌘0） / 縮小（⌘-） | Zoom / Zoom In (⌘+) / Zoom to Fit (⌘0) / Zoom Out (⌘-) |
 | 種類のグループ | 種類 / 画像のみ表示 / 動画のみ表示 | Media Type / Show Images Only / Show Videos Only |
 | zip | zipファイルを表示 | Show Zip Files |
 | 表示形式のグループ | 表示形式 / サムネイル / リスト | View / Thumbnails / List |
 | サイズ | サイズ / サムネイルのサイズ（⌃⌘. / ⌃⌘,） | Size / Thumbnail Size (⌃⌘. / ⌃⌘,) |
+
+**表の詳細**
+
+- **スライドショー**（日本語（名前・ツールチップ））:
+  - 名前: 「スライドショー」（項目名とアクセシビリティラベル。状態によらない）
+  - ツールチップ（停止中）: 「スライドショーを開始（⇧⌘S）」（今と同じ）
+  - ツールチップ（実行中）: 「スライドショーを停止（Esc）」
+- **スライドショー**（英語）:
+  - 名前: `Slideshow`
+  - ツールチップ（停止中）: `Start Slideshow (⇧⌘S)`（今と同じ）
+  - ツールチップ（実行中）: `Stop Slideshow (Esc)`
 
 ツールバーの表のキーは既定の割り当て。現在の割り当てに従って表示し、未設定のコマンドは「（未設定）」/ `(Not Set)`
 とする（FR-261・268）。
@@ -358,6 +369,32 @@
 | 展開を始められません / 圧縮データが壊れています / 項目のデータが途中で終わっています / 圧縮データが途中で終わっています | Can’t start decompressing / The compressed data is damaged / The item data ends unexpectedly / The compressed data ends unexpectedly |
 | 項目のヘッダが壊れています / 項目の位置が不正です / 中央ディレクトリが大きすぎます / 項目の場所が不正です / zip の中に項目が見つかりません | The item header is damaged / The item offset is invalid / The central directory is too large / The item location is invalid / The item isn’t in the zip file |
 | 項目のサイズが一致しません / 項目のデータがファイルの外にあります / 読み込みを中止しました / zip の読み出しに失敗しました / zip を読み込めません | The item size doesn’t match / The item data is outside the file / Reading was canceled / Couldn’t read the zip file / Can’t load the zip file |
+
+### 画像・動画の取り込み（TAK-88）
+
+| 場所 | 日本語 | 英語 |
+|---|---|---|
+| 画像データの既定名の接頭辞（FR-366） | 画像 | Image |
+| 画像の保存の失敗の理由（FR-357） | 画像として読めません | Can’t read as an image |
+| 画像の保存の失敗の理由（FR-357） | この形式の画像は保存できません | This image format can’t be saved |
+| 画像の保存の失敗の理由（FR-357） | フォルダ・パッケージ・リンクは保存できません | Folders, packages, and links can’t be saved |
+| 画像の保存の失敗の理由（FR-359） | 256 MB を超えるため保存できません | Larger than 256 MB |
+| 画像の保存の失敗の理由（FR-359） | 1 億画素を超えるため変換できません | Larger than 100 megapixels to convert |
+| 受け取りの進み具合のパネル（FR-363） | 受け取り中…（{件数} 件中 {済み} 件、{大きさ}） | Receiving… ({済み} of {件数}, {大きさ}) |
+| 受け取りの進み具合のパネル（FR-363） | 取り消す | Cancel |
+| 受け取りのパネルの理由（FR-357） | 画像または動画として読めません | Can’t read as an image or video |
+| 受け取りのパネルの段階・編集メニュー（FR-363） | 書き出し中 | Receiving |
+| 受け取りのパネルの段階・編集メニュー（FR-363） | 確認中 | Checking |
+| 受け取りのパネルの段階・編集メニュー（FR-363） | 受け取りを取り消す | Cancel Receiving |
+| 動画の保存の失敗の理由（FR-362・FR-359） | この形式の動画は保存できません | This video format can’t be saved |
+| 動画の保存の失敗の理由（FR-362・FR-359） | 4 GB を超えるため保存できません | Larger than 4 GB |
+| 受け取りの失敗の理由（FR-355・EC-248） | {秒数} 秒以内に書き出されませんでした | Not provided within {秒数} seconds |
+| 受け取りの失敗の理由（FR-355・EC-248） | ドラッグ元のアプリがファイルを書き出せませんでした | The source app couldn’t provide the file |
+
+- 日時の名前の日時の部分（`yyyy-MM-dd HH.mm.ss`）は翻訳せず、両言語で同じ書式にする（FR-366）
+- 打ち切りの文言の `{秒数}` は、画像・不明では 60、動画では 600 とする（FR-355）。
+  名前の条件だけを満たさない場合は日時の名前に直すため、名前の長さの失敗の文言は設けない（FR-366・FR-360）
+- 検査した複製を保存する設計（FR-357・R4）のため、元のファイルが検査後に変わったことを理由にする文言は設けない
 
 ### アクセシビリティ（画面に出ない文言）
 
