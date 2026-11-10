@@ -526,16 +526,18 @@ final class DirectoryTreeViewController: NSViewController {
     @objc func paste(_ sender: Any?) {
         guard let node = fileTargetNode(for: sender) else { return }
         let destination = node.url
+        let window = view.window
         Task { @MainActor in
-            await coordinator.paste(into: destination, move: false)
+            await coordinator.paste(into: destination, move: false, parentWindow: window)
         }
     }
 
     @objc func movePaste(_ sender: Any?) {
         guard let node = fileTargetNode(for: sender) else { return }
         let destination = node.url
+        let window = view.window
         Task { @MainActor in
-            await coordinator.paste(into: destination, move: true)
+            await coordinator.paste(into: destination, move: true, parentWindow: window)
         }
     }
 
@@ -2073,9 +2075,12 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
             guard batchTargets(for: menuItem).isSingle else { return false }
             if case .folder = editingTarget(for: menuItem.representedObject) { return true }
             return false
-        case #selector(paste(_:)), #selector(movePaste(_:)):
+        case #selector(paste(_:)):
             return fileTargetNode(for: menuItem) != nil
-                && FileContextMenu.pasteboardHasFileURLs()
+                && PasteboardImport.availability().allowsPaste(move: false)
+        case #selector(movePaste(_:)):
+            return fileTargetNode(for: menuItem) != nil
+                && PasteboardImport.availability().allowsPaste(move: true)
         case #selector(revealInFinder(_:)):
             return fileTargetNode(for: menuItem) != nil
         case #selector(copyPathname(_:)):

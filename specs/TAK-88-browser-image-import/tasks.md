@@ -163,15 +163,15 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 
 **Independent Test**: quickstart.md の「ペースト」の表を確かめる
 
-- [ ] T032 [P] [US2] `Tests/FolzioAppTests/PasteboardImportTests.swift` を作り、先に失敗させる。名前付きの `NSPasteboard` で、file URL・約束・画像データ・URL だけ・文字列だけの
+- [x] T032 [P] [US2] `Tests/FolzioAppTests/PasteboardImportTests.swift` を作り、先に失敗させる。名前付きの `NSPasteboard` で、file URL・約束・画像データ・URL だけ・文字列だけの
   ときの `availability` と、ペースト・移動ペーストの有効・無効（「ペースト」は `none` 以外、「移動ペースト」は file URL だけ）、型の判定でデータを読まないことを確かめる。約束だけならnone、約束と画像データならimageDataになることも確かめる（R11・FR-354）
-- [ ] T033 [US2] `Sources/FolzioApp/Shared/PasteboardImport.swift` を作り、T032 を通す。一般クリップボードの約束は使わず、CoreへpromiseDeclaredTypes=[]を渡す。file URL → 画像データの順とする（T007確定、R11）
-- [ ] T034 [US2] `Sources/FolzioApp/FileList/FileContextMenu.swift`（37 行・73 行付近）、`FileListViewController.swift`（`validateMenuItem`・`paste`）、
+- [x] T033 [US2] `Sources/FolzioApp/Shared/PasteboardImport.swift` を作り、T032 を通す。一般クリップボードの約束は使わず、CoreへpromiseDeclaredTypes=[]を渡す。file URL → 画像データの順とする（T007確定、R11）
+- [x] T034 [US2] `Sources/FolzioApp/FileList/FileContextMenu.swift`（37 行・73 行付近）、`FileListViewController.swift`（`validateMenuItem`・`paste`）、
   `DirectoryTreeViewController.swift`（`validateMenuItem`・`paste`）のペーストの有効・無効を `PasteboardImport.availability` に置き換える
-- [ ] T035 [US2] `FileOperationCoordinator.paste(into:move:)`（111 行付近）で、file URL がなければ `ImportSession` を始め、`saveReceived` で保存する。
+- [x] T035 [US2] `FileOperationCoordinator.paste(into:move:)`（111 行付近）で、file URL がなければ `ImportSession` を始め、`saveReceived` で保存する。
   移動ペーストでは画像の保存を始めない
 - [ ] T036 [US2] `scripts/dev/check-all.sh` を実行し、Phase 4 をコミットして push する。CI で build とテストの結果を確かめる
-- [ ] T037 [MANUAL] [US2] 保守者に、quickstart.md の「ペースト」の表と「変わらないこと」を実行してもらい、結果を `checklists/validation.md` に記録する
+- [x] T037 [MANUAL] [US2] 保守者に、quickstart.md の「ペースト」の表と「変わらないこと」を実行してもらい、結果を `checklists/validation.md` に記録する
 
 **Checkpoint**: ドラッグとペーストの両方で保存できる
 

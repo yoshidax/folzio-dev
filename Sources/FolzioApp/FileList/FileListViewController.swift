@@ -956,8 +956,9 @@ final class FileListViewController: NSViewController {
         guard focusedItemCommands.allowsPaste else { return }
         guard !isEditingText else { return }
         let folder = model.listing.folder
+        let window = view.window
         Task { @MainActor in
-            await coordinator.paste(into: folder, move: false)
+            await coordinator.paste(into: folder, move: false, parentWindow: window)
         }
     }
 
@@ -965,8 +966,9 @@ final class FileListViewController: NSViewController {
         guard focusedItemCommands.allowsPaste else { return }
         guard !isEditingText else { return }
         let folder = model.listing.folder
+        let window = view.window
         Task { @MainActor in
-            await coordinator.paste(into: folder, move: true)
+            await coordinator.paste(into: folder, move: true, parentWindow: window)
         }
     }
 
@@ -1261,8 +1263,10 @@ extension FileListViewController: NSMenuItemValidation {
         case #selector(rename(_:)):
             return model.selection.selected.count == 1
                 && model.selection.focused != nil
-        case #selector(paste(_:)), #selector(movePaste(_:)):
-            return FileContextMenu.pasteboardHasFileURLs()
+        case #selector(paste(_:)):
+            return PasteboardImport.availability().allowsPaste(move: false)
+        case #selector(movePaste(_:)):
+            return PasteboardImport.availability().allowsPaste(move: true)
         default:
             return true
         }

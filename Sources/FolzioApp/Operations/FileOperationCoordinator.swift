@@ -8,6 +8,7 @@ final class FileOperationCoordinator {
     private let service: any FileOperating
     private let confirmation: ConfirmationPresenter
     private let conflictPrompt: ConflictPrompt
+    private let imports: ImportSessionManager
 
     /// Passes affected folders (the sources' parent folders and the destination) when an operation finishes.
     /// Lets the tree apply changes without waiting for FSEvents (FR-027, R32).
@@ -24,11 +25,13 @@ final class FileOperationCoordinator {
     var onOperationFinished: ((_ sources: [URL], _ removed: [URL]) -> Void)?
 
     init(model: BrowserModel, service: any FileOperating, settings: SettingsStore,
-         confirmation: ConfirmationPresenter? = nil, conflictPrompt: ConflictPrompt? = nil) {
+         confirmation: ConfirmationPresenter? = nil, conflictPrompt: ConflictPrompt? = nil,
+         imports: ImportSessionManager = .shared) {
         self.model = model
         self.service = service
         self.confirmation = confirmation ?? ConfirmationPresenter(settings: settings)
         self.conflictPrompt = conflictPrompt ?? ConflictPrompt()
+        self.imports = imports
     }
 
     func importDrop(_ info: any NSDraggingInfo, to destination: URL) -> Bool {
@@ -184,13 +187,24 @@ final class FileOperationCoordinator {
         )
     }
 
-    func paste(into destination: URL, move: Bool) async {
-        let urls = pasteboardFileURLs()
-        guard !urls.isEmpty else { return }
-        if move {
-            await self.move(urls, to: destination)
-        } else {
-            await self.copy(urls, to: destination)
+    func paste(into destination: URL, move: Bool, pasteboard: NSPasteboard = .general, parentWindow: NSWindow? = nil) async {
+        let available = PasteboardImport.availability(in: pasteboard)
+        guard available.allowsPaste(move: move) else { return }
+        switch available {
+        case .fileURLs:
+            let urls = PasteboardFileURLs.fileURLs(in: pasteboard)
+            if move {
+                await self.move(urls, to: destination)
+            } else {
+                await self.copy(urls, to: destination)
+            }
+        case .imageData:
+            let window = parentWindow ?? NSApp?.keyWindow ?? NSApp?.mainWindow
+            _ = imports.beginImages(ExternalImageDrag.images(in: pasteboard), destination: destination) { [self, weak window] request, control in
+                guard let window else { return .cancelled }
+                return await saveReceived(request, control: control, parentWindow: window)
+            }
+        case .none: break
         }
     }
 
@@ -391,10 +405,6 @@ final class FileOperationCoordinator {
             folders.insert(destination.standardizedFileURL)
         }
         onFoldersChanged?(folders)
-    }
-
-    private func pasteboardFileURLs() -> [URL] {
-        PasteboardFileURLs.fileURLs(in: .general)
     }
 
     private func siblingNames(in folder: URL) async -> Set<String> {
