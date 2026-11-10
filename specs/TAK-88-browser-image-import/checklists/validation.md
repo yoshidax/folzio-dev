@@ -411,3 +411,26 @@ T006の実測に基づく以下の案を保守者が「OKです。」と承認�
 - 続く修飾キー確認では、保守者が07（Safari Option）・09（Chrome Option）で＋表示と保存を確認。どちらもsample.pngは188 bytesで確認ページのPNGとSHA-256一致し、quarantineも各ブラウザと一致した。
 - 08（Safari Command）・10（Chrome Command）は＋表示なし・保存なしと回答。08は空と確認。Commandを押して確認スクリプトへ入れたログでは、SafariがsourceOperationMask=0（07:04:11 UTC / 16:04:11 JST）、Chromeが4 generic（07:06:11 UTC / 16:06:11 JST）。いずれもcopyを含まない。ログは `/tmp/folzio-tak88-command-mask/evidence.log` に固定した。
 - これはUS77-AS6の無条件の「修飾キーに関わらずコピー」と、FR-356の「コピー許可がなければ拒否」の対応を明確にする必要がある測定結果。アプリのコードは変更していない。仕様の変更案を保守者に示し、承認までは期待値を変更しない。⌘.による受信取消を変更するものではない。
+
+### 修飾キーとコピー許可の仕様の明確化（command-drag-mask、2026-11-10）
+
+- 保守者が診断IDと「Option・⌘でも、ドラッグ元がその状態でコピーを許可する場合だけコピーする。コピー許可がない場合は受け付けない」への変更を「このIDと仕様変更で進める」と承認した。
+- specのSession 2026-11-10・US77-AS6・FR-356、契約、quickstart、researchの測定条件へ反映した。従来の無条件の期待値を改めたことを明示し、アプリのコードは変更していない。T007時点のマスクの記録は修飾キーなしの条件と明記した。
+- Safari・ChromeのOptionはコピー表示と保存に成功、Commandはcopy許可がなく拒否という実測が、明確化後の条件に適合する。08と10はいずれも空。07と09の保存データ・quarantineも検査済み。既存のfile URLと⌘.の規則は変更しない。
+- Spec Quality Checklistは16/16→16/16で変更なし。これは仕様品質の評価であり、T031や性能検証の完了を意味しない。新しい実装・依存・IDは追加しない。
+- 前提スクリプトはSPECIFY_FEATURE_DIRECTORY=specs/TAK-88-browser-image-importを明示してpaths-onlyで確認。既存のfeature.jsonへ保存せず、別のfeatureは変更していない。before/after_clarifyは無効、before/after_bug_assessの登録hookはなし。
+
+| 明確化の観点 | 状態 |
+|---|---|
+| Functional Scope & Behavior | Resolved: コピー許可を受け入れ条件へ明示 |
+| Domain & Data Model | Clear: 変更なし |
+| Interaction & UX Flow | Resolved: 修飾キー時の受け付け・拒否を明示 |
+| Non-Functional Quality Attributes | Clear: 既存の基準は明確。実測の未完は別途残る |
+| Integration & External Dependencies | Resolved: 現在のソースの許可を尊重 |
+| Edge Cases & Failure Handling | Resolved: 許可なしでは保存しない |
+| Constraints & Tradeoffs | Resolved: コピー必須を維持 |
+| Terminology & Consistency | Clear: コピー許可の用語を統一 |
+| Completion Signals | Resolved: 許可の有無ごとの期待値を明示 |
+| Misc / Placeholders | Clear: 新たな未解決の仕様項目なし |
+
+T030はCI確認済み、T031は残る安全性・宛先の失敗・同時確認・再起動後の掃除・体感性能等まで未チェック。Phase 4へ進まない。

@@ -24,7 +24,7 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
 - ドラッグの約束の型はpublic.png / public.jpeg / org.webmproject.webp / com.compuserve.gif / com.apple.quicktime-movie / public.mpeg-4を観測。
   写真HEICケースの提供はJPEG、写真2枚はPNGの組とPNG / JPEGの組だった。元の形式の保持は保証しない。
 - コピーは全ケースreceivers=0。一般クリップボードの約束を今回の範囲に含めない。Photosのfile URLの実体と製品への保存は未確認で、T031・T037に残す。
-- Safari・写真のマスクはcopy、Chromeはcopyを含む全マスク。copy必須の規則を維持する。
+- 修飾キーなしの実測ではSafari・写真のマスクはcopy、Chromeはcopyを含む全マスク。copy必須の規則を維持する。
 - 旧版の要求時機ではキャンセルがあり、事前作成先へドロップ内で要求する診断版と通常版で成功した。全キャンセルの原因が時機だけとは断定しない。
 - 17:59のSIGBUSの原因は未確定。要求時機の修正で解消したとは扱わない。
 
@@ -40,7 +40,7 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
   - 画像データは各NSPasteboardItem.typesだけを見てPNG → JPEG → TIFFを選び、ホバー中にデータを読まない。全体のpasteboard.typesに合成された型だけでは選ばない
   - HEICの直接データは今回未観測のため固定リストに加えない。約束の型はUTTypeの適合で判定し、固定の文字列一覧に制限しない
   - 約束を選んだ場合は、準備済みのImportStagingがあるときだけ受け付ける（R3・R10）
-  - 受け付けるときの操作は `.copy`（ドラッグ元のマスクが `.copy` を含むときだけ）。修飾キーで変えない（FR-356）
+  - 受け付けるときの操作は `.copy`（現在の修飾キー状態のマスクが `.copy` を含むときだけ）。修飾キーで `.copy` が失われた場合は拒否する（FR-356）。2026-11-10のCommand付きPNGはSafariが0、Chromeが4 genericでcopyを含まなかった。Optionは両ブラウザでコピー表示・保存に成功。保守者がこの許可条件をUS77-AS6にも明記する変更を承認した（command-drag-mask）
   - 宛先の有効性は、今の各ビューの宛先の判断（`FileListDropTarget` など）をそのまま使う。画像の保存は自分自身・配下への転送の検査
     （`InternalDropValidation`）を要しないので、ファイルシステムを読まずに即答する
 - **Rationale**: 型を登録しなければビューは反応しないので、URL・文字列だけのドラッグは今と同じく無視される（FR-348）。
