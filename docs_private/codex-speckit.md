@@ -38,8 +38,9 @@ $speckit-implement
 $speckit-converge
 ```
 
-不具合は `$speckit-bug-assess` → 診断のユーザー確認 → `$speckit-bug-fix` →
-`$speckit-bug-test`。仕様が未定義・誤りの場合は、[agents/bugfix.md](agents/bugfix.md) に従って feature に回す。
+進行中の spec の変更に関する問題は、その作業で対処する。完了した成果物の不具合を独立した
+修正タスクとして扱う場合は、[agents/bugfix.md](agents/bugfix.md) に従って判断し、
+`$speckit-bug-assess` → 診断のユーザー確認 → `$speckit-bug-fix` → `$speckit-bug-test` と進める。
 `$speckit-git-feature` などの git 拡張も利用できる。
 
 ## increment を対話で進める

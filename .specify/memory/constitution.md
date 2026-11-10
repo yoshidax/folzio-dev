@@ -6,8 +6,8 @@ Sync Impact Report
 - 変更した節: 仕様の管理（独立した修正タスクに bug 拡張を適用する）
 - 追加・削除した節: なし
 - 影響を受ける文書と追従:
-  - AGENTS.md、docs_private/agents/bugfix.md: 同じ適用範囲と判断基準に揃える
-  - 完了した feature は凍結を維持し、進行中の spec に関する修正は適切な作業・検証記録に残す
+  - AGENTS.md、docs_private/agents/bugfix.md、docs_private/codex-speckit.md: 同じ適用範囲と判断基準に揃える
+  - 完了した feature は凍結を維持し、凍結後のマージ前レビューへの対応は PR の記録に残す
   - 既存の spec / plan と bug 記録: 変更不要
 - 未解決の TODO: なし
 -->
@@ -124,7 +124,11 @@ Sync Impact Report
   未マージ側の ID を振り直す。マージ済みの ID は振り直さない。ただし、どちらもマージ済みの ID が重複した場合に限り、
   あとにマージされた側の ID を振り直す。ID の付け方は `specs/product/README.md` に、重複の解消手順は
   `docs_private/spec-id-conflicts.md` に従う。
-- 完了した成果物の不具合を独立した修正タスクとして扱い、実装が `specs/product/` の項目に反している場合は、bug 拡張（assess → fix → test）で直し、記録を
+- 進行中の spec の変更について実装・検証・マージ前レビューで見つかった問題は、その作業で対処し、
+  凍結済み feature を更新せずに記録する。現在の spec と無関係な既存成果物の問題は範囲外として報告し、
+  独立した修正タスクとして扱うかは保守者が判断する。
+- 完了した成果物の不具合を独立した修正タスクとして扱うと保守者が決めた場合、そのうち実装が
+  `specs/product/` の項目に反している不具合は、bug 拡張（assess → fix → test）で直し、記録を
   `.specify/bugs/<slug>/` に残す。このとき `specs/product/` は変更しない。
 - 独立した修正タスクで、仕様が誤っている、または定めていないことが原因の不具合は、仕様の変更として新しい feature で扱う（MUST）。
 
