@@ -23,16 +23,19 @@ final class FileOperationCoordinator {
     /// selection (FR-219).
     var onOperationFinished: ((_ sources: [URL], _ removed: [URL]) -> Void)?
 
-    init(model: BrowserModel, service: any FileOperating, settings: SettingsStore) {
+    init(model: BrowserModel, service: any FileOperating, settings: SettingsStore,
+         confirmation: ConfirmationPresenter? = nil, conflictPrompt: ConflictPrompt? = nil) {
         self.model = model
         self.service = service
-        self.confirmation = ConfirmationPresenter(settings: settings)
-        self.conflictPrompt = ConflictPrompt()
+        self.confirmation = confirmation ?? ConfirmationPresenter(settings: settings)
+        self.conflictPrompt = conflictPrompt ?? ConflictPrompt()
     }
 
     func importDrop(_ info: any NSDraggingInfo, to destination: URL) -> Bool {
-        ExternalImageDrag.accept(info, destination: destination) { [self] request, control in
-            await saveReceived(request, control: control)
+        guard let window = info.draggingDestinationWindow else { return false }
+        return ExternalImageDrag.accept(info, destination: destination) { [self, weak window] request, control in
+            guard let window else { return .cancelled }
+            return await saveReceived(request, control: control, parentWindow: window)
         }
     }
 
@@ -41,18 +44,18 @@ final class FileOperationCoordinator {
             control: ImportSaveControl(isActive: { true }, willConfirm: {}, didConfirm: {}))
     }
 
-    func saveReceived(_ request: ImportSaveRequest, control: ImportSaveControl) async -> ImportSaveOutcome {
+    func saveReceived(_ request: ImportSaveRequest, control: ImportSaveControl, parentWindow: NSWindow? = nil) async -> ImportSaveOutcome {
         await ImportConfirmationQueue.shared.perform { [self] in
             // An existing sheet belongs to another operation; let it finish without blocking the main thread.
-            while control.isActive(), NSApp?.modalWindow != nil || NSApp?.keyWindow?.attachedSheet != nil || NSApp?.mainWindow?.attachedSheet != nil {
+            while control.isActive(), parentWindow?.attachedSheet != nil || NSApp?.modalWindow != nil || NSApp?.keyWindow?.attachedSheet != nil || NSApp?.mainWindow?.attachedSheet != nil {
                 try? await Task.sleep(nanoseconds: 100_000_000)
             }
             guard control.isActive() else { return .cancelled }
             let (result, outcome) = await Self.transferReceived(request, service: service,
-                confirm: { [confirmation] in await confirmation.confirm($0) },
+                confirm: { [confirmation] in await confirmation.confirm($0, parentWindow: parentWindow) },
                 resolveConflict: { [conflictPrompt] conflicts, destination, allowReplace in
                     await conflictPrompt.resolve(conflictingNames: conflicts.map(\.lastPathComponent),
-                        destination: destination, allowReplace: allowReplace)
+                        destination: destination, allowReplace: allowReplace, parentWindow: parentWindow)
                 }, control: control)
             if control.isActive() { await presentFailures(result) }
             if !result.succeeded.isEmpty {
