@@ -149,7 +149,7 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 - [x] T029 [US1] `Sources/FolzioApp/App/AppDelegate.swift` の起動の後に、ImportCleanupRecordの掃除を背景で行い、その完了後に2組の受け取り先を事前作成する。正常終了時は未使用の待機用も掃除する（R10・FR-361）
 - [x] T044 [US1] 写真アプリの型・JPEGのfile URL・MOV/MP4の約束を持つペーストボードの回帰テストをCore/Appに追加し、先に失敗させる。写真アプリ以外・約束なし・対象外の約束・画像データを読まないホバー・約束失敗後にJPEGへ切り替えないことも確かめる（2026-11-10承認、EC-241）
 - [x] T045 [US1] 写真アプリのドラッグに受け取り可能な約束があればfile URLより優先する。Coreに判断を置き、AppはPhotosの項目の型を渡す。ExternalDragでfile URLを読む前とExternalImageDragで同じ通し番号キャッシュを使い、T044を通す。検査と失敗時の規則は既存のImportSessionを使う
-- [ ] T030 [US1] `scripts/dev/check-all.sh` を実行し、Phase 3 をコミットして push する。CI で build とテスト（性能テストのログの末尾を含む）の結果を確かめる
+- [x] T030 [US1] `scripts/dev/check-all.sh` を実行し、Phase 3 をコミットして push する。CI で build とテスト（性能テストのログの末尾を含む）の結果を確かめる
 - [ ] T031 [MANUAL] [US1] 保守者に、quickstart.md の準備と「ドラッグ」の表、「安全性」の保守者の確認、起動スモーク（3 ペインの表示）を実行してもらい、
   結果を `checklists/validation.md` に記録する。「受け取りの流れと性能」で、宛先の消失・書き込み不可と同時の受け取り（EC-245・EC-246）、
   検索結果のフォルダへのドラッグ（SC-186）、入力から表示が変わり始めるまで 1 秒以内（SC-189）、変更前後のドラッグの反応も測る

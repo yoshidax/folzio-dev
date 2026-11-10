@@ -39,7 +39,7 @@
 - 修正後: 関連31件（ImportPromptParentTests / ReceivedFileTransferTests / ImportSessionTests）成功、0.577秒。
 - swift build、全通常1,155件（Core 1,082件97.511秒・App 73件1.198秒）、規約チェック（Python 179件）、make-app成功。
 - 差分確認で文面生成に不要な親の引数だけを削除した後、最終コードでbuild、全App 73件（1.674秒）、規約チェック（Python 179件）、make-app、git diff --checkを再確認し成功。Coreのソースは前後で変更なし。
-- 実機は手順整理後のTAK88-recheck-01〜06でSafari・Chrome各3選択がすべて成功。既存/新規の内容・連番・中止後の不変をSHA-256で確認し、保存した新画像のquarantineも各ブラウザと一致。今回のCIは未確認。
+- 実機は手順整理後のTAK88-recheck-01〜06でSafari・Chrome各3選択がすべて成功。既存/新規の内容・連番・中止後の不変をSHA-256で確認し、保存した新画像のquarantineも各ブラウザと一致。bcdd40aのCIもSwift 6.0でbuild・通常1,155件成功。性能は27件中4件基準超過でvalidation.mdに記録した。
 - ログは /tmp/folzio-tak88-conflict-fix/ のred-tests.log、green-tests.log、build.log、tests.log、check-all.log、make-app.log、final-build.log、final-app-tests.log、final-check-all.log、final-make-app.log。
 
 ## Deviations from Assessment
@@ -48,4 +48,4 @@
 
 ## Follow-ups
 
-保守者が手順を整理して1件ずつ行った実機確認で、全6件の確認表示と保存結果が成功した。初回の手順混在の結果は判定保留としてtest.mdへ残した。元の症状は解消し、CIを確認する。T030・T031は未チェック、Phase 4へ進まない。
+保守者が手順を整理して1件ずつ行った実機確認で、全6件の確認表示と保存結果が成功した。初回の手順混在の結果は判定保留としてtest.mdへ残した。元の症状は解消し、CIも確認済み。T030は完了し、T031は残る確認まで未チェック、Phase 4へ進まない。

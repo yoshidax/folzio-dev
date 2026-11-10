@@ -4,11 +4,11 @@
 - **Tested**: 2026-11-10
 - **Assessment**: ./assessment.md
 - **Fix**: ./fix.md
-- **Result**: partial
+- **Result**: partial（元症状・CI通常は成功。性能4件超過が残る）
 
 ## Summary
 
-キー・メインウインドウが取得できない場合の衝突確認の省略を自動再現し、指定の親で表示する修正後は関連テストが成功した。全通常1,155件と規約チェックも成功。保守者によるSafari・Chrome各3選択の確認と保存データの検査も成功した。今回のCIが未実施のためpartial。
+キー・メインウインドウが取得できない場合の衝突確認の省略を自動再現し、指定の親で表示する修正後は関連テストが成功した。全通常1,155件と規約チェックも成功。保守者によるSafari・Chrome各3選択の確認と保存データの検査も成功した。bcdd40aのSwift 6.0 CIも通常1,155件成功。性能は27件中4件超過が残るためpartial。
 
 ## Checks Performed
 
@@ -23,7 +23,8 @@
 | アプリ作成 | scripts/make-app.sh | pass | 最終コードで.build/Folzio.app作成 |
 | 差分の形式 | git diff --check | pass | 問題なし |
 | 元のGUI症状 | Safari・Chromeの同名ドロップで置換・両方残す・中止 | pass | 手順整理後、TAK88-recheck-01〜06で1件ずつ確認。全6件で確認が出て選択でき、下表の実体も一致 |
-| CI・今回の修正 | macOS Swift CI | not-run | GUI確認後にコミット・pushして実行 |
+| CI・今回の修正 | macOS Swift CI 42771331921 / job 129679579601 | pass | bcdd40aをcheckout。Swift 6.0のbuild・probe自己検査・通常1,155件成功（174.263秒） |
+| 同CIの性能 | swift test --filter FolzioPerformanceTests | fail | 27件中23件成功・4件基準超過（155.737秒）。ログ末尾を確認しvalidation.mdへ数値を記録 |
 
 ## Output Excerpts
 
@@ -50,7 +51,7 @@
 
 ## Recommendation
 
-元の症状と3つの選択の保存結果は、同じ修正コードでの手順を整理した実機確認で解消を確認した。ソースとバグ記録をコミット・pushし、CIを確認する。今回の修正で解消したため⌘.の廃止への切り替えは行わず、Phase 4へ進まない。before/after_bug_testの登録hookはなし。
+元の症状と3つの選択の保存結果は、同じ修正コードでの手順を整理した実機確認で解消を確認した。ソースとバグ記録はbcdd40aでコミット・push済み。CIの通常テストと性能ログの末尾まで確認済み。今回の修正で解消したため⌘.の廃止への切り替えは行わず、Phase 4へ進まない。before/after_bug_testの登録hookはなし。
 
 ## 実機確認の整理（2026-11-10）
 
