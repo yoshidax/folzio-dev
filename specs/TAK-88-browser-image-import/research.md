@@ -47,7 +47,7 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
   ホバー中にファイルシステムを読まないので、`DropOperationCache` の非同期の判定は不要で、通し番号ごとの結果だけを保持する。
 - **Alternatives considered**: `NSImage.imageTypes` をすべて登録する案。PDF・EPS が含まれ、FR-357 で拒否するものに宛先を強調するため採らない。
 
-## R3 受け取りの流れと打ち切り（FR-350・FR-355・FR-359・FR-363）
+## R3 受け取りの流れと打ち切り（FR-364・FR-355・FR-359・FR-363）
 
 - **Decision**: AppのImportSession（MainActor）が1回のドロップ、または画像データのペーストを担う。
   1. R10で背景作成しておいたImportStagingを、約束のドロップ中に同期的に1組確保する。未準備ならドロップを拒否し、要求を後へ保留しない
@@ -86,11 +86,11 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
   動画を AVFoundation で開く案。攻撃者が作った動画のデコーダの処理を走らせることになり、形式の判別だけなら先頭の箱で足りるため採らない。
 - **未検証**: `COPYFILE_CLONE` が exFAT・SMB で通常の複製に切り替わること、`COPYFILE_ALL` が拡張属性を保存できないボリュームで失敗しないこと（R1 とあわせて確かめる）。
 
-## R5 画像データの読み出しと変換（FR-351・FR-352・FR-355・FR-359）
+## R5 画像データの読み出しと変換（FR-365・FR-366・FR-355・FR-359）
 
 - **Decision**: 各NSPasteboardItem.typesからPNG、JPEG、TIFFの順に1つ選ぶ。全体のtypesにだけある合成TIFFは選ばない。
   - 読み出し: ドロップ（`acceptDrop`）とペーストの中で、選んだ型の `NSPasteboardItem.data(forType:)` を UI スレッドで読む。
-    同じ項目の `public.url`（http・https）の文字列も読む。HTML・リッチテキストは読まない（FR-353）
+    同じ項目の `public.url`（http・https）の文字列も読む。HTML・リッチテキストは読まない（FR-367）
   - 256 MB を超えるデータは、読んだ直後に捨てて失敗とする
   - 変換と書き込みは detached task で、ImageIO の `CGImageSource`・`CGImageDestination` を使う。PNG のデータはそのまま書く。
     ほかの形式は、1 枚目の画像の画素数をプロパティで調べ、1 億以下なら PNG に変換する（FR-359）
@@ -98,7 +98,7 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
 - **限界と再評価**: 大きなTIFFの値は生成済みデータの即時提供で、実アプリの遅延提供とは別の条件。上限検査は取得直後であり、取得前の確保量や待ち時間を制限するものではない。
   将来0.2秒超を観測した場合は取得方法を再評価して保守者へ示す。ドロップ後のNSPasteboard(name: .drag)を背景から読めるとは検証していないため、その方式へ自動的には切り替えない。
 
-## R6 名前（FR-352・FR-357・FR-360・EC-243）
+## R6 名前（FR-366・FR-357・FR-360・EC-243）
 
 - **Decision**: Core の `ImportedFileName` に純粋な関数を置き、Swift Testing で確かめる。
   - `isAcceptable(_:)`: 空でない、`/`・`:` を含まない、`.` で始まらない（`validateNewName` と同じ規則。`Sources/FolzioCore/Operations/NameValidation.swift`）、
@@ -112,9 +112,9 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
 - **通信の検査との関係**: `scripts/check-no-network.sh` は `Sources` の中の語 `http` と `https://` を、コメントを含めて拒否する。
   スキームの比較に `"http"` の文字列が要るため、`AboutInfo.swift` の例外と同じ形で、`Sources/FolzioCore/Operations/ImportedFileName.swift` の
   `"http"` と `"https"` の2つのリテラルだけを許す例外を加える（文字列として比べるだけで、通信しない）。
-  検査を変えることになるので、設計レビューで保守者の承認を得る。承認されなければ、http・https を見分けられないので、URL から名前を取らず、常に日時の名前にする（FR-352 を改める）。
+  検査を変えることになるので、設計レビューで保守者の承認を得る。承認されなければ、http・https を見分けられないので、URL から名前を取らず、常に日時の名前にする（FR-366 を改める）。
 
-## R7 保存の実行と確認（FR-347・FR-350・FR-356）
+## R7 保存の実行と確認（FR-347・FR-364・FR-356）
 
 - **Decision**: `FileOperationCoordinator` に `saveReceived(_ staged: [URL], to destination: URL, sameVolume: Bool)` を加える。
   - 確認: `FileOperation(kind: .copy, sources: staged, destination: destination)` で `ConfirmationPresenter.confirm` を呼ぶ。
@@ -150,7 +150,7 @@ spec の要件を実装する方法の決定。参照する行番号は 2026-11-
   パネルを1つにすると、複数の操作が重ならない。
 - **Alternatives considered**: パネルのボタンのキーとして ⌘. を割り当てる案。パネルはフォーカスを奪わないため、キーが届かないので採らない。
 
-## R10 一時的なフォルダと起動時の掃除（FR-350・FR-361）
+## R10 一時的なフォルダと起動時の掃除（FR-364・FR-361）
 
 - **Decision**: CoreのImportStagingを背景で作り、AppのMainActor上の準備済みフォルダのプールへ渡す。
   - 場所はFileManager.default.temporaryDirectory内のFolzio-Import/<UUID>。各rootに共通のreceptionFolderと、ドラッグ元へ知らせないinspectionFolderを作る。宛先が決まる前に準備するので、itemReplacementDirectoryによる宛先ボリュームの優先は行わない

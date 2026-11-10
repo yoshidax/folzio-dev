@@ -370,6 +370,32 @@
 | 項目のヘッダが壊れています / 項目の位置が不正です / 中央ディレクトリが大きすぎます / 項目の場所が不正です / zip の中に項目が見つかりません | The item header is damaged / The item offset is invalid / The central directory is too large / The item location is invalid / The item isn’t in the zip file |
 | 項目のサイズが一致しません / 項目のデータがファイルの外にあります / 読み込みを中止しました / zip の読み出しに失敗しました / zip を読み込めません | The item size doesn’t match / The item data is outside the file / Reading was canceled / Couldn’t read the zip file / Can’t load the zip file |
 
+### 画像・動画の取り込み（TAK-88）
+
+| 場所 | 日本語 | 英語 |
+|---|---|---|
+| 画像データの既定名の接頭辞（FR-366） | 画像 | Image |
+| 画像の保存の失敗の理由（FR-357） | 画像として読めません | Can’t read as an image |
+| 画像の保存の失敗の理由（FR-357） | この形式の画像は保存できません | This image format can’t be saved |
+| 画像の保存の失敗の理由（FR-357） | フォルダ・パッケージ・リンクは保存できません | Folders, packages, and links can’t be saved |
+| 画像の保存の失敗の理由（FR-359） | 256 MB を超えるため保存できません | Larger than 256 MB |
+| 画像の保存の失敗の理由（FR-359） | 1 億画素を超えるため変換できません | Larger than 100 megapixels to convert |
+| 受け取りの進み具合のパネル（FR-363） | 受け取り中…（{件数} 件中 {済み} 件、{大きさ}） | Receiving… ({済み} of {件数}, {大きさ}) |
+| 受け取りの進み具合のパネル（FR-363） | 取り消す | Cancel |
+| 受け取りのパネルの理由（FR-357） | 画像または動画として読めません | Can’t read as an image or video |
+| 受け取りのパネルの段階・編集メニュー（FR-363） | 書き出し中 | Receiving |
+| 受け取りのパネルの段階・編集メニュー（FR-363） | 確認中 | Checking |
+| 受け取りのパネルの段階・編集メニュー（FR-363） | 受け取りを取り消す | Cancel Receiving |
+| 動画の保存の失敗の理由（FR-362・FR-359） | この形式の動画は保存できません | This video format can’t be saved |
+| 動画の保存の失敗の理由（FR-362・FR-359） | 4 GB を超えるため保存できません | Larger than 4 GB |
+| 受け取りの失敗の理由（FR-355・EC-248） | {秒数} 秒以内に書き出されませんでした | Not provided within {秒数} seconds |
+| 受け取りの失敗の理由（FR-355・EC-248） | ドラッグ元のアプリがファイルを書き出せませんでした | The source app couldn’t provide the file |
+
+- 日時の名前の日時の部分（`yyyy-MM-dd HH.mm.ss`）は翻訳せず、両言語で同じ書式にする（FR-366）
+- 打ち切りの文言の `{秒数}` は、画像・不明では 60、動画では 600 とする（FR-355）。
+  名前の条件だけを満たさない場合は日時の名前に直すため、名前の長さの失敗の文言は設けない（FR-366・FR-360）
+- 検査した複製を保存する設計（FR-357・R4）のため、元のファイルが検査後に変わったことを理由にする文言は設けない
+
 ### アクセシビリティ（画面に出ない文言）
 
 | 日本語 | 英語 |

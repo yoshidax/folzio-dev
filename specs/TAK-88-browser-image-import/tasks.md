@@ -10,7 +10,7 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 
 **注意**: `scripts/check-no-network.sh` は `Sources` の中の語 `http` と `https://` を、コメントを含めて拒否する。URL の例は `Tests` にだけ書く（R6）。
 
-**ストーリーの対応**: [US1] = spec の US77（ドラッグ）、[US2] = spec の US78（ペースト）。
+**ストーリーの対応**: [US1] = spec の US79（ドラッグ）、[US2] = spec の US78（ペースト）。
 
 **タスクの番号**: 全 45 件。T031の実測による写真アプリの優先順位の修正でT044・T045をPhase 3へ追加した。分析 C1 の修正で T042・T043 を Phase 2 に加えた。既存の番号は変えず、番号の大小ではなく Phase と依存関係の順に実行する。
 
@@ -49,7 +49,7 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 
 **Purpose**: `FolzioCore`（AppKit を import しない）に、細工された入力を拒む判断を置き、テストで網羅する
 
-- [x] T008 [P] `Tests/FolzioCoreTests/ImportedFileNameTests.swift` を作り、先に失敗させる（R6・FR-352・FR-357・FR-360・EC-243）。
+- [x] T008 [P] `Tests/FolzioCoreTests/ImportedFileNameTests.swift` を作り、先に失敗させる（R6・FR-366・FR-357・FR-360・EC-243）。
   `isAcceptable` は「空でない、`/`・`:` を含まない、`.` で始まらない、`Cc`・`Cf` の文字を含まない、UTF-8 で 200 バイト以下」を、
   境界（200 バイトと 201 バイト、U+202E・U+2066・U+200E・NUL・改行、`..`、全角の名前）で確かめる。
   `nameFromURL` は `https://example.com/a/cat.jpg?w=1` → `cat.png`、`%2F`・`%00` を含む名前、`data:`・`blob:`・`file:`・`ftp:` の URL、
@@ -58,7 +58,7 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
   `uniqueNames` は同じ名前・大文字小文字だけ違う名前に、既存の `uniqueName(for:existingNames:)` と同じ連番が付くこと
 - [x] T009 `Sources/FolzioCore/Operations/ImportedFileName.swift` を実装して T008 を通す。`scripts/check-no-network.sh` に、
   このファイルの `"http"` と `"https"` のリテラルだけを許す例外を、`AboutInfo.swift` と同じ形で加える（T003 で承認されたとき。R6）
-- [x] T010 [P] `Tests/FolzioCoreTests/ImportPayloadPolicyTests.swift` を作り、先に失敗させる（R2・R5・R11・FR-348・FR-351・EC-241）。
+- [x] T010 [P] `Tests/FolzioCoreTests/ImportPayloadPolicyTests.swift` を作り、先に失敗させる（R2・R5・R11・FR-348・FR-365・EC-241）。
   file URL があるとき常に `.fileURLs`、約束の種類（画像・動画・不明・`public.data`・空・PDF だけ・PDF と画像）、画像データの型の選び方（PNG → JPEG → TIFF。項目にない合成TIFFと未観測の直接HEICは対象にしない）、
   どれもないとき `nil` を確かめる
 - [x] T011 `Sources/FolzioCore/Operations/ImportPayloadPolicy.swift` を実装して T010 を通す（data-model.md の `ImportPayloadPolicy`・`ExpectedKind`）
@@ -71,11 +71,11 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 - [x] T013 `Sources/FolzioCore/Operations/ImportInspector.swift` を実装して T012 を通す。`lstat`・`isAliasFile`・`realpath` による構造の検査、
   `copyfile(_:_:nil, COPYFILE_CLONE | COPYFILE_ALL)` の複製、`CGImageSourceGetType`・`CGImageSourceGetCount` と先頭 64 バイトによる判別（画像を展開せず、動画を再生しない）、
   中身の種類の上限（「画像 256 MB、動画 4 GB」）を実装する。構造確認と複製はreaderの専用キューから同期的に呼べるように分け、readerを返す前に完了する。結果は data-model.md の `ImportRejection` で返す
-- [x] T014 [P] `Tests/FolzioCoreTests/ImageDataWriterTests.swift` を作り、先に失敗させる（R5・FR-351・FR-359・EC-244）。
+- [x] T014 [P] `Tests/FolzioCoreTests/ImageDataWriterTests.swift` を作り、先に失敗させる（R5・FR-365・FR-359・EC-244）。
   PNG のデータがバイト単位で同じに書かれること、TIFF（複数ページを含む）が 1 枚目だけの PNG になること、
   1 枚目が 1 億画素を超える TIFF の情報で `tooManyPixels`（画像を展開しない）、256 MB を超えるデータで `tooLarge`、壊れたデータで `notImageOrVideo` を確かめる
 - [x] T015 `Sources/FolzioCore/Operations/ImageDataWriter.swift` を実装して T014 を通す（ImageIO の `CGImageSource`・`CGImageDestination`）
-- [x] T016 [P] `Tests/FolzioCoreTests/ImportStagingTests.swift` と `ImportCleanupRecordTests.swift` を作り、先に失敗させる（R3・R10・FR-350・FR-361・SC-188・SC-196）。
+- [x] T016 [P] `Tests/FolzioCoreTests/ImportStagingTests.swift` と `ImportCleanupRecordTests.swift` を作り、先に失敗させる（R3・R10・FR-364・FR-361・SC-199・SC-196）。
   起動ディスクの `Folzio-Import/<UUID>` の作成、共通の受け取り用と検査用のフォルダ、宛先との同一 / 別ボリューム判定、受け取り用だけの大きさの合計、`remove()` の後に何も残らないこと、
   記録の追加と削除、起動時の掃除で、ボリュームの識別子が違う記録・名前の形が違う記録（ホームのフォルダを指す記録を含む）・30 日を過ぎた記録を消さずに外すこと、
   ボリュームがない記録を持ち越すこと、型が不正な要素を捨てることを確かめる。`UserDefaults` はテスト用のスイートを使う
@@ -105,7 +105,7 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 
 **Checkpoint**: Core の判断と検査がテストで確かめられた
 
-## Phase 3: User Story 1（spec の US77）ブラウザの画像をドラッグしてフォルダへ保存する（P1）🎯 MVP
+## Phase 3: User Story 1（spec の US79）ブラウザの画像をドラッグしてフォルダへ保存する（P1）🎯 MVP
 
 **Goal**: ブラウザの画像と写真アプリの動画を、FR-345 の宛先へドラッグして保存できる
 
@@ -121,7 +121,7 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
   file URL がないときに `ExternalImageDrag` へ分ける。アプリ内のドラッグと file URL の経路は変えない（R13・SC-192）
 - [x] T024 [US1] `Sources/FolzioApp/Operations/ImportSession.swift` を作り、data-model.md の状態の移り変わりのとおり、事前作成したImportStagingの同期的な確保と背景での補充（T017）、
   全約束に共通宛先でドロップ内から行うreceivePromisedFiles（readerは専用のOperationQueue）、待つ時間（画像・不明 60 秒、動画 10 分）、1 秒ごとの大きさの見張り（「約束ごとの上限の合計」）、
-  readerが報告したファイルの通知中の構造確認・複製と、複製だけの背景検査（T013）、画像データの書き込み（T015）、名前の連番（T009）、最後の一時的なフォルダの削除と記録の削除を行う（R3〜R6・FR-350・FR-355・FR-359）。
+  readerが報告したファイルの通知中の構造確認・複製と、複製だけの背景検査（T013）、画像データの書き込み（T015）、名前の連番（T009）、最後の一時的なフォルダの削除と記録の削除を行う（R3〜R6・FR-364・FR-355・FR-359）。
   打ち切り・取り消しの後に届いた結果は捨てる。期限・容量・状態の判断は T043 の Core の型に任せる。
   実装の前に `Tests/FolzioAppTests/ImportSessionTests.swift` を作り、時計・約束の受け取り・確認を差し替えて、実時間を待たずに次を確かめる
   - 受け取り先の背景での事前作成・補充、未準備時のドロップ拒否、全要求がドロップを返す前に始まり共通の宛先を使うこと
@@ -177,13 +177,13 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
 
 ## Phase 5: Polish & Cross-Cutting
 
-- [ ] T038 [P] `README.md`・`README.ja.md`・`docs/usage.md`・`docs/usage.ja.md` に、ブラウザの画像の保存（ドラッグ・⌘V）と取り消し（⌘.）の説明を、2 言語で同じ内容に、同じコミットで加える。
+- [x] T038 [P] `README.md`・`README.ja.md`・`docs/usage.md`・`docs/usage.ja.md` に、ブラウザの画像の保存（ドラッグ・⌘V）と取り消し（⌘.）の説明を、2 言語で同じ内容に、同じコミットで加える。
   `specs/`・`docs_private/` へリンクしない（AGENTS.md の書くときの規則）
-- [ ] T039 `scripts/dev/check-all.sh` と `scripts/check-no-network.sh` を実行し、公開用の書き出し（`scripts/dev/export-public.py`）に `scripts/dev/pasteboard-probe.swift` が含まれないことを確かめる
-- [ ] T040 T006 の画像データの読み出し時間と T031 のドラッグの反応・SC-189 の計測を、条件（macOS・機種・データの型と大きさ・変更前後のコミット）とともに
+- [x] T039 `scripts/dev/check-all.sh` と `scripts/check-no-network.sh` を実行し、公開用の書き出し（`scripts/dev/export-public.py`）に `scripts/dev/pasteboard-probe.swift` が含まれないことを確かめる
+- [x] T040 T006 の画像データの読み出し時間と T031 のドラッグの反応・SC-200 の計測を、条件（macOS・機種・データの型と大きさ・変更前後のコミット）とともに
   `checklists/validation.md` にまとめ、PR の検証欄へ記載する本文を用意する（憲章 原則 II）。計測していない項目は未確認とする。
   保守者の依頼があれば PR を作り、この計測結果を記載し、Linear の TAK-88 に PR のリンクを加えて `In Review` にする（`docs_private/agents/linear.md`）
-- [ ] T041 PR の最後に、`git merge origin/master` で最新の master を取り込み、`scripts/dev/check-spec-ids.sh` で ID の衝突を確かめてから、spec の「反映先」の表のとおり
+- [x] T041 PR の最後に、`git merge origin/master` で最新の master を取り込み、`scripts/dev/check-spec-ids.sh` で ID の衝突を確かめてから、spec の「反映先」の表のとおり
   `specs/product/file-operations.md`・`contracts/keyboard-and-menus.md`・`contracts/settings.md`・`contracts/localization.md` へ反映する。
   `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を反映の後にも実行し、反映した項目と差分を保守者に示して承認を得てからコミットする
   （`docs_private/cloud-agent-workflow.md` の 7 章）。spec.md の冒頭に移行済み・凍結の注記を入れる

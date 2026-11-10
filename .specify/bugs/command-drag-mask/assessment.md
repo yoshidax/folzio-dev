@@ -13,7 +13,7 @@ SafariのCommand付きドロップは「＋も出ない。保存もできない�
 
 ## Symptom
 
-US77-AS6の無条件の期待値ではCommandでもコピーできるはずだが、実機では拒否される。保存先08・10は空で、元の画像や個人ファイルを変更したという事実はない。
+US79-AS6の無条件の期待値ではCommandでもコピーできるはずだが、実機では拒否される。保存先08・10は空で、元の画像や個人ファイルを変更したという事実はない。
 
 ## 仕様との照合
 
@@ -32,7 +32,7 @@ US77-AS6の無条件の期待値ではCommandでもコピーできるはずだ�
 ## Suspected Code Paths
 
 - Sources/FolzioApp/Shared/ExternalImageDrag.swift: operation / accept — copy許可を含まなければ受け付けない。
-- specs/TAK-88-browser-image-import/spec.md: US77-AS6 / FR-356 — 現在の修飾キーでの許可という条件が不足。
+- specs/TAK-88-browser-image-import/spec.md: US79-AS6 / FR-356 — 現在の修飾キーでの許可という条件が不足。
 - 同ディレクトリのquickstart.md・contracts/browser-image-import.md・research.md — 期待値と測定条件の明確化が必要。
 
 ## Root Cause
@@ -41,7 +41,7 @@ US77-AS6の無条件の期待値ではCommandでもコピーできるはずだ�
 
 ## Proposed Remediation
 
-承認済み: 現在の修飾キー状態でコピーが許可されるときだけコピーとして示し保存する。許可されない場合は宛先を有効にせず、保存しない。US77-AS6・FR-356と関連の契約・確認手順へ反映し、測定結果・保守者の承認を記録する。アプリのコード・⌘.・新しい依存は変更しない。
+承認済み: 現在の修飾キー状態でコピーが許可されるときだけコピーとして示し保存する。許可されない場合は宛先を有効にせず、保存しない。US79-AS6・FR-356と関連の契約・確認手順へ反映し、測定結果・保守者の承認を記録する。アプリのコード・⌘.・新しい依存は変更しない。
 
 対象: spec.md、quickstart.md、contracts/browser-image-import.md、research.md、checklists/validation.md。現在の実装はbcdd40aのCIで通常1,155件成功、性能4件超過として別途記録済み。変更前後でSources/Testsの差分がないことも確認する。
 
