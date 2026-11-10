@@ -64,10 +64,10 @@
 
 ## Phase 4: Polish & Cross-Cutting Concerns
 
-- [ ] T015 `scripts/dev/check-all.sh` を実行して成功させる（Cloud の検査。docs_private/cloud-agent-workflow.md の 5 章）。
+- [x] T015 `scripts/dev/check-all.sh` を実行して成功させる（Cloud の検査。docs_private/cloud-agent-workflow.md の 5 章）。
   T018・T019 の後にも、それぞれもう一度実行する（仕様の ID の検査と公開用の書き出しの検査を含むため。コードレビューの指摘）
-- [ ] T016 作業ブランチに push し、CI（`macos-swift-ci.yml`。PR がなければ `workflow_dispatch`）で `swift build` と `swift test` の成功を確かめる。性能テストはログの末尾で件数を確かめる
-- [ ] T017 [MANUAL] 保守者に quickstart.md の GUI 確認（1〜10）を依頼し、結果を `checklists/validation.md` に記録する。確認されるまでこのタスクは未チェックのまま残す
+- [x] T016 作業ブランチに push し、CI（`macos-swift-ci.yml`。PR がなければ `workflow_dispatch`）で `swift build` と `swift test` の成功を確かめる。性能テストはログの末尾で件数を確かめる
+- [x] T017 [MANUAL] 保守者に quickstart.md の GUI 確認（1〜10）を依頼し、結果を `checklists/validation.md` に記録する。確認されるまでこのタスクは未チェックのまま残す
 - [x] T018 ユーザーガイドと開発の手順書を更新する。日本語と英語を同じコミットで同じ内容にする（コードレビューの指摘。TAK-74 の T021 と同じ扱い）。
   - `docs/usage.ja.md`・`docs/usage.md` の「スライドショー」の「開始と操作」（182 行付近）: ツールバーの再生ボタンは、実行中はオンになり、もう一度押すと終了することを加える。
     「スライドショー中は」の項目の Esc の終了に、ツールバーのボタンでも終了できることを加える
@@ -76,11 +76,11 @@
   - `docs/development.ja.md`・`docs/development.md` の手動の確認「スライドショー」（117 行付近）に、ツールバーのボタンで開始と終了ができ、ボタンのオン・オフが実行状態と一致することを加える
   - 公開用リポジトリへ書き出される文書なので、`specs/`・`docs_private/` へリンクしない（AGENTS.md の「書くときの規則」）
   - 更新の後に `scripts/dev/check-all.sh` を実行して成功させてからコミットする
-- [ ] T019 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり（FR-114・FR-134 の変更を含む）`specs/product/preview.md`・`window-layout.md`・
+- [x] T019 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり（FR-114・FR-134 の変更を含む）`specs/product/preview.md`・`window-layout.md`・
   `contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映する（`specs/product/README.md` の「書き方のルール」に従う。
   1行が160桁を超える文は分け、feature の中だけの参照（research.md の節など）は製品仕様に残さない。GUI の確認で未確認の項目（R9）が決まっていれば、その結果で直してから移す）。
   反映の後に `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-all.sh`（`check-spec-ids.sh` を含む）を実行し、反映した項目と差分を保守者に示して承認を得てからコミットする
-- [ ] T020 反映が終わったら、spec.md の冒頭に移行済み・凍結の注記を入れる（`specs/product/README.md` の「feature の spec.md の書き方」）
+- [x] T020 反映が終わったら、spec.md の冒頭に移行済み・凍結の注記を入れる（`specs/product/README.md` の「feature の spec.md の書き方」）
 
 ## Dependencies & Execution Order
 
