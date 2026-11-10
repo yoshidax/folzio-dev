@@ -349,7 +349,7 @@
 /* Tooltip and accessibility text for the toolbar and size bar. Include the shortcut */
 "toolbar.thumbnailSize" = "サムネイルサイズ（%1$@）";
 
-/* Toolbar group name. Also shown in the customization palette and the text display mode */
+/* Name of the Slideshow toolbar item. Also the accessibility label of the toggle button in both states */
 "toolbar.slideshowLabel" = "スライドショー";
 
 /* Toolbar group name. Also shown in the customization palette and the text display mode */
@@ -381,6 +381,9 @@
 
 /* Slideshow tooltip. Includes the shortcut */
 "toolbar.startSlideshowHelp" = "スライドショーを開始（%1$@）";
+
+/* Slideshow toggle button tooltip while running. Esc is a fixed key */
+"toolbar.stopSlideshowHelp" = "スライドショーを停止（Esc）";
 
 /* Zoom in tooltip. Includes the shortcut */
 "toolbar.zoomInHelp" = "拡大（%1$@）";

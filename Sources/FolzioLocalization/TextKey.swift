@@ -182,6 +182,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case toolbarShowVideosOnlyHelp = "toolbar.showVideosOnlyHelp"
     case toolbarZipFilesHelp = "toolbar.zipFilesHelp"
     case toolbarStartSlideshowHelp = "toolbar.startSlideshowHelp"
+    case toolbarStopSlideshowHelp = "toolbar.stopSlideshowHelp"
     case toolbarZoomInHelp = "toolbar.zoomInHelp"
     case toolbarZoomToFitHelp = "toolbar.zoomToFitHelp"
     case toolbarZoomOutHelp = "toolbar.zoomOutHelp"
@@ -749,13 +750,18 @@ public enum TextKey: String, CaseIterable, Sendable {
         case .contextPasteHere, .contextMovePasteHere:
             return "Paste in the directory tree's context menu"
         case .toolbarHistory, .toolbarPanes, .toolbarZoomGroup, .toolbarMediaType,
-             .toolbarViewMode, .toolbarSize, .toolbarSlideshowLabel, .toolbarZipFilesLabel,
+             .toolbarViewMode, .toolbarSize, .toolbarZipFilesLabel,
              .toolbarThumbnailSizeLabel:
             return "Toolbar group names. They are also shown in the customization palette and in the text display mode"
+        case .toolbarSlideshowLabel:
+            return "Name of the Slideshow toolbar item. Also shown in the customization palette and in the text display mode. "
+                + "It is also the accessibility label of the toggle button, which VoiceOver reads in both the on and off states"
         case .toolbarThumbnailSize:
             return "Thumbnail size in the toolbar and size bar. The value is the shortcut text"
         case .toolbarStartSlideshowHelp:
             return "Slideshow tooltip. The value is the shortcut text"
+        case .toolbarStopSlideshowHelp:
+            return "Tooltip and accessibility help of the Slideshow toggle button while a slideshow is running. Esc is a fixed key"
         case .toolbarZoomInHelp, .toolbarZoomToFitHelp, .toolbarZoomOutHelp:
             return "Zoom in, zoom to fit, and zoom out tooltips. The value is the shortcut text"
         case .toolbarGoBackHelp, .toolbarGoForwardHelp, .toolbarShowFileListOnlyHelp, .toolbarShowPreviewOnlyHelp,

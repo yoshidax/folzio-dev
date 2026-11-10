@@ -181,6 +181,7 @@ For a first look, see the [README](../README.md).
 ### Starting and Controls
 
 - Start with ⇧⌘S, View → "Start Slideshow" (スライドショーを開始), or the play button in the toolbar.
+  - During a slideshow, the play button in the toolbar appears pressed. Click it again to end the slideshow.
 - The slideshow advances through the media in display order at the configured interval.
   - With repeat on, it wraps from the last item back to the first.
   - With repeat off, it ends one interval after the last item is shown.
@@ -191,7 +192,7 @@ For a first look, see the [README](../README.md).
   Ending restores the previous panes, focus, and widths.
 - During a slideshow:
   - The arrow keys move through the hidden list and restart the timer.
-  - Esc ends the slideshow.
+  - Esc or the play button in the toolbar ends the slideshow.
   - `/` plays or pauses a video, and `<` / `>` seek 5 seconds. These do not change the timer.
 
 ### Slideshow Settings
@@ -433,7 +434,7 @@ For a first look, see the [README](../README.md).
 
 | Action | Default shortcut |
 |--------|----------|
-| Start / end a slideshow | ⇧⌘S (View menu, toolbar) / Esc |
+| Start / end a slideshow | ⇧⌘S (View menu, toolbar) / Esc (toolbar) |
 | Move through the hidden list during a slideshow (restarts the timer) | Arrow keys |
 | Play / pause a video or seek 5 seconds during a slideshow | `/`, `<` / `>` |
 | Skip a video back / forward 5 seconds (not while typing) | `<` / `>` |
