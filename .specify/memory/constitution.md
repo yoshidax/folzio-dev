@@ -1,15 +1,14 @@
 <!--
 Sync Impact Report
-- Version: 1.3.0 → 1.3.1（PATCH: 重複解消の詳細手順への参照先を変更）
-- 変更理由: ローカルと Cloud の共通手順を分離し、判断規則を憲章に集約する（TAK-76）
+- Version: 1.3.1 → 1.4.0（MINOR: bug 拡張の適用範囲を変更）
+- 変更理由: TAK-88 で進行中の spec に関する問題が独立した bug として扱われたため、その境界を明確にする（TAK-94）
 - 変更した原則: なし
-- 変更した節: 仕様の管理（詳細手順の参照先のみ。ID の判断規則と凍結の例外は維持）
+- 変更した節: 仕様の管理（独立した修正タスクに bug 拡張を適用する）
 - 追加・削除した節: なし
 - 影響を受ける文書と追従:
-  - specs/product/overview.md の EC-135、specs/product/README.md、AGENTS.md: 新しい参照先へ追従する
-  - docs_private/spec-id-conflicts.md: 共通の詳細手順を置く
-  - docs_private/cloud-agent-workflow.md の 7 章: 共通手順を参照し、Cloud 固有の手順を残す
-- TAK-67 の 1.3.0 で残した EC-135 の追従と正本の集約は TAK-76 で対応する
+  - AGENTS.md、docs_private/agents/bugfix.md: 同じ適用範囲と判断基準に揃える
+  - 完了した feature は凍結を維持し、進行中の spec に関する修正は適切な作業・検証記録に残す
+  - 既存の spec / plan と bug 記録: 変更不要
 - 未解決の TODO: なし
 -->
 # my_img_viewer Constitution
@@ -125,9 +124,9 @@ Sync Impact Report
   未マージ側の ID を振り直す。マージ済みの ID は振り直さない。ただし、どちらもマージ済みの ID が重複した場合に限り、
   あとにマージされた側の ID を振り直す。ID の付け方は `specs/product/README.md` に、重複の解消手順は
   `docs_private/spec-id-conflicts.md` に従う。
-- 実装が `specs/product/` の項目に反している不具合は、bug 拡張（assess → fix → test）で直し、記録を
+- 完了した成果物の不具合を独立した修正タスクとして扱い、実装が `specs/product/` の項目に反している場合は、bug 拡張（assess → fix → test）で直し、記録を
   `.specify/bugs/<slug>/` に残す。このとき `specs/product/` は変更しない。
-- 仕様が誤っている、または定めていないことが原因の不具合は、仕様の変更として新しい feature で扱う（MUST）。
+- 独立した修正タスクで、仕様が誤っている、または定めていないことが原因の不具合は、仕様の変更として新しい feature で扱う（MUST）。
 
 ## Governance
 
@@ -143,4 +142,4 @@ Sync Impact Report
   憲章と実態が乖離した場合は、実装を直すか憲章を改定するかのいずれかを選び、
   放置してはならない（MUST NOT）。
 
-**Version**: 1.3.1 | **Ratified**: 2026-10-19 | **Last Amended**: 2026-11-05
+**Version**: 1.4.0 | **Ratified**: 2026-10-19 | **Last Amended**: 2026-11-11

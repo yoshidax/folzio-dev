@@ -1,5 +1,4 @@
 # Folzio — Agent Notes
-
 見出しの【】は適用範囲: 【共通】はローカルと Cloud、【ローカル】は保守者の macOS、【Cloud】はリモート実行環境（Cloud が作業ブランチを指定している）。この文書を変える前に `docs_private/agents/README.md` を読む。
 仕様の正本は `specs/product/`、運用は `.specify/memory/constitution.md` の「仕様の管理」。完了した feature ディレクトリ（`specs/NNN-*`・`specs/TAK-*`）は凍結した記録で、更新しない（マージ済み ID の重複解消時の対応表の注記を除く）。
 
@@ -38,7 +37,8 @@
 
 ## 作業別の手順（該当するときに読む）
 - 【Cloud】作業を始める前に `docs_private/cloud-agent-workflow.md`（feature の始め方、PR、CI、検証ゲート、並行する作業）
-- 【共通】バグを直す: `docs_private/agents/bugfix.md`
+- 【共通】進行中のspecの実装・検証・マージ前レビューで、その変更に関して見つかった問題は、そのspec内で対処・記録する。予測外の問題・回帰・レビュー指摘も含め、bug拡張や `.specify/bugs/` は使わない
+- 【共通】完了した成果物の不具合を、独立した修正タスクとして扱うとき: `docs_private/agents/bugfix.md`
 - 【ローカル】アプリが起動しない・ウインドウが出ない、設定の保存先を調べる: `docs_private/agents/launch-debugging.md`
 - 【ローカル】実装を並列化する: `docs_private/agents/parallel-worktree.md`（【Cloud】は Issue 単位で並行し、サブエージェントで実装を分けない）
 - 【共通】スキル・Codex・Spec Kit の構成を変える、Codex を自動実行する: `docs_private/agents/skills-and-codex.md`
