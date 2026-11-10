@@ -14,6 +14,25 @@ public enum TextArgument: Sendable, Equatable {
 
 /// One user-visible string (translation unit). Defined in `Resources/{en,ja}.lproj/Localizable.strings(dict)`.
 public enum TextKey: String, CaseIterable, Sendable {
+    // MARK: - Import
+
+    case importImagePrefix = "import.name.image"
+    case errorImportNotImageOrVideo = "error.import.notImageOrVideo"
+    case errorImportUnsupportedImage = "error.import.unsupportedImage"
+    case errorImportUnsupportedVideo = "error.import.unsupportedVideo"
+    case errorImportNotRegularFile = "error.import.notRegularFile"
+    case errorImportTooLargeImage = "error.import.tooLargeImage"
+    case errorImportTooLargeVideo = "error.import.tooLargeVideo"
+    case errorImportTooManyPixels = "error.import.tooManyPixels"
+    case errorImportTimedOut = "error.import.timedOut"
+    case errorImportSourceFailed = "error.import.sourceFailed"
+    case receivingProgress = "import.receiving.progress"
+    case receivingCancel = "import.receiving.cancel"
+    case receivingStage = "import.receiving.stage"
+    case checkingStage = "import.checking.stage"
+    case shortcutCancelReceivingCondition = "shortcuts.condition.cancelReceiving"
+    case menuCancelReceiving = "menu.edit.cancelReceiving"
+
     // MARK: - Core Values
 
     case errorSearchRootEmpty = "error.searchRoot.empty"
@@ -424,6 +443,10 @@ public enum TextKey: String, CaseIterable, Sendable {
             return [.number]
         case .dialogOperationSummary:
             return [.number, .number]
+        case .errorImportTimedOut:
+            return [.number]
+        case .receivingProgress:
+            return [.number, .number, .text]
         default:
             return []
         }
@@ -432,6 +455,8 @@ public enum TextKey: String, CaseIterable, Sendable {
     /// Translator-facing description (where the string is used and what each value means).
     public var comment: String {
         switch self {
+        case .shortcutCancelReceivingCondition, .importImagePrefix, .errorImportNotImageOrVideo, .errorImportUnsupportedImage, .errorImportUnsupportedVideo, .errorImportNotRegularFile, .errorImportTooLargeImage, .errorImportTooLargeVideo, .errorImportTooManyPixels, .errorImportTimedOut, .errorImportSourceFailed, .receivingProgress, .receivingCancel, .receivingStage, .checkingStage, .menuCancelReceiving:
+            return "Text for receiving an external image or video. Timeout takes seconds; progress takes total, completed, and formatted size."
         case .menuFileShortcuts:
             return "File menu item that opens the shortcut reference"
         case .menuFileClose:
