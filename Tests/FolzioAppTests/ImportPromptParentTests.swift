@@ -118,6 +118,36 @@ struct ImportPromptParentTests {
         }
     }
 
+    @Test("Failures before confirmation use the receiving window", arguments: [false, true])
+    func failuresPreferExplicitParent(destinationMissing: Bool) async throws {
+        try await withFixture(confirms: true) { fixture in
+            if destinationMissing { try FileManager.default.removeItem(at: fixture.destination) }
+            fixture.coordinator.fallbackWindow = {
+                Issue.record("Explicit failure parent must avoid global lookup")
+                return nil
+            }
+            var shown = 0
+            fixture.coordinator.presentSheet = { alert, window in
+                shown += 1
+                #expect(window === fixture.parent)
+                #expect(alert.alertStyle == .warning)
+                #expect(alert.informativeText.contains("rejected.png"))
+                return .alertFirstButtonReturn
+            }
+            fixture.confirmation.presentSheet = { _, _ in
+                Issue.record("Failed reception must not confirm a copy")
+                return .alertSecondButtonReturn
+            }
+            let request = ImportSaveRequest(files: [],
+                failures: [(URL(fileURLWithPath: "rejected.png"), .importRejected(.notImageOrVideo))],
+                destination: fixture.destination, sameVolume: true)
+            let outcome = await fixture.coordinator.saveReceived(request, control: fixture.control,
+                parentWindow: fixture.parent)
+            #expect(outcome == .failed)
+            #expect(shown == 1)
+        }
+    }
+
     private func withFixture(confirms: Bool, _ body: (Fixture) async throws -> Void) async throws {
         _ = NSApplication.shared
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

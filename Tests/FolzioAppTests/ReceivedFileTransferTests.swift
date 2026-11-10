@@ -97,6 +97,37 @@ struct ReceivedFileTransferTests {
         }
     }
 
+    @Test func cancellationDuringDestinationPreflightSkipsConfirmation() async throws {
+        try await withFiles { source, destination in
+            let service = RecordingImportService()
+            var active = true
+            var confirming = false
+            var asked = false
+            var resume: CheckedContinuation<OperationFailureReason?, Never>?
+            let task = Task { @MainActor in
+                await FileOperationCoordinator.transferReceived(
+                    ImportSaveRequest(files: [source], failures: [], destination: destination, sameVolume: true),
+                    service: service, confirm: { _ in asked = true; return true },
+                    resolveConflict: { _, _, _ in .init(resolution: .abort, applyToAll: false) },
+                    control: ImportSaveControl(isActive: { active }, willConfirm: { confirming = true }, didConfirm: {}),
+                    checkDestination: { _ in
+                        #expect(!confirming)
+                        return await withCheckedContinuation { resume = $0 }
+                    })
+            }
+            while resume == nil { await Task.yield() }
+            #expect(!confirming)
+            active = false
+            resume?.resume(returning: nil)
+            let (result, outcome) = await task.value
+            #expect(outcome == .cancelled)
+            #expect(!asked && !confirming)
+            #expect(result.succeeded.isEmpty && result.failed.isEmpty)
+            #expect(await service.operations.isEmpty)
+            #expect(FileManager.default.fileExists(atPath: source.path))
+        }
+    }
+
     @Test func coordinatorNotifiesOnlyDestination() async throws {
         _ = NSApplication.shared
         try await withFiles { source, destination in

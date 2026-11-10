@@ -9,6 +9,14 @@ final class FileOperationCoordinator {
     private let confirmation: ConfirmationPresenter
     private let conflictPrompt: ConflictPrompt
     private let imports: ImportSessionManager
+    var fallbackWindow: @MainActor () -> NSWindow? = { NSApp.keyWindow ?? NSApp.mainWindow }
+    var presentSheet: @MainActor (NSAlert, NSWindow) async -> NSApplication.ModalResponse = { alert, window in
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate()
+        return await withCheckedContinuation { continuation in
+            alert.beginSheetModal(for: window) { continuation.resume(returning: $0) }
+        }
+    }
 
     /// Passes affected folders (the sources' parent folders and the destination) when an operation finishes.
     /// Lets the tree apply changes without waiting for FSEvents (FR-027, R32).
@@ -60,7 +68,7 @@ final class FileOperationCoordinator {
                     await conflictPrompt.resolve(conflictingNames: conflicts.map(\.lastPathComponent),
                         destination: destination, allowReplace: allowReplace, parentWindow: parentWindow)
                 }, control: control)
-            if control.isActive() { await presentFailures(result) }
+            if control.isActive() { await presentFailures(result, parentWindow: parentWindow) }
             if !result.succeeded.isEmpty {
                 await model.reloadCurrentFolder()
                 onFoldersChanged?([request.destination.standardizedFileURL])
@@ -73,21 +81,25 @@ final class FileOperationCoordinator {
         _ request: ImportSaveRequest, service: any FileOperating,
         confirm: (FileOperation) async -> Bool,
         resolveConflict: ([URL], URL, Bool) async -> ConflictPrompt.Choice,
-        control: ImportSaveControl
+        control: ImportSaveControl,
+        checkDestination: @MainActor (URL) async -> OperationFailureReason? = { destination in
+            await Task.detached { receivedDestinationFailure(destination) }.value
+        }
     ) async -> (FileOperationResult, ImportSaveOutcome) {
         guard control.isActive() else { return (FileOperationResult(), .cancelled) }
-        control.willConfirm()
         var result = FileOperationResult(failed: request.failures)
-        let initialFailure = await Task.detached { receivedDestinationFailure(request.destination) }.value
+        let initialFailure = await checkDestination(request.destination)
+        guard control.isActive() else { return (FileOperationResult(), .cancelled) }
         if let reason = initialFailure {
             result.failed.append(contentsOf: request.files.map { ($0, reason) })
             if result.failed.isEmpty { result.failed.append((request.destination, reason)) }
             return (result, .failed)
         }
         guard !request.files.isEmpty else { return (result, .failed) }
+        control.willConfirm()
         guard await confirm(FileOperation(kind: .copy, sources: request.files, destination: request.destination)),
               control.isActive() else { return (FileOperationResult(), .cancelled) }
-        if let reason = await Task.detached(operation: { receivedDestinationFailure(request.destination) }).value {
+        if let reason = await checkDestination(request.destination) {
             result.failed.append(contentsOf: request.files.map { ($0, reason) })
             return (result, .failed)
         }
@@ -439,13 +451,13 @@ final class FileOperationCoordinator {
         return response == .alertFirstButtonReturn
     }
 
-    private func presentFailures(_ result: FileOperationResult) async {
+    private func presentFailures(_ result: FileOperationResult, parentWindow: NSWindow? = nil) async {
         guard !result.failed.isEmpty else { return }
 
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.addButton(withTitle: l10n.text(.dialogOK))
-        _ = await runSheet(alert) {
+        _ = await runSheet(alert, parentWindow: parentWindow) {
             var lines = result.failed.prefix(10).map { failure in
                 l10n.text(.dialogOperationFailureLine, .text(failure.url.lastPathComponent), .text(l10n.text(for: failure.reason)))
             }
@@ -470,17 +482,13 @@ final class FileOperationCoordinator {
         }
     }
 
-    private func runSheet(_ alert: NSAlert, update: @escaping @MainActor () -> Void) async -> NSApplication.ModalResponse? {
-        guard let window = NSApp.keyWindow ?? NSApp.mainWindow else {
+    private func runSheet(_ alert: NSAlert, parentWindow: NSWindow? = nil, update: @escaping @MainActor () -> Void) async -> NSApplication.ModalResponse? {
+        guard let window = parentWindow ?? fallbackWindow() else {
             return nil
         }
         update()
         let languageObserver = LanguageChangeObserver(update: update)
-        let response = await withCheckedContinuation { continuation in
-            alert.beginSheetModal(for: window) { response in
-                continuation.resume(returning: response)
-            }
-        }
+        let response = await presentSheet(alert, window)
         withExtendedLifetime(languageObserver) {}
         return response
     }

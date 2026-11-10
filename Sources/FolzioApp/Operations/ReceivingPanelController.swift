@@ -4,10 +4,40 @@ import FolzioLocalization
 
 @MainActor
 final class ReceivingPanelController: NSObject {
-    private let panel: NSPanel
+    let panel: NSPanel
     private let stack = NSStackView()
     private let cancel: (UUID) -> Void
     private var rows: [ImportProgressRow] = []
+    private var rowViews: [UUID: RowViews] = [:]
+
+    @MainActor
+    private struct RowViews {
+        let title = NSTextField(labelWithString: "")
+        let detail = NSTextField(labelWithString: "")
+        let stage = NSTextField(labelWithString: "")
+        let button: NSButton
+        let line: NSStackView
+
+        init(id: UUID, target: ReceivingPanelController) {
+            title.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
+            button = NSButton(title: "", target: target, action: #selector(cancelClicked(_:)))
+            button.identifier = .init(id.uuidString)
+            let text = NSStackView(views: [title, detail, stage])
+            text.orientation = .vertical
+            text.alignment = .leading
+            line = NSStackView(views: [text, button])
+            line.spacing = 16
+        }
+
+        func update(_ row: ImportProgressRow) {
+            title.stringValue = row.destination
+            let size = ByteCountFormatter.string(fromByteCount: Int64(clamping: row.bytes), countStyle: .file)
+            detail.stringValue = l10n.receivingProgressText(total: row.total, completed: row.completed, size: size)
+            stage.stringValue = l10n.receivingStageText(isChecking: row.checking)
+            button.title = l10n.receivingCancelTitle
+            button.setAccessibilityLabel(l10n.receivingCancelTitle + " " + row.destination)
+        }
+    }
     private var languageObserver: LanguageChangeObserver?
 
     init(cancel: @escaping (UUID) -> Void) {
@@ -34,21 +64,25 @@ final class ReceivingPanelController: NSObject {
     func update(_ rows: [ImportProgressRow]) {
         self.rows = rows
         panel.title = l10n.receivingStageText(isChecking: false)
-        for view in stack.arrangedSubviews { stack.removeArrangedSubview(view); view.removeFromSuperview() }
-        for row in rows {
-            let title = NSTextField(labelWithString: row.destination)
-            title.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
-            let size = ByteCountFormatter.string(fromByteCount: Int64(clamping: row.bytes), countStyle: .file)
-            let detail = NSTextField(labelWithString: l10n.receivingProgressText(total: row.total, completed: row.completed, size: size))
-            let stage = NSTextField(labelWithString: l10n.receivingStageText(isChecking: row.checking))
-            let button = NSButton(title: l10n.receivingCancelTitle, target: self, action: #selector(cancelClicked(_:)))
-            button.identifier = .init(row.id.uuidString)
-            button.setAccessibilityLabel(l10n.receivingCancelTitle + " " + row.destination)
-            let text = NSStackView(views: [title, detail, stage])
-            text.orientation = .vertical; text.alignment = .leading
-            let line = NSStackView(views: [text, button])
-            line.spacing = 16
-            stack.addArrangedSubview(line)
+        let activeIDs = Set(rows.map(\.id))
+        for id in Set(rowViews.keys).subtracting(activeIDs) {
+            if let views = rowViews.removeValue(forKey: id) {
+                stack.removeArrangedSubview(views.line)
+                views.line.removeFromSuperview()
+            }
+        }
+        for (index, row) in rows.enumerated() {
+            let views = rowViews[row.id] ?? RowViews(id: row.id, target: self)
+            rowViews[row.id] = views
+            views.update(row)
+            if stack.arrangedSubviews.indices.contains(index), stack.arrangedSubviews[index] === views.line {
+                continue
+            }
+            if views.line.superview != nil {
+                stack.removeArrangedSubview(views.line)
+                views.line.removeFromSuperview()
+            }
+            stack.insertArrangedSubview(views.line, at: index)
         }
         if rows.isEmpty { panel.orderOut(nil) }
         else {
