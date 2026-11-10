@@ -3,6 +3,10 @@
 Cloud では `scripts/dev/check-all.sh` だけ、CI では `swift build` と `swift test`、保守者の macOS では次の確認を行う
 （`docs_private/cloud-agent-workflow.md` の 5 章）。結果は `checklists/validation.md` に記録する。
 
+2026-11-10の保守者方針: 手動確認は日常の主な操作と実際に発生した不具合の再現に限定する。
+ドラッグの追加手動確認は終了し、下記の稀なケースを網羅するための依頼は行わない。
+自動テストで確認できるものはそちらを根拠とし、実機未実施・数値未計測は未確認としてvalidation.mdへ残す。
+
 ## 準備
 
 ```bash
