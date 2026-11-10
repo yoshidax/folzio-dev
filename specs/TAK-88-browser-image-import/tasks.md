@@ -170,7 +170,7 @@ Cloud では `swift` を実行できないので、build とテストは macOS C
   `DirectoryTreeViewController.swift`（`validateMenuItem`・`paste`）のペーストの有効・無効を `PasteboardImport.availability` に置き換える
 - [x] T035 [US2] `FileOperationCoordinator.paste(into:move:)`（111 行付近）で、file URL がなければ `ImportSession` を始め、`saveReceived` で保存する。
   移動ペーストでは画像の保存を始めない
-- [ ] T036 [US2] `scripts/dev/check-all.sh` を実行し、Phase 4 をコミットして push する。CI で build とテストの結果を確かめる
+- [x] T036 [US2] `scripts/dev/check-all.sh` を実行し、Phase 4 をコミットして push する。CI で build とテストの結果を確かめる
 - [x] T037 [MANUAL] [US2] 保守者に、quickstart.md の「ペースト」の表と「変わらないこと」を実行してもらい、結果を `checklists/validation.md` に記録する
 
 **Checkpoint**: ドラッグとペーストの両方で保存できる
