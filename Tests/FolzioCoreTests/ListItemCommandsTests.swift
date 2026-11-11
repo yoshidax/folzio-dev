@@ -208,6 +208,34 @@ struct ListItemCommandsTests {
             )
         }
     }
+
+    @Test("Open With accepts one media or zip file outside an archive, including search results")
+    func openWithEligibleFiles() {
+        for kind in [ListItemKind.media(.jpeg), .media(.mp4), .archive] {
+            for searching in [false, true] {
+                let commands = ListItemCommands(
+                    kind: kind,
+                    isBrowsingArchive: false,
+                    isShowingSearchResults: searching
+                )
+                #expect(commands.allowsOpenWithApplication(selectionCount: 1))
+                #expect(!commands.allowsOpenWithApplication(selectionCount: 0))
+                #expect(!commands.allowsOpenWithApplication(selectionCount: 2))
+            }
+        }
+    }
+
+    @Test("Open With excludes folders, parent rows, and zip contents")
+    func openWithUnavailableItems() {
+        for kind in Self.allKinds.map(Optional.some) + [nil] {
+            let inside = ListItemCommands(kind: kind, isBrowsingArchive: true)
+            #expect(!inside.allowsOpenWithApplication(selectionCount: 1))
+        }
+        for kind in [ListItemKind.folder, .directory, .parent] {
+            let outside = ListItemCommands(kind: kind, isBrowsingArchive: false)
+            #expect(!outside.allowsOpenWithApplication(selectionCount: 1))
+        }
+    }
     @Test("New Folder in the list is available in regular folders for every row kind and no selection (FR-212)")
     func newFolderInRegularFolder() {
         for kind in Self.allKinds.map(Optional.some) + [nil] {

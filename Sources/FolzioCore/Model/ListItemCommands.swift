@@ -49,6 +49,18 @@ public struct ListItemCommands: Sendable, Equatable {
         allowsFileOperations && selectionCount == 1
     }
 
+    /// Opening in a chosen application needs one real file outside an archive. Folders have no file extension to
+    /// resolve an application for, while a zip file itself is eligible.
+    public func allowsOpenWithApplication(selectionCount: Int) -> Bool {
+        guard !isBrowsingArchive, selectionCount == 1 else { return false }
+        switch kind {
+        case .media, .archive:
+            return true
+        case .folder, .directory, .parent, nil:
+            return false
+        }
+    }
+
     /// Paste and Move Item Here into the list. Unavailable inside a zip and while showing search results.
     public var allowsPaste: Bool {
         !isBrowsingArchive && !isShowingSearchResults

@@ -301,6 +301,21 @@ final class FileListViewController: NSViewController {
         model.operableSelection
     }
 
+    /// A single listed file that can be opened with an application associated with its extension.
+    var openWithFileURL: URL? {
+        guard !isEditingText,
+              model.selection.selected.count == 1,
+              selectedFileURLs.count == 1,
+              let url = selectedFileURLs.first,
+              !url.pathExtension.isEmpty,
+              let file = model.listing.files.first(where: { $0.url == url }),
+              ListItemCommands(kind: file.kind, isBrowsingArchive: model.isBrowsingArchive)
+                  .allowsOpenWithApplication(selectionCount: 1) else {
+            return nil
+        }
+        return url
+    }
+
     /// Availability of each command based on the focused row and current location.
     var focusedItemCommands: ListItemCommands {
         model.focusedItemCommands
@@ -1086,6 +1101,23 @@ final class FileListViewController: NSViewController {
         guard !isEditingText else { return }
         for url in selectedFileURLs {
             _ = NSWorkspace.shared.open(url)
+        }
+    }
+
+    @objc func openWithApplication(_ sender: NSMenuItem) {
+        guard let target = sender.representedObject as? OpenWithApplicationTarget,
+              openWithFileURL == target.fileURL else { return }
+        quickLook.close()
+        NSWorkspace.shared.open(
+            [target.fileURL],
+            withApplicationAt: target.applicationURL,
+            configuration: NSWorkspace.OpenConfiguration()
+        ) { [weak self] _, error in
+            guard let error else { return }
+            Task { @MainActor [weak self] in
+                guard let window = self?.view.window else { return }
+                NSAlert(error: error).beginSheetModal(for: window)
+            }
         }
     }
 

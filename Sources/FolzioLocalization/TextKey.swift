@@ -158,6 +158,8 @@ public enum TextKey: String, CaseIterable, Sendable {
     // MARK: - Context Menu
 
     case contextCopySingle = "context.copy.single"
+    case contextOpenWith = "context.openWith"
+    case contextNoApplications = "context.noApplications"
     case contextCopyMultiple = "context.copy.multiple"
     case contextPasteHere = "context.pasteHere"
     case contextMovePasteHere = "context.movePasteHere"
@@ -745,6 +747,10 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "History items in the Go menu"
         case .contextCopySingle:
             return "Copy in the context menu (single item). The value is the file name"
+        case .contextOpenWith:
+            return "Submenu for opening the selected file with an associated application"
+        case .contextNoApplications:
+            return "Disabled submenu item when no application is associated with the selected file"
         case .contextCopyMultiple:
             return "Copy in the context menu (multiple items). The wording changes with the count"
         case .contextPasteHere, .contextMovePasteHere:

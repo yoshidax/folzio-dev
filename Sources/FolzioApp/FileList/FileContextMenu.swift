@@ -2,6 +2,11 @@ import AppKit
 import FolzioCore
 import FolzioLocalization
 
+struct OpenWithApplicationTarget {
+    let fileURL: URL
+    let applicationURL: URL
+}
+
 @MainActor
 final class FileContextMenu: NSObject, NSMenuDelegate {
     let menu: NSMenu
@@ -11,6 +16,8 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
     private let pasteItem = NSMenuItem()
     private let movePasteItem = NSMenuItem()
     private let openContainerItem = NSMenuItem()
+    private let openWithItem = NSMenuItem()
+    private let openWithMenu = NSMenu()
     private let goUpItem = NSMenuItem()
     private let copyPathnameItem = NSMenuItem()
     private let newFolderItem = NSMenuItem()
@@ -45,6 +52,7 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
             }
         }
         MainMenu.refreshTitles(in: menu)
+        updateOpenWithMenu()
         let urls = host?.selectedFileURLs ?? []
         if urls.count == 1, let name = urls.first?.lastPathComponent {
             copyItem.title = l10n.text(.contextCopySingle, .text(name))
@@ -65,8 +73,41 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
         movePasteItem.isEnabled = allowsPaste && available.allowsPaste(move: true)
     }
 
+    private func updateOpenWithMenu() {
+        openWithMenu.removeAllItems()
+        guard let fileURL = host?.openWithFileURL else {
+            openWithItem.isEnabled = false
+            return
+        }
+        openWithItem.isEnabled = true
+        let applications = Array(Set(NSWorkspace.shared.urlsForApplications(toOpen: fileURL)))
+            .sorted {
+                let first = $0.deletingPathExtension().lastPathComponent
+                let second = $1.deletingPathExtension().lastPathComponent
+                return first.localizedStandardCompare(second) == .orderedAscending
+            }
+        guard !applications.isEmpty else {
+            let emptyItem = NSMenuItem(title: l10n.text(.contextNoApplications), action: nil, keyEquivalent: "")
+            emptyItem.isEnabled = false
+            openWithMenu.addItem(emptyItem)
+            return
+        }
+        for applicationURL in applications {
+            let title = applicationURL.deletingPathExtension().lastPathComponent
+            let item = NSMenuItem(
+                title: title,
+                action: #selector(FileListViewController.openWithApplication(_:)),
+                keyEquivalent: ""
+            )
+            item.target = host
+            item.representedObject = OpenWithApplicationTarget(fileURL: fileURL, applicationURL: applicationURL)
+            openWithMenu.addItem(item)
+        }
+    }
+
     private func buildMenu() {
         menu.autoenablesItems = true
+        openWithMenu.autoenablesItems = false
 
         openContainerItem.title = l10n.text(.menuFileShowContents)
         MainMenu.bind(openContainerItem, .menuFileShowContents)
@@ -94,6 +135,10 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
             keyEquivalent: "",
             modifiers: [.command]
         )
+        openWithItem.title = l10n.text(.contextOpenWith)
+        MainMenu.bind(openWithItem, .contextOpenWith)
+        openWithItem.submenu = openWithMenu
+        menu.addItem(openWithItem)
         menu.addItem(.separator())
         addItem(
             key: .menuFileTrash,

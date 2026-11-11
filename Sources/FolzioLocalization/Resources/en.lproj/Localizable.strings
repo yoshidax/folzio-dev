@@ -322,6 +322,12 @@
 /* Copy in the context menu (single item). %1$@ is the file name */
 "context.copy.single" = "Copy “%1$@”";
 
+/* Submenu for opening the selected file with an associated application */
+"context.openWith" = "Open With";
+
+/* Disabled submenu item when no application is associated with the selected file */
+"context.noApplications" = "No Applications Available";
+
 /* Paste in the directory tree's context menu */
 "context.pasteHere" = "Paste Here";
 

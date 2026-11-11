@@ -322,6 +322,12 @@
 /* Copy in the context menu (single item). %1$@ is the file name */
 "context.copy.single" = "\"%1$@\" をコピー";
 
+/* Submenu for opening the selected file with an associated application */
+"context.openWith" = "このアプリケーションで開く";
+
+/* Disabled submenu item when no application is associated with the selected file */
+"context.noApplications" = "関連するアプリケーションがありません";
+
 /* Paste in the directory tree's context menu */
 "context.pasteHere" = "ここにペースト";
 

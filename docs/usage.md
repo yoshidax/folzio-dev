@@ -140,7 +140,7 @@ For a first look, see the [README](../README.md).
 - Videos support playback, looping, and an autoplay setting.
   Space plays or pauses while the preview's video has the focus.
 
-### Quick Look and Default App
+### Quick Look and Opening in Apps
 
 - Press Space in the file list to Quick Look the selected media.
   - It zooms from the row or thumbnail. Press Space again to close it.
@@ -150,6 +150,9 @@ For a first look, see the [README](../README.md).
   - Not available while renaming, in full screen, during a slideshow, or inside a zip.
 - Double-click a media row or thumbnail to open it in its default app.
   Inside a zip, this does nothing.
+- Select one file and choose an app from "Open With" in its context menu to open it in that app.
+  This works for media and zip files. It is unavailable for multiple selections, folders, and items inside a zip.
+  If no app is associated with the file, the submenu says so.
 
 ### Zoom
 
@@ -502,6 +505,7 @@ For a first look, see the [README](../README.md).
 | Rename (in place) | Return |
 | Move to Trash | ⌘Delete |
 | Open the selected item | ⌘O |
+| Open a selected file in another app | "Open With" in the context menu |
 | Show in Finder | Context menu / File menu |
 | Copy as Pathname | ⌥⌘C, Edit menu, context menu |
 
