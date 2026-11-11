@@ -112,6 +112,7 @@ public enum TextKey: String, CaseIterable, Sendable {
     case menuFileNewFolder = "menu.file.newFolder"
     case menuFileOpen = "menu.file.open"
     case menuFileOpenWith = "menu.file.openWith"
+    case menuFileOpenWithDefaultSuffix = "menu.file.openWith.defaultSuffix"
     case menuFileShowContents = "menu.file.showContents"
     case menuFileEnclosingFolder = "menu.file.enclosingFolder"
     case menuFileRevealInFinder = "menu.file.revealInFinder"
@@ -731,6 +732,8 @@ public enum TextKey: String, CaseIterable, Sendable {
              .menuFileRevealInFinder, .menuFileAddToFavorites, .menuFileFind,
              .menuFileTrash, .menuFileRemoveFromFavorites:
             return "File menu items (the Trash and Remove from Favorites items swap depending on the state)"
+        case .menuFileOpenWithDefaultSuffix:
+            return "Suffix that identifies the default application in the Open With submenu"
         case .menuEditUndo, .menuEditRedo, .menuEditCut, .menuEditCopy, .menuEditPaste,
              .menuEditMovePaste, .menuEditCopyPathname, .menuEditDuplicate, .menuEditRename, .menuEditSelectAll:
             return "Edit menu items"

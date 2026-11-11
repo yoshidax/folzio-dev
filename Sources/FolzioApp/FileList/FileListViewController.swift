@@ -1103,7 +1103,7 @@ final class FileListViewController: NSViewController {
         return commands.allowsOpenWith(selectionCount: 1) ? url : nil
     }
 
-    /// Rebuilds the context or File menu from the OS association list for the current single file (FR-368–371).
+    /// Rebuilds the context or File menu from the OS association list for the current single file (FR-368–375).
     func updateOpenWithMenu(_ parent: NSMenuItem) {
         let submenu = parent.submenu ?? NSMenu(title: parent.title)
         parent.submenu = submenu
@@ -1117,17 +1117,35 @@ final class FileListViewController: NSViewController {
         let applications = NSWorkspace.shared.urlsForApplications(toOpen: fileURL).filter { url in
             seen.insert(url.standardizedFileURL).inserted && FileManager.default.fileExists(atPath: url.path)
         }
-        let names = applications.map(applicationName)
+        let defaultApplicationURL = NSWorkspace.shared.urlForApplication(toOpen: fileURL)?.standardizedFileURL
+        let defaultIndex = defaultApplicationURL.flatMap { defaultURL in
+            applications.firstIndex { $0.standardizedFileURL == defaultURL }
+        }
+        var orderedApplications = applications
+        if let defaultIndex, defaultIndex != 0 {
+            orderedApplications.insert(orderedApplications.remove(at: defaultIndex), at: 0)
+        }
+        let names = orderedApplications.map(applicationName)
         let nameCounts = names.reduce(into: [String: Int]()) { counts, name in
             counts[name, default: 0] += 1
         }
-        for (applicationURL, name) in zip(applications, names) {
-            let title = nameCounts[name, default: 0] > 1
+        for (index, (applicationURL, name)) in zip(orderedApplications, names).enumerated() {
+            var title = nameCounts[name, default: 0] > 1
                 ? "\(name) (\(applicationURL.deletingLastPathComponent().path))" : name
+            if index == 0, defaultIndex != nil {
+                title += l10n.text(.menuFileOpenWithDefaultSuffix)
+            }
             let item = NSMenuItem(title: title, action: #selector(openWithApplication(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = OpenWithChoice(fileURL: fileURL, applicationURL: applicationURL)
+            if let icon = NSWorkspace.shared.icon(forFile: applicationURL.path).copy() as? NSImage {
+                icon.size = NSSize(width: 16, height: 16)
+                item.image = icon
+            }
             submenu.addItem(item)
+            if index == 0, defaultIndex != nil, orderedApplications.count > 1 {
+                submenu.addItem(.separator())
+            }
         }
         parent.isEnabled = !applications.isEmpty
     }

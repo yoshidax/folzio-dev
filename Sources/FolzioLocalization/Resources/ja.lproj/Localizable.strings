@@ -193,6 +193,9 @@
 /* File menu item and file context submenu */
 "menu.file.openWith" = "このアプリケーションで開く";
 
+/* Suffix that identifies the default application in the Open With submenu */
+"menu.file.openWith.defaultSuffix" = "（デフォルト）";
+
 /* File menu items */
 "menu.file.showContents" = "中を表示";
 

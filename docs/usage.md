@@ -152,6 +152,7 @@ For a first look, see the [README](../README.md).
   Inside a zip, this does nothing.
 - Select one media file or zip file, then choose "Open With" from its context menu to open it in an associated app.
   The same command is available from the File menu.
+  The default app appears first, followed by other apps, with each app's icon.
   It is unavailable for multiple selections, folders, and items inside a zip.
 
 ### Zoom

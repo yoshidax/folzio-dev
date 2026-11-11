@@ -193,6 +193,9 @@
 /* File menu item and file context submenu */
 "menu.file.openWith" = "Open With";
 
+/* Suffix that identifies the default application in the Open With submenu */
+"menu.file.openWith.defaultSuffix" = " (Default)";
+
 /* File menu items */
 "menu.file.showContents" = "Show Contents";
 
