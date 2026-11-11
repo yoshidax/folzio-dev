@@ -1135,12 +1135,11 @@ final class FileListViewController: NSViewController {
     @objc private func openWithApplication(_ sender: NSMenuItem) {
         guard let choice = sender.representedObject as? OpenWithChoice,
               openWithFileURL == choice.fileURL else { return }
-        Task { @MainActor [weak self] in
-            do {
-                _ = try await NSWorkspace.shared.open(
-                    [choice.fileURL], withApplicationAt: choice.applicationURL, configuration: .init()
-                )
-            } catch {
+        NSWorkspace.shared.open(
+            [choice.fileURL], withApplicationAt: choice.applicationURL, configuration: .init()
+        ) { [weak self] _, error in
+            guard let error else { return }
+            Task { @MainActor [weak self] in
                 self?.showOpenWithFailure(error, applicationURL: choice.applicationURL)
             }
         }
