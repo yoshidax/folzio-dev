@@ -12,7 +12,6 @@ private final class FileMenuUpdater: NSObject, NSMenuDelegate {
         }
         if menu.identifier?.rawValue == "menu.file",
            let openWithItem = menu.items.first(where: { $0.identifier?.rawValue == "localization.\(TextKey.menuFileOpenWith.rawValue)" }) {
-            NSLog("TAK-97 probe: File menu Open With refresh")
             let target = NSApp.target(forAction: #selector(FileListViewController.open(_:)), to: nil, from: nil)
                 as? FileListViewController
             target?.updateOpenWithMenu(openWithItem)

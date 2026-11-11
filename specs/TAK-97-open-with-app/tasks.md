@@ -43,6 +43,12 @@
 - [x] T011 `scripts/dev/check-all.sh` を実行し、`specs/TAK-97-open-with-app/quickstart.md` に結果を記録する
 - [x] T015 [MANUAL] 保守者が Cloud 指定の `work` から `feature/tak-97-open-with-app` に変えることを承認する（2026-11-11、このチャット）
 - [x] T012 作業ブランチを push して macOS CI の `swift build` と `swift test` を確認し、`specs/TAK-97-open-with-app/quickstart.md` に結果を記録する（CI 42977395629 の build と通常テスト 1172 件は成功。性能 27 件中 3 件は失敗を許容する工程で閾値超過）
+- [x] T016 `docs/usage.md` と `docs/usage.ja.md` に対象条件・右クリックと「ファイル」メニューの操作・キーボード経路を同じ内容で追加する（0a8202c）
+- [x] T017 ショートカット照合時の Open With 更新を一時ログで調査し、結果確認後にログを削除する（754d0f0 で調査。⌘C・⌘↓ と「ファイル」メニュー表示でログを確認）
+- [x] T018 同じコードで macOS CI の性能テストを再実行し、`quickstart.md` に結果を追記する（CI 42978586843）
+- [ ] T019 [MANUAL] ショートカット照合時の関連アプリ問い合わせを避ける設計を保守者が承認する
+- [ ] T020 既定アプリの「（デフォルト）」表示・区切り線と各アプリの 16pt アイコンを追加する（保守者が 2026-11-11 に両方追加を承認）
+- [ ] T021 承認された設計でショートカット照合時の関連アプリ問い合わせを避ける
 - [ ] T013 [MANUAL] 保守者が `scripts/make-app.sh` と `open .build/Folzio.app` で3ペインと `specs/TAK-97-open-with-app/quickstart.md` の操作を確認する
 - [ ] T014 `specs/product/file-list.md` と `specs/product/contracts/keyboard-and-menus.md` に決定した要件を反映し、仕様検査を実行する（PR 最後の作業）
 

@@ -16,7 +16,7 @@
 
 **Storage**: なし。OS の既定アプリ設定を変更しない
 
-**Testing**: FolzioCore の XCTest、macOS CI の build/test、保守者の GUI 起動確認
+**Testing**: FolzioCore の Swift Testing、macOS CI の build/test、保守者の GUI 起動確認
 
 **Target Platform**: macOS 15 以降の既存ターゲット
 
