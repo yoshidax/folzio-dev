@@ -12,12 +12,6 @@ private final class FileMenuUpdater: NSObject, NSMenuDelegate {
         }
         if menu.identifier?.rawValue == "menu.file",
            let openWithItem = menu.items.first(where: { $0.identifier?.rawValue == "localization.\(TextKey.menuFileOpenWith.rawValue)" }) {
-            // AppKit also requests menu updates while matching Command key equivalents.
-            if let event = NSApp.currentEvent,
-               event.type == .keyDown,
-               event.modifierFlags.contains(.command) {
-                return
-            }
             let target = NSApp.target(forAction: #selector(FileListViewController.open(_:)), to: nil, from: nil)
                 as? FileListViewController
             target?.updateOpenWithMenu(openWithItem)
