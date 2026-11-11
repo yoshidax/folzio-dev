@@ -9,7 +9,7 @@ Cloud Agent（Claude / Codex）が、Cloud 環境で feature またはバグ修�
 
 ## 全体の流れ
 
-1. Issue を指定されたら、Linear で内容を読み、`In Progress` にして、feature を始める（1、2 章）
+1. Issue を ID・URL・本文のどの形式で渡されても、対象を特定して Linear で内容を読み、`In Progress` にして、feature を始める（1、2 章）
 2. `speckit-specify` → `speckit-plan` → `speckit-tasks` → `speckit-analyze` を順に実行し、**設計のレビューを保守者に受ける**。承認の前に実装しない
 3. 実装し、Cloud でできる検査を行い、作業ブランチに push する（5、6 章）
 4. 保守者が依頼したら、PR を作り、Linear を `In Review` にする（2、3 章）
@@ -21,12 +21,25 @@ Cloud Agent（Claude / Codex）が、Cloud 環境で feature またはバグ修�
 ## 1 feature の始め方
 
 1. **最新の `master` を取り込む**。ローカルの `master` ブランチは古いことがあるので、`git fetch origin master` の後、`origin/master` が作業ブランチの祖先であることを確かめる（`git merge-base --is-ancestor origin/master HEAD`）。祖先でなければ `git merge origin/master` で取り込む。履歴は書き換えない。
-2. **Issue を読む**。Linear の MCP（`get_issue`）で、内容と関連する情報を読む（[agents/linear.md](agents/linear.md)）。
+2. **Issue を特定して読む**。ID、URL、本文のどれを渡されても同じ手順で扱う。ID・URL からは対象を直接確認し、本文だけならタイトルや特徴的な文言で Linear を検索して候補を照合する。対象が一意に決まらなければ保守者に確認する。特定後は Linear の MCP（`get_issue`）で内容と関連情報を読む（[agents/linear.md](agents/linear.md)）。本文だけを渡されたことを、以後の工程を省く理由にしない。
 3. **作業ブランチ上で作業する**。Cloud が指定した作業ブランチ（`git branch --show-current`）をそのまま使い、feature 用のブランチを新しく作らない。git 拡張の `before_specify` フック（`speckit.git.feature`。ブランチを作る）は**実行しない**。
 4. **feature ディレクトリを指定する**。`specs/TAK-<nn>-<slug>` を `SPECIFY_FEATURE_DIRECTORY` として明示して、`speckit-specify` を実行する。`<slug>` は 2〜4 語の英小文字とハイフン。ブランチ名とディレクトリ名は独立している。`specs/TAK-<nn>-*` が既にあるときは、上書きせず保守者に確認する。
 5. `speckit-specify` の前に、`specs/product/README.md` と関連する現行の仕様を読む。仕様書の `Input` に Issue の URL を記録する。
 6. `.specify/feature.json` が、作った feature を指す。このファイルは `.specify/.gitignore` で管理対象外になっているため、コミットされず、並行する PR の間で競合しない。以後の `speckit-plan`、`speckit-tasks`、`speckit-analyze` は、このファイルから feature を見つける。
 7. 作業の区切りでコミットし、作業ブランチに push する（`git push -u origin <ブランチ>`。6 章）。
+
+### 実装前の設計ゲート
+
+Issue の ID・URL・本文から対象を特定した後は、入力形式によらず次を順に行う。保守者からの「対応してください」などの作業依頼は、設計レビューの承認や省略許可として扱わない。
+
+1. `speckit-specify` で feature の `spec.md` を作り、`speckit-plan` で `plan.md`、`speckit-tasks` で `tasks.md` を作る。
+2. `speckit-analyze` を実行し、仕様・計画・タスクの整合性と指摘を確認する。手作成の計画文書やファイルの存在を、これらの工程を実行した証拠にしない。
+3. 実装前に `.specify/feature.json` が今回の feature ディレクトリを指し、その中に `spec.md`・`plan.md`・`tasks.md` があることを確認する。状態ファイルや成果物が欠けていれば、該当する工程からやり直す。分析結果も得られていなければ `speckit-analyze` を実行する。
+4. 成果物の差分、分析結果、残る判断事項を保守者に提示して設計レビューを依頼する。保守者がこの設計について明示的に実装を承認するまで、`speckit-implement` やアプリ・手順の実装を始めない。承認されず修正を求められたら、設計文書を直して再分析し、再レビューを受ける。
+
+成果物の欠落は既存の前提確認と上の手順で検出する。現時点では専用の検査スクリプトを追加しない。ファイルの存在だけでは、保守者のレビューや承認を確認できないため、承認は会話での明示的な回答を確認する。
+
+たとえば ID や URL を添えずに「ファイルリストでファイルを選択したときの右クリックメニューに、Finder と同様の『このアプリケーションで開く』を追加する。対応してください」と渡された場合も、まず候補を検索して対象 Issue を確認し、上の 4 項目を経てから実装する。本文から対象を特定できないときは、対象の確認を待つ。
 
 ### Codex Cloud の Git 通信
 
