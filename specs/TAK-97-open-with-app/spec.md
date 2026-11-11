@@ -1,10 +1,13 @@
 # Feature Specification: 関連アプリケーションで開く
 
+> **移行済み（2026-11-11）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-97 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+
 **Feature Branch**: `feature/tak-97-open-with-app`（Cloud の `work` から保守者の承認を得て変更）
 
 **Created**: 2026-11-11
 
-**Status**: Draft
+**Status**: Approved — product へ移行済み（未確認の検証範囲は tasks.md を参照）
 
 **Input**: [TAK-97](https://linear.app/takyoshida/issue/TAK-97/)「ファイルの右クリックメニューから関連アプリを選んで開く」。
 

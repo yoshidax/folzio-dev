@@ -2,7 +2,7 @@
 
 ## R1 候補の取得
 
-**Decision**: `NSWorkspace.urlsForApplications(toOpen: URL)` に選択ファイルの URL を渡す。返るアプリ URL を候補の識別子として扱い、OS の適合順を保つ。URL が重複する場合だけ除去する。
+**Decision**: `NSWorkspace.urlsForApplications(toOpen: URL)` に選択ファイルの URL を渡す。返るアプリ URL を候補の識別子として扱い、重複を除く。既定アプリを先頭に置き、残りは OS の適合順を保つ。
 
 **Reason**: [Apple の API 文書](https://developer.apple.com/documentation/appkit/nsworkspace/urlsforapplications%28toopen%3A%29-ualk) は、URL を開ける利用可能なアプリの一覧を返し、適合度順に並べると説明している。拡張子だけから独自に候補を推測する必要がない。
 
