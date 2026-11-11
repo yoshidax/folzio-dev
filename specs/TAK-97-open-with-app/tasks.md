@@ -52,7 +52,7 @@
 - [x] T021 承認された設計でショートカット照合時の関連アプリ問い合わせを避ける（d297e14 で実装、T024 で撤回）
 - [x] T023 更新抑制の追加後に macOS CI の build と通常テストを確認し、`quickstart.md` に記録する（CI 43003841866）
 - [x] T024 保守者の体感評価とショートカットのカスタマイズ条件を踏まえ、⌘ キーに限った更新抑制を撤回する（2026-11-11、このチャット）
-- [ ] T013 [MANUAL] 保守者が `scripts/make-app.sh` と `open .build/Folzio.app` で3ペインと `specs/TAK-97-open-with-app/quickstart.md` の操作を確認する
+- [x] T013 [MANUAL] 保守者が `scripts/make-app.sh` と `open .build/Folzio.app` で3ペインと `specs/TAK-97-open-with-app/quickstart.md` の操作を確認する（2026-11-11、このチャットで確認完了と報告）
 - [x] T014 `specs/product/file-list.md` と `specs/product/contracts/keyboard-and-menus.md` に決定した要件を反映し、仕様検査を実行する（保守者が 2026-11-11 に差分を承認）
 
 ## Dependencies & Execution Order
