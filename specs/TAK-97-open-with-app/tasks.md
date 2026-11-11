@@ -50,7 +50,7 @@
 - [x] T020 既定アプリの「（デフォルト）」表示・区切り線と各アプリの 16pt アイコンを追加する（保守者が 2026-11-11 に両方追加を承認。検証は T022・T013）
 - [x] T022 既定アプリ表示とアイコン追加後の macOS CI で build と通常テストを確認し、`quickstart.md` に記録する（CI 42986412381）
 - [x] T021 承認された設計でショートカット照合時の関連アプリ問い合わせを避ける（CI と GUI の確認は T023・T013）
-- [ ] T023 更新抑制の追加後に macOS CI の build と通常テストを確認し、`quickstart.md` に記録する
+- [x] T023 更新抑制の追加後に macOS CI の build と通常テストを確認し、`quickstart.md` に記録する（CI 43003841866）
 - [ ] T013 [MANUAL] 保守者が `scripts/make-app.sh` と `open .build/Folzio.app` で3ペインと `specs/TAK-97-open-with-app/quickstart.md` の操作を確認する
 - [ ] T014 `specs/product/file-list.md` と `specs/product/contracts/keyboard-and-menus.md` に決定した要件を反映し、仕様検査を実行する（PR 最後の作業）
 
