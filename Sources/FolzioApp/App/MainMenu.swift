@@ -2,8 +2,8 @@ import AppKit
 import FolzioCore
 import FolzioLocalization
 
-/// Refreshes File and Edit menu state when a menu opens. The tree can change the Trash title during validation,
-/// and the Open With submenu depends on the current file list selection.
+/// Refreshes File and Edit menu state when AppKit requests an update. The tree can change the Trash title during
+/// validation, and the Open With submenu depends on the current file list selection.
 @MainActor
 private final class FileMenuUpdater: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
@@ -12,6 +12,12 @@ private final class FileMenuUpdater: NSObject, NSMenuDelegate {
         }
         if menu.identifier?.rawValue == "menu.file",
            let openWithItem = menu.items.first(where: { $0.identifier?.rawValue == "localization.\(TextKey.menuFileOpenWith.rawValue)" }) {
+            // AppKit also requests menu updates while matching Command key equivalents.
+            if let event = NSApp.currentEvent,
+               event.type == .keyDown,
+               event.modifierFlags.contains(.command) {
+                return
+            }
             let target = NSApp.target(forAction: #selector(FileListViewController.open(_:)), to: nil, from: nil)
                 as? FileListViewController
             target?.updateOpenWithMenu(openWithItem)
