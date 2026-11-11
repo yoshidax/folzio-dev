@@ -1,6 +1,6 @@
 # Implementation Plan: 関連アプリケーションで開く
 
-**Branch**: `work` | **Date**: 2026-11-11 | **Spec**: [spec.md](spec.md)
+**Branch**: `feature/tak-97-open-with-app` | **Date**: 2026-11-11 | **Spec**: [spec.md](spec.md)
 
 **Input**: TAK-97 と現行の file-list.md、contracts/keyboard-and-menus.md
 

@@ -1,6 +1,6 @@
 # Feature Specification: 関連アプリケーションで開く
 
-**Feature Branch**: `work`（Cloud 指定）
+**Feature Branch**: `feature/tak-97-open-with-app`（Cloud の `work` から保守者の承認を得て変更）
 
 **Created**: 2026-11-11
 
