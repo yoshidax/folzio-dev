@@ -6,7 +6,7 @@
 2. `scripts/dev/check-all.sh` を実行する。
 3. 作業ブランチの macOS CI で `swift build` と `swift test` を確認する。
 
-**実施結果（2026-11-11）**: `scripts/dev/check-all.sh` は成功。Swift の build と test は macOS CI 待ち。
+**実施結果（2026-11-11）**: `scripts/dev/check-all.sh` は成功。[macOS CI 42977395629](https://github.com/yoshidax/folzio-dev/actions/runs/42977395629) で `swift build` と通常テスト 1172 件が成功。性能テストは 27 件中 3 件が閾値を超過した。24MP JPEG デコード 1.288 秒（基準 0.5 秒）、スライドショー候補抽出 50,000 件 0.109 秒（基準 0.1 秒）・zip 200,000 件 0.262 秒（基準 0.2 秒）。性能テストは CI の失敗を許容する工程で、今回変更したファイルには該当するデコード・スライドショー処理がない。同じコードで再実行し、測定のぶれを確認する。
 
 ## [MANUAL] 保守者の macOS 確認
 
