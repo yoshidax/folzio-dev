@@ -434,7 +434,7 @@ public enum TextKey: String, CaseIterable, Sendable {
             return [.text]
         case .contextCopySingle:
             return [.text]
-        case .dialogExtensionMessage, .dialogOperationFailureLine:
+        case .dialogExtensionMessage, .dialogOperationFailureLine, .dialogOpenWithDetail:
             return [.text, .text]
         case .searchBarResults, .searchBarSearching:
             return [.text, .text, .text]
