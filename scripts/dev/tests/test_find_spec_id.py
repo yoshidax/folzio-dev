@@ -12,22 +12,40 @@ SCRIPT = "scripts/dev/find-spec-id.sh"
 
 
 class FindSpecIdTests(unittest.TestCase):
-    def run_find(self, files, *ids, cwd=None):
-        """files（パス → 内容）を置いた一時リポジトリで、スクリプトを実行する。"""
+    def run_find(self, files, *ids, base_files=None, cwd=None):
+        """files（パス → 内容）を置いた一時リポジトリで、スクリプトを実行する。
+
+        base_files を渡すと git のリポジトリにし、その内容を比べる基準（master）としてコミットしてから、
+        files を作業ツリーに置く。渡さないときは git のリポジトリにしない。
+        """
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "scripts/dev").mkdir(parents=True)
-            shutil.copy2(ROOT / SCRIPT, root / SCRIPT)
-            for name, text in files.items():
-                path = root / name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(text, encoding="utf-8")
+            for script in (SCRIPT, "scripts/dev/base-ref.sh"):
+                shutil.copy2(ROOT / script, root / script)
+            if base_files is not None:
+                self.write_files(root, base_files)
+                self.commit_base(root)
+            self.write_files(root, files)
             return subprocess.run(
                 [str(root / SCRIPT), *ids],
                 capture_output=True,
                 text=True,
                 cwd=cwd or directory,
             )
+
+    def write_files(self, root, files):
+        for name, text in files.items():
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+
+    def commit_base(self, root):
+        def git(*args):
+            subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
+        git("init", "-q", "-b", "master")
+        git("add", "-A")
+        git("-c", "user.name=test", "-c", "user.email=test@example.com", "commit", "-q", "-m", "base")
 
     def test_prints_markdown_link_to_bullet_definition(self):
         result = self.run_find(
@@ -68,12 +86,55 @@ class FindSpecIdTests(unittest.TestCase):
     def test_ignores_mentions_outside_definitions(self):
         files = {
             "specs/product/a.md": "FR-080 を参照する。\n- 詳細は **FR-080** にある。\n- **FR-0800**: 別の ID。\n",
-            "specs/001-old/spec.md": "- **FR-080**: 凍結した feature の定義。\n",
+            ".specify/bugs/x/assessment.md": "- **FR-080**（a.md）: bug の記録での引用。\n",
         }
         result = self.run_find(files, "FR-080")
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stdout, "")
         self.assertIn("FR-080", result.stderr)
+
+    def test_finds_new_id_in_feature_in_progress(self):
+        base = {"specs/product/a.md": "- **FR-001**: 製品。\n"}
+        files = {"specs/TAK-99-new/spec.md": "# spec\n\n- **FR-002**: 作業中の feature で足した。\n"}
+        result = self.run_find(files, "FR-002", "FR-001", base_files=base)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            result.stdout.splitlines(),
+            ["[FR-002](specs/TAK-99-new/spec.md#L3)", "[FR-001](specs/product/a.md#L1)"],
+        )
+
+    def test_prefers_feature_in_progress_over_product(self):
+        base = {"specs/product/a.md": "- **FR-001**: 変更前。\n"}
+        files = {"specs/TAK-99-new/spec.md": "- **FR-001**: 変更後。\n"}
+        result = self.run_find(files, "FR-001", base_files=base)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "[FR-001](specs/TAK-99-new/spec.md#L1)\n")
+
+    def test_ignores_feature_already_in_base(self):
+        base = {
+            "specs/product/a.md": "- **FR-001**: 反映済み。\n",
+            "specs/TAK-98-done/spec.md": "- **FR-001**: 凍結した記録。\n",
+        }
+        result = self.run_find({}, "FR-001", base_files=base)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "[FR-001](specs/product/a.md#L1)\n")
+
+    def test_ignores_features_without_base_ref(self):
+        files = {"specs/product/a.md": "- **FR-001**: 製品。\n", "specs/TAK-99-new/spec.md": "- **FR-001**: 判定できない。\n"}
+        result = self.run_find(files, "FR-001")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "[FR-001](specs/product/a.md#L1)\n")
+
+    def test_searches_only_spec_md_of_feature_in_progress(self):
+        base = {"specs/product/a.md": "- **FR-001**: 製品。\n"}
+        files = {
+            "specs/TAK-99-new/spec.md": "# spec\n",
+            "specs/TAK-99-new/plan.md": "- **FR-002**: plan での引用。\n",
+            "specs/TAK-99-new/tasks.md": "- **FR-002**: tasks での引用。\n",
+        }
+        result = self.run_find(files, "FR-002", base_files=base)
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, "")
 
     def test_reports_missing_id_after_printing_the_others(self):
         result = self.run_find({"specs/product/a.md": "- **FR-001**: あり。\n"}, "FR-999", "FR-001")
@@ -97,7 +158,8 @@ class FindSpecIdTests(unittest.TestCase):
             root = Path(directory).resolve() / "repo"
             for name in (SCRIPT, "specs/product/a.md"):
                 (root / name).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(ROOT / SCRIPT, root / SCRIPT)
+            for script in (SCRIPT, "scripts/dev/base-ref.sh"):
+                shutil.copy2(ROOT / script, root / script)
             (root / "specs/product/a.md").write_text("- **FR-001**: あり。\n", encoding="utf-8")
             for args in (("--absolute", "FR-001"), ("FR-001", "--absolute")):
                 with self.subTest(args=args):
@@ -110,7 +172,8 @@ class FindSpecIdTests(unittest.TestCase):
             root = Path(directory).resolve() / "my repo"
             (root / "scripts/dev").mkdir(parents=True)
             (root / "specs/product").mkdir(parents=True)
-            shutil.copy2(ROOT / SCRIPT, root / SCRIPT)
+            for script in (SCRIPT, "scripts/dev/base-ref.sh"):
+                shutil.copy2(ROOT / script, root / script)
             (root / "specs/product/a.md").write_text("- **FR-001**: あり。\n", encoding="utf-8")
             result = subprocess.run([str(root / SCRIPT), "--absolute", "FR-001"], capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)

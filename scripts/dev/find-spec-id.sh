@@ -1,11 +1,18 @@
 #!/bin/bash
-# specs/product/ で ID（FR・SC・EC・A・USn-ASm）を定義している場所への Markdown リンクを出力する。
+# 仕様の ID（FR・SC・EC・A・USn-ASm）を定義している場所への Markdown リンクを出力する。
 #
 #   scripts/dev/find-spec-id.sh [--absolute] FR-080 US16-AS1 …
 #
 # エージェントがメッセージで ID を挙げるとき、出力をそのまま貼るために使う（AGENTS.md の「書くときの規則」）。
 # 出力は `[FR-080](specs/product/search.md#L8)` の形で、パスはリポジトリのルートからの相対パス。
 # --absolute を付けると、リポジトリのルートの絶対パスから始める（Codex Cloud は相対パスのリンクを開けないため）。
+#
+# 探す場所:
+# - 作業中の feature の spec.md。作業中の feature は、specs/ の下の feature のディレクトリのうち、
+#   比べる基準（scripts/dev/base-ref.sh の origin/master、なければ master）にまだないもの
+#   - ここで見つかった ID は、specs/product/ に同じ ID があっても、作業中の feature の定義だけを出力する
+#   - 基準がないとき（git のリポジトリの外など）は、作業中の feature を判定できないので探さない
+# - specs/product/ の下のすべての Markdown
 # 定義は、行頭の箇条書き（`- **FR-080**`）か番号付きリスト（`2. **US30-AS2**`）の太字の ID とし、本文中の言及は数えない。
 # 見つからない ID は標準エラーに出して、ほかの ID を出力した後に 1 で終わる。
 # 引数に ID がないか、ID の形でない引数や知らないオプションがあれば 2 で終わる。
@@ -33,10 +40,37 @@ for arg in "$@"; do
 done
 ((${#ids[@]} != 0)) || usage
 
+# 作業中の feature の spec.md を集める
+feature_specs=()
+if base=$(scripts/dev/base-ref.sh 2>/dev/null); then
+    for spec in specs/*/spec.md; do
+        [ -f "$spec" ] || continue
+        dir=$(dirname "$spec")
+        [ "$dir" = "specs/product" ] && continue
+        if ! git cat-file -e "$base:$dir" 2>/dev/null; then
+            feature_specs+=("$spec")
+        fi
+    done
+fi
+
+# 引数の場所から ID の定義を探し、`path:line` を 1 行ずつ出力する
+find_definitions() {
+    local id="$1"
+    shift
+    # grep -rnH の出力は `path:line:本文`。本文を捨てて `path:line` だけにする。
+    # -H は、ファイルが 1 つだけのときもファイル名を出力させるため
+    grep -rnHE --include='*.md' "^[[:space:]]*(-|[0-9]+\.) \*\*${id}\*\*" "$@" | cut -d: -f1,2 | sort || true
+}
+
 status=0
 for id in "${ids[@]}"; do
-    # grep -rn の出力は `path:line:本文`。本文を捨てて `path:line` だけにする
-    matches=$(grep -rnE --include='*.md' "^[[:space:]]*(-|[0-9]+\.) \*\*${id}\*\*" specs/product | cut -d: -f1,2 | sort || true)
+    matches=""
+    if ((${#feature_specs[@]} != 0)); then
+        matches=$(find_definitions "$id" "${feature_specs[@]}")
+    fi
+    if [ -z "$matches" ]; then
+        matches=$(find_definitions "$id" specs/product)
+    fi
     if [ -z "$matches" ]; then
         echo "見つかりません: $id" >&2
         status=1

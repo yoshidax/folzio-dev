@@ -8,9 +8,18 @@
 
 ## 規則の範囲
 
-- 対象: `specs/product/` の ID（`FR-xxx`・`SC-xxx`・`EC-xx`・`A-xx`・`USn-ASm`）と、Linear の Issue ID（`TAK-xx`）
-- 対象外: 凍結した feature（`specs/NNN-*`・`specs/TAK-*`）の ID、憲章の原則
+- 対象: 仕様の ID（`FR-xxx`・`SC-xxx`・`EC-xx`・`A-xx`・`USn-ASm`）と、Linear の Issue ID（`TAK-xx`）
+  - 仕様の ID は、`specs/product/` と、作業中の feature の `spec.md` で定義されたもの
+  - 作業中の feature は、`specs/` の下の feature のディレクトリのうち、`origin/master`（なければ `master`）にまだないもの。
+    spec を作るフロー（`speckit-specify` から実装まで）で、まだ `specs/product/` にない ID を挙げるため
+  - 作業中の feature が `specs/product/` の既存の ID を定義し直しているときは、作業中の feature の定義だけにリンクする。
+    そのフローで話題になっているのは変更後の定義のため
+- 対象外
+  - 作業中の feature の `spec.md` 以外の文書（`plan.md`・`tasks.md` のタスクの番号など）
+  - 凍結した feature（`specs/NNN-*`・`specs/TAK-*`）の ID、憲章の原則
+  - bug 拡張の記録（`.specify/bugs/`）。独自の ID を定義せず、仕様の ID を引用するだけなので、引用された ID を上の対象としてリンクする
 - リンクにするのは各メッセージの初出だけ。同じ ID の繰り返しでトークンを増やさないため
+- 会話の途中で仕様を変えると、過去のメッセージのリンクが別の行を指すことがある。これは許容する（保守者の判断）
 - 仕様の ID は、`scripts/dev/find-spec-id.sh <ID>…` の出力（`[FR-080](specs/product/search.md#L8)`）をそのまま使う
   - リポジトリのルートからの相対パスに、定義の行の `#L<行>` を付けた Markdown リンク（下の形式 4）
   - Codex Cloud では `--absolute` を付ける。リポジトリのルートの絶対パス（`/workspace/folzio-dev/…`）から始まるリンクになる（形式 6）
@@ -52,6 +61,7 @@
 - Codex Cloud
   - 3・4: リンクにはなるが、リンク先がないエラーになった。作業ディレクトリが `/workspace/folzio-dev` で、相対パスを解決できないためと考えられる
   - 6: 行まで開いた。`#L8` を外すとファイルのプレビューで開き、`file:///workspace/folzio-dev/…#L8` は 6 と同じく行まで開いた
+  - `scripts/dev/find-spec-id.sh --absolute FR-080` の出力のリンクも、行まで開いた
 - 試していない環境: Claude Code と Codex のターミナルの CLI 版（保守者が使わないため）
 
 ## 形式を選んだ理由

@@ -34,7 +34,7 @@
 - ソースのコメントは、公開用リポジトリへ書き出すコードでは英語（書式と用語は `docs_private/comment-translation-glossary.md`）、書き出さない開発専用のコード（`scripts/dev/` など）では日本語で書く
 - `README.md` と `README.ja.md` は同じ内容の 2 言語版。同じコミットで両方を同じ内容に変える（訳の一致はスクリプトで検査されない）
 - `docs/`・README・ソースのコメントは公開用リポジトリ（`yoshidax/folzio`）へ書き出される。書き出さない `specs/`・`.specify/`・`docs_private/`・`shared-skills/`・`AGENTS.md` へリンクしない（公開の手順: `docs_private/repository-and-release.md`）
-- メッセージで `specs/product/` の ID（FR・SC・EC・A・USn-ASm）を挙げるときは、各メッセージの初出を `scripts/dev/find-spec-id.sh <ID>…` が出力する定義へのリンクにする（Codex Cloud では `--absolute` を付ける）。`TAK-xx` は `https://linear.app/takyoshida/issue/TAK-xx` のリンクにする
+- メッセージで仕様の ID（`specs/product/` と作業中の feature の `spec.md` の FR・SC・EC・A・USn-ASm）を挙げるときは、各メッセージの初出を `scripts/dev/find-spec-id.sh <ID>…` が出力する定義へのリンクにする（Codex Cloud では `--absolute` を付ける）。`TAK-xx` は `https://linear.app/takyoshida/issue/TAK-xx` のリンクにする
 
 ## 作業別の手順（該当するときに読む）
 - 【Cloud】作業を始める前に `docs_private/cloud-agent-workflow.md`（feature の始め方、PR、CI、検証ゲート、並行する作業）
