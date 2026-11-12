@@ -34,4 +34,13 @@ struct PreviewScrollLayoutTests {
             #expect(invalid.frame == .zero && !invalid.horizontal && !invalid.vertical)
         }
     }
+    @Test("Zoom preserves the image point under the pointer when unclamped")
+    func anchor() {
+        let old = PreviewScrollLayout(imageSize: CGSize(width: 400, height: 400), viewport: CGSize(width: 200, height: 200), center: CGPoint(x: 0.5, y: 0.5))
+        let point = CGPoint(x: 150, y: 75)
+        let next = old.resized(imageSize: CGSize(width: 600, height: 600), viewport: CGSize(width: 200, height: 200), anchoredAt: point)
+        let before = CGPoint(x: (point.x - old.frame.minX) / old.frame.width, y: (point.y - old.frame.minY) / old.frame.height)
+        let after = CGPoint(x: (point.x - next.frame.minX) / next.frame.width, y: (point.y - next.frame.minY) / next.frame.height)
+        #expect(abs(before.x - after.x) < 0.0001 && abs(before.y - after.y) < 0.0001)
+    }
 }

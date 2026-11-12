@@ -1034,3 +1034,7 @@
 "menu.edit.cancelReceiving" = "Cancel Receiving";
 
 "shortcuts.condition.cancelReceiving" = "While receiving; available outside text editing, sheets, and dialogs";
+"settings.preview" = "Preview";
+"settings.preview.interaction" = "Image interaction";
+"settings.preview.wheelPan" = "Wheel zoom and drag";
+"settings.preview.scroll" = "Scroll";

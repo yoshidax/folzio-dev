@@ -195,6 +195,10 @@ public enum TextKey: String, CaseIterable, Sendable {
 
     case settingsWindow = "settings.window"
     case settingsLanguage = "settings.language"
+    case settingsPreview = "settings.preview"
+    case settingsPreviewInteraction = "settings.preview.interaction"
+    case settingsPreviewWheelPan = "settings.preview.wheelPan"
+    case settingsPreviewScroll = "settings.preview.scroll"
     case settingsLanguageEnglish = "settings.language.english"
     case settingsLanguageJapanese = "settings.language.japanese"
     case settingsVideo = "settings.video"
@@ -815,8 +819,12 @@ public enum TextKey: String, CaseIterable, Sendable {
             return "Display language label in the Settings window"
         case .settingsLanguageEnglish, .settingsLanguageJapanese:
             return "Display language options. Each language name is shown in that language"
-        case .settingsVideo, .settingsFileOperations, .settingsSlideshow:
+        case .settingsVideo, .settingsFileOperations, .settingsSlideshow, .settingsPreview:
             return "Section headings in the Settings window"
+        case .settingsPreviewInteraction:
+            return "Image interaction mode label in the Settings window"
+        case .settingsPreviewWheelPan, .settingsPreviewScroll:
+            return "Image interaction mode options"
         case .settingsAutoplay, .settingsLoop, .settingsConfirm, .settingsRepeat:
             return "Checkboxes in the Settings window"
         case .settingsConfirmNote:

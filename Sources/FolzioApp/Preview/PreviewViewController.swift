@@ -149,9 +149,9 @@ final class PreviewViewController: NSViewController {
         return true
     }
 
-    private func applyCurrentZoom(announce: Bool) {
+    private func applyCurrentZoom(announce: Bool, anchor: CGPoint? = nil, animateWheel: Bool = false) {
         let state = transitionSignposter.beginInterval("PreviewZoomApply")
-        imageView.applyZoom(zoomTracker.level, announce: announce)
+        imageView.applyZoom(zoomTracker.level, announce: announce, anchor: anchor, animateWheel: animateWheel)
         transitionSignposter.endInterval("PreviewZoomApply", state)
     }
 
@@ -175,6 +175,13 @@ final class PreviewViewController: NSViewController {
     }
 
     override func loadView() {
+        imageView.interactionMode = SettingsStore().previewInteractionMode
+        imageView.onZoomFactor = { [weak self] factor, anchor, animateWheel in
+            guard let self, self.zoomAvailability.canFit else { return }
+            guard self.zoomTracker.setLevel(self.zoomTracker.level.scaled(by: factor)) else { return }
+            self.applyCurrentZoom(announce: true, anchor: anchor, animateWheel: animateWheel)
+            self.notifyZoomAvailabilityIfChanged()
+        }
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.onDisplayedImageChange = { [weak self] in
             self?.notifyZoomAvailabilityIfChanged()
@@ -229,6 +236,9 @@ final class PreviewViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         NotificationCenter.default.addObserver(
+            self, selector: #selector(previewInteractionModeDidChange), name: .previewInteractionModeDidChange, object: nil
+        )
+        NotificationCenter.default.addObserver(
             self, selector: #selector(displayLanguageDidChange), name: .displayLanguageDidChange, object: nil
         )
         NotificationCenter.default.addObserver(
@@ -240,6 +250,10 @@ final class PreviewViewController: NSViewController {
         updateFromModel()
         observePreview()
         observeListingForEmptyPreview()
+    }
+
+    @objc private func previewInteractionModeDidChange() {
+        imageView.interactionMode = SettingsStore().previewInteractionMode
     }
 
     @objc private func displayLanguageDidChange() {

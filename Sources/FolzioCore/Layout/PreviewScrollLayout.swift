@@ -8,6 +8,19 @@ public struct PreviewScrollLayout: Sendable {
     public let horizontal: Bool
     public let vertical: Bool
 
+    public func resized(imageSize: CGSize, viewport: CGSize, anchoredAt point: CGPoint) -> PreviewScrollLayout {
+        guard frame.width > 0, frame.height > 0, imageSize.width > 0, imageSize.height > 0,
+              point.x.isFinite, point.y.isFinite else {
+            return PreviewScrollLayout(imageSize: imageSize, viewport: viewport, center: center)
+        }
+        let relative = CGPoint(x: (point.x - frame.minX) / frame.width, y: (point.y - frame.minY) / frame.height)
+        let nextCenter = CGPoint(
+            x: relative.x + (viewport.width / 2 - point.x) / imageSize.width,
+            y: relative.y + (viewport.height / 2 - point.y) / imageSize.height
+        )
+        return PreviewScrollLayout(imageSize: imageSize, viewport: viewport, center: nextCenter)
+    }
+
     public init(imageSize: CGSize, viewport: CGSize, center: CGPoint) {
         guard [imageSize.width, imageSize.height, viewport.width, viewport.height].allSatisfy({ $0.isFinite && $0 > 0 }) else {
             frame = .zero
