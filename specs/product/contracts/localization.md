@@ -229,6 +229,9 @@
 | 設定（ウインドウ名） | Settings |
 | 言語 | Language |
 | 英語 / 日本語（言語の選択肢。各言語の名称は常にその言語で表す） | English / 日本語 |
+| プレビュー | Preview |
+| 画像の操作 | Image interaction |
+| ホイールズームとドラッグ / スクロール | Wheel zoom and drag / Scroll |
 | 動画 | Video |
 | 動画を自動再生する | Play videos automatically |
 | 動画をループ再生する | Loop videos |
