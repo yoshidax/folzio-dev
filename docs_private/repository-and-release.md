@@ -202,17 +202,20 @@ source trailer がない初回は自動更新せず、summary に初期化待ち
 
 | | 開発用の workflow | 公開用の workflow |
 |---|---|---|
-| 元のファイル（管理元） | 開発用の `.github/workflows/` | 開発用の `scripts/dev/oss-workflows/`（直下の `*.yml`・`*.yaml`） |
+| 元のファイル（管理元） | 開発用の `.github/workflows/` | 開発用の `scripts/dev/oss-workflows/`（直下の `*.yml`・`*.yaml` と `actions.lock`） |
 | 動く場所 | 開発用リポジトリ（`yoshidax/folzio-dev`）だけ | 公開用リポジトリだけ |
 | 書き出しでの扱い | 書き出さない（`.gitattributes` の `/.github/workflows export-ignore`） | 公開用リポジトリの `.github/workflows/` に、同じ名前・内容で置く |
 | 例 | `macos-swift-ci.yml`（PR の作成時などのビルドとテスト） | `release.yml`（アプリの最終ビルドと Release ドラフト） |
 
 - 開発用の workflow を足すときは、開発用の `.github/workflows/` に置くだけでよい。ディレクトリごと除外しているので、除外の指定は要らない
-- 公開用の workflow として置くのは、管理元の**直下**にある、名前が `.yml` または `.yaml` で終わる通常ファイルだけ。
+- 公開用の workflow として置くのは、管理元の**直下**にある、名前が `.yml` または `.yaml` で終わる通常ファイルと `actions.lock` だけ。
   サブディレクトリの中、シンボリックリンク、説明の文書（管理元の `README.md`）は置かない
-- 置くのはコミット済みの内容（`HEAD`）。管理元に workflow がなければ、公開用リポジトリに `.github/workflows/` を作らない
+- 置くのはコミット済みの内容（`HEAD`）。管理元に対象ファイルがなければ、公開用リポジトリに `.github/workflows/` を作らない
 - 公開用の workflow は開発用リポジトリでは動かない（GitHub Actions は `.github/workflows/` の直下だけを読む）。動作は公開用リポジトリで確かめる
 - 開発用と公開用で同じファイル名を使ってもよい。開発用の workflow は書き出さないので、公開用リポジトリでは衝突しない
+
+両方の依存の固定には、それぞれの `actions.lock` を使う。生成・更新・検証と Require lockfile の
+確認結果・有効化の手順は [actions-lock.md](actions-lock.md) を参照する。
 
 公開用の workflow の追加・変更・削除の手順:
 

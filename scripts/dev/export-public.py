@@ -67,7 +67,9 @@ def export(sha, output):
             info, path = entry.split(b'\t', 1)
             mode, kind, oid = info.decode().split()
             name = Path(os.fsdecode(path)).name
-            if mode not in ('100644', '100755') or kind != 'blob' or not name.endswith(('.yml', '.yaml')):
+            if mode not in ('100644', '100755') or kind != 'blob':
+                continue
+            if not (name.endswith(('.yml', '.yaml')) or name == 'actions.lock'):
                 continue
             if not re.fullmatch(r'[A-Za-z0-9_.-]+', name):
                 raise ValueError('workflow 名が不正です')

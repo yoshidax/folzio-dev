@@ -264,6 +264,7 @@ class WorkflowPublishTests(unittest.TestCase):
         fixture = PublishFixture(self.root)
         fixture.write(".github/workflows/macos-swift-ci.yml", "name: macOS Swift CI\n")
         fixture.write(".github/workflows/lint.yml", "name: Lint\n")
+        fixture.write(".github/workflows/actions.lock", "development lock\n")
         fixture.commit()
         self.assert_published(fixture.publish())
         self.assertEqual(fixture.published_workflows(), {})
@@ -284,23 +285,28 @@ class WorkflowPublishTests(unittest.TestCase):
         fixture = PublishFixture(self.root)
         fixture.write("scripts/dev/oss-workflows/release.yml", "name: Release\n")
         fixture.write("scripts/dev/oss-workflows/check.yaml", "name: Check\n")
+        fixture.write("scripts/dev/oss-workflows/actions.lock", "public lock\n")
         fixture.write("scripts/dev/oss-workflows/README.md", "managed public workflows\n")
         fixture.write("scripts/dev/oss-workflows/sub/nested.yml", "name: Nested\n")
         fixture.commit()
         result = fixture.publish()
         self.assert_published(result)
         self.assertEqual(fixture.published_workflows(),
-                         {"release.yml": "name: Release\n", "check.yaml": "name: Check\n"})
+                         {"release.yml": "name: Release\n", "check.yaml": "name: Check\n",
+                          "actions.lock": "public lock\n"})
         self.assertIn("release.yml", result.stdout)
         self.assertFalse((fixture.target / "scripts/dev").exists())
 
         fixture.write("scripts/dev/oss-workflows/release.yml", "name: Release v2\n")
+        fixture.write("scripts/dev/oss-workflows/actions.lock", "public lock v2\n")
         fixture.commit()
         self.assert_published(fixture.publish())
         self.assertEqual(fixture.published_workflows(),
-                         {"release.yml": "name: Release v2\n", "check.yaml": "name: Check\n"})
+                         {"release.yml": "name: Release v2\n", "check.yaml": "name: Check\n",
+                          "actions.lock": "public lock v2\n"})
 
         fixture.remove("scripts/dev/oss-workflows/release.yml")
+        fixture.remove("scripts/dev/oss-workflows/actions.lock")
         fixture.commit()
         self.assert_published(fixture.publish())
         self.assertEqual(fixture.published_workflows(), {"check.yaml": "name: Check\n"})
@@ -329,6 +335,7 @@ class WorkflowPublishTests(unittest.TestCase):
         fixture = PublishFixture(self.root)
         fixture.write("scripts/dev/oss-workflows/release.yml", "name: Release\n")
         fixture.symlink("scripts/dev/oss-workflows/link.yml", "release.yml")
+        fixture.symlink("scripts/dev/oss-workflows/actions.lock", "release.yml")
         fixture.commit()
         self.assert_published(fixture.publish())
         self.assertEqual(fixture.published_workflows(), {"release.yml": "name: Release\n"})
@@ -447,6 +454,20 @@ class ExporterTests(unittest.TestCase):
         self.assertFalse((self.output / '.github/workflows/private.yml').exists())
         self.assertEqual((self.output / '.github/workflows/release.yml').read_text(),
                          (self.fixture.source / 'scripts/dev/oss-workflows/release.yml').read_text())
+
+    def test_export_keeps_public_lock_separate_and_uses_committed_contents(self):
+        self.fixture.write('.github/workflows/actions.lock', 'development lock\n')
+        self.fixture.write('scripts/dev/oss-workflows/release.yml', 'name: Public\n')
+        self.fixture.write('scripts/dev/oss-workflows/actions.lock', 'public lock\n')
+        self.fixture.write('scripts/dev/oss-workflows/other.lock', 'not exported\n')
+        self.fixture.write('scripts/dev/oss-workflows/sub/actions.lock', 'nested lock\n')
+        self.fixture.commit()
+        self.fixture.write('scripts/dev/oss-workflows/actions.lock', 'uncommitted lock\n')
+        result = self.export()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        directory = self.output / '.github/workflows'
+        self.assertEqual({path.name for path in directory.iterdir()}, {'release.yml', 'actions.lock'})
+        self.assertEqual((directory / 'actions.lock').read_text(), 'public lock\n')
 
 
     def test_explicit_fixture_paths_are_allowed_but_any_home_name_is_rejected(self):
