@@ -26,11 +26,11 @@
 | 2 コードスパンの `path:line` | `` `specs/product/search.md:8` `` |
 | 3 相対パスの Markdown リンク | `[FR-080](specs/product/search.md)` |
 | 4 行のアンカー付きの相対リンク | `[FR-080](specs/product/search.md#L8)` |
-| 5 コミットに固定した GitHub の URL | `[FR-080](https://github.com/yoshidax/folzio-dev/blob/<commit>/specs/product/search.md#L8)` |
+| 5 コミットに固定した GitHub の URL | `[FR-080](https://github.com/yoshidax/folzio-dev/blob/<commit>/specs/product/search.md?plain=1#L8)` |
 
 | 環境 | 確認日 | 1 | 2 | 3 | 4 | 5 |
 |---|---|---|---|---|---|---|
-| Claude Code のクラウド（Claude アプリで表示） | 2026-11-12 | 開けない | 開ける（その行） | 開ける（ファイル） | 開ける（その行） | 開ける（行は指せない） |
+| Claude Code のクラウド（Claude アプリで表示） | 2026-11-12 | 開けない | 開ける（その行） | 開ける（ファイル） | 開ける（その行） | 未確認 |
 | Claude Code のローカル（ターミナル） | 未確認 | | | | | |
 | Codex のローカル | 未確認 | | | | | |
 | Kilo Code（VS Code） | 未確認 | | | | | |
@@ -43,11 +43,13 @@
   - 2: ファイルビューでファイルが開き、8 行目にカーソルが合った
   - 3: ファイルが Markdown のプレビューで開いた
   - 4: 2 と同じく、ファイルビューで 8 行目が開いた
-  - 5: GitHub の Web ページで、ファイルが Markdown のプレビューで表示された。行の位置は示されない
+  - 5: `?plain=1` を付けない URL（`…/search.md#L8`）では、GitHub の Web ページでファイルが Markdown のプレビューで表示され、行の位置は示されなかった
+    - GitHub は Markdown のファイルを既定でプレビューで表示するため、行のアンカーは `?plain=1` を付けたソースの表示でだけ効く（保守者の指摘）
+    - `?plain=1` を付けた形式 5 は未確認
 - 形式 2 を規則にした理由
   - Claude Code のクラウドで、行まで開ける
   - Claude Code のシステムの指示が `file_path:line_number` の形をクリックできる形としているため、ローカルでも開ける見込みが高い（未確認）
-  - 形式 5 は push していない変更を指せず、Markdown のファイルでは行を指せなかった
+  - 形式 5 は push していない変更を指せない
 
 ## 未確認の環境を確かめる手順
 
