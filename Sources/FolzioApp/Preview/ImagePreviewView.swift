@@ -272,8 +272,7 @@ final class ImagePreviewView: NSView {
     private func moveScroll(x: CGFloat, y: CGFloat) {
         guard isShowingImage, scrollLayout.frame.width > 0, scrollLayout.frame.height > 0 else { return }
         contentLayer.removeAnimation(forKey: "wheelZoom")
-        scrollCenter.x += x / scrollLayout.frame.width
-        scrollCenter.y += y / scrollLayout.frame.height
+        scrollCenter = scrollLayout.moved(x: x, y: y, viewport: bounds.size).center
         needsLayout = true
         layoutSubtreeIfNeeded()
     }
@@ -343,8 +342,7 @@ final class ImagePreviewView: NSView {
             NSCursor.closedHand.push()
         }
         if isDraggingImage {
-            let origin = dragLast == start ? start : last
-            moveScroll(x: -(point.x - origin.x), y: -(point.y - origin.y))
+            moveScroll(x: -(point.x - last.x), y: -(point.y - last.y))
             dragLast = point
         }
     }
@@ -377,11 +375,15 @@ final class ImagePreviewView: NSView {
 
     override func viewDidHide() {
         super.viewDidHide()
+        endDrag()
         stopKeyboardScrolling()
     }
 
     override func viewWillMove(toWindow newWindow: NSWindow?) {
-        if newWindow == nil { stopKeyboardScrolling() }
+        if newWindow == nil {
+            endDrag()
+            stopKeyboardScrolling()
+        }
         super.viewWillMove(toWindow: newWindow)
     }
 

@@ -9,6 +9,7 @@ final class PreviewViewController: NSViewController {
     private let model: BrowserModel
     private let decoder: any ImageDecoding
     private let archiveReader: any ArchiveReading
+    private let settings: SettingsStore
     private let imageView = ImagePreviewView()
     private let videoView = VideoPreviewView()
     private let containerView = NSView()
@@ -66,10 +67,12 @@ final class PreviewViewController: NSViewController {
         )
     }
 
-    init(model: BrowserModel, decoder: any ImageDecoding, archiveReader: any ArchiveReading) {
+    init(model: BrowserModel, decoder: any ImageDecoding, archiveReader: any ArchiveReading,
+         settings: SettingsStore = SettingsStore()) {
         self.model = model
         self.decoder = decoder
         self.archiveReader = archiveReader
+        self.settings = settings
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -175,9 +178,9 @@ final class PreviewViewController: NSViewController {
     }
 
     override func loadView() {
-        imageView.interactionMode = SettingsStore().previewInteractionMode
+        imageView.interactionMode = settings.previewInteractionMode
         imageView.onZoomFactor = { [weak self] factor, anchor, animateWheel in
-            guard let self, self.zoomAvailability.canFit else { return }
+            guard let self, self.zoomAvailability.isAvailable else { return }
             guard self.zoomTracker.setLevel(self.zoomTracker.level.scaled(by: factor)) else { return }
             self.applyCurrentZoom(announce: true, anchor: anchor, animateWheel: animateWheel)
             self.notifyZoomAvailabilityIfChanged()
@@ -253,7 +256,7 @@ final class PreviewViewController: NSViewController {
     }
 
     @objc private func previewInteractionModeDidChange() {
-        imageView.interactionMode = SettingsStore().previewInteractionMode
+        imageView.interactionMode = settings.previewInteractionMode
     }
 
     @objc private func displayLanguageDidChange() {
