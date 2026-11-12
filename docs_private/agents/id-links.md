@@ -62,6 +62,7 @@
   - 3・4: リンクにはなるが、リンク先がないエラーになった。作業ディレクトリが `/workspace/folzio-dev` で、相対パスを解決できないためと考えられる
   - 6: 行まで開いた。`#L8` を外すとファイルのプレビューで開き、`file:///workspace/folzio-dev/…#L8` は 6 と同じく行まで開いた
   - `scripts/dev/find-spec-id.sh --absolute FR-080` の出力のリンクも、行まで開いた
+  - `scripts/dev/base-ref.sh` は `origin/master` を出力した。作業中の feature の判定に使う比べる基準がある
 - 試していない環境: Claude Code と Codex のターミナルの CLI 版（保守者が使わないため）
 
 ## 形式を選んだ理由
