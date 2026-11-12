@@ -29,13 +29,13 @@ class FindSpecIdTests(unittest.TestCase):
                 cwd=cwd or directory,
             )
 
-    def test_prints_path_and_line_of_bullet_definition(self):
+    def test_prints_markdown_link_to_bullet_definition(self):
         result = self.run_find(
             {"specs/product/search.md": "# 検索\n\n- **FR-080**: 検索できる。\n"},
             "FR-080",
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "FR-080 specs/product/search.md:3\n")
+        self.assertEqual(result.stdout, "[FR-080](specs/product/search.md#L3)\n")
 
     def test_finds_all_id_kinds_including_numbered_scenarios(self):
         text = "\n".join(
@@ -51,10 +51,10 @@ class FindSpecIdTests(unittest.TestCase):
         self.assertEqual(
             result.stdout.splitlines(),
             [
-                "SC-001 specs/product/overview.md:1",
-                "EC-002 specs/product/overview.md:2",
-                "A-003 specs/product/overview.md:3",
-                "US30-AS2 specs/product/overview.md:4",
+                "[SC-001](specs/product/overview.md#L1)",
+                "[EC-002](specs/product/overview.md#L2)",
+                "[A-003](specs/product/overview.md#L3)",
+                "[US30-AS2](specs/product/overview.md#L4)",
             ],
         )
 
@@ -63,7 +63,7 @@ class FindSpecIdTests(unittest.TestCase):
             {"specs/product/contracts/localization.md": "- **FR-500**: 契約。\n"},
             "FR-500",
         )
-        self.assertEqual(result.stdout, "FR-500 specs/product/contracts/localization.md:1\n")
+        self.assertEqual(result.stdout, "[FR-500](specs/product/contracts/localization.md#L1)\n")
 
     def test_ignores_mentions_outside_definitions(self):
         files = {
@@ -78,22 +78,46 @@ class FindSpecIdTests(unittest.TestCase):
     def test_reports_missing_id_after_printing_the_others(self):
         result = self.run_find({"specs/product/a.md": "- **FR-001**: あり。\n"}, "FR-999", "FR-001")
         self.assertEqual(result.returncode, 1)
-        self.assertEqual(result.stdout, "FR-001 specs/product/a.md:1\n")
+        self.assertEqual(result.stdout, "[FR-001](specs/product/a.md#L1)\n")
         self.assertIn("FR-999", result.stderr)
 
     def test_prints_every_location_of_a_duplicated_id(self):
         files = {"specs/product/a.md": "- **FR-001**: 1つ目。\n", "specs/product/b.md": "\n- **FR-001**: 2つ目。\n"}
         result = self.run_find(files, "FR-001")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.splitlines(), ["FR-001 specs/product/a.md:1", "FR-001 specs/product/b.md:2"])
+        self.assertEqual(result.stdout.splitlines(), ["[FR-001](specs/product/a.md#L1)", "[FR-001](specs/product/b.md#L2)"])
 
     def test_works_from_another_directory(self):
         result = self.run_find({"specs/product/a.md": "- **FR-001**: あり。\n"}, "FR-001", cwd="/")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "FR-001 specs/product/a.md:1\n")
+        self.assertEqual(result.stdout, "[FR-001](specs/product/a.md#L1)\n")
+
+    def test_absolute_option_prefixes_the_repository_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve() / "repo"
+            for name in (SCRIPT, "specs/product/a.md"):
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / SCRIPT, root / SCRIPT)
+            (root / "specs/product/a.md").write_text("- **FR-001**: あり。\n", encoding="utf-8")
+            for args in (("--absolute", "FR-001"), ("FR-001", "--absolute")):
+                with self.subTest(args=args):
+                    result = subprocess.run([str(root / SCRIPT), *args], capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, f"[FR-001]({root}/specs/product/a.md#L1)\n")
+
+    def test_wraps_absolute_path_with_spaces_in_angle_brackets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve() / "my repo"
+            (root / "scripts/dev").mkdir(parents=True)
+            (root / "specs/product").mkdir(parents=True)
+            shutil.copy2(ROOT / SCRIPT, root / SCRIPT)
+            (root / "specs/product/a.md").write_text("- **FR-001**: あり。\n", encoding="utf-8")
+            result = subprocess.run([str(root / SCRIPT), "--absolute", "FR-001"], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, f"[FR-001](<{root}/specs/product/a.md#L1>)\n")
 
     def test_rejects_missing_or_malformed_arguments(self):
-        for ids in ((), ("FR080",), ("TAK-82",), ("FR-.*",)):
+        for ids in ((), ("--absolute",), ("FR080",), ("TAK-82",), ("FR-.*",), ("--abs", "FR-001")):
             with self.subTest(ids=ids):
                 result = self.run_find({"specs/product/a.md": "- **FR-001**: あり。\n"}, *ids)
                 self.assertEqual(result.returncode, 2)
