@@ -1,115 +1,133 @@
-# Research: TAK-86 ツールバーの名前検索欄
+# Research: TAK-86 ツールバーの検索欄による名前の絞り込み
 
 調査の基準は、作業ブランチ `claude/peaceful-bell-dj1h3u`（`origin/master` の `d3fe85b` を含む）のコード。
 Cloud には Swift と macOS がないため、AppKit の実際の動作は確かめていない。確かめていない点は各項目の「未確認」に書き、quickstart.md の GUI 確認で確かめる。
 
-## R1 ツールバー項目の種類
+## R1 絞り込みを置く場所
 
-- **Decision**: 既存のセットと同じく、通常の `NSToolbarItem` の `view` に検索フィールド（`NSSearchField` のサブクラス `ToolbarSearchField`）を置く。
-  幅は Auto Layout の固定の制約（180pt）にする（サムネイルサイズのスライダーと同じ方法。`MainToolbarController.makeSizeSlider()`）
-- **Rationale**: `MainToolbarController` は「項目ごとに新しいコントロールを作り、状態は `toolbar.items` を識別子で探して適用する」構成（TAK-23 の R-2）で、
-  同じ構成に乗せられる。あふれたとき・文字だけの形式の動作を `menuFormRepresentation` で自分で決められる（FR-389）
-- **Alternatives considered**: `NSSearchToolbarItem`（macOS 11 以降）。狭いときに虫眼鏡のボタンへ畳まれて押すと広がる標準の動作を持つが、
-  その畳まれる動作と文字だけの形式の動作を Cloud で確かめられず、FR-389（あふれたら検索のモーダルを開く）と両立するか分からないため採らない
+- **Decision**: 名前の絞り込みは、種類フィルタと同じく `BrowserModel` の状態として持ち、表示する行を作るただ1か所の `rebuildListing()` で適用する。
+  適用の順は「種類フィルタ → zip の表示（検索結果では適用しない） → 名前の絞り込み」。`..` の行は、絞り込みの後に従来どおり先頭へ加える
+- **Rationale**:
+  - `rebuildListing()` は `allFiles`（`..` を含まない）から表示する行を作る（`BrowserModel.swift` の 997 行付近）。ここで絞れば、通常のフォルダ・zip の中・検索結果のすべてに働き、
+    `..` は自然に残る（FR-381・FR-382）
+  - `allFiles` を変えないので、アプリの外での変更・名前の変更・検索中に見つかった項目は、次の `rebuildListing()` でその時点の名前で照合される（EC-250・EC-251）
+  - 表示中の一覧を使う操作（矢印キーでの移動・すべてを選択・スライドショー）は `listing.files` を読むので、種類フィルタと同じく絞り込んだ後の一覧が対象になる（FR-387）
+- **Alternatives considered**: ファイルリストの画面（`FileListViewController`）側で行を隠す。モデルの選択・プレビュー・スライドショーが非表示の行を対象にしてしまうため採らない
+- **未確認**: `listing.files` を読まずに `allFiles` を直接使う操作がないこと（実装の時にコードで確かめる。T017）
 
-## R2 虫眼鏡アイコンの押下
+## R2 照合の型
+
+- **Decision**: Core に値型 `NameFilter`（`Sources/FolzioCore/Model/NameFilter.swift`）を作る。入力した文字（そのまま）と、既存の `SearchPattern`（`SearchPattern(keyword:)`）を持つ。
+  `apply(to:)` は `pattern.matches(fileName:)` で `MediaFile.name` を照合する
+- **Rationale**: `SearchPattern` は、前後の空白の除去・空のときの `nil`・ワイルドカード・大文字小文字と正規化の扱いを実装済みで、検索のモーダルが使っている。
+  同じ型を使えば、照合の結果が検索と食い違わない（FR-381・SC-208）。入力した文字をそのまま持つのは、検索欄の表示と突き合わせるため（R5）
+
+## R3 一致する項目がないときの状態
+
+- **Decision**: `FolderListing.State` に新しい case を足さない。名前の絞り込みで（`..` を除く）行が1つも残らず、絞り込みの前には行があった場合は、
+  `listing.state` を既存の `.noMatches` にし、モデルの `nameFilterHidesAllRows`（Bool）を真にする。画面は `.noMatches` のとき、この値が真なら名前のメッセージ、偽なら従来の種類フィルタのメッセージを出す
+- **Rationale**: `State` の case を足すと、`switch` で網羅している約10か所（`BrowserModel`・`FileListDropTarget`・`FileListViewController`・`MainSplitViewController`・テスト）を
+  すべて直す必要がある。`.noMatches` は「項目はあるが絞り込みで表示されない」という意味で、名前の絞り込みにも当てはまる
+- 行が1つでも残るときは、従来の判定（`hasMedia` と `filtered` から決める）を、名前の絞り込みの前の行で行う（FR-386 の最後の子項目）
+
+## R4 解除する時点
+
+- **Decision**: `BrowserModel.resetForNavigation()` で名前の絞り込みを空にする
+- **Rationale**: `resetForNavigation()` を呼ぶのは、`selectFolder`・`startSearch`・`openItem`・`goToEnclosingLevel`・`openArchive`・`returnToFolder`・`showHistoryLocation` で、
+  どれも表示する一覧が別の場所へ替わる操作（FR-384）。同じ場所の再読み込み（`reloadCurrentFolder()`）は呼ばないので、アプリの外での変更の反映では解除されない
+- 履歴（`HistoryEntry`）には種類フィルタと違って記録しない。戻る・進むは `showHistoryLocation` を通るので、絞り込みのない状態になる（EC-254）
+
+## R5 検索欄とモデルの同期
+
+- **Decision**: モデルの絞り込みの文字を正とする。検索欄の入力は `FileListViewController.applyNameFilter(_:)` を通してモデルへ渡し、
+  モデルの変化（解除を含む）は、種類フィルタと同じ Observation の監視（`observeMediaTypeFilter()` と同じ形）で `onNameFilterChange` からツールバーへ伝える。
+  ツールバーは、検索欄の文字がモデルの文字と違うときだけ検索欄を書き換える
+- **Rationale**: 移動で解除されたときに検索欄を空にする（FR-384）経路が、既存の種類フィルタの経路と同じ形になる。
+  文字が同じときに書き換えないので、入力中のカーソルや末尾の空白を壊さない
+
+## R6 入力の受け取り
+
+- **Decision**: 検索フィールドの `action` は使わない。`NSSearchFieldDelegate` の `controlTextDidChange(_:)` で絞り込みを反映し、
+  `control(_:textView:doCommandBy:)` で `insertNewline(_:)` を受けたらファイルリストへフォーカスを移す
+- 変換中: `controlTextDidChange(_:)` で、フィールドエディタ（`NSTextView`）の `hasMarkedText()` が真の間は絞り込みを変えない（FR-389）
+- ×ボタンと Esc: 標準の動作で文字が消え、`controlTextDidChange(_:)` が呼ばれて絞り込みが解除される（FR-383）
+- **未確認**: (1) 変換の確定で `controlTextDidChange(_:)` が未確定でない状態で呼ばれること、(2) ×ボタンと Esc で `controlTextDidChange(_:)` が呼ばれること、
+  (3) 変換の確定の Return で `insertNewline(_:)` が届かないこと。GUI 確認で確かめる（quickstart.md の 1・2）
+- **代替（確認で動かなかった場合）**: (1) は `NSTextView` の変化の通知を直接受ける。(2) は検索フィールドの `action`（文字が空のとき）でも解除する
+
+## R7 ツールバー項目の種類
+
+- **Decision**: 既存のセットと同じく、通常の `NSToolbarItem` の `view` に検索フィールド（`NSSearchField` のサブクラス `ToolbarSearchField`）を置く。幅は固定の制約（180pt）にする
+- **Rationale**: `MainToolbarController` の「項目ごとに新しいコントロールを作り、状態は `toolbar.items` を識別子で探して適用する」構成（TAK-23 の R-2）に乗せられる。
+  あふれたとき・文字だけの形式の動作を `menuFormRepresentation` で決められる（FR-392）
+- **Alternatives considered**: `NSSearchToolbarItem`。狭いときに虫眼鏡のボタンへ畳まれる標準の動作を Cloud で確かめられず、虫眼鏡の押下でモーダルを開く動作（FR-390）と両立するか分からないため採らない
+- 項目を作り直したとき（カスタマイズ・再追加）は、`applyState(to:)` でモデルの文字を新しい検索欄へ入れる
+
+## R8 虫眼鏡アイコンの押下とツールチップ
 
 - **Decision**: `NSSearchFieldCell.searchButtonCell` の `target` と `action` を差し替え、押下で `MainToolbarController` の `showSearch(_:)` を呼ぶ。
-  虫眼鏡だけのツールチップは、`ToolbarSearchField` が `searchButtonRect(forBounds:)` の矩形に `addToolTip(_:owner:userData:)` で付け、レイアウトのたびに付け直す
-- **Rationale**: `searchButtonCell` は差し替えと設定のために公開されているセルで、`NSSearchField` は `searchButtonRect(forBounds:)` を公開している（A-227）
-- **未確認**: 差し替えた `action` が押下で呼ばれること、既定の動作（検索の `action` の送信）が同時に起きないこと、矩形のツールチップが出ること、
-  VoiceOver が虫眼鏡を別の要素として読むこと。GUI 確認で確かめる（quickstart.md の 3）
-- **代替（確認で動かなかった場合）**: `ToolbarSearchField` で `mouseDown(with:)` を上書きし、クリックの位置が `searchButtonRect(forBounds:)` の中なら同じ処理を呼ぶ
+  虫眼鏡だけのツールチップは、`ToolbarSearchField` が `searchButtonRect(forBounds:)` の矩形に `addToolTip(_:owner:userData:)` で付ける。検索欄の残りの部分には、検索欄のツールチップを同じ方法で付ける
+- **未確認**: 差し替えた `action` が押下で呼ばれること、矩形のツールチップが出ること、VoiceOver が虫眼鏡を別の要素として読むこと。GUI 確認で確かめる（quickstart.md の 3）
+- **代替**: `ToolbarSearchField` で `mouseDown(with:)` を上書きし、クリックの位置が `searchButtonRect(forBounds:)` の中なら同じ処理を呼ぶ
 
-## R3 Return での検索
+## R9 検索のモーダルへの引き継ぎ
 
-- **Decision**: 検索フィールドの `action` は使わない。`NSSearchFieldDelegate` の `control(_:textView:doCommandBy:)` で `insertNewline(_:)` を受けたときだけ検索を始め、`true` を返す
-- **Rationale**:
-  - 検索フィールドの `action` は、×ボタンの押下や編集の終了でも送られ得るため、「Return を押したときだけ」（FR-382）を `action` だけでは保証しにくい
-  - 日本語入力の変換中の Return は入力メソッドが処理し、`insertNewline(_:)` はデリゲートへ届かない。変換の確定では検索が始まらない（FR-382・US81-AS7）
-  - 検索のモーダルも `NSSearchFieldDelegate` を使っている（`SearchPanelController`）
-- **未確認**: 変換の確定の Return で `insertNewline(_:)` が届かないこと。GUI 確認で確かめる（quickstart.md の 2）
+- **Decision**: 引き継ぐキーワードの決め方は Core の `ToolbarSearchInput.modalKeyword(fieldText:previousKeyword:)` に置く。
+  `MainSplitViewController.showSearch(_:)` の中身を `presentSearchPanel(keyword:)` へ移し、⌘F は前回のキーワード、虫眼鏡は引き継いだキーワードで呼ぶ
+- モーダルで検索を始めると `startSearch` → `resetForNavigation()` で絞り込みが解除される（US82-AS4。R4）。キャンセルでは何も変わらない
 
-## R4 ×ボタンと Esc
-
-- **Decision**: 標準の検索フィールドのクリア（×）ボタンと Esc の動作（文字を消す）をそのまま使い、独自の処理を足さない。
-  文字を消したときに検索の処理を呼ばない（R3 で `action` を使わないため、自然にそうなる）
-- **Rationale**: Issue の検討事項「×ボタンの表示・クリアは、標準の検索フィールドの機能で実現できるか」への回答。
-  `NSSearchField` は、文字が入ると×ボタンを表示し、押すと文字を消して隠す（FR-381・A-227）
-- **未確認**: 表示の細部（1文字目で現れること）。GUI 確認で確かめる（quickstart.md の 1）
-
-## R5 検索の起点
-
-- **Decision**: 起点は `model.listing.folder` とする。検索のモーダルの既定の起点（`MainSplitViewController.showSearch(_:)` の `rootPath: model.listing.folder.path`）と同じ式を使う
-- **Rationale**: FR-383 は起点を「検索のモーダルの既定の起点と常に同じフォルダ」と定める。同じ式を使えば、ツリーの単一選択・複数選択（FR-216）・検索結果の表示中・
-  zip の中・EC-102 のどの状態でも、モーダルと同じ起点になることが構成から保証される（SC-208）。ツリーの選択を別に読む経路を作らない
-- **Alternatives considered**: ツリーの選択（`DirectoryTreeViewController` の主の行）を直接読む。EC-102 と「お気に入り」の見出しで一覧と食い違い、状態ごとの分岐が要るため採らない（A-223）
-
-## R6 起点の検証と失敗時の扱い
-
-- **Decision**: Return で `SearchRoot.validate(_:)`（UI スレッドの外で実行される既存の検証）を呼び、成功したら `model.startSearch(_:root:)` を呼ぶ。
-  失敗したら、検索のモーダルを、検索欄のキーワードと起点のパスを入れ、理由を表示した状態で開く。`SearchPanelController` に初期の理由（`SearchRootError?`）を渡す引数を加える
-- **検証の間の変化**: 検証は非同期なので、終わった時点で (1) `model.listing.folder` が Return の時点と同じ、(2) `paneCommands.canSearch` が真、
-  (3) メインウインドウにシートがない、の3つを確かめ、満たさなければ結果を捨てる（何もしない）。続けて Return を押した場合は、前の検証のタスクを取り消す
-- **Rationale**: 検索のモーダルで「検索」を押して検証に失敗した場合と同じ状態にすると、理由の表示と起点の選び直しを既存の画面で行える（EC-252）。
-  理由の文言は既存の `l10n.text(for: SearchRootError)` を使い、新しい文言を足さない
-- **Alternatives considered**: 警告のダイアログだけを出す。理由は伝わるが、起点を選び直すには改めてモーダルを開く必要があるため採らない
-
-## R7 有効・無効
-
-- **Decision**: 検索フィールドの `isEnabled` と項目の `isEnabled` を `panes.paneCommands.canSearch`（⌘F と同じ条件。`PaneLayout.swift`）にする。
-  適用は、既存の更新の経路（`apply(paneLayout:)`、`updateSlideshowAvailability()`、`applyState(to:)`）から呼ぶ `applySearchAvailability()` で行う
-- **Rationale**: `canSearch` は「フルスクリーンでない・名前の変更中でない・ファイルリストが表示されている」で、FR-388 の条件そのもの。
-  名前の変更の開始と終了は、既存の `observeEditingAvailability()` の通知で `updateSlideshowAvailability()` が呼ばれる
-- **注意**: `observeEditingAvailability()` は `object: nil` で全コントロールの編集の通知を受けるため、ツールバーの検索欄自身の編集でも呼ばれる。
-  `canSearch` の `isEditingText` はファイルリストの名前の変更だけを指す（`fileListViewController.isEditingText`）ので、検索欄の編集では無効にならない
-- **未確認**: フルスクリーンへの出入りで上の経路のどれかが呼ばれること（実装の時にコードで確かめ、足りなければ呼び出しを足す）。
-  名前の変更中に検索欄を押したときの名前の変更の扱い（FR-388 は「ほかの場所を押した場合と同じ」とする）
-
-## R8 並びの既定値と保存
-
-- **Decision**: `ToolbarLayout.setIdentifiers` に `"search"` を加え、`defaultOrder` を「8つのセット → `NSToolbarFlexibleSpaceItem` → `search`」にする。
-  `normalized(saved:)` の規則は変えない。`MainToolbarController` の `toolbarDefaultItemIdentifiers` と `toolbarAllowedItemIdentifiers` は、
-  手書きの配列をやめて `ToolbarLayout.defaultOrder`・`ToolbarLayout.setIdentifiers` から作る
-- **Rationale**:
-  - 可変スペースを検索の左に置くと、検索欄が右端に寄る（FR-380・FR-233（変更））
-  - 保存は「既定の並びと違うときだけ」行う（`saveConfiguration()`）。カスタマイズしていない利用者は保存値がなく、新しい既定の並びに従う（US83-AS1）。
-    保存済みの並びは `search` を含まないまま有効で、そのまま復元される（FR-390・US83-AS2）
-  - 既定の並びを Core とデリゲートの2か所に手書きすると、食い違ったときに「既定と同じなら保存しない」の判定が壊れる。1か所にまとめる
-- **前の版へ戻した場合**: `search` を含む保存値は、前の版では未知の識別子を含む値として既定の並びになる（EC-165・A-225）。データは壊れない
-- **未確認**: `NSToolbarItem.Identifier.flexibleSpace.rawValue` が `"NSToolbarFlexibleSpaceItem"` であること（既存の保存と復元が同じ前提で動いている。
-  `ToolbarLayout.flexibleSpaceIdentifier` のコメント）
-
-## R9 文言
-
-- **Decision**: `TextKey` に3つ加える。
-  - `toolbarSearchLabel`（`toolbar.searchLabel`）: 「検索」 / `Search`。セットのラベル（FR-236（変更））
-  - `toolbarSearchPlaceholder`（`toolbar.searchPlaceholder`）: 「名前で検索」 / `Search by Name`。プレースホルダとアクセシビリティのラベル
-  - `toolbarSearchFindHelp`（`toolbar.searchFindHelp`）: 「検索…（%1$@）」 / `Find… (%1$@)`。虫眼鏡のツールチップとアクセシビリティのラベル。
-    引数はショートカットの表記で、`ToolbarShortcutText.commands(for:)` に `.find` を対応させる（FR-237）
-- **Rationale**: メニューの項目名（`menuFileFind`）と共用しない（FR-236・FR-237）。表示言語とショートカットの割り当ての変更は、既存の `displayLanguageDidChange()` で更新する（EC-255）
-
-## R10 文字だけの形式とあふれたメニュー
-
-- **Decision**: 項目に `menuFormRepresentation`（名前は `toolbarSearchLabel`、`action` は `showSearch(_:)`、`target` は `MainToolbarController`）を設定する。
-  `validateMenuItem(_:)` で `canSearch` を返す（スライドショーの項目と同じ方法）
-- **未確認**: 文字だけの形式で、`view` を持つ項目を押したときに `menuFormRepresentation` の `action` が呼ばれること。GUI 確認で確かめる（quickstart.md の 6）
-
-## R11 検索欄にフォーカスがある間のコマンド
+## R10 検索欄にフォーカスがある間のコマンド
 
 - **調査**: メニューの項目は `target = nil` で、レスポンダチェーンから `MainSplitViewController` などを探す（`MainMenu.swift`）。
-  ツールバーのビューはウインドウの content view の外にあるため、検索欄が first responder の間、チェーンは「検索欄 → ツールバーのビュー → ウインドウ」と進み、
-  content view の下の view controller（ファイルリスト・ツリー・`MainSplitViewController`）を通らないと考えられる
+  ツールバーのビューはウインドウの content view の外にあるため、検索欄が first responder の間、チェーンは content view の下の view controller を通らないと考えられる
 - **Decision**:
-  - ファイル操作のコマンドを検索欄から content 側へ転送しない。検索欄にフォーカスがある間、⌘⌫ などは検索欄の文字の編集になるか、無効になる（EC-258・SC-212）
-  - ⌘F だけは、`ToolbarSearchField` の `supplementalTarget(forAction:sender:)` で `showSearch(_:)` に限って `MainToolbarController` を返し、
-    虫眼鏡と同じ処理（キーワードを引き継いでモーダルを開く）へつなぐ（FR-386・US82-AS5）
-- **未確認**: 上のチェーンの理解（content 側へ届かないこと）。GUI 確認で、検索欄にフォーカスを置いて ⌘⌫・⌘C・⌘V・⌘D を押し、選択中のファイルに何も起きないことを確かめる（quickstart.md の 5）。
-  届いてしまう場合は、実装の中で止める方法（検索欄の編集中はファイル操作を無効にする条件を足す）を保守者と相談する
+  - ファイル操作のコマンドを検索欄から content 側へ転送しない（EC-257・SC-213）
+  - `ToolbarSearchField` の `supplementalTarget(forAction:sender:)` で、`showSearch(_:)` に限って `MainToolbarController` を返し、⌘F を虫眼鏡と同じ処理へつなぐ（FR-390）
+- **未確認**: 上のチェーンの理解。GUI 確認で、検索欄にフォーカスを置いて ⌘⌫・⌘C・⌘V・⌘D を押し、選択中のファイルに何も起きないことを確かめる（quickstart.md の 5）。
+  届いてしまう場合は、検索欄の編集中はファイル操作を無効にする条件を足す方法を保守者と相談する
+- **影響**: 検索欄にフォーカスがある間は、content 側を対象にするほかのメニューのコマンド（表示形式の切り替えなど）も無効になる見込み。Return で一覧へ戻れば使える
 
-## R12 テストの範囲
+## R11 検索欄へ移るコマンド
 
-- **CI で確かめる（Core・文言）**: `ToolbarLayout` の既定の並びと保存値の扱い、引き継ぐキーワードの決め方（`ToolbarSearchInput`）、新しい文言の翻訳
-- **保守者の GUI 確認**: 検索欄の見た目、×ボタン、Return、変換の確定、虫眼鏡、有効・無効、カスタマイズ、文字だけの形式、VoiceOver、フォーカス中のコマンド
-- **Rationale**: `MainToolbarController` と `SearchPanelController` は AppKit の画面で、既存のテスト（`Tests/FolzioAppTests`）にも対象がない。
-  判断を Core の小さな型へ出し、残りは quickstart.md の手順で確かめる（憲章 原則 IV）
+- **Decision**: 割り当てを変更できるコマンドに `filterByName`（既定 ⌥⌘F、区分は検索）を加える。「ファイル」メニューの「検索…」の直後に「名前で絞り込む」を置く。
+  `MainSplitViewController.filterByName(_:)` が、ツールバーが隠れていれば表示してから、ツールバーのコントローラへ検索欄へのフォーカスを頼む
+- 有効の条件: `paneCommands.canSearch` が真、ツールバーの項目に `nameFilter` がある、表示の形式が文字だけでない（FR-391）
+- **Rationale**: 憲章 原則 III。⌥⌘F は contracts/keyboard-and-menus.md の既存のキーと重ならない（⌘F・⇧⌘F・⌃⌘F は使用中）
+- **影響の範囲**: `ShortcutCommandID`・`ShortcutCommands.all`・`ShortcutCatalog`・`ShortcutText`（名前・条件・メニューの対応）・`MainMenu`（項目と割り当ての対応）・
+  コマンドの数を 32 と書いているテスト（`ShortcutCommandConsistencyTests`）と仕様（FR-268・contracts）
+- **未確認**: ツールバーを表示した直後に検索欄を first responder にできること（表示の反映を待つ必要があるか）。GUI 確認で確かめる（quickstart.md の 4）
+
+## R12 検索欄が見えないときの解除
+
+- **Decision**: `MainToolbarController` で、(1) ツールバーの表示が偽になったとき（既存の `toolbarVisibilityChanged(_:)`）、(2) `nameFilter` の項目がツールバーから外れたとき
+  （`toolbarDidRemoveItem(_:)`）、(3) 表示の形式が文字だけになったとき（既存の `displayMode` の監視）に、絞り込みを解除する（FR-393・A-226）
+- あふれて見えない場合は解除しない（EC-253）
+- **未確認**: フルスクリーンでツールバーが自動で隠れるときに (1) が呼ばれるか。呼ばれる場合は、EC-258（フルスクリーンでは絞り込みを保つ）と食い違うので、
+  利用者の操作で隠したとき（`view.showsToolbar` を偽にする経路）だけ解除する。実装の時にコードで確かめる（T027）
+
+## R13 有効・無効
+
+- **Decision**: 検索フィールドと項目の `isEnabled` を `panes.paneCommands.canSearch` にする。既存の更新の経路（`apply(paneLayout:)`・`updateSlideshowAvailability()`・`applyState(to:)`）から適用する
+- `observeEditingAvailability()` は全コントロールの編集の通知を受けるが、`canSearch` の `isEditingText` はファイルリストの名前の変更だけを指すので、検索欄の編集では無効にならない
+- 無効にしてもモデルの絞り込みは変えない（EC-258）
+
+## R14 並びの既定値と保存
+
+- **Decision**: `ToolbarLayout.setIdentifiers` に `"nameFilter"` を加え、`defaultOrder` を「8つのセット → `NSToolbarFlexibleSpaceItem` → `nameFilter`」にする。
+  `normalized(saved:)` の規則は変えない。`MainToolbarController` の既定と許可の一覧は、手書きの配列をやめて `ToolbarLayout` から作る
+- **Rationale**: 保存は「既定の並びと違うときだけ」行うので、カスタマイズしていない利用者は新しい既定の並びに従い（US84-AS1）、保存済みの並びはそのまま復元される（US84-AS2）。
+  既定の並びを2か所に手書きすると、食い違ったときに「既定と同じなら保存しない」の判定が壊れる
+
+## R15 性能
+
+- **Decision**: 絞り込みは `rebuildListing()`（UI スレッド）で、`allFiles` の各項目の名前を1回ずつ照合する。ファイルシステムは読まない
+- **Rationale**: 種類フィルタと同じ場所・同じ計算量（項目の数に比例）で、照合は `SearchPattern.matches(fileName:)`（名前の正規化と文字列の比較）。
+  検索はこれを UI スレッドの外で使っているが、絞り込みは表示中の項目だけが対象
+- **検証**: 10,000 件の一覧で `setNameFilter` の1回の所要時間を性能テストで測り、SC-209（100ms 以内）を確かめる（憲章 原則 II）。
+  超える場合は、正規化した名前を項目ごとに控える方法へ直す
+
+## R16 テストの範囲
+
+- **CI で確かめる（Core・文言）**: `NameFilter`、`BrowserModel` の絞り込み（適用・`..`・解除・選択・検索結果・一致なしの状態）、`ToolbarLayout`、`ToolbarSearchInput`、
+  コマンドの定義の整合、文言の翻訳、性能
+- **保守者の GUI 確認**: 検索欄の見た目、入力のたびの反映、変換、×ボタン・Esc、虫眼鏡、⌥⌘F、有効・無効、カスタマイズ、VoiceOver、フォーカス中のコマンド
