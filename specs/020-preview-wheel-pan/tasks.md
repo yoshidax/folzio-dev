@@ -39,9 +39,13 @@
 - [X] T011 [MANUAL] `specs/020-preview-wheel-pan/quickstart.md` の全シナリオを保守者が実機で実施し、OS・機器・結果を報告する。
   - 2026-11-12: 保守者が全検証の完了と斜めスクロールの正常動作を報告。macOS 26.6.2、MX Ergo S（Bluetooth）とトラックパッドを使用。トラックパッドの機種は未確認。
 - [X] T012 T011 の報告を `specs/020-preview-wheel-pan/tasks.md` に記録し、Phase の変更をコミットする。
-- [ ] T013 最終自動検証を `specs/020-preview-wheel-pan/quickstart.md` の順に実行する。
-- [ ] T014 [MANUAL] 最終ビルドを `open .build/Folzio.app` で保守者が起動し、3ペインを確認して結果を報告する。
-- [ ] T015 T014 の報告を `specs/020-preview-wheel-pan/tasks.md` に記録し、converge で残作業を確認する。
+- [X] T013 最終自動検証を `specs/020-preview-wheel-pan/quickstart.md` の順に実行する。
+  - 2026-11-12: `swift build`・`swift test`（再実行で成功）・`scripts/dev/check-all.sh`・`scripts/make-app.sh` が成功。初回の全テストでは既存のフォルダ列挙待機テスト2件が時間切れとなった。再作成した実行ファイルは直前の実機確認時と同じ SHA-256（8c57b67ec5452ea5cb952c449e342f1a5a862c90ac5e003300fbdf95bb6660b6）。
+- [X] T014 [MANUAL] 最終ビルドを `open .build/Folzio.app` で保守者が起動し、3ペインを確認して結果を報告する。
+  - 2026-11-12: 保守者が最終ビルドの起動と3ペイン表示の手動確認 OK を報告。macOS 26.6.2。
+- [X] T015 T014 の報告を `specs/020-preview-wheel-pan/tasks.md` に記録し、converge で残作業を確認する。
+
+  - 最終起動確認の報告を T014 に記録。converge で仕様の機能要件7件・成功基準4件、設計、タスクおよび憲章の原則 I〜V を照合し、追加タスクなし。
 
 ## 依存と実行順
 
