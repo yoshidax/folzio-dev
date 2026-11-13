@@ -13,8 +13,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  verify-actions-lock:
+    name: Verify workflow dependency lockfiles
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4.4.0
+        with:
+          persist-credentials: false
+      - name: Install lockfile verifier
+        env:
+          GH_TOKEN: ${{ github.token }}
+          XDG_DATA_HOME: ${{ runner.temp }}/verified-gh-data
+        run: |
+          test "$(uname -s)-$(uname -m)" = Linux-x86_64
+          gh extension install github/gh-actions-lock --pin v0.4.1
+          printf '%s  %s\n' '39deb2fe714dbf74b073d8245fc7f3d50cd0eee18d5c0900e9e849ae933ae17e' "$XDG_DATA_HOME/gh/extensions/gh-actions-lock/gh-actions-lock" | sha256sum --check
+      - name: Verify development and public workflow locks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          XDG_DATA_HOME: ${{ runner.temp }}/verified-gh-data
+        run: python3 scripts/dev/actions-lock.py --verify
+
   build-and-test:
     name: Build and test (macOS 15 / arm64)
+    needs: verify-actions-lock
+    # A skipped required job would pass branch protection, so fail explicitly when verification fails.
+    if: ${{ always() }}
     runs-on: macos-15
     timeout-minutes: 30
     env:
@@ -22,8 +47,13 @@ jobs:
       XCODE_VERSION: "16.0"
 
     steps:
+      - name: Require successful lockfile verification
+        env:
+          LOCK_VERIFICATION: ${{ needs.verify-actions-lock.result }}
+        run: test "$LOCK_VERIFICATION" = success
+
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.4.0
 
       - name: Check public source snapshot
         run: bash scripts/dev/export-public.sh "$(git rev-parse HEAD)" "$RUNNER_TEMP/public-source"

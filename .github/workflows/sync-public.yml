@@ -34,7 +34,7 @@ jobs:
       payload_digest: ${{ steps.plan.outputs.payload_digest }}
       input_artifact_id: ${{ steps.upload.outputs.artifact-id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.4.0
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
@@ -47,7 +47,7 @@ jobs:
           BOOTSTRAP_PUBLIC_BASE: ${{ inputs.bootstrap_public_base }}
         run: |
           python3 scripts/dev/sync-public.py sync-plan --source-sha "$SOURCE_SHA" --candidate-run-id "$CANDIDATE_RUN_ID" --bootstrap-public-base "$BOOTSTRAP_PUBLIC_BASE" --directory "$RUNNER_TEMP/sync"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4.6.2
         id: upload
         if: steps.plan.outputs.state == 'write' || steps.plan.outputs.state == 'rebuild'
         with:
@@ -62,12 +62,12 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.4.0
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.3.0
         with:
           artifact-ids: ${{ needs.plan.outputs.input_artifact_id }}
           github-token: ${{ github.token }}
@@ -89,7 +89,7 @@ jobs:
         run: bash scripts/dev/validate-release-candidate.sh "$RUNNER_TEMP/sync/source" "$RUNNER_TEMP/sync/candidate"
       - id: record
         run: python3 scripts/dev/sync-public.py record --directory "$RUNNER_TEMP/sync/source" --info "$RUNNER_TEMP/sync/candidate-info.json"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ steps.record.outputs.artifact_name }}
           path: ${{ runner.temp }}/sync/candidate/
@@ -105,12 +105,12 @@ jobs:
       contents: read
       actions: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.4.0
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.3.0
         with:
           artifact-ids: ${{ needs.plan.outputs.input_artifact_id }}
           github-token: ${{ github.token }}
@@ -118,7 +118,7 @@ jobs:
           run-id: ${{ github.run_id }}
           merge-multiple: true
           path: ${{ runner.temp }}/sync
-      - uses: actions/create-github-app-token@v3
+      - uses: actions/create-github-app-token@v3.3.0
         id: token
         with:
           client-id: ${{ vars.PUBLIC_SYNC_APP_CLIENT_ID }}

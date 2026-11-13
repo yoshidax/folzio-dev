@@ -67,15 +67,23 @@ def export(sha, output):
             info, path = entry.split(b'\t', 1)
             mode, kind, oid = info.decode().split()
             name = Path(os.fsdecode(path)).name
-            if mode not in ('100644', '100755') or kind != 'blob' or not name.endswith(('.yml', '.yaml')):
+            if mode not in ('100644', '100755') or kind != 'blob':
+                continue
+            if not (name.endswith(('.yml', '.yaml')) or name == 'actions.lock'):
                 continue
             if not re.fullmatch(r'[A-Za-z0-9_.-]+', name):
                 raise ValueError('workflow 名が不正です')
             file = root / '.github/workflows' / name
             file.parent.mkdir(parents=True, exist_ok=True)
             file.write_bytes(git('cat-file', 'blob', oid, binary=True))
-            names.append(name)
+            if name != 'actions.lock':
+                names.append(name)
+        lock = root / '.github/workflows/actions.lock'
+        if lock.exists() and not names:
+            raise ValueError('workflow がない公開用 actions.lock は削除してください')
         print('公開用 workflow: ' + ' '.join(names) if names else '公開用 workflow はありません')
+        if lock.exists():
+            print('公開用 lock: actions.lock')
         home, user = str(Path.home()), getpass.getuser()
         generic = {'runner', 'runneradmin', 'root'}
         private_link = re.compile(r'(\]\(|href=")[^)"]*(specs/|\.specify/|docs_private/|shared-skills/|AGENTS\.md)')
