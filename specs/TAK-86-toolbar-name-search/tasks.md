@@ -193,6 +193,9 @@
   - 検索欄がツールバーからあふれて表示されていないときは、「名前で絞り込む」（⌘F）を無効にする（FR-391）
   - 絞り込みで検索結果が 1 行もなくファイルリストが隠れているときの Return では、フォーカスを検索欄に残す（FR-389）
   - 見送り（保守者の決定）: 名前の変更中の判定を、ツリーとファイルリストに問い合わせる形へ作り替える件。処理の重複・効率の 5 件
+  - 結果: [run 43398780402](https://github.com/yoshidax/folzio-dev/actions/runs/43398780402)（`98d07f8`）で `swift build` と通常のテスト 1,226 件が成功した。
+    名前の絞り込みの性能は最も遅い 1 文字で 97ms（基準 100ms。これまでの実行では 64〜161ms でばらつく）。
+    性能テストで超えた 3 件（24MP のデコード、10,000 件のフォルダへ戻る、10,000 件の検索結果でのフォルダの名前の変更）は、この修正の前の実行でも超えていた
 - [ ] T036 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり `specs/product/file-list.md`・`window-layout.md`・
   `contracts/settings.md`・`contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映する（`specs/product/README.md` の「書き方のルール」に従う。
   ID の定義は1文にし、条件は子項目に分ける。feature の中だけの参照は製品仕様に残さない。コマンドの数（32）を書いているほかの箇所も合わせる。GUI 確認で変わった点があれば、その結果で直してから移す）。
