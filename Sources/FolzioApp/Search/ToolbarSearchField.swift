@@ -65,6 +65,22 @@ final class ToolbarSearchField: NSSearchField {
         super.mouseDown(with: event)
     }
 
+    /// Offers opening the search sheet as an accessibility action named like the magnifying glass's tooltip, so that
+    /// VoiceOver users can reach it. The magnifying glass's own press is left to the field: replacing the search
+    /// button cell's action did not affect clicks, and may also affect typing (FR-390, FR-392).
+    func setFindAccessibilityAction(name: String) {
+        setAccessibilityCustomActions([
+            NSAccessibilityCustomAction(name: name) { [weak self] in
+                MainActor.assumeIsolated { self?.performFindAccessibilityAction() ?? false }
+            },
+        ])
+    }
+
+    private func performFindAccessibilityAction() -> Bool {
+        guard isEnabled, let findCommandTarget else { return false }
+        return NSApp.sendAction(Self.findAction, to: findCommandTarget, from: self)
+    }
+
     /// The action that opens the search sheet. The same selector as the "Find…" menu item.
     static let findAction = #selector(MainSplitViewController.showSearch(_:))
 

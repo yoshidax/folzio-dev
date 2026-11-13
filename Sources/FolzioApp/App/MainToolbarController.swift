@@ -522,10 +522,13 @@ final class MainToolbarController: NSObject {
         fileList.applyNameFilter("")
     }
 
-    /// Whether ⌘F can move the focus into the field: the field is in the toolbar, and the toolbar does not show text
-    /// only (FR-391). A hidden toolbar is shown first, so it does not count here.
+    /// Whether ⌘F can move the focus into the field: the field is in the toolbar, the toolbar does not show text only,
+    /// and the field is not moved into the overflow menu of a narrow window (FR-391). A hidden toolbar is shown first,
+    /// so it does not count here. An overflowed field has no window, and focusing it would silently do nothing.
     private var canFocusNameFilter: Bool {
-        toolbar.displayMode != .labelOnly && !items(for: Self.nameFilterIdentifier).isEmpty
+        guard toolbar.displayMode != .labelOnly,
+              let field = items(for: Self.nameFilterIdentifier).first?.view else { return false }
+        return !toolbar.isVisible || field.window != nil
     }
 
     /// Shows the toolbar if needed, then puts the keyboard focus in the field and selects its text (FR-391).
@@ -603,6 +606,7 @@ final class MainToolbarController: NSObject {
         field.setAccessibilityHelp(fieldHelp)
         field.fieldToolTip = fieldHelp
         field.searchButtonToolTip = findHelp
+        field.setFindAccessibilityAction(name: findHelp)
         if let button = (field.cell as? NSSearchFieldCell)?.searchButtonCell {
             button.setAccessibilityLabel(findHelp)
         }

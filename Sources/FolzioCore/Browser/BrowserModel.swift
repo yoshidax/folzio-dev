@@ -434,6 +434,10 @@ public final class BrowserModel {
         } else {
             selection = SelectionState(selected: selected, focused: selection.focused)
         }
+        // A new name that no longer matches the name filter hides the row, so it leaves the selection (EC-250).
+        if nameFilter.isFiltering {
+            restrictSelectionToVisibleRows()
+        }
     }
 
     /// After renaming a folder, rebases the displayed listing, selection, search results, position inside a zip, and
@@ -568,6 +572,11 @@ public final class BrowserModel {
 
         if let additionalSearchRoot, let pattern = searchPattern {
             startSearchStream(in: additionalSearchRoot, matching: pattern, matchesRoot: additionalMatchesRoot)
+        }
+        // A folder row whose new name no longer matches the name filter is hidden, so it leaves the selection (EC-250).
+        // A listing that is still loading has no rows yet, so it would drop the whole selection.
+        if nameFilter.isFiltering, listing.state != .loading {
+            restrictSelectionToVisibleRows()
         }
     }
 
@@ -777,7 +786,12 @@ public final class BrowserModel {
         case .loading, .denied, .failed:
             break
         }
+        restrictSelectionToVisibleRows()
+    }
 
+    /// Keeps only the selected rows that are still displayed, with the same focus rules as the media type filter
+    /// (FR-059, FR-385).
+    private func restrictSelectionToVisibleRows() {
         // Nothing to restrict without a selection. Skipping it avoids hashing every row's URL on each keystroke.
         guard !selection.selected.isEmpty || selection.focused != nil else {
             schedulePrefetch(around: nil)

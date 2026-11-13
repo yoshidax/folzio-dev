@@ -185,6 +185,14 @@
   - CI（run 43395291743）で、`ShortcutAssignmentsTests` の保存値の文字列（`"cmd+f"`）を直し漏れて 2 件が失敗した。3 か所を `"opt+cmd+f"` に直した
   - これより前の記録（Clarifications・research.md・このファイルのほかのタスク）は当時のキーのまま残す
   - 確認: quickstart.md の 4・5（T035）
+- [x] T042 コードレビュー（2026-11-13、high）の指摘のうち、保守者が直すと決めた 4 件を直す
+  - 検索結果の名前の変更（`BrowserModel.didRenameItem`）と、フォルダの名前の変更（`didRenameFolder`）で、新しい名前が絞り込みに一致しなくなった行を選択から外す（EC-250。
+    選択を絞る処理を `restrictSelectionToVisibleRows()` に分けて共用する）。回帰テストを `BrowserModelNameFilterTests` に加えた
+  - 虫眼鏡の動作を、検索欄のアクセシビリティのカスタムアクション「検索…（⌥⌘F）」としても提供する（FR-392。`ToolbarSearchField.setFindAccessibilityAction(name:)`）。
+    回帰テストを `ToolbarSearchFieldEditingTests` に加えた
+  - 検索欄がツールバーからあふれて表示されていないときは、「名前で絞り込む」（⌘F）を無効にする（FR-391）
+  - 絞り込みで検索結果が 1 行もなくファイルリストが隠れているときの Return では、フォーカスを検索欄に残す（FR-389）
+  - 見送り（保守者の決定）: 名前の変更中の判定を、ツリーとファイルリストに問い合わせる形へ作り替える件。処理の重複・効率の 5 件
 - [ ] T036 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり `specs/product/file-list.md`・`window-layout.md`・
   `contracts/settings.md`・`contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映する（`specs/product/README.md` の「書き方のルール」に従う。
   ID の定義は1文にし、条件は子項目に分ける。feature の中だけの参照は製品仕様に残さない。コマンドの数（32）を書いているほかの箇所も合わせる。GUI 確認で変わった点があれば、その結果で直してから移す）。

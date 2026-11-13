@@ -110,7 +110,7 @@ open .build/Folzio.app
 
 - 設定で表示言語を英語にすると、プレースホルダが `Filter by Name`、パレットの名前が `Filter`、メニューが `Filter by Name`、
   一致なしのメッセージが `No items match “zzz”` になる。入力済みの文字と絞り込みは残る
-- VoiceOver で検索欄に移ると「名前で絞り込み」と読む
+- VoiceOver で検索欄に移ると「名前で絞り込み」と読む。VoiceOver のアクションの一覧（VO-⌘-Space）に「検索…（⌥⌘F）」があり、実行すると検索のモーダルが開く
 
 ## 結果の記録
 

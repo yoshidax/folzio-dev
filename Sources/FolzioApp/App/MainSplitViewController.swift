@@ -1146,10 +1146,12 @@ final class MainSplitViewController: NSSplitViewController {
         )
     }
 
-    /// Moves the keyboard focus to the file list, keeping the name filter (FR-389).
+    /// Moves the keyboard focus to the file list, keeping the name filter (FR-389). When the filter hides every
+    /// search result, the list itself is hidden behind the message, so the focus stays in the field.
     func focusFileListForNameFilter() {
-        guard paneCommands.canFocus(.fileList) else { return }
-        focusPane(fileListViewController.primaryFocusView)
+        let list = fileListViewController.primaryFocusView
+        guard paneCommands.canFocus(.fileList), !list.isHiddenOrHasHiddenAncestor else { return }
+        focusPane(list)
     }
 
     /// ⌘F and "File > Filter by Name". Moves the keyboard focus to the toolbar name filter field, showing the toolbar

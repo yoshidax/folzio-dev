@@ -56,6 +56,23 @@ struct ToolbarSearchFieldEditingTests {
         }
     }
 
+    @Test("An accessibility action named like the magnifying glass opens the search sheet (FR-390, FR-392)")
+    func accessibilityActionOpensSearch() throws {
+        let target = FindTargetSpy()
+        try withWindow(ToolbarSearchField(width: 180)) { _, field in
+            field.findCommandTarget = target
+            field.setFindAccessibilityAction(name: "Find… (⌥⌘F)")
+            let action = try #require(field.accessibilityCustomActions()?.first)
+            #expect(action.name == "Find… (⌥⌘F)")
+            #expect(action.handler?() == true)
+            #expect(target.calls == 1)
+
+            field.isEnabled = false
+            #expect(action.handler?() == false)
+            #expect(target.calls == 1, "A disabled field does not open the search sheet (FR-388)")
+        }
+    }
+
     private func click(at point: NSPoint, in view: NSView, window: NSWindow) throws -> NSEvent {
         try #require(NSEvent.mouseEvent(
             with: .leftMouseDown,

@@ -314,6 +314,49 @@ struct BrowserModelNameFilterTests {
         #expect(env.model.nameFilter.text == "")
     }
 
+    @Test("A search result renamed to a name that no longer matches is hidden and leaves the selection (EC-250)")
+    func renamedSearchResultLeavesSelection() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.folder("A"))
+        env.model.startSearch(try #require(SearchPattern(keyword: "*.png")), root: env.folder("A"))
+        let finished = await waitUntil { env.model.listing.search?.phase == .finished }
+        #expect(finished)
+        env.model.setNameFilter("cat")
+        let old = try #require(env.row("my_cat.png")).url
+        env.model.select([old], focused: old)
+
+        let renamed = old.deletingLastPathComponent().appendingPathComponent("bird.png")
+        try FileManager.default.moveItem(at: old, to: renamed)
+        env.model.didRenameItem(at: old, to: renamed)
+
+        #expect(!env.names.contains("bird.png"))
+        #expect(env.model.selection.selected.isEmpty)
+        #expect(env.model.selection.focused == nil)
+        #expect(isEmptyPreview(env.model.preview))
+        env.model.setNameFilter("")
+        #expect(env.names.contains("bird.png"))
+    }
+
+    @Test("A folder row renamed to a name that no longer matches is hidden and leaves the selection (EC-250)")
+    func renamedFolderRowLeavesSelection() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        await env.model.selectFolder(env.folder("A"))
+        env.model.setNameFilter("cat")
+        let cats = try #require(env.row("cats")).url
+        let kept = try #require(env.row("cat01.jpg")).url
+        env.model.select([cats, kept], focused: kept)
+
+        let birds = env.folder("A/birds")
+        try FileManager.default.moveItem(at: cats, to: birds)
+        env.model.didRenameFolder(from: cats, to: birds)
+
+        #expect(!env.names.contains("birds"))
+        #expect(env.model.selection.selected == [kept])
+        #expect(env.model.selection.focused == kept)
+    }
+
     @Test("Rows inside a zip are filtered by name and .. stays; leaving the zip clears the filter")
     func zipListing() async throws {
         let env = try makeEnv()
