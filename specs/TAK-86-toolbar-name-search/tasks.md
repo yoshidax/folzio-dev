@@ -12,36 +12,39 @@
 
 - [x] T001 `specs/TAK-86-toolbar-name-search/spec.md` と `checklists/requirements.md` を作り、TAK-86 と保守者の決定（要件の変更を含む Clarifications）を記録する
 - [x] T002 `plan.md`・`research.md`・`data-model.md`・`contracts/toolbar-name-filter.md`・`quickstart.md` に設計と検証方法を記録する
-- [ ] T003 保守者の設計レビューと実装の承認を得る。承認がなければ T004 以降に進まない
+- [x] T003 保守者の設計レビューと実装の承認を得る。承認がなければ T004 以降に進まない
 
 ## Phase 2: Foundational（Core の型・並び・コマンド・文言）
 
-- [ ] T004 [P] `Tests/FolzioCoreTests/NameFilterTests.swift` を作る（先に失敗させる）。空・空白だけは絞り込まない、部分一致、`*`・`?` の名前全体との一致、
+- [x] T004 [P] `Tests/FolzioCoreTests/NameFilterTests.swift` を作る（先に失敗させる）。空・空白だけは絞り込まない、部分一致、`*`・`?` の名前全体との一致、
   大文字小文字と濁点の合成・分解を区別しない、フォルダ・zip ファイル・zip の中のディレクトリも照合する、`text` は入力のまま保つ、をテストする（FR-381、data-model.md）
-- [ ] T005 `Sources/FolzioCore/Model/NameFilter.swift` に `public struct NameFilter: Sendable, Equatable` を実装して T004 を通す。
+- [x] T005 `Sources/FolzioCore/Model/NameFilter.swift` に `public struct NameFilter: Sendable, Equatable` を実装して T004 を通す。
   照合は `SearchPattern(keyword:)` と `matches(fileName:)` を使い、規則を書き直さない。AppKit を import しない。コメントは英語で FR-381 を書く（R2）
-- [ ] T006 [P] `Tests/FolzioCoreTests/ToolbarSearchInputTests.swift` を作り（先に失敗させる）、`Sources/FolzioCore/Search/ToolbarSearchInput.swift` に
+- [x] T006 [P] `Tests/FolzioCoreTests/ToolbarSearchInputTests.swift` を作り（先に失敗させる）、`Sources/FolzioCore/Search/ToolbarSearchInput.swift` に
   `public enum ToolbarSearchInput` と `modalKeyword(fieldText:previousKeyword:)` を実装する。文字があれば前後の空白を除いた検索欄の文字（前回のキーワードより優先）、
   空・空白だけなら前回のキーワード、どちらもなければ `nil`（FR-390、data-model.md）
-- [ ] T007 [P] `Tests/FolzioCoreTests/ToolbarLayoutTests.swift` を直し（先に失敗させる）、`Sources/FolzioCore/Settings/ToolbarLayout.swift` の `setIdentifiers` の末尾に `"nameFilter"` を加え、
+- [x] T007 [P] `Tests/FolzioCoreTests/ToolbarLayoutTests.swift` を直し（先に失敗させる）、`Sources/FolzioCore/Settings/ToolbarLayout.swift` の `setIdentifiers` の末尾に `"nameFilter"` を加え、
   `defaultOrder` を「`nameFilter` を除くセット → `flexibleSpaceIdentifier` → `nameFilter`」の並びで明示して書く。`normalized(saved:)` は変えない。
   テスト: 既定の並び、`nameFilter` を含まない保存値はそのまま返り足されない、含む保存値はそのまま返る、重複は最初の1つ（FR-393、R14）
-- [ ] T008 `Sources/FolzioCore/Shortcuts/ShortcutCommand.swift` の `ShortcutCommandID` に `filterByName` を（`find` の直後）、`ShortcutCommands.all` に
+- [x] T008 `Sources/FolzioCore/Shortcuts/ShortcutCommand.swift` の `ShortcutCommandID` に `filterByName` を（`find` の直後）、`ShortcutCommands.all` に
   `ShortcutCommand(id: .filterByName, defaultCombination: key("f", [.option, .command]), section: .search)` を（`find` の直後）加える。
   `Sources/FolzioCore/Shortcuts/ShortcutCatalog.swift` に、`find` の直後の項目（キー `⌥⌘F`、区分は検索、`parts: [.command(.filterByName)]`）を加える。
   `ShortcutEntry` の ID の型に case が要れば加える（FR-391、R11）
-- [ ] T009 `Sources/FolzioLocalization/TextKey.swift` に文言のキーを加える（contracts/toolbar-name-filter.md の表の 8 つ）:
+- [x] T009 `Sources/FolzioLocalization/TextKey.swift` に文言のキーを加える（contracts/toolbar-name-filter.md の表の 8 つ）:
   `menuFileFilterByName`・`toolbarNameFilterLabel`・`toolbarNameFilterPlaceholder`・`toolbarNameFilterHelp`・`toolbarNameFilterFindHelp`・`emptyNameFilterNoMatches`・
   `shortcutFilterByName`・`shortcutFilterByNameCondition`。引数を持つ 3 つ（`toolbarNameFilterHelp`・`toolbarNameFilterFindHelp`・`emptyNameFilterNoMatches`）は
   `arguments` の `[.text]` の case に加える。翻訳者向けの説明を加える。`Resources/ja.lproj/Localizable.strings` と `Resources/en.lproj/Localizable.strings` に、表のとおりの文言を加える（FR-392、contracts）
-- [ ] T010 `Sources/FolzioLocalization/ShortcutText.swift` の3つの対応（名前・条件・メニューのキー）に `filterByName` を加える。
+- [x] T010 `Sources/FolzioLocalization/ShortcutText.swift` の3つの対応（名前・条件・メニューのキー）に `filterByName` を加える。
   `Sources/FolzioApp/Shortcuts/ToolbarShortcutText.swift` の `commands(for:)` に `.toolbarNameFilterHelp → [.filterByName]` と `.toolbarNameFilterFindHelp → [.find]` を加える（R8・R11）
-- [ ] T011 コマンドの数と既定のキーを書いているテストを直す: `Tests/FolzioCoreTests/Shortcuts/ShortcutCommandConsistencyTests.swift` の 32 を 33 にし、既定のキーの表に
+- [x] T011 コマンドの数と既定のキーを書いているテストを直す: `Tests/FolzioCoreTests/Shortcuts/ShortcutCommandConsistencyTests.swift` の 32 を 33 にし、既定のキーの表に
   `.filterByName: "⌥⌘F"` を加える。ほかに数や一覧を書いているテスト（`grep -rn "32\|\.find" Tests/FolzioCoreTests/Shortcuts Tests/FolzioCoreTests/Localization`）があれば合わせる。
   `Tests/FolzioCoreTests/Localization/ShortcutSettingsTextTests.swift` に、新しい文言が両言語で訳されていることのテストを加える（引数を持つキーは `toolbarKeys`、持たないキーは `toolbarPlainKeys` と同じ方法）
 - [ ] T012 `scripts/dev/check-all.sh` を実行して成功させ、作業ブランチに push し、CI（`macos-swift-ci.yml`。PR がなければ `workflow_dispatch` で作業ブランチを指定）で
   `swift build` と `swift test` の成功を確かめる。失敗したらログを読んで直し、Phase 3 に進まない。
   網羅の `switch` で `ShortcutCommandID` を扱う箇所の直し漏れは、ここのビルドで見つける
+  - 注記（2026-11-13）: Phase 2 だけでは CI に通らないため、Phase 3〜6 の後に CI で合わせて確かめる。
+    新しい文言のうち `toolbarNameFilterLabel`・`toolbarNameFilterPlaceholder` は Phase 3 のツールバーのコードで初めて使われ、
+    既存のテスト（`CatalogConsistencyTests.casesAreReferenced`）が、どこからも使われない文言のキーを失敗にするため
 
 ## Phase 3: User Story 81 - 表示中の一覧を名前で絞り込む (P1)
 
@@ -49,36 +52,40 @@
 
 **Independent Test**: quickstart.md の 0〜3・7
 
-- [ ] T013 [US81] `Tests/FolzioCoreTests/BrowserModelNameFilterTests.swift` を作る（先に失敗させる。既存の `BrowserModelFolderTests`・`BrowserModelSearchTests` の環境の作り方を使う）。
+- [x] T013 [US81] `Tests/FolzioCoreTests/BrowserModelNameFilterTests.swift` を作る（先に失敗させる。既存の `BrowserModelFolderTests`・`BrowserModelSearchTests` の環境の作り方を使う）。
   (1) 通常のフォルダでファイルとフォルダの行が絞り込まれ `..` が残る、(2) 種類フィルタ・zip の表示と重ねて働く、(3) 1行も残らないと `state == .noMatches` で
   `nameFilterHidesAllRows` が真、行が残るときは偽で従来の状態、(4) 元々空のフォルダは `.empty` のまま、(5) 非表示になった項目が選択から外れ、フォーカスの扱いが種類フィルタと同じ、
   (6) 別のフォルダの選択・フォルダの行を開く・上の階層へ・検索の開始・検索結果の解除・履歴の場所の表示で絞り込みが空になる、(7) `reloadCurrentFolder()` では空にならず、
   増えた項目はその時点の名前で照合される、(8) 検索結果の一覧が絞り込まれ、`listing.search` の件数と検索の進行は変わらない、(9) zip の中の一覧が絞り込まれる
   （FR-381〜FR-386、data-model.md）
-- [ ] T014 [US81] `Sources/FolzioCore/Browser/BrowserModel.swift` に `nameFilter`・`nameFilterHidesAllRows`・`setNameFilter(_:)` を加え、`rebuildListing()` と `resetForNavigation()` を
+- [x] T014 [US81] `Sources/FolzioCore/Browser/BrowserModel.swift` に `nameFilter`・`nameFilterHidesAllRows`・`setNameFilter(_:)` を加え、`rebuildListing()` と `resetForNavigation()` を
   data-model.md のとおりに直して T013 を通す。選択を表示中の行に限る処理は、`setMediaTypeFilter(_:)` と共用する関数にまとめる。コメントは英語（R1・R3・R4）
-- [ ] T015 [US81] `Tests/FolzioPerformanceTests/NameFilterPerformanceTests.swift` を作る（既存の `PerformanceBaselineTests` の extension にする。別の suite にしない）。
+- [x] T015 [US81] `Tests/FolzioPerformanceTests/NameFilterPerformanceTests.swift` を作る（既存の `PerformanceBaselineTests` の extension にする。別の suite にしない）。
   10,000 件の項目を持つ一覧で `setNameFilter` を呼び、1回が 100ms 以内であることを確かめる（SC-209、R15）
-- [ ] T016 [US81] `Sources/FolzioApp/FileList/FileListViewController.swift` に `applyNameFilter(_ text: String)`・`currentNameFilterText`・`onNameFilterChange`・`observeNameFilter()` を加える
+- [x] T016 [US81] `Sources/FolzioApp/FileList/FileListViewController.swift` に `applyNameFilter(_ text: String)`・`currentNameFilterText`・`onNameFilterChange`・`observeNameFilter()` を加える
   （`applyMediaTypeFilter(_:)`・`observeMediaTypeFilter()` と同じ形）。`.noMatches` のメッセージの分岐で、`model.nameFilterHidesAllRows` が真なら
   `l10n.text(.emptyNameFilterNoMatches, .text(model.nameFilter.text の前後の空白を除いた文字))` を出す。表示言語の切り替えでメッセージが更新されることを確かめる（FR-386・EC-255、R3・R5）
-- [ ] T017 [US81] 表示中の一覧を対象にする操作（すべてを選択・矢印キーでの移動・フルスクリーン中の移動・スライドショーの対象）が `listing.files` を読むことをコードで確かめる。
+- [x] T017 [US81] 表示中の一覧を対象にする操作（すべてを選択・矢印キーでの移動・フルスクリーン中の移動・スライドショーの対象）が `listing.files` を読むことをコードで確かめる。
   `allFiles` を直接使う箇所があれば、種類フィルタと同じ扱いになるように直す。直す箇所がなければ、その旨をこのタスクに注記する（FR-387、R1）
-- [ ] T018 [US81] `Sources/FolzioApp/Search/ToolbarSearchField.swift` に `final class ToolbarSearchField: NSSearchField` を作る。この時点では、幅の固定の制約（180pt。
+  - 注記（2026-11-13）: コードの変更は要らなかった。矢印キーの移動（`BrowserModel.moveFocus`）は `listing.files` を読み、
+    スライドショーの対象（`SlideshowSequence`）も `listing.files` から作る。`allFiles` の残りの使用は、検索結果の管理と再読み込みの内部の処理だけ
+- [x] T018 [US81] `Sources/FolzioApp/Search/ToolbarSearchField.swift` に `final class ToolbarSearchField: NSSearchField` を作る。この時点では、幅の固定の制約（180pt。
   `translatesAutoresizingMaskIntoConstraints = false`。サムネイルサイズのスライダーと同じ方法）だけを持つ。×ボタンと Esc での消去は標準の動作のまま使う。コメントは英語（R7）
-- [ ] T019 [US81] `Sources/FolzioApp/App/MainToolbarController.swift` に `nameFilterIdentifier`（`"nameFilter"`）を加え、`makeItem(for:)` で項目を作る。
+- [x] T019 [US81] `Sources/FolzioApp/App/MainToolbarController.swift` に `nameFilterIdentifier`（`"nameFilter"`）を加え、`makeItem(for:)` で項目を作る。
   `view` は `ToolbarSearchField`、`label`・`paletteLabel` は `toolbarNameFilterLabel`、プレースホルダとアクセシビリティのラベルは `toolbarNameFilterPlaceholder`、`delegate` は `self`。
   `MainToolbarController` を `NSSearchFieldDelegate` に適合させる。`controlTextDidChange(_:)` で、フィールドエディタの `hasMarkedText()` が偽のときに
   `fileList.applyNameFilter(field.stringValue)` を呼ぶ。`control(_:textView:doCommandBy:)` で `insertNewline(_:)` のときにファイルリストへフォーカスを移して `true` を返す
   （フォーカスを移す入口を `MainSplitViewController` に公開の関数として加える）。ツールバーにない検索欄（パレットの見本）の入力は無視する（FR-380・FR-381・FR-383・FR-389、R6・R7）
-- [ ] T020 [US81] 同じファイルで `fileList.onNameFilterChange` を受け、ツールバーにある検索欄の文字がモデルの文字と違うときだけ書き換える（移動での解除で検索欄が空になる。FR-384、R5）。
+- [x] T020 [US81] 同じファイルで `fileList.onNameFilterChange` を受け、ツールバーにある検索欄の文字がモデルの文字と違うときだけ書き換える（移動での解除で検索欄が空になる。FR-384、R5）。
   `applyState(to:)` で、新しく入った項目の検索欄にモデルの文字を入れる
-- [ ] T021 [US81] 同じファイルの `toolbarDefaultItemIdentifiers` と `toolbarAllowedItemIdentifiers` を、手書きの配列から
+- [x] T021 [US81] 同じファイルの `toolbarDefaultItemIdentifiers` と `toolbarAllowedItemIdentifiers` を、手書きの配列から
   `ToolbarLayout.defaultOrder` と `ToolbarLayout.setIdentifiers + [spaceIdentifier, flexibleSpaceIdentifier]` を `NSToolbarItem.Identifier` にしたものへ変える（R14）
-- [ ] T022 [US81] 同じファイルに `applyNameFilterAvailability()` と `applyNameFilterAvailability(to:)` を加え、項目とフィールドの `isEnabled` を `panes.paneCommands.canSearch` にする。
+- [x] T022 [US81] 同じファイルに `applyNameFilterAvailability()` と `applyNameFilterAvailability(to:)` を加え、項目とフィールドの `isEnabled` を `panes.paneCommands.canSearch` にする。
   `applyState(to:)`・`apply(paneLayout:)`・`updateSlideshowAvailability()`・`validateToolbarItem(_:)` から呼ぶ。フルスクリーンへの出入りでこれらのどれかが呼ばれることをコードで確かめ、
   呼ばれなければ呼び出しを足す。無効にしてもモデルの絞り込みは変えない（FR-388・EC-258、R13）
-- [ ] T023 [US81] 同じファイルの `displayLanguageDidChange()` に、項目の `label`・`paletteLabel`・プレースホルダ・アクセシビリティのラベルの更新を加える。入力済みの文字は変えない（EC-255）
+  - 注記（2026-11-13）: 全画面の出入り（`enterFullScreenPresentation`・`leaveFullScreenPresentation`）はツールバーの更新を呼ばなかったので、
+    `MainSplitViewController.onSearchAvailabilityChange` を加えて呼ぶ
+- [x] T023 [US81] 同じファイルの `displayLanguageDidChange()` に、項目の `label`・`paletteLabel`・プレースホルダ・アクセシビリティのラベルの更新を加える。入力済みの文字は変えない（EC-255）
 
 ## Phase 4: User Story 82 - 入力したキーワードを持って検索のモーダルへ移る (P2)
 
@@ -86,13 +93,14 @@
 
 **Independent Test**: quickstart.md の 5
 
-- [ ] T024 [US82] `Sources/FolzioApp/App/MainSplitViewController.swift` の `showSearch(_:)` の中身を `private func presentSearchPanel(keyword: String?)` へ移し、`showSearch(_:)` は
+- [x] T024 [US82] `Sources/FolzioApp/App/MainSplitViewController.swift` の `showSearch(_:)` の中身を `private func presentSearchPanel(keyword: String?)` へ移し、`showSearch(_:)` は
   `presentSearchPanel(keyword: lastSearchKeyword)` を呼ぶだけにする（⌘F の動作を変えない）。`func showSearch(carrying fieldText: String)` を加え、`paneCommands.canSearch` を確かめて
   `ToolbarSearchInput.modalKeyword(fieldText:previousKeyword: lastSearchKeyword)` を渡す。`lastSearchKeyword` はここでは変えない（FR-390、R9）
-- [ ] T025 [US82] `Sources/FolzioApp/App/MainToolbarController.swift` に `@objc func showSearch(_ sender: Any?)` を加える。モデルの絞り込みの文字（`fileList.currentNameFilterText`）で
+- [x] T025 [US82] `Sources/FolzioApp/App/MainToolbarController.swift` に `@objc func showSearch(_ sender: Any?)` を加える。モデルの絞り込みの文字（`fileList.currentNameFilterText`）で
   `panes.showSearch(carrying:)` を呼ぶ。項目を作るとき、`(field.cell as? NSSearchFieldCell)?.searchButtonCell` の `target` を `self`、`action` を `showSearch(_:)` にし、
   アクセシビリティのラベルに `ToolbarShortcutText.text(.toolbarNameFilterFindHelp)` を付ける。`validateMenuItem(_:)` で `showSearch(_:)` の項目に `canSearch` を返す（FR-390・FR-392、R8）
-- [ ] T026 [US82] `Sources/FolzioApp/Search/ToolbarSearchField.swift` に、(1) 虫眼鏡の矩形（`searchButtonRect(forBounds:)`）と残りの部分に別々のツールチップを付ける処理
+  - 注記（2026-11-13）: 検索欄の文字はモデルの絞り込みと同じなので、モデルの文字（`fileList.currentNameFilterText`）を使う
+- [x] T026 [US82] `Sources/FolzioApp/Search/ToolbarSearchField.swift` に、(1) 虫眼鏡の矩形（`searchButtonRect(forBounds:)`）と残りの部分に別々のツールチップを付ける処理
   （文言を受け取る2つのプロパティ。`layout()` と文言の変更で `removeAllToolTips()` の後に `addToolTip(_:owner:userData:)` で付け直す）、
   (2) `weak var findCommandTarget: AnyObject?` と、`showSearch(_:)` のセレクタのときだけそれを返す `supplementalTarget(forAction:sender:)` の上書きを加える。
   ファイル操作のセレクタは転送しない。`MainToolbarController` が項目を作るときと `displayLanguageDidChange()` で文言と `findCommandTarget` を設定する（FR-390・FR-392・EC-257、R8・R10）
@@ -103,14 +111,17 @@
 
 **Independent Test**: quickstart.md の 4
 
-- [ ] T027 [US83] `Sources/FolzioApp/App/MainToolbarController.swift` に `var canFocusNameFilter: Bool`（ツールバーの項目に `nameFilter` があり、`displayMode` が文字だけでない）と
+- [x] T027 [US83] `Sources/FolzioApp/App/MainToolbarController.swift` に `var canFocusNameFilter: Bool`（ツールバーの項目に `nameFilter` があり、`displayMode` が文字だけでない）と
   `func focusNameFilter()`（検索欄を first responder にして全選択する）を加える。あわせて、絞り込みを解除する3つの時点を加える: ツールバーを利用者が隠したとき、
   `toolbarDidRemoveItem(_:)` で `nameFilter` が外れたとき、`displayMode` が文字だけになったとき。フルスクリーンでツールバーが自動で隠れる経路では解除しないことをコードで確かめる
   （FR-391・FR-393・EC-258、R11・R12）
-- [ ] T028 [US83] `Sources/FolzioApp/App/MainSplitViewController.swift` に `@objc func filterByName(_ sender: Any?)` を加える。`paneCommands.canSearch` とツールバーの `canFocusNameFilter` を確かめ、
+  - 注記（2026-11-13）: 全画面でのツールバーの自動の非表示は表示オプション（`.autoHideToolbar`）で行い、`NSToolbar.isVisible` を変えない。
+    そのため `isVisible` が偽になったときだけ解除すれば、全画面では絞り込みを保つ（EC-258）。外したときの解除は、
+    並び替えで外して入れ直す場合に解除しないよう、1回遅らせてツールバーに検索欄が残っていないかを確かめる
+- [x] T028 [US83] `Sources/FolzioApp/App/MainSplitViewController.swift` に `@objc func filterByName(_ sender: Any?)` を加える。`paneCommands.canSearch` とツールバーの `canFocusNameFilter` を確かめ、
   ツールバーが隠れていれば表示してから `focusNameFilter()` を呼ぶ（ツールバーのコントローラへの経路は、既存の `onPaneLayoutChange` などと逆向きのクロージャか弱参照で持つ）。
   `validateMenuItem(_:)` に同じ条件を加える（FR-391、R11）
-- [ ] T029 [US83] `Sources/FolzioApp/App/MainMenu.swift` の「ファイル」メニューの「検索…」の直後に「名前で絞り込む」（`menuFileFilterByName`、`action` は `filterByName(_:)`、`target = nil`、
+- [x] T029 [US83] `Sources/FolzioApp/App/MainMenu.swift` の「ファイル」メニューの「検索…」の直後に「名前で絞り込む」（`menuFileFilterByName`、`action` は `filterByName(_:)`、`target = nil`、
   既定のキー ⌥⌘F）を加え、割り当ての対応の一覧（`(searchItem, .find)` のある箇所）と表示言語の切り替えの更新に加える（FR-391）
 
 ## Phase 6: User Story 84 - 検索欄を含むツールバーを自分の並びにする (P3)
@@ -119,10 +130,12 @@
 
 **Independent Test**: quickstart.md の 6
 
-- [ ] T030 [US84] `Sources/FolzioApp/App/MainToolbarController.swift` の項目に `menuFormRepresentation`（名前 `toolbarNameFilterLabel`、`action` `showSearch(_:)`、`target` `self`）を設定し、
+- [x] T030 [US84] `Sources/FolzioApp/App/MainToolbarController.swift` の項目に `menuFormRepresentation`（名前 `toolbarNameFilterLabel`、`action` `showSearch(_:)`、`target` `self`）を設定し、
   `displayLanguageDidChange()` で名前を更新する（FR-392）
-- [ ] T031 [US84] 並びの保存と復元（`restoreSavedConfiguration()`・`saveConfiguration()`）が、`nameFilter` を含む並びと含まない並びで既存の規則のまま働くことをコードで確かめる。
+- [x] T031 [US84] 並びの保存と復元（`restoreSavedConfiguration()`・`saveConfiguration()`）が、`nameFilter` を含む並びと含まない並びで既存の規則のまま働くことをコードで確かめる。
   コードの変更が要らなければ、その旨をこのタスクに注記する（FR-393、R14）
+  - 注記（2026-11-13）: コードの変更は要らなかった。`saveConfiguration()` は `ToolbarLayout.defaultOrder` と比べて保存を決め、
+    `restoreSavedConfiguration()` は `ToolbarLayout.normalized(saved:)` の結果をそのまま並べる。既定の並びは T021 でデリゲートと同じものになった
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 

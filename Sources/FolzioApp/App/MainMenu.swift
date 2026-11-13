@@ -157,6 +157,16 @@ final class MainMenu {
         searchItem.keyEquivalentModifierMask = [.command]
         searchItem.target = nil
         fileMenu.addItem(searchItem)
+
+        // ⌥⌘F. Moves the focus to the toolbar name filter field (FR-391). Distinguished from ⌘F by the Option key.
+        let filterByNameItem = NSMenuItem(
+            title: l10n.text(.menuFileFilterByName),
+            action: #selector(MainSplitViewController.filterByName(_:)),
+            keyEquivalent: "f"
+        )
+        filterByNameItem.keyEquivalentModifierMask = [.option, .command]
+        filterByNameItem.target = nil
+        fileMenu.addItem(filterByNameItem)
         let shortcutsItem = NSMenuItem(
             title: l10n.text(.menuFileShortcuts),
             action: #selector(AppDelegate.showShortcuts(_:)),
@@ -380,7 +390,7 @@ final class MainMenu {
             (openWithItem, .menuFileOpenWith),
             (openContainerItem, .menuFileShowContents), (goUpItem, .menuFileEnclosingFolder),
             (revealItem, .menuFileRevealInFinder), (addFavoriteItem, .menuFileAddToFavorites),
-            (searchItem, .menuFileFind), (fileTrashItem, .menuFileTrash),
+            (searchItem, .menuFileFind), (filterByNameItem, .menuFileFilterByName), (fileTrashItem, .menuFileTrash),
             (shortcutsItem, .menuFileShortcuts), (closeItem, .menuFileClose),
             (editMenuItem, .menuEdit), (redoItem, .menuEditRedo),
             (movePasteItem, .menuEditMovePaste), (cancelReceiving, .menuCancelReceiving),
@@ -399,6 +409,7 @@ final class MainMenu {
         let shortcutBindings: [(NSMenuItem, ShortcutCommandID)] = [
             (newFolderItem, .newFolder), (openItem, .open), (openContainerItem, .showContents),
             (goUpItem, .enclosingFolder), (addFavoriteItem, .addToFavorites), (searchItem, .find),
+            (filterByNameItem, .filterByName),
             (shortcutsItem, .shortcuts), (fileTrashItem, .trash), (editTrashItem, .trash),
             (movePasteItem, .movePaste), (copyPathnameItem, .copyPathname), (duplicateItem, .duplicate),
             (toolbarItem, .toolbar), (fullScreenItem, .fullScreen), (zoomInItem, .zoomIn), (zoomOutItem, .zoomOut),
