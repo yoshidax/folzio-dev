@@ -522,7 +522,7 @@ final class MainToolbarController: NSObject {
         fileList.applyNameFilter("")
     }
 
-    /// Whether ⌥⌘F can move the focus into the field: the field is in the toolbar, and the toolbar does not show text
+    /// Whether ⌘F can move the focus into the field: the field is in the toolbar, and the toolbar does not show text
     /// only (FR-391). A hidden toolbar is shown first, so it does not count here.
     private var canFocusNameFilter: Bool {
         toolbar.displayMode != .labelOnly && !items(for: Self.nameFilterIdentifier).isEmpty
@@ -549,7 +549,7 @@ final class MainToolbarController: NSObject {
         field.currentEditor()?.selectAll(nil)
     }
 
-    /// The magnifying glass, ⌘F while the field has the focus, and the overflow and text-only item. Opens the search
+    /// The magnifying glass, ⌥⌘F while the field has the focus, and the overflow and text-only item. Opens the search
     /// sheet with the field's text as the keyword (FR-390, FR-392).
     @objc func showSearch(_ sender: Any?) {
         panes.showSearch(carrying: fileList.currentNameFilterText)
@@ -575,7 +575,7 @@ final class MainToolbarController: NSObject {
         field.action = #selector(nameFilterFieldChanged(_:))
         field.sendsSearchStringImmediately = true
         field.sendsWholeSearchString = false
-        // The field forwards a click on the magnifying glass and ⌘F to `showSearch(_:)` (FR-390).
+        // The field forwards a click on the magnifying glass and ⌥⌘F to `showSearch(_:)` (FR-390).
         field.findCommandTarget = self
 
         let item = NSToolbarItem(itemIdentifier: identifier)
@@ -928,7 +928,7 @@ extension MainToolbarController: NSMenuItemValidation {
     /// name filter field (FR-388).
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         if menuItem.action == #selector(showSearch(_:)) {
-            // ⌘F while the name filter field has the focus, and the field's overflow and text-only item (FR-388).
+            // ⌥⌘F while the name filter field has the focus, and the field's overflow and text-only item (FR-388).
             return panes.paneCommands.canSearch
         }
         guard menuItem.action == #selector(slideshowToggled(_:)) else { return true }

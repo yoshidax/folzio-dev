@@ -9,9 +9,9 @@
 名前の絞り込みは、種類フィルタと同じく `BrowserModel` の状態として持ち、表示する行を作る `rebuildListing()` で適用する（R1）。
 照合は検索のモーダルと同じ `SearchPattern` を使う値型 `NameFilter` で行う（R2）。表示する一覧が別の場所へ替わる操作はすべて `resetForNavigation()` を通るので、
 そこで絞り込みを解除する（R4）。ツールバーには、検索フィールドを `view` に持つ項目 `nameFilter` を加え、入力のたびにモデルへ渡し、モデルの変化を検索欄へ戻す（R5〜R7）。
-虫眼鏡の押下と、検索欄にフォーカスがある間の ⌘F は、検索欄の文字をキーワードとして検索のモーダルを開く（R8〜R10）。
-検索欄へ移るコマンド「名前で絞り込む」（⌥⌘F）を、割り当てを変更できるコマンドに加える（R11）。
-検索の処理（照合・列挙・結果の表示）と、検索のモーダルの ⌘F からの動作は変えない。
+虫眼鏡の押下と、検索欄にフォーカスがある間の ⌥⌘F は、検索欄の文字をキーワードとして検索のモーダルを開く（R8〜R10）。
+検索欄へ移るコマンド「名前で絞り込む」（⌘F）を、割り当てを変更できるコマンドに加える（R11）。
+検索の処理（照合・列挙・結果の表示）と、検索のモーダルの ⌥⌘F からの動作は変えない。
 
 ## Technical Context
 
@@ -31,7 +31,7 @@
 **Performance Goals**: 10,000 件の一覧で、1文字の入力から絞り込みの結果の表示までが 100ms 以内（SC-209）。絞り込みでファイルシステムを読まない
 
 **Constraints**: 判断ロジックは FolzioCore（AppKit を import しない）、描画と入力は FolzioApp に置く（AGENTS.md）。
-検索のモーダルの ⌘F からの動作を変えない（FR-390）。ネットワーク API を使わない。
+検索のモーダルの ⌥⌘F からの動作を変えない（FR-390）。ネットワーク API を使わない。
 AppKit UI の不変条件（制約は `addSubview` の後、異なる階層のアンカー同士を制約しない）を守る
 
 **Scale/Scope**: Core の値型 2 つ（`NameFilter`・`ToolbarSearchInput`）、`BrowserModel` の状態 1 つ、ツールバーの項目 1 つ、コマンド 1 つ、文言 8 つ（日英）
@@ -44,7 +44,7 @@ AppKit UI の不変条件（制約は `addSubview` の後、異なる階層の�
 |---|---|---|
 | I. ローカル完結・プライバシー | 適合 | ネットワークを使わない。検索欄の文字と絞り込みは保存しない（EC-254）。ファイルを変更しない |
 | II. 体感パフォーマンス | 適合 | 絞り込みは表示中の項目の名前の照合だけで、ファイルシステムを読まない。10,000 件で 100ms 以内を性能テストで測る（R15） |
-| III. キーボードファースト & アクセシビリティ | 適合 | 検索欄へ移るコマンドと ⌥⌘F を加える（FR-391）。検索欄と虫眼鏡はアクセシビリティのラベルを持つ（FR-392） |
+| III. キーボードファースト & アクセシビリティ | 適合 | 検索欄へ移るコマンドと ⌘F を加える（FR-391）。検索欄と虫眼鏡はアクセシビリティのラベルを持つ（FR-392） |
 | IV. テスト必須 | 適合 | 照合・適用・解除・選択・一致なしの状態を Core に置いてテストする。画面は GUI 確認で確かめる（R16） |
 | V. シンプルさ | 適合 | 種類フィルタの仕組み（モデルの状態・`rebuildListing()`・監視）と `SearchPattern` を再利用する。一覧の状態の case を足さない（R3） |
 
@@ -83,11 +83,11 @@ Sources/FolzioCore/Settings/
 └── ToolbarLayout.swift                 # setIdentifiers に nameFilter。defaultOrder を「…→ 可変スペース → nameFilter」に（R14）
 
 Sources/FolzioCore/Shortcuts/
-├── ShortcutCommand.swift               # filterByName（⌥⌘F）を追加（R11）
+├── ShortcutCommand.swift               # filterByName（⌘F）を追加（R11）
 └── ShortcutCatalog.swift               # ショートカット一覧の項目を追加
 
 Sources/FolzioApp/Search/
-└── ToolbarSearchField.swift            # 追加。NSSearchField のサブクラス。ツールチップ、⌘F の受け渡し（R8・R10）
+└── ToolbarSearchField.swift            # 追加。NSSearchField のサブクラス。ツールチップ、⌥⌘F の受け渡し（R8・R10）
 
 Sources/FolzioApp/FileList/
 └── FileListViewController.swift        # applyNameFilter・onNameFilterChange・一致なしのメッセージ（R3・R5）

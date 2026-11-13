@@ -1129,16 +1129,16 @@ final class MainSplitViewController: NSSplitViewController {
         treeViewController.addSelectedFolderToFavorites()
     }
 
-    /// ⌘F. Opens the search modal. The default root is the displayed folder (the pre-search folder while showing
+    /// ⌥⌘F. Opens the search modal. The default root is the displayed folder (the pre-search folder while showing
     /// search results; FR-080, FR-081).
     @objc func showSearch(_ sender: Any?) {
         guard paneCommands.canSearch else { return }
         presentSearchPanel(keyword: lastSearchKeyword)
     }
 
-    /// Opens the search modal from the toolbar name filter field's magnifying glass, or with ⌘F while that field has
-    /// the keyboard focus. Text in the field becomes the keyword; an empty field opens the modal as ⌘F does. Only the
-    /// keyword differs from ⌘F (FR-390).
+    /// Opens the search modal from the toolbar name filter field's magnifying glass, or with ⌥⌘F while that field has
+    /// the keyboard focus. Text in the field becomes the keyword; an empty field opens the modal as ⌥⌘F does. Only the
+    /// keyword differs from ⌥⌘F (FR-390).
     func showSearch(carrying fieldText: String) {
         guard paneCommands.canSearch else { return }
         presentSearchPanel(
@@ -1152,7 +1152,7 @@ final class MainSplitViewController: NSSplitViewController {
         focusPane(fileListViewController.primaryFocusView)
     }
 
-    /// ⌥⌘F and "File > Filter by Name". Moves the keyboard focus to the toolbar name filter field, showing the toolbar
+    /// ⌘F and "File > Filter by Name". Moves the keyboard focus to the toolbar name filter field, showing the toolbar
     /// first when it is hidden (FR-391).
     @objc func filterByName(_ sender: Any?) {
         guard canFilterByName else { return }

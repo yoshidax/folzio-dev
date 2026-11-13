@@ -7,10 +7,10 @@ import AppKit
 /// not provide:
 /// - a click on the magnifying glass opens the search sheet through `findCommandTarget` (FR-390),
 /// - separate tooltips for the magnifying glass and for the rest of the field (FR-392), and
-/// - ⌘F while the field has the keyboard focus, which reaches `findCommandTarget` (FR-390).
+/// - ⌥⌘F while the field has the keyboard focus, which reaches `findCommandTarget` (FR-390).
 @MainActor
 final class ToolbarSearchField: NSSearchField {
-    /// Receives a click on the magnifying glass, and ⌘F (the "Find…" menu item) while this field has the keyboard
+    /// Receives a click on the magnifying glass, and ⌥⌘F (the "Find…" menu item) while this field has the keyboard
     /// focus, as `showSearch(_:)`. The toolbar is outside the
     /// window's content view, so the responder chain from the field does not reach the view controller that opens the
     /// search sheet. Other commands, such as the file operations, are not forwarded, so they never act on the

@@ -179,6 +179,11 @@
   - `Sources/FolzioApp/Search/SearchPanelController.swift`: 見出し（太字）と補足説明（小さい淡い文字、操作不可、読み上げはキーワード欄の説明）。表示言語の切り替えで更新
   - `Sources/FolzioLocalization`: `searchHeading`・`searchDescription` と日英の文言。`Tests/FolzioCoreTests/Localization/SearchSheetTextTests.swift` で承認された文言を確かめる
   - 確認: quickstart.md の 5a（T035）
+- [x] T041 「名前で絞り込む」と「検索…」の既定のキーを入れ替える（2026-11-13 の保守者の決定。「名前で絞り込む」を ⌘F、「検索…」を ⌥⌘F。spec.md の A-227・FR-080（変更）ほか）
+  - `ShortcutCommands.all`・`ShortcutCatalog`・`MainMenu` のキー、キーを書いているテスト（`ShortcutCommandConsistencyTests`・`ShortcutCatalogTests`、
+    「検索…」の既定のキーを前提にする `ShortcutAssignmentsTests` の 8 か所）、ユーザーガイド・開発の手順書・README、quickstart.md・契約・data-model.md・plan.md を入れ替え後のキーにした
+  - これより前の記録（Clarifications・research.md・このファイルのほかのタスク）は当時のキーのまま残す
+  - 確認: quickstart.md の 4・5（T035）
 - [ ] T036 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり `specs/product/file-list.md`・`window-layout.md`・
   `contracts/settings.md`・`contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映する（`specs/product/README.md` の「書き方のルール」に従う。
   ID の定義は1文にし、条件は子項目に分ける。feature の中だけの参照は製品仕様に残さない。コマンドの数（32）を書いているほかの箇所も合わせる。GUI 確認で変わった点があれば、その結果で直してから移す）。

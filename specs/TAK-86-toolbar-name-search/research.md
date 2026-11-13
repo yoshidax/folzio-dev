@@ -99,6 +99,9 @@ Cloud には Swift と macOS がないため、AppKit の実際の動作は確�
   コマンドの数を 32 と書いているテスト（`ShortcutCommandConsistencyTests`）と仕様（FR-268・contracts）
 - **未確認**: ツールバーを表示した直後に検索欄を first responder にできること（表示の反映を待つ必要があるか）。GUI 確認で確かめる（quickstart.md の 4）
 
+- **変更（2026-11-13、保守者の決定）**: 既定のキーを入れ替え、「名前で絞り込む」を ⌘F、「検索…」を ⌥⌘F にした（spec.md の A-227、tasks.md の T041）。
+  以下の本文の ⌥⌘F は当時の記録
+
 ## R12 検索欄が見えないときの解除
 
 - **Decision**: `MainToolbarController` で、(1) ツールバーの表示が偽になったとき（既存の `toolbarVisibilityChanged(_:)`）、(2) `nameFilter` の項目がツールバーから外れたとき

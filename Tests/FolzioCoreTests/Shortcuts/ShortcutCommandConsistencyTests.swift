@@ -40,8 +40,8 @@ struct ShortcutCommandConsistencyTests {
             .largerThumbnails: "⌃⌘.", .smallerThumbnails: "⌃⌘,", .imagesOnly: "⇧⌘I", .videosOnly: "⇧⌘M",
             .zipVisibility: "⌃⌘Z", .showContents: "⌘↓", .enclosingFolder: "⌘↑", .back: "⌘[", .forward: "⌘]",
             .goToFavorites: "⇧⌘F", .addToFavorites: "⌃⌘T", .open: "⌘O", .movePaste: "⌥⌘V",
-            .copyPathname: "⌥⌘C", .duplicate: "⌘D", .newFolder: "⇧⌘N", .trash: "⌘Delete", .find: "⌘F",
-            .filterByName: "⌥⌘F",
+            .copyPathname: "⌥⌘C", .duplicate: "⌘D", .newFolder: "⇧⌘N", .trash: "⌘Delete", .find: "⌥⌘F",
+            .filterByName: "⌘F",
             .zoomIn: "⌘+", .zoomOut: "⌘-", .zoomToFit: "⌘0", .fullScreen: "⌃⌘F", .startSlideshow: "⇧⌘S",
             .shortcuts: "⌘/",
         ]

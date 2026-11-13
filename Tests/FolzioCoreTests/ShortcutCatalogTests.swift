@@ -36,8 +36,8 @@ struct ShortcutCatalogTests {
         duplicate|⌘D|files
         newFolder|⇧⌘N|files
         trash|⌘Delete|files
-        find|⌘F|search
-        filterByName|⌥⌘F|search
+        find|⌥⌘F|search
+        filterByName|⌘F|search
         searchSubmit|Return / Esc|search
         endSearch|Esc / ⌘[|search
         imageZoom|⌘+ / ⌘= / ⌘-|images

@@ -81,8 +81,8 @@ The keys below are the defaults. You can change the shortcut of a menu command i
 | Open the shortcut reference | ⌘/ |
 | Thumbnail view / list view | ⌘1 / ⌘2 |
 | Show / hide the toolbar | ⇧⌘T |
-| Search file and folder names | ⌘F |
-| Filter the displayed list by name | ⌥⌘F |
+| Search file and folder names | ⌥⌘F |
+| Filter the displayed list by name | ⌘F |
 | Open a folder / go up one level | ⌘↓ / ⌘↑ |
 | Create a new folder | ⇧⌘N |
 | Cancel receiving images or videos | ⌘. |

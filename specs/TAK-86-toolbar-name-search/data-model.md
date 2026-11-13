@@ -47,7 +47,7 @@
 | `modalKeyword(fieldText:previousKeyword:)` | 検索欄の文字、前回検索したキーワード（なければ `nil`） | モーダルのキーワード欄に入れる文字（なければ `nil`） |
 
 - 検索欄の文字が、前後の空白と改行を除いて1文字以上なら、前後の空白を除いた文字を返す（FR-390）
-- それ以外は `previousKeyword` をそのまま返す（⌘F と同じ）
+- それ以外は `previousKeyword` をそのまま返す（⌥⌘F と同じ）
 
 ## ToolbarLayout（変更。`Sources/FolzioCore/Settings/ToolbarLayout.swift`）
 
@@ -63,7 +63,7 @@
 
 | ID | 既定のキー | 区分 | メニュー |
 |---|---|---|---|
-| `filterByName` | ⌥⌘F | 検索 | ファイル > 名前で絞り込む（「検索…」の直後） |
+| `filterByName` | ⌘F | 検索 | ファイル > 名前で絞り込む（「検索…」の直後） |
 
 - コマンドの数は 32 から 33 になる。設定ウインドウとショートカット一覧では、`find` の直後に置く
 
@@ -72,4 +72,4 @@
 | 状態 | 決まり方 | 根拠 |
 |---|---|---|
 | 文字 | モデルの `nameFilter.text` と同じ。ユーザーの入力・×ボタン・Esc と、モデルの解除で変わる | FR-383・FR-384 |
-| 有効・無効 | `PaneCommands.canSearch`（⌘F と同じ） | FR-388 |
+| 有効・無効 | `PaneCommands.canSearch`（⌥⌘F と同じ） | FR-388 |

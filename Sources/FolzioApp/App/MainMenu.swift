@@ -148,23 +148,24 @@ final class MainMenu {
         addFavoriteItem.target = nil
         fileMenu.addItem(addFavoriteItem)
 
-        // ⌘F. Distinguished from ⇧⌘F (Go to Favorites) and ⌃⌘F (full screen) by modifiers (FR-080, R39).
+        // ⌥⌘F. Distinguished from ⌘F (Filter by Name), ⇧⌘F (Go to Favorites), and ⌃⌘F (full screen) by modifiers
+        // (FR-080, R39). The keys of the two search commands were swapped in TAK-86.
         let searchItem = NSMenuItem(
             title: l10n.text(.menuFileFind),
             action: #selector(MainSplitViewController.showSearch(_:)),
             keyEquivalent: "f"
         )
-        searchItem.keyEquivalentModifierMask = [.command]
+        searchItem.keyEquivalentModifierMask = [.option, .command]
         searchItem.target = nil
         fileMenu.addItem(searchItem)
 
-        // ⌥⌘F. Moves the focus to the toolbar name filter field (FR-391). Distinguished from ⌘F by the Option key.
+        // ⌘F. Moves the focus to the toolbar name filter field (FR-391).
         let filterByNameItem = NSMenuItem(
             title: l10n.text(.menuFileFilterByName),
             action: #selector(MainSplitViewController.filterByName(_:)),
             keyEquivalent: "f"
         )
-        filterByNameItem.keyEquivalentModifierMask = [.option, .command]
+        filterByNameItem.keyEquivalentModifierMask = [.command]
         filterByNameItem.target = nil
         fileMenu.addItem(filterByNameItem)
         let shortcutsItem = NSMenuItem(

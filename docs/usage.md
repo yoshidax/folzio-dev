@@ -338,7 +338,7 @@ For a first look, see the [README](../README.md).
 
 ## Searching by Name
 
-The toolbar search field filters the list you are viewing by name. To look through subfolders as well, use the search modal (⌘F).
+The toolbar search field filters the list you are viewing by name. To look through subfolders as well, use the search modal (⌥⌘F).
 
 ### Filtering the Displayed List
 
@@ -349,16 +349,16 @@ The toolbar search field filters the list you are viewing by name. To look throu
   - When nothing matches, the list says so.
 - Click the clear button, or press Esc in the field, to clear the text and the filter.
 - Press Return in the field to move to the file list and keep the filter.
-- Press ⌥⌘F, or choose File → "Filter by Name" (名前で絞り込む), to move to the field. The toolbar is shown if it is hidden.
+- Press ⌘F, or choose File → "Filter by Name" (名前で絞り込む), to move to the field. The toolbar is shown if it is hidden.
 - Moving to another place (selecting in the tree, opening a folder, Back/Forward, starting or ending a search, and so on) clears the filter and the field.
   - Changing the sort order, the view mode, or the media type filter keeps it.
 - Hiding the toolbar, removing the field from the toolbar, or showing the toolbar as text only also clears the filter.
 - Items that the filter hides are removed from the selection.
-- Click the magnifying glass in the field to open the search modal with the typed text as the keyword. ⌘F in the field does the same.
+- Click the magnifying glass in the field to open the search modal with the typed text as the keyword. ⌥⌘F in the field does the same.
 
 ### Starting a Search
 
-- Press ⌘F or choose File → "Find…" (検索…).
+- Press ⌥⌘F or choose File → "Find…" (検索…).
 - A modal asks for a "Keyword" and "Search In".
   - The modal is titled "Search Including Subfolders". It looks through the start folder and all of its subfolders.
   - The start folder defaults to the absolute path of the folder shown in the file list.
@@ -539,8 +539,8 @@ The toolbar search field filters the list you are viewing by name. To look throu
 
 | Action | Default shortcut |
 |--------|----------|
-| Search by name (file and folder names) | ⌘F, File menu → "Find…" |
-| Filter the displayed list by name (move to the search field) | ⌥⌘F, File menu → "Filter by Name" |
+| Search by name (file and folder names) | ⌥⌘F, File menu → "Find…" |
+| Filter the displayed list by name (move to the search field) | ⌘F, File menu → "Filter by Name" |
 | Choose the search start folder | "Choose…" in the search sheet (Tab to move to it, Space to open it) |
 | Open a folder row in the search results | Double-click, ⌘↓, "Show Contents" in the context menu |
 | Close the search results | Select a folder in the tree, Esc in the file list |
