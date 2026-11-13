@@ -136,6 +136,25 @@ source trailer がない初回は自動更新せず、summary に初期化待ち
 初回だけは tree が同じでも source 対応付けコミットを1つ作り、以後はこの入力を空にする。
 初期化済みの指定と、不正な trailer を初回と見なす操作は拒否する。
 
+### 公開用 main の保護設定を変更する前の確認
+
+2026-11-13 の保守者の画面確認では、公開用 `folzio` に Ruleset と従来の Branch protection rule はどちらも存在しない。
+Require lockfile は現在使用しておらず、設定項目の利用可否は未確認。
+
+実装では [sync-public.yml](../.github/workflows/sync-public.yml) の writer が、公開用だけにインストールした
+GitHub App の短期トークン（Contents write・Workflows write）を取得する。
+[sync-public.py](../scripts/dev/sync-public.py) の `write` は公開先 base の再照合後、公開用 `main` を親とするコミットを作り、
+PR を介さず非 force で `refs/heads/main` へ直接 push する。公開側の Build release draft は、この main 更新後に動く。
+
+公開用へ PR 必須のルールや、main 更新後に走るチェックを事前に要求するルールを追加すると、現在の自動同期が止まる可能性がある。
+開発用の `protect-master` をそのまま公開用へ移さない。将来ブランチ保護を追加する場合は、同期方法・App の許可・
+更新前に満たせるチェックを設計し、通常リリースによる同期と公開側 workflow の起動を妨げないことを確認する。
+Require lockfile は Actions の実行ポリシーとして別に扱い、その導入のためにブランチ保護を追加しない。
+
+lock 導入 PR は `release.json` を変更しないため、マージ時の通常自動同期は行われない。
+公開用の workflow と lock は、次の通常リリース経路で対として反映し、実際の main で検証してからポリシーを有効化する。
+早期にソースだけを反映する必要がある場合は別途運用を検討し、復旧用の `publish.sh` を通常経路として使わない。
+
 ### 失敗からの復旧
 
 - 対象 M と run は失敗した実行の summary から取得する。master が M+3 でも M を使い続ける。

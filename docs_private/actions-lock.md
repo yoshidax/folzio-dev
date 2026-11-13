@@ -126,12 +126,16 @@ gh api -H 'X-GitHub-Api-Version: 2026-03-10' repos/yoshidax/folzio/actions/polic
 | 対象 | Require lockfile の項目 | ポリシーの作成・有効化 |
 |---|---|---|
 | 開発用 `folzio-dev` | Settings → Actions → Policies で設定できる項目を確認済み | まだ作成しておらず、未有効化 |
-| 公開用 `folzio` | 未確認 | 未確認 |
+| 公開用 `folzio` | 設定項目の利用可否は未確認 | 現在は未使用（保守者確認） |
 
 開発用の正しい画面は [Actions Policies](https://github.com/yoshidax/folzio-dev/settings/actions/rules)。
 以前案内した画面の `/settings/actions/policies` は 404 だった（保守者確認）。
 上の REST API の `/actions/policies` は別のエンドポイントであり、画面の URL に合わせて変更しない。
 公開用は Settings → Actions → Policies から画面を開き、利用可否と実際の URL を確認して記録する。
+公開用には Ruleset も従来の Branch protection rule も存在しない（同日の保守者確認）。
+既存の自動同期は GitHub App が公開用 `main` へ直接 push するため、開発用と同じブランチ保護をそのまま追加しない。
+Require lockfile は Actions の実行ポリシーであり、導入のために公開用へ PR 必須のブランチ保護を追加する必要はない。
+運用の確認結果は [公開用 main の保護設定](repository-and-release.md#公開用-main-の保護設定を変更する前の確認) を参照。
 
 lock が生成・検証できること、runner が lock の SHA を使うこと、Require lockfile で未登録 workflow を拒否することは
 それぞれ別の確認である。開発用の PR CI では runner ログの `Using locked action versions from the workflow's lockfile`
@@ -153,11 +157,15 @@ lock が生成・検証できること、runner が lock の SHA を使うこと
    （lock 採用後はタグではなく固定した SHA に対して許可が判定される）。
 5. 開発用の通常 CI を実行し、ポリシーが適用された実行と有効化したポリシーの URL・状態を記録する。
 6. 公開用の管理画面で Require lockfile の利用可否を確認する。この読み取りは開発用の有効化を待たずに行ってよい。
-   [公開手順](repository-and-release.md) に従い、管理元の `release.yml` と `actions.lock` を対で公開用 `main` に反映する。
-   公開用を直接編集せず、アプリのリリースが必要かどうかは既存の公開・配布手順で判断する。
+   [通常の公開手順](repository-and-release.md#通常の公開-リリース-pr-と-ci-候補) に従い、
+   次の通常リリースで管理元の `release.yml` と `actions.lock` を対で公開用 `main` に反映する。
+   この lock 導入 PR は `release.json` を変更しないため、マージだけでは通常の自動同期は行われない。
+   早期のソースのみの反映が必要な場合は、既存のリリース判定と writer への影響を別途検討する。
+   公開用の直接編集、通常経路を外れた手動 push、ブランチ保護の追加をこの導入手順として行わない。
 7. 公開用 `main` の実際のツリーで `gh actions-lock --verify` を実行し、全 workflow の登録と依存の整合を確認する。
    利用できる場合は公開用のポリシーも作成・有効化し、通常の公開 workflow 実行時に適用を確認する。
    通常 CI の検証のためだけに公開・配布 workflow を起動しない。
+   有効化後も、次の通常リリースで同期 App の `main` 更新と公開用 workflow の起動が成功することを確認する。
 8. 各リポジトリの確認日・ポリシーの URL と状態・確認した実行を追記する。
    公開用で利用できない場合は画面や公式情報を根拠として記録し、固定済み依存の実行と検証を維持する。
 
