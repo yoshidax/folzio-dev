@@ -34,6 +34,42 @@ struct ToolbarSearchFieldEditingTests {
         #expect(FileListViewController.isRenaming(firstResponder: NSView()) == false)
     }
 
+    @Test("A click on the magnifying glass sends showSearch to the find target without editing the text (FR-390)")
+    func magnifyingGlassOpensSearch() throws {
+        let target = FindTargetSpy()
+        try withWindow(ToolbarSearchField(width: 180)) { window, field in
+            field.stringValue = "kyoto"
+            field.findCommandTarget = target
+            window.contentView?.layoutSubtreeIfNeeded()
+            let button = field.searchButtonBounds
+            try #require(!button.isEmpty)
+            #expect(button.maxX <= field.bounds.midX, "The magnifying glass is at the leading edge")
+
+            field.mouseDown(with: try click(at: NSPoint(x: button.midX, y: button.midY), in: field, window: window))
+            #expect(target.calls == 1)
+            #expect(field.currentEditor() == nil)
+            #expect(field.stringValue == "kyoto")
+
+            field.isEnabled = false
+            field.mouseDown(with: try click(at: NSPoint(x: button.midX, y: button.midY), in: field, window: window))
+            #expect(target.calls == 1, "A disabled field does not open the search sheet (FR-388)")
+        }
+    }
+
+    private func click(at point: NSPoint, in view: NSView, window: NSWindow) throws -> NSEvent {
+        try #require(NSEvent.mouseEvent(
+            with: .leftMouseDown,
+            location: view.convert(point, to: nil),
+            modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: window.windowNumber,
+            context: nil,
+            eventNumber: 0,
+            clickCount: 1,
+            pressure: 1
+        ))
+    }
+
     private func withWindow<Field: NSTextField>(
         _ field: Field,
         body: (NSWindow, Field) throws -> Void
@@ -55,5 +91,15 @@ struct ToolbarSearchFieldEditingTests {
             window.close()
         }
         try body(window, field)
+    }
+}
+
+/// Records `showSearch(_:)` calls from the toolbar search field.
+@MainActor
+private final class FindTargetSpy: NSObject {
+    var calls = 0
+
+    @objc func showSearch(_ sender: Any?) {
+        calls += 1
     }
 }

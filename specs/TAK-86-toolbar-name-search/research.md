@@ -69,6 +69,8 @@ Cloud には Swift と macOS がないため、AppKit の実際の動作は確�
   虫眼鏡だけのツールチップは、`ToolbarSearchField` が `searchButtonRect(forBounds:)` の矩形に `addToolTip(_:owner:userData:)` で付ける。検索欄の残りの部分には、検索欄のツールチップを同じ方法で付ける
 - **未確認**: 差し替えた `action` が押下で呼ばれること、矩形のツールチップが出ること、VoiceOver が虫眼鏡を別の要素として読むこと。GUI 確認で確かめる（quickstart.md の 3）
 - **代替**: `ToolbarSearchField` で `mouseDown(with:)` を上書きし、クリックの位置が `searchButtonRect(forBounds:)` の中なら同じ処理を呼ぶ
+- **結果（2026-11-13、GUI 確認）**: `searchButtonCell` の差し替えでは、虫眼鏡のクリックで action が呼ばれなかった。代替案に切り替えた。
+  位置は `NSSearchField.searchButtonBounds` で求める。`NSSearchFieldCell.searchButtonRect(forBounds:)` は、上書きしなければ渡した矩形をそのまま返すため使わない
 
 ## R9 検索のモーダルへの引き継ぎ
 

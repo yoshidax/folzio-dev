@@ -575,11 +575,8 @@ final class MainToolbarController: NSObject {
         field.action = #selector(nameFilterFieldChanged(_:))
         field.sendsSearchStringImmediately = true
         field.sendsWholeSearchString = false
+        // The field forwards a click on the magnifying glass and ⌘F to `showSearch(_:)` (FR-390).
         field.findCommandTarget = self
-        if let button = (field.cell as? NSSearchFieldCell)?.searchButtonCell {
-            button.target = self
-            button.action = #selector(showSearch(_:))
-        }
 
         let item = NSToolbarItem(itemIdentifier: identifier)
         item.view = field

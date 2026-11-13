@@ -167,6 +167,11 @@
     `canSearch` が偽になり、FR-388 の処理が入力中の検索欄を無効にしたため、編集が終わってフォーカスが移った。虫眼鏡も、押した時点で編集が始まり同じく無効になった
   - 修正: 判定を `FileListViewController.isRenaming(firstResponder:)` に分け、ツールバーの検索欄の編集を除く。回帰テスト `Tests/FolzioAppTests/ToolbarSearchFieldEditingTests.swift`
   - 確認: CI の後に、保守者に quickstart.md の 1〜5 を再び確かめてもらう（T035）
+- [x] T039 2 回目の GUI 確認の指摘（虫眼鏡を押しても検索のモーダルが開かない）を直す（2026-11-13 の保守者の報告。入力の問題は解決を確認済み）
+  - 原因: `NSSearchFieldCell.searchButtonCell` の target と action を差し替えても、検索フィールドは虫眼鏡のクリックを自分で処理するため、差し替えた action が呼ばれなかった（research.md の R8 の未確認の点）。
+    また、ツールチップの位置に使った `NSSearchFieldCell.searchButtonRect(forBounds:)` は、上書きしなければ渡した矩形（検索欄全体）を返す関数で、虫眼鏡の位置を返さない（Apple の文書）
+  - 修正: R8 の代替案のとおり、`ToolbarSearchField.mouseDown(with:)` で、クリックが `NSSearchField.searchButtonBounds` の中なら `showSearch(_:)` を送る。
+    `searchButtonCell` の差し替えはやめた。ツールチップは `searchButtonBounds` で分ける。回帰テストを `ToolbarSearchFieldEditingTests` に加えた
 - [ ] T036 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり `specs/product/file-list.md`・`window-layout.md`・
   `contracts/settings.md`・`contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映する（`specs/product/README.md` の「書き方のルール」に従う。
   ID の定義は1文にし、条件は子項目に分ける。feature の中だけの参照は製品仕様に残さない。コマンドの数（32）を書いているほかの箇所も合わせる。GUI 確認で変わった点があれば、その結果で直してから移す）。
