@@ -52,8 +52,11 @@ struct NameFilterTests {
     func wildcardMatch() {
         #expect(names(NameFilter(text: "*.png")) == ["Cat02.png", "dog.png"])
         #expect(names(NameFilter(text: "cat??.*")) == ["cat01.jpg", "Cat02.png"])
-        #expect(names(NameFilter(text: "cat")) != names(NameFilter(text: "cat*")))
         #expect(names(NameFilter(text: "cat*")) == ["cat01.jpg", "Cat02.png", "cats", "catalog.zip", "cat_dir"])
+        // A name with "cat" in the middle matches the substring but not "cat*", which must match from the start.
+        let middle = [file("my_cat.png", .media(.png))]
+        #expect(NameFilter(text: "cat").apply(to: middle).map(\.name) == ["my_cat.png"])
+        #expect(NameFilter(text: "cat*").apply(to: middle).isEmpty)
     }
 
     @Test("Composed and decomposed dakuten are not distinguished (FR-381)")
