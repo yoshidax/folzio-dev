@@ -240,11 +240,27 @@ TAK-80 の Issue に記録した。コミット作者のメールアドレスと
 
 ### `master` のブランチ保護（保守者が設定する）
 
-PR の CI が 1 回動いた後に、Settings → Rules → Rulesets → New ruleset → New branch ruleset で、次の ruleset を作る。
+2026-11-13 の保守者による画面確認（エージェントが API で直接確認した記録ではない）:
+
+| 確認項目 | 現在の設定 |
+|---|---|
+| Ruleset | `protect-master`、Active |
+| 対象 | デフォルトブランチ `master` |
+| Bypass list | 空 |
+| Require a pull request before merging | 有効 |
+| Require status checks to pass | 有効 |
+| 必須チェック | `Build and test (macOS 15 / arm64)` |
+| チェックの発行元 | `Any source` |
+
+`Any source` は同名チェックの発行元を GitHub Actions に限定していないため、GitHub Actions への限定を推奨する。
+既存の `protect-master` を確認・更新し、重複する ruleset を新しく作らない。
+
+新しくブランチ保護を用意する場合は、PR の CI が 1 回動いた後に、Settings → Rules → Rulesets →
+New ruleset → New branch ruleset で、次の方針で作る。以下は設定方針であり、上で確認されていない項目の現状を示すものではない。
 
 | 項目 | 設定 |
 |---|---|
-| Ruleset name | `master` |
+| Ruleset name | `protect-master` |
 | Enforcement status | Active |
 | Bypass list | なし（保守者を含めて適用する） |
 | Target branches | Include default branch |
@@ -254,7 +270,7 @@ PR の CI が 1 回動いた後に、Settings → Rules → Rulesets → New rul
 | Require status checks to pass | 有効。`Build and test (macOS 15 / arm64)` を加える |
 
 - 必須チェックは、名前を手で入力せず、「Add checks」の候補から、GitHub Actions のものを選ぶ。
-  候補は最近動いたチェックから出るので、先に PR で CI を 1 回動かしておく
+  発行元も GitHub Actions に限定することを推奨する。候補は最近動いたチェックから出るので、先に PR で CI を 1 回動かしておく
 - 「Require branches to be up to date before merging」は使わない。`master` が進むたびに取り込みと CI の待ちが要るほどの並行はない。
   必要になれば有効にする
 - 承認レビューを必須にしない。保守者は 1 人で、自分の PR を承認できない

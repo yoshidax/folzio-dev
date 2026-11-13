@@ -79,7 +79,9 @@ python3 scripts/dev/actions-lock.py --verify-local
 依存失敗で必須ジョブが単にスキップされ、成功扱いになることを避ける。
 ブランチ保護の設定は保守者が上記のジョブを必須チェックとして維持する。
 さらに `Verify workflow dependency lockfiles` も必須チェックに追加すると、失敗の理由を直接確認できる。
-このセッションではブランチ保護の実際の設定までは確認していない。
+2026-11-13 の保守者の画面確認では、この既存ジョブが `protect-master` の必須チェックに指定されている。
+発行元は `Any source` のため、GitHub Actions に限定することを推奨する。
+実際の確認項目は [ブランチ保護の確認記録](repository-and-release.md#master-のブランチ保護保守者が設定する) を参照。
 
 更新は当面手動で行う。workflow の追加・削除、`uses:` の変更時に再生成し、月次および
 利用アクションのセキュリティ修正時にも上流のリリースを確認する。更新担当は保守者。
@@ -117,23 +119,50 @@ gh api -H 'X-GitHub-Api-Version: 2026-03-10' repos/yoshidax/folzio/actions/polic
 ```
 
 公式 REST 文書では、この API はリポジトリの `Administration: write` を要求する。
-これは現在の接続で確認できなかった記録であり、個人の公開リポジトリでは利用不可だと確認した記録ではない。
-生成・検証できることと、実行時に lock が適用されることも区別する。
-ポリシーの利用可否と有効化は未確認・未実施であり、ここだけで依存固定が実証済みとは扱わない。
+これは現在の接続の制約であり、画面での利用可否とは区別する。
 
-保守者が管理権限で次を確認する。**lock を含まない既存ブランチの workflow を止めないよう、
-開発用 master と公開用 main にそれぞれ lock が反映され、全件の `--verify` が通ってから有効にする。**
+2026-11-13 に保守者が管理画面で確認した結果（エージェントによる画面の直接確認ではない）:
 
-1. 各リポジトリの Settings → Actions → Policies を開き、Require lockfile の利用可否を確認する。
-2. 利用できる場合は、全 workflow を対象とするポリシーを作り、Active にする。
-   Evaluate が使える場合は先に評価する。既存の許可アクションの設定も確認する
+| 対象 | Require lockfile の項目 | ポリシーの作成・有効化 |
+|---|---|---|
+| 開発用 `folzio-dev` | Settings → Actions → Policies で設定できる項目を確認済み | まだ作成しておらず、未有効化 |
+| 公開用 `folzio` | 未確認 | 未確認 |
+
+開発用の正しい画面は [Actions Policies](https://github.com/yoshidax/folzio-dev/settings/actions/rules)。
+以前案内した画面の `/settings/actions/policies` は 404 だった（保守者確認）。
+上の REST API の `/actions/policies` は別のエンドポイントであり、画面の URL に合わせて変更しない。
+公開用は Settings → Actions → Policies から画面を開き、利用可否と実際の URL を確認して記録する。
+
+lock が生成・検証できること、runner が lock の SHA を使うこと、Require lockfile で未登録 workflow を拒否することは
+それぞれ別の確認である。開発用の PR CI では runner ログの `Using locked action versions from the workflow's lockfile`
+と SHA の一致を確認済みだが、ポリシーが有効化された証拠にはしない。
+
+### マージから有効化までの順序
+
+保守者が各リポジトリの管理権限で進める。**対象リポジトリの既定ブランチへの lock 反映と検証を終えてから、
+そのリポジトリの Require lockfile を Active にする。開発用と公開用は別々に判断できる。**
+
+1. 開発用 PR の文書・レビューを確定し、最新 head の CI と保守者のローカル確認を終える。
+   `protect-master` の既存必須ジョブを維持する。発行元を GitHub Actions に限定することも推奨する。
+2. 保守者が PR を開発用 `master` にマージする。
+3. マージ済み `master` で両方の lock を `python3 scripts/dev/actions-lock.py --verify` により確認する。
+   または macOS Swift CI を `master` 指定で手動実行して確認する。利用中の作業ブランチや手動実行する古い参照に
+   lock がない場合、その参照の実行がポリシーで止まるため、対象と移行方針も確認する。
+4. 開発用の Actions Policies で全 workflow を対象とする Require lockfile ポリシーを作成し、Active にする。
+   Evaluate が選べる場合は先に評価する。既存の許可アクションの設定も確認する
    （lock 採用後はタグではなく固定した SHA に対して許可が判定される）。
-3. 各リポジトリの Actions で実行結果を確認する。通常 CI の検証のために公開・配布 workflow を起動しない。
-4. 利用可否、確認日、ポリシーの URL と状態、確認した実行をここへ追記する。
-   利用できない場合も画面の表示や公式情報を根拠として残す。
+5. 開発用の通常 CI を実行し、ポリシーが適用された実行と有効化したポリシーの URL・状態を記録する。
+6. 公開用の管理画面で Require lockfile の利用可否を確認する。この読み取りは開発用の有効化を待たずに行ってよい。
+   [公開手順](repository-and-release.md) に従い、管理元の `release.yml` と `actions.lock` を対で公開用 `main` に反映する。
+   公開用を直接編集せず、アプリのリリースが必要かどうかは既存の公開・配布手順で判断する。
+7. 公開用 `main` の実際のツリーで `gh actions-lock --verify` を実行し、全 workflow の登録と依存の整合を確認する。
+   利用できる場合は公開用のポリシーも作成・有効化し、通常の公開 workflow 実行時に適用を確認する。
+   通常 CI の検証のためだけに公開・配布 workflow を起動しない。
+8. 各リポジトリの確認日・ポリシーの URL と状態・確認した実行を追記する。
+   公開用で利用できない場合は画面や公式情報を根拠として記録し、固定済み依存の実行と検証を維持する。
 
-管理画面: [開発用](https://github.com/yoshidax/folzio-dev/settings/actions/policies)・
-[公開用](https://github.com/yoshidax/folzio/settings/actions/policies)。
+現在の残作業は、PR の最新 head の確認とマージ、各既定ブランチへの反映後の検証、開発用ポリシーの作成・有効化、
+公開用の利用可否確認・反映・有効化、およびその実行記録。設定画面で項目を確認しただけでは有効化済みにしない。
 
 公式情報:
 
