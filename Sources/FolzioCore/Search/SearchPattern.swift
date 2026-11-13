@@ -42,8 +42,14 @@ public struct SearchPattern: Sendable, Equatable {
         return Self.globMatches(keywordCharacters, Array(name))
     }
 
-    private static func normalize(_ string: String) -> String {
-        string.precomposedStringWithCanonicalMapping
+    /// NFC and case folding. An ASCII-only string is already NFC, and case folding only lowercases its letters, so
+    /// `lowercased()` gives the same result much faster. This keeps the toolbar name filter responsive on large
+    /// listings, where every keystroke matches every name again (SC-209).
+    static func normalize(_ string: String) -> String {
+        if string.utf8.allSatisfy({ $0 < 0x80 }) {
+            return string.lowercased()
+        }
+        return string.precomposedStringWithCanonicalMapping
             .folding(options: [.caseInsensitive], locale: nil)
     }
 

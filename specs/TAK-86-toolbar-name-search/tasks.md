@@ -62,6 +62,9 @@
   data-model.md のとおりに直して T013 を通す。選択を表示中の行に限る処理は、`setMediaTypeFilter(_:)` と共用する関数にまとめる。コメントは英語（R1・R3・R4）
 - [x] T015 [US81] `Tests/FolzioPerformanceTests/NameFilterPerformanceTests.swift` を作る（既存の `PerformanceBaselineTests` の extension にする。別の suite にしない）。
   10,000 件の項目を持つ一覧で `setNameFilter` を呼び、1回が 100ms 以内であることを確かめる（SC-209、R15）
+  - 注記（2026-11-13）: 最初の CI（run 43355920499）で、最も遅い 1 文字が 108ms で基準を超えた（同じ実行で既存の性能テストも 3 件が超えており、共有ランナーのぶれも大きい）。
+    R15 のとおり軽くした。名前が ASCII だけのときは `SearchPattern.normalize` を `lowercased()` で済ませ（NFC と大文字小文字の畳み込みと同じ結果。`SearchPatternTests` で確かめる）、
+    選択が空のときは表示中の行の URL の集合を作らない
 - [x] T016 [US81] `Sources/FolzioApp/FileList/FileListViewController.swift` に `applyNameFilter(_ text: String)`・`currentNameFilterText`・`onNameFilterChange`・`observeNameFilter()` を加える
   （`applyMediaTypeFilter(_:)`・`observeMediaTypeFilter()` と同じ形）。`.noMatches` のメッセージの分岐で、`model.nameFilterHidesAllRows` が真なら
   `l10n.text(.emptyNameFilterNoMatches, .text(model.nameFilter.text の前後の空白を除いた文字))` を出す。表示言語の切り替えでメッセージが更新されることを確かめる（FR-386・EC-255、R3・R5）

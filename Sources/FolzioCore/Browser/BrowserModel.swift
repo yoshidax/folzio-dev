@@ -778,6 +778,11 @@ public final class BrowserModel {
             break
         }
 
+        // Nothing to restrict without a selection. Skipping it avoids hashing every row's URL on each keystroke.
+        guard !selection.selected.isEmpty || selection.focused != nil else {
+            schedulePrefetch(around: nil)
+            return
+        }
         let restricted = selection.restricted(toVisible: listing.files.map(\.url))
         if restricted.focused == selection.focused {
             selection = restricted

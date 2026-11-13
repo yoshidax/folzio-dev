@@ -42,6 +42,19 @@ struct SearchPatternTests {
         #expect(!(try pattern("ネコ").matches(fileName: "ねこ.jpg")))
     }
 
+    @Test("The ASCII fast path normalizes exactly like NFC with case folding")
+    func asciiFastPathMatchesFoundation() {
+        let samples = [
+            "IMG_0001.JPG", "Cat02.png", "a-b_c d.mov", "[1] ~x@y#z$%^&*()=+.gif", "", "MiXeD123",
+            "が.png", "Café.jpg", "CAFÉ", "ｃａｔ.jpg", "ß.png", "İstanbul.png",
+        ]
+        for sample in samples {
+            let expected = sample.precomposedStringWithCanonicalMapping
+                .folding(options: [.caseInsensitive], locale: nil)
+            #expect(SearchPattern.normalize(sample) == expected, "\(sample)")
+        }
+    }
+
     @Test("With wildcards, matches the whole file name")
     func wildcardMatch() throws {
         let png = try pattern("*.png")
