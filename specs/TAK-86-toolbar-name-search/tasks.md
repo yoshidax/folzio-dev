@@ -39,12 +39,13 @@
 - [x] T011 コマンドの数と既定のキーを書いているテストを直す: `Tests/FolzioCoreTests/Shortcuts/ShortcutCommandConsistencyTests.swift` の 32 を 33 にし、既定のキーの表に
   `.filterByName: "⌥⌘F"` を加える。ほかに数や一覧を書いているテスト（`grep -rn "32\|\.find" Tests/FolzioCoreTests/Shortcuts Tests/FolzioCoreTests/Localization`）があれば合わせる。
   `Tests/FolzioCoreTests/Localization/ShortcutSettingsTextTests.swift` に、新しい文言が両言語で訳されていることのテストを加える（引数を持つキーは `toolbarKeys`、持たないキーは `toolbarPlainKeys` と同じ方法）
-- [ ] T012 `scripts/dev/check-all.sh` を実行して成功させ、作業ブランチに push し、CI（`macos-swift-ci.yml`。PR がなければ `workflow_dispatch` で作業ブランチを指定）で
+- [x] T012 `scripts/dev/check-all.sh` を実行して成功させ、作業ブランチに push し、CI（`macos-swift-ci.yml`。PR がなければ `workflow_dispatch` で作業ブランチを指定）で
   `swift build` と `swift test` の成功を確かめる。失敗したらログを読んで直し、Phase 3 に進まない。
   網羅の `switch` で `ShortcutCommandID` を扱う箇所の直し漏れは、ここのビルドで見つける
   - 注記（2026-11-13）: Phase 2 だけでは CI に通らないため、Phase 3〜6 の後に CI で合わせて確かめる。
     新しい文言のうち `toolbarNameFilterLabel`・`toolbarNameFilterPlaceholder` は Phase 3 のツールバーのコードで初めて使われ、
     既存のテスト（`CatalogConsistencyTests.casesAreReferenced`）が、どこからも使われない文言のキーを失敗にするため
+  - 結果（2026-11-13）: Phase 3〜6 と合わせて CI で確かめた（下の T033）
 
 ## Phase 3: User Story 81 - 表示中の一覧を名前で絞り込む (P1)
 
@@ -142,8 +143,14 @@
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T032 `scripts/dev/check-all.sh` を実行して成功させる（Cloud の検査。docs_private/cloud-agent-workflow.md の 5 章）。T034・T036 の後にも、それぞれもう一度実行する
-- [ ] T033 作業ブランチに push し、CI で `swift build` と `swift test` の成功を確かめる。性能テストは `continue-on-error` なので、ログの末尾で件数と T015 の結果を確かめる
+- [x] T032 `scripts/dev/check-all.sh` を実行して成功させる（Cloud の検査。docs_private/cloud-agent-workflow.md の 5 章）。T034・T036 の後にも、それぞれもう一度実行する
+  - 結果（2026-11-13）: 実装・T034 の文書・性能の修正の後に実行し、いずれも成功した。T036 の後にもう一度実行する
+- [x] T033 作業ブランチに push し、CI で `swift build` と `swift test` の成功を確かめる。性能テストは `continue-on-error` なので、ログの末尾で件数と T015 の結果を確かめる
+  - 結果（2026-11-13）: [run 43357234870](https://github.com/yoshidax/folzio-dev/actions/runs/43357234870)（`de33779`）で `swift build` と通常のテスト 1,217 件が成功した。
+    性能テストは 28 件中 27 件が成功し、名前の絞り込みは最も遅い 1 文字で 64ms（基準 100ms）。
+    失敗した 1 件は既存の「24MP の JPEG を 0.5 秒以内にデコード」（0.71 秒）で、この変更はデコードに触れていない。
+    別のブランチの [run 43247851486](https://github.com/yoshidax/folzio-dev/actions/runs/43247851486) でも同じテストが 1.0 秒で失敗しており、共有ランナーのぶれと判断した。
+    途中の 2 回の実行では、テストの誤り 1 件（T004 のテスト）と、絞り込みの性能の超過（108ms。T015 の注記）を直した
 - [x] T034 ユーザーガイドと開発の手順書を更新する。日本語と英語を同じコミットで同じ内容にする。
   - `docs/usage.ja.md`・`docs/usage.md` の「ツールバー」に検索欄（既定で右端、カスタマイズで動かせる）を加える。「名前の検索」の前後に、検索欄での絞り込み
     （入力のたびに反映、`..` は残る、一覧が替わると解除、検索との違い）と、虫眼鏡でキーワードを引き継いでモーダルを開けることを書く。
