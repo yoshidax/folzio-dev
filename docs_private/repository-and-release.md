@@ -136,6 +136,25 @@ source trailer がない初回は自動更新せず、summary に初期化待ち
 初回だけは tree が同じでも source 対応付けコミットを1つ作り、以後はこの入力を空にする。
 初期化済みの指定と、不正な trailer を初回と見なす操作は拒否する。
 
+### 公開用 main の保護設定を変更する前の確認
+
+2026-11-13 の保守者の画面確認では、公開用 `folzio` に Ruleset と従来の Branch protection rule はどちらも存在しない。
+Require lockfile は現在使用しておらず、設定項目の利用可否は未確認。
+
+実装では [sync-public.yml](../.github/workflows/sync-public.yml) の writer が、公開用だけにインストールした
+GitHub App の短期トークン（Contents write・Workflows write）を取得する。
+[sync-public.py](../scripts/dev/sync-public.py) の `write` は公開先 base の再照合後、公開用 `main` を親とするコミットを作り、
+PR を介さず非 force で `refs/heads/main` へ直接 push する。公開側の Build release draft は、この main 更新後に動く。
+
+公開用へ PR 必須のルールや、main 更新後に走るチェックを事前に要求するルールを追加すると、現在の自動同期が止まる可能性がある。
+開発用の `protect-master` をそのまま公開用へ移さない。将来ブランチ保護を追加する場合は、同期方法・App の許可・
+更新前に満たせるチェックを設計し、通常リリースによる同期と公開側 workflow の起動を妨げないことを確認する。
+Require lockfile は Actions の実行ポリシーとして別に扱い、その導入のためにブランチ保護を追加しない。
+
+lock 導入 PR は `release.json` を変更しないため、マージ時の通常自動同期は行われない。
+公開用の workflow と lock は、次の通常リリース経路で対として反映し、実際の main で検証してからポリシーを有効化する。
+早期にソースだけを反映する必要がある場合は別途運用を検討し、復旧用の `publish.sh` を通常経路として使わない。
+
 ### 失敗からの復旧
 
 - 対象 M と run は失敗した実行の summary から取得する。master が M+3 でも M を使い続ける。
@@ -202,17 +221,21 @@ source trailer がない初回は自動更新せず、summary に初期化待ち
 
 | | 開発用の workflow | 公開用の workflow |
 |---|---|---|
-| 元のファイル（管理元） | 開発用の `.github/workflows/` | 開発用の `scripts/dev/oss-workflows/`（直下の `*.yml`・`*.yaml`） |
+| 元のファイル（管理元） | 開発用の `.github/workflows/` | 開発用の `scripts/dev/oss-workflows/`（直下の `*.yml`・`*.yaml` と `actions.lock`） |
 | 動く場所 | 開発用リポジトリ（`yoshidax/folzio-dev`）だけ | 公開用リポジトリだけ |
 | 書き出しでの扱い | 書き出さない（`.gitattributes` の `/.github/workflows export-ignore`） | 公開用リポジトリの `.github/workflows/` に、同じ名前・内容で置く |
 | 例 | `macos-swift-ci.yml`（PR の作成時などのビルドとテスト） | `release.yml`（アプリの最終ビルドと Release ドラフト） |
 
 - 開発用の workflow を足すときは、開発用の `.github/workflows/` に置くだけでよい。ディレクトリごと除外しているので、除外の指定は要らない
-- 公開用の workflow として置くのは、管理元の**直下**にある、名前が `.yml` または `.yaml` で終わる通常ファイルだけ。
+- 公開用の workflow として置くのは、管理元の**直下**にある、名前が `.yml` または `.yaml` で終わる通常ファイルと `actions.lock` だけ。
   サブディレクトリの中、シンボリックリンク、説明の文書（管理元の `README.md`）は置かない
-- 置くのはコミット済みの内容（`HEAD`）。管理元に workflow がなければ、公開用リポジトリに `.github/workflows/` を作らない
+- 書き出しログは workflow と lock を別の行に表示する。workflow がなく `actions.lock` だけが残る場合はエラーにする
+- 置くのはコミット済みの内容（`HEAD`）。管理元に対象ファイルがなければ、公開用リポジトリに `.github/workflows/` を作らない
 - 公開用の workflow は開発用リポジトリでは動かない（GitHub Actions は `.github/workflows/` の直下だけを読む）。動作は公開用リポジトリで確かめる
 - 開発用と公開用で同じファイル名を使ってもよい。開発用の workflow は書き出さないので、公開用リポジトリでは衝突しない
+
+両方の依存の固定には、それぞれの `actions.lock` を使う。生成・更新・検証と Require lockfile の
+確認結果・有効化の手順は [actions-lock.md](actions-lock.md) を参照する。
 
 公開用の workflow の追加・変更・削除の手順:
 
@@ -236,11 +259,27 @@ TAK-80 の Issue に記録した。コミット作者のメールアドレスと
 
 ### `master` のブランチ保護（保守者が設定する）
 
-PR の CI が 1 回動いた後に、Settings → Rules → Rulesets → New ruleset → New branch ruleset で、次の ruleset を作る。
+2026-11-13 の保守者による画面確認（エージェントが API で直接確認した記録ではない）:
+
+| 確認項目 | 現在の設定 |
+|---|---|
+| Ruleset | `protect-master`、Active |
+| 対象 | デフォルトブランチ `master` |
+| Bypass list | 空 |
+| Require a pull request before merging | 有効 |
+| Require status checks to pass | 有効 |
+| 必須チェック | `Build and test (macOS 15 / arm64)` |
+| チェックの発行元 | `Any source` |
+
+`Any source` は同名チェックの発行元を GitHub Actions に限定していないため、GitHub Actions への限定を推奨する。
+既存の `protect-master` を確認・更新し、重複する ruleset を新しく作らない。
+
+新しくブランチ保護を用意する場合は、PR の CI が 1 回動いた後に、Settings → Rules → Rulesets →
+New ruleset → New branch ruleset で、次の方針で作る。以下は設定方針であり、上で確認されていない項目の現状を示すものではない。
 
 | 項目 | 設定 |
 |---|---|
-| Ruleset name | `master` |
+| Ruleset name | `protect-master` |
 | Enforcement status | Active |
 | Bypass list | なし（保守者を含めて適用する） |
 | Target branches | Include default branch |
@@ -250,7 +289,7 @@ PR の CI が 1 回動いた後に、Settings → Rules → Rulesets → New rul
 | Require status checks to pass | 有効。`Build and test (macOS 15 / arm64)` を加える |
 
 - 必須チェックは、名前を手で入力せず、「Add checks」の候補から、GitHub Actions のものを選ぶ。
-  候補は最近動いたチェックから出るので、先に PR で CI を 1 回動かしておく
+  発行元も GitHub Actions に限定することを推奨する。候補は最近動いたチェックから出るので、先に PR で CI を 1 回動かしておく
 - 「Require branches to be up to date before merging」は使わない。`master` が進むたびに取り込みと CI の待ちが要るほどの並行はない。
   必要になれば有効にする
 - 承認レビューを必須にしない。保守者は 1 人で、自分の PR を承認できない
