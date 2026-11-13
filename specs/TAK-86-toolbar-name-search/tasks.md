@@ -161,8 +161,9 @@
   - `docs/development.ja.md`・`docs/development.md` の手動の確認に、絞り込み・解除・虫眼鏡・⌥⌘F を加える
   - README（`README.md`・`README.ja.md`）に検索やツールバーの機能の一覧があれば、両方を同じ内容で直す
   - 公開用リポジトリへ書き出される文書なので、`specs/`・`docs_private/` へリンクしない（AGENTS.md の「書くときの規則」）
-- [ ] T035 [MANUAL] 保守者に quickstart.md の GUI 確認（0〜8）を依頼し、結果を `checklists/validation.md` に記録する。確認されるまでこのタスクは未チェックのまま残す。
+- [x] T035 [MANUAL] 保守者に quickstart.md の GUI 確認（0〜8）を依頼し、結果を `checklists/validation.md` に記録する。確認されるまでこのタスクは未チェックのまま残す。
   未確認の点（research.md の R6・R8・R10・R11・R12）で動かないものがあれば、research.md の代替へ直して再び確認を依頼する
+  - 結果（2026-11-13）: 3 回目の確認で 0〜8・5a がすべて合格（`checklists/validation.md`）。1 回目・2 回目の不合格は T038・T039 で直した
 - [x] T038 GUI 確認（T035）の指摘を直す（2026-11-13 の保守者の報告。`checklists/validation.md`）
   - 指摘: (1) 検索欄に 1 文字入力するとフォーカスがファイルリストへ移る、(2) 日本語の入力を始めた瞬間にフォーカスが移り、検索欄に戻っても入力できない、
     (3) 虫眼鏡を押しても検索のモーダルが開かず、(2) と同じ状態になる
