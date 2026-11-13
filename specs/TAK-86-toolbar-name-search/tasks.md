@@ -66,6 +66,9 @@
   - 注記（2026-11-13）: 最初の CI（run 43355920499）で、最も遅い 1 文字が 108ms で基準を超えた（同じ実行で既存の性能テストも 3 件が超えており、共有ランナーのぶれも大きい）。
     R15 のとおり軽くした。名前が ASCII だけのときは `SearchPattern.normalize` を `lowercased()` で済ませ（NFC と大文字小文字の畳み込みと同じ結果。`SearchPatternTests` で確かめる）、
     選択が空のときは表示中の行の URL の集合を作らない
+  - 注記（2026-11-13）: その後の CI で、ランナーの遅い実行では最も遅い 1 文字（すべてが一致する `im`）が 161ms・105ms になった（同じ実行で既存の性能テストも 11 件・4 件が超えた）。
+    ワイルドカードを含まない ASCII のキーワードと ASCII の名前は、文字列を作らずバイト単位で大文字小文字を区別せずに探すようにした（`SearchPattern.asciiContains`。
+    正規化して `contains` を呼ぶ場合と同じ結果になることを `SearchPatternTests` で確かめる）
 - [x] T016 [US81] `Sources/FolzioApp/FileList/FileListViewController.swift` に `applyNameFilter(_ text: String)`・`currentNameFilterText`・`onNameFilterChange`・`observeNameFilter()` を加える
   （`applyMediaTypeFilter(_:)`・`observeMediaTypeFilter()` と同じ形）。`.noMatches` のメッセージの分岐で、`model.nameFilterHidesAllRows` が真なら
   `l10n.text(.emptyNameFilterNoMatches, .text(model.nameFilter.text の前後の空白を除いた文字))` を出す。表示言語の切り替えでメッセージが更新されることを確かめる（FR-386・EC-255、R3・R5）
