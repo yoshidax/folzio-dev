@@ -493,10 +493,13 @@ final class MainToolbarController: NSObject {
     // MARK: - Name filter field (TAK-86)
 
     /// Shows the filter's text in every field in the toolbar, such as after a new location cleared it (FR-384). A field
-    /// that already shows the text is left alone, so typing keeps the caret and trailing spaces.
+    /// that already shows the text is left alone, so typing keeps the caret and trailing spaces. A field whose input
+    /// method is still composing text is also left alone, because this runs one turn after the change and the
+    /// composition may have started in between (FR-389).
     private func apply(nameFilterText text: String) {
         for item in items(for: Self.nameFilterIdentifier) {
             guard let field = item.view as? NSSearchField, field.stringValue != text else { continue }
+            if let editor = field.currentEditor() as? NSTextView, editor.hasMarkedText() { continue }
             field.stringValue = text
         }
     }
