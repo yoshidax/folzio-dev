@@ -17,8 +17,6 @@ jobs:
     name: Verify workflow dependency lockfiles
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    env:
-      XDG_DATA_HOME: ${{ runner.temp }}/verified-gh-data
     steps:
       - uses: actions/checkout@v4.4.0
         with:
@@ -26,6 +24,7 @@ jobs:
       - name: Install lockfile verifier
         env:
           GH_TOKEN: ${{ github.token }}
+          XDG_DATA_HOME: ${{ runner.temp }}/verified-gh-data
         run: |
           test "$(uname -s)-$(uname -m)" = Linux-x86_64
           gh extension install github/gh-actions-lock --pin v0.4.1
@@ -33,6 +32,7 @@ jobs:
       - name: Verify development and public workflow locks
         env:
           GH_TOKEN: ${{ github.token }}
+          XDG_DATA_HOME: ${{ runner.temp }}/verified-gh-data
         run: python3 scripts/dev/actions-lock.py --verify
 
   build-and-test:
