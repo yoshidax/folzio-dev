@@ -574,6 +574,12 @@
 /* Default name of a folder created with New Folder, before the user renames it. Use Finder's wording */
 "folder.defaultName" = "名称未設定フォルダ";
 
+/* Heading at the top of the search sheet */
+"search.heading" = "サブフォルダを含めて検索";
+
+/* Note below the search sheet heading. Also the accessibility help of the keyword field */
+"search.description" = "検索起点ディレクトリとその下のすべてのサブフォルダから、名前が一致するファイルとフォルダを探します。";
+
 /* Search sheet keyword label, placeholder, and accessibility text */
 "search.keyword" = "検索キーワード";
 

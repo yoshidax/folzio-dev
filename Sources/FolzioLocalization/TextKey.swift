@@ -263,6 +263,8 @@ public enum TextKey: String, CaseIterable, Sendable {
 
     // MARK: - Search
 
+    case searchHeading = "search.heading"
+    case searchDescription = "search.description"
     case searchKeyword = "search.keyword"
     case searchRoot = "search.root"
     case searchChoose = "search.choose"
@@ -861,6 +863,10 @@ public enum TextKey: String, CaseIterable, Sendable {
         case .settingsTransitionNone, .settingsTransitionCrossfade,
              .settingsTransitionSlide, .settingsTransitionZoom:
             return "Transition options"
+        case .searchHeading:
+            return "Heading at the top of the search sheet. It names the search that looks through subfolders"
+        case .searchDescription:
+            return "Note below the search sheet heading. It is also the accessibility help of the keyword field"
         case .listColumnName, .listColumnCreationDate, .listColumnKind, .listColumnSize,
              .listColumnModificationDate, .listColumnLocation:
             return "List view column headings. Also used in the sort menu"

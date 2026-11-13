@@ -360,6 +360,7 @@ The toolbar search field filters the list you are viewing by name. To look throu
 
 - Press ⌘F or choose File → "Find…" (検索…).
 - A modal asks for a "Keyword" and "Search In".
+  - The modal is titled "Search Including Subfolders". It looks through the start folder and all of its subfolders.
   - The start folder defaults to the absolute path of the folder shown in the file list.
   - The keyword is pre-filled, fully selected, with the previous search from the same session.
   - The start folder must be a path starting with `/` or `~`.

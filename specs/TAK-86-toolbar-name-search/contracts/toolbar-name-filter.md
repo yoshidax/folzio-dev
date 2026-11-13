@@ -51,5 +51,8 @@
 | `shortcuts.entry.filterByName` | ショートカット一覧の説明 | 表示中の一覧を名前で絞り込む | Filter the displayed list by name |
 | `shortcuts.condition.filterByName` | ショートカット一覧の条件 | 名前の編集中・全画面中・プレビューのみ表示中は使えません。 | Unavailable while renaming, in full screen, or in preview-only view. |
 
+| `search.heading` | 検索シートの冒頭の見出し（FR-394） | サブフォルダを含めて検索 | Search Including Subfolders |
+| `search.description` | 見出しの下の補足説明。キーワード欄のアクセシビリティの説明を兼ねる（FR-394） | 検索起点ディレクトリとその下のすべてのサブフォルダから、名前が一致するファイルとフォルダを探します。 | Finds files and folders whose names match, in the folder you search in and all of its subfolders. |
+
 - ショートカットの表記は、現在の割り当て（コマンド `filterByName`・`find`）に従う。未設定のときの表記は、ほかのツールバーのツールチップと同じ（FR-237・FR-268）
 - 入力した文字は翻訳・変形しない（FR-147（overview.md）の検索キーワードと同じ扱い）

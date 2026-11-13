@@ -574,6 +574,12 @@
 /* Default name of a folder created with New Folder, before the user renames it. Use Finder's wording */
 "folder.defaultName" = "untitled folder";
 
+/* Heading at the top of the search sheet */
+"search.heading" = "Search Including Subfolders";
+
+/* Note below the search sheet heading. Also the accessibility help of the keyword field */
+"search.description" = "Finds files and folders whose names match, in the folder you search in and all of its subfolders.";
+
 /* Search sheet keyword label, placeholder, and accessibility text */
 "search.keyword" = "Keyword";
 
