@@ -197,11 +197,17 @@
   - 結果: [run 43398780402](https://github.com/yoshidax/folzio-dev/actions/runs/43398780402)（`98d07f8`）で `swift build` と通常のテスト 1,226 件が成功した。
     名前の絞り込みの性能は最も遅い 1 文字で 97ms（基準 100ms。これまでの実行では 64〜161ms でばらつく）。
     性能テストで超えた 3 件（24MP のデコード、10,000 件のフォルダへ戻る、10,000 件の検索結果でのフォルダの名前の変更）は、この修正の前の実行でも超えていた
-- [ ] T036 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり `specs/product/file-list.md`・`window-layout.md`・
+- [x] T036 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり `specs/product/file-list.md`・`window-layout.md`・
   `contracts/settings.md`・`contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映する（`specs/product/README.md` の「書き方のルール」に従う。
   ID の定義は1文にし、条件は子項目に分ける。feature の中だけの参照は製品仕様に残さない。コマンドの数（32）を書いているほかの箇所も合わせる。GUI 確認で変わった点があれば、その結果で直してから移す）。
   反映の後に `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-all.sh` を実行し、反映した項目と差分を保守者に示して承認を得てからコミットする
-- [ ] T037 反映が終わったら、spec.md の冒頭に移行済み・凍結の注記を入れる（`specs/product/README.md` の「feature の spec.md の書き方」）
+  - 結果（2026-11-13）: `origin/master` に新しいコミットはなかった（`1d88b66` を取り込み済み）。反映の前と後に `check-spec-ids.sh` を実行し、重複はなかった。
+    file-list.md に「名前の絞り込み（TAK-86）」の節（FR-380〜FR-393）・US81〜US84・EC-250〜EC-260・SC-208〜SC-214・A-223〜A-231 を、
+    search.md に FR-394・SC-215 を加え、FR-080・FR-081・US1-AS25（search.md）・FR-092・FR-233・FR-236・FR-268（window-layout.md）・
+    FR-102（directory-tree.md）・US17-AS4（overview.md）と contracts/ の 3 つのファイル、README の要件の数を変えた。
+    反映では、feature の中だけの注記（「（変更）」など）を外し、A-229 を GUI 確認の結果（クリックの位置で受ける）に合わせた。
+    SC-215 は検索のモーダルの基準なので search.md に置き、反映先の表を直した。`check-spec-format.py` はエラー 0、警告は基準値（85）のまま
+- [x] T037 反映が終わったら、spec.md の冒頭に移行済み・凍結の注記を入れる（`specs/product/README.md` の「feature の spec.md の書き方」）
 
 ## Dependencies & Execution Order
 

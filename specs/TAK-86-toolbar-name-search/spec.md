@@ -1,5 +1,8 @@
 # Feature Specification: ツールバーの検索欄による名前の絞り込み
 
+> **移行済み（2026-11-13）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-86 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `claude/peaceful-bell-dj1h3u`
 
 **Created**: 2026-11-12
@@ -428,7 +431,7 @@ Issue の当初の内容は「Return で、ツリーで選択中のフォルダ�
 |---|---|---|
 | FR-380〜FR-393・US81〜US84・EC-250〜EC-260・SC-208〜SC-214 | 追加 | file-list.md |
 | A-223〜A-231 | 追加 | file-list.md |
-| FR-394 | 追加 | search.md |
+| FR-394・SC-215 | 追加 | search.md |
 | FR-081 | 変更 | search.md |
 | FR-080・US1-AS25 | 変更 | search.md |
 | FR-092 | 変更 | window-layout.md |
