@@ -320,8 +320,18 @@ final class FileListViewController: NSViewController {
         model.selectionItemCommands
     }
 
+    /// Whether a name is being edited in the tree or the file list. Disables search, the media type filter, and
+    /// other commands while renaming.
     var isEditingText: Bool {
-        view.window?.firstResponder is NSTextView
+        Self.isRenaming(firstResponder: view.window?.firstResponder)
+    }
+
+    /// Whether the first responder is the field editor of a rename. Typing in the toolbar name filter field also
+    /// makes a field editor the first responder, but it is not renaming: treating it as renaming disabled the field
+    /// while the user typed in it, which moved the focus to the file list (FR-388, TAK-86).
+    static func isRenaming(firstResponder: NSResponder?) -> Bool {
+        guard let editor = firstResponder as? NSTextView else { return false }
+        return !(editor.delegate is ToolbarSearchField)
     }
 
     override func loadView() {

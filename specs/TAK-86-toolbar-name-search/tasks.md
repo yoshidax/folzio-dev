@@ -160,6 +160,13 @@
   - 公開用リポジトリへ書き出される文書なので、`specs/`・`docs_private/` へリンクしない（AGENTS.md の「書くときの規則」）
 - [ ] T035 [MANUAL] 保守者に quickstart.md の GUI 確認（0〜8）を依頼し、結果を `checklists/validation.md` に記録する。確認されるまでこのタスクは未チェックのまま残す。
   未確認の点（research.md の R6・R8・R10・R11・R12）で動かないものがあれば、research.md の代替へ直して再び確認を依頼する
+- [x] T038 GUI 確認（T035）の指摘を直す（2026-11-13 の保守者の報告。`checklists/validation.md`）
+  - 指摘: (1) 検索欄に 1 文字入力するとフォーカスがファイルリストへ移る、(2) 日本語の入力を始めた瞬間にフォーカスが移り、検索欄に戻っても入力できない、
+    (3) 虫眼鏡を押しても検索のモーダルが開かず、(2) と同じ状態になる
+  - 原因: `FileListViewController.isEditingText` が、ツールバーの検索欄での入力も名前の変更として数えていた（research.md の R13 の訂正）。
+    `canSearch` が偽になり、FR-388 の処理が入力中の検索欄を無効にしたため、編集が終わってフォーカスが移った。虫眼鏡も、押した時点で編集が始まり同じく無効になった
+  - 修正: 判定を `FileListViewController.isRenaming(firstResponder:)` に分け、ツールバーの検索欄の編集を除く。回帰テスト `Tests/FolzioAppTests/ToolbarSearchFieldEditingTests.swift`
+  - 確認: CI の後に、保守者に quickstart.md の 1〜5 を再び確かめてもらう（T035）
 - [ ] T036 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり `specs/product/file-list.md`・`window-layout.md`・
   `contracts/settings.md`・`contracts/keyboard-and-menus.md`・`contracts/localization.md` へ反映する（`specs/product/README.md` の「書き方のルール」に従う。
   ID の定義は1文にし、条件は子項目に分ける。feature の中だけの参照は製品仕様に残さない。コマンドの数（32）を書いているほかの箇所も合わせる。GUI 確認で変わった点があれば、その結果で直してから移す）。

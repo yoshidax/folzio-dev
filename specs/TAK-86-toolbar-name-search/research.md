@@ -109,6 +109,9 @@ Cloud には Swift と macOS がないため、AppKit の実際の動作は確�
 
 - **Decision**: 検索フィールドと項目の `isEnabled` を `panes.paneCommands.canSearch` にする。既存の更新の経路（`apply(paneLayout:)`・`updateSlideshowAvailability()`・`applyState(to:)`）から適用する
 - `observeEditingAvailability()` は全コントロールの編集の通知を受けるが、`canSearch` の `isEditingText` はファイルリストの名前の変更だけを指すので、検索欄の編集では無効にならない
+  - **訂正（2026-11-13、GUI 確認の指摘）**: この前提は誤りだった。`FileListViewController.isEditingText` は「ウインドウの first responder が `NSTextView`（フィールドエディタ）か」で、
+    ツールバーの検索欄での入力でも真になっていた。そのため、入力を始めると `canSearch` が偽になり、検索欄が自分を無効にして編集が終わり、フォーカスがファイルリストへ移った。
+    判定を `FileListViewController.isRenaming(firstResponder:)` に分け、フィールドエディタの delegate がツールバーの検索欄（`ToolbarSearchField`）のときは名前の変更として扱わないように直した
 - 無効にしてもモデルの絞り込みは変えない（EC-258）
 
 ## R14 並びの既定値と保存
