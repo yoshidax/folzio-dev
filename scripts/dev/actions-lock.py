@@ -3,6 +3,7 @@
 import argparse
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -12,10 +13,38 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def workflow_files(directory):
-    return sorted(path for path in directory.iterdir()
-                  if not path.is_symlink() and path.is_file()
-                  and path.suffix in ('.yml', '.yaml'))
+def workflow_files(root, directory):
+    if directory.is_symlink():
+        raise ValueError(f'workflow の管理元は通常のディレクトリにしてください: {directory}')
+    entries = subprocess.check_output(
+        ['git', 'ls-files', '--stage', '-z', '--', directory.relative_to(root).as_posix() + '/'],
+        cwd=root)
+    tracked = set()
+    for entry in entries.split(b'\0'):
+        if not entry:
+            continue
+        info, path = entry.split(b'\t', 1)
+        mode, oid, stage = info.decode().split()
+        if stage != '0':
+            raise ValueError('workflow の競合を解消してください')
+        if mode in ('100644', '100755'):
+            tracked.add(root / os.fsdecode(path))
+    sources = []
+    for path in sorted(directory.iterdir()):
+        if path.is_symlink() or not path.is_file() or not path.name.endswith(('.yml', '.yaml')):
+            continue
+        # exporter と同じ名前の規則を使い、未追跡の下書きを lock に混ぜない。
+        if not re.fullmatch(r'[A-Za-z0-9_.-]+', path.name):
+            raise ValueError(f'workflow 名が不正です: {path.name}')
+        if path not in tracked:
+            raise ValueError(f'新しい workflow は先に git add してください: {path.relative_to(root)}')
+        sources.append(path)
+    lock = directory / 'actions.lock'
+    if lock.is_symlink() or (lock.exists() and not lock.is_file()):
+        raise ValueError(f'actions.lock は通常ファイルで管理してください: {lock}')
+    if lock.exists() and not sources:
+        raise ValueError(f'workflow がない actions.lock は削除してください: {lock}')
+    return sources
 
 
 def run_lock(root, mode):
@@ -30,31 +59,32 @@ def run_lock(root, mode):
 
 
 def update_locks(root, mode):
-    print('開発用 workflow の lock', flush=True)
-    run_lock(root, mode)
-    managed = root / 'scripts/dev/oss-workflows'
+    groups = [(root / '.github/workflows', '開発用'),
+              (root / 'scripts/dev/oss-workflows', '公開用')]
+    # 両方の前提条件を、CLI の実行前に確認する。
+    inputs = [(managed, label, workflow_files(root, managed)) for managed, label in groups]
     with tempfile.TemporaryDirectory(prefix='folzio-actions-lock-') as directory:
-        public = Path(directory)
-        workflows = public / '.github/workflows'
-        workflows.mkdir(parents=True)
-        sources = workflow_files(managed)
-        for source in sources:
-            shutil.copyfile(source, workflows / source.name)
-        lock = managed / 'actions.lock'
-        if lock.is_symlink():
-            raise ValueError('公開用 actions.lock は通常ファイルで管理してください')
-        if lock.exists():
-            shutil.copyfile(lock, workflows / lock.name)
-        print('公開用 workflow の lock（書き出し先のパスで検査）', flush=True)
-        run_lock(public, mode)
-        if mode not in ('--verify', '--verify-local'):
-            generated = workflows / 'actions.lock'
-            if not generated.is_file():
-                raise ValueError('公開用 actions.lock が生成されませんでした')
-            # CLI は uses も書き換える。成功時だけ lock と一緒に管理元へ戻す。
-            for source in sources:
-                shutil.copyfile(workflows / source.name, source)
-            shutil.copyfile(generated, lock)
+        updates = []
+        for index, (managed, label, sources) in enumerate(inputs):
+            if not sources:
+                continue
+            staged = Path(directory) / str(index)
+            workflows = staged / '.github/workflows'
+            workflows.mkdir(parents=True)
+            lock = managed / 'actions.lock'
+            for source in sources + ([lock] if lock.exists() else []):
+                shutil.copyfile(source, workflows / source.name)
+            print(f'{label} workflow の lock（実行先のパスで検査）', flush=True)
+            run_lock(staged, mode)
+            if mode not in ('--verify', '--verify-local'):
+                for target in sources + [lock]:
+                    generated = workflows / target.name
+                    if generated.is_symlink() or not generated.is_file():
+                        raise ValueError(f'{label}の通常ファイルが生成されませんでした: {target.name}')
+                    updates.append((target, generated.read_bytes()))
+        # CLI は uses も書き換える。両方の生成と出力確認が成功してから戻す。
+        for target, data in updates:
+            target.write_bytes(data)
 
 
 def main():

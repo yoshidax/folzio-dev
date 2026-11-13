@@ -13,9 +13,16 @@ lock と `uses:` の変更は同じコミットでレビューする。
 
 公開用の lock の workflow キーも `.github/workflows/release.yml` のような**書き出し先のパス**にする。
 管理元のパスをキーにした lock は、公開用リポジトリでは使えない。
-`scripts/dev/actions-lock.py` は公開用の通常ファイルを一時的な `.github/workflows/` にコピーして
-公式 CLI を実行する。生成が成功したら、lock と CLI が書き換えた workflow を管理元へ戻す。
-検証では管理元を変更しない。開発用と公開用を混ぜてひとつの lock にしない。
+`scripts/dev/actions-lock.py` は両方の通常ファイルを、それぞれ一時的な `.github/workflows/` にコピーして
+公式 CLI を実行する。両方の生成と全出力の確認が成功してから、lock と CLI が書き換えた workflow を管理元へ戻す。
+前提チェック・どちらかの CLI・出力確認が失敗した場合と検証時には、両方の管理元を変更しない。
+開発用と公開用を混ぜてひとつの lock にしない。
+
+対象は Git の追跡対象の通常ファイル（ステージ済みの新規ファイルを含む）で、名前は exporter と同じ
+`[A-Za-z0-9_.-]+`、拡張子は `.yml`・`.yaml` とする。新しい workflow は先に `git add` する。
+直下に未追跡・ignore 対象の workflow があれば、下書きを lock に混ぜないよう CLI の前にエラーにする。
+サブディレクトリと workflow のシンボリックリンクは書き出しと同様に除外する。
+`actions.lock` のシンボリックリンクは拒否する。最後の workflow を削除するときは lock も削除する。
 
 `export-public.sh` は指定したコミットの公開用 workflow と `actions.lock` を同じ名前・内容で書き出す。
 開発用の lock は `.gitattributes` の除外対象なので書き出さない。公開用リポジトリを直接編集しない。
@@ -23,13 +30,28 @@ lock と `uses:` の変更は同じコミットでレビューする。
 ## 初回の準備
 
 GitHub CLI と GitHub の認証が必要。依存ツールの導入・更新は `AGENTS.md` に従い保守者に確認する。
-この手順と CI は公式拡張の `v0.4.1` を使う。導入済みの版は `gh actions-lock --version` で確認する。
+この手順と CI は公式拡張の `v0.4.1` を使う。導入済みの版は、下記のハッシュ照合後に `gh actions-lock --version` で確認する。
 
 ```bash
 gh extension install github/gh-actions-lock --pin v0.4.1
 ```
 
-拡張の更新は保守者が版を確認し、ローカルと `.github/workflows/macos-swift-ci.yml` の指定を揃える。
+タグ・リリースアセットも差し替わり得るため、実行前に導入したバイナリの SHA-256 を照合する。
+CI は専用の `XDG_DATA_HOME` に導入し、下記の Linux x64 の値を workflow に固定して照合してから実行する。
+ローカルでも `${XDG_DATA_HOME:-$HOME/.local/share}/gh/extensions/gh-actions-lock/gh-actions-lock` の
+SHA-256 を `shasum -a 256`（macOS）または `sha256sum`（Linux）で求め、対応する値と一致することを確認する。
+
+| v0.4.1 のアセット | SHA-256 |
+|---|---|
+| linux-amd64 | `39deb2fe714dbf74b073d8245fc7f3d50cd0eee18d5c0900e9e849ae933ae17e` |
+| darwin-arm64 | `f205ea5dbbda67165e08aab1fb6395290ca62f0a038bf27d4b684abd0816635c` |
+| darwin-amd64 | `4ef64599440398999f184321d5237df131721434901ecaaf3da6aa018bdd1f8f` |
+
+2026-11-13 に公式 [v0.4.1 のリリース情報](https://api.github.com/repos/github/gh-actions-lock/releases/tags/v0.4.1)
+の各アセットの `digest` を確認し、Linux x64 は導入済みバイナリの計算値との一致も確認した。
+初回に採用するハッシュ値の信頼性と、CLI 自体の実装のレビューは別途必要であり、照合だけでコードの安全性を保証するものではない。
+拡張の更新は保守者が版とアセットを確認し、ローカルと `.github/workflows/macos-swift-ci.yml` の版・ハッシュを揃える。
+ハッシュ不一致時は新しい値を自動採用せず、上流の変更を調べる。
 lock は手で編集しない。
 
 ## 作成・更新・検証
@@ -51,6 +73,13 @@ python3 scripts/dev/actions-lock.py --verify-local
 `--verify-local` は上流の履歴やリポジトリの同一性を確認しないため、マージ前にはオンラインの
 `--verify` も通す。macOS Swift CI の `Verify workflow dependency lockfiles` ジョブも両方を
 `--verify` で検査する。CI は lock を更新・コミットしない。
+
+既存の必須チェック `Build and test (macOS 15 / arm64)` は検証ジョブに依存する。
+検証失敗時も `always()` で起動し、最初のステップで検証結果が success でなければ失敗させる。
+依存失敗で必須ジョブが単にスキップされ、成功扱いになることを避ける。
+ブランチ保護の設定は保守者が上記のジョブを必須チェックとして維持する。
+さらに `Verify workflow dependency lockfiles` も必須チェックに追加すると、失敗の理由を直接確認できる。
+このセッションではブランチ保護の実際の設定までは確認していない。
 
 更新は当面手動で行う。workflow の追加・削除、`uses:` の変更時に再生成し、月次および
 利用アクションのセキュリティ修正時にも上流のリリースを確認する。更新担当は保守者。

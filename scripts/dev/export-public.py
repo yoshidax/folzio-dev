@@ -76,8 +76,14 @@ def export(sha, output):
             file = root / '.github/workflows' / name
             file.parent.mkdir(parents=True, exist_ok=True)
             file.write_bytes(git('cat-file', 'blob', oid, binary=True))
-            names.append(name)
+            if name != 'actions.lock':
+                names.append(name)
+        lock = root / '.github/workflows/actions.lock'
+        if lock.exists() and not names:
+            raise ValueError('workflow がない公開用 actions.lock は削除してください')
         print('公開用 workflow: ' + ' '.join(names) if names else '公開用 workflow はありません')
+        if lock.exists():
+            print('公開用 lock: actions.lock')
         home, user = str(Path.home()), getpass.getuser()
         generic = {'runner', 'runneradmin', 'root'}
         private_link = re.compile(r'(\]\(|href=")[^)"]*(specs/|\.specify/|docs_private/|shared-skills/|AGENTS\.md)')

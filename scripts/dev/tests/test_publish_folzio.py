@@ -468,6 +468,24 @@ class ExporterTests(unittest.TestCase):
         directory = self.output / '.github/workflows'
         self.assertEqual({path.name for path in directory.iterdir()}, {'release.yml', 'actions.lock'})
         self.assertEqual((directory / 'actions.lock').read_text(), 'public lock\n')
+        self.assertIn('公開用 workflow: release.yml\n', result.stdout)
+        self.assertIn('公開用 lock: actions.lock\n', result.stdout)
+
+    def test_export_rejects_lock_without_workflows_and_leaves_no_output(self):
+        self.fixture.write('scripts/dev/oss-workflows/actions.lock', 'orphaned lock\n')
+        self.fixture.commit()
+        result = self.export()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('workflow がない公開用 actions.lock', result.stderr)
+        self.assertFalse(self.output.exists())
+
+    def test_export_rejects_invalid_workflow_name_and_leaves_no_output(self):
+        self.fixture.write('scripts/dev/oss-workflows/my flow.yml', 'name: Invalid\n')
+        self.fixture.commit()
+        result = self.export()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('workflow 名が不正', result.stderr)
+        self.assertFalse(self.output.exists())
 
 
     def test_explicit_fixture_paths_are_allowed_but_any_home_name_is_rejected(self):

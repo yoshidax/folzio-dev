@@ -210,6 +210,7 @@ source trailer がない初回は自動更新せず、summary に初期化待ち
 - 開発用の workflow を足すときは、開発用の `.github/workflows/` に置くだけでよい。ディレクトリごと除外しているので、除外の指定は要らない
 - 公開用の workflow として置くのは、管理元の**直下**にある、名前が `.yml` または `.yaml` で終わる通常ファイルと `actions.lock` だけ。
   サブディレクトリの中、シンボリックリンク、説明の文書（管理元の `README.md`）は置かない
+- 書き出しログは workflow と lock を別の行に表示する。workflow がなく `actions.lock` だけが残る場合はエラーにする
 - 置くのはコミット済みの内容（`HEAD`）。管理元に対象ファイルがなければ、公開用リポジトリに `.github/workflows/` を作らない
 - 公開用の workflow は開発用リポジトリでは動かない（GitHub Actions は `.github/workflows/` の直下だけを読む）。動作は公開用リポジトリで確かめる
 - 開発用と公開用で同じファイル名を使ってもよい。開発用の workflow は書き出さないので、公開用リポジトリでは衝突しない
