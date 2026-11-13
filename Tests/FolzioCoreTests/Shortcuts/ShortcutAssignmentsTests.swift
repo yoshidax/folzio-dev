@@ -144,7 +144,7 @@ struct ShortcutAssignmentsTests {
 
     @Test("A stored swap of two default keys is accepted when the result has no duplicate")
     func loadsSwap() {
-        let stored = ["find": "shift+cmd+n", "newFolder": "cmd+f"]
+        let stored = ["find": "shift+cmd+n", "newFolder": "opt+cmd+f"]
         let assignments = ShortcutAssignments(storedOverrides: stored)
         #expect(assignments.combination(for: .find) == KeyCombination(key: "n", modifiers: [.shift, .command]))
         #expect(assignments.combination(for: .newFolder) == KeyCombination(key: "f", modifiers: [.option, .command]))
@@ -152,7 +152,7 @@ struct ShortcutAssignmentsTests {
 
     @Test("A stored value that equals the default or an active alternate of another command is dropped")
     func loadsStoredValueEqualToDefault() {
-        let assignments = ShortcutAssignments(storedOverrides: ["find": "cmd+f", "open": "cmd+="])
+        let assignments = ShortcutAssignments(storedOverrides: ["find": "opt+cmd+f", "open": "cmd+="])
         #expect(assignments.overrides.isEmpty)
     }
 
@@ -234,7 +234,7 @@ struct ShortcutAssignmentsTests {
 
     @Test("Unset commands never take part in a stored conflict")
     func unsetDoesNotConflictOnLoad() {
-        let stored = ["find": "none", "newFolder": "cmd+f"]
+        let stored = ["find": "none", "newFolder": "opt+cmd+f"]
         let assignments = ShortcutAssignments(storedOverrides: stored)
         #expect(assignments.isUnset(.find))
         #expect(assignments.combination(for: .newFolder) == KeyCombination(key: "f", modifiers: [.option, .command]))

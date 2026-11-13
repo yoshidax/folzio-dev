@@ -182,6 +182,7 @@
 - [x] T041 「名前で絞り込む」と「検索…」の既定のキーを入れ替える（2026-11-13 の保守者の決定。「名前で絞り込む」を ⌘F、「検索…」を ⌥⌘F。spec.md の A-227・FR-080（変更）ほか）
   - `ShortcutCommands.all`・`ShortcutCatalog`・`MainMenu` のキー、キーを書いているテスト（`ShortcutCommandConsistencyTests`・`ShortcutCatalogTests`、
     「検索…」の既定のキーを前提にする `ShortcutAssignmentsTests` の 8 か所）、ユーザーガイド・開発の手順書・README、quickstart.md・契約・data-model.md・plan.md を入れ替え後のキーにした
+  - CI（run 43395291743）で、`ShortcutAssignmentsTests` の保存値の文字列（`"cmd+f"`）を直し漏れて 2 件が失敗した。3 か所を `"opt+cmd+f"` に直した
   - これより前の記録（Clarifications・research.md・このファイルのほかのタスク）は当時のキーのまま残す
   - 確認: quickstart.md の 4・5（T035）
 - [ ] T036 最新の `origin/master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行してから、spec.md の「反映先」の表のとおり `specs/product/file-list.md`・`window-layout.md`・
