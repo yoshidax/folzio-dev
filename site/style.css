@@ -124,7 +124,27 @@ kbd { font-family: var(--font); font-size: 0.95em; }
 /* Screenshots keep the window's own rounded corners in their alpha channel; the shadow follows that shape. */
 img.shot { filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.28)); }
 /* Videos have no alpha channel, so round them to the window's corner radius (18 of 2880 by 1800 pixels). */
-video.shot { border-radius: 0.65% / 1.04%; box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28); background: #000000; cursor: pointer; }
+video.shot { border-radius: 0.65% / 1.04%; box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28); background: #000000; }
+.shot { cursor: zoom-in; }
+.shot:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
+
+/* Enlarged view (lightbox.js). The backdrop dims the page slowly; the media zooms from its place in the page. */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0);
+  transition: background-color 0.6s ease;
+  cursor: zoom-out;
+}
+.lightbox.is-open { background: rgba(0, 0, 0, 0.62); }
+.lightbox:focus { outline: none; }
+.lightbox-media { position: fixed; max-width: none; transform-origin: 0 0; cursor: default; }
+video.lightbox-media { border-radius: 0.65% / 1.04%; background: #000000; }
+html.lightbox-open { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .lightbox { transition: none; }
+}
 .shot-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; width: min(100%, 64rem); margin-top: clamp(40px, 6vw, 64px); }
 .shot-row .shot { width: 100%; }
 @media (max-width: 720px) { .shot-row { grid-template-columns: minmax(0, 1fr); } }

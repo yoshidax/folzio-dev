@@ -1,4 +1,4 @@
-// Fades the screenshots in as they scroll into view, and lets visitors pause the looping videos.
+// Fades the screenshots in as they scroll into view. With reduced motion, videos do not play by themselves.
 // Without JavaScript or IntersectionObserver, or with reduced motion, the screenshots are shown as they are.
 (function () {
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -14,14 +14,6 @@
         video.removeAttribute('autoplay');
         video.pause();
       }
-      // A click pauses or resumes the loop.
-      video.addEventListener('click', function () {
-        if (video.paused) {
-          video.play();
-        } else {
-          video.pause();
-        }
-      });
     });
 
     if (!canObserve || reduceMotion) {
