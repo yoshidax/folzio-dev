@@ -125,6 +125,18 @@ kbd { font-family: var(--font); font-size: 0.95em; }
 .shot-row .shot { width: 100%; }
 @media (max-width: 720px) { .shot-row { grid-template-columns: minmax(0, 1fr); } }
 
+/* Scroll reveal. reveal.js adds .reveal-ready only when it can show the screenshots again. */
+.reveal-ready .shot {
+  opacity: 0;
+  transform: translateY(32px) scale(0.98);
+  transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1), transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-ready .shot.is-visible { opacity: 1; transform: none; }
+.reveal-ready .shot-row .shot:nth-child(2) { transition-delay: 0.12s; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal-ready .shot { opacity: 1; transform: none; transition: none; }
+}
+
 /* Bands */
 .band { padding-block: clamp(72px, 11vw, 136px); }
 .band.alt { background: var(--bg-alt); }
