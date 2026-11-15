@@ -269,22 +269,27 @@ lock 導入 PR は `release.json` を変更しないため、マージ時の通�
 S3（zip の中）は、静止画ではフォルダを開いたときとの違いが分かりにくいため廃止し、zip の帯は文字だけにした（保守者が 2026-11-15 に決定）。
 M1 は、Web から保存する操作から、フォルダを起点にした検索とツールバーでの絞り込みに入れ替え、検索の帯に置いた。
 
-静止画は横 2048px の JPEG（品質 80 程度）、動画は H.264 の MP4（音声なし、横 1280px、30fps、`+faststart`）にする。
-MOV のままでは Safari 以外で再生できないことがある。動画の最初のコマを JPEG にして `poster` に使う。置き場所と名前は次のとおりにし、HTML の `src` を
+静止画は横 2048px の WebP（品質 80、透明あり）、動画は H.264 の MP4（音声なし、横 1280px、30fps、CRF 28、`+faststart`）にする。
+MOV のままでは Safari 以外で再生できないことがある。動画の最初のコマを JPEG にして `poster` に使う。
+静止画はウインドウの外側を透明にし、影は CSS で付ける。黒い背景で撮った画像は、右と下の黒い余白を切り、
+透明な角を持つ画像（S1）のアルファで角を丸くする。2 つのウインドウが並ぶ画像は、接する部分の上下の切れ込みも透明にする。
+画面の録画は変化のないコマを記録しないため、最後のコマを伸ばして元の長さに合わせる（ffmpeg の `tpad=stop_mode=clone` と `-t`）。置き場所と名前は次のとおりにし、HTML の `src` を
 仮の画像から差し替える。動画は `<video autoplay muted loop playsinline>` にし、静止画を `poster` に指定する。
 
 | ID | 内容 | 英語 | 日本語 |
 |---|---|---|---|
-| S1 | ヒーロー（3 ペイン、サムネイル表示） | `site/media/en/s1-hero.jpg` | `site/media/ja/s1-hero.jpg` |
-| S2 | 画像と動画（プレビューで動画を再生中） | `site/media/en/s2-media.jpg` | `site/media/ja/s2-media.jpg` |
-| S4 | Web から保存（ブラウザと並べてドラッグ中） | `site/media/en/s4-web.jpg` | `site/media/ja/s4-web.jpg` |
-| S5 | 整理（複数をツリーのフォルダへドラッグ中） | `site/media/en/s5-organize.jpg` | `site/media/ja/s5-organize.jpg` |
-| S6 | 検索の結果（「場所」の列） | `site/media/en/s6-search.jpg` | `site/media/ja/s6-search.jpg` |
-| S7 | 鑑賞（プレビューだけの表示か、フルスクリーンで拡大） | `site/media/en/s7-focus.jpg` | `site/media/ja/s7-focus.jpg` |
-| S8-1 | キーボードショートカットの一覧（チートシート） | `site/media/en/s8-1-reference` | `site/media/ja/s8-1-reference` |
-| S8-2 | 設定のキーボードショートカット | `site/media/en/s8-2-settings` | `site/media/ja/s8-2-settings` |
-| M1 | フォルダを起点に検索し、ツールバーの検索欄で結果を絞り込む操作（5〜8 秒、音なし） | `site/media/en/m1-search.mp4` | `site/media/ja/m1-search.mp4` |
-| M2 | スライドショーの切り替え効果（5〜8 秒、音なし） | `site/media/en/m2-slideshow.mp4` | `site/media/ja/m2-slideshow.mp4` |
+| S1 | ヒーロー（3 ペイン、サムネイル表示） | `site/media/en/s1-hero.webp` | 未撮影 |
+| S2 | 画像と動画（プレビューで動画を再生中） | `site/media/en/s2-media.webp` | 未撮影 |
+| S4 | Web から保存（ブラウザと並べてドラッグ中） | `site/media/en/s4-web.webp` | 未撮影 |
+| S5 | 整理（複数をツリーのフォルダへドラッグ中） | `site/media/en/s5-organize.webp` | 未撮影 |
+| S6 | 検索の結果（「場所」の列） | `site/media/en/s6-search.webp` | 未撮影 |
+| S7 | 鑑賞（プレビューだけの表示） | `site/media/en/s7-focus.webp` | 未撮影 |
+| S8-1 | キーボードショートカットの一覧（チートシート） | `site/media/en/s8-1-reference.webp` | 未撮影 |
+| S8-2 | 設定のキーボードショートカット | `site/media/en/s8-2-settings.webp` | 未撮影 |
+| M1 | フォルダを起点に検索し、ツールバーの検索欄で結果を絞り込む操作 | `site/media/en/m1-search.mp4`（`poster` は `.jpg`） | 未撮影 |
+| M2 | スライドショーの切り替え効果 | `site/media/en/m2-slideshow.mp4`（`poster` は `.jpg`） | 未撮影 |
+
+2026-11-15 時点では英語の UI だけを撮影し、日本語のページも英語の画像を参照している。
 
 ホームフォルダの名前（ユーザー名）やボリューム名など、個人の情報を写さない。写真は自分で撮ったものか、利用条件を確かめた素材を使う。
 

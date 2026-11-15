@@ -1,14 +1,32 @@
-// Fades the screenshots in as they scroll into view.
-// Without JavaScript or IntersectionObserver, or with reduced motion, they are shown as they are.
+// Fades the screenshots in as they scroll into view, and lets visitors pause the looping videos.
+// Without JavaScript or IntersectionObserver, or with reduced motion, the screenshots are shown as they are.
 (function () {
-  if (!('IntersectionObserver' in window) ||
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    return;
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var canObserve = 'IntersectionObserver' in window;
+  if (canObserve && !reduceMotion) {
+    // Set before the body is parsed, so the screenshots do not appear and then disappear.
+    document.documentElement.classList.add('reveal-ready');
   }
-  // Set before the body is parsed, so the screenshots do not appear and then disappear.
-  document.documentElement.classList.add('reveal-ready');
 
   document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('video.shot').forEach(function (video) {
+      if (reduceMotion) {
+        video.removeAttribute('autoplay');
+        video.pause();
+      }
+      // A click pauses or resumes the loop.
+      video.addEventListener('click', function () {
+        if (video.paused) {
+          video.play();
+        } else {
+          video.pause();
+        }
+      });
+    });
+
+    if (!canObserve || reduceMotion) {
+      return;
+    }
     var observer = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (entry.isIntersecting) {
