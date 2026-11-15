@@ -85,6 +85,8 @@ def export(sha, output):
         if lock.exists():
             print('公開用 lock: actions.lock')
         home, user = str(Path.home()), getpass.getuser()
+        # ホームのパスは、完全なパスとして現れたときだけ検出する。HOME=/root で "/search/root" を誤検出しないため。
+        home_path = re.compile(r'(?<![A-Za-z0-9_./-])' + re.escape(home) + r'(?=[/\"\'\s]|\Z)')
         generic = {'runner', 'runneradmin', 'root'}
         private_link = re.compile(r'(\]\(|href=")[^)"]*(specs/|\.specify/|docs_private/|shared-skills/|AGENTS\.md)')
         for file in root.rglob('*'):
@@ -99,7 +101,7 @@ def export(sha, output):
             # CI アカウント名と root は一般語・変数名にも現れる。ホーム・個人パスの検査は省略しない。
             username = user not in generic and re.search(
                 r'(?<![A-Za-z0-9_.-])' + re.escape(user) + r'(?![A-Za-z0-9_.-])', text)
-            if home in text or username or personal:
+            if home_path.search(text) or username or personal:
                 raise ValueError(f'ローカルのパスまたはユーザー名が含まれています: {file.relative_to(root)}')
             if file.suffix == '.md' and private_link.search(text):
                 raise ValueError(f'公開しないファイルへのリンクがあります: {file.relative_to(root)}')
