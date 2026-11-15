@@ -550,6 +550,20 @@ class ExporterTests(unittest.TestCase):
                         self.assertNotEqual(self.export(user=user, home=home).returncode, 0)
                         self.assertFalse(self.output.exists())
 
+    def test_home_path_matches_only_complete_paths(self):
+        # Cloud のセッションでは HOME=/root になる。別のパスの末尾にある /root は検出しない。
+        self.fixture.write('Tests/example.swift', 'let root = "/search/root"\nlet nested = "/search/root/trip"\n')
+        self.fixture.commit()
+        result = self.export(user='root', home='/root')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        shutil.rmtree(self.output)
+        for text in ['cd /root/projects\n', 'let path = "/root"\n', 'HOME is /root']:
+            with self.subTest(text=text):
+                self.fixture.write('Tests/example.swift', text)
+                self.fixture.commit()
+                self.assertNotEqual(self.export(user='root', home='/root').returncode, 0)
+                self.assertFalse(self.output.exists())
+
 
 if __name__ == '__main__':
     unittest.main()
