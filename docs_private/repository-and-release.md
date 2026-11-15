@@ -281,7 +281,8 @@ MOV のままでは Safari 以外で再生できないことがある。動画�
 | S5 | 整理（複数をツリーのフォルダへドラッグ中） | `site/media/en/s5-organize.jpg` | `site/media/ja/s5-organize.jpg` |
 | S6 | 検索の結果（「場所」の列） | `site/media/en/s6-search.jpg` | `site/media/ja/s6-search.jpg` |
 | S7 | 鑑賞（プレビューだけの表示か、フルスクリーンで拡大） | `site/media/en/s7-focus.jpg` | `site/media/ja/s7-focus.jpg` |
-| S8 | カスタマイズ（ショートカットの設定） | `site/media/en/s8-customize.jpg` | `site/media/ja/s8-customize.jpg` |
+| S8-1 | キーボードショートカットの一覧（チートシート） | `site/media/en/s8-1-reference` | `site/media/ja/s8-1-reference` |
+| S8-2 | 設定のキーボードショートカット | `site/media/en/s8-2-settings` | `site/media/ja/s8-2-settings` |
 | M1 | フォルダを起点に検索し、ツールバーの検索欄で結果を絞り込む操作（5〜8 秒、音なし） | `site/media/en/m1-search.mp4` | `site/media/ja/m1-search.mp4` |
 | M2 | スライドショーの切り替え効果（5〜8 秒、音なし） | `site/media/en/m2-slideshow.mp4` | `site/media/ja/m2-slideshow.mp4` |
 
