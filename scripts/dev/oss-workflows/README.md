@@ -3,10 +3,11 @@
 このディレクトリは、公開用リポジトリ（`folzio-oss`）だけで動かす GitHub Actions の workflow の元のファイルを置く場所。
 方針の正本は [docs_private/repository-and-release.md](../../../docs_private/repository-and-release.md) の「GitHub Actions の workflow」。
 
-- `scripts/dev/publish.sh` は、書き出しのときに、このディレクトリの**直下**にある `*.yml`・`*.yaml` の通常ファイルを、同じ名前と内容で
-  公開用リポジトリの `.github/workflows/` に置く。直下の通常ファイル `actions.lock` も同じ名前・内容で置く。
-  サブディレクトリの中、シンボリックリンク、他の lock ファイル、このファイルのような説明の文書は置かない
-- 置くのはコミット済みの内容（`HEAD`）。作業ツリーの未コミットの変更は使わない（`publish.sh` は未コミットの変更があると止まる）
+- 書き出し（`scripts/dev/export-public.sh`。通常の同期とローカル公開の復旧手順の両方が使う）は、このディレクトリの**直下**にある
+  `*.yml`・`*.yaml` の通常ファイルを、同じ名前と内容で公開用リポジトリの `.github/workflows/` に置く。直下の通常ファイル `actions.lock` も
+  同じ名前・内容で置く。サブディレクトリの中、シンボリックリンク、他の lock ファイル、このファイルのような説明の文書は置かない
+- 置くのは書き出す対象のコミットの内容。作業ツリーの未コミットの変更は使わない
+- 公開用リポジトリへの反映は、リリース PR の同期に合わせて行う。workflow だけを変えても、次のリリースまで反映されない
 - このディレクトリは `scripts/dev/` の中なので、ディレクトリそのものは書き出されない
 - ここに置いた workflow は、開発用リポジトリでは動かない（GitHub Actions は `.github/workflows/` の直下だけを読む）。
   動作の確認は、公開用リポジトリで行う
@@ -24,3 +25,9 @@ workflow の依存を変えたら、リポジトリのルートで `python3 scri
 ドラフトへ添付する。開発用の Release candidate / Publish release source は `.github/workflows/` 側に置く。
 通常は release.json 変更 PR とローカル確認を起点に公開用へ同期する。
 初回 App / base、候補の再確認と復旧の手順は上記の運用文書を参照する。
+
+## Web サイトの workflow
+
+`pages.yml` は公開用 main の push のうち `site/` などが変わったときと手動実行で動き、`scripts/check-site.py --release` で
+検査してから、`site/` を GitHub Pages へデプロイする。仮の画像が残っていると検査で止まる。
+運用と初回の設定は上記の運用文書の「公開用の Web サイト」を参照する。

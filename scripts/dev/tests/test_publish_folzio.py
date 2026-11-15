@@ -444,6 +444,14 @@ class ExporterTests(unittest.TestCase):
         self.assertNotEqual(self.export().returncode, 0)
         self.assertFalse(self.output.exists())
 
+    def test_private_link_in_site_html_leaves_no_output(self):
+        self.fixture.write('site/index.html', '<a href="https://example.com/x/docs_private/notes.md">x</a>\n')
+        self.fixture.commit()
+        result = self.export()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('site/index.html', result.stderr)
+        self.assertFalse(self.output.exists())
+
     def test_real_public_workflow_and_export_helpers(self):
         self.fixture.write('scripts/dev/oss-workflows/release.yml',
                            (ROOT / 'scripts/dev/oss-workflows/release.yml').read_text()

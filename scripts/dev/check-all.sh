@@ -23,6 +23,7 @@ run scripts/check-no-archive-writes.sh
 # Prefer origin/master: the local master branch can be stale or missing in a Cloud clone.
 readme_base=$(scripts/dev/base-ref.sh) || readme_base=master
 run scripts/check-readme-sync.sh "$readme_base"
+run python3 scripts/check-site.py
 run scripts/dev/check-english-comments.sh
 run scripts/dev/check-skill-sync.sh
 run scripts/dev/check-spec-ids.sh
