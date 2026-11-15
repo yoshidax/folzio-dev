@@ -265,20 +265,24 @@ lock 導入 PR は `release.json` を変更しないため、マージ時の通�
 
 ### スクリーンショットと動画
 
-アプリの表示言語を変えて、日英の 2 通りを撮る。外観はダークモードにそろえる。置き場所と名前は次のとおりにし、HTML の `src` を
+アプリの表示言語を変えて、日英の 2 通りを撮る。外観はダークモードにそろえる。
+S3（zip の中）は、静止画ではフォルダを開いたときとの違いが分かりにくいため廃止し、zip の帯は文字だけにした（保守者が 2026-11-15 に決定）。
+M1 は、Web から保存する操作から、フォルダを起点にした検索とツールバーでの絞り込みに入れ替え、検索の帯に置いた。
+
+静止画は横 2048px の JPEG（品質 80 程度）、動画は H.264 の MP4（音声なし、横 1280px、30fps、`+faststart`）にする。
+MOV のままでは Safari 以外で再生できないことがある。動画の最初のコマを JPEG にして `poster` に使う。置き場所と名前は次のとおりにし、HTML の `src` を
 仮の画像から差し替える。動画は `<video autoplay muted loop playsinline>` にし、静止画を `poster` に指定する。
 
 | ID | 内容 | 英語 | 日本語 |
 |---|---|---|---|
 | S1 | ヒーロー（3 ペイン、サムネイル表示） | `site/media/en/s1-hero.jpg` | `site/media/ja/s1-hero.jpg` |
 | S2 | 画像と動画（プレビューで動画を再生中） | `site/media/en/s2-media.jpg` | `site/media/ja/s2-media.jpg` |
-| S3 | zip の中 | `site/media/en/s3-zip.jpg` | `site/media/ja/s3-zip.jpg` |
 | S4 | Web から保存（ブラウザと並べてドラッグ中） | `site/media/en/s4-web.jpg` | `site/media/ja/s4-web.jpg` |
 | S5 | 整理（複数をツリーのフォルダへドラッグ中） | `site/media/en/s5-organize.jpg` | `site/media/ja/s5-organize.jpg` |
 | S6 | 検索の結果（「場所」の列） | `site/media/en/s6-search.jpg` | `site/media/ja/s6-search.jpg` |
 | S7 | 鑑賞（プレビューだけの表示か、フルスクリーンで拡大） | `site/media/en/s7-focus.jpg` | `site/media/ja/s7-focus.jpg` |
 | S8 | カスタマイズ（ショートカットの設定） | `site/media/en/s8-customize.jpg` | `site/media/ja/s8-customize.jpg` |
-| M1 | Web から保存する操作（5〜8 秒、音なし） | `site/media/en/m1-web.mp4` | `site/media/ja/m1-web.mp4` |
+| M1 | フォルダを起点に検索し、ツールバーの検索欄で結果を絞り込む操作（5〜8 秒、音なし） | `site/media/en/m1-search.mp4` | `site/media/ja/m1-search.mp4` |
 | M2 | スライドショーの切り替え効果（5〜8 秒、音なし） | `site/media/en/m2-slideshow.mp4` | `site/media/ja/m2-slideshow.mp4` |
 
 ホームフォルダの名前（ユーザー名）やボリューム名など、個人の情報を写さない。写真は自分で撮ったものか、利用条件を確かめた素材を使う。
