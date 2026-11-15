@@ -103,7 +103,8 @@ def export(sha, output):
                 r'(?<![A-Za-z0-9_.-])' + re.escape(user) + r'(?![A-Za-z0-9_.-])', text)
             if home_path.search(text) or username or personal:
                 raise ValueError(f'ローカルのパスまたはユーザー名が含まれています: {file.relative_to(root)}')
-            if file.suffix == '.md' and private_link.search(text):
+            # サイト（site/）の HTML も、Markdown と同じく公開しないファイルへリンクしない。
+            if file.suffix in ('.md', '.html') and private_link.search(text):
                 raise ValueError(f'公開しないファイルへのリンクがあります: {file.relative_to(root)}')
         root.rename(output)
 

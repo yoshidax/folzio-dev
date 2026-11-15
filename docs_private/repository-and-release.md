@@ -12,7 +12,7 @@ Spec Kit・AI エージェントの設定・仕様書・開発記録は、公開
 |---|---|---|
 | 場所 | `~/projects/folzio` | `~/projects/folzio-oss` |
 | remote | GitHub の公開リポジトリ `yoshidax/folzio-dev` | GitHub の公開リポジトリ `yoshidax/folzio`（通常の同期は GitHub Actions が行う） |
-| 管理対象 | すべてのファイル | アプリのソース・テスト・ビルド用スクリプト・README（英語の `README.md` と日本語の `README.ja.md`）・公開用ガイド（`docs/`）・LICENSE |
+| 管理対象 | すべてのファイル | アプリのソース・テスト・ビルド用スクリプト・README（英語の `README.md` と日本語の `README.ja.md`）・公開用ガイド（`docs/`）・Web サイト（`site/`）・LICENSE |
 | 履歴 | 開発の履歴をそのまま残す | 1回の公開を1コミットにする |
 | ブランチ | master と feature・bugfix などの作業ブランチ | main |
 
@@ -39,6 +39,7 @@ AI エージェントの `master` への push とマージは、`AGENTS.md`、�
 ## ドキュメントの配置
 
 - `docs/`: 公開用のユーザーガイド・開発ガイド。README からリンクし、公開用リポジトリにも書き出す
+- `site/`: 公開用リポジトリの GitHub Pages で公開する Web サイト（「公開用の Web サイト」）。公開用リポジトリにも書き出す
 - `docs_private/`: 運用手順・用語集・開発記録。このファイルを含み、公開用リポジトリには書き出さない（開発用リポジトリでは公開されている。
   名前の `private` は、公開用リポジトリへ書き出さないという意味）
 - `shared-skills/`: Codex・Claude Code・Kilo Code で共有するスキルの手順本文。各ツールの `SKILL.md` から参照し、公開用リポジトリには書き出さない
@@ -241,13 +242,78 @@ lock 導入 PR は `release.json` を変更しないため、マージ時の通�
 
 1. 開発用の作業ブランチで、`scripts/dev/oss-workflows/` の workflow を追加・変更・削除する
 2. PR で開発用 master にマージする（「開発用 master へのマージ」）
-3. 「公開の手順」で書き出す。`publish.sh` の出力に、置いた workflow の名前が出る
-4. 書き出し先の `git status` で `.github/workflows/` の変更（追加・変更・削除）を確かめてから、「公開の手順」の 4 でコミットする
-5. 公開用リポジトリの Actions で、workflow が意図どおり動くことを確かめる
+3. 次のリリース PR で公開用 `main` へ反映する（「通常の公開: リリース PR と CI 候補」）。workflow だけの変更では同期しない。
+   書き出しのログ（`export-public.sh`）に、置いた workflow と lock の名前が出る
+4. 公開用リポジトリの Actions で、workflow が意図どおり動くことを確かめる
 
-公開用リポジトリで `.github/workflows/` を直接編集した場合、その変更は次の書き出しで管理元の内容に置き換わる（`rsync --delete` は
-`.github/workflows/` を保護しない）。公開用リポジトリでコミット済みのファイルは `git status` に削除（`D`）として出るが、
-コミットしていないファイルは表示されずに消える。
+公開用リポジトリで `.github/workflows/` を直接編集した場合、その変更は次の同期で管理元の内容に置き換わる。
+ローカル公開の復旧手順（`publish.sh`）でも同じで、`rsync --delete` は `.github/workflows/` を保護しない。
+
+## 公開用の Web サイト（GitHub Pages、TAK-81）
+
+公開用リポジトリの GitHub Pages（`https://yoshidax.github.io/folzio/`）で、アプリを紹介するサイトを公開する。
+
+| 項目 | 内容 |
+|---|---|
+| 元のファイル | 開発用の `site/`。英語は `site/*.html`、日本語は `site/ja/*.html`。静的な HTML と CSS で、ビルドの工程はない |
+| 公開の workflow | `scripts/dev/oss-workflows/pages.yml`（公開用の `.github/workflows/pages.yml`）。公開用 `main` への push のうち、`site/` などが変わったときと、手動実行で動く |
+| 公開の時期 | リリース PR の同期に合わせる。サイトだけを変えても、次のリリースまで公開されない（保守者が 2026-11-15 に決定） |
+| 検査 | `scripts/check-site.py`。日英のページの対応と構造、ローカルの参照先の有無、外部スクリプトの禁止を見る。`check-all.sh` から実行する |
+| 仮の画像 | `site/media/placeholder/`。`--release` の検査で残っていると失敗し、Pages の workflow はデプロイしない |
+| 動き | `site/reveal.js`。スクリーンショット（`.shot`）がスクロールで画面に入ると、ふわっと表示する。ヒーローの画像は読み込み時に表示する。JavaScript が動かないときと「視差効果を減らす」の設定では、最初から表示する |
+| 拡大表示 | `site/lightbox.js`。スクリーンショットと動画（`.shot`）をクリックするか、フォーカスして Enter・Space を押すと、その位置から画面の横幅いっぱいまで拡大し、背景をゆっくり暗くする。横幅に合わせると画面より高くなるときは、高さに合わせる。Esc か背景のクリックで、元の位置へ縮みながら消える。開いている間もスクロールバーは消さず（レイアウトがずれないように）、ホイール・タッチ・キーによるスクロールを止める。拡大した動画はクリックで一時停止できる。「視差効果を減らす」の設定では、動きなしで表示・非表示を切り替える |
+| アイコン | `site/app-icon.svg`。`Sources/make-icon/main.swift` の描画を SVG に移したもの。アイコンのデザインを変えたら一緒に直す |
+
+### スクリーンショットと動画
+
+外観はダークモードにそろえる。日英の 2 通りを撮る予定だったが、当面は英語だけにした（下の表の後を参照）。
+S3（zip の中）は、静止画ではフォルダを開いたときとの違いが分かりにくいため廃止し、zip の帯は文字だけにした（保守者が 2026-11-15 に決定）。
+M1 は、Web から保存する操作から、フォルダを起点にした検索とツールバーでの絞り込みに入れ替え、検索の帯に置いた。
+
+静止画は横 2048px の WebP（品質 80、透明あり）、動画は H.264 の MP4（音声なし、横 1280px、30fps、CRF 28、`+faststart`）にする。
+MOV のままでは Safari 以外で再生できないことがある。動画の最初のコマを JPEG にして `poster` に使う。
+静止画はウインドウの外側を透明にし、影は CSS で付ける。黒い背景で撮った画像は、右と下の黒い余白を切り、
+透明な角を持つ画像（S1）のアルファで角を丸くする。2 つのウインドウが並ぶ画像は、接する部分の上下の切れ込みも透明にする。
+画面の録画は変化のないコマを記録しないため、最後のコマを伸ばして元の長さに合わせる（ffmpeg の `tpad=stop_mode=clone` と `-t`）。置き場所と名前は次のとおりにし、HTML の `src` を
+仮の画像から差し替える。動画は `<video autoplay muted loop playsinline>` にし、静止画を `poster` に指定する。
+
+| ID | 内容 | 英語 | 日本語 |
+|---|---|---|---|
+| S1 | ヒーロー（3 ペイン、サムネイル表示） | `site/media/en/s1-hero.webp` | 英語と共通 |
+| S2 | 画像と動画（プレビューで動画を再生中） | `site/media/en/s2-media.webp` | 英語と共通 |
+| S4 | Web から保存（ブラウザと並べてドラッグ中） | `site/media/en/s4-web.webp` | 英語と共通 |
+| S5 | 整理（複数をツリーのフォルダへドラッグ中） | `site/media/en/s5-organize.webp` | 英語と共通 |
+| S6 | 検索の結果（「場所」の列） | `site/media/en/s6-search.webp` | 英語と共通 |
+| S7 | 鑑賞（プレビューだけの表示） | `site/media/en/s7-focus.webp` | 英語と共通 |
+| S8-1 | キーボードショートカットの一覧（チートシート） | `site/media/en/s8-1-reference.webp` | 英語と共通 |
+| S8-2 | 設定のキーボードショートカット | `site/media/en/s8-2-settings.webp` | 英語と共通 |
+| M1 | フォルダを起点に検索し、ツールバーの検索欄で結果を絞り込む操作 | `site/media/en/m1-search.mp4`（`poster` は `.jpg`） | 英語と共通 |
+| M2 | スライドショーの切り替え効果 | `site/media/en/m2-slideshow.mp4`（`poster` は `.jpg`） | 英語と共通 |
+
+当面は英語の UI の画像を日英で共通に使い、日本語のページも `site/media/en/` を参照する（保守者が 2026-11-15 に決定）。
+日本語の UI でも撮る場合は、同じ加工をして `site/media/ja/` に置き、`site/ja/index.html` の参照を差し替える。
+
+ホームフォルダの名前（ユーザー名）やボリューム名など、個人の情報を写さない。写真は自分で撮ったものか、利用条件を確かめた素材を使う。
+
+### アクセス解析（Google Analytics 4）
+
+- 測定 ID は `G-SN0LDJXDKG`。`site/analytics.js` が、`yoshidax.github.io` で開いたときだけ読み込む（ローカルの確認では送らない）
+- 同意モード: 全員の広告関連のストレージを `denied` にする。EEA・英国・スイスは `analytics_storage` も `denied` にし、Cookie を使わない計測だけにする。
+  同意のバナーは出さない。この運用が Google の EU ユーザーの同意ポリシーに合うか、Cookie を使わない計測を同意なしに送ってよいかは、
+  公式の文書に記載がなく、保守者が 2026-11-15 にこのリスクを受け入れた
+- コードで Google シグナルと広告のパーソナライズを無効にする。管理画面でも、データの保持期間を 2 か月、Google シグナルをオフにした（保守者が 2026-11-15 に設定）
+- GA の設定や送る情報を変えたら、`site/privacy.html` と `site/ja/privacy.html` も同じ内容に直す。GA の利用規約は、プライバシーポリシーの掲載と、
+  Cookie の使用と GA の利用の開示を求めている
+- 公開した後、GA のリアルタイムのレポートで計測されていることを確かめる。タグは、公式が引き続き動くとしている `gtag/js` と `config` の形にした
+  （2026-11-06 に公式の設置コードが `gtm.js` の形に変わったため）
+
+### 保守者が公開用リポジトリで行う設定（初回だけ）
+
+1. Settings → Pages の Source を「GitHub Actions」にする
+2. Settings → Environments の `github-pages` に、デプロイできるブランチを `main` だけに限る保護ルールを付ける
+   （Actions で作られた環境には既定のルールがない。公式の推奨）
+3. 開発用で `python3 scripts/dev/actions-lock.py` を実行し、`pages.yml` の依存を公開用の `actions.lock` に加える（[actions-lock.md](actions-lock.md)）
+4. 最初の同期の後、Actions の「Deploy website」の結果と、サイトの表示を確かめる
 
 ## 開発用リポジトリの公開とブランチ保護
 
