@@ -8,6 +8,17 @@
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   var open = null;
+  // Keys that scroll the page. The scrollbar stays visible while the view is open, so the layout never shifts;
+  // instead, these inputs are ignored until the view closes.
+  var SCROLL_KEYS = [' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'];
+
+  function blockScroll(event) {
+    if (open) {
+      event.preventDefault();
+    }
+  }
+  document.addEventListener('wheel', blockScroll, { passive: false });
+  document.addEventListener('touchmove', blockScroll, { passive: false });
 
   function viewport() {
     return { width: document.documentElement.clientWidth, height: window.innerHeight };
@@ -88,7 +99,6 @@
     }
     layer.appendChild(media);
     document.body.appendChild(layer);
-    document.documentElement.classList.add('lightbox-open');
     source.style.visibility = 'hidden';
 
     open = { source: source, layer: layer, media: media, closing: false };
@@ -122,7 +132,6 @@
       finished = true;
       current.layer.remove();
       current.source.style.visibility = '';
-      document.documentElement.classList.remove('lightbox-open');
       current.source.focus({ preventScroll: true });
       open = null;
     }
@@ -148,8 +157,8 @@
     if (event.key === 'Escape') {
       event.preventDefault();
       hide();
-    } else if (event.key === 'Tab') {
-      // The enlarged view is the only thing to focus while it is open.
+    } else if (event.key === 'Tab' || SCROLL_KEYS.indexOf(event.key) !== -1) {
+      // The enlarged view is the only thing to focus while it is open, and the page does not scroll behind it.
       event.preventDefault();
     }
   });
