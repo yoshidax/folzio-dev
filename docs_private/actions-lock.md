@@ -54,6 +54,31 @@ SHA-256 を `shasum -a 256`（macOS）または `sha256sum`（Linux）で求め�
 ハッシュ不一致時は新しい値を自動採用せず、上流の変更を調べる。
 lock は手で編集しない。
 
+### macOS で導入したバイナリのハッシュが一致しない場合
+
+2026-11-15 に保守者の Mac（Apple silicon、gh 2.103.3）で `gh extension install github/gh-actions-lock --pin v0.4.1` を実行すると、
+導入されたバイナリの SHA-256 は上の darwin-arm64 の値と一致しなかった（manifest は `github/gh-actions-lock` の `v0.4.1`、ピン留めあり）。
+同じアセットを `gh release download` で取得すると、上の値と一致した。両者を `codesign -dv` で比べると、
+アセットはビルド時の ad hoc 署名（`flags=0x20002(adhoc,linker-signed)`、`Identifier=a.out`）、導入されたバイナリは別に付け直された
+ad hoc 署名（`flags=0x2(adhoc)`、`Identifier=gh-actions-lock-<ハッシュ>`）で、大きさも違った。
+導入の後に署名が付け直されたことまでは確認したが、付け直したのが gh か macOS かと、署名以外の違いの有無は確認していない
+（署名を外した両者のハッシュも一致しなかったが、付け直しで署名の領域の配置が変わるため、これだけでは判断できない）。
+
+この場合は、導入されたバイナリを実行せず、照合済みのアセットで置き換えてから使う。bash で実行する。
+
+```bash
+d="$(mktemp -d)"; gh release download v0.4.1 --repo github/gh-actions-lock --pattern '*darwin-arm64' --dir "$d"; shasum -a 256 "$d/darwin-arm64"
+```
+
+上の darwin-arm64 の値と一致したら、置き換えて、もう一度照合する。
+
+```bash
+ext="${XDG_DATA_HOME:-$HOME/.local/share}/gh/extensions/gh-actions-lock/gh-actions-lock"; cp "$d/darwin-arm64" "$ext"; chmod 755 "$ext"; shasum -a 256 "$ext"
+```
+
+置き換えたバイナリで lock の生成ができることは、2026-11-15 に確認した（TAK-81 の公開用 lock の更新）。
+拡張を更新・再導入すると、置き換えたバイナリも入れ替わるので、そのたびに照合する。
+
 ## 作成・更新・検証
 
 リポジトリのルートで実行する。引数なしは両方の workflow を全件走査し、追加・削除も反映する。
