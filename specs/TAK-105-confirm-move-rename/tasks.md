@@ -73,10 +73,15 @@
 - [x] T029 [P] `docs/usage.md` と `docs/usage.ja.md` の確認の説明を、ツリーのフォルダのゴミ箱も「ゴミ箱に入れる前に確認する」に従う内容に同じ内容で書き換える
 - [x] T030 `swift build`・`swift test`・`scripts/dev/check-all.sh`・`scripts/make-app.sh` を実行し、結果を `specs/TAK-105-confirm-move-rename/quickstart.md` に記録する
 
+## Phase 6b: マージ前のコードレビューへの対応
+
+- [x] T031 `Sources/FolzioCore/Operations/ConfirmationPolicy.swift` から `requiresModalWithoutWindow` を取り除き、`Sources/FolzioApp/Operations/ConfirmationPresenter.swift` で、確認がオンで親のウインドウがなければ操作に関わらず `runModal` で確認する（EC-263、research.md R5）。`Tests/FolzioCoreTests/ConfirmationPolicyTests.swift` と `Tests/FolzioAppTests/ConfirmationPresenterTests.swift` を合わせる
+- [x] T032 `Tests/FolzioAppTests/ConfirmationPresenterTests.swift` の `#expect(await !…)` を、結果を変数に入れてから比べる形にする（CI の Xcode 16.0 でビルドできるように）
+
 ## Phase 7: 検証と製品仕様への反映
 
 - [x] T018 [MANUAL] 保守者が古い Folzio を終了して `open .build/Folzio.app` で起動し、3ペインの表示と `specs/TAK-105-confirm-move-rename/quickstart.md` の GUI の確認 1〜7 を行う（2026-11-16、保守者の報告「問題なし」。checklists/validation.md）
-- [ ] T019 `specs/product/` の file-operations.md・directory-tree.md・window-layout.md・overview.md・contracts/settings.md・contracts/localization.md・contracts/keyboard-and-menus.md へ spec.md の「反映先」の項目を反映し、`python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行する
+- [x] T019 `specs/product/` の file-operations.md・directory-tree.md・window-layout.md・overview.md・contracts/settings.md・contracts/localization.md・contracts/keyboard-and-menus.md へ spec.md の「反映先」の項目を反映し、`python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行する
 - [ ] T020 [MANUAL] 保守者が `specs/product/` への反映の差分を確認し、承認する
 
 ## Dependencies & Execution Order

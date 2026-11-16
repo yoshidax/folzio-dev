@@ -1,7 +1,7 @@
 import Foundation
 
-/// Pane from which an operation was started. Used to decide whether the confirmation modal can be skipped
-/// (FR-024, FR-079; research.md R58).
+/// Pane from which an operation was started. The tree's confirmations also show each folder's absolute path
+/// (FR-079, FR-103; research.md R58).
 public enum OperationOrigin: Sendable, Equatable {
     case fileList
     case tree
@@ -21,21 +21,6 @@ public enum ConfirmationPolicy {
             return .rename
         case .trash:
             return .trash
-        }
-    }
-
-    /// Whether a confirmation that is turned on must still be shown as an app-modal alert when there is no window
-    /// for a sheet (EC-263). Operations that always confirmed in earlier versions (move, rename, and Trash from the
-    /// tree) are never run unconfirmed while their confirmation is on. Copy and Trash from the file list keep their
-    /// earlier behavior and continue without confirmation.
-    public static func requiresModalWithoutWindow(_ kind: FileOperation.Kind, origin: OperationOrigin) -> Bool {
-        switch kind {
-        case .copy:
-            return false
-        case .move, .rename:
-            return true
-        case .trash:
-            return origin == .tree
         }
     }
 }

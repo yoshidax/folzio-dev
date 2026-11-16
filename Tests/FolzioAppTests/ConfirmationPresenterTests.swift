@@ -100,8 +100,9 @@ struct ConfirmationPresenterTests {
         }
     }
 
-    @Test("Without a window, move, rename, and Trash from the tree still confirm when turned on; copy keeps continuing (EC-263)")
-    func noWindowFallback() async throws {
+    @Test("Without a window, every operation whose confirmation is on asks with an app-modal alert (EC-263)",
+          arguments: ConfirmationTarget.allCases)
+    func noWindowStillConfirms(_ target: ConfirmationTarget) async throws {
         try await withPresenter { settings, presenter, recorder in
             presenter.fallbackWindow = { nil }
             var modals: [NSAlert] = []
@@ -109,19 +110,51 @@ struct ConfirmationPresenterTests {
                 modals.append(alert)
                 return .alertSecondButtonReturn
             }
-            #expect(await !runOperation(.move, on: presenter))
-            #expect(await !runOperation(.rename, on: presenter))
-            #expect(await !presenter.confirm(FileOperation(kind: .trash, sources: [Self.source]), origin: .tree))
-            #expect(modals.count == 3)
-            #expect(await runOperation(.copy, on: presenter))
-            #expect(modals.count == 3)
+            // Bind the result first: Xcode 16.0 on CI rejects effect markers combined with `!` inside `#expect`.
+            let cancelled = await runOperation(target, on: presenter)
+            #expect(!cancelled, "\(target)")
+            #expect(modals.count == 1, "\(target)")
+            #expect(modals.first?.showsSuppressionButton == true, "\(target)")
             #expect(recorder.alerts.isEmpty)
+        }
+    }
 
-            settings.confirmation = ConfirmationOptions(move: false, rename: false, trash: false)
-            #expect(await runOperation(.move, on: presenter))
-            #expect(await runOperation(.rename, on: presenter))
-            #expect(await presenter.confirm(FileOperation(kind: .trash, sources: [Self.source]), origin: .tree))
-            #expect(modals.count == 3)
+    @Test("Without a window, Trash from the tree asks while the Trash confirmation is on (EC-263)")
+    func noWindowTreeTrash() async throws {
+        try await withPresenter { settings, presenter, _ in
+            presenter.fallbackWindow = { nil }
+            var modals = 0
+            presenter.runModal = { _ in
+                modals += 1
+                return .alertSecondButtonReturn
+            }
+            let trash = FileOperation(kind: .trash, sources: [Self.source])
+            let cancelled = await presenter.confirm(trash, origin: .tree)
+            #expect(!cancelled)
+            #expect(modals == 1)
+
+            settings.confirmation = ConfirmationOptions(trash: false)
+            let skipped = await presenter.confirm(trash, origin: .tree)
+            #expect(skipped)
+            #expect(modals == 1)
+        }
+    }
+
+    @Test("Without a window, an operation whose confirmation is off runs without any alert (FR-024)",
+          arguments: ConfirmationTarget.allCases)
+    func noWindowSkipsWhenTurnedOff(_ target: ConfirmationTarget) async throws {
+        try await withPresenter { settings, presenter, recorder in
+            presenter.fallbackWindow = { nil }
+            presenter.runModal = { _ in
+                Issue.record("A turned-off confirmation must not show an alert")
+                return .alertSecondButtonReturn
+            }
+            var options = ConfirmationOptions()
+            options.setEnabled(false, for: target)
+            settings.confirmation = options
+            let confirmed = await runOperation(target, on: presenter)
+            #expect(confirmed, "\(target)")
+            #expect(recorder.alerts.isEmpty)
         }
     }
 

@@ -22,13 +22,14 @@
 
 ## ConfirmationPolicy（変更、FolzioCore）
 
-| 操作（`FileOperation.Kind`） | 始めたペイン | `target` | 親ウインドウなしで `runModal` |
-|---|---|---|---|
-| `copy` | どちらも | `copy` | しない |
-| `move` | どちらも | `move` | する |
-| `rename` | どちらも | `rename` | する |
-| `trash` | ファイルリスト | `trash` | しない |
-| `trash` | ツリー | `trash` | する |
+| 操作（`FileOperation.Kind`） | 始めたペイン | `target` |
+|---|---|---|
+| `copy` | どちらも | `copy` |
+| `move` | どちらも | `move` |
+| `rename` | どちらも | `rename` |
+| `trash` | どちらも | `trash` |
+
+親ウインドウがないときは、確認がオンなら操作に関わらず `runModal` で確認する（EC-263、research.md R5）。
 
 ## 読み込みの規則（SettingsStore）
 

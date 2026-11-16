@@ -48,7 +48,6 @@ final class ConfirmationPresenter {
             },
             confirmTitle: { l10n.text(.dialogConfirmContinue) },
             suppressing: target,
-            requiresModalWithoutWindow: ConfirmationPolicy.requiresModalWithoutWindow(operation.kind, origin: origin),
             parentWindow: parentWindow
         )
     }
@@ -65,19 +64,18 @@ final class ConfirmationPresenter {
                 l10n.text(.dialogFavoriteRemoveNote),
             ].joined(separator: "\n") },
             confirmTitle: { l10n.text(.dialogFavoriteRemoveConfirm) },
-            suppressing: .removeFavorite,
-            requiresModalWithoutWindow: false
+            suppressing: .removeFavorite
         )
     }
 
     /// Shows "Don't ask again", which turns off only `target`'s confirmation, even when the modal is cancelled
-    /// (FR-395, EC-262).
+    /// (FR-395, EC-262). Without a window for a sheet, shows an app-modal alert instead, so an operation whose
+    /// confirmation is turned on never runs unconfirmed (EC-263).
     private func present(
         messageText: @escaping @MainActor () -> String,
         informativeText: @escaping @MainActor () -> String,
         confirmTitle: @escaping @MainActor () -> String,
         suppressing target: ConfirmationTarget,
-        requiresModalWithoutWindow: Bool,
         parentWindow: NSWindow? = nil
     ) async -> Bool {
 
@@ -101,11 +99,7 @@ final class ConfirmationPresenter {
         let response: NSApplication.ModalResponse
         if let window = parentWindow ?? fallbackWindow() {
             response = await presentSheet(alert, window)
-        } else if !requiresModalWithoutWindow {
-            return true
         } else {
-            // Move, rename, and Trash from the tree are not executed without confirmation even when there is no sheet
-            // parent (EC-263).
             response = runModal(alert)
         }
 
