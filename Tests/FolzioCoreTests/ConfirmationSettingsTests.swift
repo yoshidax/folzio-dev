@@ -104,13 +104,14 @@ struct ConfirmationSettingsTests {
     func postsChange() {
         withDefaults { defaults in
             let store = SettingsStore(defaults: defaults)
-            var count = 0
+            // The observer block is `@Sendable`, so Swift 6.0 on CI rejects mutating a captured `var` in it.
+            let count = NotificationCounter()
             let observer = NotificationCenter.default.addObserver(
                 forName: .confirmationOptionsDidChange, object: defaults, queue: nil
-            ) { _ in count += 1 }
+            ) { _ in count.increment() }
             defer { NotificationCenter.default.removeObserver(observer) }
             store.confirmation = ConfirmationOptions(move: false)
-            #expect(count == 1)
+            #expect(count.value == 1)
         }
     }
 
@@ -123,4 +124,12 @@ struct ConfirmationSettingsTests {
         defer { defaults.removePersistentDomain(forName: suiteName) }
         body(defaults)
     }
+}
+
+/// A thread-safe counter for a notification observer block.
+private final class NotificationCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var value: Int { lock.withLock { count } }
+    func increment() { lock.withLock { count += 1 } }
 }
