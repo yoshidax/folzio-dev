@@ -12,11 +12,11 @@
 
 **目的**: すべてのユーザーストーリーが使う、操作と設定の対応・5つの設定の保存・移行を作る
 
-- [ ] T001 `Sources/FolzioCore/Model/Settings.swift` に `ConfirmationTarget`（`copy`・`move`・`rename`・`removeFavorite`・`trash`、設定ウインドウの並び）を追加し、`ConfirmationOptions` を5つの Bool と `isEnabled(_:)`・`setEnabled(_:for:)` に変える（`confirmBeforeFileOperations` は削除）
-- [ ] T002 `Sources/FolzioCore/Operations/ConfirmationPolicy.swift` の `isSkippable` を `target(for:origin:) -> ConfirmationTarget?` と `requiresModalWithoutWindow(_:origin:)` に置き換える（data-model.md の表。ツリーのゴミ箱だけ `nil`）
-- [ ] T003 `Sources/FolzioCore/Settings/SettingsStore.swift` で5つの新しいキーを読み書きし、未設定のキーは旧キー `fileOps.confirmBeforeExecuting` から引き継ぐ（移動・名前の変更は true）。旧キーは書かない。setter で `Notification.Name.confirmationOptionsDidChange` を送る（research.md R2・R4）
-- [ ] T004 [P] `Tests/FolzioCoreTests/ConfirmationPolicyTests.swift` を、操作4種 × ペイン2種の `target` と、親ウインドウなしの `runModal` の要否の表に書き換える
-- [ ] T005 [P] `Tests/FolzioCoreTests/SettingsStoreTests.swift` に、既定値、5つの独立した保存、旧キーがオン・オフ・不正な型・未設定のときの引き継ぎ、新しいキーが保存済みなら旧キーを読まないこと、旧キーを書き換えないこと、変更の通知のテストを追加し、既存の `confirmBeforeFileOperations` のテストを置き換える
+- [x] T001 `Sources/FolzioCore/Model/Settings.swift` に `ConfirmationTarget`（`copy`・`move`・`rename`・`removeFavorite`・`trash`、設定ウインドウの並び）を追加し、`ConfirmationOptions` を5つの Bool と `isEnabled(_:)`・`setEnabled(_:for:)` に変える（`confirmBeforeFileOperations` は削除）
+- [x] T002 `Sources/FolzioCore/Operations/ConfirmationPolicy.swift` の `isSkippable` を `target(for:origin:) -> ConfirmationTarget?` と `requiresModalWithoutWindow(_:origin:)` に置き換える（data-model.md の表。ツリーのゴミ箱だけ `nil`）
+- [x] T003 `Sources/FolzioCore/Settings/SettingsStore.swift` で5つの新しいキーを読み書きし、未設定のキーは旧キー `fileOps.confirmBeforeExecuting` から引き継ぐ（移動・名前の変更は true）。旧キーは書かない。setter で `Notification.Name.confirmationOptionsDidChange` を送る（research.md R2・R4）
+- [x] T004 [P] `Tests/FolzioCoreTests/ConfirmationPolicyTests.swift` を、操作4種 × ペイン2種の `target` と、親ウインドウなしの `runModal` の要否の表に書き換える
+- [x] T005 [P] `Tests/FolzioCoreTests/SettingsStoreTests.swift` に、既定値、5つの独立した保存、旧キーがオン・オフ・不正な型・未設定のときの引き継ぎ、新しいキーが保存済みなら旧キーを読まないこと、旧キーを書き換えないこと、変更の通知のテストを追加し、既存の `confirmBeforeFileOperations` のテストを置き換える
 
 **Checkpoint**: `swift build` と `swift test --filter FolzioCoreTests` が通る
 
@@ -26,12 +26,12 @@
 
 **Independent Test**: quickstart.md の GUI の確認 1〜4
 
-- [ ] T006 [US1] `Sources/FolzioApp/Operations/ConfirmationPresenter.swift` の `confirm` と `confirmRemovingFavorite` を、`ConfirmationPolicy.target` と `ConfirmationOptions.isEnabled` で省略を判断するように変える。親ウインドウがないときは `requiresModalWithoutWindow` に従う（EC-263）
-- [ ] T007 [US1] `Sources/FolzioApp/Operations/FileOperationCoordinator.swift` と `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift` のコメント・呼び出しから「移動・名前の変更は常に確認」の前提を取り除く（ツリーの名前の変更は `rename` の設定に従う。新規フォルダの名前付け `confirms: false` は変えない）
-- [ ] T008 [P] [US1] `Sources/FolzioLocalization/TextKey.swift` と `Sources/FolzioLocalization/Resources/en.lproj/Localizable.strings`・`Sources/FolzioLocalization/Resources/ja.lproj/Localizable.strings` で `settings.confirm` を `settings.confirm.copy`・`.move`・`.rename`・`.removeFavorite`・`.trash` に置き換え、`settings.confirm.note` の文言を変える（contracts/localization.md）
-- [ ] T009 [P] [US1] `Tests/FolzioCoreTests/Localization/SettingsTextTests.swift` を5つの文言と新しい補足説明の日英に書き換える
-- [ ] T010 [US1] `Sources/FolzioApp/Settings/SettingsWindowController.swift` で、確認のチェックボックスを5つにし（FR-223 の並び）、補足説明を「ゴミ箱に入れる前に確認する」の直下に、その文言の先頭に揃えて置き、そのチェックボックスのアクセシビリティのヘルプにする。間隔（FR-222）、Tab の移動順（US40-AS4）、ラベルの言語切り替え、`syncFromStore`、各チェックボックスの保存を対応させる
-- [ ] T011 [US1] `Tests/FolzioAppTests/ConfirmationPresenterTests.swift` を新規に作り、`presentSheet` と `fallbackWindow` を差し替えて、5つの設定のうち1つだけをオフにした5通り × 5操作（SC-216）と、ツリーのゴミ箱が設定に関わらず確認されることを確かめる
+- [x] T006 [US1] `Sources/FolzioApp/Operations/ConfirmationPresenter.swift` の `confirm` と `confirmRemovingFavorite` を、`ConfirmationPolicy.target` と `ConfirmationOptions.isEnabled` で省略を判断するように変える。親ウインドウがないときは `requiresModalWithoutWindow` に従う（EC-263）
+- [x] T007 [US1] `Sources/FolzioApp/Operations/FileOperationCoordinator.swift` と `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift` のコメント・呼び出しから「移動・名前の変更は常に確認」の前提を取り除く（ツリーの名前の変更は `rename` の設定に従う。新規フォルダの名前付け `confirms: false` は変えない）
+- [x] T008 [P] [US1] `Sources/FolzioLocalization/TextKey.swift` と `Sources/FolzioLocalization/Resources/en.lproj/Localizable.strings`・`Sources/FolzioLocalization/Resources/ja.lproj/Localizable.strings` で `settings.confirm` を `settings.confirm.copy`・`.move`・`.rename`・`.removeFavorite`・`.trash` に置き換え、`settings.confirm.note` の文言を変える（contracts/localization.md）
+- [x] T009 [P] [US1] `Tests/FolzioCoreTests/Localization/SettingsTextTests.swift` を5つの文言と新しい補足説明の日英に書き換える
+- [x] T010 [US1] `Sources/FolzioApp/Settings/SettingsWindowController.swift` で、確認のチェックボックスを5つにし（FR-223 の並び）、補足説明を「ゴミ箱に入れる前に確認する」の直下に、その文言の先頭に揃えて置き、そのチェックボックスのアクセシビリティのヘルプにする。間隔（FR-222）、Tab の移動順（US40-AS4）、ラベルの言語切り替え、`syncFromStore`、各チェックボックスの保存を対応させる
+- [x] T011 [US1] `Tests/FolzioAppTests/ConfirmationPresenterTests.swift` を新規に作り、`presentSheet` と `fallbackWindow` を差し替えて、5つの設定のうち1つだけをオフにした5通り × 5操作（SC-216）と、ツリーのゴミ箱が設定に関わらず確認されることを確かめる
 
 **Checkpoint**: `swift build` と `swift test` が通る
 
@@ -41,9 +41,9 @@
 
 **Independent Test**: quickstart.md の GUI の確認 5
 
-- [ ] T012 [US2] `Sources/FolzioApp/Operations/ConfirmationPresenter.swift` で、`target` が `nil` でないモーダルに「今後この確認を表示しない」を出し、オンで閉じたら（キャンセルでも）その `target` だけを `setEnabled(false, for:)` で保存する（FR-395・EC-262）
-- [ ] T013 [US2] `Sources/FolzioApp/Settings/SettingsWindowController.swift` で `confirmationOptionsDidChange` を受けて5つのチェックボックスの状態を読み直す（EC-261）
-- [ ] T014 [US2] `Tests/FolzioAppTests/ConfirmationPresenterTests.swift` に、移動・名前の変更のモーダルに抑止のチェックボックスが出ること、オンで閉じるとその操作だけがオフになること（SC-218）、ツリーのゴミ箱には出ないこと、親ウインドウなしの移動・名前の変更が確認を経ることのテストを追加する
+- [x] T012 [US2] `Sources/FolzioApp/Operations/ConfirmationPresenter.swift` で、`target` が `nil` でないモーダルに「今後この確認を表示しない」を出し、オンで閉じたら（キャンセルでも）その `target` だけを `setEnabled(false, for:)` で保存する（FR-395・EC-262）
+- [x] T013 [US2] `Sources/FolzioApp/Settings/SettingsWindowController.swift` で `confirmationOptionsDidChange` を受けて5つのチェックボックスの状態を読み直す（EC-261）
+- [x] T014 [US2] `Tests/FolzioAppTests/ConfirmationPresenterTests.swift` に、移動・名前の変更のモーダルに抑止のチェックボックスが出ること、オンで閉じるとその操作だけがオフになること（SC-218）、ツリーのゴミ箱には出ないこと、親ウインドウなしの移動・名前の変更が確認を経ることのテストを追加する
 
 ## Phase 4: User Story 3 - 更新しても確認が黙って消えない (Priority: P2)
 
@@ -51,12 +51,12 @@
 
 **Independent Test**: quickstart.md の GUI の確認 6
 
-- [ ] T015 [US3] T003・T005 の引き継ぎが US85-AS8・AS9 を満たすことを `Tests/FolzioCoreTests/SettingsStoreTests.swift` のテスト名と期待値で確かめ、不足があれば補う（SC-217）
+- [x] T015 [US3] T003・T005 の引き継ぎが US85-AS8・AS9 を満たすことを `Tests/FolzioCoreTests/SettingsStoreTests.swift` のテスト名と期待値で確かめ、不足があれば補う（SC-217）
 
 ## Phase 5: Polish & Verification
 
-- [ ] T016 [P] `docs/usage.md` と `docs/usage.ja.md` の「ファイル操作」の確認の説明を、操作ごとに省略できることと、ツリーのフォルダのゴミ箱は常に確認することに同じ内容で書き換える
-- [ ] T017 `swift build`・`swift test`・`scripts/dev/check-all.sh`・`scripts/make-app.sh` を実行し、結果を `specs/TAK-105-confirm-move-rename/quickstart.md` に記録する
+- [x] T016 [P] `docs/usage.md` と `docs/usage.ja.md` の「ファイル操作」の確認の説明を、操作ごとに省略できることと、ツリーのフォルダのゴミ箱は常に確認することに同じ内容で書き換える
+- [x] T017 `swift build`・`swift test`・`scripts/dev/check-all.sh`・`scripts/make-app.sh` を実行し、結果を `specs/TAK-105-confirm-move-rename/quickstart.md` に記録する
 - [ ] T018 [MANUAL] 保守者が古い Folzio を終了して `open .build/Folzio.app` で起動し、3ペインの表示と `specs/TAK-105-confirm-move-rename/quickstart.md` の GUI の確認 1〜6 を行う
 - [ ] T019 `specs/product/` の file-operations.md・directory-tree.md・window-layout.md・contracts/settings.md・contracts/localization.md へ spec.md の「反映先」の項目を反映し、`python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行する
 - [ ] T020 [MANUAL] 保守者が `specs/product/` への反映の差分を確認し、承認する

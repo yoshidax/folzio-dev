@@ -559,7 +559,7 @@ final class DirectoryTreeViewController: NSViewController {
     }
 
     /// Moves the target folders to the Trash as one operation. Trash from the tree always confirms, regardless of the
-    /// skip setting (FR-079, R66). Rejects a folder selected with its descendant as a whole (EC-146).
+    /// confirmation settings (FR-079, R66). Rejects a folder selected with its descendant as a whole (EC-146).
     private func trash(_ targets: TreeBatchTargets) {
         switch targets.trashTargets(roots: rootURLs) {
         case .unavailable:

@@ -40,3 +40,11 @@ scripts/make-app.sh
    ```bash
    for k in copy move rename removeFavorite trash; do defaults delete local.folzio.Folzio fileOps.confirm.$k 2>/dev/null; done; defaults write local.folzio.Folzio fileOps.confirmBeforeExecuting -bool false
    ```
+
+## 検証の記録
+
+- 2026-11-16（macOS 26.6、ローカル）: `swift build` 成功。`swift test` は 1138 件（124 スイート）と性能 28 件が成功。
+  - 2回目の全体実行で `ThumbnailProvider` の zip 内サムネイルのキャッシュの2件が失敗した（`again === thumbnail`）。
+    単独では2回とも成功し、3回目の全体実行でも成功した。この feature は該当のコードを変えていないため、負荷による不安定さと
+    判断した。
+  - `scripts/dev/check-all.sh` 成功（終了コード 0）。`scripts/make-app.sh` で `.build/Folzio.app` を作成した。

@@ -8,18 +8,35 @@ public enum OperationOrigin: Sendable, Equatable {
 }
 
 public enum ConfirmationPolicy {
-    /// Whether confirmation may be skipped when the skip setting (FR-023) is on.
-    /// Copy can always skip, and Trash can skip only from the file list. Rename and move always confirm.
-    public static func isSkippable(_ kind: FileOperation.Kind, origin: OperationOrigin) -> Bool {
+    /// The setting that decides whether the operation confirms (FR-023, FR-024). Returns nil for operations that
+    /// always confirm regardless of the settings: moving folders in the tree to the Trash.
+    public static func target(for kind: FileOperation.Kind, origin: OperationOrigin) -> ConfirmationTarget? {
         switch kind {
         case .copy:
-            return true
+            return .copy
+        case .move:
+            return .move
+        case .rename:
+            return .rename
         case .trash:
             // In the tree, a row that is not selected can be right-clicked and deleted, so keep confirmation to
-            // prevent mistakes (A-33).
-            return origin == .fileList
-        case .move, .rename:
+            // prevent mistakes (A-33, A-233).
+            return origin == .fileList ? .trash : nil
+        }
+    }
+
+    /// Whether a confirmation that is turned on must still be shown as an app-modal alert when there is no window
+    /// for a sheet (EC-263). Operations that always confirmed in earlier versions (move, rename, and Trash from the
+    /// tree) are never run without confirmation. Copy and Trash from the file list keep their earlier behavior and
+    /// continue without confirmation.
+    public static func requiresModalWithoutWindow(_ kind: FileOperation.Kind, origin: OperationOrigin) -> Bool {
+        switch kind {
+        case .copy:
             return false
+        case .move, .rename:
+            return true
+        case .trash:
+            return origin == .tree
         }
     }
 }

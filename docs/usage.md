@@ -237,7 +237,10 @@ For a first look, see the [README](../README.md).
 - Copy, move, duplicate, rename, move to Trash, drag and drop, and clipboard operations are available.
   Folders include their contents.
 - On a name conflict, choose "Replace", "Keep Both", or "Stop".
-- A confirmation dialog appears before operations. You can skip it in Settings.
+- A confirmation dialog appears before operations.
+  - In Settings (⌘,), you can turn it off separately for copying, moving, renaming, removing from Favorites,
+    and moving to the Trash. "Don’t ask again" in the dialog turns off only that operation.
+  - Moving folders in the directory tree to the Trash is always confirmed.
 
 ### Drag and Drop
 

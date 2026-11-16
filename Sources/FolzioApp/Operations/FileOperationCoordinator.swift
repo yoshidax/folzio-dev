@@ -155,7 +155,7 @@ final class FileOperationCoordinator {
         notifyFoldersChanged(sources: urls, destination: nil)
     }
 
-    /// From the tree (`origin: .tree`), confirms with each target's absolute path regardless of the skip setting
+    /// From the tree (`origin: .tree`), confirms with each target's absolute path regardless of the settings
     /// (FR-079, R66). A single folder shows its path after the list; multiple folders show the path below each name
     /// (A-127).
     func trash(_ urls: [URL], origin: OperationOrigin = .fileList) async {

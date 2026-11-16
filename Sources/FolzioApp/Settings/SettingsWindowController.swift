@@ -71,7 +71,9 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
 
     private let autoplayCheckbox: NSButton
     private let loopCheckbox: NSButton
-    private let confirmFileOperationsCheckbox: NSButton
+    /// One checkbox per operation, in `ConfirmationTarget.allCases` order (FR-223).
+    private let confirmationCheckboxes: [ConfirmationTarget: NSButton]
+    /// The note about Trash from the tree. It sits under the Trash checkbox (FR-223).
     private let confirmFileOperationsNote = NSTextField(wrappingLabelWithString: "")
     private let languagePopup = KeyViewPopUpButton(frame: .zero, pullsDown: false)
     private let languageLabel = NSTextField(labelWithString: "")
@@ -107,14 +109,17 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
             target: nil,
             action: nil
         )
-        let confirmFileOperationsCheckbox = WrappingCheckbox(
-            checkboxWithTitle: l10n.text(.settingsConfirm),
-            target: nil,
-            action: nil
-        )
+        var confirmationCheckboxes: [ConfirmationTarget: NSButton] = [:]
+        for target in ConfirmationTarget.allCases {
+            confirmationCheckboxes[target] = WrappingCheckbox(
+                checkboxWithTitle: l10n.text(Self.titleKey(for: target)),
+                target: nil,
+                action: nil
+            )
+        }
         self.autoplayCheckbox = autoplayCheckbox
         self.loopCheckbox = loopCheckbox
-        self.confirmFileOperationsCheckbox = confirmFileOperationsCheckbox
+        self.confirmationCheckboxes = confirmationCheckboxes
 
         let window = SettingsWindow(
             contentRect: NSRect(x: 0, y: 0, width: Self.contentWidth, height: 340),
@@ -138,8 +143,13 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         languagePopup.nextKeyView = previewModePopup
         previewModePopup.nextKeyView = autoplayCheckbox
         autoplayCheckbox.nextKeyView = loopCheckbox
-        loopCheckbox.nextKeyView = confirmFileOperationsCheckbox
-        confirmFileOperationsCheckbox.nextKeyView = intervalField
+        // Loop → each confirmation in the Settings window order → interval (US40-AS4).
+        var previousKeyView: NSView = loopCheckbox
+        for checkbox in orderedConfirmationCheckboxes {
+            previousKeyView.nextKeyView = checkbox
+            previousKeyView = checkbox
+        }
+        previousKeyView.nextKeyView = intervalField
         intervalField.nextKeyView = repeatsCheckbox
         repeatsCheckbox.nextKeyView = transitionPopup
         transitionPopup.nextKeyView = languagePopup
@@ -153,8 +163,10 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         autoplayCheckbox.action = #selector(toggleAutoplay(_:))
         loopCheckbox.target = self
         loopCheckbox.action = #selector(toggleLoop(_:))
-        confirmFileOperationsCheckbox.target = self
-        confirmFileOperationsCheckbox.action = #selector(toggleConfirmFileOperations(_:))
+        for checkbox in orderedConfirmationCheckboxes {
+            checkbox.target = self
+            checkbox.action = #selector(toggleConfirmation(_:))
+        }
         repeatsCheckbox.target = self
         repeatsCheckbox.action = #selector(toggleRepeats(_:))
         intervalField.delegate = self
@@ -185,6 +197,10 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         previewModePopup.action = #selector(selectPreviewMode(_:))
         NotificationCenter.default.addObserver(
             self, selector: #selector(updateLocalizedLabels), name: .displayLanguageDidChange, object: nil
+        )
+        // "Don't ask again" in a confirmation modal can change a setting while this window is open (EC-261).
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(syncConfirmationCheckboxes), name: .confirmationOptionsDidChange, object: nil
         )
 
         updateLocalizedLabels()
@@ -254,9 +270,11 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         transitionRow.alignment = .firstBaseline
         transitionRow.spacing = 8
 
-        confirmFileOperationsCheckbox.cell?.wraps = true
-        confirmFileOperationsCheckbox.cell?.isScrollable = false
-        confirmFileOperationsCheckbox.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        for checkbox in orderedConfirmationCheckboxes {
+            checkbox.cell?.wraps = true
+            checkbox.cell?.isScrollable = false
+            checkbox.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        }
 
         // The note is a dependent description of the checkbox: smaller, secondary, and not interactive (FR-223).
         confirmFileOperationsNote.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
@@ -278,7 +296,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
             autoplayCheckbox,
             loopCheckbox,
             fileOperationsHeader,
-            confirmFileOperationsCheckbox,
+        ] + orderedConfirmationCheckboxes + [
             noteContainer,
             slideshowHeader,
             intervalRow,
@@ -291,7 +309,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         stack.setCustomSpacing(Self.sectionSpacing, after: languageRow)
         stack.setCustomSpacing(Self.sectionSpacing, after: previewRow)
         stack.setCustomSpacing(Self.sectionSpacing, after: loopCheckbox)
-        stack.setCustomSpacing(Self.noteSpacing, after: confirmFileOperationsCheckbox)
+        stack.setCustomSpacing(Self.noteSpacing, after: trashConfirmationCheckbox)
         stack.setCustomSpacing(Self.sectionSpacing, after: noteContainer)
         stack.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(stack)
@@ -301,7 +319,6 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
             stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Self.margin),
             stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Self.margin),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -Self.margin),
-            confirmFileOperationsCheckbox.widthAnchor.constraint(equalTo: stack.widthAnchor),
             noteContainer.widthAnchor.constraint(equalTo: stack.widthAnchor),
             confirmFileOperationsNote.topAnchor.constraint(equalTo: noteContainer.topAnchor),
             confirmFileOperationsNote.bottomAnchor.constraint(equalTo: noteContainer.bottomAnchor),
@@ -310,16 +327,16 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
             ),
             confirmFileOperationsNote.trailingAnchor.constraint(equalTo: noteContainer.trailingAnchor),
             intervalField.widthAnchor.constraint(equalToConstant: 80),
-        ])
+        ] + orderedConfirmationCheckboxes.map { $0.widthAnchor.constraint(equalTo: stack.widthAnchor) })
         confirmFileOperationsNote.preferredMaxLayoutWidth =
             Self.contentWidth - Self.margin * 2 - noteIndent()
 
         return contentView
     }
 
-    /// Returns the x-coordinate where the confirmation checkbox draws its title, so the note lines up with it.
+    /// Returns the x-coordinate where the Trash confirmation checkbox draws its title, so the note lines up with it.
     private func noteIndent() -> CGFloat {
-        guard let cell = confirmFileOperationsCheckbox.cell else { return Self.fallbackNoteIndent }
+        guard let cell = trashConfirmationCheckbox.cell else { return Self.fallbackNoteIndent }
         let size = cell.cellSize
         let indent = cell.titleRect(forBounds: NSRect(origin: .zero, size: size)).minX
         return (14...28).contains(indent) ? indent : Self.fallbackNoteIndent
@@ -423,8 +440,7 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         let playback = store.playback
         autoplayCheckbox.state = playback.autoplay ? .on : .off
         loopCheckbox.state = playback.loop ? .on : .off
-        confirmFileOperationsCheckbox.state =
-            store.confirmation.confirmBeforeFileOperations ? .on : .off
+        syncConfirmationCheckboxes()
         let slideshow = store.slideshow
         intervalField.stringValue = String(slideshow.intervalSeconds)
         repeatsCheckbox.state = slideshow.repeats ? .on : .off
@@ -458,9 +474,11 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         slideshowHeader.stringValue = l10n.text(.settingsSlideshow)
         autoplayCheckbox.title = l10n.text(.settingsAutoplay)
         loopCheckbox.title = l10n.text(.settingsLoop)
-        confirmFileOperationsCheckbox.title = l10n.text(.settingsConfirm)
+        for target in ConfirmationTarget.allCases {
+            confirmationCheckboxes[target]?.title = l10n.text(Self.titleKey(for: target))
+        }
         confirmFileOperationsNote.stringValue = l10n.text(.settingsConfirmNote)
-        confirmFileOperationsCheckbox.setAccessibilityHelp(l10n.text(.settingsConfirmNote))
+        trashConfirmationCheckbox.setAccessibilityHelp(l10n.text(.settingsConfirmNote))
         intervalLabel.stringValue = l10n.text(.settingsInterval)
         secondsLabel.stringValue = l10n.text(.settingsSeconds)
         intervalField.setAccessibilityLabel(l10n.text(.settingsIntervalA11y))
@@ -531,9 +549,35 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         store.playback = playback
     }
 
-    @objc private func toggleConfirmFileOperations(_ sender: NSButton) {
+    @objc private func toggleConfirmation(_ sender: NSButton) {
+        guard let target = confirmationCheckboxes.first(where: { $0.value === sender })?.key else { return }
         var confirmation = store.confirmation
-        confirmation.confirmBeforeFileOperations = sender.state == .on
+        confirmation.setEnabled(sender.state == .on, for: target)
         store.confirmation = confirmation
+    }
+
+    @objc private func syncConfirmationCheckboxes() {
+        let confirmation = store.confirmation
+        for target in ConfirmationTarget.allCases {
+            confirmationCheckboxes[target]?.state = confirmation.isEnabled(target) ? .on : .off
+        }
+    }
+
+    private var orderedConfirmationCheckboxes: [NSButton] {
+        ConfirmationTarget.allCases.compactMap { confirmationCheckboxes[$0] }
+    }
+
+    private var trashConfirmationCheckbox: NSButton {
+        confirmationCheckboxes[.trash]!
+    }
+
+    private static func titleKey(for target: ConfirmationTarget) -> TextKey {
+        switch target {
+        case .copy: .settingsConfirmCopy
+        case .move: .settingsConfirmMove
+        case .rename: .settingsConfirmRename
+        case .removeFavorite: .settingsConfirmRemoveFavorite
+        case .trash: .settingsConfirmTrash
+        }
     }
 }

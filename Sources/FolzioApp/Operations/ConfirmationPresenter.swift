@@ -15,6 +15,8 @@ final class ConfirmationPresenter {
         }
     }
 
+    var runModal: @MainActor (NSAlert) -> NSApplication.ModalResponse = { $0.runModal() }
+
     private let settings: SettingsStore
 
     init(settings: SettingsStore) {
@@ -23,9 +25,8 @@ final class ConfirmationPresenter {
 
     /// When `includesFolders` is true, notes that folders are processed with their contents (R32). When `location` is
     /// present, includes the target's absolute path (R58). When `itemLocations` is not empty, shows each listed item's
-    /// absolute path below its name (FR-079, A-127). `ConfirmationPolicy` decides whether confirmation can be
-    /// skipped. Confirmations that cannot be skipped (rename, move, and Trash from the tree) always appear regardless
-    /// of the setting and do not show "Don't ask again" (FR-024, FR-079).
+    /// absolute path below its name (FR-079, A-127). `ConfirmationPolicy` decides which setting applies. Trash from the
+    /// tree always confirms regardless of the settings and does not show "Don't ask again" (FR-024, FR-079, FR-395).
     func confirm(
         _ operation: FileOperation,
         includesFolders: Bool = false,
@@ -34,8 +35,8 @@ final class ConfirmationPresenter {
         itemLocations: [String] = [],
         parentWindow: NSWindow? = nil
     ) async -> Bool {
-        let isSkippable = ConfirmationPolicy.isSkippable(operation.kind, origin: origin)
-        if isSkippable, !settings.confirmation.confirmBeforeFileOperations {
+        let target = ConfirmationPolicy.target(for: operation.kind, origin: origin)
+        if let target, !settings.confirmation.isEnabled(target) {
             return true
         }
         return await present(
@@ -46,13 +47,14 @@ final class ConfirmationPresenter {
                 return text
             },
             confirmTitle: { l10n.text(.dialogConfirmContinue) },
-            allowsSuppression: isSkippable,
+            suppressing: target,
+            requiresModalWithoutWindow: ConfirmationPolicy.requiresModalWithoutWindow(operation.kind, origin: origin),
             parentWindow: parentWindow
         )
     }
 
     func confirmRemovingFavorite(named name: String, path: String) async -> Bool {
-        guard settings.confirmation.confirmBeforeFileOperations else {
+        guard settings.confirmation.isEnabled(.removeFavorite) else {
             return true
         }
         return await present(
@@ -63,15 +65,19 @@ final class ConfirmationPresenter {
                 l10n.text(.dialogFavoriteRemoveNote),
             ].joined(separator: "\n") },
             confirmTitle: { l10n.text(.dialogFavoriteRemoveConfirm) },
-            allowsSuppression: true
+            suppressing: .removeFavorite,
+            requiresModalWithoutWindow: false
         )
     }
 
+    /// When `target` is present, shows "Don't ask again", which turns off only that operation's confirmation, even when
+    /// the modal is cancelled (FR-395, EC-262).
     private func present(
         messageText: @escaping @MainActor () -> String,
         informativeText: @escaping @MainActor () -> String,
         confirmTitle: @escaping @MainActor () -> String,
-        allowsSuppression: Bool,
+        suppressing target: ConfirmationTarget?,
+        requiresModalWithoutWindow: Bool,
         parentWindow: NSWindow? = nil
     ) async -> Bool {
 
@@ -81,7 +87,7 @@ final class ConfirmationPresenter {
         alert.addButton(withTitle: confirmTitle())
         alert.addButton(withTitle: l10n.text(.dialogCancel))
         alert.buttons[1].keyEquivalent = "\u{1b}"
-        if allowsSuppression {
+        if target != nil {
             alert.showsSuppressionButton = true
             alert.suppressionButton?.title = l10n.text(.dialogConfirmDontAsk)
         }
@@ -97,16 +103,19 @@ final class ConfirmationPresenter {
         let response: NSApplication.ModalResponse
         if let window = parentWindow ?? fallbackWindow() {
             response = await presentSheet(alert, window)
-        } else if allowsSuppression {
+        } else if !requiresModalWithoutWindow {
             return true
         } else {
-            // Operations that always confirm are not executed without confirmation even when there is no sheet parent.
-            response = alert.runModal()
+            // Move, rename, and Trash from the tree are not executed without confirmation even when there is no sheet
+            // parent (EC-263).
+            response = runModal(alert)
         }
 
         withExtendedLifetime(languageObserver) {}
-        if allowsSuppression, alert.suppressionButton?.state == .on {
-            settings.confirmation = ConfirmationOptions(confirmBeforeFileOperations: false)
+        if let target, alert.suppressionButton?.state == .on {
+            var options = settings.confirmation
+            options.setEnabled(false, for: target)
+            settings.confirmation = options
         }
 
         return response == .alertFirstButtonReturn
