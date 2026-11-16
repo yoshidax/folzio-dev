@@ -1,4 +1,4 @@
-# Implementation Plan: ファイルリストの右クリックの対象を Finder に合わせる
+# Implementation Plan: ファイルリストの右クリックの対象をツリーに合わせる
 
 **Branch**: `feature/tak-115-file-list-context-target` | **Date**: 2026-11-16 | **Spec**: [spec.md](spec.md)
 
@@ -6,11 +6,11 @@
 
 ## Summary
 
-ファイルリストで選択していない項目を右クリックしたら、メニューを出す前にその項目だけを選択する。
-選択中の項目の右クリックと背景の右クリックでは選択を変えない。新しい選択の決め方は `FolzioCore` の
-`ContextClickSelection` に置き、リスト形式とサムネイル形式の `menu(for:)` から使う。
-選択の変更は既存の経路を通し、プレビューの切り替えと動画の停止をクリックで選んだときと同じにする。
-メニューの各操作は従来どおり選択を対象にするため、変更しない。
+ファイルリストで選択していない項目を右クリックしたら、選択を変えずに、その項目だけを右クリックメニューの操作の対象にする。
+メニューの対象（背景・選択中の全体・その項目だけ）の決め方は `FolzioCore` の `ContextMenuTarget` に置き、
+メニューを開いたときに `FileListViewController` に記録する。各 action は、右クリックメニューから呼ばれたときだけ
+記録した対象を使い、キーボードとメニューバーからは従来どおり選択を使う。
+当初の「右クリックで選択を変える」実装（03fca52）は取り除く。
 
 ## Technical Context
 
@@ -20,28 +20,28 @@
 
 **Storage**: なし
 
-**Testing**: Swift Testing（FolzioCoreTests の `ContextClickSelectionTests`、FolzioAppTests のリスト形式・サムネイル形式の
-右クリックの選択のテスト）、保守者の GUI 起動確認
+**Testing**: Swift Testing（FolzioCoreTests の `ContextMenuTargetTests`、FolzioAppTests の右クリックメニューの対象のテスト）、
+保守者の GUI 起動確認
 
 **Target Platform**: macOS 15 以降の既存ターゲット
 
 **Project Type**: デスクトップアプリ
 
-**Performance Goals**: 変更なし（右クリック時に選択を1回変えるだけ）
+**Performance Goals**: 変更なし（メニューを開くときに対象を1回決めるだけ）
 
 **Constraints**: オフライン。判断ロジックは AppKit を import しない `FolzioCore` に置く
 
-**Scale/Scope**: 一覧のビュー2種（リスト形式・サムネイル形式）
+**Scale/Scope**: 一覧のビュー2種、右クリックメニューの対象の項目9つ（FR-397）
 
 ## Constitution Check
 
 | 原則 | 設計上の確認 |
 |---|---|
 | I ローカル完結 | 外部通信を追加しない。右クリックした項目と違うものを操作する誤操作を防ぐ。 |
-| II 体感パフォーマンス | 右クリック時の選択の変更は、クリックで選ぶときと同じ処理で、UI スレッドに重い処理を足さない。 |
-| III キーボードとアクセシビリティ | キーボードの操作とフォーカスは変えない（A-238）。 |
-| IV テスト | 選択の決め方を `FolzioCore` に置いて単体テストで全分岐を確かめ、2つのビューの結線を App のテストで確かめる。 |
-| V シンプルさ | メニューの操作には手を入れず、選択を変えるだけにする。 |
+| II 体感パフォーマンス | メニューを開くときの処理は、対象を決めて記録するだけで、UI スレッドに重い処理を足さない。 |
+| III キーボードとアクセシビリティ | キーボードの操作の対象とフォーカスは変えない（A-238・A-239）。 |
+| IV テスト | 対象の決め方を `FolzioCore` に置いて単体テストで全分岐を確かめ、各 action の対象を App のテストで確かめる。 |
+| V シンプルさ | 対象は1つの値（`OperationTarget`）にまとめ、各 action の対象の取り方を1か所に寄せる。 |
 
 **Post-design**: 上記を満たす。Complexity Tracking に記録する違反はない。
 
@@ -65,19 +65,20 @@ specs/TAK-115-file-list-context-target/
 
 ```text
 Sources/FolzioCore/
-└── Model/ContextClickSelection.swift       # 新規。右クリックした項目と今の選択から新しい選択を決める
+└── Model/ContextMenuTarget.swift           # 新規（ContextClickSelection を置き換える）。背景・選択全体・その項目
 Sources/FolzioApp/FileList/
-├── ListModeView.swift                      # FileListTableView.menu(for:) で選択を変える。名前の編集を終える
-└── ThumbnailModeView.swift                 # ThumbnailCollectionView.menu(for:) で選択を変える。起点と編集の終了
+├── FileContextMenu.swift                   # メニューを開くときに対象を記録し、編集中の名前を確定する。文言を対象に合わせる
+├── FileListViewController.swift            # OperationTarget と、sender による対象の切り替え（各 action と validateMenuItem）
+├── ListModeView.swift                      # 選択の変更を取り除く。右クリックした行の位置。URL を指定した名前の編集
+└── ThumbnailModeView.swift                 # 選択の変更を取り除く。右クリックした項目の位置と枠。URL を指定した名前の編集
 Tests/FolzioCoreTests/
-└── ContextClickSelectionTests.swift        # 新規
+└── ContextMenuTargetTests.swift            # ContextClickSelectionTests を置き換える
 Tests/FolzioAppTests/
-└── FileListContextClickTests.swift         # 新規。2つの形式で選択・プレビュー・複数選択の保持を確かめる
-docs/usage.md・docs/usage.ja.md              # 右クリックの対象の説明（該当する記述があれば）
+└── FileListContextClickTests.swift         # 書き換え。選択を変えないこと、各 action の対象、メニューバーの対象
+docs/usage.md・docs/usage.ja.md              # 右クリックの対象の説明を書き換える
 ```
 
-**Structure Decision**: 既存の配置に従う。判断（新しい選択）は `FolzioCore`、イベントの受け取りと選択の適用は
-`FolzioApp` の一覧のビューに置く。
+**Structure Decision**: 既存の配置に従う。判断（対象の種類）は `FolzioCore`、対象の記録と action の切り替えは `FolzioApp` に置く。
 
 ## Complexity Tracking
 

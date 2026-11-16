@@ -1,4 +1,4 @@
-# Specification Quality Checklist: ファイルリストの右クリックの対象を Finder に合わせる
+# Specification Quality Checklist: ファイルリストの右クリックの対象をツリーに合わせる
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-11-16

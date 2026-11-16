@@ -1,45 +1,51 @@
-# Research: ファイルリストの右クリックの対象を Finder に合わせる
+# Research: ファイルリストの右クリックの対象をツリーに合わせる
 
-## R1 選択を変える契機
+当初は「選択外の項目を右クリックしたらその項目を選択する」方式で実装した（03fca52）。保守者の見直しで、ツリー（A-21）と同じく
+「選択を変えずに、右クリックした項目を対象にする」方式に改めた。以下は改めた後の決定である。
 
-- **Decision**: リスト形式の `NSTableView` とサムネイル形式の `NSCollectionView` のサブクラスで `menu(for:)` を
-  override し、`super.menu(for:)` を返す前に、右クリックした位置の項目を選択する。
-- **Rationale**: `menu(for:)` は右クリック・Control クリック・2本指のクリックのすべてで、メニューを出す前に呼ばれる（A-237）。
-  `FileContextMenu.menuNeedsUpdate(_:)` より前に選択が変わるため、メニューの文言（「“B”をコピー」など）と
-  各操作の対象（`selectedFileURLs`）が、追加の引数なしに右クリックした項目になる。
-  列見出しの右クリックは `NSTableHeaderView` が処理し、この経路を通らない（A-239）。
-- **Alternatives considered**:
-  - 選択を変えずに、メニューの各操作へ「右クリックした項目」を渡す（ツリーの A-21 の方式）。
-    保守者の決定（Finder と同じく選択する）と異なり、メニューの操作ごとに対象の決め方を変える必要がある。
-  - `rightMouseDown(with:)` を override する。Control クリックはこの経路を通らないため、取りこぼす。
+## R1 対象の決め方と置き場所
 
-## R2 判断ロジックの置き場所
+- **Decision**: 右クリックした項目の位置（背景なら nil）と選択中の項目の位置から、メニューの対象を
+  「背景」「選択中の全体」「その項目だけ」のどれかに決める処理を、`FolzioCore` の `ContextMenuTarget` に純粋な関数として置く。
+- **Rationale**: 憲章の原則 IV と AGENTS.md の「判断ロジックは `FolzioCore`」に従う。ツリーの `TreeBatchTargets`
+  （右クリックした行が選択中なら選択全体、選択外ならその行だけ）と同じ規則で、リスト形式とサムネイル形式が共有する。
+- **Alternatives considered**: 当初の方式（右クリックで選択を変える）。保守者の決定により採らない。
 
-- **Decision**: 「右クリックした項目と今の選択から、新しい選択を決める（変えないなら nil）」を、`FolzioCore` の
-  `ContextClickSelection` に純粋な関数として置き、単体テストで確かめる。
-- **Rationale**: 憲章の原則 IV と AGENTS.md の「判断ロジックは `FolzioCore`」に従う。リスト形式とサムネイル形式で同じ規則を共有できる。
-- **Alternatives considered**: 2つのビューにそれぞれ条件を書く。規則が食い違うおそれがあり、AppKit なしにテストできない。
+## R2 メニューを開いたときの対象の記録
 
-## R3 選択の変更の通知
+- **Decision**: `FileContextMenu.menuNeedsUpdate(_:)` で、右クリックした項目の位置（リスト形式は `clickedRow`、
+  サムネイル形式は `lastMenuLocation` の項目）から対象を決め、`FileListViewController` に記録する。
+  次にメニューを開くまで、その記録を使う。
+- **Rationale**: メニューの項目の有効・無効（`validateMenuItem(_:)`）と文言は、メニューを開く前に決まっている必要がある。
+  AppKit はメニューの項目の action を、メニューを閉じた後（`menuDidClose(_:)` の後）に送るため、閉じたときに記録を消すと
+  action が対象を失う。
 
-- **Decision**: リスト形式は `selectRowIndexes(_:byExtendingSelection: false)` で選択し、`tableViewSelectionDidChange(_:)`
-  から従来どおり `BrowserModel.select(_:focused:)` を呼ぶ。サムネイル形式は `selectionIndexPaths` を設定してから、
-  クリックで選んだときと同じ `selectionDidChange(newlySelected:)` を呼び、範囲選択の起点（`selectionAnchor`）も
-  右クリックした項目にする。
-- **Rationale**: `NSTableView` はプログラムからの選択でも選択の変更を通知するが、`NSCollectionView` はプログラムからの選択では
-  `didSelectItemsAt` を呼ばない。どちらも既存の経路を通すことで、プレビューの切り替えと動画の停止（EC-266）が、
-  クリックで選んだときと同じになる。
+## R3 操作の対象の切り替え
 
-## R4 名前の編集中の右クリック（EC-265）
+- **Decision**: `FileListViewController` の各 action と `validateMenuItem(_:)` は、`sender` が右クリックメニュー
+  （`fileContextMenu.menu`、またはその下の「このアプリケーションで開く」のサブメニュー）の項目なら記録した対象を、
+  そうでなければ従来どおり選択を使う。対象は「URL の一覧」「操作の可否（`ListItemCommands`）」「名前を変える項目」
+  「中を表示する項目」をまとめた1つの値（`OperationTarget`）として渡す。
+- **Rationale**: 右クリックメニューとメニューバーは同じ action を共有している。`sender` で分けると、キーボードと
+  メニューバーの操作は選択を対象にしたまま（A-239）、右クリックメニューだけを切り替えられる。
+- **Alternatives considered**: ツリーと同じく各メニューの項目の `representedObject` に対象を持たせる。
+  右クリックメニューの項目はメニューバーの項目と同じ action・同じ文言の束縛（`MainMenu.bind`）を使っており、
+  メニューを開くたびに項目へ値を配るより、1か所に記録する方が変更が少ない。
 
-- **Decision**: 名前の編集中に選択外の項目を右クリックしたときは、選択を変える前に、編集中のフィールドから
-  一覧のビューへ first responder を戻して編集を終える（確定は既存の `controlTextDidEndEditing(_:)`・
-  `textDidEndEditing(_:)` の規則のまま）。
-- **Rationale**: 名前の編集中のキーボードフォーカスはもともとファイルリストにあるため、一覧のビューへ戻しても
-  ペインのフォーカスは移らない（A-238 と矛盾しない）。ほかの項目をクリックしたときと同じ確定の経路を使える。
+## R4 名前の変更（FR-398）
 
-## R5 キーボードフォーカス（A-238）
+- **Decision**: リスト形式は `ListModeView.beginRenaming` に、名前を変える項目の URL を受け取る形を加え、
+  選択とフォーカスのある項目を条件にしない。サムネイル形式は既存の `beginRenamingItem(_:)`（選択を条件にしない）を使う。
+- **Rationale**: 名前の編集を終えた後の確定・検証・確認は、既存の経路のままにできる。
 
-- **Decision**: 名前の編集中の場合を除き、右クリックでは `makeFirstResponder(_:)` を呼ばない。
-- **Rationale**: 現行の右クリックはフォーカスを移さない。FR-079（file-operations.md）も、右クリックメニューからの削除では
-  フォーカスを移さないと定めている。
+## R5 右クリックした項目の枠
+
+- **Decision**: リスト形式は `NSTableView` が右クリックした行に描く標準の枠を使う。サムネイル形式は、
+  メニューを表示している間だけ、右クリックした項目（選択外のとき）に選択の枠と同じ色の枠を描き、`menuDidClose(_:)` で消す。
+- **Rationale**: `NSCollectionView` には右クリックした項目を示す標準の表示がない。選択とは別の項目が対象になることを、
+  2つの形式で同じように示す。
+
+## R6 名前の編集中の右クリック（EC-265）
+
+- **Decision**: ツリーと同じく、`menuNeedsUpdate(_:)` の最初で、ファイルリストの名前の編集を確定して終える。
+- **Rationale**: ツリーの `menuNeedsUpdate(_:)` と同じ扱い。編集中の項目が対象のまま残ることを防ぐ。
