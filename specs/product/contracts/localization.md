@@ -248,8 +248,11 @@
 | 動画を自動再生する | Play videos automatically |
 | 動画をループ再生する | Loop videos |
 | ファイル操作 | File Operations |
-| コピー・ゴミ箱に入れる・お気に入りから削除する前に確認する | Confirm before copying, moving to the Trash, or removing from Favorites |
-| 名前の変更・移動と、ツリーのフォルダをゴミ箱に入れる操作は、この設定に関わらず常に確認します（確認の補足説明。アクセシビリティのヘルプにも使う） | Renaming, moving, and moving folders in the directory tree to the Trash are always confirmed, regardless of this setting |
+| コピーする前に確認する | Confirm before copying |
+| 移動する前に確認する | Confirm before moving |
+| 名前を変更する前に確認する | Confirm before renaming |
+| お気に入りから削除する前に確認する | Confirm before removing from Favorites |
+| ゴミ箱に入れる前に確認する | Confirm before moving to the Trash |
 | スライドショー | Slideshow |
 | 切り替え間隔 / 秒 | Interval / seconds |
 | 切り替え間隔（秒）（アクセシビリティ） | Interval (seconds) |
