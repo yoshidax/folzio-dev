@@ -1,0 +1,52 @@
+# Research: 操作ごとの実行前の確認の設定
+
+## R1. 操作と設定の対応をどこで決めるか
+
+- **Decision**: `ConfirmationPolicy` に `target(for kind:origin:) -> ConfirmationTarget?` を置き、
+  `nil` を「常に確認する（省略できない）」とする。今の `isSkippable` はこの関数で置き換える。
+- **Rationale**: 判断ロジックを `FolzioCore` に置く設計の制約に従い、全組み合わせ（操作4種 × 始めたペイン2種）を
+  単体テストできる。お気に入りの削除は `FileOperation` ではないため、`ConfirmationTarget.removeFavorite` を直接使う。
+- **Alternatives considered**: `ConfirmationPresenter` の中で `switch` する案は、AppKit の型に依存するテストが必要になるため
+  採らない。
+
+## R2. 保存キーと移行
+
+- **Decision**: 新しいキー `fileOps.confirm.copy`・`fileOps.confirm.move`・`fileOps.confirm.rename`・
+  `fileOps.confirm.removeFavorite`・`fileOps.confirm.trash`（Bool、既定 true）を使う。読み込みは各キーが Bool で保存済みなら
+  その値、なければコピー・お気に入りから削除・ゴミ箱は旧キー `fileOps.confirmBeforeExecuting`（Bool のときだけ）、
+  移動・名前の変更は true とする。書き込みは新しいキーだけに行い、旧キーは削除も上書きもしない（A-234）。
+- **Rationale**: 読み込み時の読み替えだけで移行でき、書き込みの順序や一度だけの移行処理の記録が不要になる。
+  以前の版へ戻したときも旧キーの値で動く。contracts/settings.md の「キー名を変える場合は、旧キーから読み替える移行処理を
+  同時に入れる」を満たす。
+- **Alternatives considered**: 起動時に旧キーから新キーへ書き写して旧キーを消す案は、以前の版へ戻したときに確認の設定が
+  既定値に戻るため採らない。旧キーをコピーの設定として使い続ける案は、キーの意味が名前と合わなくなるため採らない。
+
+## R3. 「今後この確認を表示しない」
+
+- **Decision**: 省略できる（`target` が `nil` でない）モーダルに表示し、オンで閉じたときは、応答（実行・キャンセル）に
+  関わらず、その `target` の設定だけを false にする（FR-395・EC-262）。
+- **Rationale**: 現行の動作（キャンセルでも抑止を保存する）を保ち、範囲だけを操作ごとに狭める。
+
+## R4. 設定ウインドウを表示中の反映（EC-261）
+
+- **Decision**: `SettingsStore` の `confirmation` の setter で `Notification.Name.confirmationOptionsDidChange` を送り、
+  設定ウインドウはそれを受けて5つのチェックボックスの状態を読み直す。
+- **Rationale**: 設定ウインドウは今は `showWindow` のときだけ `syncFromStore` するため、表示中は古い状態のまま残る。
+  既存の `displayLanguageDidChange` と同じ方式にする。設定ウインドウ自身の変更で送られた通知も、同じ値を読み直すだけで害はない。
+
+## R5. 親のウインドウがないとき（EC-263）
+
+- **Decision**: 確認がオンで親のウインドウがない場合、以前の版で常に確認していた操作（移動・名前の変更・ツリーのゴミ箱）は
+  `runModal` で確認し、コピー・ファイルリストのゴミ箱・お気に入りの削除は現行どおり確認なしで続ける。
+  判断は `ConfirmationPolicy.requiresModalWithoutWindow(kind:origin:)` に置く。
+- **Rationale**: 現行の動作を変えない。移動・名前の変更を省略できる操作に変えても、確認がオンなら確認を経ずに実行しない
+  （SC-217）。
+- **Alternatives considered**: すべての操作で `runModal` にそろえる案は、コピーの現行の動作を変えるため、この feature では
+  扱わない。
+
+## R6. 補足説明の置き場所と並び
+
+- **Decision**: チェックボックスは コピー → 移動 → 名前の変更 → お気に入りから削除 → ゴミ箱に入れる の順に並べ、
+  補足説明は最後の「ゴミ箱に入れる前に確認する」の直下に置く。
+- **Rationale**: 補足説明が関わるのはゴミ箱の操作だけで、区分の最後に置けば項目の間に説明が挟まらない。
+  補足説明の字下げは、今と同じく対象のチェックボックスの文言の先頭に揃える。
