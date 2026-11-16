@@ -43,7 +43,7 @@ scripts/make-app.sh
 
 ## 検証の記録
 
-- 2026-11-16（macOS 26.6、ローカル）: `swift build` 成功。`swift test` は 1138 件（124 スイート）と性能 28 件が成功。
+- 2026-11-16（macOS 26.7.3、ローカル）: `swift build` 成功。`swift test` は 1138 件（124 スイート）と性能 28 件が成功。
   - 2回目の全体実行で `ThumbnailProvider` の zip 内サムネイルのキャッシュの2件が失敗した（`again === thumbnail`）。
     単独では2回とも成功し、3回目の全体実行でも成功した。この feature は該当のコードを変えていないため、負荷による不安定さと
     判断した。
