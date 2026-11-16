@@ -48,7 +48,8 @@ struct FileListContextClickTests {
                 #expect(fixture.controller.operationTarget(for: item).urls == [b], "\(action)")
                 #expect(fixture.controller.validateMenuItem(item), "\(action)")
             }
-            let rename = fixture.controller.operationTarget(for: try fixture.contextItem(#selector(FileListViewController.rename(_:))))
+            let renameItem = try fixture.contextItem(#selector(FileListViewController.rename(_:)))
+            let rename = fixture.controller.operationTarget(for: renameItem)
             #expect(rename.focused == b)
             #expect(rename.allowsRename)
         }
@@ -58,10 +59,12 @@ struct FileListContextClickTests {
     func menuBarActsOnTheSelection(_ mode: Mode) async throws {
         try await withFixture(mode, selected: ["a.png"]) { fixture in
             fixture.controller.recordContextMenuTarget(clickedIndex: try fixture.index("b.png"))
+            let a = try fixture.url("a.png")
             let menuBarItem = NSMenuItem(title: "", action: #selector(FileListViewController.moveToTrash(_:)),
                                          keyEquivalent: "")
-            #expect(fixture.controller.operationTarget(for: menuBarItem).urls == [try fixture.url("a.png")])
-            #expect(fixture.controller.operationTarget(for: nil).urls == [try fixture.url("a.png")])
+            // Xcode 16.0 does not accept `try` inside `#expect`, so the values are prepared outside it.
+            #expect(fixture.controller.operationTarget(for: menuBarItem).urls == [a])
+            #expect(fixture.controller.operationTarget(for: nil).urls == [a])
         }
     }
 
@@ -82,7 +85,8 @@ struct FileListContextClickTests {
             fixture.controller.recordContextMenuTarget(clickedIndex: try fixture.index("b.png"))
             fixture.controller.recordContextMenuTarget(clickedIndex: nil)
             let item = try fixture.contextItem(#selector(FileListViewController.moveToTrash(_:)))
-            #expect(fixture.controller.operationTarget(for: item).urls == [try fixture.url("a.png")])
+            let a = try fixture.url("a.png")
+            #expect(fixture.controller.operationTarget(for: item).urls == [a])
         }
     }
 
@@ -98,8 +102,8 @@ struct FileListContextClickTests {
                 let item = try fixture.contextItem(action)
                 #expect(!fixture.controller.validateMenuItem(item), "\(action)")
             }
-            #expect(fixture.controller.operationTarget(
-                for: try fixture.contextItem(#selector(FileListViewController.moveToTrash(_:)))).urls.isEmpty)
+            let trashItem = try fixture.contextItem(#selector(FileListViewController.moveToTrash(_:)))
+            #expect(fixture.controller.operationTarget(for: trashItem).urls.isEmpty)
         }
     }
 
