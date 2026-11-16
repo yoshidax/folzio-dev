@@ -36,4 +36,15 @@ scripts/make-app.sh
 
 ## 検証の記録
 
-（実装後に記入する）
+### 自動の検証（2026-11-16、macOS 26.7.3）
+
+| 項目 | 結果 |
+|---|---|
+| `swift build` | 成功 |
+| `swift test` | 1132 件（124 スイート）と性能テスト 28 件が成功 |
+| `scripts/dev/check-all.sh` | 成功（all checks passed） |
+| `scripts/make-app.sh` | `.build/Folzio.app` を作成 |
+
+- 1回目の `swift test` で、`FileSystemWatcherTests` の時間を測るテスト（1.5 秒以内に通知されるか）が1件失敗した。
+  この feature とは関係がない。単独で再実行すると12件すべて成功し、全体の再実行でも成功した。
+- 新しいテスト: `ContextClickSelectionTests`（4件）、`FileListContextClickTests`（3件 × リスト形式・サムネイル形式）

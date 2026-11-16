@@ -23,6 +23,14 @@ private final class FileListTableView: NSTableView {
     }
     var onReturn: (() -> Bool)?
     var onEscape: (() -> Bool)?
+    /// A context click on a row (-1 for the background), before the menu opens (FR-397).
+    var onContextClick: ((Int) -> Void)?
+
+    // Called for right-clicks, Control-clicks, and two-finger clicks alike (A-237, research.md R1).
+    override func menu(for event: NSEvent) -> NSMenu? {
+        onContextClick?(row(at: convert(event.locationInWindow, from: nil)))
+        return super.menu(for: event)
+    }
 
     override func keyDown(with event: NSEvent) {
         if event.isPlainEscape, onEscape?() == true {
@@ -274,6 +282,9 @@ final class ListModeView: NSView {
             guard self.model.focusedItemCommands.allowsFileOperations else { return true }
             return self.beginRenaming()
         }
+        tableView.onContextClick = { [weak self] row in
+            self?.selectForContextClick(row: row)
+        }
         tableView.target = self
         tableView.doubleAction = #selector(handleDoubleClick(_:))
 
@@ -301,6 +312,21 @@ final class ListModeView: NSView {
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
+    }
+
+    /// Selects only the row under a context click when it is not selected, so the menu acts on that row, as in
+    /// Finder (FR-397). A selected row and the background (-1) keep the selection (FR-213). Does not move the keyboard
+    /// focus (A-238), except that a rename in progress ends first, as when another row is clicked (EC-265).
+    func selectForContextClick(row: Int) {
+        guard let rows = ContextClickSelection.newSelection(
+            clicked: row >= 0 ? row : nil,
+            selected: Set(tableView.selectedRowIndexes),
+            itemCount: model.listing.files.count
+        ) else { return }
+        if renamingURL != nil {
+            window?.makeFirstResponder(tableView)
+        }
+        tableView.selectRowIndexes(IndexSet(rows), byExtendingSelection: false)
     }
 
     @objc private func handleDoubleClick(_ sender: Any?) {

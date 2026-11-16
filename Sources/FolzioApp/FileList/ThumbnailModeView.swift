@@ -48,11 +48,16 @@ private final class ThumbnailCollectionView: NSCollectionView {
     var onDoubleClickItem: ((Int) -> Void)?
     /// Location of the last context click, in this view's coordinates (FR-213, research.md R7).
     private(set) var lastMenuLocation: NSPoint?
+    /// A context click on an item (nil for the background), before the menu opens (FR-397).
+    var onContextClick: ((Int?) -> Void)?
 
     override var acceptsFirstResponder: Bool { true }
 
+    // Called for right-clicks, Control-clicks, and two-finger clicks alike (A-237, research.md R1).
     override func menu(for event: NSEvent) -> NSMenu? {
-        lastMenuLocation = convert(event.locationInWindow, from: nil)
+        let location = convert(event.locationInWindow, from: nil)
+        lastMenuLocation = location
+        onContextClick?(indexPathForItem(at: location)?.item)
         return super.menu(for: event)
     }
 
@@ -653,6 +658,9 @@ final class ThumbnailModeView: NSView {
         collectionView.onDoubleClickItem = { [weak self] index in
             self?.openItem(at: index)
         }
+        collectionView.onContextClick = { [weak self] index in
+            self?.selectForContextClick(item: index)
+        }
         collectionView.frame = NSRect(x: 0, y: 0, width: 400, height: 400)
 
         scrollView.documentView = collectionView
@@ -1006,6 +1014,26 @@ final class ThumbnailModeView: NSView {
         default:
             return nil
         }
+    }
+
+    /// Selects only the item under a context click when it is not selected, so the menu acts on that item, as in
+    /// Finder (FR-397). A selected item and the background (nil) keep the selection (FR-213). Goes through the same
+    /// path as a click, which also moves the range anchor to the item. Does not move the keyboard focus (A-238),
+    /// except that a rename in progress ends first, as when another item is clicked (EC-265).
+    func selectForContextClick(item: Int?) {
+        guard let items = ContextClickSelection.newSelection(
+            clicked: item,
+            selected: Set(collectionView.selectionIndexPaths.map(\.item)),
+            itemCount: model.listing.files.count
+        ) else { return }
+        if let window, let editor = window.firstResponder as? NSTextView, editor.isFieldEditor,
+           let field = editor.delegate as? NSView, field.isDescendant(of: collectionView) {
+            window.makeFirstResponder(collectionView)
+        }
+        let paths = Set(items.map { IndexPath(item: $0, section: 0) })
+        collectionView.selectionIndexPaths = paths
+        // Setting the selection in code does not call `didSelectItemsAt`, so report it as a click would.
+        selectionDidChange(newlySelected: paths)
     }
 
     private func applySelection(_ paths: Set<IndexPath>, focusedURL: URL?) {
