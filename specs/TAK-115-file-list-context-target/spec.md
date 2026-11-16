@@ -1,5 +1,8 @@
 # Feature Specification: ファイルリストの右クリックの対象をツリーに合わせる
 
+> **移行済み（2026-11-16）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-115 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+
 **Feature Branch**: `feature/tak-115-file-list-context-target`
 
 **Created**: 2026-11-16

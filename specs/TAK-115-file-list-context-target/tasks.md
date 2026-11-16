@@ -60,7 +60,7 @@
 
 - [x] T021 `swift build`・`swift test`・`scripts/dev/check-all.sh`・`scripts/make-app.sh` を実行し、結果を `specs/TAK-115-file-list-context-target/quickstart.md` に記録する
 - [x] T008 [MANUAL] 保守者が古い Folzio を終了して `open .build/Folzio.app` で起動し、3ペインの表示と `specs/TAK-115-file-list-context-target/quickstart.md` の GUI の確認 1〜10 を行う（2026-11-16、保守者の報告「問題なし」。checklists/validation.md）
-- [ ] T009 `specs/product/file-list.md` へ spec.md の「反映先」の項目を反映し、`python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行する
+- [x] T009 `specs/product/file-list.md` へ spec.md の「反映先」の項目を反映し、`python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行する
 - [ ] T010 [MANUAL] 保守者が `specs/product/` への反映の差分を確認し、承認する
 
 ## Dependencies & Execution Order
