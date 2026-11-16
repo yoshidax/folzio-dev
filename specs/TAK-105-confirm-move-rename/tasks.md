@@ -82,7 +82,7 @@
 
 - [x] T018 [MANUAL] 保守者が古い Folzio を終了して `open .build/Folzio.app` で起動し、3ペインの表示と `specs/TAK-105-confirm-move-rename/quickstart.md` の GUI の確認 1〜7 を行う（2026-11-16、保守者の報告「問題なし」。checklists/validation.md）
 - [x] T019 `specs/product/` の file-operations.md・directory-tree.md・window-layout.md・overview.md・contracts/settings.md・contracts/localization.md・contracts/keyboard-and-menus.md へ spec.md の「反映先」の項目を反映し、`python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行する
-- [ ] T020 [MANUAL] 保守者が `specs/product/` への反映の差分を確認し、承認する
+- [x] T020 [MANUAL] 保守者が `specs/product/` への反映の差分を確認し、承認する（2026-11-16、このチャット）
 
 ## Dependencies & Execution Order
 
