@@ -10,7 +10,7 @@
 | `move` | 移動（移動ペースト・ドラッグ&ドロップ・アプリ外からの移動） | `fileOps.confirm.move` |
 | `rename` | 名前の変更（ファイルリスト・ツリーのフォルダ） | `fileOps.confirm.rename` |
 | `removeFavorite` | お気に入りから削除 | `fileOps.confirm.removeFavorite` |
-| `trash` | ファイルリストからゴミ箱に入れる | `fileOps.confirm.trash` |
+| `trash` | ゴミ箱に入れる（ファイルリストとツリーのフォルダ） | `fileOps.confirm.trash` |
 
 並び（`CaseIterable` の順）は設定ウインドウの並び（FR-223）と同じにする。
 
@@ -28,7 +28,7 @@
 | `move` | どちらも | `move` | する |
 | `rename` | どちらも | `rename` | する |
 | `trash` | ファイルリスト | `trash` | しない |
-| `trash` | ツリー | `nil`（常に確認） | する |
+| `trash` | ツリー | `trash` | する |
 
 ## 読み込みの規則（SettingsStore）
 
@@ -37,3 +37,8 @@
    そうでなければ true。
 3. `move`・`rename` は、新しいキーがなければ true。
 4. 書き込みは5つの新しいキーにだけ行う。書き込んだら `confirmationOptionsDidChange` を送る。
+
+## 見直し（GUI の確認の前）
+
+当初はツリーのフォルダのゴミ箱を `target == nil`（常に確認）としていた。保守者の見直しで、ツリーのフォルダのゴミ箱も
+`trash` に従うようにした。すべての確認モーダルが `ConfirmationTarget` を持つ（`target(for:origin:)` は nil を返さない）。

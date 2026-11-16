@@ -57,8 +57,26 @@
 
 - [x] T016 [P] `docs/usage.md` と `docs/usage.ja.md` の「ファイル操作」の確認の説明を、操作ごとに省略できることと、ツリーのフォルダのゴミ箱は常に確認することに同じ内容で書き換える
 - [x] T017 `swift build`・`swift test`・`scripts/dev/check-all.sh`・`scripts/make-app.sh` を実行し、結果を `specs/TAK-105-confirm-move-rename/quickstart.md` に記録する
-- [ ] T018 [MANUAL] 保守者が古い Folzio を終了して `open .build/Folzio.app` で起動し、3ペインの表示と `specs/TAK-105-confirm-move-rename/quickstart.md` の GUI の確認 1〜6 を行う
-- [ ] T019 `specs/product/` の file-operations.md・directory-tree.md・window-layout.md・contracts/settings.md・contracts/localization.md へ spec.md の「反映先」の項目を反映し、`python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行する
+
+## Phase 6: 見直し — ツリーのフォルダのゴミ箱の確認を省略できるようにする
+
+**目的**: GUI の確認の前に保守者が見直した、6つ目の設定（research.md R7）を加える
+
+- [x] T021 [MANUAL] 保守者が見直した `spec.md`・`plan.md`・`research.md`・`data-model.md`・`contracts/`・`quickstart.md`・`tasks.md` を確認し、実装の開始を承認する（2026-11-16、このチャット）
+- [ ] T022 `Sources/FolzioCore/Operations/ConfirmationPolicy.swift` の `target(for:origin:)` を、ツリーのゴミ箱でも `trash` を返し、nil を返さない型にする（data-model.md、research.md R7）
+- [ ] T023 [P] `Tests/FolzioCoreTests/ConfirmationPolicyTests.swift` を、ツリーのゴミ箱が `trash` に対応する表に書き換える
+- [ ] T024 `Sources/FolzioApp/Operations/ConfirmationPresenter.swift` で、ツリーのゴミ箱も `trash` の設定で省略し、確認モーダルに「今後この確認を表示しない」を出す（FR-079・FR-395）。親ウインドウがないときに確認を経る規則（EC-263）は保つ
+- [ ] T025 `Sources/FolzioLocalization/TextKey.swift` と en・ja の `Localizable.strings` から `settings.confirm.note` を削除し、`Tests/FolzioCoreTests/Localization/SettingsTextTests.swift` を合わせる（contracts/localization.md）
+- [ ] T026 `Sources/FolzioApp/Settings/SettingsWindowController.swift` から補足説明の行とアクセシビリティのヘルプを取り除き、5つのチェックボックスを同じ間隔で並べる（FR-223）
+- [ ] T027 `Tests/FolzioAppTests/ConfirmationPresenterTests.swift` を、ツリーのゴミ箱が `trash` の設定に従うこと（オフなら確認なし、オンなら「今後この確認を表示しない」付きの確認）、その抑止で `trash` だけがオフになること、親ウインドウなしのツリーのゴミ箱に書き換える（SC-216・SC-218・EC-263）
+- [ ] T028 `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift` などのコメントから、ツリーのゴミ箱を常に確認する前提を取り除く
+- [ ] T029 [P] `docs/usage.md` と `docs/usage.ja.md` の確認の説明を、ツリーのフォルダのゴミ箱も「ゴミ箱に入れる前に確認する」に従う内容に同じ内容で書き換える
+- [ ] T030 `swift build`・`swift test`・`scripts/dev/check-all.sh`・`scripts/make-app.sh` を実行し、結果を `specs/TAK-105-confirm-move-rename/quickstart.md` に記録する
+
+## Phase 7: 検証と製品仕様への反映
+
+- [ ] T018 [MANUAL] 保守者が古い Folzio を終了して `open .build/Folzio.app` で起動し、3ペインの表示と `specs/TAK-105-confirm-move-rename/quickstart.md` の GUI の確認 1〜7 を行う
+- [ ] T019 `specs/product/` の file-operations.md・directory-tree.md・window-layout.md・overview.md・contracts/settings.md・contracts/localization.md・contracts/keyboard-and-menus.md へ spec.md の「反映先」の項目を反映し、`python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行する
 - [ ] T020 [MANUAL] 保守者が `specs/product/` への反映の差分を確認し、承認する
 
 ## Dependencies & Execution Order
@@ -67,7 +85,8 @@
 - Phase 1（T001〜T005）は全ストーリーの前提。T004・T005 は T001〜T003 と並行に書ける
 - US1（T006〜T011）の後に US2（T012〜T014）。T012 と T006 は同じファイルのため順に行う
 - US3（T015）は T003・T005 だけに依存し、US1・US2 と並行できる
-- T017 はすべての実装の後、T018 は T017 の後、T019 は T018 の後に行う
+- T017 はすべての実装の後。Phase 6 は T021 の承認の後に T022〜T030 を行う
+- T018 は T030 の後、T019 は T018 の後に行う
 
 ## Implementation Strategy
 
