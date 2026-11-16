@@ -216,7 +216,6 @@ public enum TextKey: String, CaseIterable, Sendable {
     case settingsConfirmRename = "settings.confirm.rename"
     case settingsConfirmRemoveFavorite = "settings.confirm.removeFavorite"
     case settingsConfirmTrash = "settings.confirm.trash"
-    case settingsConfirmNote = "settings.confirm.note"
     case settingsSlideshow = "settings.slideshow"
     case settingsInterval = "settings.interval"
     case settingsSeconds = "settings.seconds"
@@ -857,8 +856,6 @@ public enum TextKey: String, CaseIterable, Sendable {
         case .settingsConfirmCopy, .settingsConfirmMove, .settingsConfirmRename, .settingsConfirmRemoveFavorite,
              .settingsConfirmTrash:
             return "Confirmation checkboxes for each file operation in the Settings window"
-        case .settingsConfirmNote:
-            return "Supplementary note under the Trash confirmation checkbox in the Settings window. Also its accessibility help"
         case .settingsInterval:
             return "Interval label in the Settings window"
         case .settingsSeconds:

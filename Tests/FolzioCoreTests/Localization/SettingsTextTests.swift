@@ -17,8 +17,8 @@ struct SettingsTextTests {
         #expect(en.text(.settingsPreviewWheelPan) == "Wheel zoom and drag")
         #expect(en.text(.settingsPreviewScroll) == "Scroll")
     }
-    @Test("Each operation has its own confirmation checkbox, and the note covers only Trash from the tree (FR-223)")
-    func confirmationCheckboxesAndNote() {
+    @Test("Each operation has its own confirmation checkbox (FR-223)")
+    func confirmationCheckboxes() {
         let ja = LocalizationTestSupport.localizer("ja")
         let en = LocalizationTestSupport.localizer("en")
 
@@ -27,13 +27,11 @@ struct SettingsTextTests {
         #expect(ja.text(.settingsConfirmRename) == "名前を変更する前に確認する")
         #expect(ja.text(.settingsConfirmRemoveFavorite) == "お気に入りから削除する前に確認する")
         #expect(ja.text(.settingsConfirmTrash) == "ゴミ箱に入れる前に確認する")
-        #expect(ja.text(.settingsConfirmNote) == "ツリーのフォルダをゴミ箱に入れる操作は、この設定に関わらず常に確認します")
         #expect(en.text(.settingsConfirmCopy) == "Confirm before copying")
         #expect(en.text(.settingsConfirmMove) == "Confirm before moving")
         #expect(en.text(.settingsConfirmRename) == "Confirm before renaming")
         #expect(en.text(.settingsConfirmRemoveFavorite) == "Confirm before removing from Favorites")
         #expect(en.text(.settingsConfirmTrash) == "Confirm before moving to the Trash")
-        #expect(en.text(.settingsConfirmNote) == "Moving folders in the directory tree to the Trash is always confirmed, regardless of this setting")
     }
 
     @Test("The confirmation checkboxes do not carry the always-confirmed operation in parentheses")

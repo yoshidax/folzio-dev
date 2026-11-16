@@ -63,15 +63,15 @@
 **目的**: GUI の確認の前に保守者が見直した、6つ目の設定（research.md R7）を加える
 
 - [x] T021 [MANUAL] 保守者が見直した `spec.md`・`plan.md`・`research.md`・`data-model.md`・`contracts/`・`quickstart.md`・`tasks.md` を確認し、実装の開始を承認する（2026-11-16、このチャット）
-- [ ] T022 `Sources/FolzioCore/Operations/ConfirmationPolicy.swift` の `target(for:origin:)` を、ツリーのゴミ箱でも `trash` を返し、nil を返さない型にする（data-model.md、research.md R7）
-- [ ] T023 [P] `Tests/FolzioCoreTests/ConfirmationPolicyTests.swift` を、ツリーのゴミ箱が `trash` に対応する表に書き換える
-- [ ] T024 `Sources/FolzioApp/Operations/ConfirmationPresenter.swift` で、ツリーのゴミ箱も `trash` の設定で省略し、確認モーダルに「今後この確認を表示しない」を出す（FR-079・FR-395）。親ウインドウがないときに確認を経る規則（EC-263）は保つ
-- [ ] T025 `Sources/FolzioLocalization/TextKey.swift` と en・ja の `Localizable.strings` から `settings.confirm.note` を削除し、`Tests/FolzioCoreTests/Localization/SettingsTextTests.swift` を合わせる（contracts/localization.md）
-- [ ] T026 `Sources/FolzioApp/Settings/SettingsWindowController.swift` から補足説明の行とアクセシビリティのヘルプを取り除き、5つのチェックボックスを同じ間隔で並べる（FR-223）
-- [ ] T027 `Tests/FolzioAppTests/ConfirmationPresenterTests.swift` を、ツリーのゴミ箱が `trash` の設定に従うこと（オフなら確認なし、オンなら「今後この確認を表示しない」付きの確認）、その抑止で `trash` だけがオフになること、親ウインドウなしのツリーのゴミ箱に書き換える（SC-216・SC-218・EC-263）
-- [ ] T028 `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift` などのコメントから、ツリーのゴミ箱を常に確認する前提を取り除く
-- [ ] T029 [P] `docs/usage.md` と `docs/usage.ja.md` の確認の説明を、ツリーのフォルダのゴミ箱も「ゴミ箱に入れる前に確認する」に従う内容に同じ内容で書き換える
-- [ ] T030 `swift build`・`swift test`・`scripts/dev/check-all.sh`・`scripts/make-app.sh` を実行し、結果を `specs/TAK-105-confirm-move-rename/quickstart.md` に記録する
+- [x] T022 `Sources/FolzioCore/Operations/ConfirmationPolicy.swift` の `target(for:origin:)` を、ツリーのゴミ箱でも `trash` を返し、nil を返さない型にする（data-model.md、research.md R7）
+- [x] T023 [P] `Tests/FolzioCoreTests/ConfirmationPolicyTests.swift` を、ツリーのゴミ箱が `trash` に対応する表に書き換える
+- [x] T024 `Sources/FolzioApp/Operations/ConfirmationPresenter.swift` で、ツリーのゴミ箱も `trash` の設定で省略し、確認モーダルに「今後この確認を表示しない」を出す（FR-079・FR-395）。親ウインドウがないときに確認を経る規則（EC-263）は保つ
+- [x] T025 `Sources/FolzioLocalization/TextKey.swift` と en・ja の `Localizable.strings` から `settings.confirm.note` を削除し、`Tests/FolzioCoreTests/Localization/SettingsTextTests.swift` を合わせる（contracts/localization.md）
+- [x] T026 `Sources/FolzioApp/Settings/SettingsWindowController.swift` から補足説明の行とアクセシビリティのヘルプを取り除き、5つのチェックボックスを同じ間隔で並べる（FR-223）
+- [x] T027 `Tests/FolzioAppTests/ConfirmationPresenterTests.swift` を、ツリーのゴミ箱が `trash` の設定に従うこと（オフなら確認なし、オンなら「今後この確認を表示しない」付きの確認）、その抑止で `trash` だけがオフになること、親ウインドウなしのツリーのゴミ箱に書き換える（SC-216・SC-218・EC-263）
+- [x] T028 `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift` などのコメントから、ツリーのゴミ箱を常に確認する前提を取り除く
+- [x] T029 [P] `docs/usage.md` と `docs/usage.ja.md` の確認の説明を、ツリーのフォルダのゴミ箱も「ゴミ箱に入れる前に確認する」に従う内容に同じ内容で書き換える
+- [x] T030 `swift build`・`swift test`・`scripts/dev/check-all.sh`・`scripts/make-app.sh` を実行し、結果を `specs/TAK-105-confirm-move-rename/quickstart.md` に記録する
 
 ## Phase 7: 検証と製品仕様への反映
 

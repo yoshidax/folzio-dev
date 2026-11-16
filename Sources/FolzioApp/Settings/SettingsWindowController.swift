@@ -73,8 +73,6 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
     private let loopCheckbox: NSButton
     /// One checkbox per operation, in `ConfirmationTarget.allCases` order (FR-223).
     private let confirmationCheckboxes: [ConfirmationTarget: NSButton]
-    /// The note about Trash from the tree. It sits under the Trash checkbox (FR-223).
-    private let confirmFileOperationsNote = NSTextField(wrappingLabelWithString: "")
     private let languagePopup = KeyViewPopUpButton(frame: .zero, pullsDown: false)
     private let languageLabel = NSTextField(labelWithString: "")
     private let previewHeader = NSTextField(labelWithString: "")
@@ -213,10 +211,6 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
     private static let itemSpacing: CGFloat = 8
     /// The spacing before each section heading. It matches the window margin (FR-222).
     private static let sectionSpacing: CGFloat = 20
-    /// The spacing between the confirmation checkbox and its supplementary note (FR-223).
-    private static let noteSpacing: CGFloat = 4
-    /// The indent used when the checkbox cell reports an unexpected title position.
-    private static let fallbackNoteIndent: CGFloat = 20
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
@@ -276,18 +270,6 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
             checkbox.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         }
 
-        // The note is a dependent description of the checkbox: smaller, secondary, and not interactive (FR-223).
-        confirmFileOperationsNote.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        confirmFileOperationsNote.textColor = .secondaryLabelColor
-        confirmFileOperationsNote.isSelectable = false
-        confirmFileOperationsNote.isEditable = false
-        confirmFileOperationsNote.refusesFirstResponder = true
-        confirmFileOperationsNote.setAccessibilityElement(false)
-        confirmFileOperationsNote.translatesAutoresizingMaskIntoConstraints = false
-        let noteContainer = NSView()
-        noteContainer.translatesAutoresizingMaskIntoConstraints = false
-        noteContainer.addSubview(confirmFileOperationsNote)
-
         let stack = NSStackView(views: [
             languageRow,
             previewHeader,
@@ -297,7 +279,6 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
             loopCheckbox,
             fileOperationsHeader,
         ] + orderedConfirmationCheckboxes + [
-            noteContainer,
             slideshowHeader,
             intervalRow,
             repeatsCheckbox,
@@ -309,8 +290,10 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         stack.setCustomSpacing(Self.sectionSpacing, after: languageRow)
         stack.setCustomSpacing(Self.sectionSpacing, after: previewRow)
         stack.setCustomSpacing(Self.sectionSpacing, after: loopCheckbox)
-        stack.setCustomSpacing(Self.noteSpacing, after: trashConfirmationCheckbox)
-        stack.setCustomSpacing(Self.sectionSpacing, after: noteContainer)
+        // No operation always confirms, so the checkboxes have no supplementary note (FR-223).
+        if let last = orderedConfirmationCheckboxes.last {
+            stack.setCustomSpacing(Self.sectionSpacing, after: last)
+        }
         stack.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(stack)
 
@@ -319,27 +302,10 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
             stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Self.margin),
             stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Self.margin),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -Self.margin),
-            noteContainer.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            confirmFileOperationsNote.topAnchor.constraint(equalTo: noteContainer.topAnchor),
-            confirmFileOperationsNote.bottomAnchor.constraint(equalTo: noteContainer.bottomAnchor),
-            confirmFileOperationsNote.leadingAnchor.constraint(
-                equalTo: noteContainer.leadingAnchor, constant: noteIndent()
-            ),
-            confirmFileOperationsNote.trailingAnchor.constraint(equalTo: noteContainer.trailingAnchor),
             intervalField.widthAnchor.constraint(equalToConstant: 80),
         ] + orderedConfirmationCheckboxes.map { $0.widthAnchor.constraint(equalTo: stack.widthAnchor) })
-        confirmFileOperationsNote.preferredMaxLayoutWidth =
-            Self.contentWidth - Self.margin * 2 - noteIndent()
 
         return contentView
-    }
-
-    /// Returns the x-coordinate where the Trash confirmation checkbox draws its title, so the note lines up with it.
-    private func noteIndent() -> CGFloat {
-        guard let cell = trashConfirmationCheckbox.cell else { return Self.fallbackNoteIndent }
-        let size = cell.cellSize
-        let indent = cell.titleRect(forBounds: NSRect(origin: .zero, size: size)).minX
-        return (14...28).contains(indent) ? indent : Self.fallbackNoteIndent
     }
 
     private static let tabSelectorTopMargin: CGFloat = 12
@@ -477,8 +443,6 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
         for target in ConfirmationTarget.allCases {
             confirmationCheckboxes[target]?.title = l10n.text(Self.titleKey(for: target))
         }
-        confirmFileOperationsNote.stringValue = l10n.text(.settingsConfirmNote)
-        trashConfirmationCheckbox.setAccessibilityHelp(l10n.text(.settingsConfirmNote))
         intervalLabel.stringValue = l10n.text(.settingsInterval)
         secondsLabel.stringValue = l10n.text(.settingsSeconds)
         intervalField.setAccessibilityLabel(l10n.text(.settingsIntervalA11y))
@@ -565,10 +529,6 @@ final class SettingsWindowController: NSWindowController, NSTextFieldDelegate, N
 
     private var orderedConfirmationCheckboxes: [NSButton] {
         ConfirmationTarget.allCases.compactMap { confirmationCheckboxes[$0] }
-    }
-
-    private var trashConfirmationCheckbox: NSButton {
-        confirmationCheckboxes[.trash]!
     }
 
     private static func titleKey(for target: ConfirmationTarget) -> TextKey {

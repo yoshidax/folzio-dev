@@ -240,7 +240,7 @@ For a first look, see the [README](../README.md).
 - A confirmation dialog appears before operations.
   - In Settings (⌘,), you can turn it off separately for copying, moving, renaming, removing from Favorites,
     and moving to the Trash. "Don’t ask again" in the dialog turns off only that operation.
-  - Moving folders in the directory tree to the Trash is always confirmed.
+  - Moving folders in the directory tree to the Trash follows the same Trash setting as the file list.
 
 ### Drag and Drop
 

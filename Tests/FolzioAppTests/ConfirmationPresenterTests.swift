@@ -47,16 +47,33 @@ struct ConfirmationPresenterTests {
         }
     }
 
-    @Test("Trash from the tree confirms with every setting off and has no \"Don't ask again\" (FR-079, US85-AS5)")
-    func treeTrashAlwaysConfirms() async throws {
+    @Test("Trash from the tree follows the Trash setting like the file list (FR-079, US85-AS5, US85-AS10)",
+          arguments: [true, false])
+    func treeTrashFollowsTheTrashSetting(_ trashConfirms: Bool) async throws {
         try await withPresenter { settings, presenter, recorder in
+            // Every other setting is the opposite, so only the Trash setting can explain the result.
             settings.confirmation = ConfirmationOptions(
-                copy: false, move: false, rename: false, removeFavorite: false, trash: false)
+                copy: !trashConfirms, move: !trashConfirms, rename: !trashConfirms,
+                removeFavorite: !trashConfirms, trash: trashConfirms)
             let confirmed = await presenter.confirm(
                 FileOperation(kind: .trash, sources: [Self.source]), origin: .tree)
             #expect(confirmed)
-            #expect(recorder.alerts.count == 1)
-            #expect(recorder.alerts.first?.showsSuppressionButton == false)
+            #expect(recorder.alerts.count == (trashConfirms ? 1 : 0))
+            if trashConfirms {
+                #expect(recorder.alerts.first?.showsSuppressionButton == true)
+            }
+        }
+    }
+
+    @Test("\"Don't ask again\" on Trash from the tree turns off only the Trash confirmation (FR-395, SC-218)")
+    func dontAskAgainOnTreeTrash() async throws {
+        try await withPresenter(checksSuppression: true) { settings, presenter, _ in
+            settings.confirmation = ConfirmationOptions()
+            _ = await presenter.confirm(FileOperation(kind: .trash, sources: [Self.source]), origin: .tree)
+            let options = settings.confirmation
+            for target in ConfirmationTarget.allCases {
+                #expect(options.isEnabled(target) == (target != .trash), "\(target)")
+            }
         }
     }
 
@@ -83,7 +100,7 @@ struct ConfirmationPresenterTests {
         }
     }
 
-    @Test("Without a window, move and rename still confirm when turned on; copy keeps continuing (EC-263)")
+    @Test("Without a window, move, rename, and Trash from the tree still confirm when turned on; copy keeps continuing (EC-263)")
     func noWindowFallback() async throws {
         try await withPresenter { settings, presenter, recorder in
             presenter.fallbackWindow = { nil }
@@ -100,9 +117,10 @@ struct ConfirmationPresenterTests {
             #expect(modals.count == 3)
             #expect(recorder.alerts.isEmpty)
 
-            settings.confirmation = ConfirmationOptions(move: false, rename: false)
+            settings.confirmation = ConfirmationOptions(move: false, rename: false, trash: false)
             #expect(await runOperation(.move, on: presenter))
             #expect(await runOperation(.rename, on: presenter))
+            #expect(await presenter.confirm(FileOperation(kind: .trash, sources: [Self.source]), origin: .tree))
             #expect(modals.count == 3)
         }
     }

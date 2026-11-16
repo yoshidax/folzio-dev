@@ -446,9 +446,6 @@
 "settings.confirm.removeFavorite" = "Confirm before removing from Favorites";
 "settings.confirm.trash" = "Confirm before moving to the Trash";
 
-/* Supplementary note under the Trash confirmation checkbox in the Settings window. Also its accessibility help */
-"settings.confirm.note" = "Moving folders in the directory tree to the Trash is always confirmed, regardless of this setting";
-
 /* Section headings in the Settings window */
 "settings.slideshow" = "Slideshow";
 

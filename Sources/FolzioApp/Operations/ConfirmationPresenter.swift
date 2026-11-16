@@ -25,8 +25,8 @@ final class ConfirmationPresenter {
 
     /// When `includesFolders` is true, notes that folders are processed with their contents (R32). When `location` is
     /// present, includes the target's absolute path (R58). When `itemLocations` is not empty, shows each listed item's
-    /// absolute path below its name (FR-079, A-127). `ConfirmationPolicy` decides which setting applies. Trash from the
-    /// tree always confirms regardless of the settings and does not show "Don't ask again" (FR-024, FR-079, FR-395).
+    /// absolute path below its name (FR-079, A-127). `ConfirmationPolicy` decides which setting applies; Trash from the
+    /// tree follows the same Trash setting as the file list (FR-024, FR-079).
     func confirm(
         _ operation: FileOperation,
         includesFolders: Bool = false,
@@ -36,7 +36,7 @@ final class ConfirmationPresenter {
         parentWindow: NSWindow? = nil
     ) async -> Bool {
         let target = ConfirmationPolicy.target(for: operation.kind, origin: origin)
-        if let target, !settings.confirmation.isEnabled(target) {
+        if !settings.confirmation.isEnabled(target) {
             return true
         }
         return await present(
@@ -70,13 +70,13 @@ final class ConfirmationPresenter {
         )
     }
 
-    /// When `target` is present, shows "Don't ask again", which turns off only that operation's confirmation, even when
-    /// the modal is cancelled (FR-395, EC-262).
+    /// Shows "Don't ask again", which turns off only `target`'s confirmation, even when the modal is cancelled
+    /// (FR-395, EC-262).
     private func present(
         messageText: @escaping @MainActor () -> String,
         informativeText: @escaping @MainActor () -> String,
         confirmTitle: @escaping @MainActor () -> String,
-        suppressing target: ConfirmationTarget?,
+        suppressing target: ConfirmationTarget,
         requiresModalWithoutWindow: Bool,
         parentWindow: NSWindow? = nil
     ) async -> Bool {
@@ -87,10 +87,8 @@ final class ConfirmationPresenter {
         alert.addButton(withTitle: confirmTitle())
         alert.addButton(withTitle: l10n.text(.dialogCancel))
         alert.buttons[1].keyEquivalent = "\u{1b}"
-        if target != nil {
-            alert.showsSuppressionButton = true
-            alert.suppressionButton?.title = l10n.text(.dialogConfirmDontAsk)
-        }
+        alert.showsSuppressionButton = true
+        alert.suppressionButton?.title = l10n.text(.dialogConfirmDontAsk)
 
         let languageObserver = LanguageChangeObserver {
             alert.messageText = messageText()
@@ -112,7 +110,7 @@ final class ConfirmationPresenter {
         }
 
         withExtendedLifetime(languageObserver) {}
-        if let target, alert.suppressionButton?.state == .on {
+        if alert.suppressionButton?.state == .on {
             var options = settings.confirmation
             options.setEnabled(false, for: target)
             settings.confirmation = options

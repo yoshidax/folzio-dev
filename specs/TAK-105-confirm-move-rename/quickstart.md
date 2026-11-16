@@ -50,3 +50,11 @@ scripts/make-app.sh
     単独では2回とも成功し、3回目の全体実行でも成功した。この feature は該当のコードを変えていないため、負荷による不安定さと
     判断した。
   - `scripts/dev/check-all.sh` 成功（終了コード 0）。`scripts/make-app.sh` で `.build/Folzio.app` を作成した。
+- 2026-11-16（macOS 26.7.3、ローカル。見直し後: ツリーのフォルダのゴミ箱も「ゴミ箱に入れる」の設定に従う）:
+  `swift build` 成功。`scripts/dev/check-all.sh` 成功（終了コード 0）。`scripts/make-app.sh` で `.build/Folzio.app` を作成した。
+  - `swift test` の1回目と2回目は、`BrowserModel`・`FileSystemWatcher`・`HistoryNavigator` の時間を待つテストが失敗した
+    （74 件と 15 件）。ロードアベレージが 15〜17 で、`mediaanalysisd` などが CPU を使っていた。失敗した suite をまとめて
+    実行すると 260 件すべて成功した。
+  - 3回目の全体実行では通常のテスト 1138 件（124 スイート）がすべて成功し、性能テストの2件（10,000 件の列挙と絞り込みの時間）
+    が基準を超えた。性能テストだけを再実行すると成功した。
+  - この feature は失敗した箇所のコードを変えていないため、負荷による不安定さと判断した。
