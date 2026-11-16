@@ -90,6 +90,9 @@ For a first look, see the [README](../README.md).
   - When sorting by name, folders always come before files, in both ascending and descending order.
   - Zip files count as files.
 - Right-click the column header to show or hide the Date Created, Kind, Size, and Date Modified columns.
+- Right-clicking an item that is not selected leaves the selection as it is, as in the tree, and the menu acts on
+  that item only. Right-clicking a selected item makes the menu act on all the selected items.
+  - Keyboard shortcuts and the menu bar always act on the selected items.
 
 ### Toolbar
 
