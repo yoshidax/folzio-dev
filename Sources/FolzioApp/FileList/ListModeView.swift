@@ -23,14 +23,6 @@ private final class FileListTableView: NSTableView {
     }
     var onReturn: (() -> Bool)?
     var onEscape: (() -> Bool)?
-    /// A context click on a row (-1 for the background), before the menu opens (FR-397).
-    var onContextClick: ((Int) -> Void)?
-
-    // Called for right-clicks, Control-clicks, and two-finger clicks alike (A-237, research.md R1).
-    override func menu(for event: NSEvent) -> NSMenu? {
-        onContextClick?(row(at: convert(event.locationInWindow, from: nil)))
-        return super.menu(for: event)
-    }
 
     override func keyDown(with event: NSEvent) {
         if event.isPlainEscape, onEscape?() == true {
@@ -282,9 +274,6 @@ final class ListModeView: NSView {
             guard self.model.focusedItemCommands.allowsFileOperations else { return true }
             return self.beginRenaming()
         }
-        tableView.onContextClick = { [weak self] row in
-            self?.selectForContextClick(row: row)
-        }
         tableView.target = self
         tableView.doubleAction = #selector(handleDoubleClick(_:))
 
@@ -312,21 +301,6 @@ final class ListModeView: NSView {
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
-    }
-
-    /// Selects only the row under a context click when it is not selected, so the menu acts on that row, as in
-    /// Finder (FR-397). A selected row and the background (-1) keep the selection (FR-213). Does not move the keyboard
-    /// focus (A-238), except that a rename in progress ends first, as when another row is clicked (EC-265).
-    func selectForContextClick(row: Int) {
-        guard let rows = ContextClickSelection.newSelection(
-            clicked: row >= 0 ? row : nil,
-            selected: Set(tableView.selectedRowIndexes),
-            itemCount: model.listing.files.count
-        ) else { return }
-        if renamingURL != nil {
-            window?.makeFirstResponder(tableView)
-        }
-        tableView.selectRowIndexes(IndexSet(rows), byExtendingSelection: false)
     }
 
     @objc private func handleDoubleClick(_ sender: Any?) {
@@ -589,16 +563,29 @@ final class ListModeView: NSView {
         tableView.clickedRow < 0
     }
 
+    /// The row under the last context click, or nil for the background (FR-397).
+    var contextClickedIndex: Int? {
+        tableView.clickedRow >= 0 ? tableView.clickedRow : nil
+    }
+
     /// Starts renaming the single selected row. Pass `isNewFolder: true` only right after New Folder, so the commit
     /// skips the rename confirmation (FR-211).
     @discardableResult
     func beginRenaming(isNewFolder: Bool = false) -> Bool {
-        guard renamingURL == nil else { return false }
-
         let selected = model.selection.selected
         guard selected.count == 1,
               let focused = model.selection.focused,
-              selected.contains(focused),
+              selected.contains(focused) else {
+            return false
+        }
+        return beginRenaming(url: focused, isNewFolder: isNewFolder)
+    }
+
+    /// Starts renaming the row for `url` whether or not it is selected, for Rename in the context menu of an
+    /// unselected row (FR-398). Does not change the selection.
+    @discardableResult
+    func beginRenaming(url focused: URL, isNewFolder: Bool = false) -> Bool {
+        guard renamingURL == nil,
               let row = model.listing.files.firstIndex(where: { $0.url == focused }),
               let window = tableView.window else {
             return false

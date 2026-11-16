@@ -40,4 +40,14 @@ scripts/make-app.sh
 
 ## 検証の記録
 
-（実装後に記入する）
+### 自動の検証（2026-11-16、macOS 26.7.3。選択を変えずに対象にする方式）
+
+| 項目 | 結果 |
+|---|---|
+| `swift build` | 成功 |
+| `swift test` | 1132 件（124 スイート）と性能テスト 28 件が成功 |
+| `scripts/dev/check-all.sh` | 成功（all checks passed） |
+| `scripts/make-app.sh` | `.build/Folzio.app` を作成 |
+
+- 新しいテスト: `ContextMenuTargetTests`（4件）、`FileListContextClickTests`（5件 × リスト形式・サムネイル形式）
+- 当初の方式（右クリックで選択を変える）での検証（03fca52 の記録）は、方式の変更で置き換えた

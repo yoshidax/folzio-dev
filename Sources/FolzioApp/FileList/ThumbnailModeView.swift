@@ -48,16 +48,12 @@ private final class ThumbnailCollectionView: NSCollectionView {
     var onDoubleClickItem: ((Int) -> Void)?
     /// Location of the last context click, in this view's coordinates (FR-213, research.md R7).
     private(set) var lastMenuLocation: NSPoint?
-    /// A context click on an item (nil for the background), before the menu opens (FR-397).
-    var onContextClick: ((Int?) -> Void)?
 
     override var acceptsFirstResponder: Bool { true }
 
-    // Called for right-clicks, Control-clicks, and two-finger clicks alike (A-237, research.md R1).
+    // Called for right-clicks, Control-clicks, and two-finger clicks alike (A-237).
     override func menu(for event: NSEvent) -> NSMenu? {
-        let location = convert(event.locationInWindow, from: nil)
-        lastMenuLocation = location
-        onContextClick?(indexPathForItem(at: location)?.item)
+        lastMenuLocation = convert(event.locationInWindow, from: nil)
         return super.menu(for: event)
     }
 
@@ -227,6 +223,11 @@ final class ThumbnailItemView: NSCollectionViewItem {
         didSet { updateSelectionAppearance() }
     }
 
+    /// Whether the open context menu targets this item instead of the selection (FR-397, research.md R5).
+    var isContextTarget = false {
+        didSet { updateSelectionAppearance() }
+    }
+
     func configure(with file: MediaFile, iconPointSize: Double) {
         if isRenaming, representedURL != file.url {
             endRenaming(commit: false, restoreFocus: false)
@@ -287,6 +288,7 @@ final class ThumbnailItemView: NSCollectionViewItem {
 
     override func prepareForReuse() {
         super.prepareForReuse()
+        isContextTarget = false
         if isRenaming {
             endRenaming(commit: false, restoreFocus: false)
         }
@@ -359,7 +361,9 @@ final class ThumbnailItemView: NSCollectionViewItem {
         view.layer?.backgroundColor = isHighlighted
             ? NSColor.controlAccentColor.withAlphaComponent(0.25).cgColor
             : NSColor.clear.cgColor
-        view.layer?.borderWidth = isSelected ? 1 : 0
+        // A context menu target that is not selected gets the outline alone, like the ring the list draws around the
+        // clicked row.
+        view.layer?.borderWidth = isSelected ? 1 : (isContextTarget ? 2 : 0)
         view.layer?.borderColor = NSColor.controlAccentColor.cgColor
     }
 }
@@ -452,8 +456,38 @@ final class ThumbnailModeView: NSView {
 
     /// Whether the last context click hit no item, so the file list shows the background menu (FR-213, R7).
     var isContextClickOnBackground: Bool {
-        guard let location = collectionView.lastMenuLocation else { return true }
-        return collectionView.indexPathForItem(at: location) == nil
+        contextClickedIndex == nil
+    }
+
+    /// The item under the last context click, or nil for the background (FR-397).
+    var contextClickedIndex: Int? {
+        guard let location = collectionView.lastMenuLocation else { return nil }
+        return collectionView.indexPathForItem(at: location)?.item
+    }
+
+    /// Item outlined while the context menu targets it instead of the selection (FR-397, research.md R5).
+    private var contextTargetIndex: Int?
+
+    /// Outlines the item at `index` while the context menu is open, or removes the outline (nil).
+    func showContextTarget(at index: Int?) {
+        guard contextTargetIndex != index else { return }
+        if let old = contextTargetIndex,
+           let item = collectionView.item(at: IndexPath(item: old, section: 0)) as? ThumbnailItemView {
+            item.isContextTarget = false
+        }
+        contextTargetIndex = index
+        if let index, let item = collectionView.item(at: IndexPath(item: index, section: 0)) as? ThumbnailItemView {
+            item.isContextTarget = true
+        }
+    }
+
+    /// Starts renaming the item for `url` whether or not it is selected, for Rename in the context menu of an
+    /// unselected item (FR-398). Does not change the selection.
+    @discardableResult
+    func beginRenaming(url: URL) -> Bool {
+        guard onRename != nil else { return false }
+        newFolderRenamingURL = nil
+        return beginRenamingItem(url)
     }
     var onOpenItem: ((URL) -> Void)?
     /// Coordinator of the Quick Look panel, set by the file list controller (FR-247).
@@ -657,9 +691,6 @@ final class ThumbnailModeView: NSView {
         }
         collectionView.onDoubleClickItem = { [weak self] index in
             self?.openItem(at: index)
-        }
-        collectionView.onContextClick = { [weak self] index in
-            self?.selectForContextClick(item: index)
         }
         collectionView.frame = NSRect(x: 0, y: 0, width: 400, height: 400)
 
@@ -1014,26 +1045,6 @@ final class ThumbnailModeView: NSView {
         default:
             return nil
         }
-    }
-
-    /// Selects only the item under a context click when it is not selected, so the menu acts on that item, as in
-    /// Finder (FR-397). A selected item and the background (nil) keep the selection (FR-213). Goes through the same
-    /// path as a click, which also moves the range anchor to the item. Does not move the keyboard focus (A-238),
-    /// except that a rename in progress ends first, as when another item is clicked (EC-265).
-    func selectForContextClick(item: Int?) {
-        guard let items = ContextClickSelection.newSelection(
-            clicked: item,
-            selected: Set(collectionView.selectionIndexPaths.map(\.item)),
-            itemCount: model.listing.files.count
-        ) else { return }
-        if let window, let editor = window.firstResponder as? NSTextView, editor.isFieldEditor,
-           let field = editor.delegate as? NSView, field.isDescendant(of: collectionView) {
-            window.makeFirstResponder(collectionView)
-        }
-        let paths = Set(items.map { IndexPath(item: $0, section: 0) })
-        collectionView.selectionIndexPaths = paths
-        // Setting the selection in code does not call `didSelectItemsAt`, so report it as a click would.
-        selectionDidChange(newlySelected: paths)
     }
 
     private func applySelection(_ paths: Set<IndexPath>, focusedURL: URL?) {

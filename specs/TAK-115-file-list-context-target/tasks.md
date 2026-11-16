@@ -43,22 +43,22 @@
 
 ## Phase 5: Foundational（FolzioCore の判断の置き換え）
 
-- [ ] T012 `Sources/FolzioCore/Model/ContextClickSelection.swift` を `Sources/FolzioCore/Model/ContextMenuTarget.swift` に置き換え、右クリックした項目の位置（背景なら nil）と選択中の位置の集合から、「背景」「選択中の全体」「その項目だけ」を返す（FR-397、research.md R1）
-- [ ] T013 [P] `Tests/FolzioCoreTests/ContextClickSelectionTests.swift` を `Tests/FolzioCoreTests/ContextMenuTargetTests.swift` に置き換え、選択外の項目（単一選択中・複数選択中・選択なし）、選択中の項目、背景、範囲外の位置を確かめる
+- [x] T012 `Sources/FolzioCore/Model/ContextClickSelection.swift` を `Sources/FolzioCore/Model/ContextMenuTarget.swift` に置き換え、右クリックした項目の位置（背景なら nil）と選択中の位置の集合から、「背景」「選択中の全体」「その項目だけ」を返す（FR-397、research.md R1）
+- [x] T013 [P] `Tests/FolzioCoreTests/ContextClickSelectionTests.swift` を `Tests/FolzioCoreTests/ContextMenuTargetTests.swift` に置き換え、選択外の項目（単一選択中・複数選択中・選択なし）、選択中の項目、背景、範囲外の位置を確かめる
 
 ## Phase 6: User Story 1 - 右クリックした項目を操作する (Priority: P1)
 
-- [ ] T014 [US1] `Sources/FolzioApp/FileList/ListModeView.swift` と `Sources/FolzioApp/FileList/ThumbnailModeView.swift` から、右クリックで選択を変える処理（T003・T004）を取り除き、右クリックした項目の位置を返すプロパティを置く（リスト形式は `clickedRow`、サムネイル形式は `lastMenuLocation`）
-- [ ] T015 [US1] `Sources/FolzioApp/FileList/FileListViewController.swift` に、URL の一覧・操作の可否・名前を変える項目・中を表示する項目をまとめた `OperationTarget` と、`sender` が右クリックメニュー（とそのサブメニュー）の項目なら記録した対象を、そうでなければ選択を返す処理を置く。「中を表示」「開く」「このアプリケーションで開く」「ゴミ箱に入れる」「名前を変更」「複製」「コピー」「パス名をコピー」「Finder に表示」の action と `validateMenuItem(_:)` をそれに従わせる（FR-397・A-239・EC-264、research.md R2・R3）
-- [ ] T016 [US1] `Sources/FolzioApp/FileList/FileContextMenu.swift` の `menuNeedsUpdate(_:)` で、名前の編集を確定して終え（EC-265）、`ContextMenuTarget` で対象を決めて `FileListViewController` に記録し、「コピー」の文言と「このアプリケーションで開く」のサブメニューを対象から作る。`menuDidClose(_:)` でサムネイル形式の枠を消す（research.md R2・R5・R6）
-- [ ] T017 [US1] `Sources/FolzioApp/FileList/ListModeView.swift` に名前を変える項目の URL を受け取る `beginRenaming` を加え、`Sources/FolzioApp/FileList/ThumbnailModeView.swift` に URL を指定して名前の編集を始める入口を置く。`FileListViewController.rename(_:)` から対象の項目で呼ぶ（FR-398、research.md R4）
-- [ ] T018 [US1] `Sources/FolzioApp/FileList/ThumbnailModeView.swift` で、メニューを表示している間、右クリックした選択外の項目に枠を描く（FR-397、research.md R5）
-- [ ] T019 [US1] `Tests/FolzioAppTests/FileListContextClickTests.swift` を書き換え、リスト形式とサムネイル形式のそれぞれで、選択外の項目の右クリックで選択が変わらないこと、右クリックメニューの各項目の対象がその項目だけであること、選択中の項目の右クリックでは選択全体が対象であること、メニューバーの項目（右クリックメニュー以外の `sender`）は選択を対象にすること、`..` で操作が淡色になることを確かめる（SC-219・SC-220・A-239・EC-264）
-- [ ] T020 [P] [US1] `docs/usage.md` と `docs/usage.ja.md` の右クリックの説明（T006 で追記したもの）を、選択を変えずに右クリックした項目を対象にする内容に同じ内容で書き換える
+- [x] T014 [US1] `Sources/FolzioApp/FileList/ListModeView.swift` と `Sources/FolzioApp/FileList/ThumbnailModeView.swift` から、右クリックで選択を変える処理（T003・T004）を取り除き、右クリックした項目の位置を返すプロパティを置く（リスト形式は `clickedRow`、サムネイル形式は `lastMenuLocation`）
+- [x] T015 [US1] `Sources/FolzioApp/FileList/FileListViewController.swift` に、URL の一覧・操作の可否・名前を変える項目・中を表示する項目をまとめた `OperationTarget` と、`sender` が右クリックメニュー（とそのサブメニュー）の項目なら記録した対象を、そうでなければ選択を返す処理を置く。「中を表示」「開く」「このアプリケーションで開く」「ゴミ箱に入れる」「名前を変更」「複製」「コピー」「パス名をコピー」「Finder に表示」の action と `validateMenuItem(_:)` をそれに従わせる（FR-397・A-239・EC-264、research.md R2・R3）
+- [x] T016 [US1] `Sources/FolzioApp/FileList/FileContextMenu.swift` の `menuNeedsUpdate(_:)` で、名前の編集を確定して終え（EC-265）、`ContextMenuTarget` で対象を決めて `FileListViewController` に記録し、「コピー」の文言と「このアプリケーションで開く」のサブメニューを対象から作る。`menuDidClose(_:)` でサムネイル形式の枠を消す（research.md R2・R5・R6）
+- [x] T017 [US1] `Sources/FolzioApp/FileList/ListModeView.swift` に名前を変える項目の URL を受け取る `beginRenaming` を加え、`Sources/FolzioApp/FileList/ThumbnailModeView.swift` に URL を指定して名前の編集を始める入口を置く。`FileListViewController.rename(_:)` から対象の項目で呼ぶ（FR-398、research.md R4）
+- [x] T018 [US1] `Sources/FolzioApp/FileList/ThumbnailModeView.swift` で、メニューを表示している間、右クリックした選択外の項目に枠を描く（FR-397、research.md R5）
+- [x] T019 [US1] `Tests/FolzioAppTests/FileListContextClickTests.swift` を書き換え、リスト形式とサムネイル形式のそれぞれで、選択外の項目の右クリックで選択が変わらないこと、右クリックメニューの各項目の対象がその項目だけであること、選択中の項目の右クリックでは選択全体が対象であること、メニューバーの項目（右クリックメニュー以外の `sender`）は選択を対象にすること、`..` で操作が淡色になることを確かめる（SC-219・SC-220・A-239・EC-264）
+- [x] T020 [P] [US1] `docs/usage.md` と `docs/usage.ja.md` の右クリックの説明（T006 で追記したもの）を、選択を変えずに右クリックした項目を対象にする内容に同じ内容で書き換える
 
 ## Phase 7: Polish & Verification
 
-- [ ] T021 `swift build`・`swift test`・`scripts/dev/check-all.sh`・`scripts/make-app.sh` を実行し、結果を `specs/TAK-115-file-list-context-target/quickstart.md` に記録する
+- [x] T021 `swift build`・`swift test`・`scripts/dev/check-all.sh`・`scripts/make-app.sh` を実行し、結果を `specs/TAK-115-file-list-context-target/quickstart.md` に記録する
 - [ ] T008 [MANUAL] 保守者が古い Folzio を終了して `open .build/Folzio.app` で起動し、3ペインの表示と `specs/TAK-115-file-list-context-target/quickstart.md` の GUI の確認 1〜10 を行う
 - [ ] T009 `specs/product/file-list.md` へ spec.md の「反映先」の項目を反映し、`python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行する
 - [ ] T010 [MANUAL] 保守者が `specs/product/` への反映の差分を確認し、承認する
