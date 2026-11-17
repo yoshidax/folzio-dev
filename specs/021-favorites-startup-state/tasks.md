@@ -56,8 +56,8 @@ Core とツリーと設定 UI が揃った後に、T010〜T012 の検証・手�
 - [X] T015 T014 の報告を `specs/021-favorites-startup-state/quickstart.md` に追記し、最終検証の記録と tasks の進捗をコミットする。
 - [X] T016 `speckit-converge` で `specs/021-favorites-startup-state/spec.md`・`plan.md`・`tasks.md` と参照製品仕様に対する実装を確認し、追加タスクがあれば実装・自動検証・必要な手動確認を最大3反復まで行う（後続の製品仕様反映タスクはこの収束後に実施する）。
 - [X] T017 `scripts/dev/check-spec-ids.sh` を実行してから、`specs/021-favorites-startup-state/spec.md` の反映先の項目を `specs/product/directory-tree.md`・`window-layout.md`、2つの契約差分を `specs/product/contracts/settings.md`・`localization.md` へ反映し、feature の冒頭に凍結注記を追加する（README の領域別件数も合わせ、反映後に `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行する）。
-- [ ] T018 [MANUAL] 保守者が `specs/product/` への反映差分と `specs/021-favorites-startup-state/spec.md` の凍結注記を確認し、反映のコミットを承認する。
-- [ ] T019 T018 の承認後に `specs/product/` と `specs/021-favorites-startup-state/` の最終進捗をコミットし、ブランチ・検証結果・残課題を報告する。
+- [X] T018 [MANUAL] 保守者が `specs/product/` への反映差分と `specs/021-favorites-startup-state/spec.md` の凍結注記を確認し、反映のコミットを承認する。
+- [X] T019 T018 の承認後に `specs/product/` と `specs/021-favorites-startup-state/` の最終進捗をコミットし、ブランチ・検証結果・残課題を報告する。
 
 ## Dependencies & Execution Order
 
