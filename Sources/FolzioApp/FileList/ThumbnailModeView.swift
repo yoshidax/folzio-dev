@@ -1012,14 +1012,15 @@ final class ThumbnailModeView: NSView {
                 .min()
         }
 
-        guard let target = FocusNavigator.targetIndex(
-            currentIndex: currentIndex,
-            fileCount: files.count,
-            move: move,
-            layout: .grid(columns: currentColumnCount)
-        ) else {
-            return true
-        }
+        let disallowed: NSEvent.ModifierFlags = [.shift, .command, .option, .control]
+        let entersEmptySelection = model.selection.selected.isEmpty && model.selection.focused == nil
+            && (key == .upArrow || key == .downArrow)
+            && modifiers.intersection(disallowed).isEmpty
+        let target = entersEmptySelection
+            ? FocusNavigator.emptySelectionIndex(fileCount: files.count, move: move)
+            : FocusNavigator.targetIndex(currentIndex: currentIndex, fileCount: files.count, move: move,
+                layout: .grid(columns: currentColumnCount))
+        guard let target else { return true }
 
         if modifiers.contains(.shift), let currentIndex {
             let anchor = selectionAnchor ?? currentIndex

@@ -48,7 +48,7 @@
 - [X] T013 [US88] `Sources/FolzioCore/Layout/FocusNavigator.swift` に通常一覧の空選択の入口判断を設け、`Sources/FolzioApp/FileList/ListModeView.swift`・`ThumbnailModeView.swift` の対象キーだけに接続する。`selected` と `focused` がともに空のときに限定し、full screen / hidden list の経路を保つ。
 - [X] T014 [US88] `swift build` → `swift test` → `scripts/dev/check-all.sh` → `scripts/make-app.sh` の順で検証し、この `tasks.md` の検証記録へ結果を残す。
 - [X] T015 [MANUAL] [US88] 保守者が `open .build/Folzio.app` を実行し、`specs/023-select-after-trash/quickstart.md` の Phase 4 の3ペインと、両形式・通常と検索・空行・上下キー・既存キーの回帰確認を報告する。
-- [ ] T016 [US88] T015 の実報告をこの `tasks.md` へ記録し、Phase 4 の実装・テスト・進捗をコミットする。
+- [X] T016 [US88] T015 の実報告をこの `tasks.md` へ記録し、Phase 4 の実装・テスト・進捗をコミットする。
 
 ## Phase 5: Polish & Cross-Cutting — 最終検証・反映
 
@@ -139,3 +139,5 @@ GUI をエージェントが起動したことやテスト成功を、保守者�
   （annotation c1fa8f07-7a3a-46c2-a8fa-54e8a2164479）。T010 の確認範囲を確定した。
   先のリスト形式と修正後のサムネイル形式の成功報告と合わせ T015 の報告も受領済みとする。
   既存の自動検証と GUI 報告を記録し、Phase 3、Phase 4 の順にコミットする。
+
+- Phase 3 は `8845a14` にコミット済み。確認済みの上下キー処理・回帰テストと T016 の記録を Phase 4 としてコミットする。
