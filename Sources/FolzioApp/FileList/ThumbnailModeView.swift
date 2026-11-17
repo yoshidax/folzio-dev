@@ -420,6 +420,7 @@ final class ThumbnailModeView: NSView {
     private var lastContentChangeGeneration = 0
     private var isApplyingSelection = false
     private var lastSelectedURL: URL?
+    private var lastTrashSelectionGeneration = 0
     private var selectionAnchor: Int?
     private var keepSelectionAnchorOnModelChange = false
     private var requests: [URL: ThumbnailRequest] = [:]
@@ -750,6 +751,7 @@ final class ThumbnailModeView: NSView {
             _ = model.selection.selected
             _ = model.selection.focused
             _ = model.contentChangeGeneration
+            _ = model.trashSelectionGeneration
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.applyModel()
@@ -796,6 +798,8 @@ final class ThumbnailModeView: NSView {
         }
         isApplyingSelection = false
 
+        let revealTrashSelection = lastTrashSelectionGeneration != model.trashSelectionGeneration
+        lastTrashSelectionGeneration = model.trashSelectionGeneration
         lastSelectedURL = model.selection.focused
         if keepSelectionAnchorOnModelChange {
             keepSelectionAnchorOnModelChange = false
@@ -804,6 +808,10 @@ final class ThumbnailModeView: NSView {
             selectionAnchor = index
         } else {
             selectionAnchor = nil
+        }
+        if revealTrashSelection, let focused = model.selection.focused,
+           let index = urls.firstIndex(of: focused) {
+            scrollItemIntoView(at: index)
         }
     }
 

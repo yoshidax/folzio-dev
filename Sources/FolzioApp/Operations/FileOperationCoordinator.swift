@@ -160,6 +160,7 @@ final class FileOperationCoordinator {
     /// (A-127).
     func trash(_ urls: [URL], origin: OperationOrigin = .fileList) async {
         guard !urls.isEmpty else { return }
+        let selection = origin == .fileList ? model.selectionBeforeTrashing(urls) : nil
         var trashedSources: [URL] = []
         defer { onOperationFinished?(urls, trashedSources) }
         let operation = FileOperation(kind: .trash, sources: urls)
@@ -181,12 +182,16 @@ final class FileOperationCoordinator {
         let failedPaths = Set(result.failed.map { $0.url.standardizedFileURL.path })
         trashedSources = urls.filter { !failedPaths.contains($0.standardizedFileURL.path) }
         historyNavigator?.didRemoveItems(trashedSources)
+        model.didMoveSearchItems(trashedSources)
         // Move to the parent only when the displayed folder or an ancestor was trashed (FR-079). In search results, an
         // ancestor of the pre-search folder can be selected, so tree and file list operations behave differently. Leave
         // the decision to `BrowserModel` and only pass the origin here (EC-101). Call only when the result is false,
         // because reloading after moving would briefly show "Folder not found" for the vanished folder.
         if await !model.leaveTrashedFolders(trashedSources, origin: origin) {
             await model.reloadCurrentFolder()
+            if let selection {
+                model.applySelectionAfterTrashing(selection, removed: trashedSources)
+            }
         }
     }
 
