@@ -52,12 +52,12 @@
 
 ## Phase 5: Polish & Cross-Cutting — 最終検証・反映
 
-- [ ] T017 最終版で `swift build` → `swift test` → `scripts/dev/check-all.sh` → `scripts/make-app.sh` を再実行し、この `tasks.md` の検証記録へ結果と対象ビルドを残す。
-- [ ] T018 [MANUAL] 保守者が `open .build/Folzio.app` を実行し、`specs/023-select-after-trash/quickstart.md` の最終ビルドの3ペインと主要操作の確認を報告する。
-- [ ] T019 T018 の報告をこの `tasks.md` へ記録し、`speckit-converge` で feature と参照製品仕様に照らして残作業を確認し、必要なら workflow 上限3回で追記タスクの実装・検証へ戻る。
-- [ ] T020 T019 の残作業がなくなってから `specs/product/README.md` の書き方を再確認し、`scripts/dev/check-spec-ids.sh` 実行後、spec.md の反映先表を `specs/product/file-list.md`・`search.md` へ、feature の `contracts/keyboard-and-menus.md` を製品契約へ反映する。feature の `spec.md` 冒頭に凍結注記を付け、`python3 scripts/dev/check-spec-format.py` と ID 検査を再実行してこの `tasks.md` に記録する（まだコミットしない）。
-- [ ] T021 [MANUAL] 保守者が `git diff -- specs` の製品仕様反映・契約差分・feature 凍結注記と変更 ID 一覧を確認し、反映のコミットを承認する。
-- [ ] T022 T021 の承認をこの `tasks.md` へ記録し、製品仕様と feature の記録をコミットしてブランチ・検証・残課題を報告する。
+- [X] T017 最終版で `swift build` → `swift test` → `scripts/dev/check-all.sh` → `scripts/make-app.sh` を再実行し、この `tasks.md` の検証記録へ結果と対象ビルドを残す。
+- [X] T018 [MANUAL] 保守者が `open .build/Folzio.app` を実行し、`specs/023-select-after-trash/quickstart.md` の最終ビルドの3ペインと主要操作の確認を報告する。
+- [X] T019 T018 の報告をこの `tasks.md` へ記録し、`speckit-converge` で feature と参照製品仕様に照らして残作業を確認し、必要なら workflow 上限3回で追記タスクの実装・検証へ戻る。
+- [X] T020 T019 の残作業がなくなってから `specs/product/README.md` の書き方を再確認し、`scripts/dev/check-spec-ids.sh` 実行後、spec.md の反映先表を `specs/product/file-list.md`・`search.md` へ、feature の `contracts/keyboard-and-menus.md` を製品契約へ反映する。feature の `spec.md` 冒頭に凍結注記を付け、`python3 scripts/dev/check-spec-format.py` と ID 検査を再実行してこの `tasks.md` に記録する（まだコミットしない）。
+- [X] T021 [MANUAL] 保守者が `git diff -- specs` の製品仕様反映・契約差分・feature 凍結注記と変更 ID 一覧を確認し、反映のコミットを承認する。
+- [X] T022 T021 の承認をこの `tasks.md` へ記録し、製品仕様と feature の記録をコミットしてブランチ・検証・残課題を報告する。
 
 ## Dependencies & Execution Order
 
@@ -141,3 +141,28 @@ GUI をエージェントが起動したことやテスト成功を、保守者�
   既存の自動検証と GUI 報告を記録し、Phase 3、Phase 4 の順にコミットする。
 
 - Phase 3 は `8845a14` にコミット済み。確認済みの上下キー処理・回帰テストと T016 の記録を Phase 4 としてコミットする。
+
+- 最終検証（`6c27712`）: `swift build`、`swift test`（Core 1158件・性能28件）、
+  App の23スイート個別実行（121件）、`scripts/dev/check-all.sh`、`scripts/make-app.sh` がすべて成功。
+  今回の性能テストは再試行なしで全件成功。一括 App ログの完了サマリー欠落は継続するため個別完了を確認した。
+- T018: 再作成前の保守者確認済みアプリと、最終アプリの全8ファイルの SHA-256 が完全一致した。
+  2026-11-18 の保守者による両形式の起動・主要操作・修正確認と Phase 3 全ケースの確認報告を、
+  同一アーティファクトの最終起動確認として紐付けた。GUI の再起動や Computer Use の再実施は行っていない。
+  manifest: `/tmp/folzio-tak109-confirmed-app-manifest.json`、`/tmp/folzio-tak109-final-app-manifest.json`。
+  検証ログ: `/tmp/folzio-tak109-final-build.log`、`/tmp/folzio-tak109-final-test.log`、
+  `/tmp/folzio-tak109-final-app-suites/`、`/tmp/folzio-tak109-final-check-all.log`、
+  `/tmp/folzio-tak109-final-make-app.log`。
+
+- Converge: 機能要件5・成功基準3・受け入れシナリオ9・エッジケース2・前提1の20項目、
+  主要設計判断6件、憲章5原則を実装・自動検証・保守者報告と照合。実装の missing / partial / contradicts /
+  unrequested および各 severity の指摘は0件。Converge 自体は tasks.md を変更せず終了し、ここに進捗を記録した。
+  残りは既存 T020〜T022 の製品仕様反映・承認・コミットのみで、追加の実装タスクはない。
+- T020: ID 事前検査成功後、反映先表の20項目と横断の操作契約を製品仕様へ反映し、
+  README の領域索引に削除後の選択4件を追記、feature 冒頭に凍結注記を準備した。
+  反映差分は保守者の承認待ちで、まだコミットしない。
+
+- T020 検証: 反映先の20定義が feature の決定済み本文と一致することを照合。製品仕様の形式検査はエラー0・警告84（基準値84）、反映後の ID 検査と差分検査も成功。T021 の反映承認待ち。
+
+- 2026-11-18: 保守者が製品仕様への反映コミットに `ok` と回答
+  （annotation e144b52f-2eb8-4121-bb78-3eb9ad651a40）。T021 の承認を受領した。
+  反映・凍結注記・全タスク完了の記録を T022 としてコミットし、作業ブランチと検証結果を報告する。
