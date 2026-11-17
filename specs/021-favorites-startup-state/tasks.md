@@ -51,9 +51,9 @@ Core とツリーと設定 UI が揃った後に、T010〜T012 の検証・手�
 
 ## 最終 Phase: 最終検証・収束・製品仕様への反映
 
-- [ ] T013 最終の `swift build` → `swift test` → `scripts/dev/check-all.sh` → `scripts/make-app.sh` を順に実行し、結果とアプリの SHA-256 を `specs/021-favorites-startup-state/quickstart.md` に追記する。
-- [ ] T014 [MANUAL] 保守者が古い Folzio を終了して T011 と同じコマンドで最終ビルドを起動し、`specs/021-favorites-startup-state/quickstart.md` の最終ビルドの起動確認を行い、3ペインと選択した復元設定の結果を報告する。
-- [ ] T015 T014 の報告を `specs/021-favorites-startup-state/quickstart.md` に追記し、最終検証の記録と tasks の進捗をコミットする。
+- [X] T013 最終の `swift build` → `swift test` → `scripts/dev/check-all.sh` → `scripts/make-app.sh` を順に実行し、結果とアプリの SHA-256 を `specs/021-favorites-startup-state/quickstart.md` に追記する。
+- [X] T014 [MANUAL] 保守者が古い Folzio を終了して T011 と同じコマンドで最終ビルドを起動し、`specs/021-favorites-startup-state/quickstart.md` の最終ビルドの起動確認を行い、3ペインと選択した復元設定の結果を報告する。
+- [X] T015 T014 の報告を `specs/021-favorites-startup-state/quickstart.md` に追記し、最終検証の記録と tasks の進捗をコミットする。
 - [ ] T016 `speckit-converge` で `specs/021-favorites-startup-state/spec.md`・`plan.md`・`tasks.md` と参照製品仕様に対する実装を確認し、追加タスクがあれば実装・自動検証・必要な手動確認を最大3反復まで行う（後続の製品仕様反映タスクはこの収束後に実施する）。
 - [ ] T017 `scripts/dev/check-spec-ids.sh` を実行してから、`specs/021-favorites-startup-state/spec.md` の反映先の項目を `specs/product/directory-tree.md`・`window-layout.md`、2つの契約差分を `specs/product/contracts/settings.md`・`localization.md` へ反映し、feature の冒頭に凍結注記を追加する（README の領域別件数も合わせ、反映後に `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行する）。
 - [ ] T018 [MANUAL] 保守者が `specs/product/` への反映差分と `specs/021-favorites-startup-state/spec.md` の凍結注記を確認し、反映のコミットを承認する。

@@ -113,3 +113,17 @@ open /Users/igachan/.codex/worktrees/e161/folzio/.build/Folzio.app
   - `d6c474cdd9d0ee2b47bf421677baf63c16e0a1f7188d76a3c3266c08139c7c7d`。
 - macOS のバージョンと端末の機種名は報告に記載されていないため、推測して補わない。
 - T011 の確認を受け、T012 の実装 Phase のコミットを行う。
+
+### 2026-11-18 — T013〜T015 最終検証と同一ビルドの確認記録
+
+- 対象コミット: `928c15b`。実装ソース・テストへの追加変更はない。
+- 最終の `swift build` → `swift test` → `scripts/dev/check-all.sh` → `scripts/make-app.sh` を順に再実行し、
+  すべて終了コード0で成功した。
+- ログは `/tmp/folzio-tak107-final-build.log`、`/tmp/folzio-tak107-final-test.log`、
+  `/tmp/folzio-tak107-final-check-all.log`、`/tmp/folzio-tak107-final-make-app.log`。
+- 再作成後の実行ファイルの SHA-256 は次のとおりで、T011 で確認済みのものと完全一致した。
+  - `d6c474cdd9d0ee2b47bf421677baf63c16e0a1f7188d76a3c3266c08139c7c7d`。
+- 再作成後の署名検証も成功した。
+- 保守者の「手動確認を全て実施し、問題ない」との報告には、quickstart の最終起動確認も含まれる。
+- 今回は同じ実行ファイルであることをハッシュで確認できたため、その報告を T014 にも適用した。
+  - 再作成後の追加起動をエージェントが実施したという記録ではない。
