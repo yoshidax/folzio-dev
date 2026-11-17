@@ -23,31 +23,31 @@ Core とツリーと設定 UI が揃った後に、T010〜T012 の検証・手�
 
 ### Foundational — 共有する設定の保存と起動時判断
 
-- [ ] T003 `Tests/FolzioCoreTests/SettingsStoreTests.swift` に、新しい2キーの未設定・往復・全4通りの起動時判断・不正な型・既存の登録と表示名と他設定の保持を検証するテストを追加する（値は CFBoolean のときだけ採用する。未設定・文字列・整数（0と1も含む）・小数・配列・辞書は false として読む）。
-- [ ] T004 `Sources/FolzioCore/Settings/SettingsStore.swift` に `restoresFavoritesExpansion`・`favoritesExpanded` と読み取り専用の `favoritesExpandedOnLaunch` を追加し、各 setter が対応キーだけを書くようにして T003 を通す（キー・型・既定値は `specs/021-favorites-startup-state/data-model.md` に従う）。
+- [X] T003 `Tests/FolzioCoreTests/SettingsStoreTests.swift` に、新しい2キーの未設定・往復・全4通りの起動時判断・不正な型・既存の登録と表示名と他設定の保持を検証するテストを追加する（値は CFBoolean のときだけ採用する。未設定・文字列・整数（0と1も含む）・小数・配列・辞書は false として読む）。
+- [X] T004 `Sources/FolzioCore/Settings/SettingsStore.swift` に `restoresFavoritesExpansion`・`favoritesExpanded` と読み取り専用の `favoritesExpandedOnLaunch` を追加し、各 setter が対応キーだけを書くようにして T003 を通す（キー・型・既定値は `specs/021-favorites-startup-state/data-model.md` に従う）。
 
 ### US87 — 前回の開閉状態で起動する（P1）
 
 **Goal**: 見出しの起動時復元と以後の開閉保存を行い、更新中の一時状態で保存値を破壊しない。
 **Independent Test**: 設定を注入した controller で実際の outline 状態と保存結果を検証する。
 
-- [ ] T005 [US87] `Tests/FolzioAppTests/FavoritesExpansionTests.swift` に、初期表示の全4条件、開閉通知、`focusFavoritesHeader()`、通常ノード通知の除外、オフ→オンで追加開閉なしの次回復元、オフ起動による旧状態の置き換え、登録0件・登録先不在、スタブのボリューム更新前後の保存維持を確認する結合テストを追加する。
-- [ ] T006 [US87] `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift` の初期 reload 後に見出しだけを1回復元し、実際の開閉を通知で保存し、`applyRoots` 等の一時的な更新を保存しないようにして T005 を通す（選択・通常階層・監視の既存動作を保つ）。
+- [X] T005 [US87] `Tests/FolzioAppTests/FavoritesExpansionTests.swift` に、初期表示の全4条件、開閉通知、`focusFavoritesHeader()`、通常ノード通知の除外、オフ→オンで追加開閉なしの次回復元、オフ起動による旧状態の置き換え、登録0件・登録先不在、スタブのボリューム更新前後の保存維持を確認する結合テストを追加する。
+- [X] T006 [US87] `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift` の初期 reload 後に見出しだけを1回復元し、実際の開閉を通知で保存し、`applyRoots` 等の一時的な更新を保存しないようにして T005 を通す（選択・通常階層・監視の既存動作を保つ）。
 
 ### US88 — 毎回閉じる動作を選ぶ（P1）
 
 **Goal**: 既定オフの設定を英日・キーボード・読み上げから操作できるようにする。
 **Independent Test**: 設定を切り替えて閉じて再表示し、保存されるが現在のツリーが動かないことを確かめる。
 
-- [ ] T007 [US88] `Sources/FolzioLocalization/TextKey.swift` と `Sources/FolzioLocalization/Resources/en.lproj/Localizable.strings`・`ja.lproj/Localizable.strings` に `specs/021-favorites-startup-state/contracts/localization.md` の2キーと用途を追加する。
-- [ ] T008 [US88] `Sources/FolzioApp/Settings/SettingsWindowController.swift` に「プレビュー」と「動画」の間の新しい区分とチェックボックス、再表示時の同期、即時保存、次回起動からの適用、英日と読み上げラベルの更新、Tab/Shift+Tab の順序を実装する（幅620pt、区分間20pt、項目間8ptを維持する）。
-- [ ] T009 [US88] `Tests/FolzioCoreTests/Localization/SettingsTextTests.swift` で英日2キーを確認し、既存のカタログ整合性テストも通す。
+- [X] T007 [US88] `Sources/FolzioLocalization/TextKey.swift` と `Sources/FolzioLocalization/Resources/en.lproj/Localizable.strings`・`ja.lproj/Localizable.strings` に `specs/021-favorites-startup-state/contracts/localization.md` の2キーと用途を追加する。
+- [X] T008 [US88] `Sources/FolzioApp/Settings/SettingsWindowController.swift` に「プレビュー」と「動画」の間の新しい区分とチェックボックス、再表示時の同期、即時保存、次回起動からの適用、英日と読み上げラベルの更新、Tab/Shift+Tab の順序を実装する（幅620pt、区分間20pt、項目間8ptを維持する）。
+- [X] T009 [US88] `Tests/FolzioCoreTests/Localization/SettingsTextTests.swift` で英日2キーを確認し、既存のカタログ整合性テストも通す。
 
 ### 実装 Phase の検証ゲート
 
-- [ ] T010 `specs/021-favorites-startup-state/quickstart.md` の自動検証を `swift build` → `swift test` → `scripts/dev/check-all.sh` → `scripts/make-app.sh` の順に行い、結果・ログ・対象 HEAD とアプリの SHA-256 を同ファイルの検証記録へ追記する。
-- [ ] T011 [MANUAL] 保守者が `open /Users/igachan/.codex/worktrees/e161/folzio/.build/Folzio.app` を実行し、`specs/021-favorites-startup-state/quickstart.md` の基本動作と表示、言語・キーボード・読み上げの全必須項目を確認して OS・端末・対象アプリ・結果を報告する。
-- [ ] T012 T011 の実際の報告を `specs/021-favorites-startup-state/quickstart.md` に追記し、成功した確認だけを tasks に反映して、実装 Phase をコミットする（失敗や必須項目の未実施があれば先に解決する）。
+- [X] T010 `specs/021-favorites-startup-state/quickstart.md` の自動検証を `swift build` → `swift test` → `scripts/dev/check-all.sh` → `scripts/make-app.sh` の順に行い、結果・ログ・対象 HEAD とアプリの SHA-256 を同ファイルの検証記録へ追記する。
+- [X] T011 [MANUAL] 保守者が `open /Users/igachan/.codex/worktrees/e161/folzio/.build/Folzio.app` を実行し、`specs/021-favorites-startup-state/quickstart.md` の基本動作と表示、言語・キーボード・読み上げの全必須項目を確認して OS・端末・対象アプリ・結果を報告する。
+- [X] T012 T011 の実際の報告を `specs/021-favorites-startup-state/quickstart.md` に追記し、成功した確認だけを tasks に反映して、実装 Phase をコミットする（失敗や必須項目の未実施があれば先に解決する）。
 
 ## 最終 Phase: 最終検証・収束・製品仕様への反映
 

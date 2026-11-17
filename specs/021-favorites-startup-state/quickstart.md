@@ -76,3 +76,40 @@ open /Users/igachan/.codex/worktrees/e161/folzio/.build/Folzio.app
 自動検証の終了結果・対象コミット・アプリの SHA-256、保守者の報告日時・macOS・端末、
 上記各手動項目の結果と未実施項目を記録する。
 現時点では実装前で、検証は未実施。
+
+### 2026-11-17 — T010 自動検証・実機確認用ビルド
+
+- 対象: `codex/tak-107-favorites-startup`、設計コミット `2286f1e` に実装の未コミット差分を加えた状態。
+- Core の追加テストは、実装前に設定プロパティが未定義で失敗することを確認し、実装後に40テストが通過した。
+  - ログ: `/tmp/folzio-tak107-core-red.log`、`/tmp/folzio-tak107-core-green.log`。
+- ツリーの結合テストは、実装前に復元・保存の不足で失敗することを確認し、実装後に5テストが通過した。
+  - 起動時の4条件と、ボリューム更新時の2条件を含む。
+  - 実装前のログ: `/tmp/folzio-tak107-tree-red.log`。
+- 設定・ツリー・英日表示・カタログの対象テスト: Core 側55件と AppKit 側5件が通過した。
+- 次の4コマンドを順番に実行し、すべて終了コード0で成功した。
+
+| コマンド | 結果 | ログ |
+|---|---|---|
+| `swift build` | 成功 | `/tmp/folzio-tak107-build.log` |
+| `swift test` | 成功 | `/tmp/folzio-tak107-test.log` |
+| `scripts/dev/check-all.sh` | 全チェック成功 | `/tmp/folzio-tak107-check-all.log` |
+| `scripts/make-app.sh` | アプリ作成成功 | `/tmp/folzio-tak107-make-app.log` |
+
+- 作成アプリ: `/Users/igachan/.codex/worktrees/e161/folzio/.build/Folzio.app`。
+- `Contents/MacOS/Folzio` の SHA-256:
+  `d6c474cdd9d0ee2b47bf421677baf63c16e0a1f7188d76a3c3266c08139c7c7d`。
+- `codesign --verify --deep --strict` と `git diff --check` は成功した。
+- アプリバンドル内の英日両方に新しい翻訳2キーが含まれることを確認した。
+- GUI の起動、表示、キーボード、VoiceOver は保守者の確認待ち。
+  - T011 は未チェックのまま残し、実装のコミットと以後の工程は報告後に行う。
+
+### 2026-11-18 — T011 手動確認の受領
+
+- 保守者から「quickstart.mdの手動確認を全て実施し、問題ないことを確認しました」と報告を受領した。
+- 基本動作と表示、起動時の全4条件、設定の切り替え、ショートカット、更新時の状態保持、
+  英日表示・Tab/Shift+Tab・Space・VoiceOver の全手動項目は問題なしとして記録した。
+- 報告対象のアプリは前回提示したこの worktree の `.build/Folzio.app`。
+- 受領時に実行ファイルの SHA-256 を再確認し、T010 の記録と一致した。
+  - `d6c474cdd9d0ee2b47bf421677baf63c16e0a1f7188d76a3c3266c08139c7c7d`。
+- macOS のバージョンと端末の機種名は報告に記載されていないため、推測して補わない。
+- T011 の確認を受け、T012 の実装 Phase のコミットを行う。
