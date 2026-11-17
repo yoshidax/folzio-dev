@@ -10,7 +10,7 @@ Folzio の現在の仕様（Living spec）を領域ごとに分けたもの。`s
 | [overview.md](overview.md) | 概要と横断要件 | 下記 |
 | [window-layout.md](window-layout.md) | ウィンドウの構成 | 下記 |
 | [navigation-history.md](navigation-history.md) | 操作の履歴 | 戻る・進む（7） |
-| [directory-tree.md](directory-tree.md) | ディレクトリツリー | ディレクトリツリー（14）、お気に入り（13） |
+| [directory-tree.md](directory-tree.md) | ディレクトリツリー | ディレクトリツリー（14）、お気に入り（17） |
 | [file-list.md](file-list.md) | ファイルリスト | 下記 |
 | [zip.md](zip.md) | zip ファイル | zip ファイル（8）、zip ファイルの表示制御（4） |
 | [file-operations.md](file-operations.md) | ファイル操作 | ファイル操作（31）、確認の設定（2） |

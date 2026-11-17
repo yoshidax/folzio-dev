@@ -244,6 +244,8 @@
 | プレビュー | Preview |
 | 画像の操作 | Image interaction |
 | ホイールズームとドラッグ / スクロール | Wheel zoom and drag / Scroll |
+| お気に入り（設定の区分） | Favorites |
+| 起動時に前回の開閉状態を復元する | Restore previous expansion state on launch |
 | 動画 | Video |
 | 動画を自動再生する | Play videos automatically |
 | 動画をループ再生する | Loop videos |

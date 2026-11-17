@@ -1,5 +1,8 @@
 # Feature Specification: 起動時のお気に入りの開閉状態
 
+> **移行済み（2026-11-18）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは 021 時点の記録として凍結しており、更新しない。
+
 **Feature Branch**: `codex/tak-107-favorites-startup`
 
 **Created**: 2026-11-17
