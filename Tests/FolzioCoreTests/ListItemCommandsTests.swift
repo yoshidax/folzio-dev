@@ -67,6 +67,21 @@ struct ListItemCommandsTests {
         #expect(commands.allowsPaste == true)
     }
 
+    @Test("Parent focus permits other selection targets while preserving archive and search restrictions")
+    func parentWithOtherTargets() {
+        for archive in [false, true] {
+            for search in [false, true] {
+                let focused = ListItemCommands(kind: .parent, isBrowsingArchive: archive,
+                    hasEnclosingLevel: true, isShowingSearchResults: search)
+                #expect(!focused.forSelection(hasOperableTargets: false).allowsFileOperations)
+                let selection = focused.forSelection(hasOperableTargets: true)
+                #expect(selection.allowsFileOperations == !archive)
+                #expect(selection.allowsPaste == (!archive && !search))
+                #expect(selection.canGoUp == !search)
+            }
+        }
+    }
+
     @Test("Omitting hasEnclosingLevel makes canGoUp equal isBrowsingArchive")
     func hasEnclosingLevelDefaultsToBrowsingArchive() {
         let kinds: [ListItemKind?] = Self.allKinds + [nil]

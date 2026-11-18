@@ -53,6 +53,7 @@ struct TreeBatchTargetsTests {
         let targets = TreeBatchTargets(selection: [.folder(a), .folder(b), .folder(c)])
         #expect(targets.trashTargets(roots: roots) == .folders([a, b, c]))
         #expect(targets.dragURLs(roots: roots) == [a, b, c])
+        #expect(targets.duplicateURLs(roots: roots) == [a, b, c])
     }
 
     @Test(
@@ -68,6 +69,7 @@ struct TreeBatchTargetsTests {
         let targets = TreeBatchTargets(selection: [.folder(a), other])
         #expect(targets.trashTargets(roots: roots) == .unavailable)
         #expect(targets.dragURLs(roots: roots) == nil)
+        #expect(targets.duplicateURLs(roots: roots) == nil)
     }
 
     @Test(

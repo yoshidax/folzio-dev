@@ -5,14 +5,15 @@ public struct FolderContextMenu: Sendable {
     public let items: [MediaFile]
     public let hasMissingTargets: Bool
     public let isBrowsingArchive: Bool
-    public let containsRoot: Bool
+    public let containsProtectedFolder: Bool
 
     public init(files: [MediaFile], targets: Set<URL>, isBrowsingArchive: Bool, roots: [URL]) {
         items = files.filter { targets.contains($0.url) }
         hasMissingTargets = items.count != targets.count
         self.isBrowsingArchive = isBrowsingArchive
-        let rootPaths = Set(roots.map { $0.standardizedFileURL.path })
-        containsRoot = items.contains { $0.kind == .folder && rootPaths.contains($0.url.standardizedFileURL.path) }
+        containsProtectedFolder = items.contains {
+            $0.kind == .folder && FavoriteCommands.trashTarget(.folder($0.url), roots: roots) == nil
+        }
     }
 
     public var containsFolder: Bool { items.contains { $0.kind == .folder } }

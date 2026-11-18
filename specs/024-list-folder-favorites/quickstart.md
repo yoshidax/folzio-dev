@@ -117,3 +117,36 @@ T001 を受領し、T002 として設計文書を先にコミットしてから�
 - この依頼に従い、現在の実装と検証記録をレビュー用に先行コミットし、作業ブランチから master 向けの PR を作成する。
 - T016・T017 の手動確認と T018 の Phase 完了は未完了のまま残す。製品仕様への反映・feature の凍結もまだ行わない。
 - PR 本文に機能テストの通過、保守者が許容した性能閾値超過、GUI 確認待ちを明記する。
+
+### PR #91 レビュー指摘の判定と対応（2026-11-18）
+
+PR: https://github.com/yoshidax/folzio-dev/pull/91
+
+| 指摘 | 判定・対応 |
+|---|---|
+| [名前変更が対象外のフォーカスに作用する](https://github.com/yoshidax/folzio-dev/pull/91#discussion_r4610906462) | 妥当。対象集合にフォーカスが含まれる条件を復元した。選択A・フォーカスBの回帰テストで修正前の失敗を確認した。 |
+| [一覧外の選択が操作対象から落ちる](https://github.com/yoshidax/folzio-dev/pull/91#discussion_r4610906590) | 一部妥当。メニューを開いた時点の operableSelection を保存し、最初から一覧外の選択URLもコピー等の対象に保つ。一覧にあった対象が後で消えた場合は全体を無効にする。未知の種類を含む複数対象へのペースト・登録は、単一実フォルダの条件を満たさないので無効のままとする。 |
+| [ルートの複製](https://github.com/yoshidax/folzio-dev/pull/91#discussion_r4610906780) | 方針変更を保守者に確認して承認された。ツリー・一覧ともホーム・ボリューム・「/」を含む対象の複製を無効にする。メニュー検証と実行の両方で既存のルート保護を共用する。コピーとFinder表示はルートにも許可する。 |
+| [ペイン外フォーカス時の登録](https://github.com/yoshidax/folzio-dev/pull/91#discussion_r4610906917) | 保守者に確認して、表示中のツリーの選択を使う方針が承認された。文字入力中と対象ペイン非表示時は無効にし、一覧にフォーカスがある場合は一覧に不適切な対象しかなくてもツリーへ切り替えない。 |
+| [ペースト項目のショートカット表示](https://github.com/yoshidax/folzio-dev/pull/91#discussion_r4610907085) | 変更しない。contracts/keyboard-and-menus.md の「ここでキーの経路は項目メニューを閉じた状態を指し、開いているメニュー内のキー操作はそのメニューの対象に従う」に従う。メニュー項目をsenderとする経路と、メニューを閉じたキー経路の貼り付け先は既存の統合テストで分けて検証している。 |
+| [メニュー検証の不要な走査](https://github.com/yoshidax/folzio-dev/pull/91#discussion_r4610907283) | 妥当。ルート保護を必要とするアクションか先に確認し、無関係な項目ではfolderPolicyを作らない。 |
+| [ルート保護の再実装](https://github.com/yoshidax/folzio-dev/pull/91#discussion_r4610907447) | 妥当。FavoriteCommands.trashTargetを共用し、ルート外のフォルダもツリーと同じ条件で保護する。判定名はcontainsProtectedFolderとした。 |
+| [コマンド判定の重複](https://github.com/yoshidax/folzio-dev/pull/91#discussion_r4610907595) | 妥当。BrowserModelの生成ヘルパーを共用し、親リンクにフォーカスがある選択の判定をCoreのListItemCommands.forSelectionへ集約した。 |
+| [背景判定の未使用コード](https://github.com/yoshidax/folzio-dev/pull/91#discussion_r4610907774) | 妥当。3箇所のisContextClickOnBackgroundを削除し、記録済みcontextMenuIsBackgroundを使う。 |
+| [コピー処理と対象解決の重複](https://github.com/yoshidax/folzio-dev/pull/91#discussion_r4610907964) | 妥当。PasteboardFileURLs.writeを共用し、コピー項目の文言もrepresentedObject設定後のbatchTargetsで決める。 |
+
+- 本節の保守者承認をルート複製・ペイン外フォーカスについての設計変更として扱う。最終の整合確認と製品仕様反映で同じ条件を反映する。
+- GUI確認は引き続き未実施。T016・T017・T018は未完了のままとし、修正はPRレビュー用に先行コミットする。
+- 追加した回帰テストで、修正前の名前変更2件・一覧外選択3件のアサーション失敗を確認した。
+  ログ: `/tmp/folzio-tak113-review-red.log`。
+- 修正後の対象テストはCore 69件・4 suite、App 11件・2 suiteが通過した。
+  ログ: `/tmp/folzio-tak113-review-targeted.log`。
+- `swift build`: 成功（`/tmp/folzio-tak113-review-build.log`）。
+- `swift test --filter 'FolzioCoreTests|FolzioAppTests' --no-parallel`: Core 1,148件・126 suite、App 117件・22 suiteが通過した。
+  保守者の許容に従い性能テストはこの再検証から除外した。ログ: `/tmp/folzio-tak113-review-functional.log`。
+- `scripts/dev/check-all.sh`: 全チェック成功（`/tmp/folzio-tak113-review-check-all.log`）。
+- `scripts/make-app.sh`: 成功（`/tmp/folzio-tak113-review-make-app.log`）。
+- `codesign --verify --deep --strict .build/Folzio.app` と `git diff --check`: 成功。
+- 更新したGUI確認用アプリ: `/Users/igachan/.codex/worktrees/2347/folzio/.build/Folzio.app`。
+- 更新後の実行ファイル SHA-256: `1c721637513ef1b943cddd20270162ea4cffed0a779af223f1a629689f32a9d9`。
+- GUIで追加確認する点: 両ビューの単一・複数対象でルートの複製が無効なこと、ペイン外の非文字入力フォーカスでは表示中のツリーを登録対象にすること。

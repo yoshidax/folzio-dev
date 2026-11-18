@@ -48,7 +48,7 @@ struct FolderContextMenuTests {
     @Test("Root protection applies to mixed selections and ordinary folders share one ordered menu")
     func rootAndOrder() {
         let root = FolderContextMenu(files: [item(parent), item(a, .archive)], targets: [parent, a], isBrowsingArchive: false, roots: [parent])
-        #expect(root.containsRoot)
+        #expect(root.containsProtectedFolder)
         let common: [TreeContextMenuItem] = [.pasteHere, .movePasteHere, .separator, .moveToTrash, .separator,
             .renameFolder, .duplicate, .separator, .copy, .copyPathname, .separator, .addToFavorites, .separator, .revealInFinder]
         #expect(FolderContextMenu.items(allowsModification: true) == common)
@@ -68,5 +68,11 @@ struct FolderContextMenuTests {
         #expect(TreeBatchTargets(selection: []).folderURLs == nil)
     }
 
-
+    @Test("Both folder menus use the tree protection rules, including out-of-root folders")
+    func sharedProtection() {
+        for url in [parent, a, URL(fileURLWithPath: "/folders-other/a")] {
+            let policy = FolderContextMenu(files: [item(url)], targets: [url], isBrowsingArchive: false, roots: [parent])
+            #expect(policy.containsProtectedFolder == (FavoriteCommands.trashTarget(.folder(url), roots: [parent]) == nil))
+        }
+    }
 }

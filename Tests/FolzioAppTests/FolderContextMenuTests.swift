@@ -85,10 +85,18 @@ struct FolderContextMenuTests {
     func treeOperations() async throws {
         try await withFixture(.list) { model, _, coordinator, settings, parent, a, b in
             let tree = DirectoryTreeViewController(model: model, lister: DirectoryLister(kindNames: l10n.kindNames),
-                volumes: FolderMenuVolumes(urls: [a, b]), coordinator: coordinator, watcher: FileSystemWatcher(),
+                volumes: FolderMenuVolumes(urls: [parent]), coordinator: coordinator, watcher: FileSystemWatcher(),
                 settings: settings, confirmation: ConfirmationPresenter(settings: settings))
             let outline = try #require(findOutline(in: tree.view))
-            outline.selectRowIndexes(IndexSet([1, 2]), byExtendingSelection: false)
+            let root = try #require(outline.item(atRow: 1) as? DirectoryTreeViewController.Node)
+            let children = [a, b].map {
+                DirectoryTreeViewController.Node(folder: FolderNode(url: $0, name: $0.lastPathComponent, kind: .folder))
+            }
+            root.children = children
+            root.folder.applySubfolderListing(.success(children.count))
+            outline.reloadItem(root, reloadChildren: true)
+            outline.expandItem(root)
+            outline.selectRowIndexes(IndexSet(children.map { outline.row(forItem: $0) }), byExtendingSelection: false)
             let menu = try #require(outline.menu)
             tree.menuNeedsUpdate(menu)
             let copy = try #require(menu.items.first { $0.action == #selector(DirectoryTreeViewController.copy(_:)) })
@@ -112,11 +120,77 @@ struct FolderContextMenuTests {
             #expect(try Data(contentsOf: parent.appendingPathComponent("a 2/content.dat")) == content)
             #expect(FileManager.default.fileExists(atPath: parent.appendingPathComponent("b 2").path))
             #expect(try Data(contentsOf: a.appendingPathComponent("content.dat")) == content)
+            // Roots remain copyable but cannot be duplicated through either menu validation or direct actions.
+            outline.selectRowIndexes(IndexSet(integer: outline.row(forItem: root)), byExtendingSelection: false)
+            tree.menuNeedsUpdate(menu)
+            let rootCopy = try #require(menu.items.first { $0.action == #selector(DirectoryTreeViewController.copy(_:)) })
+            let rootDuplicate = try #require(menu.items.first { $0.action == #selector(DirectoryTreeViewController.duplicate(_:)) })
+            #expect(tree.validateMenuItem(rootCopy))
+            #expect(!tree.validateMenuItem(rootDuplicate))
+            tree.duplicate(rootDuplicate)
             // Duplicate registration preserves the stored order.
             tree.addFavorite(a)
             tree.addFavorite(b)
             tree.addFavorite(a)
             #expect(settings.favorites.urls.map(\.path) == [a.path, b.path])
+        }
+    }
+
+    @Test("The file list protects root duplication in single and mixed selections", arguments: [false, true])
+    func listRootDuplication(_ multiple: Bool) async throws {
+        try await withFixture(.list) { model, list, _, _, parent, a, b in
+            model.setNavigationRoots([parent, a])
+            model.select(multiple ? [a, b] : [a], focused: a)
+            let index = try #require(model.listing.files.firstIndex { $0.url == a })
+            list.recordContextMenuTarget(clickedIndex: index)
+            list.fileContextMenu.refreshItems()
+            let duplicate = try #require(list.fileContextMenu.menu.items.first {
+                $0.action == #selector(FileListViewController.duplicate(_:))
+            })
+            #expect(!list.validateMenuItem(duplicate))
+            list.duplicate(duplicate)
+            list.duplicate(nil)
+            await Task.yield()
+            #expect(!FileManager.default.fileExists(atPath: parent.appendingPathComponent("a 2").path))
+        }
+    }
+
+    @Test("A selected context target cannot rename a different focused row")
+    func renameRequiresFocusInTargets() async throws {
+        try await withFixture(.list) { model, list, _, _, _, a, b in
+            model.select([a], focused: b)
+            let index = try #require(model.listing.files.firstIndex { $0.url == a })
+            list.recordContextMenuTarget(clickedIndex: index)
+            list.fileContextMenu.refreshItems()
+            let rename = try #require(list.fileContextMenu.menu.items.first {
+                $0.action == #selector(FileListViewController.rename(_:))
+            })
+            #expect(!list.operationTarget(for: rename).allowsRename)
+            #expect(!list.validateMenuItem(rename))
+        }
+    }
+
+    @Test("Context operations retain initially unlisted selection URLs but reject newly vanished rows")
+    func initiallyUnlistedSelection() async throws {
+        try await withFixture(.list) { model, list, _, _, parent, a, b in
+            let unlisted = parent.appendingPathComponent("unlisted.png")
+            try Data([3]).write(to: unlisted)
+            model.select([a, unlisted], focused: a)
+            let index = try #require(model.listing.files.firstIndex { $0.url == a })
+            list.recordContextMenuTarget(clickedIndex: index)
+            list.fileContextMenu.refreshItems()
+            let copy = try #require(list.fileContextMenu.menu.items.first {
+                $0.action == #selector(FileListViewController.copy(_:))
+            })
+            #expect(Set(list.operationTarget(for: copy).urls) == [a, unlisted])
+            #expect(list.validateMenuItem(copy))
+            model.select([b], focused: b)
+            #expect(Set(list.operationTarget(for: copy).urls) == [a, unlisted])
+            #expect(list.operationTarget(for: nil).urls == [b])
+            try FileManager.default.removeItem(at: a)
+            await model.reloadCurrentFolder()
+            #expect(list.operationTarget(for: copy).urls.isEmpty)
+            #expect(!list.validateMenuItem(copy))
         }
     }
 

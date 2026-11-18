@@ -58,7 +58,7 @@ public struct TreeBatchTargets: Sendable, Equatable {
         regularFolderURLs(roots: roots)
     }
 
-    /// Real folders for copy, duplicate, and Reveal in Finder, including roots. Rejects virtual rows as a whole.
+    /// Real folders for copy and Reveal in Finder, including roots. Rejects virtual rows as a whole.
     public var folderURLs: [URL]? {
         guard !targets.isEmpty else { return nil }
         var urls: [URL] = []
@@ -67,6 +67,11 @@ public struct TreeBatchTargets: Sendable, Equatable {
             urls.append(url)
         }
         return urls
+    }
+
+    /// Duplicate protects the same roots and out-of-root targets as rename and Trash.
+    public func duplicateURLs(roots: [URL]) -> [URL]? {
+        regularFolderURLs(roots: roots)
     }
 
     /// Multiple targets use the same operation order; each action validates the entire target set.

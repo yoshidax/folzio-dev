@@ -43,6 +43,13 @@ public struct ListItemCommands: Sendable, Equatable {
         !isBrowsingArchive && kind != .parent
     }
 
+    /// A focused parent link does not disable operations on the other, operable selection targets.
+    public func forSelection(hasOperableTargets: Bool) -> Self {
+        Self(kind: kind == .parent && hasOperableTargets ? nil : kind,
+            isBrowsingArchive: isBrowsingArchive, hasEnclosingLevel: hasEnclosingLevel,
+            isShowingSearchResults: isShowingSearchResults)
+    }
+
     /// Copy as Pathname. Needs exactly one selected row that is a file operation target, so a zip's contents and
     /// `..` are excluded (FR-073, FR-183).
     public func allowsCopyPathname(selectionCount: Int) -> Bool {

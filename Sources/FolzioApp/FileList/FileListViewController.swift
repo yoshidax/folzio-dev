@@ -13,8 +13,13 @@ final class FileListViewController: NSViewController {
     private(set) lazy var fileContextMenu = FileContextMenu(host: self)
     /// Captured item-menu focus and targets. Kept after closing because AppKit sends the chosen action after
     /// `menuDidClose`. Keyboard and menu bar commands continue to use the live selection (FR-397).
-    private var contextMenuFocusedURL: URL?
-    private var contextMenuTargets: Set<URL>?
+    private struct ContextMenuSnapshot {
+        let targets: Set<URL>
+        let listedTargets: Set<URL>
+        let operableURLs: [URL]
+        let focused: URL?
+    }
+    private var contextMenuSnapshot: ContextMenuSnapshot?
     private(set) var contextMenuIsBackground = false
     var canAddFavorite: ((URL) -> Bool)?
     var onAddFavorite: ((URL) -> Void)?
@@ -224,17 +229,6 @@ final class FileListViewController: NSViewController {
         }
     }
 
-    /// Whether the last context click hit no row or item, so the context menu targets the displayed folder
-    /// (FR-213, research.md R7).
-    var isContextClickOnBackground: Bool {
-        switch displayMode {
-        case .list:
-            listModeView.isContextClickOnBackground
-        case .thumbnails:
-            thumbnailModeView.isContextClickOnBackground
-        }
-    }
-
     /// Whether New Folder can create a folder in the displayed folder (FR-212). Unavailable inside a zip, while
     /// showing search results, and when the displayed folder cannot be read.
     var canCreateFolderInDisplayedFolder: Bool {
@@ -360,14 +354,16 @@ final class FileListViewController: NSViewController {
         contextMenuIsBackground = target == .background
         switch target {
         case .item(let index):
-            contextMenuTargets = [files[index].url]
-            contextMenuFocusedURL = files[index].url
+            let file = files[index]
+            contextMenuSnapshot = ContextMenuSnapshot(targets: [file.url], listedTargets: [file.url],
+                operableURLs: file.kind == .parent ? [] : [file.url], focused: file.url)
         case .selection:
-            contextMenuTargets = model.selection.selected
-            contextMenuFocusedURL = model.selection.focused
+            let targets = model.selection.selected
+            contextMenuSnapshot = ContextMenuSnapshot(targets: targets,
+                listedTargets: Set(files.lazy.filter { targets.contains($0.url) }.map(\.url)),
+                operableURLs: model.operableSelection, focused: model.selection.focused)
         case .background:
-            contextMenuTargets = nil
-            contextMenuFocusedURL = nil
+            contextMenuSnapshot = nil
         }
         if case .item(let index) = target {
             if displayMode == .thumbnails {
@@ -403,21 +399,18 @@ final class FileListViewController: NSViewController {
 
     /// Item menus retain their captured targets; keyboard and menu bar commands use the live selection (A-239).
     func operationTarget(for sender: Any?) -> OperationTarget {
-        if isFromContextMenu(sender), let targets = contextMenuTargets {
-            let files = model.listing.files.filter { targets.contains($0.url) }
-            let valid = files.count == targets.count
-            let focused = valid ? contextMenuFocusedURL : nil
+        if isFromContextMenu(sender), let snapshot = contextMenuSnapshot {
+            let files = model.listing.files.filter { snapshot.targets.contains($0.url) }
+            // Keep initially unlisted selection URLs, but never replace a row that vanished after capture.
+            let valid = snapshot.listedTargets.isSubset(of: Set(files.map(\.url)))
+            let focused = valid ? snapshot.focused : nil
             let kind = focused.flatMap { url in files.first { $0.url == url }?.kind }
-            let operable = valid ? files.filter { $0.kind != .parent }.map(\.url) : []
-            let commands = ListItemCommands(
-                kind: kind == .parent && !operable.isEmpty ? nil : kind,
-                isBrowsingArchive: model.isBrowsingArchive, hasEnclosingLevel: model.hasEnclosingLevel,
-                isShowingSearchResults: model.isShowingSearchResults)
-            let focusedCommands = ListItemCommands(
-                kind: kind, isBrowsingArchive: model.isBrowsingArchive, hasEnclosingLevel: model.hasEnclosingLevel,
-                isShowingSearchResults: model.isShowingSearchResults)
+            let operable = valid ? snapshot.operableURLs : []
+            let focusedCommands = model.itemCommands(kind: kind)
+            let commands = focusedCommands.forSelection(hasOperableTargets: !operable.isEmpty)
             return OperationTarget(urls: operable, commands: commands, focusedCommands: focusedCommands,
-                focused: focused, allowsRename: valid && targets.count == 1 && focused != nil)
+                focused: focused, allowsRename: valid && snapshot.targets.count == 1
+                    && focused.map(snapshot.targets.contains) == true)
         }
         let selected = model.selection.selected
         let focused = model.selection.focused
@@ -431,7 +424,7 @@ final class FileListViewController: NSViewController {
     }
 
     private func folderPolicy(useContext: Bool) -> FolderContextMenu {
-        let targets = useContext ? (contextMenuTargets ?? model.selection.selected) : model.selection.selected
+        let targets = useContext ? (contextMenuSnapshot?.targets ?? model.selection.selected) : model.selection.selected
         return FolderContextMenu(files: model.listing.files, targets: targets,
             isBrowsingArchive: model.isBrowsingArchive, roots: model.navigationRoots)
     }
@@ -1117,9 +1110,7 @@ final class FileListViewController: NSViewController {
         guard target.commands.allowsFileOperations else { return }
         let urls = target.urls
         guard !urls.isEmpty else { return }
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.writeObjects(urls as [NSURL])
+        PasteboardFileURLs.write(urls, to: .general)
     }
 
     /// Copy as Pathname: puts the absolute path of the single selected item on the pasteboard as a string
@@ -1154,7 +1145,8 @@ final class FileListViewController: NSViewController {
     @objc func duplicate(_ sender: Any?) {
         let target = operationTarget(for: sender)
         guard target.commands.allowsFileOperations else { return }
-        guard !isEditingText else { return }
+        guard !isEditingText,
+              !folderPolicy(useContext: isFromContextMenu(sender)).containsProtectedFolder else { return }
         let urls = target.urls
         guard !urls.isEmpty else { return }
         Task { @MainActor in
@@ -1165,7 +1157,7 @@ final class FileListViewController: NSViewController {
     @objc func rename(_ sender: Any?) {
         let target = operationTarget(for: sender)
         guard target.focusedCommands.allowsFileOperations,
-              !folderPolicy(useContext: isFromContextMenu(sender)).containsRoot else { return }
+              !folderPolicy(useContext: isFromContextMenu(sender)).containsProtectedFolder else { return }
         guard !isEditingText else { return }
         guard target.allowsRename, let focused = target.focused else { return }
 
@@ -1263,7 +1255,7 @@ final class FileListViewController: NSViewController {
     @objc func moveToTrash(_ sender: Any?) {
         let target = operationTarget(for: sender)
         guard target.commands.allowsFileOperations else { return }
-        guard !isEditingText, !folderPolicy(useContext: isFromContextMenu(sender)).containsRoot else { return }
+        guard !isEditingText, !folderPolicy(useContext: isFromContextMenu(sender)).containsProtectedFolder else { return }
         let urls = target.urls
         guard !urls.isEmpty else { return }
         Task { @MainActor in
@@ -1518,8 +1510,9 @@ extension FileListViewController: NSMenuItemValidation {
 
         // A zip is read-only (FR-073). `..` is not an operation target (R30). ListItemCommands makes the decision.
         let commands = target.commands
-        if folderPolicy(useContext: isFromContextMenu(menuItem)).containsRoot,
-           menuItem.action == #selector(moveToTrash(_:)) || menuItem.action == #selector(rename(_:)) { return false }
+        if (menuItem.action == #selector(moveToTrash(_:)) || menuItem.action == #selector(rename(_:))
+            || menuItem.action == #selector(duplicate(_:))),
+           folderPolicy(useContext: isFromContextMenu(menuItem)).containsProtectedFolder { return false }
         switch menuItem.action {
         case #selector(copy(_:)),
              #selector(open(_:)),

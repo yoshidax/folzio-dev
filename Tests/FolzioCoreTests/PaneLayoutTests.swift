@@ -474,6 +474,11 @@ extension PaneLayoutTests {
                 #expect(commands.allowsAddingFavorite(in: .fileList) == (!editing && layout.isVisible(.fileList)))
                 #expect(commands.allowsAddingFavorite(in: .tree) == commands.allowsAddingFavorite)
                 #expect(!commands.allowsAddingFavorite(in: .preview))
+                for focused in [Pane.tree, .fileList, .preview].map(Optional.some) + [nil] {
+                    let expected: Pane = focused == .fileList ? .fileList : .tree
+                    #expect(commands.favoriteTargetPane(focusedPane: focused)
+                        == (!editing && layout.isVisible(expected) ? expected : nil))
+                }
             }
         }
     }

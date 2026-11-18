@@ -1129,15 +1129,11 @@ final class MainSplitViewController: NSSplitViewController {
     /// The file list acts on its selection; tree and preview focus retain the tree target.
     private var favoriteTargetPane: Pane? {
         guard !(view.window?.firstResponder is NSTextView) else { return nil }
-        switch focusedPane() {
-        case .fileList: return .fileList
-        case .tree, .preview: return .tree
-        case nil: return nil
-        }
+        return paneCommands.favoriteTargetPane(focusedPane: focusedPane())
     }
 
     var canAddSelectedFolderToFavorites: Bool {
-        guard let pane = favoriteTargetPane, paneCommands.allowsAddingFavorite(in: pane) else { return false }
+        guard let pane = favoriteTargetPane else { return false }
         return pane == .fileList ? fileListViewController.canAddToFavorites(nil)
             : treeViewController.canAddSelectedFolderToFavorites
     }

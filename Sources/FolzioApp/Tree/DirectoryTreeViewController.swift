@@ -464,14 +464,7 @@ final class DirectoryTreeViewController: NSViewController {
             )
             menuItem.keyEquivalentModifierMask = [.command, .control]
         case .copy:
-            let origin = role(for: item)
-            let selected = outlineView.selectedRowIndexes.contains(outlineView.row(forItem: item))
-            let urls = TreeBatchTargets(selection: selectedItems.compactMap { role(for: $0) },
-                origin: origin, originIsSelected: selected).folderURLs ?? []
-            let title = urls.count > 1
-                ? l10n.text(.contextCopyMultiple, .count(urls.count))
-                : l10n.text(.contextCopySingle, .text(urls.first?.lastPathComponent ?? ""))
-            menuItem = NSMenuItem(title: title, action: #selector(copy(_:)), keyEquivalent: "c")
+            menuItem = NSMenuItem(title: "", action: #selector(copy(_:)), keyEquivalent: "c")
             menuItem.keyEquivalentModifierMask = [.command]
         case .duplicate:
             menuItem = NSMenuItem(title: l10n.text(.menuEditDuplicate), action: #selector(duplicate(_:)), keyEquivalent: "d")
@@ -525,6 +518,12 @@ final class DirectoryTreeViewController: NSViewController {
         }
         menuItem.target = self
         menuItem.representedObject = item
+        if kind == .copy {
+            let urls = batchTargets(for: menuItem).folderURLs ?? []
+            menuItem.title = urls.count > 1
+                ? l10n.text(.contextCopyMultiple, .count(urls.count))
+                : l10n.text(.contextCopySingle, .text(urls.first?.lastPathComponent ?? ""))
+        }
         // The displayed keys follow the shortcut assignments (FR-261). Rename keeps Return, which is fixed.
         switch kind {
         case .duplicate: MenuShortcutApplier.shared.register(menuItem, for: .duplicate)
@@ -1030,12 +1029,12 @@ final class DirectoryTreeViewController: NSViewController {
 
     func copyFolders(_ sender: Any?, to pasteboard: NSPasteboard) {
         guard editingTarget == nil, let urls = batchTargets(for: sender).folderURLs else { return }
-        pasteboard.clearContents()
-        pasteboard.writeObjects(urls as [NSURL])
+        PasteboardFileURLs.write(urls, to: pasteboard)
     }
 
     @objc func duplicate(_ sender: Any?) {
-        guard editingTarget == nil, let urls = batchTargets(for: sender).folderURLs else { return }
+        guard editingTarget == nil,
+              let urls = batchTargets(for: sender).duplicateURLs(roots: roots.map(\.url)) else { return }
         Task { @MainActor [coordinator] in await coordinator.duplicate(urls) }
     }
 
@@ -2118,7 +2117,9 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
         case #selector(movePaste(_:)):
             return fileTargetNode(for: menuItem) != nil
                 && PasteboardImport.availability().allowsPaste(move: true)
-        case #selector(copy(_:)), #selector(duplicate(_:)), #selector(revealInFinder(_:)):
+        case #selector(duplicate(_:)):
+            return batchTargets(for: menuItem).duplicateURLs(roots: roots.map(\.url)) != nil
+        case #selector(copy(_:)), #selector(revealInFinder(_:)):
             return batchTargets(for: menuItem).folderURLs != nil
         case #selector(copyPathname(_:)):
             return pathnameTarget(for: menuItem) != nil
