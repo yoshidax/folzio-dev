@@ -30,8 +30,8 @@
 | `fileOps.confirm.trash` | Bool | true（未設定なら旧キーの値） | FR-022・023・024・079・396 |
 | `fileOps.confirmBeforeExecuting` | Bool | true | 以前の版の設定。読み込みの引き継ぎ元だけに使い、書き込まない（FR-396） |
 | `shortcuts.overrides` | [String: String]（コマンド ID → 組み合わせ。未設定は `none`） | （未設定 = すべて既定値） | FR-262・268 |
-| `favorites.restoreExpansion` | Bool | false | FR-399・402 |
-| `favorites.isExpanded` | Bool | false | FR-400・401 |
+| `favorites.restoreExpansion` | Bool | false | FR-403・406 |
+| `favorites.isExpanded` | Bool | false | FR-404・405 |
 | `favorites.paths` | [String]（絶対パス、登録順） | `[]` | FR-062・066 |
 | `favorites.displayNames` | [String: String]（キーは登録したフォルダの絶対パス、値は表示名） | （未設定 = どの項目も表示名なし） | FR-099〜101 |
 
@@ -65,8 +65,8 @@
 - お気に入りの場所はパスで保存し、ブックマークデータは保存しない。
   - 登録したフォルダが移動・名前変更されても追従せず、見つからない項目として残す（FR-067）。
   - 見つかるかどうか（`FavoriteAvailability`）は保存しない。
-- 「お気に入り」の見出しの開閉状態は `favorites.isExpanded` に保存する（FR-400・401）。
-  - 復元設定は `favorites.restoreExpansion` に保存し、既定ではオフとする（FR-399・402）。
+- 「お気に入り」の見出しの開閉状態は `favorites.isExpanded` に保存する（FR-404・405）。
+  - 復元設定は `favorites.restoreExpansion` に保存し、既定ではオフとする（FR-403・406）。
   - オフなら起動時に折りたたみ、オンなら保存した開閉状態で始める。
   - 新しい2キーは CFBoolean だけを有効とし、未設定・不正な型は false とする。
   - 開閉状態は復元設定のオン・オフにかかわらず、実際の開閉が変わった時点で保存する。
@@ -178,7 +178,7 @@
   切り替え効果 → 言語 とする
 - チェックボックスとポップアップメニューの変更は、操作した時点で保存する。
   - テキストフィールドは確定した時点で保存して反映する。
-  - 起動時のお気に入りの復元設定は、操作時に保存し、次回起動から適用する（FR-402）。
+  - 起動時のお気に入りの復元設定は、操作時に保存し、次回起動から適用する（FR-406）。
     - 設定を切り替えただけでは現在の見出しの開閉・選択・ファイルリスト・プレビューを変えない。
   - それ以外のチェックボックスとポップアップメニューは即時反映し、再起動は要らない（FR-127、A-60）
 - 「最後まで表示したら先頭から繰り返す」は「動画をループ再生する」とは独立した設定とする（FR-119）

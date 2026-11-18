@@ -2,6 +2,19 @@
 
 > **移行済み（2026-11-18）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
 > このファイルは 021 時点の記録として凍結しており、更新しない。
+>
+> **ID の振り直し（2026-11-18）**: 先にマージされた TAK-109（`specs/023-select-after-trash/`）と ID が重複したため、
+> `specs/product/` ではこの feature の ID を次のとおり振り直した。この feature ディレクトリの本文は旧 ID のまま残す。
+>
+> | 旧 ID | 新 ID |
+> |---|---|
+> | FR-399〜402 | FR-403〜406 |
+> | US87（AS1〜AS3） | US89（AS1〜AS3） |
+> | US88（AS1〜AS4） | US90（AS1〜AS4） |
+> | EC-268・269 | EC-272・273 |
+> | SC-221〜223 | SC-224〜226 |
+>
+> EC-270・271・FR-222・A-27 は重複しないため変えていない。
 
 **Feature Branch**: `codex/tak-107-favorites-startup`
 
