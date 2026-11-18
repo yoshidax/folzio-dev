@@ -1069,3 +1069,5 @@
 "settings.preview.interaction" = "Image interaction";
 "settings.preview.wheelPan" = "Wheel zoom and drag";
 "settings.preview.scroll" = "Scroll";
+"settings.favorites" = "Favorites";
+"settings.favorites.restoreExpansion" = "Restore previous expansion state on launch";
