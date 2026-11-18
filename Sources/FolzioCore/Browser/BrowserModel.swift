@@ -151,7 +151,7 @@ public final class BrowserModel {
     private let searcher: any FileNameSearching
 
     /// Tree roots (home and volumes). Determine the `..` and ⌘↑ enclosing folder for regular folders (R30).
-    private var navigationRoots: [URL] = []
+    public private(set) var navigationRoots: [URL] = []
     /// Every root passed to `setNavigationRoots`, including volumes that were removed later. Keeps the root of a
     /// removed volume known so that its vanished folders are not replaced by a folder outside it (EC-18).
     private var knownRoots: Set<URL> = []

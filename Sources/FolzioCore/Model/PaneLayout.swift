@@ -197,7 +197,11 @@ public struct PaneCommands: Sendable, Equatable {
 
     /// ⌃⌘T. Combined with the tree-side check using AND (FR-062, FR-092)
     public var allowsAddingFavorite: Bool {
-        !isEditingText && layout.isVisible(.tree)
+        allowsAddingFavorite(in: .tree)
+    }
+
+    public func allowsAddingFavorite(in pane: Pane) -> Bool {
+        pane != .preview && !isEditingText && layout.isVisible(pane)
     }
 
     /// ⌘F (FR-080, FR-092)

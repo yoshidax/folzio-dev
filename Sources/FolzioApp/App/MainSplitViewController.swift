@@ -224,6 +224,12 @@ final class MainSplitViewController: NSSplitViewController {
 
         super.init(nibName: nil, bundle: nil)
 
+        fileListViewController.canAddFavorite = { [weak treeViewController] url in
+            treeViewController?.canAddFavorite(url) ?? false
+        }
+        fileListViewController.onAddFavorite = { [weak treeViewController] url in
+            treeViewController?.addFavorite(url)
+        }
         fileOperationCoordinator.onFoldersChanged = { [weak treeViewController] folders in
             Task { @MainActor in
                 await treeViewController?.refreshFolders(folders)
@@ -1120,13 +1126,29 @@ final class MainSplitViewController: NSSplitViewController {
         treeViewController.focusFavoritesHeader()
     }
 
-    /// ⌃⌘T. Registers the folder selected in the tree regardless of which pane has focus (FR-062).
-    @objc func addSelectedFolderToFavorites(_ sender: Any?) {
-        guard paneCommands.allowsAddingFavorite,
-              treeViewController.canAddSelectedFolderToFavorites else {
-            return
+    /// The file list acts on its selection; tree and preview focus retain the tree target.
+    private var favoriteTargetPane: Pane? {
+        guard !(view.window?.firstResponder is NSTextView) else { return nil }
+        switch focusedPane() {
+        case .fileList: return .fileList
+        case .tree, .preview: return .tree
+        case nil: return nil
         }
-        treeViewController.addSelectedFolderToFavorites()
+    }
+
+    var canAddSelectedFolderToFavorites: Bool {
+        guard let pane = favoriteTargetPane, paneCommands.allowsAddingFavorite(in: pane) else { return false }
+        return pane == .fileList ? fileListViewController.canAddToFavorites(nil)
+            : treeViewController.canAddSelectedFolderToFavorites
+    }
+
+    @objc func addSelectedFolderToFavorites(_ sender: Any?) {
+        guard canAddSelectedFolderToFavorites else { return }
+        if favoriteTargetPane == .fileList {
+            fileListViewController.addToFavorites(nil)
+        } else {
+            treeViewController.addSelectedFolderToFavorites()
+        }
     }
 
     /// ⌥⌘F. Opens the search modal. The default root is the displayed folder (the pre-search folder while showing
@@ -1280,8 +1302,7 @@ extension MainSplitViewController: NSMenuItemValidation {
         case #selector(goForward(_:)):
             return paneCommands.canNavigateHistory && historyNavigator.canGoForward
         case #selector(addSelectedFolderToFavorites(_:)):
-            return paneCommands.allowsAddingFavorite
-                && treeViewController.canAddSelectedFolderToFavorites
+            return canAddSelectedFolderToFavorites
         case #selector(startSlideshow(_:)):
             return canStartSlideshow
         default:

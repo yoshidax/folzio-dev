@@ -64,3 +64,56 @@ tasks.md の記録タスクに従い、自動検証・GUI 報告・converge の�
 2026-11-17: 保守者が「この設計で実装へ進めてよいですか？」へ「OK」と回答。
 共通メニュー、新規フォルダの配置、複数対象、検索結果のペースト、手動確認の分類を承認済み。
 T001 を受領し、T002 として設計文書を先にコミットしてから実装する。
+
+## 実装・関連検証（2026-11-18）
+
+- T003〜T014: 共通メニュー・ツリーのコピーと複製・一覧の貼り付け先・登録経路を実装した。
+- 右クリック時の全対象を保持し、対象消失・選択変更でも別の対象へ切り替えない。
+- ツリーの複製は Task 開始前に対象を確定する。
+- 関連テスト: Core 58件・App 8件が通過した（`/tmp/folzio-tak113-targeted.log`）。
+- App テストでは隔離した pasteboard と一時フォルダでコピー・複製・移動ペーストの実結果を確認した。
+- `swift build`: 成功（`/tmp/folzio-tak113-build.log`）。
+- `swift test`: 終了コードは0、性能28件・Core 1,146件の完了を確認したが、App の最終完了記録が欠けた。
+- `swift test --filter FolzioAppTests --no-parallel`: App 114件・22 suite の通過を確認した。
+  ログ: `/tmp/folzio-tak113-app-serial-tests.log`。
+- `scripts/dev/check-all.sh`: 成功（`/tmp/folzio-tak113-check-all.log`）。
+- 全体の最終検証は `swift test --no-parallel` で実行中であり、T015 はまだ完了扱いにしない。
+
+### 全体検証と性能閾値の扱い（2026-11-18）
+
+- `swift test --no-parallel`: Core 1,146件・126 suite、App 114件・22 suite は通過した。
+  ログ: `/tmp/folzio-tak113-all-serial-tests.log`。
+- 同実行の性能テストは28件中、名前の絞り込み（最大142ms／100ms）と列挙（1.047秒／1秒）の閾値超過があった。
+- 同じコードの再実行では、名前の絞り込み（最大129ms／100ms）の1件だけが超過し、列挙は0.438秒で通過した。
+  ログ: `/tmp/folzio-tak113-all-serial-recheck.log`。
+- 保守者が「性能テストの閾値超過はスキップして問題ないです」と明示したため、今回の性能閾値超過は検証ゲートの阻害条件から除く。
+- 性能テスト・基準値・既存の絞り込み処理と列挙処理は変更しない。元コードとの追加比較は取りやめる。
+- 性能以外の機能テストと、規約チェック・アプリ作成・保守者のGUI確認は引き続き必要。
+
+### T015 完了・手動確認待ち（2026-11-18）
+
+- 保守者が「性能テストの閾値超過はスキップして問題ない」と指示したため、既存の性能閾値超過を今回の検証ゲートから除外した。
+  閾値・性能テスト・対象処理は変更していない。元の master との比較は取りやめた。
+- 全体の直列実行で Core 1,146件・126 suite、App 114件・22 suite の機能テストが通過した。
+  最初の実行ログ: `/tmp/folzio-tak113-all-serial-tests.log`。
+- 性能の記録: 最初の直列実行は名前絞り込み142ms、列挙1.047秒で超過した。
+  再確認では列挙0.438秒で通過し、名前絞り込み129msだけが超過した。
+  再確認ログ: `/tmp/folzio-tak113-all-serial-recheck.log`。
+- 最終 `scripts/dev/check-all.sh`: 成功（`/tmp/folzio-tak113-final-check-all.log`）。
+- `scripts/make-app.sh`: 成功（`/tmp/folzio-tak113-make-app.log`）。
+- `codesign --verify --deep --strict .build/Folzio.app`: 成功。
+- 起動対象: `/Users/igachan/.codex/worktrees/2347/folzio/.build/Folzio.app`（arm64）。
+- 実行ファイル SHA-256: `68f4b8a21184e1bcdb57c7904b1909ef6bb1a41dda83f0aac11e670f62e76bdf`。
+- ソース: 設計コミット `22bd5fa` と作業ツリーの実装変更。実装 Phase はまだコミットしていない。
+- 確認用データ: `/private/tmp/folzio-tak113-manual-zwuukdcj/`。
+  `P` が一覧の親、`P/A`・`P/B` が対象、`S/source.png` がコピー元。
+  `P/image.png` と `P/sample.zip` でメディアと zip の回帰も確認できる。
+- 次は T016・T017。保守者による起動・項目1〜11の報告前にはチェックしない。
+  製品仕様への反映・凍結と実装 Phase のコミットは未実施。
+
+### 動作確認前のコードレビュー依頼（2026-11-18）
+
+- 保守者から「動作確認の前にコードレビューを行いたいのでPRを作成」と依頼があった。
+- この依頼に従い、現在の実装と検証記録をレビュー用に先行コミットし、作業ブランチから master 向けの PR を作成する。
+- T016・T017 の手動確認と T018 の Phase 完了は未完了のまま残す。製品仕様への反映・feature の凍結もまだ行わない。
+- PR 本文に機能テストの通過、保守者が許容した性能閾値超過、GUI 確認待ちを明記する。
