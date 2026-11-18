@@ -48,6 +48,27 @@ struct BrowserModelSearchTests {
         #expect(Set(env.model.listing.files.map(\.url)) == [arrival.url, next.url])
     }
 
+    @Test("Renaming an unselected search row invalidates the pending trash order", arguments: [false, true])
+    func renameDuringTrash(_ folder: Bool) async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let rows = try ["a.mov", "b.mov", "c.mov"].map { try env.makeResult("trip/day1/" + $0) }
+        env.model.startSearch(pattern("*"), root: env.root)
+        await send(rows, env, expecting: 3)
+        await finish(env)
+        env.model.select([rows[0].url], focused: rows[0].url)
+        let snapshot = try #require(env.model.selectionBeforeTrashing([rows[0].url]))
+        if folder {
+            env.model.didRenameFolder(from: env.folder("trip/day1"), to: env.folder("trip/renamed"))
+        } else {
+            env.model.didRenameItem(at: rows[1].url, to: env.url("trip/day1/z.mov"))
+        }
+        let selection = env.model.selection
+        env.model.applySelectionAfterTrashing(snapshot, removed: [rows[0].url])
+        #expect(env.model.selection.selected == selection.selected)
+        #expect(env.model.selection.focused == selection.focused)
+    }
+
     // MARK: - Zip Files in Search Results (TAK-51; FR-278–281)
 
     private final class EventLog {

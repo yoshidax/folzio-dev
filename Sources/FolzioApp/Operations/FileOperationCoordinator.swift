@@ -183,14 +183,20 @@ final class FileOperationCoordinator {
         trashedSources = urls.filter { !failedPaths.contains($0.standardizedFileURL.path) }
         historyNavigator?.didRemoveItems(trashedSources)
         model.didMoveSearchItems(trashedSources)
+        var pendingSelection = selection
+        if model.isShowingSearchResults, let selection {
+            // Show the successor before checking every search result on disk. Recheck the original candidates after
+            // pruning in case an unrelated external deletion removed the provisional successor in the meantime.
+            pendingSelection = model.applySelectionAfterTrashing(selection, removed: trashedSources)
+        }
         // Move to the parent only when the displayed folder or an ancestor was trashed (FR-079). In search results, an
         // ancestor of the pre-search folder can be selected, so tree and file list operations behave differently. Leave
         // the decision to `BrowserModel` and only pass the origin here (EC-101). Call only when the result is false,
         // because reloading after moving would briefly show "Folder not found" for the vanished folder.
         if await !model.leaveTrashedFolders(trashedSources, origin: origin) {
             await model.reloadCurrentFolder()
-            if let selection {
-                model.applySelectionAfterTrashing(selection, removed: trashedSources)
+            if let pendingSelection {
+                model.applySelectionAfterTrashing(pendingSelection, removed: trashedSources)
             }
         }
     }

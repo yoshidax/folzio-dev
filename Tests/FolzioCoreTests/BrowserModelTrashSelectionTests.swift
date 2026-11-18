@@ -71,7 +71,7 @@ struct BrowserModelTrashSelectionTests {
         }
     }
 
-    @Test("User changes invalidate an earlier snapshot even after changing back", arguments: 0..<6)
+    @Test("User changes invalidate an earlier snapshot even after changing back", arguments: 0..<7)
     func changedIntent(_ change: Int) async throws {
         try await withModel { model, _, urls in
             model.select([urls[1]], focused: urls[1])
@@ -88,6 +88,9 @@ struct BrowserModelTrashSelectionTests {
                 model.setNameFilter("a"); model.setNameFilter("")
             case 4:
                 model.setShowsZipFiles(true); model.setShowsZipFiles(false)
+            case 5:
+                model.setKindNames(KindNames(folder: "Z Folder", zipArchive: "Z Zip"))
+                model.setKindNames(FixtureKit.kindNames)
             default:
                 await model.selectFolder(model.listing.folder)
                 model.select([urls[1]], focused: urls[1])
@@ -96,6 +99,23 @@ struct BrowserModelTrashSelectionTests {
             model.applySelectionAfterTrashing(snapshot, removed: [urls[1]])
             #expect(model.selection.selected == selected.selected)
             #expect(model.selection.focused == selected.focused)
+        }
+    }
+
+    @Test("A search continuation skips a vanished successor and respects intervening selection changes", arguments: [false, true])
+    func continuation(_ userSelects: Bool) async throws {
+        try await withModel { model, lister, urls in
+            model.select([urls[0]], focused: urls[0])
+            let snapshot = try #require(model.selectionBeforeTrashing([urls[0]]))
+            await lister.replace(model.listing.files.filter { $0.url != urls[0] })
+            await model.reloadCurrentFolder()
+            let continuation = try #require(model.applySelectionAfterTrashing(snapshot, removed: [urls[0]]))
+            #expect(model.selection.focused == urls[1])
+            if userSelects { model.select([], focused: nil) }
+            await lister.replace(model.listing.files.filter { $0.url != urls[1] })
+            await model.reloadCurrentFolder()
+            model.applySelectionAfterTrashing(continuation, removed: [urls[0]])
+            #expect(model.selection.focused == (userSelects ? nil : urls[2]))
         }
     }
 

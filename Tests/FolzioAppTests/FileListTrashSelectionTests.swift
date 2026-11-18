@@ -1,12 +1,25 @@
 import AppKit
 import Foundation
 import FolzioCore
+import Observation
 import Testing
 @testable import FolzioApp
 
 @Suite("File list trash selection", .serialized)
 @MainActor
 struct FileListTrashSelectionTests {
+    @MainActor private final class FocusRecord { var url: URL? }
+
+    private struct Searcher: FileNameSearching {
+        let rows: [MediaFile]
+        func search(_ request: SearchRequest) -> AsyncStream<[MediaFile]> {
+            AsyncStream { continuation in
+                continuation.yield(rows)
+                continuation.finish()
+            }
+        }
+    }
+
     private actor Lister: DirectoryListing {
         var rows: [MediaFile]
         init(_ rows: [MediaFile]) { self.rows = rows }
@@ -103,6 +116,37 @@ struct FileListTrashSelectionTests {
         }
     }
 
+    @Test("Search selects immediately, then skips an externally vanished successor during pruning")
+    func searchSelectsBeforePruning() async throws {
+        try await withFixture(false, search: true) { model, _, coordinator, _, urls in
+            try FileManager.default.removeItem(at: urls[1])
+            model.select([urls[0]], focused: urls[0])
+            let firstSuccessor = FocusRecord()
+            withObservationTracking {
+                _ = model.trashSelectionGeneration
+            } onChange: {
+                MainActor.assumeIsolated { firstSuccessor.url = model.selection.focused }
+            }
+            await coordinator.trash([urls[0]])
+            #expect(firstSuccessor.url == urls[1])
+            #expect(model.selection.focused == urls[2])
+            #expect(model.listing.files.map(\.url) == [urls[2]])
+        }
+    }
+
+    @Test("A selected parent row is ignored after successful trash in both display modes",
+          arguments: [false, true], [2, 3])
+    func selectedParent(_ thumbnails: Bool, _ count: Int) async throws {
+        try await withFixture(thumbnails, count: count, parent: true) { model, _, coordinator, _, urls in
+            let parent = try #require(model.listing.files.first { $0.kind == .parent }?.url)
+            model.select([parent, urls[0], urls[1]], focused: parent)
+            await coordinator.trash(model.operableSelection)
+            let expected = count == 3 ? urls[2] : nil
+            #expect(model.selection.focused == expected)
+            #expect(model.selection.selected == Set(expected.map { [$0] } ?? []))
+        }
+    }
+
     @Test("A thumbnail successor below the viewport is revealed without changing the first responder")
     func thumbnailScrolls() async throws {
         try await withFixture(true, count: 24) { model, controller, coordinator, _, urls in
@@ -131,7 +175,8 @@ struct FileListTrashSelectionTests {
 
     private func withFixture(
         _ thumbnails: Bool, confirms: Bool = false, cancel: Bool = false,
-        failedIndexes: Set<Int> = [], changesSelection: Bool = false, count: Int = 3,
+        failedIndexes: Set<Int> = [], changesSelection: Bool = false, count: Int = 3, search: Bool = false,
+        parent: Bool = false,
         body: @MainActor (BrowserModel, FileListViewController, FileOperationCoordinator, Lister, [URL]) async throws -> Void
     ) async throws {
         _ = NSApplication.shared
@@ -141,6 +186,11 @@ struct FileListTrashSelectionTests {
                 typeDescription: "Movie", creationDate: nil, fileSize: 0)
         }
         let urls = rows.map(\.url)
+        if search {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            for url in urls { try Data().write(to: url) }
+        }
+        defer { if search { try? FileManager.default.removeItem(at: folder) } }
         let failed = Set(failedIndexes.map { urls[$0] })
         let suite = "TrashApp.\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -154,9 +204,13 @@ struct FileListTrashSelectionTests {
         settings.confirmation = confirmation
         let lister = Lister(rows)
         let model = BrowserModel(kindNames: l10n.kindNames, lister: lister, decoder: ImageDecoder(),
-            cache: DecodedImageCache(), settings: settings)
-        model.setNavigationRoots([folder])
+            cache: DecodedImageCache(), settings: settings, searcher: Searcher(rows: rows))
+        model.setNavigationRoots([parent ? folder.deletingLastPathComponent() : folder])
         await model.selectFolder(folder)
+        if search {
+            model.startSearch(try #require(SearchPattern(keyword: "*")), root: folder)
+            try await wait { model.listing.search?.phase == .finished }
+        }
         let service = Service { operation in
             if changesSelection { await model.select([urls[0]], focused: urls[0]) }
             let succeeded = operation.sources.filter { !failed.contains($0) }
