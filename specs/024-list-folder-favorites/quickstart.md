@@ -169,3 +169,20 @@ PR: https://github.com/yoshidax/folzio-dev/pull/91
 - Swift 6.0の修正形の最小例: 型検査成功（`/tmp/folzio-tak113-compactmap-pure-fixed.swift`）。
 - `scripts/dev/check-all.sh` と `git diff --check`: 成功（`/tmp/folzio-tak113-swift60-fix-check-all.log`）。
 - 修正はレビュー用のPR #91へ先行コミットする。CIの結果はPR本文に記録し、GUI確認とPhase完了は未完了のまま残す。
+
+### T016・T017 手動確認の結果（2026-11-18）
+
+- 対象ビルド: `4b936bc`（Swift 6.0 対応後）を保守者がローカルで作成したもの。macOS 26.7.3（25G342）。
+- 保守者の報告: 項目1〜11は、項目5の次の点を除き想定どおり。
+  - 項目5の本来の確認点（P を表示し B を選択したまま A の項目メニューからペーストすると A の中だけに書き込み、
+    P・B には書き込まない）は想定どおり。
+  - 想定外の挙動: ⌘C → ⌥⌘V（移動ペースト）→ もう一度 ⌘V とすると、移動でコピー元のパスがなくなり、
+    2回目のペーストが失敗する。Finder では移動後もペーストできる。
+- 項目5の想定外の挙動の判定: 024 で入った回帰ではなく、既存の挙動と判断した。
+  - 根拠: コピーはその時点のパスの file URL だけをクリップボードに書く。master（a826304・b68ee87）の
+    `FileListViewController.copy(_:)` も同じ `pasteboard.writeObjects(urls as [NSURL])` で、024 は同じ書き込みを
+    `PasteboardFileURLs.write` に共通化してツリーのコピーにも使っただけである。
+  - `specs/product/file-operations.md` は、コピー後にコピー元が移動・削除された場合のペーストを定めていない。
+  - 保守者の決定（(a)）: 024 では既知の既存挙動として記録し、別の Linear Issue・feature で扱う。
+    Finder が移動後も追跡できる仕組み（file reference URL などの推測）は未確認で、その feature で調べる。
+- 以上により T016・T017 を完了とし、T018 として本記録と tasks.md のチェックをコミットする。

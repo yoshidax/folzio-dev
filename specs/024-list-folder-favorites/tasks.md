@@ -56,9 +56,9 @@ Core の共通方針と対象計算は次の実装 Phase の最初に作成す�
 ### 自動検証・手動確認・Phase コミット
 
 - [X] T015 `Tests/FolzioCoreTests/`・`Tests/FolzioAppTests/` の関連テストと、既存の FileListContextClickTests・ペースト・画像受信・新規フォルダの回帰を検証し、`swift build` → `swift test` → `scripts/dev/check-all.sh` → `scripts/make-app.sh` を実行して `specs/024-list-folder-favorites/quickstart.md` 末尾へ結果とビルドを記録する。
-- [ ] T016 [MANUAL] 保守者が `open .build/Folzio.app` で起動し、`specs/024-list-folder-favorites/quickstart.md` の項目1〜10（3ペイン・両表示形式・コピー／複製・入力別の貼り付け先・複数／混在／検索／zip／失敗・登録／復元／回帰）を確認し、ビルド・macOS・各結果を報告する。
-- [ ] T017 [MANUAL] 同じビルドで `specs/024-list-folder-favorites/quickstart.md` の項目11（日本語・英語・キー変更・VoiceOver）を確認して各結果を報告する。
-- [ ] T018 T016・T017 の報告を `specs/024-list-folder-favorites/quickstart.md` 末尾へ記録し、該当する tasks.md のチェックを更新して実装 Phase をコミットする。
+- [X] T016 [MANUAL] 保守者が `open .build/Folzio.app` で起動し、`specs/024-list-folder-favorites/quickstart.md` の項目1〜10（3ペイン・両表示形式・コピー／複製・入力別の貼り付け先・複数／混在／検索／zip／失敗・登録／復元／回帰）を確認し、ビルド・macOS・各結果を報告する。
+- [X] T017 [MANUAL] 同じビルドで `specs/024-list-folder-favorites/quickstart.md` の項目11（日本語・英語・キー変更・VoiceOver）を確認して各結果を報告する。
+- [X] T018 T016・T017 の報告を `specs/024-list-folder-favorites/quickstart.md` 末尾へ記録し、該当する tasks.md のチェックを更新して実装 Phase をコミットする。
 
 ## Phase 4: Polish & Cross-Cutting — 最終確認と製品仕様
 
