@@ -1069,3 +1069,5 @@
 "settings.preview.interaction" = "画像の操作";
 "settings.preview.wheelPan" = "ホイールズームとドラッグ";
 "settings.preview.scroll" = "スクロール";
+"settings.favorites" = "お気に入り";
+"settings.favorites.restoreExpansion" = "起動時に前回の開閉状態を復元する";

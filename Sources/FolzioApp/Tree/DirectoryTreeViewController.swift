@@ -112,6 +112,8 @@ final class DirectoryTreeViewController: NSViewController {
 
     private var roots: [Node] = []
     private let favoritesHeader = FavoritesHeader()
+    /// Suppresses persistence until launch restoration or a temporary tree rebuild is complete.
+    private var isRestoringFavoritesExpansion = true
     private var favorites = FavoriteFolders()
     private var favoriteEntries: [FavoriteEntry] = []
     private var volumeTask: Task<Void, Never>?
@@ -935,10 +937,36 @@ final class DirectoryTreeViewController: NSViewController {
         isRestoringSelection = true
         defer { isRestoringSelection = false }
 
-        outlineView.reloadItem(favoritesHeader, reloadChildren: true)
+        preservingFavoritesExpansion {
+            outlineView.reloadItem(favoritesHeader, reloadChildren: true)
+        }
         let rows = IndexSet(previous.map { outlineView.row(forItem: $0) }.filter { $0 >= 0 })
         if !rows.isEmpty {
             outlineView.selectRowIndexes(rows, byExtendingSelection: false)
+        }
+    }
+
+    private func saveFavoritesExpansion() {
+        guard !isRestoringFavoritesExpansion else { return }
+        settings.favoritesExpanded = outlineView.isItemExpanded(favoritesHeader)
+    }
+
+    private func saveFavoritesExpansionIfHeader(_ notification: Notification) {
+        guard notification.userInfo?["NSObject"] as? FavoritesHeader === favoritesHeader else { return }
+        saveFavoritesExpansion()
+    }
+
+    /// A reload must preserve the live state, without applying the launch preference again.
+    private func preservingFavoritesExpansion(_ update: () -> Void) {
+        let wasExpanded = outlineView.isItemExpanded(favoritesHeader)
+        let wasRestoring = isRestoringFavoritesExpansion
+        isRestoringFavoritesExpansion = true
+        defer {
+            isRestoringFavoritesExpansion = wasRestoring
+        }
+        update()
+        if wasExpanded {
+            outlineView.expandItem(favoritesHeader)
         }
     }
 
@@ -1098,6 +1126,11 @@ final class DirectoryTreeViewController: NSViewController {
         favorites = settings.favorites
         rebuildFavoriteEntries()
         outlineView.reloadData()
+        if settings.favoritesExpandedOnLaunch {
+            outlineView.expandItem(favoritesHeader)
+        }
+        isRestoringFavoritesExpansion = false
+        saveFavoritesExpansion()
         startProbes(for: roots, key: .roots)
         refreshFavoriteAvailability()
 
@@ -1203,15 +1236,13 @@ final class DirectoryTreeViewController: NSViewController {
         rebuildFavoriteEntries()
 
         // Preserve the heading expansion state and the selected favorite row across volume changes (FR-061).
-        let headerWasExpanded = outlineView.isItemExpanded(favoritesHeader)
         let selected = selectedItem
         let keepsFavoriteSelection = selected is FavoritesHeader || selected is FavoriteEntry
         // A multiple selection is restored by item, or by location for recreated root nodes (FR-215).
         let multipleSelection = outlineView.numberOfSelectedRows > 1 ? selectedItems : nil
         isRestoringSelection = keepsFavoriteSelection || multipleSelection != nil
-        outlineView.reloadData()
-        if headerWasExpanded {
-            outlineView.expandItem(favoritesHeader)
+        preservingFavoritesExpansion {
+            outlineView.reloadData()
         }
         if keepsFavoriteSelection, let selected {
             let row = outlineView.row(forItem: selected)
@@ -1960,6 +1991,7 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
     }
 
     func outlineViewItemDidExpand(_ notification: Notification) {
+        saveFavoritesExpansionIfHeader(notification)
         updateWatchSet()
     }
 
@@ -1986,6 +2018,7 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
     }
 
     func outlineViewItemDidCollapse(_ notification: Notification) {
+        saveFavoritesExpansionIfHeader(notification)
         if let expected = collapseSelection {
             collapseSelection = nil
             let rows = IndexSet(expected.map { outlineView.row(forItem: $0) }.filter { $0 >= 0 })
