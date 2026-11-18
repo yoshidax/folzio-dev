@@ -66,6 +66,9 @@ For a first look, see the [README](../README.md).
 - ⇧⌘F jumps to the Favorites heading.
 - Favorites are saved and restored on the next launch.
   Folders that cannot be found stay in the list, dimmed.
+- The Favorites heading starts collapsed by default. To restore its last expanded or collapsed state, turn on
+  "Restore previous expansion state on launch" in Settings (⌘,) → Favorites.
+  - This option is off by default. Changes apply on the next launch and leave the current heading as it is.
 
 ### Folders in the File List
 

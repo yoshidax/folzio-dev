@@ -32,7 +32,15 @@ struct FavoritesExpansionTests {
         tree.focusFavoritesHeader()
         #expect(outline.isItemExpanded(header))
         #expect(fixture.settings.favoritesExpanded)
+    }
 
+    @Test("Ordinary node notifications do not rewrite the saved heading state")
+    func ordinaryNodeNotifications() throws {
+        let fixture = try Fixture(restores: false, expanded: false)
+        defer { fixture.finish() }
+        let (tree, outline, _) = try fixture.makeTree()
+        fixture.settings.favoritesExpanded = true
+        fixture.defaults.clearExpansionWrites()
         let other = DirectoryTreeViewController.Node(folder: FolderNode(
             url: URL(fileURLWithPath: "/tmp/folzio-other"), name: "other", kind: .folder
         ))
@@ -40,11 +48,37 @@ struct FavoritesExpansionTests {
             name: NSOutlineView.itemDidCollapseNotification, object: outline, userInfo: ["NSObject": other]
         ))
         #expect(fixture.settings.favoritesExpanded)
-        outline.collapseItem(header)
         tree.outlineViewItemDidExpand(Notification(
             name: NSOutlineView.itemDidExpandNotification, object: outline, userInfo: ["NSObject": other]
         ))
-        #expect(!fixture.settings.favoritesExpanded)
+        #expect(fixture.settings.favoritesExpanded)
+        #expect(fixture.defaults.expansionWrites.isEmpty)
+    }
+
+    @Test("The Settings checkbox is wired into the key loop and saves both states")
+    func settingsCheckbox() throws {
+        let fixture = try Fixture(restores: false, expanded: true)
+        defer { fixture.finish() }
+        let controller = SettingsWindowController(store: fixture.settings)
+        let window = try #require(controller.window)
+        let language = try #require(window.initialFirstResponder as? NSPopUpButton)
+        let preview = try #require(language.nextKeyView as? NSPopUpButton)
+        #expect(preview.action == NSSelectorFromString("selectPreviewMode:"))
+        let checkbox = try #require(preview.nextKeyView as? NSButton)
+        let autoplay = try #require(checkbox.nextKeyView as? NSButton)
+        #expect(checkbox.action == NSSelectorFromString("toggleFavoritesRestoration:"))
+        #expect(checkbox.target as? SettingsWindowController === controller)
+        #expect(autoplay.action == NSSelectorFromString("toggleAutoplay:"))
+        #expect(checkbox.state == .off)
+        checkbox.performClick(nil)
+        #expect(checkbox.state == .on)
+        #expect(SettingsStore(defaults: fixture.defaults).restoresFavoritesExpansion)
+        #expect(fixture.settings.favoritesExpanded)
+        checkbox.performClick(nil)
+        #expect(checkbox.state == .off)
+        #expect(!SettingsStore(defaults: fixture.defaults).restoresFavoritesExpansion)
+        #expect(fixture.settings.favoritesExpanded)
+        withExtendedLifetime(controller) {}
     }
 
     @Test("Enabling restoration keeps the live state and restores it without another expansion")
@@ -74,6 +108,8 @@ struct FavoritesExpansionTests {
         defer { fixture.finish() }
         let (tree, outline, header) = try fixture.makeTree()
         if expanded { outline.expandItem(header) }
+        fixture.settings.favoritesExpanded = !expanded
+        fixture.defaults.clearExpansionWrites()
         let root = FolderNode(url: URL(fileURLWithPath: "/tmp/folzio-volume"), name: "volume", kind: .volume)
         fixture.volumes.continuation.yield([root])
         let clock = ContinuousClock()
@@ -81,7 +117,8 @@ struct FavoritesExpansionTests {
         while outline.numberOfRows != 2 && clock.now < deadline { await Task.yield() }
         #expect(outline.numberOfRows == 2)
         #expect(outline.isItemExpanded(header) == expanded)
-        #expect(fixture.settings.favoritesExpanded == expanded)
+        #expect(fixture.settings.favoritesExpanded == !expanded)
+        #expect(fixture.defaults.expansionWrites.isEmpty)
         withExtendedLifetime(tree) {}
     }
 
@@ -107,7 +144,7 @@ struct FavoritesExpansionTests {
     @MainActor
     private final class Fixture {
         let suite = "Folzio.FavoritesExpansion.\(UUID())"
-        let defaults: UserDefaults
+        let defaults: RecordingDefaults
         let settings: SettingsStore
         let model: BrowserModel
         let volumes = TestVolumes()
@@ -115,7 +152,7 @@ struct FavoritesExpansionTests {
 
         init(restores: Bool, expanded: Bool) throws {
             _ = NSApplication.shared
-            defaults = try #require(UserDefaults(suiteName: suite))
+            defaults = try #require(RecordingDefaults(suiteName: suite))
             settings = SettingsStore(defaults: defaults)
             settings.restoresFavoritesExpansion = restores
             settings.favoritesExpanded = expanded
@@ -138,6 +175,24 @@ struct FavoritesExpansionTests {
         func finish() {
             volumes.continuation.finish()
             defaults.removePersistentDomain(forName: suite)
+        }
+    }
+
+    private final class RecordingDefaults: UserDefaults, @unchecked Sendable {
+        private let lock = NSLock()
+        private var recordedExpansionWrites: [Bool] = []
+
+        var expansionWrites: [Bool] { lock.withLock { recordedExpansionWrites } }
+
+        func clearExpansionWrites() {
+            lock.withLock { recordedExpansionWrites.removeAll() }
+        }
+
+        override func set(_ value: Bool, forKey defaultName: String) {
+            if defaultName == "favorites.isExpanded" {
+                lock.withLock { recordedExpansionWrites.append(value) }
+            }
+            super.set(value, forKey: defaultName)
         }
     }
 

@@ -265,6 +265,8 @@ public struct SettingsStore {
         restoresFavoritesExpansion && favoritesExpanded
     }
 
+    /// The new Favorites expansion keys reject numbers; existing keys retain their previous Boolean coercion
+    /// through storedBool for compatibility with previously accepted settings.
     private func storedStrictBool(forKey key: String) -> Bool? {
         guard let value = defaults.object(forKey: key) as? NSNumber,
               CFGetTypeID(value) == CFBooleanGetTypeID() else { return nil }

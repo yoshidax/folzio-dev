@@ -951,6 +951,11 @@ final class DirectoryTreeViewController: NSViewController {
         settings.favoritesExpanded = outlineView.isItemExpanded(favoritesHeader)
     }
 
+    private func saveFavoritesExpansionIfHeader(_ notification: Notification) {
+        guard notification.userInfo?["NSObject"] as? FavoritesHeader === favoritesHeader else { return }
+        saveFavoritesExpansion()
+    }
+
     /// A reload must preserve the live state, without applying the launch preference again.
     private func preservingFavoritesExpansion(_ update: () -> Void) {
         let wasExpanded = outlineView.isItemExpanded(favoritesHeader)
@@ -958,13 +963,10 @@ final class DirectoryTreeViewController: NSViewController {
         isRestoringFavoritesExpansion = true
         defer {
             isRestoringFavoritesExpansion = wasRestoring
-            saveFavoritesExpansion()
         }
         update()
         if wasExpanded {
             outlineView.expandItem(favoritesHeader)
-        } else {
-            outlineView.collapseItem(favoritesHeader)
         }
     }
 
@@ -1989,9 +1991,7 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
     }
 
     func outlineViewItemDidExpand(_ notification: Notification) {
-        if notification.userInfo?["NSObject"] as? FavoritesHeader === favoritesHeader {
-            saveFavoritesExpansion()
-        }
+        saveFavoritesExpansionIfHeader(notification)
         updateWatchSet()
     }
 
@@ -2018,9 +2018,7 @@ extension DirectoryTreeViewController: NSOutlineViewDelegate {
     }
 
     func outlineViewItemDidCollapse(_ notification: Notification) {
-        if notification.userInfo?["NSObject"] as? FavoritesHeader === favoritesHeader {
-            saveFavoritesExpansion()
-        }
+        saveFavoritesExpansionIfHeader(notification)
         if let expected = collapseSelection {
             collapseSelection = nil
             let rows = IndexSet(expected.map { outlineView.row(forItem: $0) }.filter { $0 >= 0 })
