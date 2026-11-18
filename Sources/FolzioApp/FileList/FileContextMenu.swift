@@ -52,8 +52,11 @@ final class FileContextMenu: NSObject, NSMenuDelegate {
         if isBackground {
             items = backgroundMenuItems
         } else if let policy, policy.onlyFolders {
+            let folderItems = FolderContextMenu.items(
+                allowsModification: policy.items.count > 1 || !policy.containsProtectedFolder
+            ).compactMap { self.folderItem($0) }
             items = [openContainerItem, goUpItem, .separator()]
-                + FolderContextMenu.items(allowsModification: policy.items.count > 1 || !policy.containsProtectedFolder).compactMap(folderItem)
+                + folderItems
         } else {
             items = itemMenuItems.filter { item in
                 !(policy?.containsFolder == true &&

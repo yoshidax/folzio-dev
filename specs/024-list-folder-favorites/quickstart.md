@@ -150,3 +150,22 @@ PR: https://github.com/yoshidax/folzio-dev/pull/91
 - 更新したGUI確認用アプリ: `/Users/igachan/.codex/worktrees/2347/folzio/.build/Folzio.app`。
 - 更新後の実行ファイル SHA-256: `1c721637513ef1b943cddd20270162ea4cffed0a779af223f1a629689f32a9d9`。
 - GUIで追加確認する点: 両ビューの単一・複数対象でルートの複製が無効なこと、ペイン外の非文字入力フォーカスでは表示中のツリーを登録対象にすること。
+
+### Swift 6.0 のCIビルド失敗への対応（2026-11-18）
+
+- 元の失敗: https://github.com/yoshidax/folzio-dev/actions/runs/44269880397
+  CIのSwift 6.0がFileContextMenu.swiftのcompactMap(folderItem)をthrowingな関数引数と判定し、ビルドが失敗した。
+  性能テストの閾値とは無関係で、通常テストの実行前に停止していた。
+- 保守者が導入したSwiftlyとSwift 6.0.0を使い、純粋なSwiftの最小例で同じrethrows診断を再現した。
+  MainActorのメソッド参照を明示的なクロージャに変えた例とループの例は型検査に通り、MainActorを外した比較例も通った。
+- ローカルのXcodeはSwift 6.4.2で、新しいmacOS SDKをSwift 6.0で読むと別の互換性エラーになる。
+  最小例の成功とアプリ全体の成功を区別し、全体はXcode 16.0を使うCIで確認する。
+- 保守者の「CIで確認」の指示に従い、FileContextMenu.refreshItemsの変換を明示的なクロージャへ変更した。
+  メニューの順序・操作・対象条件は変えない。
+- ローカルのswift build: 成功（`/tmp/folzio-tak113-swift60-fix-build.log`）。
+- メニュー関連の回帰テスト: Core 6件・1 suite、App 11件・2 suiteが通過した。
+  コマンド: `swift test --filter 'FolderContextMenuTests|FileListContextClickTests' --no-parallel`。
+  ログ: `/tmp/folzio-tak113-swift60-fix-menu-tests.log`。
+- Swift 6.0の修正形の最小例: 型検査成功（`/tmp/folzio-tak113-compactmap-pure-fixed.swift`）。
+- `scripts/dev/check-all.sh` と `git diff --check`: 成功（`/tmp/folzio-tak113-swift60-fix-check-all.log`）。
+- 修正はレビュー用のPR #91へ先行コミットする。CIの結果はPR本文に記録し、GUI確認とPhase完了は未完了のまま残す。
