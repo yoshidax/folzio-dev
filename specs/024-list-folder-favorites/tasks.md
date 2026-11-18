@@ -65,7 +65,7 @@ Core の共通方針と対象計算は次の実装 Phase の最初に作成す�
 - [X] T019 T015 と同じ順で最終の自動検証を行い、`.build/Folzio.app` のビルド識別情報と結果を `specs/024-list-folder-favorites/quickstart.md` 末尾へ追記する。
 - [ ] T020 [MANUAL] 保守者が T019 のビルドを `open .build/Folzio.app` で起動し、3ペインが表示されることを確認してビルドと結果を報告する（`specs/024-list-folder-favorites/quickstart.md`）。
 - [ ] T021 T020 の報告を `specs/024-list-folder-favorites/quickstart.md` 末尾へ記録し、speckit-converge で実装・仕様・計画・タスクを照合する。同じファイルへ結果を追記し、追加タスクがあれば最大3反復まで実装・自動検証・手動確認を行う。
-- [ ] T022 `specs/product/README.md` を再読し、`scripts/dev/check-spec-ids.sh` を実行してから spec の反映先と feature の `contracts/keyboard-and-menus.md` を製品仕様へ反映する。旧来の「複製は一覧だけ」「ツリーの複数はゴミ箱だけ」「一覧ペーストは常に表示中」「検索で一律ペースト禁止」等の説明・シナリオを更新し、feature spec に凍結注記を加える。反映後に ID と形式の検査を実行し、まだコミットしない。
+- [X] T022 `specs/product/README.md` を再読し、`scripts/dev/check-spec-ids.sh` を実行してから spec の反映先と feature の `contracts/keyboard-and-menus.md` を製品仕様へ反映する。旧来の「複製は一覧だけ」「ツリーの複数はゴミ箱だけ」「一覧ペーストは常に表示中」「検索で一律ペースト禁止」等の説明・シナリオを更新し、feature spec に凍結注記を加える。反映後に ID と形式の検査を実行し、まだコミットしない。
 - [ ] T023 [MANUAL] 保守者が `git diff -- specs` で `specs/product/` の変更・ID・反映先と feature の凍結注記を確認して承認する。
 - [ ] T024 T023 の承認を `specs/024-list-folder-favorites/quickstart.md` 末尾へ記録し、製品仕様・契約と feature をコミットして作業ブランチ・検証結果・残課題を報告する。
 

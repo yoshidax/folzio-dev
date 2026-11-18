@@ -1,6 +1,6 @@
 import Foundation
 
-/// Shared folder menu order and targets. Uses only the current in-memory listing (FR-401–404).
+/// Shared folder menu order and targets. Uses only the current in-memory listing (FR-409–412).
 public struct FolderContextMenu: Sendable {
     public let items: [MediaFile]
     public let hasMissingTargets: Bool
@@ -22,7 +22,7 @@ public struct FolderContextMenu: Sendable {
     }
     public var singleFolder: URL? { onlyFolders && items.count == 1 ? items[0].url : nil }
 
-    /// A failed or ambiguous item target must never fall back to the displayed folder (FR-403).
+    /// A failed or ambiguous item target must never fall back to the displayed folder (FR-411).
     public func pasteDestination(isItemMenu: Bool, displayedFolder: URL, isShowingSearchResults: Bool) -> URL? {
         guard !isBrowsingArchive else { return nil }
         if isItemMenu && (containsFolder || hasMissingTargets) { return singleFolder }
