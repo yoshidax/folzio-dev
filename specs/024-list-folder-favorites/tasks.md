@@ -62,7 +62,7 @@ Core の共通方針と対象計算は次の実装 Phase の最初に作成す�
 
 ## Phase 4: Polish & Cross-Cutting — 最終確認と製品仕様
 
-- [ ] T019 T015 と同じ順で最終の自動検証を行い、`.build/Folzio.app` のビルド識別情報と結果を `specs/024-list-folder-favorites/quickstart.md` 末尾へ追記する。
+- [X] T019 T015 と同じ順で最終の自動検証を行い、`.build/Folzio.app` のビルド識別情報と結果を `specs/024-list-folder-favorites/quickstart.md` 末尾へ追記する。
 - [ ] T020 [MANUAL] 保守者が T019 のビルドを `open .build/Folzio.app` で起動し、3ペインが表示されることを確認してビルドと結果を報告する（`specs/024-list-folder-favorites/quickstart.md`）。
 - [ ] T021 T020 の報告を `specs/024-list-folder-favorites/quickstart.md` 末尾へ記録し、speckit-converge で実装・仕様・計画・タスクを照合する。同じファイルへ結果を追記し、追加タスクがあれば最大3反復まで実装・自動検証・手動確認を行う。
 - [ ] T022 `specs/product/README.md` を再読し、`scripts/dev/check-spec-ids.sh` を実行してから spec の反映先と feature の `contracts/keyboard-and-menus.md` を製品仕様へ反映する。旧来の「複製は一覧だけ」「ツリーの複数はゴミ箱だけ」「一覧ペーストは常に表示中」「検索で一律ペースト禁止」等の説明・シナリオを更新し、feature spec に凍結注記を加える。反映後に ID と形式の検査を実行し、まだコミットしない。
@@ -87,3 +87,7 @@ GUI 報告前に実装 Phase をコミットせず、製品仕様の承認前に
 実装中に更新できる feature 文書は tasks.md のチェックと、明示した quickstart.md 末尾の記録だけ。
 製品反映時の spec の凍結注記は T022 で明示している。
 PR 作成・マージ・Linear Done は今回の手順に含めない。
+
+## Phase 5: Convergence
+
+- [ ] T025 アプリ内のショートカット一覧の文言（`Sources/FolzioLocalization/Resources/ja.lproj/Localizable.strings` と `en.lproj` の `shortcuts.entry.copy`・`shortcuts.condition.copy`・`shortcuts.condition.duplicate`・`shortcuts.condition.addFavorite`）を、ツリーのコピー・複製、複製のルートの制限、ファイルリストのみ表示を含む一覧からの登録に合わせて更新し、両言語で確認する。FR-019・FR-062・FR-399・FR-402 とショートカット一覧の契約に従う（partial）

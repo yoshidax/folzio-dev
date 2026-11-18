@@ -186,3 +186,34 @@ PR: https://github.com/yoshidax/folzio-dev/pull/91
   - 保守者の決定（(a)）: 024 では既知の既存挙動として記録し、別の Linear Issue・feature で扱う。
     Finder が移動後も追跡できる仕組み（file reference URL などの推測）は未確認で、その feature で調べる。
 - 以上により T016・T017 を完了とし、T018 として本記録と tasks.md のチェックをコミットする。
+
+### T019 最終の自動検証（Cloud 版、2026-11-18）
+
+- master（b68ee87: TAK-109・TAK-107）を取り込んだ `2791c43` を対象とした。テキストの競合はなかった。
+- Cloud の `scripts/dev/check-all.sh`: 成功。
+- CI（macOS 15 / Xcode 16.0）: https://github.com/yoshidax/folzio-dev/actions/runs/44336659943
+  - `swift build` と通常のテスト（`--skip FolzioPerformanceTests`）: 成功。
+  - 性能テスト（失敗を許容）: 28件中5件・6件の閾値超過（名前の絞り込み 119ms／100ms、24MP JPEG のデコード 0.97秒／0.5秒、
+    didRenameFolder 中央値 106ms／100ms、スライドショー候補の抽出 50,000件 102ms／100ms・200,000件 232ms／200ms）。
+    024 は性能の経路を変えておらず、保守者の許容に従い検証ゲートの阻害条件から除く。
+- Cloud では `swift` と `scripts/make-app.sh` を実行できない。`.build/Folzio.app` の作成と起動は T020 で保守者に依頼する。
+
+### T021 converge の照合結果（2026-11-18、T020 の報告前）
+
+- 対象: spec.md の FR-062・092・217・018・019・076・208・213・218・397・087・399〜404、US87〜89、EC-268〜274、
+  SC-221〜228、plan.md の Phase 1 の 1〜8、tasks.md の T003〜T014、憲章 I〜V。
+- 実装の不足: 1件（T022 で契約を反映するときに見つけた）。tasks.md に Phase 5: Convergence として T025 を追加した。
+  - アプリ内のショートカット一覧（⌘/、FR-200〜207）の文言が 024 の動作と一致しない。
+    `Localizable.strings` の `shortcuts.condition.copy`・`shortcuts.condition.duplicate` が「ファイルリストで使えます」、
+    `shortcuts.condition.addFavorite` が「ツリー非表示中は使えません」のままで、ツリーのコピー・複製（FR-402）と
+    ファイルリストからの登録（FR-399、ファイルリストのみ表示を含む）を示していない。`shortcuts.entry.copy` も「ファイル」に限っている。
+  - 実装と検証は保守者の承認後に行う。
+- spec の本文と実装の差（PR #91 のレビューで保守者が承認した設計変更）: 2件。T022 の製品仕様の反映で次の条件を書き込む。
+  - ホーム・ボリューム・「/」を含む対象の複製は、ツリー・一覧とも無効にする
+    （`TreeBatchTargets.duplicateURLs`・`FolderContextMenu.containsProtectedFolder`）。コピーと Finder に表示はルートにも使える。
+    spec の FR-402 と契約の表は「コピー・複製は全対象に有効」としている。
+  - ファイルリスト以外にフォーカスがあるとき（ペイン外を含む。文字入力中を除く）の登録は、表示中のツリーの選択を対象にする
+    （`PaneCommands.favoriteTargetPane`）。spec の FR-062 はツリー・プレビューのフォーカスだけを書いている。
+- 参考: `ListItemCommands.allowsPaste` はアプリのコードから使われなくなった（判断は `FolderContextMenu.pasteDestination` に移った）。
+  テストだけが参照している。仕様の要求ではないため、タスクには加えない。
+- T020（起動の確認）の報告を受けてから、T021 を完了とする。
