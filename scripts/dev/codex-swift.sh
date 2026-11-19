@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-if [[ $# -ne 1 || ! "$1" =~ ^(build|test|test-system|app)$ ]]; then
-    echo "使い方: scripts/dev/codex-swift.sh {build|test|test-system|app}" >&2
+if [[ $# -ne 1 || ! "$1" =~ ^(build|test|test-system)$ ]]; then
+    echo "使い方: scripts/dev/codex-swift.sh {build|test|test-system}" >&2
     exit 2
 fi
 
@@ -45,40 +45,5 @@ case "$1" in
         ;;
     test)
         exec "$swift_path" test --disable-sandbox --no-parallel --skip "$system_filter"
-        ;;
-    app)
-        # 公開用スクリプトはそのまま使い、その実行中の Swift build にだけフラグを渡す。
-        shim_dir="$PWD/.build/codex-swift/app"
-        if ! mkdir "$shim_dir"; then
-            echo "アプリ作成用の作業ディレクトリを確保できません: $shim_dir" >&2
-            exit 1
-        fi
-        app_path="$PWD/.build/Folzio.app"
-        backup="$shim_dir/Folzio.app"
-        cleanup_app() {
-            local status=$?
-            # パッケージングに失敗したら、それまで使っていたアプリを戻す。
-            if (( status != 0 )) && [[ -e "$backup" || -L "$backup" ]]; then
-                rm -rf "$app_path"
-                mv "$backup" "$app_path"
-            fi
-            rm -rf "$shim_dir"
-        }
-        trap cleanup_app EXIT
-        cat > "$shim_dir/swift" <<'SHIM'
-#!/bin/bash
-set -euo pipefail
-if [[ "${1:-}" != build ]]; then
-    echo "アプリ作成では swift build のみを扱います。" >&2
-    exit 2
-fi
-shift
-exec "$FOLZIO_CODEX_SWIFT" build --disable-sandbox "$@"
-SHIM
-        chmod +x "$shim_dir/swift"
-        if [[ -e "$app_path" || -L "$app_path" ]]; then
-            mv "$app_path" "$backup"
-        fi
-        PATH="$shim_dir:$PATH" FOLZIO_CODEX_SWIFT="$swift_path" scripts/make-app.sh
         ;;
 esac

@@ -165,16 +165,17 @@ run_id を省略した `status` は従来どおり Spec Kit の一覧表示に�
 
 | 操作 | `allow` にしたときの最悪の影響 | 判断と根拠 |
 |---|---|---|
-| Swift のビルド・テスト、確認用アプリの作成 | 編集したマニフェスト、プラグイン、テスト、シェルスクリプトがサンドボックス外で動き、個人環境への書き込みや通信ができる | `allow` を置かない。下の開発スクリプトを Codex のサンドボックス内で使う |
+| Swift のビルド・テスト、確認用アプリの作成 | 編集したマニフェスト、プラグイン、テスト、シェルスクリプトがサンドボックス外で動き、個人環境への書き込みや通信ができる | `allow` を置かない。ビルド・テストは開発スクリプトで実行し、アプリ作成はその都度1回承認する |
 | `git add`・`git commit`・`git switch` | 誤った対象をステージ・コミットしたり、作業ツリーやブランチを変更したりする | `allow`。ここでは `core.hooksPath`、稼働する Git フック、リポジトリのカスタムフィルターを使っていない。`.git` はサンドボックス内では書き込めない |
 | `git fetch origin` | 明示した refspec で、使用していないローカルブランチの履歴を強制更新できる | `allow`。通常の fetch は、別の作業ツリーを含めチェックアウト中のブランチを保護する。通常の取得に使い、ローカルブランチを書き換える refspec は渡さない |
-| `gh pr create --draft`・`gh pr ready` | 誤ったリポジトリやブランチで PR を公開したり、早く Ready にしたりする | `allow`。通常使う `gh` 本体と設定はサンドボックスから書き換えられない。対象と条件は作業の委任範囲に従う |
+| `gh pr create --draft`・`gh pr ready` | 誤ったリポジトリやブランチで PR を公開したり、早く Ready にしたりする。Draft 作成時に `--body-file` でローカルの任意の読み取り可能なファイルの内容を公開 PR の本文に載せられる | `allow`。通常使う `gh` 本体と設定はサンドボックスから書き換えられない。本文ファイルの公開リスクは Claude Code と同じく受け入れ、公開用に用意した本文だけを渡す |
 | GitHub CLI の読み取り | 別のリポジトリの情報を参照したり、`--web` でブラウザを開いたり、`--watch` で監視を続けたりする | `gh pr view`・`checks`・`list` と `gh run view`・`list` を `allow`。ブラウザ起動と監視も含め、読み取りの承認を減らすために受け入れる |
 | push・PR のマージ | リモートの履歴やブランチの変更、保守者による確認前の統合 | push は `prompt` と信頼済みフックを使う。直接の `gh pr merge` に `forbidden` を設定する |
 
 `git add`・`commit`・`switch` と、Draft 作成・Ready 化の許可は `.claude/settings.json` にそろえた。
-Codex の接頭辞ルールは `git switch -f`・`--discard-changes`・`-C` を先に拒否する。
-接頭辞に現れない引数や別の呼び出し方まで検査する仕組みではない。作業ブランチの作成は `git switch -c`、
+Codex の接頭辞ルールは `git switch -f`・`--force`・`--discard-changes`・`-C`・`--force-create` を先に拒否する。
+`git switch master -f` のようにオプションをブランチ名の後ろに置く形は、接頭辞ルールでは防げない。
+作業ブランチの作成は `git switch -c`、
 ステージは対象のパスを明示し、コミットは `git commit -F <メッセージファイル>` を使う。
 fetch では Git 内部用の `--update-head-ok` を使わない。
 [`git fetch` のオプション](https://git-scm.com/docs/git-fetch)、
@@ -201,14 +202,14 @@ Ready 化は条件を満たしてから `gh pr ready <番号>` を使う。シ�
 ```sh
 scripts/dev/codex-swift.sh build
 scripts/dev/codex-swift.sh test
-scripts/dev/codex-swift.sh app
 ```
 
 スクリプトは Clang と SwiftPM のモジュールキャッシュを作業ツリーの `.build/codex-swift/` に置き、
 SwiftPM の内側のサンドボックスだけを `--disable-sandbox` で無効にする。
-`app` は `swift build` にだけフラグを渡し、既存の `scripts/make-app.sh` を呼ぶ。
-作成に失敗した場合は、それまでの `.build/Folzio.app` を戻す。
 Codex の許可ルールにこのスクリプトや Swift を加える必要はない。
+
+確認用アプリは `scripts/make-app.sh` を1回承認し、Codex のサンドボックス外で実行して
+`.build/Folzio.app` を作る。
 
 サンドボックス依存のテストは `test` の `--skip` と `test-system` の `--filter` で同じ一覧を使う。
 `scripts/dev/codex-swift.sh test-system` は手動承認のうえ Codex のサンドボックス外で実行する。
@@ -253,20 +254,14 @@ Codex の許可ルールにこのスクリプトや Swift を加える必要は�
 |---|---|
 | `git fetch origin`・`git add`・`git commit -F`・`git switch -c` | 一時クローンで、承認要求なしに成功 |
 | Draft 作成・Ready 化 | 承認要求なしで GitHub に到達し、存在しないリポジトリを指定したため GitHub が拒否 |
-| `git switch -f`・`--discard-changes`・`-C`、直接の `gh pr merge` | execpolicy が実行前に拒否 |
+| `git switch -f`・`--force`・`--discard-changes`・`-C`・`--force-create`、直接の `gh pr merge` | execpolicy が実行前に拒否 |
 | `master` への push・強制 push・削除 | 信頼済みフックが実行前に拒否 |
 | 通常の作業ブランチへの push、`--draft` のない PR 作成 | 承認要求を確認して拒否した。PR 作成はサンドボックス内で接続に失敗した後、再試行時に要求が出た |
 | `codex-swift.sh build`・`test` | 承認要求なしに成功。サンドボックス内のテストは1,071件通過 |
-| `codex-swift.sh app` | 承認要求なしで release ビルドまで成功。サンドボックス内の `iconutil` が `Invalid Iconset` を返し、アプリ作成は未完了 |
 
-サンドボックス外の従来の全件実行では性能テストが1件失敗していた。今回の `test-system` は
-265件を実行し、24 MP JPEG のデコード時間と、ZIP 内の動画サムネイルのキャッシュ再利用の2件が失敗した。
-どちらも個別に再実行すると通過した。ゴミ箱、ペーストボード、動画のエンコード、ファイル監視、
-ダイアログに関するサンドボックス内の失敗は、サンドボックス外では再現しなかった。
-
-同じ PNG 一式の `iconutil` による変換はサンドボックス外で成功し、以前作成したアイコンと
-同じバイト列になった。サンドボックス内でのアプリ作成には、既存の変換済みアイコンを渡せる変更を
-検討する。公開用スクリプトを変える場合は保守者の承認を要する。
+サンドボックス外の `test-system` は一括実行で265件すべて通過した。ゴミ箱、ペーストボード、
+動画のエンコード、ファイル監視、ダイアログに関するサンドボックス内の失敗は、
+サンドボックス外では再現しなかった。
 
 ## 実装完了の判定と検証ログ
 

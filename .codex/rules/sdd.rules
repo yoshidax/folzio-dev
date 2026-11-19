@@ -44,10 +44,16 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = ["git", "switch", ["-f", "--discard-changes", "-C"]],
+    pattern = ["git", "switch", ["-f", "--force", "--discard-changes", "-C", "--force-create"]],
     decision = "forbidden",
     justification = "作業中の変更を破棄したり、ブランチを強制的に再作成したりしない。",
-    match = ["git switch -f master", "git switch --discard-changes master", "git switch -C chore/example"],
+    match = [
+        "git switch -f master",
+        "git switch --force master",
+        "git switch --discard-changes master",
+        "git switch -C chore/example",
+        "git switch --force-create chore/example",
+    ],
 )
 
 # 依頼済みの作業で使う Git と PR の操作を許可する。
