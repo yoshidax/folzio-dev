@@ -42,3 +42,43 @@ prefix_rule(
     justification = "未追跡ファイルを一括削除しない。対象を個別に確認する。",
     match = ["git clean -fd"],
 )
+
+# 追加の承認なしで、定型のビルド・テスト・確認用アプリの作成を実行する。
+prefix_rule(
+    pattern = ["swift", ["build", "test"]],
+    decision = "allow",
+    match = ["swift build", "swift test", "swift test --filter ExampleTests"],
+    not_match = ["swift run", "swift package update"],
+)
+prefix_rule(
+    pattern = ["scripts/make-app.sh"],
+    decision = "allow",
+    match = ["scripts/make-app.sh"],
+    not_match = ["scripts/make-icon.sh"],
+)
+# origin の fetch と GitHub CLI の読み取りを許可する。
+prefix_rule(
+    pattern = ["git", "fetch", "origin"],
+    decision = "allow",
+    match = ["git fetch origin"],
+    not_match = ["git fetch upstream"],
+)
+prefix_rule(
+    pattern = ["gh", "pr", ["view", "checks", "list"]],
+    decision = "allow",
+    match = ["gh pr view 93 --json reviews", "gh pr checks 93", "gh pr list"],
+    not_match = ["gh pr create --draft", "gh pr ready 93"],
+)
+prefix_rule(
+    pattern = ["gh", "run", ["view", "list"]],
+    decision = "allow",
+    match = ["gh run view 123", "gh run list --limit 1"],
+    not_match = ["gh run rerun 123", "gh run cancel 123"],
+)
+prefix_rule(
+    pattern = ["gh", "pr", "merge"],
+    decision = "forbidden",
+    justification = "PR のマージは保守者が行う。",
+    match = ["gh pr merge 93", "gh pr merge --auto 93"],
+    not_match = ["gh pr ready 93"],
+)

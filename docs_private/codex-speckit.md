@@ -158,6 +158,96 @@ run_id を省略した `status` は従来どおり Spec Kit の一覧表示に�
 - グローバルな hook や認証設定は変更しない。実行時ファイルは既存の
   `.specify/workflows/runs/` に置き、Git の対象外とする。
 
+### ローカルの定型操作と承認
+
+作業を委ねる条件は [delegation.md](agents/delegation.md) を参照する。以下はローカルの
+Codex がコマンドを実行するときの権限に適用する。
+
+| 発生元 | 発生条件 | 保守者が行う設定・確認 |
+|---|---|---|
+| サンドボックスの書き込み先 | Swift がワークスペース外の Clang キャッシュへ書き込むとき。SwiftPM の設定・キャッシュにも書き込み不可の警告が出ることがある | 通常の `workspace-write` で開始する。対象のビルド等を確認して昇格を承認する。以降も許可する場合は、承認画面に表示されるコマンド接頭辞の範囲を確認して保存する |
+| Git のメタデータ | 作業ブランチの作成、ステージ、コミット、fetch が `.git` やリンク先の Git ディレクトリを更新するとき | 保護された Git ディレクトリへの書き込みは作業ディレクトリを追加しても許可されない。対象ファイルと検証結果を確認して昇格を承認するか、自動承認レビューを選ぶ |
+| ネットワーク | `network_access = false` で、GitHub に接続する Git／`gh` に該当する許可ルールがないとき | 承認画面で操作と宛先を確認する。認証が切れている場合は `gh auth status` で確認し、保守者が `gh auth login` で認証する |
+| execpolicy | `prompt` に一致すると、通常の作業ブランチ宛でも承認が必要。`allow` は一致したコマンドをサンドボックス外で実行し、`forbidden` は拒否する | 個人の保存済みルールは `~/.codex/rules/` にある。リポジトリと個人の規則が重なると `forbidden`、`prompt`、`allow` の順に優先する |
+| フック | プロジェクトが未信頼、またはフックが未承認だと、Bash の push 検査が動かない。検査が違反を見つけた場合は承認要求の前に止める | プロジェクトを信頼したうえで、デスクトップのフック確認画面または CLI の `/hooks` で定義と検査スクリプトを確認して信頼する。定義の変更や別のチェックアウトで再確認が出たら、同じ手順で確認する |
+
+定型操作の承認を個別に処理するか自動承認レビューに委ねるかは保守者が選ぶ。CLI の個人設定では
+`approval_policy = "on-request"` と `approvals_reviewer = "auto_review"` を組み合わせられる。
+デスクトップでは入力欄の下の権限メニューで `Approve for me` を選ぶ。表示されない場合は
+設定の `General` → `Permissions` で `Auto-review` を有効にできるか確認する。自動承認レビューにも拒否はあり、
+保守者の判断が必要な変更には共通の運用を適用する。設定が読み込まれた新規セッションで動作を確認する。
+[Codex の承認とサンドボックス](https://developers.openai.com/codex/agent-approvals-security)、
+[個人の承認方式](https://learn.chatgpt.com/docs/permission-modes)、
+[コマンドルール](https://developers.openai.com/codex/rules)、
+[フック](https://developers.openai.com/codex/hooks)
+
+コマンドは単独で渡す。リダイレクト、変数展開、コマンド置換を含むと、シェル全体の文字列で
+照合されることがある。コミットは `git commit -F <メッセージファイル>` を使う。PR は
+`gh pr create --draft --head <作業ブランチ> --base master --title <タイトル> --body-file <本文ファイル>`
+で作り、条件を満たしたときに `gh pr ready <番号>` を使う。タイトル中の `git push` はフックが
+入れ子の push と見なして止めるため、別の表現にする。
+
+#### 新しいセッションで確認する
+
+- 保守者が使うプロジェクトまたは作業ツリーで新しいローカルセッションを開き、承認方式とフックの
+  読み込み元を確認する。今回のように、リンクされた作業ツリーから元のチェックアウトのフックが
+  読み込まれる場合がある。
+- 一度に 1 コマンドを実行し、終了コードまで確認する。サンドボックスによる失敗は、同じコマンドの
+  昇格要求が出るか確認する。App Server を使う場合は `item/commandExecution/requestApproval` を
+  記録して拒否し、`hook/completed` の `blocked` と区別する。
+- push の検証は、一時クローンの `origin` を存在しない GitHub リポジトリに向けて行う。
+  PR の書き込みは、存在しないリポジトリを `--repo` で指定し、Ready 化とマージには存在しない
+  PR 番号も指定する。
+- 承認前のルール案は一時ファイルに出し、`codex execpolicy check --rules <候補ファイル> -- <コマンド>`
+  で判定を比較できる。個人ルールを含める場合は `--rules ~/.codex/rules/default.rules` を追加する。
+  この検査で分かるのは接頭辞の判定。サンドボックスとフックの動作は新しいセッションで確かめる。
+
+#### 2026-11-19 の確認（ルール適用前）
+
+[TAK-122](https://linear.app/takyoshida/issue/TAK-122) では、[TAK-121](https://linear.app/takyoshida/issue/TAK-121) を含む `origin/master`
+の `6891a0d1` を基点に調査した。ローカルの Codex CLI 0.169.0-alpha.11.1 の App Server で、
+`workspace-write`、ネットワーク無効、`on-request`、レビュー先 `user` の新しいセッションを起動した。
+手動承認要求は検証クライアントが拒否した。表の承認要求はクライアントが受け取ったイベントであり、
+デスクトップに表示されたダイアログの計測はしていない。
+
+| 操作 | 結果と発生元 |
+|---|---|
+| `swift build` | `~/.cache/clang/ModuleCache` への書き込みがサンドボックスで拒否され、昇格要求が出た。承認後の再実行は成功した |
+| `swift test` | 既存の個人ルール `swift test` に一致し、承認要求なしに起動した |
+| `scripts/dev/check-all.sh` | サンドボックス内で成功し、承認要求は出なかった |
+| `scripts/make-app.sh` | 内部の release ビルドが Clang キャッシュへの書き込みで止まり、昇格要求が出た。個人の `swift build` ルールはスクリプト内部の呼び出しには適用されない |
+| `git switch -c`、`git fetch origin` | 既存の個人ルールで承認要求なしに成功。fetch はネットワーク接続と Git メタデータの更新を伴う |
+| `git commit -F` | リンクされた作業ツリーの Git ディレクトリで `index.lock` の作成が拒否され、昇格要求が出た |
+| `gh pr checks` | 既存の個人ルールで承認要求なしに成功 |
+| `gh pr view --json number,reviews`、`gh run list` | GitHub API への接続がサンドボックスで失敗し、昇格要求が出た。個人の `gh pr view` の既存ルールは別の固定コマンドだけに一致した |
+| `git push origin <作業ブランチ>` | フックを通過し、execpolicy の `prompt` で承認要求が出た |
+| `git push origin master`、`git push --force …`、`git push --delete …` | フックが承認要求の前に拒否した |
+| `gh pr create --draft`、`gh pr ready` | GitHub API への接続がサンドボックスで失敗し、昇格要求が出た |
+| `gh pr merge` | 既存の execpolicy とフックで禁止していないため、GitHub API への接続失敗後に昇格要求が出た |
+
+保守者の承認後、ビルド・テスト、アプリの作成、`origin` の fetch、GitHub CLI の PR・CI 読み取りに
+`allow` を、`gh pr merge` に `forbidden` を追加した。
+`codex execpolicy check` でリポジトリのルール単体でも、これらの判定を確認した。Swift の接頭辞は
+`--package-path` などの追加オプションにも一致するため、サンドボックス外で実行する範囲として
+保守者が確認する。検査スクリプトはサンドボックス内で実行する。
+
+ブランチ作成、コミット、通常の push、Draft 作成、Ready 化の昇格は、承認または保守者が選んだ
+自動承認レビューに委ねる。ルールの接頭辞だけでは、ステージ対象や後続のオプション、push 先が
+作業ブランチであること、Draft・Ready の条件を確かめられない。push の `prompt` を維持し、
+フックが未承認の場合にも承認要求が出るようにする。
+
+#### 2026-11-19 の確認（ルール適用後）
+
+新規セッションで、ルールを作業ツリーの `.codex/` から、信頼済みフックを元のチェックアウト
+から読み込んでいることを確認した。作業ツリーで `git fetch origin`、`gh pr view`、
+`gh pr checks`、`gh run list` は承認要求なしに成功した。`scripts/make-app.sh` も承認要求なしで
+`.build/Folzio.app` を作成した。`gh pr merge` は execpolicy がプロセスの起動前に拒否した。
+
+同じ設定を使い、架空のリポジトリを宛先にした試行では、通常の作業ブランチへの push で
+承認要求が出た。信頼済みフックは `master` への push、強制 push、削除を承認要求の前に拒否した。
+フックが実行されない一時クローンから開始したセッションでも、設定した `prompt` が有効な
+場合は push に承認要求が出た。
+
 ## 実装完了の判定と検証ログ
 
 - `$speckit-implement` の最終回答は `scripts/dev/sdd-codex-implementation.schema.json` で検証する。
