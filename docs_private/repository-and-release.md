@@ -24,7 +24,7 @@ Spec Kit・AI エージェントの設定・仕様書・開発記録は、公開
 `master` への統合は、ローカルの作業も含めて、すべて PR で行う（TAK-80）。ローカルでマージした `master` を直接 push する手順は使わない。
 `master` のブランチ保護で拒否される（「開発用リポジトリの公開とブランチ保護」）。
 
-1. 作業ブランチを開発用リポジトリへ push し、PR を作る。AI エージェントは、保守者の依頼があったときだけ PR を作る
+1. 作業ブランチを開発用リポジトリへ push し、PR を作る。AI エージェントは、[agents/delegation.md](agents/delegation.md) の条件を満たしたときに Draft の PR を作り、Ready にする
 2. PR の最新の head で CI（macOS Swift CI）が成功し、保守者がローカルで確認（起動スモークなど）してから、保守者が GitHub でスカッシュマージする。
    AI エージェントは PR をマージしない
 3. ローカルの `master` は、`git switch master` と `git pull --ff-only` で更新する
