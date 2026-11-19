@@ -187,12 +187,18 @@ CLI で手動承認を使うときは `approval_policy = "on-request"` と
 で作り、条件を満たしたときに `gh pr ready <番号>` を使う。タイトル中の `git push` はフックが
 入れ子の push と見なして止めるため、別の表現にする。
 
-GitHub の PR・レビュー・CI の読み取りには、利用できる場合は読み取り用の GitHub ツールを使う。
-`gh` が必要な操作は、接続の承認で対象リポジトリと引数を確認する。リポジトリには `gh pr view` などの
-許可ルールを置かない。後続の `--web` はブラウザを開き、`gh pr checks --watch` は状態の監視を続ける。
+`gh pr view`・`checks`・`list` と `gh run view`・`list` に `allow` を設定する。
+通常使う `gh` 本体と設定が Codex のサンドボックス内から書き換えられないことが前提。
+後続の `--web` によるブラウザの起動と、`gh pr checks --watch` による完了までの監視も
+承認なしで実行できる。読み取りの承認を減らすため、この範囲は受け入れる。
 
-`git fetch origin` の接頭辞に一致する呼び出しは承認を求める。接頭辞だけでは引数のない fetch と、refspec 付きの fetch を
-区別できない。リモート追跡 ref の更新と、ローカルブランチの強制更新を区別して判断する。
+`git fetch origin` の接頭辞に一致する呼び出しは承認を求める。リポジトリの `prompt` は
+個人ルールの `allow` より優先されるため、個人ルールで承認なしに通っていた fetch にも確認が出る。
+通常の fetch（`--update-head-ok` を指定しない場合）は、どの作業ツリーでもチェックアウト中の
+ブランチへの更新を拒否する。
+一方、チェックアウトされていないローカルブランチは refspec で強制更新できる。
+接頭辞では引数のない fetch と refspec 付きの fetch を区別できないため、宛先 ref を確認する。
+[`git fetch` のオプション](https://git-scm.com/docs/git-fetch)
 
 `gh pr merge` の禁止は、Codex が直接照合できる CLI 呼び出しに適用する。変数代入やラッパーを伴う
 呼び出しや、`gh api` などを使った書き込みはこの拒否の範囲外で、既存の push フックも検査しない。
@@ -255,14 +261,32 @@ GitHub 側で強制する場合は、保守者と実行主体の資格情報を�
 Swift のマニフェスト・プラグイン・テストやアプリ作成スクリプトは作業ツリーで編集できる。
 これらを実行するコマンドに `allow` を設定すると、実行はサンドボックスの外になり、workflow の
 自動承認レビューにも渡らない。リポジトリの `allow` は撤回する。`scripts/make-app.sh` と
-`./scripts/make-app.sh` は、どちらもサンドボックス内の実行を既定とする。個人ルールに
-Swift や `gh` の許可が保存されている場合は、保守者が接頭辞の範囲を確認し、不要なルールを外す。
+`./scripts/make-app.sh` は、どちらもサンドボックス内の実行を既定とする。
+個人ルールに保存した `swift test` の `allow` は、テストコードが承認なしでサンドボックス外に
+出るため、保守者が外すことを勧める。
 
 Codex CLI 0.169.0-alpha.11.1 の `codex sandbox --permission-profile :workspace` で
 `swift package describe` を実行した。Clang キャッシュを一時ディレクトリに向けると、
 キャッシュへの書き込み拒否は解消した。その先で SwiftPM が起動する `sandbox-exec` が
 `sandbox_apply: Operation not permitted` を返した。この環境ではキャッシュの移設や書き込み先の
-追加だけで解決しないため、Swift とアプリ作成で昇格が必要な場合は個別に承認する。
+追加だけでは完了しなかった。Swift やアプリ作成で昇格が必要な場合は個別に承認する。
+
+#### 変更後のローカル再検証
+
+手動承認の新規セッションで、`gh pr view`・`checks`・`list` と `gh run view`・`list` は
+承認要求なしで成功した。個人の fetch 許可がある状態でも `git fetch origin` には承認要求が出た。
+架空の宛先では、通常の作業ブランチへの push に承認要求が出た。`master` への push・強制 push・
+削除はフックが、直接の `gh pr merge` は execpolicy が起動前に拒否した。
+Git 2.49.0 の試験用リポジトリでは、別の作業ツリーでチェックアウト中のブランチへの
+強制 refspec が、通常の fetch で拒否されることを確認した。
+
+検証用の一時ディレクトリを `CLANG_MODULE_CACHE_PATH` と `SWIFTPM_MODULECACHE_OVERRIDE` に指定した。
+Codex の `:workspace` サンドボックス内で `swift build --disable-sandbox` は成功した。
+`swift test --disable-sandbox --no-parallel` もサンドボックス内でテストの実行まで進んだが、
+性能基準の超過、動画のエンコード、ファイル操作・監視などの失敗があり、Core と App の
+テストプロセスも異常終了した。全テストの通過は確認できなかった。
+`--disable-sandbox` が無効にするのは SwiftPM の内側のサンドボックス。検証では Codex の外側の
+サンドボックスを有効にしたまま、Swift コマンドの昇格や個人ルールの `allow` を使わず実行した。
 
 ## 実装完了の判定と検証ログ
 

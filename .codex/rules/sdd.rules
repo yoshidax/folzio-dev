@@ -52,6 +52,18 @@ prefix_rule(
     not_match = ["git fetch upstream"],
 )
 prefix_rule(
+    pattern = ["gh", "pr", ["view", "checks", "list"]],
+    decision = "allow",
+    match = ["gh pr view 93 --json reviews", "gh pr checks 93", "gh pr list"],
+    not_match = ["gh pr create --draft", "gh pr ready 93"],
+)
+prefix_rule(
+    pattern = ["gh", "run", ["view", "list"]],
+    decision = "allow",
+    match = ["gh run view 123", "gh run list --limit 1"],
+    not_match = ["gh run rerun 123", "gh run cancel 123"],
+)
+prefix_rule(
     pattern = ["gh", "pr", "merge"],
     decision = "forbidden",
     justification = "PR のマージは保守者が行う。",
