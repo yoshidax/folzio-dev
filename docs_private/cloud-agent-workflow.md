@@ -18,6 +18,8 @@ Cloud Agent（Claude / Codex）が、Cloud 環境で feature またはバグ修�
 
 `specs/product/` への反映は、PR の最後の作業にする（7 章）。
 
+保守者に確認せずに進めてよい操作と、保守者の判断を待つ場面は [agents/delegation.md](agents/delegation.md) にある。Cloud の Claude Code の権限（ユーザー設定は読まれない、`gh pr` は 403 になるなど）も同じ文書にある。
+
 ## 1 feature の始め方
 
 1. **最新の `master` を取り込む**。ローカルの `master` ブランチは古いことがあるので、`git fetch origin master` の後、`origin/master` が作業ブランチの祖先であることを確かめる（`git merge-base --is-ancestor origin/master HEAD`）。祖先でなければ `git merge origin/master` で取り込む。履歴は書き換えない。
