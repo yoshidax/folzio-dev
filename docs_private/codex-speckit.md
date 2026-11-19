@@ -215,6 +215,11 @@ Codex の許可ルールにこのスクリプトや Swift を加える必要は�
 `scripts/dev/codex-swift.sh test-system` は手動承認のうえ Codex のサンドボックス外で実行する。
 このサブコマンドでは SwiftPM の通常のサンドボックスを使う。
 
+AGENTS.md の Phase の検証ゲートでは、Codex は `swift build` と `swift test` を直接実行せず、
+`build`・`test`・`test-system` をこの順で実行する。`test` と `test-system` の両方で全テストに当たるため、
+どちらかだけでは `swift test` の代わりにならない。承認は `test-system` の 1 回で済む。
+Claude Code など、サンドボックスのないエージェントは従来どおり `swift build` と `swift test` を使う。
+
 | システム依存 | サンドボックス内で確認した症状 |
 |---|---|
 | ファイル操作・ゴミ箱 | ゴミ箱への移動、既存ファイルの置き換えに失敗 |

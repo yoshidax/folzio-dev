@@ -14,7 +14,7 @@ AGENTS.md から参照する。保守者が依頼した作業（Issue への対�
 | 操作 | 条件・範囲 |
 |---|---|
 | 既存の仕様・承認済みの設計に沿う実装と、レビューの指摘の修正 | 仕様・設計・要件の変更が要るなら、次の節に従って保守者に確認する |
-| ビルド・テスト・検査と、失敗を直した後の再実行 | `swift build`、`swift test`（【ローカル】）、`scripts/dev/check-all.sh`、仕様の検査（`check-spec-format.py`、`check-spec-ids.sh`）。同じ原因の失敗を 3 回直して解決しなければ、止めて報告する（AGENTS.md） |
+| ビルド・テスト・検査と、失敗を直した後の再実行 | `swift build`、`swift test`（【ローカル】。Codex は `scripts/dev/codex-swift.sh` の `build`・`test`・`test-system`）、`scripts/dev/check-all.sh`、仕様の検査（`check-spec-format.py`、`check-spec-ids.sh`）。同じ原因の失敗を 3 回直して解決しなければ、止めて報告する（AGENTS.md） |
 | 確認用のアプリの作成 | `scripts/make-app.sh`（【ローカル】）。アプリの起動と GUI の確認は保守者が行う |
 | GitHub の PR・レビュー・CI の情報の読み取り | CI の再実行は [cloud-agent-workflow.md](../cloud-agent-workflow.md) の 4 章に従う |
 | 作業ブランチの作成と切り替え | ローカルは `master` から作る。接頭辞は `scripts/dev/check-git-push.py` の `ALLOWED_PREFIXES`。Cloud は指定された作業ブランチを使う |
