@@ -42,7 +42,7 @@ Ready には、次をすべて満たしたらする。
 
 PR の本文は公開される（開発用リポジトリは公開されている）。ローカルのパス（`/Users/...` など）や、作業用の一時ファイルの場所を書かない。
 
-PR を作ったら、Linear の Issue を [linear.md](linear.md) に従って更新し、PR の URL を保守者に知らせる。Ready にしたときも知らせる。
+PR を作ったときと Ready にしたときに、Linear の Issue を [linear.md](linear.md) に従って更新し、PR の URL を保守者に知らせる。
 
 ## 保守者の判断を待つ場面
 
@@ -52,6 +52,7 @@ PR を作ったら、Linear の Issue を [linear.md](linear.md) に従って更
 - 承認済みの仕様・設計の変更、要件の追加・変更、範囲外の問題を独立した修正にするか（[bugfix.md](bugfix.md)）
 - PR のマージ。保守者が行う。Ready の PR でも、保守者の確認が終わるまではマージの準備ができたとは扱わない
 - 依存ツールの導入・更新、権限の設定（`.claude/settings.json` など）の変更
+- 委任と承認の規則（この文書、`AGENTS.md`、`docs_private/agents/`、`cloud-agent-workflow.md`）の変更。それ自体が依頼された作業のときを除く
 - Issue の完了（`Done`）への更新。依頼されたときだけ行う
 
 `master` への直接の push、強制 push、リモートブランチの削除、履歴の書き換えはしない（AGENTS.md の「Git と GitHub」）。
@@ -61,6 +62,8 @@ PR を作ったら、Linear の Issue を [linear.md](linear.md) に従って更
 `.claude/settings.json` の `permissions` と `PreToolUse` のフックで、委ねる操作は確認なしに通し、禁止する操作は止める。
 
 - この設定は保守者が編集する（エージェントの編集は deny にある）
+- 委任と承認の規則の文書（`AGENTS.md`、`docs_private/agents/`、`cloud-agent-workflow.md`）の編集は `ask` にあり、ほかの `docs_private/` の編集（allow）より優先して確認が出る
+  - Cloud ではファイルの編集がどのモードでも承認済みなので、この確認が出るかは未確認。上の「保守者の判断を待つ場面」の規則で守る
 - 変更は、新しいセッションから有効になる
 
 | | ローカル（保守者の macOS） | Cloud（Claude Code on the web） |
@@ -90,6 +93,9 @@ Cloud の列は、Claude Code の文書（[Claude Code on the web](https://code.
   - `gh api -X GET ...` のように、オプションを `repos/` の前に置くと確認が出る
 - PR は、ローカルでは `gh pr create --draft --head <作業ブランチ> --base master --title <タイトル> --body-file <ファイル>` で作る
   - `--draft` を最初に置く。`--draft` のない `gh pr create` には確認が出る
+  - タイトルに `git push` の文字列を書かない
+    - push を検査するフックが入れ子の push と見なし、コマンド全体を拒否する
+    - 本文は `--body-file` で渡すので、影響しない
   - Ready 化は `gh pr ready <番号>` で行う
 - Cloud では、GitHub の MCP ツール `create_pull_request` に `draft: true` を渡して作る
   - Ready 化に使う `update_pull_request` は、base の変更やクローズもできるため allow にない。確認が出る
@@ -99,15 +105,18 @@ Cloud の列は、Claude Code の文書（[Claude Code on the web](https://code.
 権限の設定を変えたら、新しいセッションを非対話で起動して確かめる。確認が必要な操作を自動で拒否させ、拒否された操作の一覧を見る。
 
 ```bash
-claude -p --model haiku --permission-mode manual --permission-prompts none --output-format json < <手順のファイル> | jq '.permission_denials'
+PROBE_FILE=/tmp/permission-probe.md  # 試す手順を書いたファイル（リポジトリの外に置く）
+claude -p --model haiku --permission-mode manual --permission-prompts none --output-format json < "$PROBE_FILE" | jq '.permission_denials'
 ```
 
 - 手順のファイルには、試すコマンドを 1 行に 1 つ書く。「そのまま 1 回ずつ実行し、拒否されても次へ進む。ほかには何もしない」と指示する
 - 書き込みが拒否されることを確かめる手順は、存在しないリポジトリや PR を宛先にする。拒否されなかったときに、実際に書き込まないため
 - Cloud に近い条件は `--permission-mode acceptEdits --setting-sources project` で再現する（ユーザー設定を読まない）
   - `gh pr` の 403 など、プロキシの挙動は再現しない。これは Cloud のセッションで確かめる
-- 適用前の設定は `--settings <ファイル>` で足して試す
-  - `/docs_private/**` のような規則は、設定ファイルのある場所から解決される。そのため、ファイルは一時的にリポジトリの直下に置く
+- 適用前の規則は、足したい規則だけを `--settings '{"permissions":{"allow":[...]}}'` の JSON で渡して試す
+  - `.claude/settings.json` を写したり書き換えたりしない
+  - `Edit(/docs_private/**)` のような `/` で始まる規則は、JSON ではリポジトリを基準に解決されない
+  - Edit の規則は、絶対パスの `Edit(//<リポジトリのパス>/docs_private/**)` に書き換えて試す
 
 ### 2026-11-19 の確認（TAK-121、Claude Code 2.1.326）
 
@@ -138,3 +147,8 @@ PR の作成と Ready 化を委ねることにあわせて、allow に `gh pr cr
 - 通る: `gh pr create --draft` と `gh pr ready`
 - 確認が出る: `--draft` のない `gh pr create`
 - 拒否される: `gh pr merge`
+
+PR #93 のレビューを受けて、委任と承認の規則の文書の編集を `ask` に足した。確認の結果は次のとおり（manual、JSON の絶対パスの規則で試した）。
+
+- 確認が出る: `docs_private/agents/` の編集
+- 通る: ほかの `docs_private/` の編集
