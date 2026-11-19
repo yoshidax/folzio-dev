@@ -455,11 +455,6 @@ final class ThumbnailModeView: NSView {
         !isHidden && lastURLs.contains(url)
     }
 
-    /// Whether the last context click hit no item, so the file list shows the background menu (FR-213, R7).
-    var isContextClickOnBackground: Bool {
-        contextClickedIndex == nil
-    }
-
     /// The item under the last context click, or nil for the background (FR-397).
     var contextClickedIndex: Int? {
         guard let location = collectionView.lastMenuLocation else { return nil }

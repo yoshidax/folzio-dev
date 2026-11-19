@@ -465,6 +465,12 @@ final class DirectoryTreeViewController: NSViewController {
                 keyEquivalent: "t"
             )
             menuItem.keyEquivalentModifierMask = [.command, .control]
+        case .copy:
+            menuItem = NSMenuItem(title: "", action: #selector(copy(_:)), keyEquivalent: "c")
+            menuItem.keyEquivalentModifierMask = [.command]
+        case .duplicate:
+            menuItem = NSMenuItem(title: l10n.text(.menuEditDuplicate), action: #selector(duplicate(_:)), keyEquivalent: "d")
+            menuItem.keyEquivalentModifierMask = [.command]
         case .copyPathname:
             menuItem = NSMenuItem(
                 title: l10n.text(.menuEditCopyPathname),
@@ -514,8 +520,15 @@ final class DirectoryTreeViewController: NSViewController {
         }
         menuItem.target = self
         menuItem.representedObject = item
+        if kind == .copy {
+            let urls = batchTargets(for: menuItem).folderURLs ?? []
+            menuItem.title = urls.count > 1
+                ? l10n.text(.contextCopyMultiple, .count(urls.count))
+                : l10n.text(.contextCopySingle, .text(urls.first?.lastPathComponent ?? ""))
+        }
         // The displayed keys follow the shortcut assignments (FR-261). Rename keeps Return, which is fixed.
         switch kind {
+        case .duplicate: MenuShortcutApplier.shared.register(menuItem, for: .duplicate)
         case .addToFavorites: MenuShortcutApplier.shared.register(menuItem, for: .addToFavorites)
         case .copyPathname: MenuShortcutApplier.shared.register(menuItem, for: .copyPathname)
         case .removeFromFavorites, .moveToTrash: MenuShortcutApplier.shared.register(menuItem, for: .trash)
@@ -896,11 +909,17 @@ final class DirectoryTreeViewController: NSViewController {
     }
 
     private func addFavorite(for item: Any?) {
-        let role = role(for: item)
-        guard FavoriteCommands.canAdd(role, favorites: favorites),
-              case .folder(let url) = role else {
-            return
-        }
+        guard case .folder(let url) = role(for: item) else { return }
+        addFavorite(url)
+    }
+
+    func canAddFavorite(_ url: URL) -> Bool {
+        FavoriteCommands.canAdd(.folder(url), favorites: favorites)
+    }
+
+    /// Shared URL entry point for tree and file list registration; never changes navigation.
+    func addFavorite(_ url: URL) {
+        guard canAddFavorite(url) else { return }
         // Do not change the heading's expansion state.
         favorites.add(url)
         settings.favorites = favorites
@@ -1032,9 +1051,24 @@ final class DirectoryTreeViewController: NSViewController {
         pasteboard.setString(url.path, forType: .string)
     }
 
+    @objc func copy(_ sender: Any?) {
+        copyFolders(sender, to: .general)
+    }
+
+    func copyFolders(_ sender: Any?, to pasteboard: NSPasteboard) {
+        guard editingTarget == nil, let urls = batchTargets(for: sender).folderURLs else { return }
+        PasteboardFileURLs.write(urls, to: pasteboard)
+    }
+
+    @objc func duplicate(_ sender: Any?) {
+        guard editingTarget == nil,
+              let urls = batchTargets(for: sender).duplicateURLs(roots: roots.map(\.url)) else { return }
+        Task { @MainActor [coordinator] in await coordinator.duplicate(urls) }
+    }
+
     @objc private func revealInFinder(_ sender: Any?) {
-        guard let node = fileTargetNode(for: sender) else { return }
-        NSWorkspace.shared.activateFileViewerSelecting([node.url])
+        guard editingTarget == nil, let urls = batchTargets(for: sender).folderURLs else { return }
+        NSWorkspace.shared.activateFileViewerSelecting(urls)
     }
 
     override func loadView() {
@@ -2075,7 +2109,9 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
         // commit while editing and ⌘⌫ would remove the favorite (R53, FR-102).
         if editingTarget != nil {
             switch menuItem.action {
-            case #selector(rename(_:)),
+            case #selector(copy(_:)),
+                 #selector(duplicate(_:)),
+                 #selector(rename(_:)),
                  #selector(renameFavoriteFromMenu(_:)),
                  #selector(renameFolderFromMenu(_:)),
                  #selector(moveToTrash(_:)),
@@ -2114,8 +2150,10 @@ extension DirectoryTreeViewController: NSMenuItemValidation {
         case #selector(movePaste(_:)):
             return fileTargetNode(for: menuItem) != nil
                 && PasteboardImport.availability().allowsPaste(move: true)
-        case #selector(revealInFinder(_:)):
-            return fileTargetNode(for: menuItem) != nil
+        case #selector(duplicate(_:)):
+            return batchTargets(for: menuItem).duplicateURLs(roots: roots.map(\.url)) != nil
+        case #selector(copy(_:)), #selector(revealInFinder(_:)):
+            return batchTargets(for: menuItem).folderURLs != nil
         case #selector(copyPathname(_:)):
             return pathnameTarget(for: menuItem) != nil
         case #selector(newFolder(_:)):
