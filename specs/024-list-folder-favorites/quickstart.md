@@ -246,3 +246,11 @@ PR: https://github.com/yoshidax/folzio-dev/pull/91
   - 移動ペースト後にクリップボードのファイルを再ペーストできない既存の挙動（項目5）は、別の Linear Issue・feature で扱う（未登録）。
   - PR #91 のペースト項目のショートカット表示のレビュースレッドは、変更しない判断のため未解決のまま。
   - `ListItemCommands.allowsPaste` はアプリのコードから使われていない（テストだけが参照）。
+
+### レビュー後の整理（2026-11-19）
+
+- 保守者の指示で、ペースト項目のショートカット表示のレビュースレッドも解決にした（PR #91 の未解決スレッドは0件）。
+- 保守者の指示で、アプリのコードから使われなくなった `ListItemCommands.allowsPaste` を削除した。
+  - 判断は `FolderContextMenu.pasteDestination` に移っている。`ListItemCommandsTests` の該当アサーションを削除し、
+    `FolderContextMenuTests` に、フォルダを含まない項目メニューと zip 内の背景のペースト先のテストを加えた。
+  - Cloud には Swift がないため、ビルドとテストは CI で確認する。

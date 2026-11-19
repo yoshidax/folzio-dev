@@ -9,8 +9,8 @@ public struct ListItemCommands: Sendable, Equatable {
     public let isBrowsingArchive: Bool
     /// Whether ⌘↑ has an enclosing level to return to (inside a zip, or a regular folder that is not a tree root).
     public let hasEnclosingLevel: Bool
-    /// Whether search results are shown. Disables paste and ⌘↑ because there is no destination or enclosing folder
-    /// (FR-087).
+    /// Whether search results are shown. Disables ⌘↑ and New Folder because there is no enclosing or destination folder
+    /// (FR-087). Paste destinations are decided by `FolderContextMenu.pasteDestination`.
     public let isShowingSearchResults: Bool
 
     /// Omitting `hasEnclosingLevel` (nil) makes it equal to `isBrowsingArchive`.
@@ -65,11 +65,6 @@ public struct ListItemCommands: Sendable, Equatable {
         case .folder, .directory, .parent, nil:
             return false
         }
-    }
-
-    /// Paste and Move Item Here into the list. Unavailable inside a zip and while showing search results.
-    public var allowsPaste: Bool {
-        !isBrowsingArchive && !isShowingSearchResults
     }
 
     /// New Folder in the displayed folder (FR-208, FR-212). Does not depend on the row kind. Unavailable inside a zip,

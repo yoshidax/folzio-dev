@@ -43,6 +43,19 @@ struct FolderContextMenuTests {
         let archive = FolderContextMenu(files: [item(a)], targets: [a], isBrowsingArchive: true, roots: [parent])
         #expect(archive.singleFolder == nil)
         #expect(archive.pasteDestination(isItemMenu: true, displayedFolder: parent, isShowingSearchResults: false) == nil)
+        #expect(archive.pasteDestination(isItemMenu: false, displayedFolder: parent, isShowingSearchResults: false) == nil)
+    }
+
+    @Test("Item menus without folders keep pasting into the displayed folder, except in search results and zips")
+    func nonFolderItemPaste() {
+        let media = parent.appendingPathComponent("c.png")
+        for kind in [ListItemKind.media(.png), .archive, .parent] {
+            let policy = FolderContextMenu(files: [item(media, kind)], targets: [media], isBrowsingArchive: false, roots: [parent])
+            #expect(policy.pasteDestination(isItemMenu: true, displayedFolder: parent, isShowingSearchResults: false) == parent)
+            #expect(policy.pasteDestination(isItemMenu: true, displayedFolder: parent, isShowingSearchResults: true) == nil)
+        }
+        let none = FolderContextMenu(files: [], targets: [], isBrowsingArchive: true, roots: [parent])
+        #expect(none.pasteDestination(isItemMenu: false, displayedFolder: parent, isShowingSearchResults: false) == nil)
     }
 
     @Test("Root protection applies to mixed selections and ordinary folders share one ordered menu")
