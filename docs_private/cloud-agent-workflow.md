@@ -12,7 +12,7 @@ Cloud Agent（Claude / Codex）が、Cloud 環境で feature またはバグ修�
 1. Issue の対象を [Linear の手順](agents/linear.md)で特定し、内容を読んで `In Progress` にする（1、2 章）
 2. feature は `speckit-specify` → `speckit-plan` → `speckit-tasks` → `speckit-analyze` を順に実行し、**設計のレビューを保守者に受ける**。承認の前に実装しない。独立したバグ修正は [バグ修正の手順](agents/bugfix.md)に従う
 3. 実装し、Cloud でできる検査を行い、作業ブランチに push する（5、6 章）
-4. 保守者が依頼したら、PR を作り、Linear を `In Review` にする（2、3 章）
+4. 条件を満たしたら Draft の PR を作り、Linear を `In Review` にする。条件を満たしたら Ready にする（2、3 章）
 5. CI の結果を読み、失敗なら直す（4 章）
 6. 保守者がローカルで確認してマージする。完了の更新は、保守者の依頼があったときだけ行う（2、3 章）
 
@@ -70,7 +70,7 @@ Linear の Issue の読み方と状態の更新（着手、PR の作成後、完
 
 ## 3 PR とマージ
 
-- **PR は、保守者が依頼したときだけ作る**。作業が終わっても、依頼なしには作らない。作成できる状態であること（作業ブランチが push 済みで、自己検査が通っている）を保守者に報告して、待つ。設計のレビューと Cloud での検査を終え、保守者が見る準備ができた状態で PR を作るため。Draft の PR の Ready 化も、保守者が依頼したときだけ行う。
+- **PR は Draft で作り、条件を満たしたら Ready にする**。どちらも保守者の依頼を待たない。条件（設計の承認の後、push 済みで自己検査が通っていること、Ready には CI の成功と「確認していないこと」の記入など）は [agents/delegation.md](agents/delegation.md) の「PR の作成と Ready 化の条件」にある。Cloud では `gh pr` が使えないので、GitHub の MCP ツール `create_pull_request` で作る。
 - PR のタイトルと本文に、Issue 番号（`TAK-<nn>`）を入れる。本文には、変更の概要、検証の結果、**確認していないこと**を正直に書く。
 - 本文の構成は、[.github/pull_request_template.md](../.github/pull_request_template.md) に従う（概要・変更・仕様の反映・検証・確認していないこと）。GitHub の画面から作る PR には自動で入るが、GitHub の MCP ツール `create_pull_request` で作るときは自動では入らない。Agent は、このファイルを読み、見出しを変えずに本文を作る。記入案内の HTML コメントは、記入後に消してよい。テンプレートは開発用リポジトリだけにあり、公開用リポジトリへは書き出さない（`.gitattributes` の `export-ignore`）。
 - PR を作った後、保守者に確認して、PR の購読（`subscribe_pr_activity`）をする。CI の結果とレビューのコメントが、セッションに届く。

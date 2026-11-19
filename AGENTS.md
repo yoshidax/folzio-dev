@@ -14,7 +14,7 @@
 
 ## Git と GitHub【共通】
 - push は default ブランチ（`master`）以外の作業ブランチへだけ行う。強制 push・リモートブランチの削除・履歴の書き換えはしない
-- PR は保守者の依頼があったときだけ作る。PR のマージは保守者が行う（`master` への統合は PR だけで行う）。ほかに確認なしで進める操作と保守者を待つ場面: `docs_private/agents/delegation.md`
+- PR のマージは保守者が行う（`master` への統合は PR だけで行う）。PR の作成と Ready 化の条件、ほかに確認なしで進める操作と保守者を待つ場面: `docs_private/agents/delegation.md`
 - Linear の Issue に着手するとき、PR を作った後、完了を更新するときは `docs_private/agents/linear.md` に従う
 
 ## AppKit UI の不変条件【共通】（起動不能の事故から）

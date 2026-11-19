@@ -19,9 +19,30 @@ AGENTS.md から参照する。保守者が依頼した作業（Issue への対�
 | GitHub の PR・レビュー・CI の情報の読み取り | CI の再実行は [cloud-agent-workflow.md](../cloud-agent-workflow.md) の 4 章に従う |
 | 作業ブランチの作成と切り替え | ローカルは `master` から作る。接頭辞は `scripts/dev/check-git-push.py` の `ALLOWED_PREFIXES`。Cloud は指定された作業ブランチを使う |
 | 対象ファイルのステージとコミット | 所定の検証の後に、今回の作業の差分だけを入れる。所定の検証は、ローカルでは Phase の検証ゲートの 1〜3、Cloud では 5 章の Cloud の検査。無関係な変更を含めない |
-| `origin` の作業ブランチへの通常の push | 依頼された PR のため、または Cloud の手順の区切りで行う |
-| 依頼された PR の本文の更新 | PR のテンプレートの見出しを保つ |
+| `origin` の作業ブランチへの通常の push | PR のため、または Cloud の手順の区切りで行う |
+| Draft の PR の作成と、Ready 化 | 次の「PR の作成と Ready 化の条件」を満たしたとき |
+| 作業ブランチの PR の本文の更新 | PR のテンプレートの見出しを保つ |
 | Linear の Issue の状態の更新 | [linear.md](linear.md) が定める時点だけ |
+
+## PR の作成と Ready 化の条件
+
+PR は Draft で作り、条件を満たしたら Ready にする。どちらも保守者の依頼を待たない。マージは保守者が行う。
+
+Draft の PR は、次をすべて満たしたら作る。
+
+- 保守者の承認が要るゲートを通っている（feature は設計の承認、独立したバグ修正は assessment の判定と診断の確認）
+- 作業ブランチを push し、所定の検証が通っている
+- 同じ作業ブランチの PR がまだない（あれば、その PR を更新する）
+
+Ready には、次をすべて満たしたらする。
+
+- `tasks.md` の未チェックのタスクが `[MANUAL]` だけになっている（`tasks.md` のない作業では、依頼された作業が終わっている）
+- 自分で行う検査が通り、PR の最新の head で CI が成功している
+- 本文の「確認していないこと」に、保守者が行う確認（起動スモーク、GUI の確認など）を、実行するコマンドと確認する点とともに書いている
+
+PR の本文は公開される（開発用リポジトリは公開されている）。ローカルのパス（`/Users/...` など）や、作業用の一時ファイルの場所を書かない。
+
+PR を作ったら、Linear の Issue を [linear.md](linear.md) に従って更新し、PR の URL を保守者に知らせる。Ready にしたときも知らせる。
 
 ## 保守者の判断を待つ場面
 
@@ -29,8 +50,7 @@ AGENTS.md から参照する。保守者が依頼した作業（Issue への対�
 - GUI の確認と起動スモーク（`[MANUAL]` のタスク）。報告を受けるまで完了にしない
 - `specs/product/` への反映の承認
 - 承認済みの仕様・設計の変更、要件の追加・変更、範囲外の問題を独立した修正にするか（[bugfix.md](bugfix.md)）
-- PR の作成と、Draft の PR の Ready 化。どちらも依頼されたときだけ行う
-- PR のマージ。保守者が行う
+- PR のマージ。保守者が行う。Ready の PR でも、保守者の確認が終わるまではマージの準備ができたとは扱わない
 - 依存ツールの導入・更新、権限の設定（`.claude/settings.json` など）の変更
 - Issue の完了（`Done`）への更新。依頼されたときだけ行う
 
@@ -68,6 +88,11 @@ Cloud の列は、Claude Code の文書（[Claude Code on the web](https://code.
 - `gh api` は `gh api repos/...` の形で、読み取りだけに使う
   - 書き込みになる `-X`・`--method`・`-f`・`-F`・`--field`・`--raw-field`・`--input` は deny にある
   - `gh api -X GET ...` のように、オプションを `repos/` の前に置くと確認が出る
+- PR は、ローカルでは `gh pr create --draft --head <作業ブランチ> --base master --title <タイトル> --body-file <ファイル>` で作る
+  - `--draft` を最初に置く。`--draft` のない `gh pr create` には確認が出る
+  - Ready 化は `gh pr ready <番号>` で行う
+- Cloud では、GitHub の MCP ツール `create_pull_request` に `draft: true` を渡して作る
+  - Ready 化に使う `update_pull_request` は、base の変更やクローズもできるため allow にない。確認が出る
 
 ### 確認の手順
 
@@ -107,3 +132,9 @@ TAK-121 で、allow に検査、`git fetch`、`gh api repos/*`、`gh pr`・`gh r
 - フックが止める: `master` への push
 
 `.specify/memory/`（憲章）の編集は、引き続き確認が出る。
+
+PR の作成と Ready 化を委ねることにあわせて、allow に `gh pr create --draft *`、`gh pr ready *`、MCP の `create_pull_request` を足した。確認の結果は次のとおり（manual）。
+
+- 通る: `gh pr create --draft` と `gh pr ready`
+- 確認が出る: `--draft` のない `gh pr create`
+- 拒否される: `gh pr merge`
