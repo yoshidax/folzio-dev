@@ -43,13 +43,35 @@ prefix_rule(
     match = ["git clean -fd"],
 )
 
-# fetch の宛先 ref は接頭辞ルールで制限できない。
+prefix_rule(
+    pattern = ["git", "switch", ["-f", "--discard-changes", "-C"]],
+    decision = "forbidden",
+    justification = "作業中の変更を破棄したり、ブランチを強制的に再作成したりしない。",
+    match = ["git switch -f master", "git switch --discard-changes master", "git switch -C chore/example"],
+)
+
+# 依頼済みの作業で使う Git と PR の操作を許可する。
 prefix_rule(
     pattern = ["git", "fetch", "origin"],
-    decision = "prompt",
-    justification = "origin の URL と更新するローカル ref を確認する。",
+    decision = "allow",
     match = ["git fetch origin"],
     not_match = ["git fetch upstream"],
+)
+prefix_rule(
+    pattern = ["git", ["add", "commit", "switch"]],
+    decision = "allow",
+    match = ["git add -- Package.swift", "git commit -F message.txt", "git switch -c chore/example"],
+)
+prefix_rule(
+    pattern = ["gh", "pr", "create", "--draft"],
+    decision = "allow",
+    match = ["gh pr create --draft --head chore/example"],
+    not_match = ["gh pr create --head chore/example", "gh pr create --head chore/example --draft"],
+)
+prefix_rule(
+    pattern = ["gh", "pr", "ready"],
+    decision = "allow",
+    match = ["gh pr ready 93"],
 )
 prefix_rule(
     pattern = ["gh", "pr", ["view", "checks", "list"]],
