@@ -124,7 +124,10 @@
       "Edit(/scripts/dev/check-git-push.py)"
     ],
     "ask": [
-        "Bash(brew install *)"
+        "Bash(brew install *)",
+        "Edit(/AGENTS.md)",
+        "Edit(/docs_private/agents/**)",
+        "Edit(/docs_private/cloud-agent-workflow.md)"
     ]
   },
   "hooks": {
