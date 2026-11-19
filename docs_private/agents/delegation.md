@@ -57,6 +57,10 @@ PR を作ったときと Ready にしたときに、Linear の Issue を [linear
 
 `master` への直接の push、強制 push、リモートブランチの削除、履歴の書き換えはしない（AGENTS.md の「Git と GitHub」）。
 
+## Codex の権限【ローカル】
+
+定型操作の承認方式と確認手順は [codex-speckit.md](../codex-speckit.md#ローカルの定型操作と承認) を参照する。
+
 ## Claude Code の権限
 
 `.claude/settings.json` の `permissions` と `PreToolUse` のフックで、委ねる操作は確認なしに通し、禁止する操作は止める。
