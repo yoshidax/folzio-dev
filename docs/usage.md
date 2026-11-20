@@ -256,6 +256,10 @@ For a first look, see the [README](../README.md).
 - Copy, move, duplicate, rename, move to Trash, drag and drop, and clipboard operations are available.
   Folders include their contents.
 - On a name conflict, choose "Replace", "Keep Both", or "Stop".
+- As in Finder, items you copy (⌘C) can still be pasted after they are moved, renamed, or moved to the Trash,
+  in Folzio or in another app.
+  - Pasting fails for items moved to another volume or deleted; the failure shows their names.
+  - Pasting in Finder pastes the copied items, and pasting in a text editor pastes their file names.
 - A confirmation dialog appears before operations.
   - In Settings (⌘,), you can turn it off separately for copying, moving, renaming, removing from Favorites,
     and moving to the Trash. "Don’t ask again" in the dialog turns off only that operation.
