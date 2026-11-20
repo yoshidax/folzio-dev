@@ -21,6 +21,7 @@ AGENTS.md から参照する、スキルや各エージェントの設定を変�
 - `brew bundle` はすべてのサブコマンドが禁止対象であり、`brew bundle check` などの読み取りも含む。Claude の `brew install` は `ask` を維持する
 - Codex と Kilo の自動承認モードでは `prompt`・`ask` が人の確認なしに承認され得る。Claude の `.claude/settings.json` は保守者が編集する
 - Claude Code の allow・deny の方針と、新しいセッションでの確認の手順は [delegation.md](delegation.md) の「Claude Code の権限」
+- Codex の定型操作の権限と、新しいセッションでの確認手順は [codex-speckit.md](../codex-speckit.md#ローカルの定型操作と承認)
 - `pip install` や `npm install -g` を含む他の依存ツールの導入も、`AGENTS.md` の規則に従い事前に保守者へ確認する
 - 権限設定は OS のアクセス制御ではなく、絶対パス、ラッパー、入れ子のシェルなど全実行経路を保証しない。変更は新しいセッションから確認する
 - Kilo の VS Code 拡張では、プロジェクトの権限設定変更後に VS Code ウィンドウを再読み込みしてから確認する

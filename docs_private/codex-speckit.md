@@ -158,6 +158,116 @@ run_id を省略した `status` は従来どおり Spec Kit の一覧表示に�
 - グローバルな hook や認証設定は変更しない。実行時ファイルは既存の
   `.specify/workflows/runs/` に置き、Git の対象外とする。
 
+### ローカルの定型操作と承認
+
+作業を委ねる条件は [delegation.md](agents/delegation.md) を参照する。下の `allow` はサンドボックス外で
+承認なしにコマンドを実行する。コマンドの許可と、作業を依頼された範囲は別に確認する。
+
+| 操作 | `allow` にしたときの最悪の影響 | 判断と根拠 |
+|---|---|---|
+| Swift のビルド・テスト、確認用アプリの作成 | 編集したマニフェスト、プラグイン、テスト、シェルスクリプトがサンドボックス外で動き、個人環境への書き込みや通信ができる | `allow` を置かない。ビルド・テストは開発スクリプトで実行し、アプリ作成はその都度1回承認する |
+| `git add`・`git commit`・`git switch` | 誤った対象をステージ・コミットしたり、作業ツリーやブランチを変更したりする | `allow`。ここでは `core.hooksPath`、稼働する Git フック、リポジトリのカスタムフィルターを使っていない。`.git` はサンドボックス内では書き込めない |
+| `git fetch origin` | 明示した refspec で、使用していないローカルブランチの履歴を強制更新できる | `allow`。通常の fetch は、別の作業ツリーを含めチェックアウト中のブランチを保護する。通常の取得に使い、ローカルブランチを書き換える refspec は渡さない |
+| `gh pr create --draft`・`gh pr ready` | 誤ったリポジトリやブランチで PR を公開したり、早く Ready にしたりする。Draft 作成時に `--body-file` でローカルの任意の読み取り可能なファイルの内容を公開 PR の本文に載せられる | `allow`。通常使う `gh` 本体と設定はサンドボックスから書き換えられない。本文ファイルの公開リスクは Claude Code と同じく受け入れ、公開用に用意した本文だけを渡す |
+| GitHub CLI の読み取り | 別のリポジトリの情報を参照したり、`--web` でブラウザを開いたり、`--watch` で監視を続けたりする | `gh pr view`・`checks`・`list` と `gh run view`・`list` を `allow`。ブラウザ起動と監視も含め、読み取りの承認を減らすために受け入れる |
+| push・PR のマージ | リモートの履歴やブランチの変更、保守者による確認前の統合 | push は `prompt` と信頼済みフックを使う。直接の `gh pr merge` に `forbidden` を設定する |
+
+`git add`・`commit`・`switch` と、Draft 作成・Ready 化の許可は `.claude/settings.json` にそろえた。
+Codex の接頭辞ルールは `git switch -f`・`--force`・`--discard-changes`・`-C`・`--force-create` を先に拒否する。
+`git switch master -f` のようにオプションをブランチ名の後ろに置く形は、接頭辞ルールでは防げない。
+作業ブランチの作成は `git switch -c`、
+ステージは対象のパスを明示し、コミットは `git commit -F <メッセージファイル>` を使う。
+fetch では Git 内部用の `--update-head-ok` を使わない。
+[`git fetch` のオプション](https://git-scm.com/docs/git-fetch)、
+[Codex のコマンドルール](https://developers.openai.com/codex/rules)
+
+PR を作るときは `gh pr create --draft --head <作業ブランチ> --base master --title <タイトル> --body-file <本文ファイル>`
+の形で、`--draft` を最初の引数に置く。タイトルに `git push` と書くと push のフックが拒否する。
+Ready 化は条件を満たしてから `gh pr ready <番号>` を使う。シェルのリダイレクトやコマンド置換を
+伴う場合はシェル全体で照合され、接頭辞ルールが適用されないことがある。
+
+手動承認は `approval_policy = "on-request"` と `approvals_reviewer = "user"` を使う。
+デスクトップでは `Ask for approval` を選ぶ。workflow の `--approve-for-me` や
+`Approve for me` では、push の `prompt` も自動レビューに回る。リモートへ書き込む前にフックが
+有効なことを確かめる。確認できない間は手動承認で宛先・ブランチ・引数を確認する。
+`gh api` やラッパーを経由したマージは直接の禁止ルールの対象外。GitHub 側で強制するには、
+保守者と実行主体の資格情報を分け、保護ブランチへの更新権限を制限する。
+[Codex の承認とサンドボックス](https://developers.openai.com/codex/agent-approvals-security)、
+[GitHub REST のマージ権限](https://docs.github.com/en/rest/pulls/pulls#merge-a-pull-request)
+
+#### Swift のビルド・テストと確認用アプリ
+
+ローカルの作業ツリーで、Codex の `workspace-write` サンドボックスを使う。
+
+```sh
+scripts/dev/codex-swift.sh build
+scripts/dev/codex-swift.sh test
+```
+
+スクリプトは Clang と SwiftPM のモジュールキャッシュを作業ツリーの `.build/codex-swift/` に置き、
+SwiftPM の内側のサンドボックスだけを `--disable-sandbox` で無効にする。
+Codex の許可ルールにこのスクリプトや Swift を加える必要はない。
+
+確認用アプリは `scripts/make-app.sh` を1回承認し、Codex のサンドボックス外で実行して
+`.build/Folzio.app` を作る。
+
+サンドボックス依存のテストは `test` の `--skip` と `test-system` の `--filter` で同じ一覧を使う。
+`scripts/dev/codex-swift.sh test-system` は手動承認のうえ Codex のサンドボックス外で実行する。
+このサブコマンドでは SwiftPM の通常のサンドボックスを使う。
+
+AGENTS.md の Phase の検証ゲートでは、Codex は `swift build` と `swift test` を直接実行せず、
+`build`・`test`・`test-system` をこの順で実行する。`test` と `test-system` の両方で全テストに当たるため、
+どちらかだけでは `swift test` の代わりにならない。承認は `test-system` の 1 回で済む。
+Claude Code など、サンドボックスのないエージェントは従来どおり `swift build` と `swift test` を使う。
+
+| システム依存 | サンドボックス内で確認した症状 |
+|---|---|
+| ファイル操作・ゴミ箱 | ゴミ箱への移動、既存ファイルの置き換えに失敗 |
+| ペーストボード・AppKit のダイアログ | ペーストボードからデータを取得できずドラッグのテストが失敗または異常終了。取り込みの確認ダイアログを待つテストが停止 |
+| 動画 | AVFoundation の動画フィクスチャで `Cannot Encode` |
+| ファイル監視、フォルダの列挙・型判定 | 監視イベントを受信できず、フォルダやパッケージ・拡張子の判定結果が通常時と異なる。フォルダ関連のメニューや取り込みセッションも影響を受ける |
+| 性能 | 計測の前提が異なるため、速度・メモリの判定を通常の環境で行う |
+
+スイートで分類できるテストは Swift の型名で指定し、混在するスイートはシステム依存のテスト関数だけを
+指定する。テストを追加・移動・改名したときは両方の実行結果を照合して一覧を見直す。
+新しい失敗はサンドボックス外の結果と比べ、依存関係が分かってから除外する。
+保守者は `open -e ~/.codex/rules/default.rules` で個人のルールを開き、不要になった
+`swift build` と `swift test` の `allow` を外してから新しいセッションを開く。
+
+#### 新しいセッションで確認する
+
+- `on-request`、レビュー先 `user` の新しいローカルセッションを開き、ルールとフックの読み込み元を
+  確認する。リンクされた作業ツリーでは元のチェックアウトからフックが読み込まれる場合もある。
+- コマンドを一つずつ実行し、終了コード、承認要求、フックや execpolicy による拒否を記録する。
+  App Server を使う場合は `item/commandExecution/requestApproval` を記録し、試験では拒否する。
+- 書き込みの試行は一時クローン内で行い、push URL を存在しないリポジトリへ向ける。
+  PR の試行には存在しないリポジトリを `--repo` で指定し、Ready 化・マージには存在しない PR 番号も指定する。
+- 検証後は一時クローンの実パスを確認する。`~/.codex/config.toml` に
+  `[projects."<一時クローンの実パス>"]` があれば、そのクローンの `trust_level` の登録だけを消す。
+  `rg -F '<一時クローンの実パス>' ~/.codex/config.toml` で登録が消えたことを確認する。
+  対象が検証用クローンであることを確認してから `rm -r -- '<一時クローンの実パス>'` で削除し、
+  `test ! -e '<一時クローンの実パス>'` で確かめる。
+- `codex execpolicy check --rules .codex/rules/sdd.rules -- <コマンド>` で接頭辞の判定も確認できる。
+  実行時の承認と拒否は新規セッションで確かめる。
+
+#### [TAK-122](https://linear.app/takyoshida/issue/TAK-122) の検証結果
+
+ローカル macOS の Codex CLI 0.169.0-alpha.11.1 で、サンドボックスは `workspace-write`、ネットワークは
+無効、承認は `on-request`、レビュー先は `user` に設定した。
+
+| 操作 | 新規セッションでの結果 |
+|---|---|
+| `git fetch origin`・`git add`・`git commit -F`・`git switch -c` | 一時クローンで、承認要求なしに成功 |
+| Draft 作成・Ready 化 | 承認要求なしで GitHub に到達し、存在しないリポジトリを指定したため GitHub が拒否 |
+| `git switch -f`・`--force`・`--discard-changes`・`-C`・`--force-create`、直接の `gh pr merge` | execpolicy が実行前に拒否 |
+| `master` への push・強制 push・削除 | 信頼済みフックが実行前に拒否 |
+| 通常の作業ブランチへの push、`--draft` のない PR 作成 | 承認要求を確認して拒否した。PR 作成はサンドボックス内で接続に失敗した後、再試行時に要求が出た |
+| `codex-swift.sh build`・`test` | 承認要求なしに成功。サンドボックス内のテストは1,071件通過 |
+
+サンドボックス外の `test-system` は一括実行で265件すべて通過した。ゴミ箱、ペーストボード、
+動画のエンコード、ファイル監視、ダイアログに関するサンドボックス内の失敗は、
+サンドボックス外では再現しなかった。
+
 ## 実装完了の判定と検証ログ
 
 - `$speckit-implement` の最終回答は `scripts/dev/sdd-codex-implementation.schema.json` で検証する。

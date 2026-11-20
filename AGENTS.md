@@ -23,7 +23,7 @@
 - 制約は、対象ビューを `addSubview` した後に有効化する。異なる view hierarchy のアンカー同士を制約しない
 
 ## Phase の検証ゲート【ローカル】
-まとまった変更・Phase の終わりに、1 `swift build`、2 `swift test`、3 `scripts/dev/check-all.sh`、4 起動スモーク（`scripts/make-app.sh` → `open .build/Folzio.app` で 3 ペインが表示される）をこの順で行い、5 問題がなければ Phase 単位でコミットする。Cloud 版は `docs_private/cloud-agent-workflow.md` の 5 章。
+まとまった変更・Phase の終わりに、1 `swift build`、2 `swift test`、3 `scripts/dev/check-all.sh`、4 起動スモーク（`scripts/make-app.sh` → `open .build/Folzio.app` で 3 ペインが表示される）をこの順で行い、5 問題がなければ Phase 単位でコミットする。Codex は 1・2 を `scripts/dev/codex-swift.sh` の `build`・`test`・`test-system` で行う（`docs_private/codex-speckit.md`）。Cloud 版は `docs_private/cloud-agent-workflow.md` の 5 章。
 
 ## 完了の条件【共通】
 - テストや CI が通っただけで完了にしない。起動スモークまで行う。GUI の起動は保守者に依頼して実行するコマンドと確認する点を示し、確認されるまで GUI のタスクは未チェックで残す（Cloud では build と test も CI で確かめる）
