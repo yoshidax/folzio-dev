@@ -55,6 +55,9 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4.4.0
 
+      - name: Check for duplicate product spec IDs
+        run: bash scripts/dev/check-spec-ids.sh
+
       - name: Check public source snapshot
         run: bash scripts/dev/export-public.sh "$(git rev-parse HEAD)" "$RUNNER_TEMP/public-source"
 
