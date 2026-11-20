@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""固定したリリース対象と検証済み候補を照合し、公開用への更新を制御する。"""
+"""固定した対象と検証済み候補を照合し、リリースとサイトの公開を制御する。"""
 import argparse
 import hashlib
 import io
@@ -36,18 +36,27 @@ def ancestor(root, older, newer):
 def tree_id(source):
     with tempfile.TemporaryDirectory() as temp:
         release.git(temp, 'init', '-q')
-        args = ['-c', 'core.autocrlf=false', '-c', 'core.filemode=true',
-                '-c', 'core.attributesFile=/dev/null', '--work-tree=' + str(Path(source).resolve())]
-        release.git(temp, *args, 'add', '-f', '-A', '--', '.')
-        return release.git(temp, *args, 'write-tree')
+        return stage_source_tree(temp, source)
 
 
-def export(root, sha, dest):
+def stage_source_tree(repo, source):
+    release.git(repo, 'read-tree', '--empty')
+    release.git(repo, '-c', 'core.autocrlf=false', '-c', 'core.filemode=true',
+                '-c', 'core.attributesFile=/dev/null', '--work-tree=' + str(Path(source).resolve()),
+                'add', '-f', '-A', '--', '.')
+    return release.git(repo, 'write-tree')
+
+
+def export_source(root, sha, dest):
     # default branch が進んでも、書き出し規則は対象コミットから読み取る。
     with tempfile.TemporaryDirectory() as temp:
         for name in ('export-public.sh', 'export-public.py'):
             (Path(temp) / name).write_bytes(release.blob(root, sha, 'scripts/dev/' + name))
         release.run('bash', Path(temp) / 'export-public.sh', sha, dest, cwd=root)
+
+
+def export(root, sha, dest):
+    export_source(root, sha, dest)
     return tree_id(dest)
 
 
@@ -86,14 +95,25 @@ def unpack(directory):
     extract_source(directory / 'source.tar', directory / 'source')
 
 
-def publication_state(base, expected, body, target, same_tree, bootstrap, initialized, ancestor):
-    release.require_sha(base)
-    release.require_sha(expected)
-    release.require_sha(target)
-    if base != expected:
-        raise ValueError('公開用 main が変わりました。非 force で再確認してください')
+def development_commit(body):
     lines = [line for line in body.splitlines() if line.startswith('Development-Commit:')]
     if not lines:
+        return None
+    if len(lines) != 1 or not re.fullmatch(r'Development-Commit: [0-9a-f]{40}', lines[0]):
+        raise ValueError('source trailer が不正または重複しています')
+    return lines[0].split(': ', 1)[1]
+
+
+def require_public_base(base, expected):
+    if release.require_sha(base) != release.require_sha(expected):
+        raise ValueError('公開用 main が変わりました。現在の状態を確認して最初から再実行してください')
+
+
+def publication_state(base, expected, body, target, same_tree, bootstrap, initialized, ancestor):
+    require_public_base(base, expected)
+    release.require_sha(target)
+    previous = development_commit(body)
+    if previous is None:
         if initialized:
             raise ValueError('初期化済みの公開先で source trailer が失われています')
         if not bootstrap:
@@ -101,11 +121,12 @@ def publication_state(base, expected, body, target, same_tree, bootstrap, initia
         if release.require_sha(bootstrap) != base:
             raise ValueError('bootstrap_public_base が公開用 main と一致しません')
         return 'initialize'
-    if len(lines) != 1 or not re.fullmatch(r'Development-Commit: [0-9a-f]{40}', lines[0]):
-        raise ValueError('source trailer が不正または重複しています')
     if bootstrap:
         raise ValueError('初期化済みの公開先には bootstrap を指定できません')
-    previous = lines[0].split(': ', 1)[1]
+    return forward_publication(previous, target, same_tree, ancestor)
+
+
+def forward_publication(previous, target, same_tree, ancestor):
     if previous != target and not ancestor(previous, target):
         raise ValueError('古い対象による公開内容の巻き戻しを拒否しました')
     if same_tree:
@@ -361,16 +382,48 @@ def sync_plan(root, source_sha, run_id, bootstrap, output_dir, api):
                 plan_digest=digest(plan_file), public_tree=tree, public_base=base)
 
 
-def write(root, directory):
-    event_context(root)
-    directory = Path(directory)
+def read_plan(directory):
     if digest(directory / 'plan.json') != os.environ.get('EXPECTED_PLAN_DIGEST'):
         raise ValueError('plan の digest が判定 job と一致しません')
     plan = json.loads((directory / 'plan.json').read_text())
     if plan['source_sha'] != os.environ.get('EXPECTED_SOURCE_SHA'):
         raise ValueError('対象 SHA が判定 job と一致しません')
-    if digest(directory / 'source.tar') != os.environ.get('EXPECTED_PAYLOAD_DIGEST') or digest(directory / 'source.tar') != plan['payload_digest']:
+    payload = digest(directory / 'source.tar')
+    if payload != os.environ.get('EXPECTED_PAYLOAD_DIGEST') or payload != plan['payload_digest']:
         raise ValueError('payload の digest が一致しません')
+    return plan
+
+
+def fetch_public(public):
+    release.git(public.parent, 'init', '--bare', '--quiet', public)
+    release.git(public, 'remote', 'add', 'origin', PUBLIC_URL)
+    release.git(public, 'config', 'remote.origin.promisor', 'true')
+    release.git(public, 'fetch', '--quiet', '--depth=1', '--filter=blob:none', 'origin', 'refs/heads/main:refs/heads/main')
+    return release.git(public, 'rev-parse', 'refs/heads/main')
+
+
+def push_public(public, base, tree, subject, source_sha):
+    env = os.environ.copy()
+    for role in ('AUTHOR', 'COMMITTER'):
+        env['GIT_' + role + '_NAME'] = 'Folzio Release'
+        env['GIT_' + role + '_EMAIL'] = 'folzio-release@users.noreply.github.com'
+    message = f'{subject}\n\nDevelopment-Commit: {source_sha}\n'
+    commit = release.run('git', '-C', public, 'commit-tree', tree, '-p', base, env=env, data=message)
+    remote = release.git(public, 'ls-remote', '--exit-code', 'origin', 'refs/heads/main').split()[0]
+    if remote != base:
+        raise ValueError('公開先の並行更新を検出しました。force せず再実行してください')
+    askpass = public.parent / 'askpass.py'
+    askpass.write_text('#!/usr/bin/env python3\nimport os,sys\nprint("x-access-token" if "Username" in sys.argv[1] else os.environ["GH_TOKEN"])\n')
+    askpass.chmod(0o700)
+    env.update(GIT_ASKPASS=str(askpass), GIT_TERMINAL_PROMPT='0')
+    release.run('git', '-C', public, 'push', 'origin', f'{commit}:refs/heads/main', env=env)
+    release.summary(f'同期成功: source {source_sha} → public {commit}')
+
+
+def write(root, directory):
+    event_context(root)
+    directory = Path(directory)
+    plan = read_plan(directory)
     # writer は受け取ったスクリプトを実行せず、通常ファイルだけを別領域へ展開する。
     with tempfile.TemporaryDirectory() as temp:
         temp = Path(temp)
@@ -379,10 +432,7 @@ def write(root, directory):
         if tree_id(source) != plan['public_tree']:
             raise ValueError('payload の公開 tree が一致しません')
         public = temp / 'public'
-        release.git(temp, 'init', '--bare', '--quiet', public)
-        release.git(public, 'remote', 'add', 'origin', PUBLIC_URL)
-        release.git(public, 'fetch', '--quiet', '--depth=1', '--filter=blob:none', 'origin', 'refs/heads/main:refs/heads/main')
-        base = release.git(public, 'rev-parse', 'refs/heads/main')
+        base = fetch_public(public)
         body = release.git(public, 'show', '-s', '--format=%B', base)
         initialized = plan['public_initialized']
         existing_tree = release.git(public, 'rev-parse', base + '^{tree}')
@@ -397,32 +447,108 @@ def write(root, directory):
         if existing_tree != plan['public_tree']:
             # App の資格情報でドラフトも含めて再照合し、同期前に使用済み version を拒否する。
             release.require_unused_version(release.GitHub(release.PUBLIC_REPO), plan['candidate']['version'])
-        release.git(public, 'read-tree', '--empty')
-        release.git(public, '-c', 'core.autocrlf=false', '-c', 'core.filemode=true',
-                    '-c', 'core.attributesFile=/dev/null', '--work-tree=' + str(source), 'add', '-f', '-A', '--', '.')
-        tree = release.git(public, 'write-tree')
+        tree = stage_source_tree(public, source)
         if tree != plan['public_tree']:
             raise ValueError('書き込み直前の tree が一致しません')
-        env = os.environ.copy()
-        for role in ('AUTHOR', 'COMMITTER'):
-            env['GIT_' + role + '_NAME'] = 'Folzio Release'
-            env['GIT_' + role + '_EMAIL'] = 'folzio-release@users.noreply.github.com'
-        message = f'Publish {plan["candidate"]["version"]}\n\nDevelopment-Commit: {plan["source_sha"]}\n'
-        commit = release.run('git', '-C', public, 'commit-tree', tree, '-p', base, env=env, data=message)
-        remote = release.git(public, 'ls-remote', '--exit-code', 'origin', 'refs/heads/main').split()[0]
-        if remote != base:
-            raise ValueError('公開先の並行更新を検出しました。force せず再実行してください')
-        askpass = temp / 'askpass.py'
-        askpass.write_text('#!/usr/bin/env python3\nimport os,sys\nprint("x-access-token" if "Username" in sys.argv[1] else os.environ["GH_TOKEN"])\n')
-        askpass.chmod(0o700)
-        env.update(GIT_ASKPASS=str(askpass), GIT_TERMINAL_PROMPT='0')
-        release.run('git', '-C', public, 'push', 'origin', f'{commit}:refs/heads/main', env=env)
-        release.summary(f'同期成功: source {plan["source_sha"]} → public {commit}')
+        push_public(public, base, tree, f'Publish {plan["candidate"]["version"]}', plan['source_sha'])
+
+
+def site_source_history(root, source_sha):
+    event_context(root)
+    if os.environ['GITHUB_EVENT_NAME'] != 'workflow_dispatch':
+        raise ValueError('サイト公開は master からの手動実行に限定します')
+    release.require_sha(source_sha)
+    head = release.require_sha(os.environ['GITHUB_SHA'])
+    history = release.git(root, 'rev-list', '--first-parent', head).splitlines()
+    if source_sha not in history:
+        raise ValueError('対象は起動時の master の第一親履歴に含まれる必要があります')
+    return set(history[history.index(source_sha):])
+
+
+def site_decision(root, public, base, source_sha, site_tree, history):
+    previous = development_commit(release.git(public, 'show', '-s', '--format=%B', base))
+    if previous is None:
+        raise ValueError('公開用 main に同期元の記録がありません。通常のリリース同期を確認してください')
+    entry = release.git(public, 'ls-tree', base, '--', 'site')
+    same_site = bool(entry) and entry.split()[2] == site_tree
+    decision = forward_publication(previous, source_sha, same_site, lambda older, _: older in history)
+    # 端点が同じ場合も、途中の配布要求を追い越さない。
+    pending = release.git(root, 'log', '-1', '--first-parent', '--format=%H',
+                          f'{previous}..{source_sha}', '--', 'release.json')
+    if pending:
+        raise ValueError(f'未同期の配布要求があります。先に通常のリリース同期を確認してください（{pending}）')
+    return decision
+
+
+def site_plan(root, source_sha, directory):
+    history = site_source_history(root, source_sha)
+    directory = Path(directory)
+    with tempfile.TemporaryDirectory() as temp:
+        temp = Path(temp)
+        public = temp / 'public'
+        base = fetch_public(public)
+        release.summary(f'サイト公開の対象: source {source_sha} / public base {base}')
+        source = temp / 'source'
+        export_source(root, source_sha, source)
+        site = source / 'site'
+        if not (site / 'index.html').is_file() or not (site / 'ja/index.html').is_file():
+            raise ValueError('公開するサイトに日英の入口ページがそろっていません')
+        site_tree = tree_id(site)
+        decision = site_decision(root, public, base, source_sha, site_tree, history)
+        if (source / 'release.json').read_bytes() != release.blob(public, base, 'release.json'):
+            raise ValueError('公開用の配布要求と一致しません。通常のリリース同期を確認してください')
+        result = dict(state=decision, source_sha=source_sha, public_base=base)
+        if decision == 'skip':
+            return dict(result, reason='同じサイトは公開済みです')
+
+        release.blob(public, base, '.github/workflows/pages.yml')
+        check_site = temp / 'check-site.py'
+        check_site.write_bytes(release.blob(public, base, 'scripts/check-site.py'))
+        release.run(sys.executable, check_site, '--release', site)
+
+        directory.mkdir(parents=True, exist_ok=False)
+        archive = directory / 'source.tar'
+        pack_source(site, archive)
+        plan = dict(source_sha=source_sha, expected_public_base=base,
+                    site_tree=site_tree, payload_digest=digest(archive))
+        plan_file = directory / 'plan.json'
+        plan_file.write_text(json.dumps(plan, indent=2) + '\n')
+        return dict(result, plan_digest=digest(plan_file), payload_digest=plan['payload_digest'])
+
+
+def write_site(root, directory):
+    directory = Path(directory)
+    plan = read_plan(directory)
+    source_sha = plan['source_sha']
+    history = site_source_history(root, source_sha)
+    with tempfile.TemporaryDirectory() as temp:
+        temp = Path(temp)
+        site = temp / 'site'
+        extract_source(directory / 'source.tar', site)
+        public = temp / 'public'
+        base = fetch_public(public)
+        release.summary(f'サイト公開の照合: source {source_sha} / public base {base}')
+        require_public_base(base, plan['expected_public_base'])
+        site_tree = stage_source_tree(public, site)
+        if site_tree != plan['site_tree']:
+            raise ValueError('書き込み直前の site tree が検証済みの site tree と一致しません')
+        if site_decision(root, public, base, source_sha, site_tree, history) == 'skip':
+            release.summary('同じサイトは公開済みです')
+            return
+        # 公開済みのルートエントリは site だけを置き換える。blob なしの fetch なので、
+        # 引き継ぐエントリの blob を再取得せず、基点のオブジェクト ID をそのまま使う。
+        entries = release.run('git', '-C', public, 'ls-tree', '-z', base, binary=True).split(b'\0')
+        outside_site = [entry for entry in entries if entry and entry.split(b'\t', 1)[1] != b'site']
+        site_entry = f'040000 tree {site_tree}\tsite'.encode('ascii')
+        tree = release.run('git', '-C', public, 'mktree', '-z', '--missing', binary=True,
+                           data=b'\0'.join([*outside_site, site_entry, b''])).decode('ascii').strip()
+        push_public(public, base, tree, 'Publish website', source_sha)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['preview-plan', 'sync-plan', 'record', 'write', 'unpack', 'export'])
+    parser.add_argument('operation', choices=['preview-plan', 'sync-plan', 'record', 'write', 'unpack', 'export',
+                                              'site-plan', 'write-site'])
     parser.add_argument('--source-sha', default='')
     parser.add_argument('--candidate-run-id', default='')
     parser.add_argument('--bootstrap-public-base', default='')
@@ -448,6 +574,12 @@ def main():
         unpack(args.directory)
     elif args.operation == 'export':
         export(root, release.require_sha(args.source_sha), args.directory)
+    elif args.operation == 'site-plan':
+        result = site_plan(root, args.source_sha, args.directory)
+        release.output(result)
+        release.summary(str(result))
+    elif args.operation == 'write-site':
+        write_site(root, args.directory)
     else:
         write(root, args.directory)
 
