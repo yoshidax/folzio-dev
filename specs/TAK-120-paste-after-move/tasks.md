@@ -15,8 +15,8 @@ Finder と同じくファイルの参照を置く設計に置き換えた（spec
 
 **目的**: 項目の参照を作り、今の場所へ解決する
 
-- [ ] T001 `Sources/FolzioCore/Operations/ClipboardFileReferences.swift` を新規に作り、`ClipboardFileEntry`・`ClipboardFileResolution` と、`entries(for:)`（`CFURLCreateFileReferenceURL`、作れなければパス）・`resolve(_:)`（`CFURLCreateFilePathURL`、解決できなければ `.missing(name:)`）を置く（FR-413・FR-414、data-model.md、research.md R2・R4）
-- [ ] T002 [P] `Tests/FolzioCoreTests/ClipboardFileReferencesTests.swift` を新規に作り、作った文字列が `file:///.file/id=` で始まること、名前の変更・別のフォルダへの移動・フォルダの中の項目の移動の後に新しいパスへ解決されること、削除した項目が `.missing` になり名前が付くこと（US94-AS9）、存在しない項目はパスの file URL になること（EC-282）、パスの file URL はそのパスに解決されること（EC-285）、順序を保つことを確かめる
+- [X] T001 `Sources/FolzioCore/Operations/ClipboardFileReferences.swift` を新規に作り、`ClipboardFileEntry`・`ClipboardFileResolution` と、`entries(for:)`（`CFURLCreateFileReferenceURL`、作れなければパス）・`resolve(_:)`（`CFURLCreateFilePathURL`、解決できなければ `.missing(name:)`）を置く（FR-413・FR-414、data-model.md、research.md R2・R4）
+- [X] T002 [P] `Tests/FolzioCoreTests/ClipboardFileReferencesTests.swift` を新規に作り、作った文字列が `file:///.file/id=` で始まること、名前の変更・別のフォルダへの移動・フォルダの中の項目の移動の後に新しいパスへ解決されること、削除した項目が `.missing` になり名前が付くこと（US94-AS9）、存在しない項目はパスの file URL になること（EC-282）、パスの file URL はそのパスに解決されること（EC-285）、順序を保つことを確かめる
 
 **Checkpoint**: `swift build` と `swift test --filter ClipboardFileReferencesTests` が通る（Cloud では CI）
 
@@ -26,12 +26,12 @@ Finder と同じくファイルの参照を置く設計に置き換えた（spec
 
 **Independent Test**: quickstart.md の GUI の確認 1〜9
 
-- [ ] T003 [US1] `Sources/FolzioApp/Shared/PasteboardFileURLs.swift` に、`ClipboardFileEntry` の並びを項目ごとの `NSPasteboardItem`（`.fileURL` と `.string`）として書く処理（版が渡された値と違えば書かない。EC-281）と、各項目の `.fileURL`・`.string` の文字列を読む処理を加える。既存の `fileURLs(in:)` はドラッグのために残す（research.md R3・R5）
-- [ ] T004 [US1] `Sources/FolzioApp/FileList/FileListViewController.swift` の `copy(_:)` と `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift` の `copyFolders(_:to:)` を、対象と版を取ってから `Task.detached` で `ClipboardFileReferences.entries(for:)` を呼び、UI スレッドで T003 の書き込みをする形に変える（FR-413、research.md R3）
-- [ ] T005 [US1] `Sources/FolzioApp/Operations/FileOperationCoordinator.swift` の `paste(into:move:pasteboard:parentWindow:)` の file URL の場合を、T003 で項目を読み、`Task.detached` で `ClipboardFileReferences.resolve(_:)` を呼び、見つかった項目をコピー・移動し、`.missing` の項目をその失敗とまとめて示す形に変える（FR-414・EC-283、research.md R4）
-- [ ] T006 [US1] `Tests/FolzioAppTests/ExternalDragTests.swift` の `PasteboardFileURLsTests` に、一意の名前のクリップボードで、項目ごとに参照とファイル名が書かれること、版が変わっていれば書かないこと（EC-281）、書いた項目を `fileURLs(in:)` でも読めること（ドラッグと Finder の読み取り）を加える
-- [ ] T007 [US1] `Tests/FolzioAppTests/ClipboardPasteTests.swift` を新規に作り、一意の名前のクリップボードで、コピー → 移動ペースト → ペースト（US94-AS1）、コピー → 名前の変更 → ペースト（US94-AS2）、コピー → フォルダの移動 → ペースト（US94-AS3）、パスの file URL のペースト（EC-285）、削除した項目を含む複数の項目のペーストで、ほかの項目がペーストされること（EC-283）、ペーストの後もクリップボードの中身が変わらないこと（SC-236）を確かめる
-- [ ] T008 [P] [US1] `docs/usage.md` と `docs/usage.ja.md` のコピー・ペーストの説明に、Finder と同じく、コピーした後に移動・名前の変更・ゴミ箱に入れた項目もペーストできること（別のボリュームへ移動・削除した項目は除く）を同じ内容で追記する
+- [X] T003 [US1] `Sources/FolzioApp/Shared/PasteboardFileURLs.swift` に、`ClipboardFileEntry` の並びを項目ごとの `NSPasteboardItem`（`.fileURL` と `.string`）として書く処理（版が渡された値と違えば書かない。EC-281）と、各項目の `.fileURL`・`.string` の文字列を読む処理を加える。既存の `fileURLs(in:)` はドラッグのために残す（research.md R3・R5）
+- [X] T004 [US1] `Sources/FolzioApp/FileList/FileListViewController.swift` の `copy(_:)` と `Sources/FolzioApp/Tree/DirectoryTreeViewController.swift` の `copyFolders(_:to:)` を、対象と版を取ってから `Task.detached` で `ClipboardFileReferences.entries(for:)` を呼び、UI スレッドで T003 の書き込みをする形に変える（FR-413、research.md R3）
+- [X] T005 [US1] `Sources/FolzioApp/Operations/FileOperationCoordinator.swift` の `paste(into:move:pasteboard:parentWindow:)` の file URL の場合を、T003 で項目を読み、`Task.detached` で `ClipboardFileReferences.resolve(_:)` を呼び、見つかった項目をコピー・移動し、`.missing` の項目をその失敗とまとめて示す形に変える（FR-414・EC-283、research.md R4）
+- [X] T006 [US1] `Tests/FolzioAppTests/ExternalDragTests.swift` の `PasteboardFileURLsTests` に、一意の名前のクリップボードで、項目ごとに参照とファイル名が書かれること、版が変わっていれば書かないこと（EC-281）、書いた項目を `fileURLs(in:)` でも読めること（ドラッグと Finder の読み取り）を加える
+- [X] T007 [US1] `Tests/FolzioAppTests/ClipboardPasteTests.swift` を新規に作り、一意の名前のクリップボードで、コピー → 移動ペースト → ペースト（US94-AS1）、コピー → 名前の変更 → ペースト（US94-AS2）、コピー → フォルダの移動 → ペースト（US94-AS3）、パスの file URL のペースト（EC-285）、削除した項目を含む複数の項目のペーストで、ほかの項目がペーストされること（EC-283）、ペーストの後もクリップボードの中身が変わらないこと（SC-236）を確かめる
+- [X] T008 [P] [US1] `docs/usage.md` と `docs/usage.ja.md` のコピー・ペーストの説明に、Finder と同じく、コピーした後に移動・名前の変更・ゴミ箱に入れた項目もペーストできること（別のボリュームへ移動・削除した項目は除く）を同じ内容で追記する
 
 **Checkpoint**: `swift build` と `swift test` が通る（Cloud では CI）
 
