@@ -52,6 +52,22 @@ class PublicationStateTests(unittest.TestCase):
             self.decide(target=self.old)
         self.assertEqual(self.decide(target=self.old, same_tree=True), 'skip')
 
+    def test_website_trailer_must_follow_development_trailer(self):
+        for body in [
+            f'Website-Commit: {self.new}',
+            f'Development-Commit: {self.old}\nWebsite-Commit: {self.old}',
+            f'Development-Commit: {self.old}\nWebsite-Commit: invalid',
+            f'Development-Commit: {self.new}\nWebsite-Commit: {self.old}',
+        ]:
+            with self.subTest(body=body), self.assertRaisesRegex(ValueError, 'Website-Commit'):
+                self.decide(body=body)
+
+    def test_other_release_cannot_roll_back_a_website(self):
+        website = 'd' * 40
+        body = f'Development-Commit: {self.old}\nWebsite-Commit: {website}'
+        with self.assertRaisesRegex(ValueError, '巻き戻し'):
+            self.decide(body=body, ancestor=lambda a, b: (a, b) == (self.old, website))
+
 
 class CandidateValidationTests(unittest.TestCase):
     def setUp(self):
@@ -521,7 +537,8 @@ class WebsitePublicationTests(unittest.TestCase):
         self.assertEqual(self.git(self.public, 'diff', '--name-status', self.base, current).splitlines(),
                          ['A\tsite/added.txt', 'M\tsite/index.html', 'M\tsite/ja/index.html', 'D\tsite/obsolete.txt'])
         self.assertIn('<p>New</p>', self.git(self.public, 'show', f'{current}:site/index.html'))
-        self.assertIn(f'Development-Commit: {source}', self.git(self.public, 'show', '-s', '--format=%B', current))
+        self.assertEqual(self.git(self.public, 'show', '-s', '--format=%B', current),
+                         f'Publish website\n\nDevelopment-Commit: {self.published_source}\nWebsite-Commit: {source}')
         self.assertEqual(self.plan(source, self.root / 'retry')['state'], 'skip')
         self.assertFalse((self.root / 'retry').exists())
         with self.assertRaisesRegex(ValueError, '巻き戻し'):
@@ -533,6 +550,61 @@ class WebsitePublicationTests(unittest.TestCase):
                         GITHUB_REF='refs/heads/main', GITHUB_SHA=current):
             result = self.sync.release.public_plan(self.public, object())
         self.assertEqual(result, dict(ready=False, reason='Release request unchanged', commit=current))
+
+    def test_synced_release_can_be_rerun_after_a_website_publication(self):
+        from unittest.mock import patch
+
+        self.write(self.plan(self.commit_site()))
+        current = self.public_head()
+        pr = dict(number=7, head=dict(sha=self.published_source), base=dict(sha=self.published_source))
+        directory = self.root / 'release-retry'
+        with (patch.object(self.sync, 'merged_release', return_value=pr),
+              patch.object(self.sync, 'candidate') as candidate,
+              patch.object(self.sync.release, 'require_unused_version') as version):
+            result = self.sync.sync_plan(self.dev, self.published_source, '42', '', directory, object())
+        self.assertEqual(result['state'], 'skip')
+        self.assertEqual(result['public_base'], current)
+        self.assertFalse((directory / 'source.tar').exists())
+        candidate.assert_not_called()
+        version.assert_not_called()
+        self.assertEqual(self.public_head(), current)
+
+    def test_write_can_be_retried_after_the_same_plan_has_published(self):
+        from unittest.mock import patch
+
+        plan = self.plan(self.commit_site())
+        self.write(plan)
+        current = self.public_head()
+        with patch.object(self.sync, 'push_public') as push:
+            self.write(plan)
+        push.assert_not_called()
+        self.assertEqual(self.public_head(), current)
+
+    def test_requires_manual_dispatch_on_master(self):
+        from unittest.mock import patch
+
+        for env, message in [
+            (dict(GITHUB_EVENT_NAME='push'), '手動実行に限定'),
+            (dict(GITHUB_REF='refs/heads/topic'), 'master の実行に限定'),
+        ]:
+            with self.subTest(env=env), patch.dict('os.environ', env):
+                with patch.object(self.sync, 'fetch_public') as fetch, self.assertRaisesRegex(ValueError, message):
+                    self.plan(self.published_source)
+                fetch.assert_not_called()
+
+    def test_changed_site_requires_a_pages_workflow_on_public_main(self):
+        exported = self.root / 'exported'
+        self.git(exported, 'rm', '.github/workflows/pages.yml')
+        self.git(exported, '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm',
+                 f'Remove Pages workflow\n\nDevelopment-Commit: {self.published_source}')
+        self.git(exported, 'push', self.public, 'main')
+        base_without_pages = self.public_head()
+
+        source = self.commit_site()
+        with self.assertRaisesRegex(ValueError, r'Committed file missing: \.github/workflows/pages\.yml'):
+            self.plan(source)
+        self.assertFalse(self.directory.exists())
+        self.assertEqual(self.public_head(), base_without_pages)
 
     def test_pending_release_stops_publication_even_if_reverted(self):
         source = self.commit_site()
@@ -605,6 +677,8 @@ class WebsitePublicationTests(unittest.TestCase):
             self.write(plan, self.sync.write, directory)
         current = self.public_head()
         self.assertEqual(self.git(self.public, 'show', '-s', '--format=%P', current), site_public)
+        self.assertEqual(self.git(self.public, 'show', '-s', '--format=%B', current),
+                         f'Publish 1.2.4\n\nDevelopment-Commit: {source}')
         self.assertEqual(self.sync.release.load_request(self.public, current), request)
         self.assertEqual(self.git(self.public, 'show', f'{current}:Sources/unpublished.txt'), 'Unpublished app')
 

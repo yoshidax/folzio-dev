@@ -95,13 +95,21 @@ def unpack(directory):
     extract_source(directory / 'source.tar', directory / 'source')
 
 
-def development_commit(body):
-    lines = [line for line in body.splitlines() if line.startswith('Development-Commit:')]
+def source_trailer(body, name):
+    lines = [line for line in body.splitlines() if line.startswith(f'{name}:')]
     if not lines:
         return None
-    if len(lines) != 1 or not re.fullmatch(r'Development-Commit: [0-9a-f]{40}', lines[0]):
-        raise ValueError('source trailer が不正または重複しています')
+    if len(lines) != 1 or not re.fullmatch(rf'{name}: [0-9a-f]{{40}}', lines[0]):
+        raise ValueError(f'{name} trailer が不正または重複しています')
     return lines[0].split(': ', 1)[1]
+
+
+def published_sources(body, ancestor):
+    development = source_trailer(body, 'Development-Commit')
+    website = source_trailer(body, 'Website-Commit')
+    if website and (not development or website == development or not ancestor(development, website)):
+        raise ValueError('Website-Commit はリリースの同期元より後の対象である必要があります')
+    return development, website
 
 
 def require_public_base(base, expected):
@@ -112,7 +120,7 @@ def require_public_base(base, expected):
 def publication_state(base, expected, body, target, same_tree, bootstrap, initialized, ancestor):
     require_public_base(base, expected)
     release.require_sha(target)
-    previous = development_commit(body)
+    previous, website = published_sources(body, ancestor)
     if previous is None:
         if initialized:
             raise ValueError('初期化済みの公開先で source trailer が失われています')
@@ -123,7 +131,9 @@ def publication_state(base, expected, body, target, same_tree, bootstrap, initia
         return 'initialize'
     if bootstrap:
         raise ValueError('初期化済みの公開先には bootstrap を指定できません')
-    return forward_publication(previous, target, same_tree, ancestor)
+    if website and previous == target:
+        return 'skip'
+    return forward_publication(website or previous, target, same_tree, ancestor)
 
 
 def forward_publication(previous, target, same_tree, ancestor):
@@ -346,6 +356,11 @@ def sync_plan(root, source_sha, run_id, bootstrap, output_dir, api):
     base, existing_tree, body, initialized = public_snapshot()
     decision = publication_state(base, base, body, source_sha, tree == existing_tree,
                                  bootstrap, initialized, lambda a, b: ancestor(root, a, b))
+    # サイト公開後はリリース同期済みでも tree が異なり、配布 version は使用済みになり得る。
+    if decision == 'skip' and tree != existing_tree:
+        shutil.rmtree(source)
+        return dict(state='skip', ready=False, source_sha=source_sha, public_base=base,
+                    reason='対象リリースは同期済みです。後続のサイト公開を維持します')
     if tree != existing_tree:
         release.require_unused_version(release.GitHub(release.PUBLIC_REPO), request['version'])
     archive = output_dir / 'source.tar'
@@ -402,12 +417,14 @@ def fetch_public(public):
     return release.git(public, 'rev-parse', 'refs/heads/main')
 
 
-def push_public(public, base, tree, subject, source_sha):
+def push_public(public, base, tree, subject, source_sha, website_sha=None):
     env = os.environ.copy()
     for role in ('AUTHOR', 'COMMITTER'):
         env['GIT_' + role + '_NAME'] = 'Folzio Release'
         env['GIT_' + role + '_EMAIL'] = 'folzio-release@users.noreply.github.com'
     message = f'{subject}\n\nDevelopment-Commit: {source_sha}\n'
+    if website_sha:
+        message += f'Website-Commit: {website_sha}\n'
     commit = release.run('git', '-C', public, 'commit-tree', tree, '-p', base, env=env, data=message)
     remote = release.git(public, 'ls-remote', '--exit-code', 'origin', 'refs/heads/main').split()[0]
     if remote != base:
@@ -417,7 +434,7 @@ def push_public(public, base, tree, subject, source_sha):
     askpass.chmod(0o700)
     env.update(GIT_ASKPASS=str(askpass), GIT_TERMINAL_PROMPT='0')
     release.run('git', '-C', public, 'push', 'origin', f'{commit}:refs/heads/main', env=env)
-    release.summary(f'同期成功: source {source_sha} → public {commit}')
+    release.summary(f'同期成功: source {website_sha or source_sha} → public {commit}')
 
 
 def write(root, directory):
@@ -440,7 +457,7 @@ def write(root, directory):
                                      existing_tree == plan['public_tree'],
                                      plan['bootstrap_public_base'], initialized, lambda a, b: ancestor(root, a, b))
         if decision == 'skip':
-            release.summary('同じ tree は公開済みです')
+            release.summary('対象リリースは同期済みです')
             return
         if decision not in ('write', 'initialize'):
             raise ValueError('初期化の明示が必要です')
@@ -465,12 +482,19 @@ def site_source_history(root, source_sha):
     return set(history[history.index(source_sha):])
 
 
-def site_decision(root, public, base, source_sha, site_tree, history):
-    previous = development_commit(release.git(public, 'show', '-s', '--format=%B', base))
+def site_sources(root, public, base):
+    body = release.git(public, 'show', '-s', '--format=%B', base)
+    return published_sources(body, lambda a, b: ancestor(root, a, b))
+
+
+def public_site_matches(public, base, site_tree):
+    entry = release.git(public, 'ls-tree', base, '--', 'site')
+    return bool(entry) and entry.split()[2] == site_tree
+
+
+def site_decision(root, previous, source_sha, same_site, history):
     if previous is None:
         raise ValueError('公開用 main に同期元の記録がありません。通常のリリース同期を確認してください')
-    entry = release.git(public, 'ls-tree', base, '--', 'site')
-    same_site = bool(entry) and entry.split()[2] == site_tree
     decision = forward_publication(previous, source_sha, same_site, lambda older, _: older in history)
     # 端点が同じ場合も、途中の配布要求を追い越さない。
     pending = release.git(root, 'log', '-1', '--first-parent', '--format=%H',
@@ -494,7 +518,9 @@ def site_plan(root, source_sha, directory):
         if not (site / 'index.html').is_file() or not (site / 'ja/index.html').is_file():
             raise ValueError('公開するサイトに日英の入口ページがそろっていません')
         site_tree = tree_id(site)
-        decision = site_decision(root, public, base, source_sha, site_tree, history)
+        development, website = site_sources(root, public, base)
+        same_site = public_site_matches(public, base, site_tree)
+        decision = site_decision(root, website or development, source_sha, same_site, history)
         if (source / 'release.json').read_bytes() != release.blob(public, base, 'release.json'):
             raise ValueError('公開用の配布要求と一致しません。通常のリリース同期を確認してください')
         result = dict(state=decision, source_sha=source_sha, public_base=base)
@@ -528,11 +554,21 @@ def write_site(root, directory):
         public = temp / 'public'
         base = fetch_public(public)
         release.summary(f'サイト公開の照合: source {source_sha} / public base {base}')
-        require_public_base(base, plan['expected_public_base'])
+        development, website = site_sources(root, public, base)
+        same_site = public_site_matches(public, base, plan['site_tree'])
+        expected_base = plan['expected_public_base']
+        if base != expected_base and website == source_sha and same_site:
+            # shallow fetch でも、commit オブジェクトから親を確認できる。
+            headers = release.git(public, 'cat-file', 'commit', base).split('\n\n', 1)[0]
+            parents = [line for line in headers.splitlines() if line.startswith('parent ')]
+            if parents == [f'parent {expected_base}']:
+                release.summary('同じサイトは公開済みです')
+                return
+        require_public_base(base, expected_base)
         site_tree = stage_source_tree(public, site)
         if site_tree != plan['site_tree']:
             raise ValueError('書き込み直前の site tree が検証済みの site tree と一致しません')
-        if site_decision(root, public, base, source_sha, site_tree, history) == 'skip':
+        if site_decision(root, website or development, source_sha, same_site, history) == 'skip':
             release.summary('同じサイトは公開済みです')
             return
         # 公開済みのルートエントリは site だけを置き換える。blob なしの fetch なので、
@@ -542,7 +578,7 @@ def write_site(root, directory):
         site_entry = f'040000 tree {site_tree}\tsite'.encode('ascii')
         tree = release.run('git', '-C', public, 'mktree', '-z', '--missing', binary=True,
                            data=b'\0'.join([*outside_site, site_entry, b''])).decode('ascii').strip()
-        push_public(public, base, tree, 'Publish website', source_sha)
+        push_public(public, base, tree, 'Publish website', development, website_sha=source_sha)
 
 
 def main():

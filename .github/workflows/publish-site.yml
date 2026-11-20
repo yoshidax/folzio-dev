@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   plan:
-    if: github.repository == 'yoshidax/folzio-dev' && github.ref == 'refs/heads/master'
+    if: github.repository == 'yoshidax/folzio-dev'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -22,6 +22,11 @@ jobs:
       payload_digest: ${{ steps.plan.outputs.payload_digest }}
       artifact_id: ${{ steps.upload.outputs.artifact-id }}
     steps:
+      - name: Require master
+        if: github.ref != 'refs/heads/master'
+        run: |
+          echo '::error::Run Publish website source from master.'
+          exit 1
       - uses: actions/checkout@v4.4.0
         with:
           ref: ${{ github.sha }}
@@ -41,7 +46,7 @@ jobs:
 
   write:
     needs: plan
-    if: needs.plan.outputs.state == 'write'
+    if: github.ref == 'refs/heads/master' && needs.plan.outputs.state == 'write'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
