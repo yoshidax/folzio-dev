@@ -38,4 +38,22 @@ scripts/make-app.sh
 
 ## 検証の記録
 
-（実装の後に記録する）
+### 自動の検証（2026-11-20）
+
+| 項目 | 結果 |
+|---|---|
+| `scripts/dev/check-all.sh`（Cloud） | 成功（all checks passed） |
+| CI の `swift build`（`815b880`） | 失敗。`CFURLCreateFileReferenceURL`・`CFURLCreateFilePathURL` の戻り値が `Unmanaged<CFURL>` で型が合わなかった |
+| CI の `swift build`・通常のテスト（`4a59ef8`、修正後） | 成功。1326 件 |
+| CI の性能テスト（`4a59ef8`） | 28 件中 7 件が基準値を超えた（名前の絞り込み・JPEG のデコード・フォルダへの戻り・名前の変更の付け替え・検索のまとめ・スライドショーの候補 2 件） |
+| CI の `swift build`・通常のテスト（`ff947f8`、tasks.md だけの変更） | 成功 |
+| CI の性能テスト（`ff947f8`） | 28 件中 2 件が基準値を超えた（JPEG のデコード 0.76 秒 / 0.5 秒、スライドショーの候補 200,000 件 0.2028 秒 / 0.2 秒） |
+
+- 性能テストで基準値を超えたテストは、この feature が変えたコード（コピーとペースト）を通らない。同じソースの2回の実行で、
+  超えたテストの数と組み合わせが変わった（7 件と 2 件）ため、共有のランナーでの測定のぶれと判断した
+  （docs_private/cloud-agent-workflow.md の 4 章の 2026-10-31 の例と同じ）
+- 新しいテスト: `ClipboardFileReferencesTests`（8件）、`ClipboardPasteTests`（6件）、`PasteboardFileURLsTests` への追加（4件）
+
+### GUI の確認
+
+[checklists/validation.md](checklists/validation.md) に記録した。

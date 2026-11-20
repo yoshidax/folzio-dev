@@ -37,8 +37,8 @@ Finder と同じくファイルの参照を置く設計に置き換えた（spec
 
 ## Phase 3: Polish & Verification
 
-- [ ] T009 `scripts/dev/check-all.sh` を実行し、push 後の CI（`swift build`・`swift test`）の結果を `specs/TAK-120-paste-after-move/quickstart.md` に記録する
-- [ ] T010 [MANUAL] 保守者が古い Folzio を終了して `scripts/make-app.sh` の後に `open .build/Folzio.app` で起動し、3ペインの表示と `specs/TAK-120-paste-after-move/quickstart.md` の GUI の確認 1〜9（ゴミ箱、Finder・テキストエディタとの受け渡し、別のボリュームを含む）を行う
+- [X] T009 `scripts/dev/check-all.sh` を実行し、push 後の CI（`swift build`・`swift test`）の結果を `specs/TAK-120-paste-after-move/quickstart.md` に記録する
+- [X] T010 [MANUAL] 保守者が古い Folzio を終了して `scripts/make-app.sh` の後に `open .build/Folzio.app` で起動し、3ペインの表示と `specs/TAK-120-paste-after-move/quickstart.md` の GUI の確認 1〜9（ゴミ箱、Finder・テキストエディタとの受け渡し、別のボリュームを含む）を行う（2026-11-20、保守者の報告「期待通り」。checklists/validation.md）
 - [ ] T011 `specs/product/file-operations.md` へ spec.md の「反映先」の項目を反映し、spec.md に移行済み・凍結の注記を入れ、`python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を実行する
 - [ ] T012 [MANUAL] 保守者が `specs/product/` への反映の差分を確認し、承認する
 
