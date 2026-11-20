@@ -1,5 +1,8 @@
 # Feature Specification: コピー元を移動した後もペーストできるようにする
 
+> **移行済み（2026-11-20）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-120 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+
 **Feature Branch**: `claude/tender-carson-4e5op3`
 
 **Created**: 2026-11-20
