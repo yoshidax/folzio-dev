@@ -12,29 +12,43 @@ SCRIPT = "scripts/dev/check-spec-ids.sh"
 
 
 class CheckSpecReferencesTests(unittest.TestCase):
-    def run_check(self, files, *options):
+    def run_check(self, files, *options, base_files=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "scripts/dev").mkdir(parents=True)
-            for script in (SCRIPT, "scripts/dev/check-spec-references.py"):
+            for script in (SCRIPT, "scripts/dev/check-spec-references.py", "scripts/dev/base-ref.sh"):
                 shutil.copy2(ROOT / script, root / script)
-            for name, content in files.items():
-                path = root / name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(content, encoding="utf-8")
+            if base_files is not None:
+                self.write_files(root, base_files)
+                self.commit_base(root)
+            self.write_files(root, files)
             return subprocess.run([str(root / SCRIPT), *options], capture_output=True, text=True, cwd="/")
+
+    def write_files(self, root, files):
+        for name, content in files.items():
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+
+    def commit_base(self, root):
+        def git(*args):
+            subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
+        git("init", "-q", "-b", "master")
+        git("add", "-A")
+        git("-c", "user.name=test", "-c", "user.email=test@example.com", "commit", "-q", "-m", "base")
 
     def test_accepts_normalized_references_and_legacy_story_headings(self):
         result = self.run_check({
             "specs/product/overview.md": (
                 "本文は（FR-40・041〜FR-043、SC-002・EC-3・A-001）を参照する。\n"
-                "`US017-AS02`・`AS3`〜`4` と US17〜US18 を参照する。\n"
+                "`US017-AS02`・`AS3`〜`4` と US17〜US18・19 を参照する。\n"
                 "- **FR-040**: FR-41 を参照する。\n"
                 "- **FR-041**\n- **FR-042**\n- **FR-043**\n"
                 "- **SC-002**\n- **EC-03**\n- **A-01**\n"
                 "### User Story 17 - 旧形式の見出し\n"
                 "1. **US17-AS2**\n2. **US17-AS3**\n- **US17-AS4**\n"
-                "### US18 見出し\n"
+                "### US18: 見出し\n"
+                "### US19（P1）\n"
             ),
         })
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -61,17 +75,64 @@ class CheckSpecReferencesTests(unittest.TestCase):
             )
         ])
 
-    def test_ignores_fenced_examples_and_keeps_existing_duplicate_check(self):
+    def test_ignores_fenced_definitions_and_references(self):
         result = self.run_check({
             "specs/product/overview.md": (
-                "- **FR-001**\n- **FR-001**\n"
-                "```markdown\nFR-999\n```\n~~~\nUS999\n~~~\n"
+                "- **FR-001**\n"
+                "```markdown\n- **FR-001**\n- **FR-999**\nFR-999\n```\n"
+                "~~~\nUS999\n~~~\n"
+                "本文では FR-999 を参照する。\n"
+            ),
+        })
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stderr, "specs/product/overview.md:10: 定義のない仕様 ID FR-999\n")
+
+    def test_reports_normalized_duplicate_locations_and_unresolved_references(self):
+        result = self.run_check({
+            "specs/product/overview.md": (
+                "- **FR-040**\n"
+                "### US03: 見出し\n"
+                "1. **US3-AS01**\n"
+            ),
+            "specs/product/window-layout.md": (
+                "2. **FR-40**\n"
+                "### US3（P1）\n"
+                "- **US03-AS1**\n"
+                "FR-999 を参照する。\n"
             ),
         })
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stderr.splitlines(), [
-            "Duplicated spec IDs under specs/product:", "**FR-001**",
+            "specs/product/overview.md:1: 重複した仕様 ID FR-040",
+            "specs/product/window-layout.md:1: 重複した仕様 ID FR-040",
+            "specs/product/overview.md:3: 重複した仕様 ID US3-AS1",
+            "specs/product/window-layout.md:3: 重複した仕様 ID US3-AS1",
+            "specs/product/window-layout.md:4: 定義のない仕様 ID FR-999",
         ])
+
+    def test_checks_ascii_ranges_without_treating_quantities_as_shorthand_ids(self):
+        result = self.run_check({
+            "specs/product/overview.md": (
+                "- **SC-001**\n- **FR-040**\n- **FR-045**\n"
+                "SC-001・2 秒以内、SC-001・3件、SC-001〜4.5 秒、SC-001・`5` ms以内。\n"
+                "FR-040~FR-045 を参照する。\n"
+                "SC-001・SC-002 秒。\n"
+            ),
+        })
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stderr.splitlines(), [
+            "specs/product/overview.md:5: 定義のない仕様 ID FR-041〜FR-044",
+            "specs/product/overview.md:6: 定義のない仕様 ID SC-002",
+        ])
+
+    def test_rejects_unclosed_fence_with_location_in_both_modes(self):
+        for options in ((), ("--next",)):
+            with self.subTest(options=options):
+                result = self.run_check({
+                    "specs/product/overview.md": "# 概要\n```markdown\n本文の FR-999\n",
+                }, *options)
+                self.assertEqual(result.returncode, 2)
+                self.assertEqual(result.stderr, "specs/product/overview.md:2: コードフェンスが閉じていません\n")
 
     def test_next_uses_definitions_in_all_areas(self):
         result = self.run_check({
@@ -89,3 +150,17 @@ class CheckSpecReferencesTests(unittest.TestCase):
         result = self.run_check({"specs/product/overview.md": "# 概要\n"}, "--next")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.splitlines(), ["FR-001", "SC-001", "EC-01", "A-01", "US1"])
+
+    def test_next_includes_active_feature_definitions_only(self):
+        result = self.run_check({
+            "specs/TAK-999-active/spec.md": (
+                "- **FR-415**\n- **SC-240**\n- **A-252**\n### US96（P1）\n"
+                "本文の参照は FR-800。\n"
+            ),
+            "specs/TAK-999-active/plan.md": "- **FR-900**\n",
+        }, "--next", base_files={
+            "specs/product/overview.md": "- **FR-414**\n- **EC-285**\n### US95\n",
+            "specs/001-archived/spec.md": "- **FR-999**\n### US999\n",
+        })
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ["FR-416", "SC-241", "EC-286", "A-253", "US97"])
