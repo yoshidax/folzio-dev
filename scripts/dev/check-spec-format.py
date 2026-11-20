@@ -16,6 +16,10 @@ import sys
 import unicodedata
 from pathlib import Path
 
+# python3 -I でも同じディレクトリの解析モジュールを読み込む。
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spec_id_definitions import DEFINITION_RE, UnclosedFenceError, lines_with_fence_kind
+
 ROOT = Path(__file__).resolve().parents[2]
 SPEC_DIR = "specs/product"
 DEFAULT_CONFIG = "scripts/dev/spec-format-config.json"
@@ -42,7 +46,6 @@ QUOTE_PAIRS = (("「", "」"), ("“", "”"))
 HEADING_RE = re.compile(r"^(#{1,6})\s")
 ITEM_RE = re.compile(r"^(\s*)([-*]|\d+\.)\s")
 SEPARATOR_RE = re.compile(r"^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$")
-DEFINITION_RE = re.compile(r"^\s*- \*\*((FR|SC|EC|A)-\d+|US\d+-AS\d+)\*\*")
 DETAIL_LABEL_RE = re.compile(r"^- \*\*(.+?)\*\*")
 BACKTICK_RUN_RE = re.compile(r"`+")
 
@@ -72,14 +75,10 @@ def indent_of(line):
 def classify(lines):
     """Returns the kind of each line: fence, code, table, heading, item, text, or blank."""
     kinds = []
-    in_code = False
-    for line in lines:
+    for _, line, kind in lines_with_fence_kind(lines):
         stripped = line.strip()
-        if stripped.startswith("```"):
-            kinds.append("fence")
-            in_code = not in_code
-        elif in_code:
-            kinds.append("code")
+        if kind is not None:
+            kinds.append(kind)
         elif not stripped:
             kinds.append("blank")
         elif stripped.startswith("|"):
@@ -368,7 +367,10 @@ def run(args):
 
     findings = []
     for key, path in checked.items():
-        file_findings, lines, kinds = check_file(key, path.read_text(encoding="utf-8"), config)
+        try:
+            file_findings, lines, kinds = check_file(key, path.read_text(encoding="utf-8"), config)
+        except UnclosedFenceError as error:
+            raise ConfigError(f"{path.relative_to(ROOT)}:{error.line}: {error}") from error
         ignored = []
         for exclusion in config.get("exclusions", []):
             if exclusion["file"] == key:
