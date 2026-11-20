@@ -36,7 +36,7 @@ public enum ClipboardFileReferences {
         urls.map { url in
             let name = url.lastPathComponent
             guard url.isFileURL,
-                  let reference = CFURLCreateFileReferenceURL(nil, url as CFURL, nil) else {
+                  let reference = CFURLCreateFileReferenceURL(nil, url as CFURL, nil)?.takeRetainedValue() else {
                 return ClipboardFileEntry(url: url.absoluteString, name: name)
             }
             return ClipboardFileEntry(url: CFURLGetString(reference) as String, name: name)
@@ -56,7 +56,7 @@ public enum ClipboardFileReferences {
             guard let pathURL = URL(string: entry.url), pathURL.isFileURL else { return missing }
             return .found(pathURL)
         }
-        guard let pathURL = CFURLCreateFilePathURL(nil, url, nil) else { return missing }
+        guard let pathURL = CFURLCreateFilePathURL(nil, url, nil)?.takeRetainedValue() else { return missing }
         return .found(pathURL as URL)
     }
 }
