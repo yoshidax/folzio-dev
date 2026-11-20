@@ -61,7 +61,7 @@ class CheckSpecFormatTests(unittest.TestCase):
                 path = root / "specs/product" / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(text)
-            result = subprocess.run([sys.executable, str(dev / "check-spec-format.py"), *args],
+            result = subprocess.run([sys.executable, "-I", str(dev / "check-spec-format.py"), *args],
                                     capture_output=True, text=True)
             baseline_path = dev / "spec-format-baseline.json"
             saved = json.loads(baseline_path.read_text()) if baseline_path.exists() else None
@@ -75,6 +75,22 @@ class CheckSpecFormatTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Errors: 0", result.stdout)
         self.assertIn("Warnings: 0", result.stdout)
+
+    def test_lints_definitions_only_outside_fences(self):
+        text = (
+            "````text\n```\n- **FR-001**: 一文目。二文目。\n`````\n"
+            "~~~\n2. **US1-AS1**: 一文目。二文目。\n~~~\n"
+            "2. **US1-AS2**: 一文目。二文目。\n"
+        )
+        result, _ = self.run_check({"a.md": text})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assert_finding(result, "a.md:8", "warning", "multi-sentence")
+        self.assertIn("Warnings: 1 (baseline 0)", result.stdout)
+
+    def test_reports_location_of_unclosed_fence(self):
+        result, _ = self.run_check({"a.md": "# 領域\n\n~~~text\n例\n"})
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("specs/product/a.md:3: unclosed code fence", result.stderr)
 
     def test_line_wider_than_error_limit_fails(self):
         result, _ = self.run_check({"a.md": "- " + "あ" * 80 + "\n"})

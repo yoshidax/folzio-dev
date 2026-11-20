@@ -1,7 +1,6 @@
 #!/bin/bash
-# 製品仕様の ID の重複を検査する。
+# 使い方: scripts/dev/check-spec-ids.sh
+# 対象の ID と終了コードは check-spec-ids.py の docstring を参照。
 set -euo pipefail
 
-cd "$(dirname "$0")/../.."
-
-exec python3 scripts/dev/check-spec-ids.py
+exec python3 -I "$(dirname "$0")/check-spec-ids.py"

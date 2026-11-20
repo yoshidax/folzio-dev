@@ -1,55 +1,33 @@
-"""製品仕様の ID の重複を検査し、定義された場所を表示する。"""
+"""製品仕様の ID の重複を検査する。
 
-import os
+    scripts/dev/check-spec-ids.sh
+
+FR・SC・EC・A・USn-ASm の定義は各 ID につき 1 か所に置く（specs/product/README.md）。
+重複した ID はすべての定義位置を表示する。終了コードは、重複なしが 0、重複ありが 1、
+ファイルを読み取れないかコードフェンスが閉じていない場合は 2。
+"""
+
 import re
 import sys
 from collections import defaultdict
 from pathlib import Path
 
-from spec_id_definitions import DEFINITION_RE
+# python3 -I でも同じディレクトリの解析モジュールを読み込む。
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spec_id_definitions import PRODUCT, ROOT, SpecInputError, definitions_in, product_markdown_paths
 
 
-PRODUCT = Path("specs/product")
-FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
-
-
-def read_error(error):
-    raise error
-
-
-def spec_paths():
-    # pathlib の glob が列挙時のエラーを無視する環境でも、読み取り失敗を検査結果に反映する。
-    for directory, subdirs, names in os.walk(PRODUCT, onerror=read_error):
-        subdirs.sort()
-        for name in sorted(names):
-            if name.endswith(".md"):
-                yield Path(directory) / name
-
-
-def content_lines(path):
-    fence = ""
-    with path.open(encoding="utf-8") as source:
-        for number, text in enumerate(source, start=1):
-            line = text.rstrip("\n")
-            marker = FENCE_RE.match(line)
-            if fence:
-                if marker and marker[1].startswith(fence) and not marker[2].strip():
-                    fence = ""
-            elif marker:
-                fence = marker[1]
-            else:
-                yield number, line
+def id_sort_key(label):
+    parts = re.split(r"([0-9]+)", label)
+    return tuple(int(part) if part.isdigit() else part for part in parts), label
 
 
 def check():
     definitions = defaultdict(list)
-    for path in spec_paths():
-        try:
-            for number, line in content_lines(path):
-                if definition := DEFINITION_RE.match(line):
-                    definitions[definition["id"]].append(f"{path}:{number}")
-        except UnicodeError as error:
-            raise OSError(f"{path}: {error}") from error
+    for path in product_markdown_paths():
+        relative = path.relative_to(ROOT)
+        for label, number in definitions_in(path):
+            definitions[label].append(f"{relative}:{number}")
 
     # 領域ごとに同じ US を別の題名で記述できるため、重複の判定には個々の AS を使う。
     duplicates = {label: locations for label, locations in definitions.items() if len(locations) > 1}
@@ -58,10 +36,10 @@ def check():
         print("No duplicated spec IDs.")
         return 0
 
-    print(f"Duplicated spec IDs under {PRODUCT}:", file=sys.stderr)
-    for label, locations in sorted(duplicates.items()):
+    print(f"Duplicated spec IDs under {PRODUCT.relative_to(ROOT)}:", file=sys.stderr)
+    for label in sorted(duplicates, key=id_sort_key):
         print(label, file=sys.stderr)
-        for location in locations:
+        for location in duplicates[label]:
             print(f"  {location}", file=sys.stderr)
     return 1
 
@@ -69,7 +47,7 @@ def check():
 def main():
     try:
         return check()
-    except OSError as error:
+    except (OSError, SpecInputError) as error:
         print(f"check-spec-ids: {error}", file=sys.stderr)
         return 2
 

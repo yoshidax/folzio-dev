@@ -2,6 +2,7 @@
 
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -28,9 +29,12 @@ class CheckSpecIdsTests(unittest.TestCase):
         path.write_text(content, encoding="utf-8")
         return path
 
-    def run_check(self):
+    def run_check(self, direct=False):
+        command = ["bash", str(self.root / "scripts/dev/check-spec-ids.sh")]
+        if direct:
+            command = [sys.executable, "-I", str(self.root / "scripts/dev/check-spec-ids.py")]
         return subprocess.run(
-            ["bash", str(self.root / "scripts/dev/check-spec-ids.sh")],
+            command,
             cwd=self.directory,
             capture_output=True,
             text=True,
@@ -62,6 +66,23 @@ class CheckSpecIdsTests(unittest.TestCase):
             result.stderr,
         )
 
+    def test_sorts_duplicate_ids_by_number_within_each_family(self):
+        labels = ["US2-AS11", "US10-AS1", "FR-1000", "FR-999", "US2-AS2"]
+        definitions = "".join(f"- **{label}**\n" for label in labels)
+        self.write_file("specs/product/area.md", definitions * 2)
+        result = self.run_check()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(
+            [line for line in result.stderr.splitlines()[1:] if not line.startswith(" ")],
+            ["FR-999", "FR-1000", "US2-AS2", "US2-AS11", "US10-AS1"],
+        )
+
+    def test_direct_isolated_invocation_uses_its_own_repository(self):
+        self.write_file("specs/product/area.md", "- **FR-001**\n- **FR-001**\n")
+        result = self.run_check(direct=True)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("  specs/product/area.md:1\n  specs/product/area.md:2\n", result.stderr)
+
     def test_allows_different_headings_for_the_same_story_with_distinct_scenarios(self):
         self.write_file("specs/product/area.md", "### US34 選んだ言語で一覧を参照する（P2）\n- **US34-AS1**\n")
         self.write_file("specs/product/other.md", "### US34 キーボードと読み上げで一覧を参照する\n2. **US34-AS2**\n")
@@ -85,8 +106,18 @@ class CheckSpecIdsTests(unittest.TestCase):
     def test_fails_if_product_directory_is_missing(self):
         result = self.run_check()
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        self.assertIn("specs/product", result.stderr)
+        self.assertTrue(result.stderr.startswith("check-spec-ids: specs/product:"), result.stderr)
         self.assertEqual(result.stdout, "")
+
+    def test_reports_unclosed_fence_before_reporting_success(self):
+        self.write_file("specs/product/other.md", "- **FR-001**: 定義。\n")
+        for closer in ("```", "```` extra"):
+            with self.subTest(closer=closer):
+                self.write_file("specs/product/area.md", f"\n````text\n例\n{closer}\n- **FR-001**: もう一つ。\n")
+                result = self.run_check()
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertIn("specs/product/area.md:2: unclosed code fence", result.stderr)
+                self.assertEqual(result.stdout, "")
 
     def test_fails_if_product_directory_is_unreadable(self):
         product = self.write_file("specs/product/area.md", "- **FR-001**\n").parent
@@ -108,7 +139,7 @@ class CheckSpecIdsTests(unittest.TestCase):
         area.with_name("broken.md").symlink_to("missing.md")
         result = self.run_check()
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        self.assertIn("specs/product/broken.md", result.stderr)
+        self.assertTrue(result.stderr.startswith("check-spec-ids: specs/product/broken.md:"), result.stderr)
         self.assertEqual(result.stdout, "")
 
     def test_fails_if_a_markdown_file_cannot_be_decoded(self):
