@@ -9,7 +9,7 @@ Finder と同じくファイルの参照を置く設計に置き換えた（spec
 
 ## Phase 0: 設計レビュー
 
-- [ ] T000 [MANUAL] 保守者が `specs/TAK-120-paste-after-move/spec.md`・`plan.md`・`tasks.md` と analyze の結果を確認し、実装開始を承認する
+- [X] T000 [MANUAL] 保守者が `specs/TAK-120-paste-after-move/spec.md`・`plan.md`・`tasks.md` と analyze の結果を確認し、実装開始を承認する（2026-11-20、このチャット。analyze の B1 は GUI の確認 8 で確かめる）
 
 ## Phase 1: Foundational（FolzioCore の参照）
 
