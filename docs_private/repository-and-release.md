@@ -337,6 +337,8 @@ TAK-80 の Issue に記録した。コミット作者のメールアドレスと
 | 必須チェック | `Build and test (macOS 15 / arm64)` |
 | チェックの発行元 | `Any source` |
 
+2026-11-20 に GitHub API で確認した時点では、「Require branches to be up to date before merging」は無効だった。
+
 `Any source` は同名チェックの発行元を GitHub Actions に限定していないため、GitHub Actions への限定を推奨する。
 既存の `protect-master` を確認・更新し、重複する ruleset を新しく作らない。
 
@@ -356,8 +358,9 @@ New ruleset → New branch ruleset で、次の方針で作る。以下は設定
 
 - 必須チェックは、名前を手で入力せず、「Add checks」の候補から、GitHub Actions のものを選ぶ。
   発行元も GitHub Actions に限定することを推奨する。候補は最近動いたチェックから出るので、先に PR で CI を 1 回動かしておく
-- 「Require branches to be up to date before merging」は使わない。`master` が進むたびに取り込みと CI の待ちが要るほどの並行はない。
-  必要になれば有効にする
+- 「Require branches to be up to date before merging」を有効にする。既存の `protect-master` では、Settings → Rules → Rulesets →
+  protect-master → Require status checks to pass で設定する。`master` が進むたびに PR ブランチの更新と必須チェックの成功を求め、
+  マージ前に最新の `master` との組み合わせで仕様 ID の重複を検査する
 - 承認レビューを必須にしない。保守者は 1 人で、自分の PR を承認できない
 - 例外（bypass）を置かないので、保守者もローカルから `master` へ直接 push できない。統合は PR で行う（「開発用 master へのマージ」）
 
@@ -366,9 +369,12 @@ New ruleset → New branch ruleset で、次の方針で作る。以下は設定
 1. CI が成功していない PR では、マージのボタンが使えない
 2. CI が成功した自分の PR を、承認レビューなしでマージできる
 3. ruleset の画面で、上の項目が有効で、bypass の対象がない
+4. `master` が進むと、取り込み前に必須チェックが通っていた PR でもマージできない。取り込み後の必須チェックに
+   `Check for duplicate product spec IDs` があり、仕様 ID が重複していればこのステップが失敗する
 
 GitHub Free の公開リポジトリで rulesets が使えない場合は、Settings → Branches → Add branch protection rule（classic）で、
-`master` に同じ項目（Require a pull request before merging、Require status checks to pass before merging、
+`master` に同じ項目（Require a pull request before merging、Require status checks to pass before merging と
+Require branches to be up to date before merging、
 Allow force pushes と Allow deletions は無効）を設定し、「Do not allow bypassing the above settings」を有効にする。
 classic の保護は、既定では管理者に適用されない。
 

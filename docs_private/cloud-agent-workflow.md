@@ -129,7 +129,8 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 - 並列の単位は **Issue（feature）**。別の Issue は別のセッションが担当する。サブエージェントによるタスク分割の並列実装は、Cloud では行わない（【ローカル】の worktree 規約は、Cloud には適用しない）。
 - feature ディレクトリは Issue 番号を含む（`specs/TAK-<nn>-<slug>`）ので、別の Issue と衝突しない。`.specify/feature.json` は管理対象外で、PR に含まれない。
 - `specs/product/` への反映は、**PR の最後の作業**にする。反映の直前に、`git merge origin/master` で最新の `master` を取り込む。同じ領域ファイルで競合したら、Agent が解消する。履歴を書き換えない（強制 push は禁止）。
-- `specs/product/` の ID は並行する feature 間で衝突し得る。反映直前に取り込んだ `master` と突き合わせ、衝突があれば[仕様 ID の重複解消](spec-id-conflicts.md)に従ってから反映する。両方がマージ済みの重複も同じ共通手順で扱う（例: TAK-52）。
+- `specs/product/` の ID は並行する feature 間で衝突し得る。最新の `master` を取り込んだ直後と、仕様の反映前後に `scripts/dev/check-spec-ids.sh` を実行する。PR を開いた後で `master` が進み、取り込み直したときも、push の前に同じ検査を実行する。衝突があれば[仕様 ID の重複解消](spec-id-conflicts.md)に従い、参照先も確認する。両方がマージ済みの重複も同じ手順で扱う（例: TAK-52）。
+- 開発用 CI は PR のマージ結果に対して同じスクリプトを実行し、重複があれば必須チェックを失敗させる。最新の `master` との検査をマージ前に必須にする設定は、[ブランチ保護](repository-and-release.md#master-のブランチ保護保守者が設定する)を参照する。
 - 反映した項目と差分を保守者へ示し、承認を得てからコミットする。
 
 ## リリース PR の CI（TAK-41）
