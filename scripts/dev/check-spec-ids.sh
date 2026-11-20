@@ -1,10 +1,6 @@
 #!/bin/bash
-# specs/product/ の ID の重複と、定義のない参照を検査する。
-#
-#   scripts/dev/check-spec-ids.sh           # 重複と参照を検査
-#   scripts/dev/check-spec-ids.sh --next    # 種類ごとの次の ID を表示
+# 使い方: scripts/dev/check-spec-ids.sh [--next]
+# 対象の ID と終了コードは check-spec-ids.py の docstring を参照。
 set -euo pipefail
 
-cd "$(dirname "$0")/../.."
-
-exec python3 scripts/dev/check-spec-references.py "$@"
+exec python3 -I "$(dirname "$0")/check-spec-ids.py" "$@"

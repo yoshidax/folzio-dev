@@ -1,19 +1,28 @@
-"""製品仕様の ID の重複と参照を検査し、定義から次の ID を求める。"""
+"""製品仕様の ID の重複と参照を検査し、次の ID を求める。
+
+    scripts/dev/check-spec-ids.sh [--next]
+
+FR・SC・EC・A・USn-ASm の定義は各 ID につき 1 か所に置く（specs/product/README.md）。
+重複した ID はすべての定義位置を表示する。終了コードは、問題なしが 0、重複または未定義参照ありが 1、
+入力を読み取れないかコードフェンスが閉じていない場合は 2。
+"""
 
 import argparse
-from bisect import bisect_left, bisect_right
-from collections import defaultdict
-from pathlib import Path
 import re
 import subprocess
 import sys
+from bisect import bisect_left, bisect_right
+from collections import defaultdict
+from pathlib import Path
+
+# python3 -I でも同じディレクトリの解析モジュールを読み込む。
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spec_id_definitions import DEFINITION_RE, PRODUCT, ROOT, SpecInputError, product_markdown_paths, spec_lines
 
 
-PRODUCT = Path("specs/product")
 FAMILIES = {"FR-": 3, "SC-": 3, "EC-": 2, "A-": 2, "US": 1}
 PREFIX = r"FR-|SC-|EC-|A-|US[0-9]+-AS|US"
 ID = rf"(?P<prefix>{PREFIX})(?P<number>[0-9]+)"
-DEFINITION = re.compile(rf"^[ \t]*(?:-|[0-9]+\.)[ \t]+\*\*{ID}\*\*")
 STORY_HEADING = re.compile(r"^#{1,6}[ \t]+(?:US|User Story[ \t]+)([0-9]+)(?=[ \t:：(（]|$)")
 REFERENCE = re.compile(rf"(?<![A-Za-z0-9_-]){ID}(?![A-Za-z0-9_-])")
 GAP = r"[ \t]*(?:\n[ \t]*)?"
@@ -25,7 +34,6 @@ QUANTITY_SUFFIX = re.compile(
     r"(?:`+|\*+)?[ \t]*(?:[.,][0-9]|[%％]|[秒分時年月日件回個人枚台桁文字行列倍番つ]|"
     r"(?:ms|s|KB|MB|GB|px)(?![A-Za-z0-9_]))"
 )
-FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 
 
 def spec_id(match, inherited_prefix=None):
@@ -41,17 +49,22 @@ def format_id(prefix, number):
     return f"{prefix}{number:0{FAMILIES.get(prefix, 1)}d}"
 
 
+def id_sort_key(label):
+    parts = re.split(r"([0-9]+)", label)
+    return tuple(int(part) if part.isdigit() else part for part in parts), label
+
+
 def active_feature_specs():
-    # find-spec-id.sh と同じ基準で、既定ブランチにない feature だけを読む。
-    base = subprocess.run(["scripts/dev/base-ref.sh"], capture_output=True, text=True)
+    # find-spec-id.py と同じ基準で、既定ブランチにない feature だけを読む。
+    base = subprocess.run([ROOT / "scripts/dev/base-ref.sh"], cwd=ROOT, capture_output=True, text=True)
     if base.returncode != 0:
         return []
     merged_dirs = subprocess.check_output(
-        ["git", "ls-tree", "-dz", "--name-only", base.stdout.strip(), "specs/"], encoding="utf-8",
+        ["git", "ls-tree", "-dz", "--name-only", base.stdout.strip(), "specs/"], cwd=ROOT, encoding="utf-8",
     ).split("\0")
     return sorted(
         path for path in PRODUCT.parent.glob("*/spec.md")
-        if path.parent != PRODUCT and path.parent.as_posix() not in merged_dirs and path.is_file()
+        if path.parent != PRODUCT and path.parent.relative_to(ROOT).as_posix() not in merged_dirs and path.is_file()
     )
 
 
@@ -59,45 +72,41 @@ def read_specs(paths):
     definitions = defaultdict(list)
     bodies = {}
     for path in paths:
+        relative = path.relative_to(ROOT)
         lines = []
-        fence = ""
-        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-            marker = FENCE.match(line)
-            if fence:
-                if marker and marker[1].startswith(fence) and not marker[2].strip():
-                    fence = ""
+        for number, line, kind in spec_lines(path):
+            if kind is not None:
                 lines.append("")
                 continue
-            if marker:
-                fence = marker[1]
-                fence_line = line_number
-                lines.append("")
-                continue
-            if definition := DEFINITION.match(line):
-                definitions[spec_id(definition)].append((path, line_number))
+            line = line.rstrip("\n")
+            if definition := DEFINITION_RE.match(line):
+                key = spec_id(REFERENCE.fullmatch(definition["id"]))
+                definitions[key].append(f"{relative}:{number}")
                 line = line[definition.end():]
             elif heading := STORY_HEADING.match(line):
-                definitions["US", int(heading[1])].append((path, line_number))
+                definitions["US", int(heading[1])].append(f"{relative}:{number}")
                 line = line[heading.end():]
             lines.append(line)
-        if fence:
-            raise ValueError(f"{path}:{fence_line}: コードフェンスが閉じていません")
-        bodies[path] = "\n".join(lines)
+        bodies[relative] = "\n".join(lines)
     return definitions, bodies
 
 
 def check_duplicates(definitions):
-    found = False
-    for (prefix, number), locations in sorted(definitions.items()):
-        # 同じユーザーストーリーの見出しは複数の領域に置ける。
-        if prefix == "US" or len(locations) < 2:
-            continue
-        for path, line in locations:
-            print(f"{path}:{line}: 重複した仕様 ID {format_id(prefix, number)}", file=sys.stderr)
-        found = True
-    if not found:
-        print("No duplicated spec IDs.")
-    return found
+    # 領域ごとに同じ US を別の題名で記述できるため、重複の判定には個々の AS を使う。
+    duplicates = {
+        format_id(prefix, number): locations for (prefix, number), locations in definitions.items()
+        if prefix != "US" and len(locations) > 1
+    }
+
+    if not duplicates:
+        return False
+
+    print(f"Duplicated spec IDs under {PRODUCT.relative_to(ROOT)}:", file=sys.stderr)
+    for label in sorted(duplicates, key=id_sort_key):
+        print(label, file=sys.stderr)
+        for location in duplicates[label]:
+            print(f"  {location}", file=sys.stderr)
+    return True
 
 
 def reference_ranges(body):
@@ -148,24 +157,22 @@ def check_references(definitions, bodies):
                 line = bisect_left(newlines, position) + 1
                 print(f"{path}:{line}: 定義のない仕様 ID {label}", file=sys.stderr)
                 found = True
-    if not found:
-        print("定義のない仕様 ID の参照はありません。")
     return found
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, prog="scripts/dev/check-spec-ids.sh", allow_abbrev=False)
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0], prog="scripts/dev/check-spec-ids.sh", allow_abbrev=False)
     parser.add_argument("--next", action="store_true", help="製品仕様と作業中 feature の定義から種類ごとの最大値の次を表示する")
     args = parser.parse_args()
     try:
-        paths = sorted(PRODUCT.rglob("*.md"))
+        paths = sorted(product_markdown_paths())
         if not paths:
-            raise OSError(f"{PRODUCT} に Markdown ファイルがありません")
+            raise SpecInputError(f"{PRODUCT.relative_to(ROOT)}: Markdown ファイルがありません")
         if args.next:
             paths.extend(active_feature_specs())
         definitions, bodies = read_specs(paths)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
-        print(error, file=sys.stderr)
+        print(f"check-spec-ids: {error}", file=sys.stderr)
         return 2
     if args.next:
         for prefix in FAMILIES:
@@ -174,6 +181,8 @@ def main():
         return 0
     duplicates = check_duplicates(definitions)
     unresolved = check_references(definitions, bodies)
+    if not (duplicates or unresolved):
+        print("No duplicated spec IDs.")
     return int(duplicates or unresolved)
 
 

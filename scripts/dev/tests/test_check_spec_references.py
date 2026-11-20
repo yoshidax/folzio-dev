@@ -16,7 +16,7 @@ class CheckSpecReferencesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "scripts/dev").mkdir(parents=True)
-            for script in (SCRIPT, "scripts/dev/check-spec-references.py", "scripts/dev/base-ref.sh"):
+            for script in (SCRIPT, "scripts/dev/check-spec-ids.py", "scripts/dev/spec_id_definitions.py", "scripts/dev/base-ref.sh"):
                 shutil.copy2(ROOT / script, root / script)
             if base_files is not None:
                 self.write_files(root, base_files)
@@ -103,10 +103,13 @@ class CheckSpecReferencesTests(unittest.TestCase):
         })
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stderr.splitlines(), [
-            "specs/product/overview.md:1: 重複した仕様 ID FR-040",
-            "specs/product/window-layout.md:1: 重複した仕様 ID FR-040",
-            "specs/product/overview.md:3: 重複した仕様 ID US3-AS1",
-            "specs/product/window-layout.md:3: 重複した仕様 ID US3-AS1",
+            "Duplicated spec IDs under specs/product:",
+            "FR-040",
+            "  specs/product/overview.md:1",
+            "  specs/product/window-layout.md:1",
+            "US3-AS1",
+            "  specs/product/overview.md:3",
+            "  specs/product/window-layout.md:3",
             "specs/product/window-layout.md:4: 定義のない仕様 ID FR-999",
         ])
 
@@ -132,7 +135,7 @@ class CheckSpecReferencesTests(unittest.TestCase):
                     "specs/product/overview.md": "# 概要\n```markdown\n本文の FR-999\n",
                 }, *options)
                 self.assertEqual(result.returncode, 2)
-                self.assertEqual(result.stderr, "specs/product/overview.md:2: コードフェンスが閉じていません\n")
+                self.assertEqual(result.stderr, "check-spec-ids: specs/product/overview.md:2: unclosed code fence\n")
 
     def test_next_uses_definitions_in_all_areas(self):
         result = self.run_check({
