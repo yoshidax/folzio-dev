@@ -2,47 +2,47 @@
 
 **Branch**: `claude/tender-carson-4e5op3` | **Date**: 2026-11-20 | **Spec**: [spec.md](spec.md)
 
-**Input**: [TAK-120](https://linear.app/takyoshida/issue/TAK-120/) と現行の file-operations.md・directory-tree.md
+**Input**: [TAK-120](https://linear.app/takyoshida/issue/TAK-120/) と現行の file-operations.md
 
 ## Summary
 
-Folzio がクリップボードに書いた、またはペーストで読んだファイルの並びと、そのときのクリップボードの版（`changeCount`）を
-メモリに覚える。Folzio が移動・名前の変更を終えたら、クリップボードの版が覚えたときのままなら、覚えたファイルの並びを
-移動後の場所へ付け替えて書き直す。付け替えと判断は `FolzioCore` の `ClipboardFileRecord` に置き、既存の
-`RenamedFolder`（フォルダの名前の変更で URL を付け替える型）を使う。クリップボードの中身は、従来どおりペーストの実行時だけ読む。
+Finder と同じく、Folzio のコピーで各項目のファイルの参照（`file:///.file/id=…`）とファイル名の文字列をクリップボードに置く。
+ペーストのときに参照を今の場所に解決してから、既存のコピー・移動に渡す。クリップボードは後から書き換えない。
+参照の作成と解決は Foundation（CoreFoundation の `CFURLCreateFileReferenceURL`・`CFURLCreateFilePathURL`）だけで行えるため、
+`FolzioCore` の `ClipboardFileReferences` に置き、UI スレッドの外で呼ぶ。`FolzioApp` の `PasteboardFileURLs` は、
+クリップボードの項目の読み書きだけを受け持つ。
 
 ## Technical Context
 
 **Language/Version**: Swift 6（CI は Xcode 16.0）
 
-**Primary Dependencies**: AppKit（`NSPasteboard`）、FolzioCore。追加依存なし
+**Primary Dependencies**: Foundation・CoreFoundation（FolzioCore）、AppKit の `NSPasteboard`・`NSPasteboardItem`（FolzioApp）。追加依存なし
 
-**Storage**: なし（メモリだけ。A-249）
+**Storage**: なし
 
-**Testing**: Swift Testing（FolzioCoreTests の `ClipboardFileRecordTests`、FolzioAppTests の `ClipboardRelocationTests`）、
-保守者の GUI 起動確認（Finder でのペーストを含む）
+**Testing**: Swift Testing（FolzioCoreTests の `ClipboardFileReferencesTests`、FolzioAppTests の `PasteboardFileURLsTests` の追加と
+`ClipboardPasteTests`）、保守者の GUI 起動確認（Finder・テキストエディタとの受け渡し、ゴミ箱、別のボリューム）
 
 **Target Platform**: macOS 15 以降の既存ターゲット
 
 **Project Type**: デスクトップアプリ
 
-**Performance Goals**: 移動・名前の変更の後に、覚えた URL の数だけパスを比べる（ファイルシステムにアクセスしない）
+**Performance Goals**: コピーとペーストで、項目ごとに1回のファイルシステムの問い合わせ（参照の作成・解決）を UI スレッドの外で行う
 
 **Constraints**: オフライン。判断ロジックは AppKit を import しない `FolzioCore` に置く。UI スレッドでファイル操作をしない。
 クリップボードの中身はペーストの実行時だけ読む（FR-354）
 
-**Scale/Scope**: 書き換えの契機は、移動（`transfer` の `.move`）と名前の変更（`rename`）の2か所。記録の契機は、
-コピー（ファイルリスト・ツリー）とペースト・移動ペースト
+**Scale/Scope**: コピーの入口2つ（ファイルリスト・ツリー）、ペーストの入口1つ（`FileOperationCoordinator.paste`）
 
 ## Constitution Check
 
 | 原則 | 設計上の確認 |
 |---|---|
-| I ローカル完結 | 外部通信を追加しない。ファイルは変更せず、クリップボードの file URL だけを書き換える。 |
-| II 体感パフォーマンス | 書き換えはパスの比較だけで、UI スレッドでファイルシステムにアクセスしない（R3）。 |
+| I ローカル完結 | 外部通信を追加しない。ゴミ箱からの移動ペーストも、利用者の明示的な操作と、既存の移動の確認（FR-024）に従う。 |
+| II 体感パフォーマンス | 参照の作成と解決は `Task.detached` で UI スレッドの外で行う（R3）。 |
 | III キーボードとアクセシビリティ | ショートカットとメニューは変えない。⌘C → ⌥⌘V → ⌘V のキーボードの流れが続けられるようになる。 |
-| IV テスト | 付け替えと版の判断を `FolzioCore` に置いて単体テストで全分岐を確かめ、移動・名前の変更・ペーストからの書き換えを App のテストで確かめる。 |
-| V シンプルさ | 新しい設定を足さない。既存の `RenamedFolder` を再利用し、記録は `PasteboardFileURLs` の1か所に置く。 |
+| IV テスト | 参照の作成・解決（移動・名前の変更・削除・パスの file URL）を `FolzioCore` で単体テストし、クリップボードの読み書きとペーストを App のテストで確かめる。異常系（見つからない項目・解決できない参照）を含む。 |
+| V シンプルさ | 新しい設定を足さない。クリップボードの状態を覚えず、書き換えもしない。 |
 
 **Post-design**: 上記を満たす。Complexity Tracking に記録する違反はない。
 
@@ -67,19 +67,22 @@ specs/TAK-120-paste-after-move/
 
 ```text
 Sources/FolzioCore/
-└── Model/ClipboardFileRecord.swift          # 新規。覚えたファイルの並びと版、移動後の並びの計算
+└── Operations/ClipboardFileReferences.swift  # 新規。項目の参照の作成と、今の場所への解決
 Sources/FolzioApp/
-├── Shared/PasteboardFileURLs.swift          # 書いたとき・ペーストで読んだときに記録し、移動の後に書き直す
-└── Operations/FileOperationCoordinator.swift # ペーストで記録する。移動・名前の変更の後に書き直す。transferItems が移動の対応を返す
+├── Shared/PasteboardFileURLs.swift          # 参照とファイル名の項目を書く・読む。版が変わっていたら書かない
+├── FileList/FileListViewController.swift    # copy(_:) を、参照を UI スレッドの外で用意してから書く形に
+├── Tree/DirectoryTreeViewController.swift   # copyFolders(_:to:) を同じ形に
+└── Operations/FileOperationCoordinator.swift # paste で項目を読み、解決してからコピー・移動。解決できない項目を失敗に含める
 Tests/FolzioCoreTests/
-└── ClipboardFileRecordTests.swift           # 新規
+└── ClipboardFileReferencesTests.swift       # 新規
 Tests/FolzioAppTests/
-├── ClipboardRelocationTests.swift           # 新規。移動ペースト・ドロップ・名前の変更・中止・別のアプリの変更
-└── FileTransferCancellationTests.swift      # transferItems の戻り値の変更に追従
+├── ExternalDragTests.swift                  # PasteboardFileURLsTests に、参照とファイル名の書き込み・読み取りを追加
+└── ClipboardPasteTests.swift                # 新規。コピー → 移動・名前の変更 → ペースト、解決できない参照
 docs/usage.md・docs/usage.ja.md               # 移動の後もペーストできることを書く
 ```
 
 **Structure Decision**: 既存の2ターゲット（FolzioCore・FolzioApp）の構成のまま、上記のファイルだけを変える。
+ドラッグ（`InternalDrag`・`ExternalDrag`）の読み取りは変えない（R5）。
 
 ## Complexity Tracking
 

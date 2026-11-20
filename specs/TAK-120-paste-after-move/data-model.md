@@ -1,32 +1,38 @@
 # Data Model: コピー元を移動した後もペーストできるようにする
 
-## ClipboardFileRecord（FolzioCore、新規）
+## ClipboardFileEntry（FolzioCore、新規）
 
-Folzio が把握しているクリップボードのファイルの並び（spec.md の Key Entities）。
+クリップボードの1項目（spec.md の Key Entities）。
 
 | フィールド | 型 | 意味 |
 |---|---|---|
-| `changeCount` | `Int` | 書いた・読んだときのクリップボードの版 |
-| `urls` | `[URL]` | 書いた・読んだときのファイルの並び（順序を保つ） |
+| `url` | `String` | `public.file-url` に置く文字列。ファイルの参照（`file:///.file/id=…`）、作れなければパスの file URL |
+| `name` | `String?` | `public.utf8-plain-text` に置くファイル名。読み取りのとき、なければ nil |
 
-- `relocated(by moves: [RenamedFolder], currentChangeCount: Int) -> [URL]?`
-  - `currentChangeCount` が `changeCount` と違えば `nil`（FR-414）
-  - 各 URL に `moves` を順に適用する（`RenamedFolder.rebaseOrSelf`）。項目そのものと子孫を付け替える（EC-286）
-  - 変わった URL が1つもなければ `nil`（FR-413 の「書き換える項目がなければ変えない」）
-  - それ以外は、付け替えた並び（関係のない URL はそのまま、順序も同じ）
+## ClipboardFileReferences（FolzioCore、新規）
 
-## 記録の状態の移り変わり
+ファイルシステムに問い合わせるため、UI スレッドの外で呼ぶ。
 
-| 契機 | 記録 |
+- `entries(for urls: [URL]) -> [ClipboardFileEntry]`
+  - 各 URL の参照を作る。作れなければパスの file URL の文字列にする（EC-282）
+  - `name` は URL の最後の要素（ファイル名）
+  - 順序を保つ
+- `resolve(_ entries: [ClipboardFileEntry]) -> [ClipboardFileResolution]`
+  - 参照は今のパスへ解決する。パスの file URL はそのパス（EC-285）
+  - 解決できなければ `.missing(name:)`。名前は `name`、なければ `url` の文字列（R4）
+  - 順序を保つ
+
+## ClipboardFileResolution（FolzioCore、新規）
+
+| ケース | 意味 |
 |---|---|
-| Folzio のコピー（ファイルリスト・ツリー） | 書いた並びと、書いた後の版を記録する |
-| ペースト・移動ペーストの実行 | 読んだ並びと、そのときの版を記録する |
-| Folzio の移動・名前の変更（版が同じ） | 付け替えた並びを書き、書いた後の版で記録を更新する |
-| Folzio の移動・名前の変更（版が違う） | 書き換えない。記録は使われなくなる |
-| 別のアプリのコピー | 何もしない（次の移動で版の違いが分かる） |
-| Folzio の終了 | 失われる（A-249） |
+| `.found(URL)` | 今の場所（パスの file URL） |
+| `.missing(name: String)` | 解決できない。失敗の表示に使う名前 |
 
-## 移動の対応（`RenamedFolder`、既存）
+## クリップボードとの対応（FolzioApp の `PasteboardFileURLs`）
 
-`from`（移動前の場所）と `to`（実際の移動後の場所）。`FileOperationCoordinator.transferItems` が、移動に成功した項目ごとに返す。
-名前の変更は1件の対応を作る。
+| 操作 | クリップボード |
+|---|---|
+| Folzio のコピー | 項目ごとに `NSPasteboardItem` を作り、`url` を `.fileURL`、`name` を `.string` に置く。書く直前に版を比べる（EC-281） |
+| ペースト・移動ペースト | 各項目の `.fileURL` と `.string` の文字列を読む。file URL として読めない項目は除く |
+| 移動・名前の変更・ゴミ箱 | 何もしない（SC-236） |
