@@ -16,6 +16,8 @@ import sys
 import unicodedata
 from pathlib import Path
 
+from spec_id_definitions import DEFINITION_RE
+
 ROOT = Path(__file__).resolve().parents[2]
 SPEC_DIR = "specs/product"
 DEFAULT_CONFIG = "scripts/dev/spec-format-config.json"
@@ -42,7 +44,6 @@ QUOTE_PAIRS = (("「", "」"), ("“", "”"))
 HEADING_RE = re.compile(r"^(#{1,6})\s")
 ITEM_RE = re.compile(r"^(\s*)([-*]|\d+\.)\s")
 SEPARATOR_RE = re.compile(r"^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$")
-DEFINITION_RE = re.compile(r"^\s*- \*\*((FR|SC|EC|A)-\d+|US\d+-AS\d+)\*\*")
 DETAIL_LABEL_RE = re.compile(r"^- \*\*(.+?)\*\*")
 BACKTICK_RUN_RE = re.compile(r"`+")
 

@@ -52,7 +52,8 @@ class CheckSpecFormatTests(unittest.TestCase):
             root = Path(directory)
             dev = root / "scripts/dev"
             dev.mkdir(parents=True)
-            shutil.copy2(ROOT / "scripts/dev/check-spec-format.py", dev / "check-spec-format.py")
+            for script in ("check-spec-format.py", "spec_id_definitions.py"):
+                shutil.copy2(ROOT / "scripts/dev" / script, dev / script)
             (dev / "spec-format-config.json").write_text(json.dumps(config or CONFIG, ensure_ascii=False))
             if baseline is not None:
                 (dev / "spec-format-baseline.json").write_text(json.dumps(baseline, ensure_ascii=False))
@@ -159,11 +160,16 @@ class CheckSpecFormatTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
 
     def test_multi_sentence_definition_warning(self):
-        text = "- **FR-001**: 一つ目の文。二つ目の\n  文。\n  - 子項目。子項目の二文目。\n- **US1-AS1**: 一文だけ。\n"
+        text = (
+            "- **FR-001**: 一つ目の文。二つ目の\n  文。\n  - 子項目。子項目の二文目。\n"
+            "- **US1-AS1**: 一文だけ。\n"
+            "1. **US1-AS2**: 一つ目の文。二つ目の文。\n"
+        )
         result, _ = self.run_check({"a.md": text}, baseline={"warnings": {}})
         self.assertEqual(result.returncode, 1)
         self.assert_finding(result, "a.md:1", "warning", "multi-sentence")
         self.assertNotIn("a.md:4:", result.stdout)
+        self.assert_finding(result, "a.md:5", "warning", "multi-sentence")
 
     def test_decreased_warnings_pass_and_suggest_update(self):
         result, _ = self.run_check({"a.md": "text\n"}, baseline={"warnings": {"a.md": {"line-width": 2}}})
