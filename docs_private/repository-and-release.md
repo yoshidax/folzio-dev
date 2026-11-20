@@ -337,7 +337,7 @@ TAK-80 の Issue に記録した。コミット作者のメールアドレスと
 | 必須チェック | `Build and test (macOS 15 / arm64)` |
 | チェックの発行元 | `Any source` |
 
-2026-11-20 に GitHub API で確認した時点では、「Require branches to be up to date before merging」は無効だった。
+2026-11-20 に GitHub API で、「Require branches to be up to date before merging」が有効になったことを確認した。
 
 `Any source` は同名チェックの発行元を GitHub Actions に限定していないため、GitHub Actions への限定を推奨する。
 既存の `protect-master` を確認・更新し、重複する ruleset を新しく作らない。
