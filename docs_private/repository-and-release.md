@@ -67,8 +67,10 @@ AI エージェントの `master` への push とマージは、`AGENTS.md`、�
 
 - 日英の両方を、同じ PR で同じ内容に直す。構造は `scripts/check-readme-sync.sh`（README）と `scripts/check-site.py`（LP）が
   確かめる（どちらも `scripts/dev/check-all.sh` から実行する）。訳の中身は、差分を読んで確かめる
-- 既定のショートカットを変えたときは、README とユーザーガイドの表を、`Sources/FolzioCore/Shortcuts/ShortcutCommand.swift` の
-  定義と見比べる
+- ショートカットの表は、`scripts/dev/check-shortcut-docs.py`（`check-all.sh` から実行する）が、`Sources/FolzioCore/Shortcuts/ShortcutCommand.swift`
+  の既定のキーと照合する（TAK-123）。表の修飾キー付きのキーが既定のキー・別名・固定キー・予約キーのどれかであることと、
+  ユーザーガイドの表に変えられるコマンドの既定のキーがすべてあることを確かめる。キーとコマンドの対応（行の説明が合っているか）は確かめないので、
+  既定のキーを変えたときは、該当する行の説明を読んで確かめる
 
 スクリーンショットと動画を撮り直す基準:
 

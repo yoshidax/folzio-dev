@@ -24,6 +24,7 @@ run scripts/check-no-archive-writes.sh
 readme_base=$(scripts/dev/base-ref.sh) || readme_base=master
 run scripts/check-readme-sync.sh "$readme_base"
 run python3 scripts/check-site.py
+run python3 -I scripts/dev/check-shortcut-docs.py
 run scripts/dev/check-english-comments.sh
 run scripts/dev/check-skill-sync.sh
 run scripts/dev/check-spec-ids.sh

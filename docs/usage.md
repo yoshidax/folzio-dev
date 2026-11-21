@@ -505,6 +505,7 @@ The toolbar search field filters the list you are viewing by name. To look throu
 |--------|----------|
 | Settings | ⌘, |
 | Quit | ⌘Q |
+| Open the shortcut reference | ⌘/, File menu → "Keyboard Shortcuts…" |
 | Focus the tree / list / preview | ⌥⌘1 / ⌥⌘2 / ⌥⌘3 |
 | File list only / preview only (the same key returns to three panes) | ⌃⌘2 / ⌃⌘3, View menu, toolbar |
 | Show / hide the toolbar | ⇧⌘T, View menu |
@@ -533,6 +534,7 @@ The toolbar search field filters the list you are viewing by name. To look throu
 | Jump to the "Favorites" heading | ⇧⌘F |
 | Show the contents of a folder, a zip file, or a directory inside a zip | Double-click, ⌘↓, "Show Contents" in the context menu |
 | Go up one level | ⌘↑, double-click the `..` row, "Enclosing Folder" (上の階層へ) in the context menu |
+| Go back / forward in the history | ⌘[ / ⌘], Go menu, toolbar |
 
 ### File List and Preview
 
