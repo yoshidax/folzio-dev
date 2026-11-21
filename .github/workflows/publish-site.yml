@@ -1,0 +1,80 @@
+name: Publish website source
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Commit on the master branch (complete SHA)
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  plan:
+    if: github.repository == 'yoshidax/folzio-dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      state: ${{ steps.plan.outputs.state }}
+      source_sha: ${{ steps.plan.outputs.source_sha }}
+      plan_digest: ${{ steps.plan.outputs.plan_digest }}
+      payload_digest: ${{ steps.plan.outputs.payload_digest }}
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - name: Require master
+        if: github.ref != 'refs/heads/master'
+        run: |
+          echo '::error::Run Publish website source from master.'
+          exit 1
+      - uses: actions/checkout@v4.4.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: plan
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: python3 scripts/dev/sync-public.py site-plan --source-sha "$SOURCE_SHA" --directory "$RUNNER_TEMP/site-sync"
+      - uses: actions/upload-artifact@v4.6.2
+        id: upload
+        if: steps.plan.outputs.state == 'write'
+        with:
+          name: site-sync-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/site-sync/
+          if-no-files-found: error
+
+  write:
+    needs: plan
+    if: github.ref == 'refs/heads/master' && needs.plan.outputs.state == 'write'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4.4.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4.3.0
+        with:
+          artifact-ids: ${{ needs.plan.outputs.artifact_id }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/site-sync
+      - uses: actions/create-github-app-token@v3.3.0
+        id: token
+        with:
+          client-id: ${{ vars.PUBLIC_SYNC_APP_CLIENT_ID }}
+          private-key: ${{ secrets.PUBLIC_SYNC_APP_PRIVATE_KEY }}
+          owner: yoshidax
+          repositories: folzio
+          permission-contents: write
+      - name: Publish verified website
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          EXPECTED_SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
+          EXPECTED_PLAN_DIGEST: ${{ needs.plan.outputs.plan_digest }}
+          EXPECTED_PAYLOAD_DIGEST: ${{ needs.plan.outputs.payload_digest }}
+        run: python3 scripts/dev/sync-public.py write-site --directory "$RUNNER_TEMP/site-sync"

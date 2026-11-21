@@ -52,6 +52,22 @@ class PublicationStateTests(unittest.TestCase):
             self.decide(target=self.old)
         self.assertEqual(self.decide(target=self.old, same_tree=True), 'skip')
 
+    def test_website_trailer_must_follow_development_trailer(self):
+        for body in [
+            f'Website-Commit: {self.new}',
+            f'Development-Commit: {self.old}\nWebsite-Commit: {self.old}',
+            f'Development-Commit: {self.old}\nWebsite-Commit: invalid',
+            f'Development-Commit: {self.new}\nWebsite-Commit: {self.old}',
+        ]:
+            with self.subTest(body=body), self.assertRaisesRegex(ValueError, 'Website-Commit'):
+                self.decide(body=body)
+
+    def test_other_release_cannot_roll_back_a_website(self):
+        website = 'd' * 40
+        body = f'Development-Commit: {self.old}\nWebsite-Commit: {website}'
+        with self.assertRaisesRegex(ValueError, '巻き戻し'):
+            self.decide(body=body, ancestor=lambda a, b: (a, b) == (self.old, website))
+
 
 class CandidateValidationTests(unittest.TestCase):
     def setUp(self):
@@ -425,6 +441,246 @@ class SyncIntegrationTests(unittest.TestCase):
             self.sync.write(self.root, directory)
         self.assertEqual(self.sync.release.git(self.remote, 'rev-parse', 'refs/heads/main'), competing[0])
         self.assertNotEqual(competing[0], base)
+
+
+class WebsitePublicationTests(unittest.TestCase):
+    def setUp(self):
+        import json, os, shutil, tempfile
+        from unittest.mock import patch
+        from test_publish_folzio import PublishFixture
+
+        self.sync = module()
+        self.git = self.sync.release.git
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        self.fixture = PublishFixture(self.root)
+        self.dev = self.fixture.source
+        self.fixture.git('branch', '-m', 'master')
+        self.request = dict(version='1.2.3', build_number='12', notes_file='release-notes/v1.2.3.md')
+        self.fixture.write('release.json', json.dumps(self.request))
+        self.fixture.write(self.request['notes_file'], 'Release notes\n')
+        self.fixture.write('site/index.html', '<html lang="en"><p>Old</p></html>\n')
+        self.fixture.write('site/ja/index.html', '<html lang="ja"><p>元</p></html>\n')
+        self.fixture.write('site/obsolete.txt', 'Remove this\n')
+        shutil.copy2(ROOT / 'scripts/check-site.py', self.dev / 'scripts')
+        workflows = self.dev / 'scripts/dev/oss-workflows'
+        workflows.mkdir()
+        shutil.copy2(ROOT / 'scripts/dev/oss-workflows/pages.yml', workflows)
+        self.fixture.commit()
+        self.published_source = self.git(self.dev, 'rev-parse', 'HEAD')
+
+        exported = self.root / 'exported'
+        self.sync.export_source(self.dev, self.published_source, exported)
+        self.git(exported, 'init', '-q', '-b', 'main')
+        self.git(exported, 'add', '-A')
+        self.git(exported, '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+                 'commit', '-qm', f'Publish 1.2.3\n\nDevelopment-Commit: {self.published_source}')
+        self.public = self.root / 'public.git'
+        self.git(self.root, 'clone', '-q', '--bare', exported, self.public)
+        self.git(self.public, 'config', 'uploadpack.allowFilter', 'true')
+        self.git(self.public, 'config', 'uploadpack.allowReachableSHA1InWant', 'true')
+        self.base = self.public_head()
+        self.directory = self.root / 'plan'
+
+        self.event = self.root / 'event.json'
+        self.event.write_text(json.dumps(dict(repository=dict(default_branch='master'))))
+        for mock in (
+            patch.object(self.sync, 'PUBLIC_URL', self.public.as_uri()),
+            patch.object(self.sync.release, 'summary'),
+            patch.dict(os.environ, GITHUB_REPOSITORY=self.sync.DEV_REPO, GITHUB_EVENT_NAME='workflow_dispatch',
+                       GITHUB_REF='refs/heads/master', GITHUB_EVENT_PATH=str(self.event), GH_TOKEN='local-test-only'),
+        ):
+            mock.start()
+            self.addCleanup(mock.stop)
+
+    def public_head(self):
+        return self.git(self.public, 'rev-parse', 'refs/heads/main')
+
+    def commit_site(self):
+        self.fixture.write('site/index.html', '<html lang="en"><p>New</p></html>\n')
+        self.fixture.write('site/ja/index.html', '<html lang="ja"><p>更新</p></html>\n')
+        self.fixture.write('site/added.txt', 'New file\n')
+        self.fixture.remove('site/obsolete.txt')
+        self.fixture.write('README.md', 'Unpublished docs\n')
+        self.fixture.write('README.ja.md', 'Unpublished docs\n')
+        self.fixture.write('Sources/unpublished.txt', 'Unpublished app\n')
+        self.fixture.write(self.request['notes_file'], 'Unpublished notes edit\n')
+        self.fixture.commit()
+        return self.git(self.dev, 'rev-parse', 'HEAD')
+
+    def plan(self, source, directory=None):
+        from unittest.mock import patch
+        with patch.dict('os.environ', GITHUB_SHA=self.git(self.dev, 'rev-parse', 'HEAD')):
+            return self.sync.site_plan(self.dev, source, directory or self.directory)
+
+    def write(self, plan, writer=None, directory=None):
+        from unittest.mock import patch
+        with patch.dict('os.environ', GITHUB_SHA=self.git(self.dev, 'rev-parse', 'HEAD'),
+                        EXPECTED_SOURCE_SHA=plan['source_sha'], EXPECTED_PLAN_DIGEST=plan['plan_digest'],
+                        EXPECTED_PAYLOAD_DIGEST=plan['payload_digest']):
+            (writer or self.sync.write_site)(self.dev, directory or self.directory)
+
+    def test_only_site_is_published_and_release_plan_skips(self):
+        import json
+        from unittest.mock import patch
+
+        source = self.commit_site()
+        self.fixture.write('site/index.html', '<html lang="en"><p>Later</p></html>\n')
+        self.fixture.commit()
+        with patch.object(self.sync.release, 'require_unused_version') as unused_version:
+            self.write(self.plan(source))
+        unused_version.assert_not_called()
+
+        current = self.public_head()
+        self.assertEqual(self.git(self.public, 'show', '-s', '--format=%P', current), self.base)
+        self.assertEqual(self.git(self.public, 'diff', '--name-status', self.base, current).splitlines(),
+                         ['A\tsite/added.txt', 'M\tsite/index.html', 'M\tsite/ja/index.html', 'D\tsite/obsolete.txt'])
+        self.assertIn('<p>New</p>', self.git(self.public, 'show', f'{current}:site/index.html'))
+        self.assertEqual(self.git(self.public, 'show', '-s', '--format=%B', current),
+                         f'Publish website\n\nDevelopment-Commit: {self.published_source}\nWebsite-Commit: {source}')
+        self.assertEqual(self.plan(source, self.root / 'retry')['state'], 'skip')
+        self.assertFalse((self.root / 'retry').exists())
+        with self.assertRaisesRegex(ValueError, '巻き戻し'):
+            self.plan(self.published_source, self.root / 'stale')
+        self.assertEqual(self.public_head(), current)
+
+        self.event.write_text(json.dumps(dict(repository=dict(default_branch='main'), before=self.base)))
+        with patch.dict('os.environ', GITHUB_REPOSITORY=self.sync.release.PUBLIC_REPO, GITHUB_EVENT_NAME='push',
+                        GITHUB_REF='refs/heads/main', GITHUB_SHA=current):
+            result = self.sync.release.public_plan(self.public, object())
+        self.assertEqual(result, dict(ready=False, reason='Release request unchanged', commit=current))
+
+    def test_synced_release_can_be_rerun_after_a_website_publication(self):
+        from unittest.mock import patch
+
+        self.write(self.plan(self.commit_site()))
+        current = self.public_head()
+        pr = dict(number=7, head=dict(sha=self.published_source), base=dict(sha=self.published_source))
+        directory = self.root / 'release-retry'
+        with (patch.object(self.sync, 'merged_release', return_value=pr),
+              patch.object(self.sync, 'candidate') as candidate,
+              patch.object(self.sync.release, 'require_unused_version') as version):
+            result = self.sync.sync_plan(self.dev, self.published_source, '42', '', directory, object())
+        self.assertEqual(result['state'], 'skip')
+        self.assertEqual(result['public_base'], current)
+        self.assertFalse((directory / 'source.tar').exists())
+        candidate.assert_not_called()
+        version.assert_not_called()
+        self.assertEqual(self.public_head(), current)
+
+    def test_write_can_be_retried_after_the_same_plan_has_published(self):
+        from unittest.mock import patch
+
+        plan = self.plan(self.commit_site())
+        self.write(plan)
+        current = self.public_head()
+        with patch.object(self.sync, 'push_public') as push:
+            self.write(plan)
+        push.assert_not_called()
+        self.assertEqual(self.public_head(), current)
+
+    def test_requires_manual_dispatch_on_master(self):
+        from unittest.mock import patch
+
+        for env, message in [
+            (dict(GITHUB_EVENT_NAME='push'), '手動実行に限定'),
+            (dict(GITHUB_REF='refs/heads/topic'), 'master の実行に限定'),
+        ]:
+            with self.subTest(env=env), patch.dict('os.environ', env):
+                with patch.object(self.sync, 'fetch_public') as fetch, self.assertRaisesRegex(ValueError, message):
+                    self.plan(self.published_source)
+                fetch.assert_not_called()
+
+    def test_changed_site_requires_a_pages_workflow_on_public_main(self):
+        exported = self.root / 'exported'
+        self.git(exported, 'rm', '.github/workflows/pages.yml')
+        self.git(exported, '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm',
+                 f'Remove Pages workflow\n\nDevelopment-Commit: {self.published_source}')
+        self.git(exported, 'push', self.public, 'main')
+        base_without_pages = self.public_head()
+
+        source = self.commit_site()
+        with self.assertRaisesRegex(ValueError, r'Committed file missing: \.github/workflows/pages\.yml'):
+            self.plan(source)
+        self.assertFalse(self.directory.exists())
+        self.assertEqual(self.public_head(), base_without_pages)
+
+    def test_pending_release_stops_publication_even_if_reverted(self):
+        source = self.commit_site()
+        request = (self.dev / 'release.json').read_text()
+        self.fixture.write('release.json', request.replace('1.2.3', '1.2.4'))
+        self.fixture.commit()
+        pending = self.git(self.dev, 'rev-parse', 'HEAD')
+        self.fixture.write('release.json', request)
+        self.fixture.commit()
+        for target in (pending, self.git(self.dev, 'rev-parse', 'HEAD')):
+            with self.subTest(target=target), self.assertRaisesRegex(ValueError, '未同期の配布要求'):
+                self.plan(target)
+        self.assertEqual(self.plan(source)['state'], 'write')
+        self.assertEqual(self.public_head(), self.base)
+
+    def test_rejects_branch_only_target_and_invalid_site(self):
+        self.fixture.git('switch', '-c', 'unmerged')
+        source = self.commit_site()
+        self.fixture.git('switch', 'master')
+        self.fixture.git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+                         'merge', '--no-ff', '-m', 'Merge site', 'unmerged')
+        with self.assertRaisesRegex(ValueError, '第一親履歴'):
+            self.plan(source)
+        self.fixture.write('site/index.html', '<html lang="en"><img src="missing.png"></html>\n')
+        self.fixture.commit()
+        with self.assertRaisesRegex(ValueError, 'missing.png'):
+            self.plan(self.git(self.dev, 'rev-parse', 'HEAD'))
+        self.assertFalse(self.directory.exists())
+        self.assertEqual(self.public_head(), self.base)
+
+    def test_rejects_changed_payload_and_public_base(self):
+        from unittest.mock import patch
+
+        plan = self.plan(self.commit_site())
+        archive = self.directory / 'source.tar'
+        original = archive.read_bytes()
+        archive.write_bytes(original + b'tampered')
+        with patch.object(self.sync, 'fetch_public') as fetch, self.assertRaisesRegex(ValueError, 'digest'):
+            self.write(plan)
+        fetch.assert_not_called()
+        archive.write_bytes(original)
+
+        competing = self.sync.release.run('git', '-C', self.public, '-c', 'user.name=Test',
+                                         '-c', 'user.email=test@example.invalid', 'commit-tree',
+                                         self.git(self.public, 'rev-parse', f'{self.base}^{{tree}}'),
+                                         '-p', self.base, data='Concurrent publication')
+        self.git(self.public, 'update-ref', 'refs/heads/main', competing, self.base)
+        with self.assertRaisesRegex(ValueError, '公開用 main が変わりました'):
+            self.write(plan)
+        self.assertEqual(self.public_head(), competing)
+
+    def test_later_release_can_publish_full_verified_tree(self):
+        import json
+        from unittest.mock import patch
+
+        site_source = self.commit_site()
+        self.write(self.plan(site_source))
+        site_public = self.public_head()
+        request = dict(version='1.2.4', build_number='13', notes_file='release-notes/v1.2.4.md')
+        self.fixture.write('release.json', json.dumps(request))
+        self.fixture.write(request['notes_file'], 'New release notes\n')
+        self.fixture.commit()
+        source = self.git(self.dev, 'rev-parse', 'HEAD')
+        pr = dict(number=7, head=dict(sha=source), base=dict(sha=site_source))
+        directory = self.root / 'release-plan'
+        with (patch.object(self.sync, 'merged_release', return_value=pr),
+              patch.object(self.sync, 'candidate', return_value=request),
+              patch.object(self.sync.release, 'require_unused_version')):
+            plan = self.sync.sync_plan(self.dev, source, '42', '', directory, object())
+            self.write(plan, self.sync.write, directory)
+        current = self.public_head()
+        self.assertEqual(self.git(self.public, 'show', '-s', '--format=%P', current), site_public)
+        self.assertEqual(self.git(self.public, 'show', '-s', '--format=%B', current),
+                         f'Publish 1.2.4\n\nDevelopment-Commit: {source}')
+        self.assertEqual(self.sync.release.load_request(self.public, current), request)
+        self.assertEqual(self.git(self.public, 'show', f'{current}:Sources/unpublished.txt'), 'Unpublished app')
 
 
 class CandidateDownloadTests(unittest.TestCase):
