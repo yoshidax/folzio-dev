@@ -52,7 +52,8 @@ class CheckSpecFormatTests(unittest.TestCase):
             root = Path(directory)
             dev = root / "scripts/dev"
             dev.mkdir(parents=True)
-            shutil.copy2(ROOT / "scripts/dev/check-spec-format.py", dev / "check-spec-format.py")
+            for script in ("check-spec-format.py", "spec_id_definitions.py"):
+                shutil.copy2(ROOT / "scripts/dev" / script, dev / script)
             (dev / "spec-format-config.json").write_text(json.dumps(config or CONFIG, ensure_ascii=False))
             if baseline is not None:
                 (dev / "spec-format-baseline.json").write_text(json.dumps(baseline, ensure_ascii=False))
@@ -60,7 +61,7 @@ class CheckSpecFormatTests(unittest.TestCase):
                 path = root / "specs/product" / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(text)
-            result = subprocess.run([sys.executable, str(dev / "check-spec-format.py"), *args],
+            result = subprocess.run([sys.executable, "-I", str(dev / "check-spec-format.py"), *args],
                                     capture_output=True, text=True)
             baseline_path = dev / "spec-format-baseline.json"
             saved = json.loads(baseline_path.read_text()) if baseline_path.exists() else None
@@ -74,6 +75,22 @@ class CheckSpecFormatTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Errors: 0", result.stdout)
         self.assertIn("Warnings: 0", result.stdout)
+
+    def test_lints_definitions_only_outside_fences(self):
+        text = (
+            "````text\n```\n- **FR-001**: 一文目。二文目。\n`````\n"
+            "~~~\n2. **US1-AS1**: 一文目。二文目。\n~~~\n"
+            "2. **US1-AS2**: 一文目。二文目。\n"
+        )
+        result, _ = self.run_check({"a.md": text})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assert_finding(result, "a.md:8", "warning", "multi-sentence")
+        self.assertIn("Warnings: 1 (baseline 0)", result.stdout)
+
+    def test_reports_location_of_unclosed_fence(self):
+        result, _ = self.run_check({"a.md": "# 領域\n\n~~~text\n例\n"})
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("specs/product/a.md:3: unclosed code fence", result.stderr)
 
     def test_line_wider_than_error_limit_fails(self):
         result, _ = self.run_check({"a.md": "- " + "あ" * 80 + "\n"})
@@ -159,11 +176,16 @@ class CheckSpecFormatTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
 
     def test_multi_sentence_definition_warning(self):
-        text = "- **FR-001**: 一つ目の文。二つ目の\n  文。\n  - 子項目。子項目の二文目。\n- **US1-AS1**: 一文だけ。\n"
+        text = (
+            "- **FR-001**: 一つ目の文。二つ目の\n  文。\n  - 子項目。子項目の二文目。\n"
+            "- **US1-AS1**: 一文だけ。\n"
+            "1. **US1-AS2**: 一つ目の文。二つ目の文。\n"
+        )
         result, _ = self.run_check({"a.md": text}, baseline={"warnings": {}})
         self.assertEqual(result.returncode, 1)
         self.assert_finding(result, "a.md:1", "warning", "multi-sentence")
         self.assertNotIn("a.md:4:", result.stdout)
+        self.assert_finding(result, "a.md:5", "warning", "multi-sentence")
 
     def test_decreased_warnings_pass_and_suggest_update(self):
         result, _ = self.run_check({"a.md": "text\n"}, baseline={"warnings": {"a.md": {"line-width": 2}}})

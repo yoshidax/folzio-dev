@@ -9,9 +9,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = "scripts/dev/find-spec-id.sh"
+SCRIPTS = (SCRIPT, "scripts/dev/find-spec-id.py", "scripts/dev/spec_id_definitions.py", "scripts/dev/base-ref.sh")
 
 
 class FindSpecIdTests(unittest.TestCase):
+    def copy_scripts(self, root):
+        (root / "scripts/dev").mkdir(parents=True, exist_ok=True)
+        for script in SCRIPTS:
+            shutil.copy2(ROOT / script, root / script)
+
     def run_find(self, files, *ids, base_files=None, cwd=None):
         """files（パス → 内容）を置いた一時リポジトリで、スクリプトを実行する。
 
@@ -20,9 +26,7 @@ class FindSpecIdTests(unittest.TestCase):
         """
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "scripts/dev").mkdir(parents=True)
-            for script in (SCRIPT, "scripts/dev/base-ref.sh"):
-                shutil.copy2(ROOT / script, root / script)
+            self.copy_scripts(root)
             if base_files is not None:
                 self.write_files(root, base_files)
                 self.commit_base(root)
@@ -93,6 +97,18 @@ class FindSpecIdTests(unittest.TestCase):
         self.assertEqual(result.stdout, "")
         self.assertIn("FR-080", result.stderr)
 
+    def test_shares_fence_and_list_spacing_rules_with_the_checker(self):
+        files = {
+            "specs/product/a.md": "```markdown\n- **FR-500**: 使用例。\n```\n-  **FR-500**: 定義。\n",
+            "specs/product/b.md": "~~~\n2. **US2-AS1**: 使用例。\n~~~\n2.\t**US2-AS1**: 定義。\n",
+        }
+        result = self.run_find(files, "FR-500", "US2-AS1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), [
+            "[FR-500](specs/product/a.md#L4)",
+            "[US2-AS1](specs/product/b.md#L4)",
+        ])
+
     def test_finds_new_id_in_feature_in_progress(self):
         base = {"specs/product/a.md": "- **FR-001**: 製品。\n"}
         files = {"specs/TAK-99-new/spec.md": "# spec\n\n- **FR-002**: 作業中の feature で足した。\n"}
@@ -156,11 +172,8 @@ class FindSpecIdTests(unittest.TestCase):
     def test_absolute_option_prefixes_the_repository_root(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve() / "repo"
-            for name in (SCRIPT, "specs/product/a.md"):
-                (root / name).parent.mkdir(parents=True, exist_ok=True)
-            for script in (SCRIPT, "scripts/dev/base-ref.sh"):
-                shutil.copy2(ROOT / script, root / script)
-            (root / "specs/product/a.md").write_text("- **FR-001**: あり。\n", encoding="utf-8")
+            self.copy_scripts(root)
+            self.write_files(root, {"specs/product/a.md": "- **FR-001**: あり。\n"})
             for args in (("--absolute", "FR-001"), ("FR-001", "--absolute")):
                 with self.subTest(args=args):
                     result = subprocess.run([str(root / SCRIPT), *args], capture_output=True, text=True)
@@ -170,11 +183,8 @@ class FindSpecIdTests(unittest.TestCase):
     def test_wraps_absolute_path_with_spaces_in_angle_brackets(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve() / "my repo"
-            (root / "scripts/dev").mkdir(parents=True)
-            (root / "specs/product").mkdir(parents=True)
-            for script in (SCRIPT, "scripts/dev/base-ref.sh"):
-                shutil.copy2(ROOT / script, root / script)
-            (root / "specs/product/a.md").write_text("- **FR-001**: あり。\n", encoding="utf-8")
+            self.copy_scripts(root)
+            self.write_files(root, {"specs/product/a.md": "- **FR-001**: あり。\n"})
             result = subprocess.run([str(root / SCRIPT), "--absolute", "FR-001"], capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout, f"[FR-001](<{root}/specs/product/a.md#L1>)\n")
@@ -187,10 +197,7 @@ class FindSpecIdTests(unittest.TestCase):
                 self.assertEqual(result.stdout, "")
 
     def test_sampled_definitions_in_the_repository_are_found_once(self):
-        """実際の specs/product/ から等間隔に選んだ定義が、それぞれ 1 か所に見つかる。
-
-        全件（約 1,600 個）では 5 秒ほどかかり check-all.sh が遅くなるため、約 50 個を選ぶ。
-        """
+        """実際の specs/product/ から選んだ定義が、それぞれ 1 か所に見つかる。"""
         pattern = r"^[[:space:]]*(-|[0-9]+\.) \*\*((FR|SC|EC|A)-[0-9]+|US[0-9]+-AS[0-9]+)\*\*"
         ids = subprocess.run(
             ["grep", "-rhoE", "--include=*.md", pattern, "specs/product"],
