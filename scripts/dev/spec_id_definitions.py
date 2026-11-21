@@ -58,17 +58,22 @@ def product_markdown_paths():
                 yield Path(directory) / name
 
 
-def definitions_in(path):
-    """ファイル内の ID と行番号を定義順に返す。"""
+def spec_lines(path):
+    """仕様ファイルの行番号・本文・フェンス内での種類を返す。"""
     relative = path.relative_to(ROOT)
     try:
         with path.open(encoding="utf-8") as source:
-            for number, line, kind in lines_with_fence_kind(source):
-                if kind is None and (definition := DEFINITION_RE.match(line)):
-                    yield definition["id"], number
+            yield from lines_with_fence_kind(source)
     except OSError as error:
         raise SpecInputError(f"{relative}: {error.strerror or error}") from error
     except UnicodeError as error:
         raise SpecInputError(f"{relative}: {error}") from error
     except UnclosedFenceError as error:
         raise SpecInputError(f"{relative}:{error.line}: {error}") from error
+
+
+def definitions_in(path):
+    """ファイル内の ID と行番号を定義順に返す。"""
+    for number, line, kind in spec_lines(path):
+        if kind is None and (definition := DEFINITION_RE.match(line)):
+            yield definition["id"], number
