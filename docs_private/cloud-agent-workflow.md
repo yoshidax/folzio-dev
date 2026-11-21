@@ -73,7 +73,7 @@ Linear の Issue の読み方と状態の更新（着手、PR の作成後、完
 
 - **PR は Draft で作り、条件を満たしたら Ready にする**。どちらも保守者の依頼を待たない。条件（設計の承認の後、push 済みで自己検査が通っていること、Ready には CI の成功と「確認していないこと」の記入など）は [agents/delegation.md](agents/delegation.md) の「PR の作成と Ready 化の条件」にある。Cloud では `gh pr` が使えないので、GitHub の MCP ツール `create_pull_request` で作る。
 - PR のタイトルと本文に、Issue 番号（`TAK-<nn>`）を入れる。本文には、変更の概要、検証の結果、**確認していないこと**を正直に書く。
-- 本文の構成は、[.github/pull_request_template.md](../.github/pull_request_template.md) に従う（概要・変更・仕様の反映・検証・確認していないこと）。GitHub の画面から作る PR には自動で入るが、GitHub の MCP ツール `create_pull_request` で作るときは自動では入らない。Agent は、このファイルを読み、見出しを変えずに本文を作る。記入案内の HTML コメントは、記入後に消してよい。テンプレートは開発用リポジトリだけにあり、公開用リポジトリへは書き出さない（`.gitattributes` の `export-ignore`）。
+- 本文の構成は、[.github/pull_request_template.md](../.github/pull_request_template.md) に従う（概要・変更・仕様の反映・公開文書への影響・検証・確認していないこと）。GitHub の画面から作る PR には自動で入るが、GitHub の MCP ツール `create_pull_request` で作るときは自動では入らない。Agent は、このファイルを読み、見出しを変えずに本文を作る。記入案内の HTML コメントは、記入後に消してよい。テンプレートは開発用リポジトリだけにあり、公開用リポジトリへは書き出さない（`.gitattributes` の `export-ignore`）。
 - PR を作ったら、PR を購読する（`subscribe_pr_activity`）。CI の結果とレビューのコメントがセッションに届き、Ready の条件の CI の成功を確かめられる。
 - **マージは保守者だけが行う**。`master` には、PR の最新の head で CI が成功しないとマージできないブランチ保護がある（[repository-and-release.md](repository-and-release.md) の「開発用リポジトリの公開とブランチ保護」）。Agent は、PR をマージしない（GitHub の MCP ツール `merge_pull_request` も、権限の設定の拒否リストにある。誤ってマージされる恐れがあるため、実際に呼んで確かめてはいない）。
 - 保守者のローカルでの確認（起動スモークなど）が必要なことを、実行するコマンドと確認する点を具体的に示して知らせる。

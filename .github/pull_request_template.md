@@ -47,6 +47,22 @@ Linear: [TAK-<nn>](https://linear.app/takyoshida/issue/TAK-<nn>)
 
 - 
 
+## 公開文書への影響
+
+<!--
+アプリの機能・UI・既定の設定の変更が、公開用の文書に影響するかを確かめて書く。
+対象と見る場所、スクリーンショットを撮り直す基準: `docs_private/repository-and-release.md` の「公開文書への影響の確認」。
+- 対象: LP（`site/index.html`・`site/ja/index.html`）、README（`README.md`・`README.ja.md`）、
+  ユーザーガイド（`docs/usage.md`・`docs/usage.ja.md`）、スクリーンショットと動画（`site/media/`・`docs/images/`）。
+- 影響がある対象ごとに、次のどれかを書く。
+  - 直した: 直したファイル
+  - 直さない: 理由
+  - 後で直す: 登録した Linear の Issue のリンク。スクリーンショットと動画は、撮り直しが要る画像の ID（S1 など）も書く
+- 影響がないときは「なし（理由）」と書く（例: なし（開発用のスクリプトだけの変更））。
+-->
+
+- 
+
 ## 検証
 
 <!--
