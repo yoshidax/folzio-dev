@@ -3,7 +3,10 @@
 > **移行済み（2026-11-18）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
 > このファイルは 021 時点の記録として凍結しており、更新しない。
 >
-> **ID の振り直し（2026-11-18）**: 先にマージされた TAK-109（`specs/023-select-after-trash/`）と ID が重複したため、
+> **名前の変更（2026-11-25）**: 旧 `specs/021-favorites-startup-state/`。Linear の Issue ID に合わせて名前を変えた（TAK-124）。
+> 本文の旧パスとブランチ名は、当時の記録として残す。
+>
+> **ID の振り直し（2026-11-18）**: 先にマージされた TAK-109（`specs/TAK-109-select-after-trash/`）と ID が重複したため、
 > `specs/product/` ではこの feature の ID を次のとおり振り直した。この feature ディレクトリの本文は旧 ID のまま残す。
 >
 > | 旧 ID | 新 ID |

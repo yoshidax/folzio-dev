@@ -1,14 +1,14 @@
 # スキル・Codex・Spec Kit の構成
 
-**適用範囲**: 【共通】（「Codex の自動実行」の節は【ローカル】）
+**適用範囲**: 【共通】
 
-AGENTS.md から参照する、スキルや各エージェントの設定を変えるとき、Codex を自動実行するときの規約。
+AGENTS.md から参照する、スキルや各エージェントの設定を変えるときの規約。
 
 ## スキル
 
 - Codex の Spec Kit スキルは `.agents/skills/`。CLI では `$speckit-specify`、`$speckit-plan`、
   `$speckit-tasks`、`$speckit-analyze`、`$speckit-implement`、`$speckit-converge` などで呼び出す
-- 標準・git・bug スキルは Spec Kit が生成する。共通のプロジェクト規約は AGENTS.md で管理する
+- 標準・bug スキルは Spec Kit が生成する。共通のプロジェクト規約は AGENTS.md で管理する
 - 手書きの `folzio-*` スキルは、共通手順の本文を `shared-skills/<スキル名>.md` に置き、
   運用手順・開発記録は `docs_private/` に置く。`.agents/skills/` と `.claude/skills/` の
   `SKILL.md` には、`name`、`description`（両方で同じ内容）、本文を読む指示、各ツール固有の注意だけを書く。
@@ -26,8 +26,7 @@ AGENTS.md から参照する、スキルや各エージェントの設定を変�
 - 権限設定は OS のアクセス制御ではなく、絶対パス、ラッパー、入れ子のシェルなど全実行経路を保証しない。変更は新しいセッションから確認する
 - Kilo の VS Code 拡張では、プロジェクトの権限設定変更後に VS Code ウィンドウを再読み込みしてから確認する
 
-## Codex の自動実行【ローカル】
+## Codex
 
-- Codex の自動実行は `scripts/dev/sdd-run-codex.sh` を使う。run／resume／status と更新手順は
-  [codex-speckit.md](../codex-speckit.md) を参照する。既定の integration は Claude のままとする
+- Codex での Spec Kit の使い方と更新手順は [codex-speckit.md](../codex-speckit.md)。既定の integration は Claude のままとする
 - Codex での並列化の可否は [parallel-worktree.md](parallel-worktree.md)

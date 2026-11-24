@@ -41,5 +41,5 @@
 - 【共通】進行中の spec の変更に関する問題と独立したバグ修正の判断・記録: `docs_private/agents/bugfix.md`
 - 【ローカル】アプリが起動しない・ウインドウが出ない、設定の保存先を調べる: `docs_private/agents/launch-debugging.md`
 - 【ローカル】実装を並列化する: `docs_private/agents/parallel-worktree.md`（【Cloud】は Issue 単位で並行し、サブエージェントで実装を分けない）
-- 【共通】スキル・Codex・Spec Kit の構成を変える、Codex を自動実行する: `docs_private/agents/skills-and-codex.md`
+- 【共通】スキル・Codex・Spec Kit の構成を変える: `docs_private/agents/skills-and-codex.md`
 - 【共通】性能テストの基準値を変える・調べる: `specs/001-three-pane-media-viewer/quickstart.md` の「性能の検証」

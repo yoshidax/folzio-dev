@@ -25,7 +25,7 @@ Cloud Agent（Claude / Codex）が、Cloud 環境で feature またはバグ修�
 
 1. **最新の `master` を取り込む**。ローカルの `master` ブランチは古いことがあるので、`git fetch origin master` の後、`origin/master` が作業ブランチの祖先であることを確かめる（`git merge-base --is-ancestor origin/master HEAD`）。祖先でなければ `git merge origin/master` で取り込む。履歴は書き換えない。
 2. **Issue を特定して読む**。[Linear の手順](agents/linear.md)に従い、対象の内容と関連情報を確認する。
-3. **作業ブランチ上で作業する**。Cloud が指定した作業ブランチ（`git branch --show-current`）をそのまま使い、feature 用のブランチを新しく作らない。git 拡張の `before_specify` フック（`speckit.git.feature`。ブランチを作る）は**実行しない**。
+3. **作業ブランチ上で作業する**。Cloud が指定した作業ブランチ（`git branch --show-current`）をそのまま使い、feature 用のブランチを新しく作らない。
 4. **feature ディレクトリを指定する**。`specs/TAK-<nn>-<slug>` を `SPECIFY_FEATURE_DIRECTORY` として明示して、`speckit-specify` を実行する。`<slug>` は 2〜4 語の英小文字とハイフン。ブランチ名とディレクトリ名は独立している。`specs/TAK-<nn>-*` が既にあるときは、上書きせず保守者に確認する。
 5. `speckit-specify` の前に、`specs/product/README.md` と関連する現行の仕様を読む。仕様書の `Input` に Issue の URL を記録する。
 6. `.specify/feature.json` が、作った feature を指す。このファイルは `.specify/.gitignore` で管理対象外になっているため、コミットされず、並行する PR の間で競合しない。以後の `speckit-plan`、`speckit-tasks`、`speckit-analyze` は、このファイルから feature を見つける。

@@ -58,9 +58,9 @@ Folzio の現在の仕様（Living spec）を領域ごとに分けたもの。`s
 
 ## 更新の流れ
 
-1. 新しい要件は、`/speckit-specify` で新しい feature ディレクトリ（`specs/NNN-xxx/`）を作って扱う。
-   - 同じ名前の feature ブランチは、git 拡張の `before_specify` フックが今の HEAD から切る（クリーンな master
-     から始める）。
+1. 新しい要件は、`/speckit-specify` で新しい feature ディレクトリ（`specs/TAK-<nn>-<slug>/`）を作って扱う。
+   - `<nn>` は Linear の Issue 番号。`SPECIFY_FEATURE_DIRECTORY` で明示する
+   - 作業ブランチの名前は feature ディレクトリと独立している。決め方は `shared-skills/folzio-sdd-increment.md`
    - その spec.md には変更点（追加・変更・削除する項目）だけを書き、関係する既存の項目はこのディレクトリの ID
      で参照する
 2. plan・tasks・実装・converge は、その feature ディレクトリで行う
