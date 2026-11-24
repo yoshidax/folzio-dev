@@ -1,6 +1,6 @@
 <!--
 Sync Impact Report
-- Version: 1.4.0 → 1.4.1（PATCH: feature ディレクトリの名前の形を実態に合わせる）
+- Version: 1.4.0 → 1.5.0（MINOR: feature ディレクトリの名前の規則を変え、凍結した feature の名前を変える一度限りの例外を置く）
 - 変更理由: feature ディレクトリとブランチの名前に Linear の Issue ID を使う運用になったが、憲章は
   Spec Kit の git 拡張が作る `specs/NNN-xxx/` の形のままだった。git 拡張を外し、名前を `specs/TAK-<nn>-<slug>/` にそろえる（TAK-124）
 - 変更した原則: なし
@@ -10,7 +10,8 @@ Sync Impact Report
   - shared-skills/folzio-sdd-increment.md、specs/product/README.md、docs_private/codex-speckit.md、
     docs_private/cloud-agent-workflow.md: 同じ名前の形と、作業ブランチ・feature ディレクトリの決め方にそろえる
   - Issue ID の運用の後に `NNN-` の名前で作られ、凍結済みの 4 つの feature（020・021・023・024）は、
-    この改定に限り `specs/TAK-<nn>-<slug>/` へ名前を変え、各 spec.md の凍結の注記に旧名を残す。内容は変えない
+    この改定に限り `specs/TAK-<nn>-<slug>/` へ名前を変える。各 spec.md の凍結の注記に旧名を 1 行足し、
+    021 と 024 の「ID の振り直し」の注記にある相互リンクだけを新しい名前に直す。それ以外の本文は変えない
   - それより前の `specs/NNN-xxx/` の feature: 変更不要
 - 未解決の TODO: なし
 -->
@@ -149,4 +150,4 @@ Sync Impact Report
   憲章と実態が乖離した場合は、実装を直すか憲章を改定するかのいずれかを選び、
   放置してはならない（MUST NOT）。
 
-**Version**: 1.4.1 | **Ratified**: 2026-10-19 | **Last Amended**: 2026-11-25
+**Version**: 1.5.0 | **Ratified**: 2026-10-19 | **Last Amended**: 2026-11-25

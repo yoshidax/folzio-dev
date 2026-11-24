@@ -12,10 +12,13 @@ Issue と、任意の `clarify_mode`（`auto`（既定）・`manual`・`skip`）
 ## 0. 作業ブランチと feature ディレクトリ
 
 - 作業ツリーがクリーンでなければ停止する。無関係な変更を破棄、stash、コミットして条件を満たしてはならない。
-- `git fetch origin master` の後、次のどちらかで作業ブランチを決める。
-  - 今のブランチが `master` 以外で、`scripts/dev/check-git-push.py` の `ALLOWED_PREFIXES` の接頭辞を持つ: そのまま使う。`origin/master` が祖先でなければ（`git merge-base --is-ancestor origin/master HEAD`）、`git merge origin/master` で取り込む
-  - `master` の上にいる: `git switch -c feature/TAK-<nn>-<slug> origin/master` で作る
-- feature ディレクトリは `specs/TAK-<nn>-<slug>` にする。`<slug>` は 2〜4 語の英小文字とハイフン。ブランチ名とディレクトリ名は独立している。`specs/TAK-<nn>-*` が既にあれば、上書きせず保守者に確認する。
+- `git fetch origin master` の後、作業ブランチを決める。
+  - 今のブランチが次をすべて満たすときだけ、そのまま使う。`origin/master` が祖先でなければ（`git merge-base --is-ancestor origin/master HEAD`）、`git merge origin/master` で取り込む
+    - 名前が `scripts/dev/check-git-push.py` の `ALLOWED_PREFIXES` の接頭辞で始まり、この Issue の `TAK-<nn>` を含む
+    - マージ済みでもクローズ済みでもない（`gh pr list --head <ブランチ> --state all` で、`MERGED`・`CLOSED` の PR がない）
+  - それ以外（`master` の上、デスクトップアプリが作った `claude/…` のブランチ、マージ済みや別の Issue のブランチなど）は、`git switch --no-track -c feature/TAK-<nn>-<slug> origin/master` で新しく作る
+  - ブランチ名に `main`・`master` を含めない（push が拒否される。`docs_private/agents/delegation.md`）
+- feature ディレクトリは `specs/TAK-<nn>-<slug>` にする。`<slug>` は 2〜4 語の英小文字とハイフン。`specs/TAK-<nn>-*` が既にあれば、上書きせず保守者に確認する。
 
 ## 1. specify
 
@@ -23,6 +26,7 @@ Issue と、任意の `clarify_mode`（`auto`（既定）・`manual`・`skip`）
 
 - spec.md には変更点だけを書く。`specs/product/` はこの段階では変更しない
 - 仕様書の `Input` に Issue の URL を記録する
+- 作られたディレクトリが `specs/TAK-<nn>-<slug>` であることを確かめる。`SPECIFY_FEATURE_DIRECTORY` がないと、`speckit-specify` は `specs/NNN-<slug>` の名前で作る。違う名前で作られたら、`specs/TAK-<nn>-<slug>` へ名前を変えてから進む
 - `spec.md` ができ、`.specify/feature.json` が新しい feature を指すことを確かめる。指していなければ `{"feature_directory": "specs/TAK-<nn>-<slug>"}` を書く
 - 前提と未決事項を記録する
 
