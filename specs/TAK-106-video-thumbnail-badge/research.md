@@ -18,8 +18,10 @@
 
 ## R2 描かれた代表フレームの矩形の求め方
 
-- **Decision**: 既存の `FitCalculator.fit(imageSize:in:)`（`Sources/FolzioCore/Layout/FitCalculator.swift`）に、画像ビューの
-  `bounds.size` と `image.size` を渡す
+- **Decision**: 画像ビューの `imageScaling` に合わせて求める。`scaleProportionallyUpOrDown` は既存の
+  `FitCalculator.fit(imageSize:in:)`（`Sources/FolzioCore/Layout/FitCalculator.swift`）と同じ規則、`scaleProportionallyDown` は
+  拡大率を 1 以下に抑えた規則（`VideoBadgeLayout.imageRect(imageSize:in:allowsUpscaling:)`）。座標の向きは画像ビューの
+  `isFlipped` を `badgeFrame` に渡し、原点の位置によらず右下に置く
 - **Rationale**:
   - サムネイル形式の画像ビューは `scaleProportionallyUpOrDown`・中央揃えで、`fit` と同じ規則で描く
     （`ThumbnailModeView.swift` の `loadView`）
@@ -66,6 +68,18 @@
   - Quick Look の起点は `quickLookSourceView`（画像ビュー）の `bounds` で、子ビューを足しても変わらない
   - 画像ビューのラベル（`a11y.thumbnail`）を動画で `a11y.videoThumbnail` に替えるだけなので、要素の数と順序が変わらない。
     リスト形式の行頭の画像はもともと要素でない（`setAccessibilityElement(false)`。A-255）
+
+## R7 TAK-127 の修正後のリスト形式のバッジの大きさ
+
+- **Decision**: この feature では `listIcon`（直径は長い辺の 0.5 倍で 8pt 以下、短い辺の半分以下）のままにする。TAK-127 で
+  行頭の縮小画像が縦横比を保つようになったら、`listIcon` の直径の決め方を TAK-127 の中で見直す
+- **Rationale**:
+  - 今は行頭の縮小画像が 16×16 で描かれるため、直径は 8pt になる
+  - TAK-127 の修正後は、16:9 の行頭画像（16×9）で短い辺の半分の制限が効き、直径 4.5pt、再生の記号は約 2pt になって
+    見分けにくくなる（FR-418 の目的を果たさない）
+  - 見直しの候補: リスト形式だけ短い辺の制限を緩めて 16pt の枠（画像ビュー）を基準にする、または下限を設ける
+- **Alternatives considered**: 今のうちに 16pt の枠を基準にする案は、今の描き方（16×16）では結果が変わらず、TAK-127 の
+  修正の形が決まる前に決めると手戻りになりうる
 
 ## R6 Quick Look の縮小画像に動画の装飾が入っている可能性
 

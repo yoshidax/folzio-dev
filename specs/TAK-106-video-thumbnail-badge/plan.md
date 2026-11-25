@@ -87,11 +87,13 @@
 
 - Core: `Sources/FolzioCore/Layout/VideoBadgeLayout.swift`
   - `VideoBadgeLayout.Metrics`（`Sendable`・`Equatable`）と定数 `thumbnail`・`listIcon`
-  - `badgeFrame(imageRect:metrics:) -> CGRect?`
+  - `imageRect(imageSize:in:allowsUpscaling:) -> CGRect`（`allowsUpscaling` が `false` なら拡大率を 1 以下に抑える）
+  - `badgeFrame(imageRect:metrics:flipped:) -> CGRect?`（`flipped` が `true` なら右下を `r.maxY` 側に置く）
   - `isShown(kind:showingRepresentativeFrame:) -> Bool`
 - App: `Sources/FolzioApp/FileList/VideoBadgeImageView.swift`
   - `VideoBadgeImageView: NSImageView`。`showsVideoBadge`・`badgeMetrics` を持ち、`image` か `showsVideoBadge` が変わったら
-    `needsLayout = true`。`setFrameSize(_:)` でも大きさが変われば `needsLayout = true` にする。`layout()` で `FitCalculator.fit(imageSize:in:)` と `VideoBadgeLayout.badgeFrame` から子ビューの frame を
+    `needsLayout = true`。`setFrameSize(_:)` でも大きさが変われば `needsLayout = true` にする。`layout()` で `VideoBadgeLayout.imageRect`（`imageScaling` が `scaleProportionallyDown` なら `allowsUpscaling: false`）と
+    `VideoBadgeLayout.badgeFrame`（`flipped: isFlipped`）から求め、`backingAlignedRect(_:options:)` で画素に揃えて子ビューの frame を
     決め、表示しないときは `isHidden = true`
   - 子ビュー `VideoBadgeView: NSView`。`draw(_:)` で円と記号を描く。`hitTest(_:)` は `nil`、アクセシビリティの要素にしない、
     ドラッグの型を登録しない（EC-290・FR-420、research.md R5）
@@ -119,7 +121,8 @@
 - 縮小画像の生成・保持（`ThumbnailProvider`）、項目の大きさと配置、選択・強調の見た目、Quick Look の起点の矩形
 - プレビュー・フルスクリーン・スライドショー・ツリー（A-256）
 - リスト形式の行頭の縮小画像の描き方（16×16 の `NSImage` として設定する既存の扱い）。縦横比を保たずに正方形へ引き伸ばされる不具合は
-  [TAK-127](https://linear.app/takyoshida/issue/TAK-127) で扱う。この feature のバッジは、今の描き方で描かれる 16×16 の右下に置く
+  [TAK-127](https://linear.app/takyoshida/issue/TAK-127) で扱う。この feature のバッジは、今の描き方で描かれる 16×16 の右下に置く。
+  TAK-127 の修正後にリスト形式のバッジが小さくなりすぎる影響は research.md R7
 
 ## 検証
 

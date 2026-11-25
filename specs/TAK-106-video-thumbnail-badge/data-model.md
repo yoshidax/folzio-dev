@@ -17,7 +17,11 @@
 
 - 直径 `d = min(clamp(L × diameterRatio, minDiameter, maxDiameter), S × 0.5)`（FR-416・EC-286。短い辺の制限が下限より優先）
 - 余白 `m = min(clamp(L × marginRatio, minMargin, maxMargin), S × 0.25)`
-- frame（非 flipped の座標）: `x = r.maxX − m − d`、`y = r.minY + m`、幅と高さ `d`（FR-415）
+- frame: `x = r.maxX − m − d`、`y = flipped ? r.maxY − m − d : r.minY + m`、幅と高さ `d`（FR-415）。`flipped` は画像ビューの
+  `isFlipped` を渡し、原点が上か下かによらず右下に置く
+- `r` は画像ビューの `imageScaling` に合わせて求める。`scaleProportionallyUpOrDown` は `FitCalculator.fit`、
+  `scaleProportionallyDown` は拡大率を 1 以下に抑える（画像が枠より小さければ、画像の大きさのまま中央に置く）
+- App は、求めた frame を `backingAlignedRect(_:options:)` で画素に揃えてから子ビューに設定する（Retina でにじませない）
 - `r` の幅か高さが 0 以下、または有限でないときは frame を返さない（バッジを表示しない）
 - 結果の frame は常に `r` の内側に収まる（`m + d ≤ 0.75 × S`）
 
