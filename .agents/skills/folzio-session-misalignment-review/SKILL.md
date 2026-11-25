@@ -9,9 +9,9 @@ description: AI エージェント・セッションの会話を分析し、ユ�
 
 ## セッションの取得（Codex）
 
-- Codex: 現在のセッションはコンテキストを使う。過去のセッションは `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl.zst` を `zstd -dc` で展開して読む（`.jsonl` ならそのまま読む）。各レコードは `type`、`timestamp`、`ordinal` を持ち、会話は `payload` に入る。
+- 現在のセッションはコンテキストを使う。過去のセッションは `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl.zst` を `zstd -dc` で展開して読む（`.jsonl` ならそのまま読む）。各レコードは `type`、`timestamp`、`ordinal` を持ち、会話は `payload` に入る。
 - 会話の順序は `timestamp` または `ordinal` で決める。`session_meta` は対象の確認にだけ使う。
 
 ## コード状態の特定（Codex）
 
-- Codex: `session_meta.payload.cwd` と `session_meta.payload.git`（`branch`、`commit_hash`）を使う。`turn_context.payload.cwd` はターンごとの作業ディレクトリとして確認する。`branch` または `commit_hash` が欠けている場合は分析前の確認を行う。
+- `session_meta.payload.cwd` と `session_meta.payload.git`（`branch`、`commit_hash`）を使う。`turn_context.payload.cwd` はターンごとの作業ディレクトリとして確認する。`branch` または `commit_hash` が欠けている場合は分析前の確認を行う。

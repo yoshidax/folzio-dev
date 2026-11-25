@@ -19,7 +19,7 @@ AGENTS.md から参照する、スキルや各エージェントの設定を変�
 - `.codex/config.toml` と `.codex/rules/` は Codex 用。Claude（`.claude/settings.json`）の permissions 設定は Codex に適用されない
 - 直接の `brew install`・`reinstall`・`upgrade`・`bundle` は Codex で `forbidden` の規則を設定する。必要な操作は保守者へ依頼し、保守者が実行する
 - `brew bundle` はすべてのサブコマンドが禁止対象であり、`brew bundle check` などの読み取りも含む。Claude の `brew install` は `ask` を維持する
-- Codex の自動承認モードでは `prompt`・`ask` が人の確認なしに承認され得る。Claude の `.claude/settings.json` は保守者が編集する
+- Codex の自動承認モードでは `prompt` が人の確認なしに承認され得る。Claude の `.claude/settings.json` は保守者が編集する
 - Claude Code の allow・deny の方針と、新しいセッションでの確認の手順は [delegation.md](delegation.md) の「Claude Code の権限」
 - Codex の定型操作の権限と、新しいセッションでの確認手順は [codex-speckit.md](../codex-speckit.md#ローカルの定型操作と承認)
 - `pip install` や `npm install -g` を含む他の依存ツールの導入も、`AGENTS.md` の規則に従い事前に保守者へ確認する
