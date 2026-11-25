@@ -3,17 +3,12 @@
   "integration_state_schema": 1,
   "installed_integrations": [
     "claude",
-    "kilocode",
     "codex"
   ],
   "integration_settings": {
     "claude": {
       "script": "sh",
       "invoke_separator": "-"
-    },
-    "kilocode": {
-      "script": "sh",
-      "invoke_separator": "."
     },
     "codex": {
       "script": "sh",

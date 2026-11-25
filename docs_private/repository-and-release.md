@@ -42,7 +42,7 @@ AI エージェントの `master` への push とマージは、`AGENTS.md`、�
 - `site/`: 公開用リポジトリの GitHub Pages で公開する Web サイト（「公開用の Web サイト」）。公開用リポジトリにも書き出す
 - `docs_private/`: 運用手順・用語集・開発記録。このファイルを含み、公開用リポジトリには書き出さない（開発用リポジトリでは公開されている。
   名前の `private` は、公開用リポジトリへ書き出さないという意味）
-- `shared-skills/`: Codex・Claude Code・Kilo Code で共有するスキルの手順本文。各ツールの `SKILL.md` から参照し、公開用リポジトリには書き出さない
+- `shared-skills/`: Codex・Claude Code で共有するスキルの手順本文。各ツールの `SKILL.md` から参照し、公開用リポジトリには書き出さない
 
 ## 公開文書への影響の確認
 
@@ -116,7 +116,7 @@ AI エージェントの `master` への push とマージは、`AGENTS.md`、�
 | 対象 | 内容 |
 |---|---|
 | `.specify/` | Spec Kit 本体、憲章、拡張、workflow、バグ修正の記録（`.specify/bugs/`） |
-| `.claude/` `.agents/` `.kilo/` `.codex/` | 各 AI エージェントの設定・スキル・コマンド |
+| `.claude/` `.agents/` `.codex/` | 各 AI エージェントの設定・スキル・コマンド |
 | `specs/` | 仕様（`specs/product/`）と各 feature の記録 |
 | `docs_private/` | 開発用のドキュメント（このファイルを含む） |
 | `shared-skills/` | 各 AI エージェントで共有するスキルの手順本文 |

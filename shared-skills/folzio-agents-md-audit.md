@@ -1,7 +1,7 @@
 # AGENTS.md の監査の共通手順
 
-この手順は Codex、Claude Code、Kilo Code の対話スキルで共有する。
-呼び出すときは Codex で `$folzio-agents-md-audit`、Claude Code と Kilo Code で `/folzio-agents-md-audit` を指定する。
+この手順は Codex と Claude Code の対話スキルで共有する。
+呼び出すときは Codex で `$folzio-agents-md-audit`、Claude Code で `/folzio-agents-md-audit` を指定する。
 
 ## 目的と範囲
 
@@ -15,7 +15,7 @@
 最初に、次を読む。
 
 - `AGENTS.md`、`docs_private/agents/README.md`、`scripts/dev/check-agents-md.sh` の出力
-- エージェントの権限と hook: `.claude/settings.json` と、そこから呼ぶスクリプト、`.codex/rules/`、`.kilo/kilo.jsonc`
+- エージェントの権限と hook: `.claude/settings.json` と、そこから呼ぶスクリプト、`.codex/rules/`
 - `AGENTS.md` を指す参照: `specs/product/` の要件（`grep -rn AGENTS.md specs/product`）と、他の文書・スキル・workflow
   - 凍結した feature（`specs/NNN-*`・`specs/TAK-*`）、`.specify/bugs/`、`docs_private/retrospective/`、`docs_private/release-notes/` は記録なので、直す対象から外す
 
@@ -27,7 +27,7 @@
 | 削除（コード・設定） | 2 | 分かる場所のファイルパスと行 |
 | 削除（一般） | 2 の表の詳細 | そう判断した理由 |
 | 移動 | 3 | 移動先の案（`docs_private/agents/` など） |
-| ツール化 | 1 | 方法と、Claude・Codex・Kilo のどれに効くか |
+| ツール化 | 1 | 方法と、Claude・Codex のどちらに効くか |
 | 要確認 | （どれにも当てはめられない） | 食い違っている相手（コードの実態・他の行・仕様）のファイルパスと行、または古いと判断した根拠 |
 | 残す | 4 | 間違えたときに起こること |
 
