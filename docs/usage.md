@@ -102,6 +102,7 @@ For a first look, see the [README](../README.md).
 ### View Modes and Columns
 
 - Switch between list view and thumbnail view. You can change the thumbnail size.
+- Videos show a play badge at the bottom-right of their thumbnail and of the small image at the start of their row.
 - Click a column header to sort.
   - When sorting by name, folders always come before files, in both ascending and descending order.
   - Zip files count as files.
