@@ -66,7 +66,8 @@
 - 円: 黒の不透明度 0.45 で塗り、白の不透明度 0.7 の線（幅は直径の 0.06 倍、最小 0.75pt）で縁取る
   - 暗い代表フレームの上では縁取りで、明るい代表フレームの上では黒の塗りで判別できるようにする（EC-288）
   - 外観モード（ライト／ダーク）・アクセントカラー・選択の状態では変えない
-- 値は案。保守者の GUI 確認（quickstart.md の 5）で承認を得る。調整は定数の変更だけで済む
+- 値は案。保守者がこの案で始めることを了承した（2026-11-25）。GUI 確認（quickstart.md の 5）で最終の承認を得る。
+  調整は定数の変更だけで済む
 
 ### 位置と大きさ（FR-415・FR-416・EC-286）
 
@@ -105,11 +106,18 @@
   非メディア行と `fallbackIcon` で `false`、生成結果の設定で `isShown(...: true)`。`setAccessibilityElement(false)` を保つ（A-255）
 - 文言: `TextKey.a11yVideoThumbnail = "a11y.videoThumbnail"`（日本語「動画のサムネイル」、英語「Video thumbnail」）
 
+### 公開文書（使い方）
+
+- `docs/usage.md` と `docs/usage.ja.md` の「View Modes and Columns」「表示形式と列」の節に、動画のサムネイルと
+  リスト形式の行頭に再生のバッジが付くことを 1 文ずつ、同じコミットで足す（保守者の決定。2026-11-25）
+- 文書は公開用リポジトリへ書き出されるため、`specs/` などの開発用の文書へリンクしない（AGENTS.md）
+
 ### 変えないもの
 
 - 縮小画像の生成・保持（`ThumbnailProvider`）、項目の大きさと配置、選択・強調の見た目、Quick Look の起点の矩形
 - プレビュー・フルスクリーン・スライドショー・ツリー（A-256）
-- リスト形式の行頭の縮小画像の描き方（16×16 の `NSImage` として設定する既存の扱い）
+- リスト形式の行頭の縮小画像の描き方（16×16 の `NSImage` として設定する既存の扱い）。縦横比を保たずに正方形へ引き伸ばされる不具合は
+  [TAK-127](https://linear.app/takyoshida/issue/TAK-127) で扱う。この feature のバッジは、今の描き方で描かれる 16×16 の右下に置く
 
 ## 検証
 
@@ -145,6 +153,8 @@ Sources/FolzioApp/FileList/ListModeView.swift             # FileListIconCell の
 Sources/FolzioLocalization/TextKey.swift                  # a11yVideoThumbnail
 Sources/FolzioLocalization/Resources/ja.lproj/Localizable.strings
 Sources/FolzioLocalization/Resources/en.lproj/Localizable.strings
+docs/usage.md                                             # 使い方に 1 文を追加
+docs/usage.ja.md                                          # 同じ内容の日本語
 
 Tests/FolzioCoreTests/VideoBadgeLayoutTests.swift         # 新規
 Tests/FolzioAppTests/VideoBadgeImageViewTests.swift       # 新規

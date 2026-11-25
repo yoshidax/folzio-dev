@@ -25,6 +25,8 @@
     （`ThumbnailModeView.swift` の `loadView`）
   - リスト形式は `scaleProportionallyDown` で、縮小画像を 16×16 の `NSImage` として設定している（`ListModeView.swift` の
     生成の Task）。描かれる矩形は 16×16 の全体になる
+  - この描き方で縦横比が崩れる不具合は、保守者が GUI で確かめ、[TAK-127](https://linear.app/takyoshida/issue/TAK-127)
+    として別に扱う（2026-11-25）
 - **Alternatives considered**: `NSImageCell` の描画矩形を返す公開 API はない（`imageRect(forBounds:)` は縮小の規則を反映しない）
 
 ## R3 大きさの定数（A-253・SC-240）

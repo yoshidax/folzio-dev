@@ -113,10 +113,11 @@ Cloud ではサブエージェントで実装を分けず、同じセッショ�
 **Purpose**: 影響範囲の確認、検査、PR、保守者の確認、製品仕様への反映
 
 - [ ] T014 差分を読み、`Sources/FolzioCore/Imaging/ThumbnailProvider.swift`・プレビュー・フルスクリーン・スライドショー・ツリー（`Sources/FolzioApp/Tree/`）と、`Sources/FolzioApp/FileList/QuickLookCoordinator.swift` の起点の矩形の計算が変わっていないことを確かめる（FR-421・A-256）
-- [ ] T015 `scripts/dev/check-all.sh` を実行して通し、作業ブランチにコミットして push し、Draft の PR を `.github/pull_request_template.md` の見出しで作る（`docs_private/agents/delegation.md` の条件）。Linear の TAK-106 に PR のリンクを付ける
-- [ ] T016 CI（`.github/workflows/macos-swift-ci.yml`）の `swift build`・`swift test` の成功と、性能テストのログの末尾（`passed` か `failed`）を確かめて PR の本文に記載する（憲章の原則 II）
-- [ ] T017 [MANUAL] 保守者が `specs/TAK-106-video-thumbnail-badge/quickstart.md` の「保守者の GUI 確認」の 1〜11 を行う。結果（実行日、OS、確認項目、合否）を `specs/TAK-106-video-thumbnail-badge/checklists/validation.md` に記録する。図柄・色・大きさの調整を依頼されたら `Sources/FolzioCore/Layout/VideoBadgeLayout.swift` と `Sources/FolzioApp/FileList/VideoBadgeImageView.swift` の定数を直して再確認を依頼する（A-253）
-- [ ] T018 実装と検証の後、最新の `master` を取り込み、spec.md の「反映先」の項目を `specs/product/file-list.md` と `specs/product/contracts/localization.md` へ反映し、spec.md の冒頭に移行済み・凍結の注記を入れる。反映の前後に `scripts/dev/check-spec-ids.sh` と `python3 scripts/dev/check-spec-format.py` を実行し、反映した項目と差分を保守者に示して承認を得てからコミットする
+- [ ] T015 [P] `docs/usage.md` の「View Modes and Columns」と `docs/usage.ja.md` の「表示形式と列」に、動画のサムネイルとリスト形式の行頭に再生のバッジが付くことを 1 文ずつ、同じコミットで足す。2 つの文書は同じ内容にし、`specs/` などの開発用の文書へリンクしない（保守者の決定（2026-11-25）、AGENTS.md の「書くときの規則」）
+- [ ] T016 `scripts/dev/check-all.sh` を実行して通し、作業ブランチにコミットして push し、Draft の PR を `.github/pull_request_template.md` の見出しで作る（`docs_private/agents/delegation.md` の条件）。Linear の TAK-106 に PR のリンクを付ける
+- [ ] T017 CI（`.github/workflows/macos-swift-ci.yml`）の `swift build`・`swift test` の成功と、性能テストのログの末尾（`passed` か `failed`）を確かめて PR の本文に記載する（憲章の原則 II）
+- [ ] T018 [MANUAL] 保守者が `specs/TAK-106-video-thumbnail-badge/quickstart.md` の「保守者の GUI 確認」の 1〜11 を行う。結果（実行日、OS、確認項目、合否）を `specs/TAK-106-video-thumbnail-badge/checklists/validation.md` に記録する。図柄・色・大きさの調整を依頼されたら `Sources/FolzioCore/Layout/VideoBadgeLayout.swift` と `Sources/FolzioApp/FileList/VideoBadgeImageView.swift` の定数を直して再確認を依頼する（A-253）
+- [ ] T019 実装と検証の後、最新の `master` を取り込み、spec.md の「反映先」の項目を `specs/product/file-list.md` と `specs/product/contracts/localization.md` へ反映し、spec.md の冒頭に移行済み・凍結の注記を入れる。反映の前後に `scripts/dev/check-spec-ids.sh` と `python3 scripts/dev/check-spec-format.py` を実行し、反映した項目と差分を保守者に示して承認を得てからコミットする
 
 ---
 
@@ -128,7 +129,7 @@ Cloud ではサブエージェントで実装を分けず、同じセッショ�
 - **Foundational (Phase 2)**: T001・T002（テスト）→ T003 → T004。すべてのストーリーの前提
 - **User Stories (Phase 3〜5)**: Phase 2 の後。US1 → US2 → US3 の順に行う（同じ `ThumbnailModeView.swift` と
   `ThumbnailVideoBadgeTests.swift` を触るため）
-- **Polish (Phase 6)**: すべてのストーリーの後。T014 → T015 → T016 → T017 → T018
+- **Polish (Phase 6)**: すべてのストーリーの後。T014・T015 → T016 → T017 → T018 → T019
 
 ### User Story Dependencies
 
@@ -146,6 +147,7 @@ Cloud ではサブエージェントで実装を分けず、同じセッショ�
 - T001 と T002（Core と App の別ファイルのテスト）
 - T005 と T003・T004 の後の作業は別ファイル
 - T011（文言）は、ほかのストーリーと別ファイル
+- T015（使い方の文書）は、アプリのコードと別ファイル
 
 ---
 
