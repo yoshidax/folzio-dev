@@ -71,8 +71,9 @@ public enum VideoBadgeLayout {
     /// `flipped` tells whether the origin is at the top, so that the badge stays at the bottom either way.
     /// The diameter never exceeds half of the short side, which takes precedence over the minimum (EC-286).
     public static func badgeFrame(imageRect rect: CGRect, metrics: Metrics, flipped: Bool) -> CGRect? {
-        let values = [rect.minX, rect.minY, rect.width, rect.height]
-        guard values.allSatisfy({ $0.isFinite }), rect.width > 0, rect.height > 0 else { return nil }
+        // Check the stored size: `width` and `height` return absolute values, so a negative size would pass.
+        let values = [rect.origin.x, rect.origin.y, rect.size.width, rect.size.height]
+        guard values.allSatisfy({ $0.isFinite }), rect.size.width > 0, rect.size.height > 0 else { return nil }
 
         let long = Double(max(rect.width, rect.height))
         let short = Double(min(rect.width, rect.height))
