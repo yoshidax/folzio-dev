@@ -29,19 +29,25 @@ public enum VideoBadgeLayout {
             self.minMargin = minMargin
             self.maxMargin = maxMargin
         }
+
+        /// Thumbnail mode: 0.2 of the long side within 10–40 pt.
+        public static let thumbnail = Metrics(
+            diameterRatio: 0.2, minDiameter: 10, maxDiameter: 40,
+            marginRatio: 0.04, minMargin: 2, maxMargin: 8
+        )
+
+        /// Leading icon of the list mode (16 pt): 0.5 of the long side, at most 8 pt, no margin.
+        public static let listIcon = Metrics(
+            diameterRatio: 0.5, minDiameter: 0, maxDiameter: 8,
+            marginRatio: 0, minMargin: 0, maxMargin: 0
+        )
     }
 
     /// Thumbnail mode: 0.2 of the long side within 10–40 pt.
-    public static let thumbnail = Metrics(
-        diameterRatio: 0.2, minDiameter: 10, maxDiameter: 40,
-        marginRatio: 0.04, minMargin: 2, maxMargin: 8
-    )
+    public static let thumbnail = Metrics.thumbnail
 
     /// Leading icon of the list mode (16 pt): 0.5 of the long side, at most 8 pt, no margin.
-    public static let listIcon = Metrics(
-        diameterRatio: 0.5, minDiameter: 0, maxDiameter: 8,
-        marginRatio: 0, minMargin: 0, maxMargin: 0
-    )
+    public static let listIcon = Metrics.listIcon
 
     /// Whether the item gets a badge: a video showing its generated frame, not a generic icon (FR-417).
     public static func isShown(kind: ListItemKind, showingRepresentativeFrame: Bool) -> Bool {
