@@ -7,7 +7,7 @@ description: AGENTS.md の各行を監査し、削除・移動・ツール化・
 
 `AGENTS.md` の各行が今も必要かを保守者と確かめ、上限の行数に収まる改訂案を作る。開始前に `shared-skills/folzio-agents-md-audit.md` を読み、共通手順を実行する。指示が競合するときは上位の指示と `AGENTS.md` を優先する。
 
-## Codex / Kilo Code での注意
+## Codex での注意
 
-- Codex の `.codex/rules/` と Kilo の `.kilo/kilo.jsonc` を変えるツール化は、改訂案に変更内容を示し、承認の後に編集する。
+- Codex の `.codex/rules/` を変えるツール化は、改訂案に変更内容を示し、承認の後に編集する。
 - Linear の MCP に接続できないときは、Issue の経緯を保守者に尋ねる。接続できたものとして扱わない。

@@ -7,6 +7,4 @@ description: Folzio の新規要件・仕様変更を、Spec Kit の仕様策定
 
 Folzio の新規要件・仕様変更を現在の会話で順次進める。開始前に `AGENTS.md` と `shared-skills/folzio-sdd-increment.md` を読み、共通手順を実行する。指示が競合するときは上位の指示と `AGENTS.md` を優先する。
 
-Codex では `.specify/workflow-src/sdd-increment-codex.yml` と `docs_private/codex-speckit.md` を読み、各工程で対応する `.agents/skills/speckit-*/SKILL.md` のスキルを使う。Kilo では `.specify/workflow-src/sdd-increment-kilo.yml` を読み、各工程で対応する `.kilo/commands/speckit.*.md` のコマンドを使う。現在の実行環境に対応する定義だけを選ぶ。
-
-対応する workflow の入力・条件・反復上限・レビューゲートに従う。自動ランナー専用の環境変数、通知、resume、別のエージェント起動や並列実装は対話実行の前提とせず、同じセッションで順次作業する。各スキルまたはコマンドの指示は使用時に読む。
+Codex では `docs_private/codex-speckit.md` を読み、各工程で対応する `.agents/skills/speckit-*/SKILL.md` のスキルを使う。各スキルの指示は使用時に読む。

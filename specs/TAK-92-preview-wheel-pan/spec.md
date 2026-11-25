@@ -2,6 +2,9 @@
 
 > **移行済み（2026-11-12）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
 > このファイルは 020 の実装と検証の記録として凍結しており、更新しない。
+>
+> **名前の変更（2026-11-25）**: 旧 `specs/020-preview-wheel-pan/`。Linear の Issue ID に合わせて名前を変えた（TAK-124）。
+> 本文の旧パスとブランチ名は、当時の記録として残す。
 
 **Feature Branch**: `020-preview-wheel-pan`  
 **Created**: 2026-11-12  

@@ -1,14 +1,18 @@
 <!--
 Sync Impact Report
-- Version: 1.3.1 → 1.4.0（MINOR: bug 拡張の適用範囲を変更）
-- 変更理由: TAK-88 で進行中の spec に関する問題が独立した bug として扱われたため、その境界を明確にする（TAK-94）
+- Version: 1.4.0 → 1.5.0（MINOR: feature ディレクトリの名前の規則を変え、凍結した feature の名前を変える一度限りの例外を置く）
+- 変更理由: feature ディレクトリとブランチの名前に Linear の Issue ID を使う運用になったが、憲章は
+  Spec Kit の git 拡張が作る `specs/NNN-xxx/` の形のままだった。git 拡張を外し、名前を `specs/TAK-<nn>-<slug>/` にそろえる（TAK-124）
 - 変更した原則: なし
-- 変更した節: 仕様の管理（独立した修正タスクに bug 拡張を適用する）
+- 変更した節: 仕様の管理（feature ディレクトリの名前の形）
 - 追加・削除した節: なし
 - 影響を受ける文書と追従:
-  - AGENTS.md、docs_private/agents/bugfix.md、docs_private/codex-speckit.md: 同じ適用範囲と判断基準に揃える
-  - 完了した feature は凍結を維持し、凍結後のマージ前レビューへの対応は PR の記録に残す
-  - 既存の spec / plan と bug 記録: 変更不要
+  - shared-skills/folzio-sdd-increment.md、specs/product/README.md、docs_private/codex-speckit.md、
+    docs_private/cloud-agent-workflow.md: 同じ名前の形と、作業ブランチ・feature ディレクトリの決め方にそろえる
+  - Issue ID の運用の後に `NNN-` の名前で作られ、凍結済みの 4 つの feature（020・021・023・024）は、
+    この改定に限り `specs/TAK-<nn>-<slug>/` へ名前を変える。各 spec.md の凍結の注記に旧名を 1 行足し、
+    021 と 024 の「ID の振り直し」の注記にある相互リンクだけを新しい名前に直す。それ以外の本文は変えない
+  - それより前の `specs/NNN-xxx/` の feature: 変更不要
 - 未解決の TODO: なし
 -->
 # my_img_viewer Constitution
@@ -113,7 +117,7 @@ Sync Impact Report
 
 - 現在の仕様の正本は `specs/product/` の領域別のファイル（Living spec）とする。
   横断の契約は `specs/product/contracts/` に置く。
-- 新しい要件・変更は、`/speckit-specify` で新しい feature ディレクトリ（`specs/NNN-xxx/`）を作って扱う。
+- 新しい要件・変更は、`/speckit-specify` で新しい feature ディレクトリ（`specs/TAK-<nn>-<slug>/`。`<nn>` は Linear の Issue 番号）を作って扱う。
   完了した feature ディレクトリの spec.md へ要件を追加してはならない（MUST NOT）。
 - feature の spec.md には変更点だけを書き、既存の要件は `specs/product/` の ID で参照する。
   plan・tasks・analyze・converge は、feature の spec.md と、参照している `specs/product/` の領域をあわせて入力とする。
@@ -146,4 +150,4 @@ Sync Impact Report
   憲章と実態が乖離した場合は、実装を直すか憲章を改定するかのいずれかを選び、
   放置してはならない（MUST NOT）。
 
-**Version**: 1.4.0 | **Ratified**: 2026-10-19 | **Last Amended**: 2026-11-11
+**Version**: 1.5.0 | **Ratified**: 2026-10-19 | **Last Amended**: 2026-11-25

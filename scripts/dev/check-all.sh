@@ -31,6 +31,7 @@ run scripts/dev/check-spec-ids.sh
 run scripts/dev/check-agents-md.sh
 run python3 -I -m unittest discover -s scripts/dev/tests -p 'test_check_*.py'
 run python3 -I -m unittest discover -s scripts/dev/tests -p 'test_find_spec_id.py'
+run python3 -I -m unittest discover -s scripts/dev/tests -p 'test_link_spec_ids_hook.py'
 run python3 -I -m unittest discover -s scripts/dev/tests -p 'test_strip_readme_dev_note.py'
 run python3 -I -m unittest discover -s scripts/dev/tests -p 'test_publish_folzio.py'
 run python3 -I -m unittest discover -s scripts/dev/tests -p 'test_package_release.py'

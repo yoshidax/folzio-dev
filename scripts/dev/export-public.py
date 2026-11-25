@@ -48,7 +48,7 @@ def export(sha, output):
         root = Path(temp) / 'source'
         root.mkdir()
         extract(git('archive', sha, binary=True), root)
-        excluded = {'.specify', '.claude', '.agents', '.kilo', '.codex', '.vscode', 'specs',
+        excluded = {'.specify', '.claude', '.agents', '.codex', '.vscode', 'specs',
                     'docs_private', 'shared-skills', 'AGENTS.md', '.gitattributes'}
         if any((root / path).exists() for path in excluded | {'scripts/dev', '.github/workflows'}):
             raise ValueError('書き出しに開発用のファイルが含まれています（.gitattributes を確認してください）')

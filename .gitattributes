@@ -2,7 +2,6 @@
 /.specify                 export-ignore
 /.claude                  export-ignore
 /.agents                  export-ignore
-/.kilo                    export-ignore
 /.codex                   export-ignore
 /.vscode                  export-ignore
 /.github/pull_request_template.md export-ignore
