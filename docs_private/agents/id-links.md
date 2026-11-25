@@ -97,7 +97,7 @@
 - Codex は `.claude/settings.json` を読まないので、この hook は効かない。`AGENTS.md` の規則は残す
   - Claude Code のエージェントが規則どおりにリンクを書いても、hook は既存のリンクを変えないので二重にならない
 
-登録（`.claude/settings.json` の `hooks` に足す。この設定は保守者が編集する）:
+登録（`.claude/settings.json` の `hooks` に登録済み。この設定は保守者が編集する）:
 
 ```json
 "MessageDisplay": [
@@ -114,8 +114,10 @@
 | 環境 | 結果 |
 |---|---|
 | Claude Code の CLI（`claude -p`、`--settings` で登録、2.1.332） | 出力の ID がリンクに置き換わった（2026-11-25） |
-| Claude Code（デスクトップアプリ、ローカル） | 未確認 |
-| Claude Code のクラウド | 未確認。リポジトリの `.claude/settings.json` を読むので動く見込みだが、表示が置き換わるかは文書にない |
+| Claude Code（デスクトップアプリ、ローカル） | ID がリンクになり、仕様の ID は定義の行まで、`TAK-xx` は Linear の Issue まで開いた（2026-11-25、保守者が確認） |
+| Claude Code のクラウド | ローカルと同じ（2026-11-25、保守者が確認。hook を登録した作業ブランチで始めたセッション） |
+
+- hook はリポジトリのスクリプトを実行するので、スクリプトのない古いブランチから始めたセッションでは置き換わらない（元の文が表示される）
 
 ## 新しい環境を確かめる手順
 
