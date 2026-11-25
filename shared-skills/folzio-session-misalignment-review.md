@@ -1,7 +1,7 @@
 # AI エージェント・セッションのすれ違いレビューの共通手順
 
-この手順は Codex、Claude Code、Kilo Code の対話スキルで共有する。
-呼び出すときは Codex で `$folzio-session-misalignment-review`、Claude Code と Kilo Code で `/folzio-session-misalignment-review` を指定する。
+この手順は Codex と Claude Code の対話スキルで共有する。
+呼び出すときは Codex で `$folzio-session-misalignment-review`、Claude Code で `/folzio-session-misalignment-review` を指定する。
 
 ## 目的と範囲
 

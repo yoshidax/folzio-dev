@@ -1,7 +1,7 @@
 # Folzio の Issue 登録の共通手順
 
-この手順は Codex、Claude Code、Kilo Code の対話スキルで共有する。  
-呼び出すときは Codex で `$folzio-register-issue <内容>`、Claude Code と Kilo Code で `/folzio-register-issue <内容>` を指定する。  
+この手順は Codex と Claude Code の対話スキルで共有する。  
+呼び出すときは Codex で `$folzio-register-issue <内容>`、Claude Code で `/folzio-register-issue <内容>` を指定する。  
 Issue URL も使える。  
 
 ユーザーの依頼を新規 Issue の提案、または指定された既存 Issue の整理として扱う。  

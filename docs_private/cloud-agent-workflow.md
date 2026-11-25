@@ -99,7 +99,7 @@ Cloud 環境には Swift がないため、`swift build` と `swift test` は、
 
 **再実行**: 共有ランナーのぶれなど、コードを変えずに確かめ直したいときは、Agent は保守者の許可を待たずに再実行してよい。GitHub MCP の `actions_run_trigger`（`rerun_failed_jobs`、`rerun_workflow_run`、`run_workflow`）を使う。`run_workflow` では `workflow_id` に `macos-swift-ci.yml`、`ref` に作業ブランチを指定する。CI の起動・再実行に保守者の許可を求めていた規則（TAK-53）は、開発用リポジトリの公開で費用の制約がなくなったため、TAK-80 で削除した。
 
-直接の `brew install` は Claude の `permissions.ask` でも確認対象とする。Codex と Kilo の禁止設定と制約は `docs_private/agents/skills-and-codex.md` を参照する。
+直接の `brew install` は Claude の `permissions.ask` でも確認対象とする。Codex の禁止設定と制約は `docs_private/agents/skills-and-codex.md` を参照する。
 
 ## 5 検証ゲート（Cloud 版）
 

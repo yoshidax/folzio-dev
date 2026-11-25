@@ -13,7 +13,7 @@ AGENTS.md から参照する、バグを直すときの手順。ローカルと 
 
 ## 独立したバグ修正の手順
 
-bug 拡張の `/speckit-bug-assess` → `/speckit-bug-fix` → `/speckit-bug-test` で直す（Kilo では `/speckit.bug.*`、Codex CLI では `$speckit-bug-*`）。
+bug 拡張の `/speckit-bug-assess` → `/speckit-bug-fix` → `/speckit-bug-test` で直す（Codex CLI では `$speckit-bug-*`）。
 記録は `.specify/bugs/<slug>/` に残る。
 
 1. クリーンな master から `bugfix/<slug>` ブランチを切る（ローカル。Cloud では Cloud が指定した作業ブランチをそのまま使う）
