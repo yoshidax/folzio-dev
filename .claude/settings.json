@@ -141,6 +141,16 @@
           }
         ]
       }
+    ],
+    "MessageDisplay": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -I \"$CLAUDE_PROJECT_DIR/scripts/dev/link-spec-ids-hook.py\""
+          }
+        ]
+      }
     ]
   }
 }
