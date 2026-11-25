@@ -294,6 +294,7 @@
 | プレビューの理由 | ファイルを読み込めません / 対応していない形式です / ファイルが壊れています / アニメーションを表示できません | Can’t read the file / Unsupported format / The file is damaged / Can’t display the animation |
 | 種類名のフォールバック | フォルダ / ZIP アーカイブ | Folder / ZIP archive |
 | サムネイルの画像（アクセシビリティ） | サムネイル | Thumbnail |
+| 動画のサムネイルの画像（アクセシビリティ。FR-419（file-list.md）） | 動画のサムネイル | Video thumbnail |
 | ツリーの名前の編集欄（アクセシビリティ） | お気に入りの名前 / フォルダの名前 | Favorite name / Folder name |
 | 新規フォルダの既定名（作成時の表示言語で決め、作成後に言語を変えても名前は変えない） | 名称未設定フォルダ | untitled folder |
 
@@ -439,6 +440,7 @@
 |---|---|
 | お気に入りの名前 / フォルダの名前 | Favorite name / Folder name |
 | サムネイル | Thumbnail |
+| 動画のサムネイル | Video thumbnail |
 | 上の階層へ（`..` の行） | Enclosing Folder |
 | 切り替え効果 | Transition |
 | 倍率の値と読み上げ | §4 の割合の書式（例: `125%`・`125 %`） |

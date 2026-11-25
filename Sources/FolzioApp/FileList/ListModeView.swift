@@ -53,7 +53,7 @@ private final class FileListTableView: NSTableView {
 
 @MainActor
 private final class FileListIconCell: NSTableCellView {
-    let iconView = NSImageView()
+    let iconView = VideoBadgeImageView()
     let nameField = NSTextField(labelWithString: "")
     var iconTask: Task<Void, Never>?
     var representedURL: URL?
@@ -68,6 +68,7 @@ private final class FileListIconCell: NSTableCellView {
 
         iconView.translatesAutoresizingMaskIntoConstraints = false
         iconView.imageScaling = .scaleProportionallyDown
+        iconView.badgeMetrics = VideoBadgeLayout.listIcon
         iconView.setAccessibilityElement(false)
         addSubview(iconView)
         imageView = iconView
@@ -835,6 +836,7 @@ extension ListModeView: NSTableViewDelegate {
             cell.iconScale = 0
             cell.representedURL = file.url
             cell.representedVersion = nil
+            cell.iconView.showsVideoBadge = false
             cell.iconView.image = IconCatalog.listItemIcon(for: file.kind, pointSize: 16)
             cell.iconView.contentTintColor = IconCatalog.tintColor(for: file.kind)
             if renamingURL != file.url {
@@ -856,6 +858,8 @@ extension ListModeView: NSTableViewDelegate {
             cell.cancelIconRequest(using: provider)
             cell.representedURL = file.url
             cell.representedVersion = file.contentVersion
+            // The generic icon already shows the format, so no badge until the frame arrives (FR-418).
+            cell.iconView.showsVideoBadge = false
             cell.iconView.image = file.kind.mediaKind.flatMap { IconCatalog.fallbackIcon(for: $0) }
 
             let scale = Double(
@@ -870,6 +874,7 @@ extension ListModeView: NSTableViewDelegate {
             let provider = self.provider
             let url = file.url
             let version = file.contentVersion
+            let showsBadge = VideoBadgeLayout.isShown(kind: file.kind, showingRepresentativeFrame: true)
             cell.iconTask = Task { [weak cell] in
                 let image = await provider.thumbnail(
                     for: url,
@@ -888,6 +893,7 @@ extension ListModeView: NSTableViewDelegate {
                     cgImage: image,
                     size: NSSize(width: 16, height: 16)
                 )
+                cell.iconView.showsVideoBadge = showsBadge
             }
         }
 
