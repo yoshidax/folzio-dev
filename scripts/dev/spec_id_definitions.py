@@ -2,6 +2,8 @@
 
 import os
 import re
+import subprocess
+from collections import defaultdict
 from pathlib import Path
 
 
@@ -77,3 +79,46 @@ def definitions_in(path):
     for number, line, kind in spec_lines(path):
         if kind is None and (definition := DEFINITION_RE.match(line)):
             yield definition["id"], number
+
+
+def active_feature_specs():
+    """作業中の feature の spec.md を返す。
+
+    作業中の feature は、specs/ の下の feature のディレクトリのうち、比べる基準（scripts/dev/base-ref.sh）にまだないもの。
+    基準がないとき（git のリポジトリの外など）は、判定できないので空にする。
+    git の呼び出しは、ディレクトリの数によらず 2 回にする（MessageDisplay の hook が表示のたびに呼ぶため）。
+    """
+    base = subprocess.run([ROOT / "scripts/dev/base-ref.sh"], cwd=ROOT, capture_output=True, text=True)
+    if base.returncode != 0:
+        return []
+    tree = subprocess.run(
+        ["git", "ls-tree", "-d", "-z", "--name-only", base.stdout.strip(), "--", "specs/"],
+        cwd=ROOT, capture_output=True, text=True,
+    )
+    if tree.returncode != 0:
+        return []
+    known = set(tree.stdout.split("\0"))
+    return [
+        path for path in sorted((ROOT / "specs").glob("*/spec.md"))
+        if path.parent != PRODUCT and path.is_file() and path.parent.relative_to(ROOT).as_posix() not in known
+    ]
+
+
+def find_definitions(paths, ids):
+    """paths の中で ids を定義している場所を、ID ごとに (パス, 行番号) のリストで返す。"""
+    matches = defaultdict(list)
+    for path in paths:
+        for label, number in definitions_in(path):
+            if label in ids:
+                matches[label].append((path, number))
+    return matches
+
+
+def locate_definitions(ids):
+    """ids の定義の場所を返す。作業中の feature で見つかった ID は、specs/product/ を探さない。"""
+    ids = set(ids)
+    matches = find_definitions(active_feature_specs(), ids)
+    missing = ids - matches.keys()
+    if missing and PRODUCT.exists():
+        matches.update(find_definitions(product_markdown_paths(), missing))
+    return matches
