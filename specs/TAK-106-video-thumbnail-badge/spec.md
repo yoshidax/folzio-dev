@@ -1,5 +1,8 @@
 # Feature Specification: 動画のサムネイルに動画を示すバッジを重ねる
 
+> **移行済み（2026-11-25）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-106 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+
 **Feature Branch**: `claude/awesome-franklin-05nex3`（Cloud が指定した作業ブランチ。feature ディレクトリとは独立）
 
 **Created**: 2026-11-21
