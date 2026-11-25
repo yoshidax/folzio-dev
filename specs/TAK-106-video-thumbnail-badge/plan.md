@@ -91,7 +91,7 @@
   - `isShown(kind:showingRepresentativeFrame:) -> Bool`
 - App: `Sources/FolzioApp/FileList/VideoBadgeImageView.swift`
   - `VideoBadgeImageView: NSImageView`。`showsVideoBadge`・`badgeMetrics` を持ち、`image` か `showsVideoBadge` が変わったら
-    `needsLayout = true`。`layout()` で `FitCalculator.fit(imageSize:in:)` と `VideoBadgeLayout.badgeFrame` から子ビューの frame を
+    `needsLayout = true`。`setFrameSize(_:)` でも大きさが変われば `needsLayout = true` にする。`layout()` で `FitCalculator.fit(imageSize:in:)` と `VideoBadgeLayout.badgeFrame` から子ビューの frame を
     決め、表示しないときは `isHidden = true`
   - 子ビュー `VideoBadgeView: NSView`。`draw(_:)` で円と記号を描く。`hitTest(_:)` は `nil`、アクセシビリティの要素にしない、
     ドラッグの型を登録しない（EC-290・FR-420、research.md R5）
@@ -102,8 +102,10 @@
   - 画像ビューのラベルを、動画なら `a11yVideoThumbnail`、それ以外は `a11yThumbnail` にする。`displayLanguageDidChange` でも
     同じ判定で更新する（FR-419）
   - 既存の `unregisterDraggedTypes()`（FR-163 の不具合の対処）は保つ
+  - テスト用に、バッジの表示状態を読む内部（`internal`）の読み取り専用プロパティを足す（T005・T008。外から変更できない）
 - `FileListIconCell`（`ListModeView.swift`）: `iconView` を `VideoBadgeImageView`（`badgeMetrics = .listIcon`）に替える。
   非メディア行と `fallbackIcon` で `false`、生成結果の設定で `isShown(...: true)`。`setAccessibilityElement(false)` を保つ（A-255）
+  - `FileListIconCell` は `private` のため、組み込みの自動テストは書かず、GUI 確認（quickstart.md の 8）で確かめる
 - 文言: `TextKey.a11yVideoThumbnail = "a11y.videoThumbnail"`（日本語「動画のサムネイル」、英語「Video thumbnail」）
 
 ### 公開文書（使い方）

@@ -82,7 +82,7 @@ Cloud ではサブエージェントで実装を分けず、同じセッショ�
 
 ### Implementation for User Story 2
 
-- [ ] T009 [US2] T007・T008 が失敗する場合だけ、`Sources/FolzioApp/FileList/VideoBadgeImageView.swift` の `layout()` と `resizeSubviews(withOldSize:)` の扱いを直し、画像ビューの大きさの変更で frame が更新されるようにする（FR-416）
+- [ ] T009 [US2] `Sources/FolzioApp/FileList/VideoBadgeImageView.swift` の `VideoBadgeImageView` で `setFrameSize(_:)` を override し、`super` を呼んだ後に大きさが変わっていれば `needsLayout = true` を立てる。サムネイルの大きさ・ペインの幅の変更（Auto Layout による画像ビューの大きさの変更）のたびに `layout()` が呼ばれ、バッジの frame が計算し直されるようにする（FR-416・US95-AS6）
 
 **Checkpoint**: 大きさの変更に追従し、T007・T008 が通る
 
@@ -102,7 +102,7 @@ Cloud ではサブエージェントで実装を分けず、同じセッショ�
 
 - [ ] T011 [P] [US3] `Sources/FolzioLocalization/TextKey.swift` に `case a11yVideoThumbnail = "a11y.videoThumbnail"` と説明（`"Accessibility label for a video thumbnail image"`）を足し、`Sources/FolzioLocalization/Resources/ja.lproj/Localizable.strings` に `"a11y.videoThumbnail" = "動画のサムネイル";`、`Sources/FolzioLocalization/Resources/en.lproj/Localizable.strings` に `"a11y.videoThumbnail" = "Video thumbnail";` を足す（contracts/localization.md）
 - [ ] T012 [US3] `Sources/FolzioApp/FileList/ThumbnailModeView.swift` の `ThumbnailItemView` で、画像ビューのラベルを、保持した種類が動画なら `.a11yVideoThumbnail`、それ以外は `.a11yThumbnail` にする。`loadView`・`configure`・`prepareForReuse`・`displayLanguageDidChange` で同じ判定を使う（FR-419・US95-AS11）
-- [ ] T013 [US3] `Sources/FolzioApp/FileList/ListModeView.swift` の `FileListIconCell.iconView` を `VideoBadgeImageView`（`badgeMetrics = .listIcon`）に替える。非メディア行と `IconCatalog.fallbackIcon` の設定で `showsVideoBadge = false`、生成の Task で縮小画像を設定するときに `showsVideoBadge = VideoBadgeLayout.isShown(kind: file.kind, showingRepresentativeFrame: true)` にする。`setAccessibilityElement(false)` と `imageScaling = .scaleProportionallyDown` を保つ（FR-418・A-255）
+- [ ] T013 [US3] `Sources/FolzioApp/FileList/ListModeView.swift` の `FileListIconCell.iconView` を `VideoBadgeImageView`（`badgeMetrics = .listIcon`）に替える。非メディア行と `IconCatalog.fallbackIcon` の設定で `showsVideoBadge = false`、生成の Task で縮小画像を設定するときに `showsVideoBadge = VideoBadgeLayout.isShown(kind: file.kind, showingRepresentativeFrame: true)` にする。`setAccessibilityElement(false)` と `imageScaling = .scaleProportionallyDown` を保つ（FR-418・A-255）。`FileListIconCell` は `private` のため、組み込みの自動テストは書かない。共通の画像ビューの振る舞いは T002・T007 で、組み込みの見え方は T018 [MANUAL]（quickstart.md の 8）で確かめる
 
 **Checkpoint**: リスト形式のバッジと読み上げができ、T010 と既存の `CatalogConsistencyTests` が通る
 
@@ -116,7 +116,7 @@ Cloud ではサブエージェントで実装を分けず、同じセッショ�
 - [ ] T015 [P] `docs/usage.md` の「View Modes and Columns」と `docs/usage.ja.md` の「表示形式と列」に、動画のサムネイルとリスト形式の行頭に再生のバッジが付くことを 1 文ずつ、同じコミットで足す。2 つの文書は同じ内容にし、`specs/` などの開発用の文書へリンクしない（保守者の決定（2026-11-25）、AGENTS.md の「書くときの規則」）
 - [ ] T016 `scripts/dev/check-all.sh` を実行して通し、作業ブランチにコミットして push し、Draft の PR を `.github/pull_request_template.md` の見出しで作る（`docs_private/agents/delegation.md` の条件）。Linear の TAK-106 に PR のリンクを付ける
 - [ ] T017 CI（`.github/workflows/macos-swift-ci.yml`）の `swift build`・`swift test` の成功と、性能テストのログの末尾（`passed` か `failed`）を確かめて PR の本文に記載する（憲章の原則 II）
-- [ ] T018 [MANUAL] 保守者が `specs/TAK-106-video-thumbnail-badge/quickstart.md` の「保守者の GUI 確認」の 1〜11 を行う。結果（実行日、OS、確認項目、合否）を `specs/TAK-106-video-thumbnail-badge/checklists/validation.md` に記録する。図柄・色・大きさの調整を依頼されたら `Sources/FolzioCore/Layout/VideoBadgeLayout.swift` と `Sources/FolzioApp/FileList/VideoBadgeImageView.swift` の定数を直して再確認を依頼する（A-253）
+- [ ] T018 [MANUAL] 保守者が `specs/TAK-106-video-thumbnail-badge/quickstart.md` の「保守者の GUI 確認」の 1〜11 を行う。自動テストで確かめられない SC-238・SC-241・SC-242・EC-288・US95-AS5・US95-AS9（FR-418）・A-256 を、この確認で確かめる。結果（実行日、OS、確認項目、合否）を `specs/TAK-106-video-thumbnail-badge/checklists/validation.md` に記録する。図柄・色・大きさの調整を依頼されたら `Sources/FolzioCore/Layout/VideoBadgeLayout.swift` と `Sources/FolzioApp/FileList/VideoBadgeImageView.swift` の定数を直して再確認を依頼する（A-253）
 - [ ] T019 実装と検証の後、最新の `master` を取り込み、spec.md の「反映先」の項目を `specs/product/file-list.md` と `specs/product/contracts/localization.md` へ反映し、spec.md の冒頭に移行済み・凍結の注記を入れる。反映の前後に `scripts/dev/check-spec-ids.sh` と `python3 scripts/dev/check-spec-format.py` を実行し、反映した項目と差分を保守者に示して承認を得てからコミットする
 
 ---
