@@ -1,5 +1,6 @@
 import AppKit
 import FolzioCore
+import FolzioLocalization
 import Testing
 @testable import FolzioApp
 
@@ -70,4 +71,69 @@ struct ListIconImageTests {
         #expect(badge.frame.minY >= drawn.minY - tolerance)
         #expect(badge.frame.maxY <= drawn.maxY + tolerance)
     }
+
+    @Test("A row of the list mode shows the generated 16:9 image as a 16 x 9 pt leading icon (FR-048)")
+    func rowIconKeepsAspectRatio() async throws {
+        _ = NSApplication.shared
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("list-icon-\(UUID())")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try Data([0]).write(to: folder.appendingPathComponent("wide.jpg"))
+
+        let suite = "Folzio.ListIconImage.\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsStore(defaults: defaults)
+        let model = BrowserModel(kindNames: l10n.kindNames, lister: DirectoryLister(kindNames: l10n.kindNames),
+            decoder: ImageDecoder(), cache: DecodedImageCache(), settings: settings)
+        model.setNavigationRoots([folder])
+        await model.selectFolder(folder)
+        let row = try #require(model.listing.files.firstIndex { $0.name == "wide.jpg" })
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 600, height: 400),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let list = ListModeView(model: model, provider: WideThumbnailProvider())
+        list.frame = NSRect(x: 0, y: 0, width: 600, height: 400)
+        window.contentView?.addSubview(list)
+        list.layoutSubtreeIfNeeded()
+
+        let table = try #require(findTable(in: list))
+        let column = table.column(withIdentifier: NSUserInterfaceItemIdentifier("name"))
+        let cell = try #require(table.view(atColumn: column, row: row, makeIfNecessary: true) as? NSTableCellView)
+        let expected = NSSize(width: 16, height: 9)
+        let deadline = ContinuousClock.now + .seconds(3)
+        while cell.imageView?.image?.size != expected, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(cell.imageView?.image?.size == expected)
+    }
+
+    private func findTable(in view: NSView) -> NSTableView? {
+        if let table = view as? NSTableView { return table }
+        return view.subviews.lazy.compactMap { findTable(in: $0) }.first
+    }
+}
+
+/// Returns a 64 x 36 px image for every file, like a generated 16:9 thumbnail.
+private struct WideThumbnailProvider: ThumbnailProviding {
+    func thumbnail(for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?) async -> CGImage? {
+        let context = CGContext(
+            data: nil,
+            width: 64,
+            height: 36,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )
+        return context?.makeImage()
+    }
+
+    func cancel(for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?) {}
 }

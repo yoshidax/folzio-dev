@@ -32,6 +32,7 @@ static func listIconImage(from image: CGImage, pointSize: Double) -> NSImage {
 - `Tests/FolzioAppTests/ListIconImageTests.swift::keepsAspectRatio` — 64×36・36×64・64×64・16×64・8×4 px の画像が、16×9・9×16・16×16・4×16・16×8pt のアイコンになる。修正前の描き方（16×16 に固定）では 1:1 以外の 4 件が失敗することを確かめた
 - `Tests/FolzioAppTests/ListIconImageTests.swift::badgeStaysInsideWideFrame` — 行頭のアイコンと同じ設定の `VideoBadgeImageView` で、16:9 の代表フレームのバッジが描かれたフレーム（y = 3.5〜12.5pt）の内側に収まる（[EC-286](../../../specs/product/file-list.md#L1033)）。修正前は失敗することを確かめた
 - `Tests/FolzioCoreTests/FitCalculatorTests.swift::fitsListIcon` — 16pt の枠に収める大きさの代表値
+- `Tests/FolzioAppTests/ListIconImageTests.swift::rowIconKeepsAspectRatio` — PR のレビュー（2026-11-26）を受けて足した。64×36 px を返す偽の `ThumbnailProviding` で `ListModeView` の行を作り、行頭のセルの画像が 16×9pt になることを確かめる。セルの Task の呼び出しを 16×16 に固定する書き方に戻すと失敗することを確かめた
 
 ## Local Verification
 
@@ -47,7 +48,7 @@ static func listIconImage(from image: CGImage, pointSize: Double) -> NSImage {
 ## Deviations from Assessment
 
 - Core に新しい関数を足さなかった。既存の `FitCalculator.fit(imageSize:in:)` の結果の `size` で足りるため、App 側の補助関数から直接呼んだ。Core には代表値のテストだけを足した。
-- App のテストは、表全体（`ListModeView` の行と偽の `ThumbnailProviding`）を組み立てる代わりに、画像をアイコンにする部分を `ListModeView.listIconImage(from:pointSize:)` として切り出して試した。行頭のセル（`FileListIconCell`）は private で、表の行を作るには一覧の読み込みが要るため。セルの Task はこの関数の結果をそのまま設定するだけになった。
+- App のテストは、まず画像をアイコンにする部分を `ListModeView.listIconImage(from:pointSize:)` として切り出して試した。PR のレビューで、セルの Task の呼び出しを通るテストがないと指摘されたため、表の行を作って行頭のセルの画像を確かめるテスト（`rowIconKeepsAspectRatio`）も足した。
 - 16pt より小さい画像（例: 8×4 px）は、修正前と同じく 16pt の枠まで拡大する（長い辺を 16pt にする）。サムネイル形式は小さい画像を拡大しないが、行頭のアイコンは大きさをそろえる。
 
 ## Follow-ups

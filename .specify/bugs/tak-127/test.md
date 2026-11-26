@@ -34,7 +34,7 @@ created .build/Folzio.app
 
 ## Residual Risks
 
-- 自動テストは、行頭のアイコンにする関数（`ListModeView.listIconImage(from:pointSize:)`）とバッジ付きの画像ビューを個別に試している。表の行のセルに実際に設定される画像は、GUI でだけ確かめた
+- 表の行のセルに設定される画像は、PR のレビューの後に足したテスト（`rowIconKeepsAspectRatio`、偽の縮小画像の提供者を使う）と GUI で確かめた。実際の縮小画像の生成と組み合わせた確認は GUI だけで行った
 - 横長の動画では、バッジの直径が 8pt から約 4.5pt に縮む（EC-286 の意図どおり）。保守者は GUI で大きさに問題がないことを確かめた
 - 性能テスト「Decodes a 24 MP JPEG within 0.5 seconds」は、fix のときに全テストの実行中に一度だけ 0.61 秒で失敗した。今回の変更とは関係しないが、負荷によって揺れることがある
 
