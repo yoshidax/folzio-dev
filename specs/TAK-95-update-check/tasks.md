@@ -124,8 +124,12 @@ Swift のコードとテスト（T004〜T022）は Cloud で実行できない�
   - Web サイト `site/index.html`・`site/ja/index.html`・`site/privacy.html`・`site/ja/privacy.html`
   - `AGENTS.md` の設計の制約（ネットワーク API）。行数は変えない
 - [X] T025 `scripts/dev/check-all.sh` を実行して通す（ネットワーク API の検査・README・コメントの英語）
-- [ ] T026 作業ブランチに push し、Draft の PR の CI で `swift build`・`swift test`（通常と性能）の成功を確かめる
+- [X] T026 作業ブランチに push し、Draft の PR の CI で `swift build`・`swift test`（通常と性能）の成功を確かめる
   - 性能テストはログの末尾で件数を確かめる
+  - 結果（`1d70eaf`、run 45838839009）: build と通常のテストは2回とも成功（`Test run with 1400 tests passed`）。
+    性能テストは1回目 28 件中 3 件、再実行で 6 件が失敗。失敗した項目は2回で異なり、どれもこの変更が触れない処理
+    （JPEG のデコード・フォルダの列挙・スライドショーの候補・一覧の更新）。直前の Release v1.7.0 の PR（run 45767516717）でも
+    1 件（JPEG のデコード）が失敗し、スライドショーの 200,000 件は 0.184 秒で基準 0.2 秒に近い
 - [ ] T027 [MANUAL] 保守者が `specs/TAK-95-update-check/quickstart.md` の「保守者のローカルでの確認（GUI）」の 1〜17 を行い、
   結果を報告する（SC-243・SC-245・SC-247 と GUI の受け入れシナリオ）
   - 報告を `specs/TAK-95-update-check/checklists/validation.md` に記録する
