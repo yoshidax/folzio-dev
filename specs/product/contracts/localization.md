@@ -101,6 +101,7 @@
 | メニュー | 日本語 | 英語 |
 |---|---|---|
 | アプリ | Folzio について | About Folzio |
+| アプリ | アップデートを確認… | Check for Updates… |
 | アプリ | 設定… | Settings… |
 | アプリ | 終了 | Quit Folzio |
 | — | ファイル | File |
@@ -183,6 +184,37 @@
 
 アプリ名「Folzio」と URL・バージョンの数値は翻訳しない（FR-147）。表示中の言語の切り替えで、バージョン行・
 ウィンドウ名・アイコンの説明・リンクのヘルプ・メニュー項目を即時更新する。
+
+### アップデートの確認（FR-428・430）
+
+| 用途 | 日本語 | 英語 |
+|---|---|---|
+| 新しい版・見出し | 新しいバージョンの Folzio があります | A new version of Folzio is available |
+| 新しい版・本文 | 下記 | 下記 |
+| 新しい版・ボタン | ダウンロードページを開く / 閉じる | Open Download Page / Close |
+| 最新・見出し | Folzio は最新です | Folzio is up to date |
+| 最新・本文（`%@` は今の版） | バージョン %@ は最新のバージョンです。 | Version %@ is the latest version. |
+| 失敗・見出し | アップデートを確認できませんでした | Couldn't check for updates |
+| 失敗・本文 | 下記 | 下記 |
+| 同意・見出し | アップデートを自動で確認しますか？ | Check for updates automatically? |
+| 同意・本文 | 下記 | 下記 |
+| 同意・ボタン | 自動で確認する / 確認しない | Check Automatically / Don't Check |
+
+**表の詳細**
+
+- **新しい版・本文**（日本語）: 「Folzio %1$@ を入手できます。現在のバージョンは %2$@ です。」
+  - 英語: 「Folzio %1$@ is available. You have version %2$@.」
+  - `%1$@` は最新の公開版、`%2$@` は今の版。
+- **失敗・本文**（日本語）: 「ネットワークの接続を確かめて、しばらくしてからもう一度お試しください。」
+  - 英語: 「Check your network connection and try again later.」
+- **同意・本文**（日本語）: 下記の1文ずつの3文。
+  - 「Folzio は起動時に、1日に1回まで GitHub に新しいバージョンがあるかを問い合わせます。」
+  - 「ファイルやその情報は送りません。」「設定でいつでも変えられます。」
+  - 英語: 「Folzio can ask GitHub whether a new version is available when it starts, at most once a day.」
+    「It sends no files or information about them.」「You can change this in Settings at any time.」
+
+アプリ名「Folzio」と版の数値は翻訳しない（FR-147）。最新・失敗のダイアログのボタンは「OK」（確認モーダルと共通）。
+ダイアログは表示する時点の言語で作り、メニュー項目は表示言語の切り替えで即時更新する。
 
 ### 右クリックメニュー
 
@@ -272,6 +304,8 @@
 | このキーは変更できません | This shortcut can’t be changed. |
 | 「%@」で使われています | Already used by “%@”. |
 | 既定のキーを「%@」が使っています | The default shortcut is used by “%@”. |
+| アップデート | Updates |
+| アップデートを自動で確認する | Automatically check for updates |
 
 ### ファイルリスト・ツリー・プレビュー
 
