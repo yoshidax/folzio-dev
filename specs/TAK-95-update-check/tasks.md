@@ -14,14 +14,14 @@
 
 ## Phase 1: Setup（憲章と検査）
 
-- [ ] T001 `.specify/memory/constitution.md` の原則 I を改める。版を 1.6.0 にし、Sync Impact Report を更新する（research.md R8）
+- [X] T001 `.specify/memory/constitution.md` の原則 I を改める。版を 1.6.0 にし、Sync Impact Report を更新する（research.md R8）
   - 「ユーザーの明示的な操作でのみ通信を開始」に、「ユーザーが明示的に有効にした自動の処理」を加える
   - 許す通信を最新の公開版の確認に限り、送らない情報・自動の確認の上限・更新の適用をしないことを書く
   - マージ前のゲートの「外部通信」の行を改める
-- [ ] T002 `scripts/dev/tests/test_check_no_network.py` に次のテストを足す（contracts/update-check.md の表）
+- [X] T002 `scripts/dev/tests/test_check_no_network.py` に次のテストを足す（contracts/update-check.md の表）
   - 許すもの: `UpdateSource.swift` の API の URL の行、`URLSessionUpdateTransport.swift` の `URLSession` の行
   - 拒むもの: この2ファイルでの別の URL・`NWConnection`・`import Network`、ほかのファイルでの `URLSession`
-- [ ] T003 `scripts/check-no-network.sh` の例外を、ファイルと許す行の条件の一覧に改め、T002 の2ファイルを足す（FR-041・FR-176・SC-246）
+- [X] T003 `scripts/check-no-network.sh` の例外を、ファイルと許す行の条件の一覧に改め、T002 の2ファイルを足す（FR-041・FR-176・SC-246）
   - 既存の2つの例外の動作を保つ。コメントは英語
   - `python3 -m unittest scripts/dev/tests/test_check_no_network.py` を通す
 
