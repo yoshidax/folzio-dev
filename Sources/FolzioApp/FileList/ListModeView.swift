@@ -815,6 +815,14 @@ extension ListModeView: NSTableViewDelegate {
         return cell
     }
 
+    /// Wraps a generated thumbnail as the leading icon, fitted into a square of `pointSize` with its aspect ratio
+    /// kept (FR-048). The image view centers it, and the video badge follows the drawn frame (FR-418).
+    static func listIconImage(from image: CGImage, pointSize: Double) -> NSImage {
+        let square = CGSize(width: pointSize, height: pointSize)
+        let fitted = FitCalculator.fit(imageSize: CGSize(width: image.width, height: image.height), in: square)
+        return NSImage(cgImage: image, size: fitted.isEmpty ? square : fitted.size)
+    }
+
     private func nameCell(
         for file: MediaFile,
         identifier: NSUserInterfaceItemIdentifier,
@@ -889,10 +897,7 @@ extension ListModeView: NSTableViewDelegate {
                       let image else {
                     return
                 }
-                cell.iconView.image = NSImage(
-                    cgImage: image,
-                    size: NSSize(width: 16, height: 16)
-                )
+                cell.iconView.image = Self.listIconImage(from: image, pointSize: pointSize)
                 cell.iconView.showsVideoBadge = showsBadge
             }
         }
