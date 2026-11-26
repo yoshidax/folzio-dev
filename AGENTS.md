@@ -5,7 +5,7 @@
 
 ## 設計の制約【共通】
 - 判断ロジックは `FolzioCore`（AppKit を import しない）、描画と入力は `FolzioApp` に置く
-- デコード・ディレクトリ列挙・ファイル操作を UI スレッドで行わない。ネットワーク API を使わない（オフライン動作）
+- デコード・ディレクトリ列挙・ファイル操作を UI スレッドで行わない。ネットワーク API は更新の確認（`scripts/check-no-network.sh` が許す箇所）だけで使う
 
 ## 仕様と進捗【共通】
 - 新しい要件は新しい feature ディレクトリで扱い、実装と検証の後に `specs/product/` へ反映する（手順と ID: `specs/product/README.md`）

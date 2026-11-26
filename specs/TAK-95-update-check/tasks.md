@@ -57,19 +57,21 @@
 
 **Independent Test**: 最新の公開版より古い版のアプリで項目を選び、ダイアログから Release ページを開ける。
 
-- [ ] T013 [P] [US1] `Sources/FolzioLocalization/` に、contracts/update-check.md の「ダイアログの文言」の全行を英日で足す
+- [X] T013 [P] [US1] `Sources/FolzioLocalization/` に、contracts/update-check.md の「ダイアログの文言」の全行を英日で足す
   - 対象: `TextKey.swift` と、`Resources/en.lproj`・`Resources/ja.lproj` の `Localizable.strings`
   - 範囲: メニュー項目、3種類の結果、同意、設定の文言と、翻訳者向けの説明
-- [ ] T014 [P] [US1] `Sources/FolzioApp/Update/URLSessionUpdateTransport.swift` に、ephemeral の `URLSession`（Cookie・
+- [X] T014 [P] [US1] `Sources/FolzioApp/Update/URLSessionUpdateTransport.swift` に、ephemeral の `URLSession`（Cookie・
   キャッシュなし）で `UpdateTransport` を実装する（research.md R4）
-- [ ] T015 [US1] `Sources/FolzioApp/Update/UpdateCheckController.swift` に、メニューの確認を実装する
+  - 注記（実装時）: 型の名前は `LiveUpdateTransport` にした。型の名前に `URLSession` を含めると、使う側のファイルで
+    `scripts/check-no-network.sh` が失敗するため。ファイル名は contracts の表のまま
+- [X] T015 [US1] `Sources/FolzioApp/Update/UpdateCheckController.swift` に、メニューの確認を実装する
   - 確認中の状態、`UpdateChecker.check` の呼び出し、結果ごとの `NSAlert`（`runModal`）
   - 「ダウンロードページを開く」で `NSWorkspace` に URL を渡す。新しい版を知らせたら知らせた版を保存する（FR-432）
   - ダイアログ・URL を開く処理・`now`・`canPresent` はテストで差し替えられるクロージャにする
-- [ ] T016 [US1] `Sources/FolzioApp/App/MainMenu.swift` と `Sources/FolzioApp/App/AppDelegate.swift` を変える
+- [X] T016 [US1] `Sources/FolzioApp/App/MainMenu.swift` と `Sources/FolzioApp/App/AppDelegate.swift` を変える
   - `MainMenu.swift`: About の直後に「アップデートを確認…」を足し、`refreshTitles` の表に加える
   - `AppDelegate.swift`: `checkForUpdates(_:)` と `validateMenuItem` の条件（FR-422）を足す
-- [ ] T017 [US1] `Tests/FolzioAppTests/UpdateCheckMenuTests.swift` に、メニューの確認のテストを足す
+- [X] T017 [US1] `Tests/FolzioAppTests/UpdateCheckMenuTests.swift` に、メニューの確認のテストを足す
   - 項目: 位置（About の直後・区切り線の前）、ショートカットなし、版がない・形の違う版で無効、確認中は無効
   - 新しい版の結果: 既定のボタンで URL を開き、取り消しのボタンでは開かない。知らせた版を保存する
   - 通信: コントローラの生成とメニューの構築では、transport が呼ばれない（SC-244）
@@ -80,7 +82,7 @@
 
 **Independent Test**: 最新の版と、ネットワークを切った状態で選び、それぞれのダイアログが出る。
 
-- [ ] T018 [US2] `Tests/FolzioAppTests/UpdateCheckMenuTests.swift` に、`upToDate` と `failed` の結果のテストを足す
+- [X] T018 [US2] `Tests/FolzioAppTests/UpdateCheckMenuTests.swift` に、`upToDate` と `failed` の結果のテストを足す
   - 「OK」だけのダイアログを出し、URL を開かない
   - 結果の後に項目が再び有効になる
   - T015 の実装で足りなければ直す
@@ -91,16 +93,16 @@
 
 **Independent Test**: 設定を消して起動し、同意すると新しい版のダイアログが出る。次の起動では同じ版について出ない。
 
-- [ ] T019 [US3] `Sources/FolzioApp/Update/UpdateCheckController.swift` に、起動時の動作を足す（FR-430〜FR-433）
+- [X] T019 [US3] `Sources/FolzioApp/Update/UpdateCheckController.swift` に、起動時の動作を足す（FR-430〜FR-433）
   - `performLaunchAction()`、同意のダイアログ、自動の確認
   - 自動の確認の結果は `AutomaticUpdateCheckPolicy` に従って保存・表示する
-- [ ] T020 [US3] `Sources/FolzioApp/App/AppDelegate.swift` の `applicationDidFinishLaunching` で、メインウィンドウの表示の後に
+- [X] T020 [US3] `Sources/FolzioApp/App/AppDelegate.swift` の `applicationDidFinishLaunching` で、メインウィンドウの表示の後に
   `performLaunchAction()` を呼ぶ
   - `canPresent` に `mainWindowController.canShowShortcuts` を渡す
-- [ ] T021 [US3] `Sources/FolzioApp/Settings/SettingsWindowController.swift` に、区分「アップデート」とチェックボックスを足す（FR-434）
+- [X] T021 [US3] `Sources/FolzioApp/Settings/SettingsWindowController.swift` に、区分「アップデート」とチェックボックスを足す（FR-434）
   - 間隔・Tab の移動順は contracts/update-check.md の「設定」のとおり
   - `syncFromStore` と表示言語の切り替えに対応する
-- [ ] T022 [US3] `Tests/FolzioAppTests/UpdateCheckLaunchTests.swift` に、起動時の動作のテストを足す
+- [X] T022 [US3] `Tests/FolzioAppTests/UpdateCheckLaunchTests.swift` に、起動時の動作のテストを足す
   - 同意のダイアログ: 未回答で出る、答えずに終了すると次回も出る
   - 答え: 「自動で確認する」で保存してすぐ確認する、「確認しない」で保存して通信しない
   - 自動の確認: 期限内なら通信しない、通知済みの版を出さない、最新・失敗で何も出さない
@@ -109,13 +111,19 @@
 
 ## Phase 6: Polish（文書と検証）
 
-- [ ] T023 [P] `README.md` と `README.ja.md` を同じ内容で改める（FR-429）
+Swift のコードとテスト（T004〜T022）は Cloud で実行できない。ビルドとテストの実行確認は T026 の CI で行う。
+
+- [X] T023 [P] `README.md` と `README.ja.md` を同じ内容で改める（FR-429）
   - 冒頭の「ネットワーク通信なし」の表記
   - メニューと自動の更新の確認の案内
-- [ ] T024 [P] `docs/usage.md` と `docs/usage.ja.md` を同じ内容で改める（FR-429）
+- [X] T024 [P] `docs/usage.md` と `docs/usage.ja.md` を同じ内容で改める（FR-429）
   - 「Checking the Version」「バージョンの確認」の節: メニューの確認、起動時の自動の確認と同意、設定、通信の範囲
   - 「Where Settings Are Stored」「設定の保存先」の節: 3つのキー
-- [ ] T025 `scripts/dev/check-all.sh` を実行して通す（ネットワーク API の検査・README・コメントの英語）
+- [X] T029 公開文書とエージェントの規則の「通信しない」記述を、更新の確認に合わせて改める（実装中に追加。FR-429）
+  - `docs/development.md`・`docs/development.ja.md` のネットワーク API の説明
+  - Web サイト `site/index.html`・`site/ja/index.html`・`site/privacy.html`・`site/ja/privacy.html`
+  - `AGENTS.md` の設計の制約（ネットワーク API）。行数は変えない
+- [X] T025 `scripts/dev/check-all.sh` を実行して通す（ネットワーク API の検査・README・コメントの英語）
 - [ ] T026 作業ブランチに push し、Draft の PR の CI で `swift build`・`swift test`（通常と性能）の成功を確かめる
   - 性能テストはログの末尾で件数を確かめる
 - [ ] T027 [MANUAL] 保守者が `specs/TAK-95-update-check/quickstart.md` の「保守者のローカルでの確認（GUI）」の 1〜17 を行い、
