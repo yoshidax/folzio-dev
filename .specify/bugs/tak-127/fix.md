@@ -7,7 +7,7 @@
 
 ## Summary
 
-リスト形式の行頭の縮小画像を、大きさ 16×16pt に固定した `NSImage` ではなく、生成された画像の縦横比を保ったまま 16pt の枠に収まる大きさの `NSImage` にした（[FR-048](specs/product/file-list.md#L71)）。`VideoBadgeImageView` は `image.size` からバッジの位置を求めるので、動画のバッジは描かれた代表フレームの右下に移る（[FR-418](specs/product/file-list.md#L413)）。
+リスト形式の行頭の縮小画像を、大きさ 16×16pt に固定した `NSImage` ではなく、生成された画像の縦横比を保ったまま 16pt の枠に収まる大きさの `NSImage` にした（[FR-048](../../../specs/product/file-list.md#L71)）。`VideoBadgeImageView` は `image.size` からバッジの位置を求めるので、動画のバッジは描かれた代表フレームの右下に移る（[FR-418](../../../specs/product/file-list.md#L413)）。
 
 ## Changes
 
@@ -30,7 +30,7 @@ static func listIconImage(from image: CGImage, pointSize: Double) -> NSImage {
 ## Tests Added or Updated
 
 - `Tests/FolzioAppTests/ListIconImageTests.swift::keepsAspectRatio` — 64×36・36×64・64×64・16×64・8×4 px の画像が、16×9・9×16・16×16・4×16・16×8pt のアイコンになる。修正前の描き方（16×16 に固定）では 1:1 以外の 4 件が失敗することを確かめた
-- `Tests/FolzioAppTests/ListIconImageTests.swift::badgeStaysInsideWideFrame` — 行頭のアイコンと同じ設定の `VideoBadgeImageView` で、16:9 の代表フレームのバッジが描かれたフレーム（y = 3.5〜12.5pt）の内側に収まる（[EC-286](specs/product/file-list.md#L1033)）。修正前は失敗することを確かめた
+- `Tests/FolzioAppTests/ListIconImageTests.swift::badgeStaysInsideWideFrame` — 行頭のアイコンと同じ設定の `VideoBadgeImageView` で、16:9 の代表フレームのバッジが描かれたフレーム（y = 3.5〜12.5pt）の内側に収まる（[EC-286](../../../specs/product/file-list.md#L1033)）。修正前は失敗することを確かめた
 - `Tests/FolzioCoreTests/FitCalculatorTests.swift::fitsListIcon` — 16pt の枠に収める大きさの代表値
 - `Tests/FolzioAppTests/ListIconImageTests.swift::rowIconKeepsAspectRatio` — PR のレビュー（2026-11-26）を受けて足した。64×36 px を返す偽の `ThumbnailProviding` で `ListModeView` の行を作り、行頭のセルの画像が 16×9pt になることを確かめる。セルの Task の呼び出しを 16×16 に固定する書き方に戻すと失敗することを確かめた
 
