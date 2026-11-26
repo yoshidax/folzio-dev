@@ -27,29 +27,29 @@
 
 ## Phase 2: Foundational（Core）
 
-- [ ] T004 [P] `Tests/FolzioCoreTests/AppVersionTests.swift` に、版の解析と比較のテストを足す（EC-293）
+- [X] T004 [P] `Tests/FolzioCoreTests/AppVersionTests.swift` に、版の解析と比較のテストを足す（EC-293）
   - 解析: 正しい形、`v` 付き、空白、3つでない、数字以外、巨大な数
   - 比較: 1.10.0 > 1.9.0、等しい、各部分の順
-- [ ] T005 [P] `Sources/FolzioCore/Update/AppVersion.swift` に `AppVersion`（data-model.md）を実装する
-- [ ] T006 `Tests/FolzioCoreTests/UpdateCheckerTests.swift` に、固定の応答を返す transport で次のテストを足す（FR-423〜FR-426、EC-292・EC-294）
+- [X] T005 [P] `Sources/FolzioCore/Update/AppVersion.swift` に `AppVersion`（data-model.md）を実装する
+- [X] T006 `Tests/FolzioCoreTests/UpdateCheckerTests.swift` に、固定の応答を返す transport で次のテストを足す（FR-423〜FR-426、EC-292・EC-294）
   - 結果: 新しい版・同じ版・古い版（FR-425）
   - 失敗: transport の失敗、404・403・429・500、HTTP でない応答、1 MiB 超、JSON でない、`tag_name` なし、形の違うタグ
   - 要求: URL、ヘッダー（`User-Agent`・`Accept`・`X-GitHub-Api-Version`・`Accept-Language`）、タイムアウト 15 秒
   - Release ページの URL
-- [ ] T007 `Sources/FolzioCore/Update/UpdateSource.swift` に要求と Release ページの URL を実装する
+- [X] T007 `Sources/FolzioCore/Update/UpdateSource.swift` に要求と Release ページの URL を実装する
   - API の URL のリテラルはこの1行だけ。Release ページは `AboutInfo.repositoryURL` から組み立てる
-- [ ] T008 `Sources/FolzioCore/Update/UpdateChecker.swift` に `UpdateTransport`・`UpdateCheckResult`・`UpdateCheckFailure`・
+- [X] T008 `Sources/FolzioCore/Update/UpdateChecker.swift` に `UpdateTransport`・`UpdateCheckResult`・`UpdateCheckFailure`・
   `UpdateChecker.check` を実装する（data-model.md）
-- [ ] T009 [P] `Tests/FolzioCoreTests/SettingsStoreTests.swift` に、3つのキーのテストを足す
+- [X] T009 [P] `Tests/FolzioCoreTests/SettingsStoreTests.swift` に、3つのキーのテストを足す
   - 読み: 未設定・正しい値・不正な型（Bool でない・Date でない・形の違う版）
   - 書き: `notAsked` でキーを消す
-- [ ] T010 [P] `Sources/FolzioCore/Settings/SettingsStore.swift` に、`AutomaticUpdateCheckSetting` と3つのプロパティを実装する（data-model.md）
-- [ ] T011 `Tests/FolzioCoreTests/AutomaticUpdateCheckPolicyTests.swift` に、次の分岐のテストを足す（FR-430〜FR-433、EC-296〜EC-299、
+- [X] T010 [P] `Sources/FolzioCore/Settings/SettingsStore.swift` に、`AutomaticUpdateCheckSetting` と3つのプロパティを実装する（data-model.md）
+- [X] T011 `Tests/FolzioCoreTests/AutomaticUpdateCheckPolicyTests.swift` に、次の分岐のテストを足す（FR-430〜FR-433、EC-296〜EC-299、
   SC-247・SC-248）
   - `launchAction`: 版なし、未回答で邪魔をしない状態とそうでない状態、無効、有効の期限内と期限切れ
   - `isDue`: ちょうど 24 時間、前回が未来
   - `automaticOutcome`: 未通知の新しい版、通知済みの版、より新しい版、最新、失敗、邪魔をしない状態でないとき
-- [ ] T012 `Sources/FolzioCore/Update/AutomaticUpdateCheckPolicy.swift` に `AutomaticUpdateCheckPolicy` を実装する（data-model.md）
+- [X] T012 `Sources/FolzioCore/Update/AutomaticUpdateCheckPolicy.swift` に `AutomaticUpdateCheckPolicy` を実装する（data-model.md）
 
 ## Phase 3: User Story 1 - 新しい公開版を知り、入手先を開く (Priority: P1) 🎯 MVP
 
