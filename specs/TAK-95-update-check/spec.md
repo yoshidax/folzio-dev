@@ -1,10 +1,13 @@
 # Feature Specification: アップデートの確認
 
+> **移行済み（2026-11-26）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-95 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+
 **Feature Branch**: `claude/modest-darwin-quinyf`（Cloud が指定した作業ブランチ）
 
 **Created**: 2026-11-26
 
-**Status**: Draft
+**Status**: Approved — product へ移行済み
 
 **Input**: [TAK-95](https://linear.app/takyoshida/issue/TAK-95)「配布済みアプリの自動更新に対応する」。
 GitHub Releases で配布された Folzio の利用者が、新しい公開版があることをアプリから知り、入手できるようにする。
@@ -65,6 +68,8 @@ Release ページを開いて ZIP を入手する。
   Release ページを既定の Web ブラウザで開き、ダイアログを閉じる。
 - **US96-AS3**: **Given** US96-AS1 のダイアログを表示中、**When** 「閉じる」を選ぶか Esc を押す、**Then** 何も開かずに
   ダイアログを閉じる。
+- **US45-AS3**（変更）: **Given** メニューバーを開く、**When** アプリメニューを見る、**Then** 先頭に「Folzio について」、
+  「アップデートを確認…」、区切り線、「設定…」、区切り線、「終了」の順で並び、「Folzio について」にショートカットは割り当てない。
 - **US96-AS4**: **Given** 自動の確認を有効にしていない、**When** 「アップデートを確認…」を選ばずにアプリを使い続ける、
   **Then** アプリは外部と一切通信しない。
 
@@ -135,6 +140,12 @@ Release ページを開いて ZIP を入手する。
 
 ### Functional Requirements
 
+- **FR-238**（変更）: アプリメニューの先頭に「Folzio について」（英語: About Folzio）を追加し、その直後に
+  「アップデートを確認…」（FR-422）、区切り線を置いて、「設定…」の前に並べる。
+  - ショートカットは割り当てない。
+  - 選ぶと FR-239（window-layout.md）のダイアログを開く。
+  - メインウィンドウの状態（スライドショー・全画面・名前の変更・シート・設定ウインドウの表示中）
+    に関わらず選べる（設定と同じ。US47-AS5）。
 - **FR-041**（変更）: システムは、閲覧・操作に関する情報を外部に送信してはならず、更新の確認（FR-423・FR-431）を除く
   全機能がオフラインで動作しなければならない（憲章 原則 I）。
 - **FR-422**: アプリメニューの「Folzio について」の直後に「アップデートを確認…」（英語: Check for Updates…）を置かなければならない。
@@ -236,6 +247,7 @@ Release ページを開いて ZIP を入手する。
 | FR-434 | 追加 | window-layout.md、contracts/settings.md、contracts/localization.md |
 | FR-429 | 追加 | overview.md |
 | FR-041・FR-176 | 変更 | overview.md |
+| FR-238・US45-AS3 | 変更 | window-layout.md（反映時に追加。アプリメニューの並びが変わるため） |
 | SC-243〜SC-245・SC-247・SC-248 | 追加 | window-layout.md |
 | SC-246 | 追加 | overview.md |
 | EC-291〜EC-299 | 追加 | window-layout.md |

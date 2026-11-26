@@ -139,12 +139,14 @@ Swift のコードとテスト（T004〜T022）は Cloud で実行できない�
 
 ## Phase 7: 製品仕様への反映（PR の最後）
 
-- [ ] T028 spec.md の「反映先」の表の項目を `specs/product/` へ反映し、保守者の承認を得る
+- [X] T028 spec.md の「反映先」の表の項目を `specs/product/` へ反映し、保守者の承認を得る
   - 反映の前に `git merge origin/master` と `scripts/dev/check-spec-ids.sh` を実行する
   - 反映先は `specs/product/` の各ファイルと `specs/product/contracts/`
   - spec.md の冒頭に移行済み・凍結の注記を入れる
   - `python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を通す
   - 差分を保守者に示す
+  - 結果: 2026-11-26 に保守者が承認した（このチャット）。反映先の表になかった FR-238・US45-AS3（アプリメニューの並び）を
+    spec.md に変更として足して反映し、`specs/product/contracts/update-check.md` を新しく作った
 
 ## Dependencies & Execution Order
 

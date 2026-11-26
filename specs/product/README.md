@@ -20,12 +20,12 @@ Folzio の現在の仕様（Living spec）を領域ごとに分けたもの。`s
 **表の詳細**
 
 - **[overview.md](overview.md)**（機能要件）: 保存と復元（1）、対応形式（2）、横断要件（3）、国際化（10）、
-  アプリアイコン（3）、製品名と開発環境（3）、GitHub Releases での配布（9）、公開用と開発用スクリプト（10）、
+  アプリアイコン（3）、製品名と開発環境（3）、GitHub Releases での配布（10）、公開用と開発用スクリプト（10）、
   開発用と公開用の workflow（7）、Cloud Agent の開発 workflow（14）、製品仕様の形式の検査（11）、
   開発用リポジトリの公開（5）、リリース PR と GitHub Actions（22）
 - **[window-layout.md](window-layout.md)**（機能要件）: 画面構成（2）、国際化の配置（1）、ツールバー（4）、
   ツールバーのカスタマイズ（5）、ペインの表示切り替え（7）、ショートカット一覧（7）、設定ウインドウの配置（2）、
-  ショートカットの割り当て（14）、About ダイアログ（7）
+  ショートカットの割り当て（14）、About ダイアログ（7）、アップデートの確認（12）
 - **[file-operations.md](file-operations.md)**（機能要件）: ファイル操作（31）、確認の設定（2）、
   フォルダの共通操作（3）、コピー元を移動した後のペースト（2）
 - **[file-list.md](file-list.md)**（機能要件）: ファイルリスト（10）、種類フィルタ（5）、ファイルリストのフォルダ（5）、
@@ -42,6 +42,7 @@ Folzio の現在の仕様（Living spec）を領域ごとに分けたもの。`s
 | [contracts/localization.md](contracts/localization.md) | 表示言語・翻訳・地域の書式 |
 | [contracts/app-bundle.md](contracts/app-bundle.md) | アプリバンドルの構成とアイコン |
 | [contracts/scripts.md](contracts/scripts.md) | スクリプトの配置・公開・配布 |
+| [contracts/update-check.md](contracts/update-check.md) | 更新の確認の通信・起動時の動作・ネットワーク API の検査 |
 
 **表の詳細**
 
