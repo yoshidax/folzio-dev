@@ -1,7 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import FolzioCore
+@testable import FolzioCore
 import Testing
 @testable import FolzioApp
 
