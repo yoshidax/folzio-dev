@@ -109,7 +109,7 @@
 - [X] T026 `scripts/dev/check-all.sh` を実行して通す（Cloud の検証ゲート）。コメントは英語（`docs_private/comment-translation-glossary.md`）
 - [X] T027 PR の CI（`swift build`・`swift test`・性能テスト）の成功を確かめる。性能テストはログの末尾の件数で確かめ、計測結果を PR に記載する
   - 2026-11-27: `b9751e9` で build・通常のテスト（1441 件）・性能テスト（29 件）が成功。SC-249 は 0.595 秒
-- [ ] T033 保守者の依頼で、quickstart.md の確認に使うテストデータの生成を追加する
+- [X] T033 保守者の依頼で、quickstart.md の確認に使うテストデータの生成を追加する（2026-11-27、CI `6bb96a3` で成功）
   - `Sources/FixtureKit/FixtureSets.swift` に `multiRootSearch(in:)` を足し、`makeAll` から呼ぶ
   - `Sources/make-fixtures/main.swift` と `scripts/make-fixtures.sh` に、このデータだけを作る `--multi-root-search` を足す
   - `Tests/FolzioCoreTests/MultiRootSearchFixtureTests.swift` で配置と、起点の整理・検索の結果を確かめる
