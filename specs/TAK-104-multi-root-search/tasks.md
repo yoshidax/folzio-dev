@@ -58,6 +58,8 @@
   起点ごとの判定と待ち行列の追随に改める（research.md R3・R4）。T012 と既存の検索のテストを通す
 - [ ] T014 [P] [US99] `Sources/FolzioLocalization/TextKey.swift` と日英の文言に、contracts/search-sheet.md の文言を追加する
   - 既存の文言の表（contracts/localization.md の検索）と同じ書き方。日英の両方を同じコミットで足す
+  - 補足説明（`searchDescription`）の英語を複数形の文に改める（FR-394（変更）・contracts/search-sheet.md の「文言の変更」）
+    - 今の英文を確かめている `Tests/FolzioCoreTests/Localization/SearchSheetTextTests.swift` の期待値も新しい文に改める
 - [ ] T015 [US99] `Sources/FolzioApp/Search/SearchRootRowView.swift` を新規に作り、`Sources/FolzioApp/Search/SearchPanelController.swift`
   を起点の行の一覧・「起点を追加」・行ごとの「削除」と「選択…」・行の番号付きの理由・フォーカスの移動・Tab の順に改める
   （FR-081（変更）・FR-435・FR-436・contracts/search-sheet.md）
@@ -95,7 +97,7 @@
 
 - [ ] T022 [US101] `Sources/FolzioApp/Search/SearchPanelController.swift` に、キーワード欄の直下のワイルドカードの説明のラベルを足し、キーワード欄の
   アクセシビリティの説明を「補足説明 + 空白 + ワイルドカードの説明」にする（FR-441・research.md R6）。表示言語の切り替えに追従する
-- [ ] T023 [US101] `Tests/FolzioAppTests/SearchPanelRowsTests.swift` に、説明のラベルの文言・選択できないこと・Tab の移動先でないこと・
+- [ ] T023 [US101] `Tests/FolzioAppTests/SearchPanelRowsTests.swift` に、説明のラベルの文言・英語の補足説明が複数形の文であること・選択できないこと・Tab の移動先でないこと・
   キーワード欄のヘルプの文を確かめるテストを足す（FR-441）
 
 ## Phase 5: Polish & 横断

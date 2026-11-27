@@ -51,6 +51,15 @@
 - Q: ツールバーの検索欄の虫眼鏡から開く場合（FR-390（file-list.md））は？ → A: ⌥⌘F と同じモーダルを開くので、同じく
   起点の追加ができる。ツールバーの検索欄の絞り込み（FR-381（file-list.md））は変えない。
 
+### Session 2026-11-27（設計レビュー）
+
+- Q: 補足説明（FR-394（search.md））の英語の文 `in the folder you search in` は、起点が複数になっても単数形のままでよいか？
+  → A: 複数形にする（保守者の回答）。英語を
+  `Finds files and folders whose names match, in the folders you search in and all of their subfolders.` に改める（FR-394（変更））。
+  - 日本語の文は単数・複数を区別しないので変えない
+- Q: すべての起点の配下を変更通知で監視する部分（FR-440）の自動テストがないことは？ → A: quickstart.md の 10 の手動確認で確かめる
+  （保守者の回答）
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 99 - 複数の場所をまとめて検索する (Priority: P1)
@@ -241,6 +250,21 @@ VoiceOver がキーワード欄の説明として読み上げることを確か�
 - **A-84（変更）**: 検索起点は1行以上10行以下の起点の行で指定し（FR-435）、新規フォルダ作成・最近使った起点の履歴は範囲外とする。
   - 検索条件の保存・モーダルを開き直したときの起点の既定値（1行）も既存の FR-081・FR-086 と contracts/settings.md に従う
 
+- **FR-394（変更）**: 検索のモーダルの冒頭に、機能名の見出しと、その補足説明を表示しなければならない。
+  - 見出しは「サブフォルダを含めて検索」（英語: `Search Including Subfolders`）とし、
+    設定ウインドウの区分の見出しと同じく、標準の大きさの太字で表示する
+  - 補足説明は次の文とする
+    - 「検索起点ディレクトリとその下のすべてのサブフォルダから、名前が一致するファイルとフォルダを探します。」
+    - 英語: `Finds files and folders whose names match, in the folders you search in and all of their subfolders.`
+  - 補足説明は、設定ウインドウの補足説明（FR-223（window-layout.md））と同じく、見出しより小さい文字と、OS
+    の標準の淡い（二次的な）文字色で表示する
+  - 見出しと補足説明は選択・編集できず、Tab の移動先にならない（FR-081 の Tab の順は変えない）
+  - 補足説明は、検索キーワード欄のアクセシビリティの説明（ヘルプ）としても提供し、
+    読み上げで独立した項目として二重に読ませない（ワイルドカードの説明を続けて加える。FR-441）
+  - 表示言語を切り替えたときは、見出しと補足説明も新しい言語にする（モーダルの大きさは contracts/localization.md
+    の検索シートの規則に従う）
+  - 開き方（⌥⌘F・メニュー・ツールバーの検索欄の虫眼鏡（FR-390（file-list.md）））によらず同じに表示する
+
 #### 追加する項目
 
 - **FR-435**: ユーザーは、検索のモーダルで、起点の行を「起点を追加」で一覧の末尾に加え、各行の「削除」でその行を取り除けなければならない。
@@ -336,6 +360,7 @@ VoiceOver がキーワード欄の説明として読み上げることを確か�
 | FR-081 | 変更 | search.md |
 | FR-083 | 変更 | search.md |
 | FR-084 | 変更 | search.md |
+| FR-394 | 変更 | search.md |
 | FR-435 | 追加 | search.md |
 | FR-436 | 追加 | search.md |
 | FR-437 | 追加 | search.md |
@@ -353,4 +378,5 @@ VoiceOver がキーワード欄の説明として読み上げることを確か�
 | A-263〜A-267 | 追加 | search.md |
 | 検索条件（主なエンティティ） | 変更 | search.md |
 | 検索シートの文言（起点の行・追加・削除・行番号付きの理由・ワイルドカードの説明・検索バー） | 追加 | contracts/localization.md |
+| 検索シートの補足説明の英語（FR-394） | 変更 | contracts/localization.md |
 | 検索シートの Tab の順（FR-081） | 変更 | contracts/keyboard-and-menus.md |
