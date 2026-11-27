@@ -144,12 +144,19 @@ public struct DirectoryLister: DirectoryListing {
         mediaFile(at: url, kind: kind, values: try? url.resourceValues(forKeys: mediaKeys))
     }
 
-    private static func mediaFile(at url: URL, kind: MediaKind, values: URLResourceValues?) -> MediaFile {
+    /// Resource keys a media row needs besides its kind name. `FileNameSearcher` prefetches them while enumerating.
+    static let mediaRowValueKeys: Set<URLResourceKey> = mediaKeys.subtracting([.localizedTypeDescriptionKey])
+
+    /// Builds a media file row from values that were already read. `typeDescription` replaces
+    /// `localizedTypeDescription` when given, so a search can read the kind name once per extension (research.md R7).
+    static func mediaFile(
+        at url: URL, kind: MediaKind, values: URLResourceValues?, typeDescription: String? = nil
+    ) -> MediaFile {
         MediaFile(
             url: url,
             name: url.lastPathComponent,
             kind: .media(kind),
-            typeDescription: values?.localizedTypeDescription ?? kind.rawValue.uppercased(),
+            typeDescription: typeDescription ?? values?.localizedTypeDescription ?? kind.rawValue.uppercased(),
             creationDate: values?.creationDate,
             modificationDate: values?.contentModificationDate,
             fileSize: Int64(values?.fileSize ?? 0),
