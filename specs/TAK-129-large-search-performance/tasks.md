@@ -79,7 +79,7 @@ CI で確かめる（Cloud では Swift を実行できない）。性能テス�
 
 ### Tests for 表示側
 
-- [ ] T016 [P] [US99] `Tests/FolzioAppTests/SearchThumbnailRequestTests.swift` を追加する。要求した URL を記録する偽の `ThumbnailProviding` と、まとまりを1つずつ流せる偽の `FileNameSearching`（`FileListTrashSelectionTests.swift` の `Searcher` に倣う）を使い、`BrowserModel` を渡した `ThumbnailModeView` をウインドウに置いて、2,000 件を数回に分けて流す。(1) 検索中に要求した URL が、要求した時点で見えている項目だけであること（先読みの URL を含まない。SC-252・FR-435）。(2) 末尾への追加で、見えている項目の縮小画像を要求し直さないこと。(3) 検索中にスクロールすると、新しく見えた項目を要求し、見えなくなった項目の要求を取り消すこと（EC-300）。(4) 検索の終了で並べ替わった後、先頭（フォーカスがあればその項目）が見え、見えている項目を要求し、先読みが再開されること（FR-437・US99-AS3・AS8）
+- [ ] T016 [P] [US99] `Tests/FolzioAppTests/SearchThumbnailRequestTests.swift` を追加する。要求した URL を記録する偽の `ThumbnailProviding` と、まとまりを1つずつ流せる偽の `FileNameSearching`（`FileListTrashSelectionTests.swift` の `Searcher` に倣う）を使い、`BrowserModel` を渡した `ThumbnailModeView` をウインドウに置いて、2,000 件を数回に分けて流す。(1) 検索中に要求した URL が、要求した時点で見えている項目だけであること（先読みの URL を含まない。SC-252・FR-435）。(2) 末尾への追加で、見えている項目の縮小画像を要求し直さないこと。(3) 検索中にスクロールすると、新しく見えた項目を要求し、見えなくなった項目の要求を取り消すこと（EC-300）。(4) 検索の終了で並べ替わった後、先頭（フォーカスがあればその項目）が見え、見えている項目を要求し、先読みが再開されること（FR-437・US99-AS3・AS8）。(5) 検索中にサムネイルの大きさを変えても、先読みの URL を要求しないこと（EC-301）。(6) 検索していない通常のフォルダの一覧では、従来どおり先読みで要求すること（A-269）
 - [ ] T017 [P] [US99] 同じファイルに、`ListModeView` で、末尾への追加では見えている行の縮小画像を要求し直さず、検索の終了の後にフォーカス行（なければ先頭）が見えることのテストを足す
 
 ### Implementation for 表示側
@@ -87,7 +87,7 @@ CI で確かめる（Cloud では Swift を実行できない）。性能テス�
 - [ ] T018 [US99] `Sources/FolzioApp/FileList/ThumbnailModeView.swift` の `applyModel` で、新しい URL の列が前の列で始まり長くなっただけなら `insertItems(at:)` で末尾だけを足し、それ以外は従来どおり `reloadData` する（research.md R5）
 - [ ] T019 [US99] 同じファイルのフローレイアウトで、`sizeForItemAt` をやめ、`flowLayout.itemSize` をサムネイルの大きさとペイン幅から決める。今 `invalidateLayout` している箇所（サムネイルの大きさ・幅の変更）で `itemSize` を更新する（research.md R5）
 - [ ] T020 [US99] 同じファイルで、検索中（`model.listing.search?.phase == .searching`）は `prefetchItemsAt` で要求しない。一覧が変わったら、見えている項目以外の要求を取り消す。`searchOrderGeneration` が進んだら、フォーカス項目があればそれを、なければ先頭を表示し、見えている項目を要求する（FR-435・FR-437・EC-300〜EC-302）
-- [ ] T021 [US99] `Sources/FolzioApp/FileList/ListModeView.swift` の `applyModel` で、末尾への追加だけなら `noteNumberOfRowsChanged()` にし、`searchOrderGeneration` が進んだら、フォーカス行があればそれを、なければ先頭を表示する。フォーカス行への `scrollRowToVisible` を、毎回の更新ではなく選択・フォーカスの変化と並べ替えの適用のときだけにする
+- [ ] T021 [US99] `Sources/FolzioApp/FileList/ListModeView.swift` の `applyModel` で、末尾への追加だけなら `noteNumberOfRowsChanged()` にし、`searchOrderGeneration` が進んだら、フォーカス行があればそれを、なければ先頭を表示する。検索中に末尾へ足しただけの更新では、フォーカス行への `scrollRowToVisible` を呼ばない（通常のフォルダと、それ以外の更新では従来どおり呼ぶ）
 
 **Checkpoint**: T016・T017 が CI で通る
 
