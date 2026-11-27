@@ -1,10 +1,13 @@
 # Feature Specification: 複数の検索起点
 
+> **移行済み（2026-11-27）**: 現在の仕様は [specs/product/](../product/README.md) を正とする。
+> このファイルは TAK-104 の実装・設計の記録として凍結し、以後の要件追加は新しい feature で扱う。
+
 **Feature Branch**: `claude/wizardly-volta-ie6ncn`（Cloud が指定した作業ブランチ）
 
 **Created**: 2026-11-27
 
-**Status**: Draft
+**Status**: Approved — product へ移行済み
 
 **Input**: [TAK-104](https://linear.app/takyoshida/issue/TAK-104)「検索ダイアログで複数の検索起点を指定できるようにする」。
 検索のモーダルで複数の検索起点パスを指定し、複数の場所をまとめて検索できるようにする。
