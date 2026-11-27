@@ -945,6 +945,14 @@ final class ThumbnailModeView: NSView {
                 version: existing.version
             )
         }
+        if let kept = provider.cachedThumbnail(
+            for: file.url, pointSize: pointSize, scale: scale, version: file.contentVersion
+        ) {
+            // Already made and still kept: show it without asking for it again, whichever path asked (prefetching,
+            // scrolling, or a size change; FR-438).
+            apply(kept, for: file.url)
+            return
+        }
 
         let pointSizeValue = pointSize
         let token = UUID()
