@@ -121,7 +121,7 @@
 - [X] T031 `git merge origin/master` の後、`scripts/dev/check-spec-ids.sh` を実行し、spec.md の「反映先」の項目を `specs/product/search.md`・
   `contracts/localization.md`・`contracts/keyboard-and-menus.md` へ反映する。`python3 scripts/dev/check-spec-format.py` と
   `scripts/dev/check-spec-ids.sh` を通し、spec.md の冒頭に移行済み・凍結の注記を入れる
-- [ ] T032 [MANUAL] 保守者が `specs/product/` への反映の差分を承認する
+- [X] T032 [MANUAL] 保守者が `specs/product/` への反映の差分を承認する（2026-11-27、このチャットで承認）
 
 ## Dependencies & Execution Order
 
