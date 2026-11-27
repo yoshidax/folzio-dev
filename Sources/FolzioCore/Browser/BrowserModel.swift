@@ -135,6 +135,12 @@ public final class BrowserModel {
                 settings.viewSettings = settingsValue
             }
 
+            if isSearchOrderPending {
+                // While searching, sort the results found so far off the main thread; later results are appended at
+                // the end until the search finishes (FR-437, US99-AS7).
+                sortSearchResults(finishing: isFinishingSearch)
+                return
+            }
             // Always keep `allFiles` sorted by the current order, whatever the state: renames move a single row by a
             // binary search that relies on it (`resortRow`, R67).
             allFiles = sorted(allFiles, by: sortOrder)
@@ -173,9 +179,18 @@ public final class BrowserModel {
     private var folderListingGeneration = 0
     /// Sorted rows before applying the media type filter. Excludes `..`, which `rebuildListing()` adds once.
     private var allFiles: [MediaFile] = [] {
-        didSet { kindFilesRevision &+= 1 }
+        didSet {
+            kindFilesRevision &+= 1
+            if !isAppendingSearchResults {
+                searchOrderRevision &+= 1
+            }
+        }
     }
     @ObservationIgnored private var kindFilesRevision = 0
+    /// Advances on every change to `allFiles` except appending search results at the end. Sorting search results off
+    /// the main thread keeps results appended meanwhile at the end instead of sorting again (FR-437, R4).
+    @ObservationIgnored private var searchOrderRevision = 0
+    @ObservationIgnored private var isAppendingSearchResults = false
     @ObservationIgnored private var kindUpdateGeneration = 0
     @ObservationIgnored private var kindNames: KindNames
     private var listingTask: Task<Void, Never>?
@@ -207,6 +222,25 @@ public final class BrowserModel {
     private var movedSearchPaths: Set<String> = []
     /// Number of enumerations that have not finished in the current search. The search ends when it reaches 0 (R63).
     private var activeSearchStreams = 0
+    /// Search result batches received but not yet added to the listing, with the enumeration that produced each.
+    /// They are processed when added, so renames recorded meanwhile still apply to them (FR-085, R3).
+    @ObservationIgnored private var pendingSearchBatches: [(files: [MediaFile], stream: Int)] = []
+    /// Adds pending batches when the reflection interval has passed.
+    @ObservationIgnored private var searchReflectionTask: Task<Void, Never>?
+    @ObservationIgnored private var lastSearchReflection: ContinuousClock.Instant?
+    /// Interval between additions to the listing for the number of results already listed. Replaceable in tests.
+    @ObservationIgnored var searchReflectionInterval: (Int) -> Duration = SearchReflection.interval(forListedCount:)
+    /// While true, `allFiles` holds search results in the order they were found and new results are appended at the
+    /// end (FR-085). Cleared when the search finishes and the results are sorted (FR-437).
+    @ObservationIgnored private(set) var isSearchOrderPending = false
+    /// Identifies the latest request to sort search results off the main thread.
+    @ObservationIgnored private var searchSortGeneration = 0
+    /// Whether every enumeration has finished and the final sort is in progress. A sort order change meanwhile
+    /// restarts the final sort instead of a sort that keeps the search running.
+    @ObservationIgnored private var isFinishingSearch = false
+    /// Advances each time the finished search results are sorted. Views show the focused item, or the top of the
+    /// listing when nothing is focused (FR-437).
+    public private(set) var searchOrderGeneration = 0
     /// Folder renames after opening the current zip (including while opening). Index rows are built with the zip
     /// location at open time, so they are rebased on every level change (R62, EC-50).
     private var archiveRenames: [RenamedFolder] = []
@@ -272,11 +306,15 @@ public final class BrowserModel {
                 let files = self.allFiles
                 let revision = self.kindFilesRevision
                 let order = self.sortOrder
+                // Search results in found order stay in that order until the search finishes (FR-085).
+                let keepsOrder = self.isSearchOrderPending
                 let updated = await Task.detached(priority: .userInitiated) {
-                    sorted(files.map { $0.localizedKindName(using: names) }, by: order)
+                    let renamed = files.map { $0.localizedKindName(using: names) }
+                    return keepsOrder ? renamed : sorted(renamed, by: order)
                 }.value
                 guard generation == self.kindUpdateGeneration else { return }
-                guard revision == self.kindFilesRevision, order == self.sortOrder else { continue }
+                guard revision == self.kindFilesRevision, order == self.sortOrder,
+                      keepsOrder == self.isSearchOrderPending else { continue }
                 self.allFiles = updated
                 switch self.listing.state {
                 case .loaded, .empty, .noMatches:
@@ -344,7 +382,8 @@ public final class BrowserModel {
         }
     }
 
-    /// Starts a search and adds results to the list in the current sort order as they are found (FR-084, 085).
+    /// Starts a search and adds results to the end of the list in the order they are found, then sorts them once
+    /// with the current order when the search finishes (FR-084, FR-085, FR-437).
     /// Returns without waiting for enumeration to finish. Does not change `listing.folder`, `lastFolder`, or
     /// `treeSyncRequest`; when started inside a zip, discards the zip state.
     public func startSearch(_ pattern: SearchPattern, root: URL) {
@@ -359,6 +398,7 @@ public final class BrowserModel {
 
         searchPattern = pattern
         searchIncludesArchives = showsZipFiles
+        isSearchOrderPending = true
         startSearchStream(in: root, matching: pattern)
     }
 
@@ -378,16 +418,16 @@ public final class BrowserModel {
             )
         )
         activeSearchStreams += 1
+        isFinishingSearch = false
         let task = Task { [weak self] in
             for await batch in stream {
                 guard let self, generation == self.navigationGeneration else { return }
-                self.appendSearchResults(batch, fromStream: streamIndex)
+                self.receiveSearchResults(batch, fromStream: streamIndex)
             }
             guard let self, !Task.isCancelled, generation == self.navigationGeneration else { return }
             self.activeSearchStreams -= 1
             guard self.activeSearchStreams == 0 else { return }
-            self.listing.search?.phase = .finished
-            self.rebuildListing()
+            self.finishSearch()
         }
         searchTasks.append(task)
     }
@@ -421,10 +461,13 @@ public final class BrowserModel {
         renamed.kind = newKind
         renamed.typeDescription = (try? newURL.resourceValues(forKeys: [.localizedTypeDescriptionKey]))?
             .localizedTypeDescription ?? old.typeDescription
-        // Only this row's sort key changes, so move just this row instead of sorting every result (R67).
+        // Only this row's sort key changes, so move just this row instead of sorting every result (R67). While the
+        // search is running, the row keeps its position until the results are sorted (EC-304).
         var files = allFiles
         files[index] = renamed
-        resortRow(in: &files, at: index, by: sortOrder)
+        if !isSearchOrderPending {
+            resortRow(in: &files, at: index, by: sortOrder)
+        }
         allFiles = files
         removeFromSearchIndex(oldURL)
         addToSearchIndex(newURL)
@@ -545,7 +588,10 @@ public final class BrowserModel {
         if filesChanged {
             // Files below the folder do not change names, so the order changes only when a row name changes or when
             // sorting by Location. A single renamed row moves by a binary search instead of sorting every row (R67).
-            if sortOrder.column == .location || renamedRowIndices.count > 1 {
+            // While the search is running, rows keep their positions until the results are sorted (EC-304).
+            if isSearchOrderPending {
+                // Keep the found order.
+            } else if sortOrder.column == .location || renamedRowIndices.count > 1 {
                 files = sorted(files, by: sortOrder)
             } else if let index = renamedRowIndices.first {
                 resortRow(in: &files, at: index, by: sortOrder)
@@ -1217,6 +1263,13 @@ public final class BrowserModel {
         movedSearchPaths.removeAll()
         pendingSearchTreeSyncID = nil
         activeSearchStreams = 0
+        searchReflectionTask?.cancel()
+        searchReflectionTask = nil
+        pendingSearchBatches.removeAll()
+        lastSearchReflection = nil
+        isSearchOrderPending = false
+        isFinishingSearch = false
+        searchSortGeneration &+= 1
         searchResultsByFolder.removeAll()
         previewGeneration += 1
         previewTask?.cancel()
@@ -1544,13 +1597,57 @@ public final class BrowserModel {
         }
     }
 
-    /// Sorts an incoming batch with the current order, then merges it into the fully sorted results (R36).
-    /// After renames, applies changes recorded since that enumeration started to rebase results and drops results
-    /// that overlap with the additional enumeration (R63).
-    private func appendSearchResults(_ incoming: [MediaFile], fromStream index: Int) {
+    /// Keeps an incoming batch and adds pending batches to the listing once the reflection interval has passed, so
+    /// the listing is updated at most once per interval (FR-085, R3). The first batch also waits for the shortest
+    /// interval, so a search that finishes within it shows only the sorted results (EC-303).
+    private func receiveSearchResults(_ incoming: [MediaFile], fromStream index: Int) {
         guard isShowingSearchResults, !incoming.isEmpty else { return }
+        pendingSearchBatches.append((files: incoming, stream: index))
+        let now = ContinuousClock.now
+        guard let last = lastSearchReflection else {
+            lastSearchReflection = now
+            scheduleSearchReflection(at: now + searchReflectionInterval(0))
+            return
+        }
+        let due = last + searchReflectionInterval(allFiles.count)
+        if now >= due {
+            reflectPendingSearchResults()
+        } else {
+            scheduleSearchReflection(at: due)
+        }
+    }
+
+    private func scheduleSearchReflection(at due: ContinuousClock.Instant) {
+        guard searchReflectionTask == nil else { return }
+        let generation = navigationGeneration
+        searchReflectionTask = Task { [weak self] in
+            try? await Task.sleep(until: due, clock: .continuous)
+            guard let self, !Task.isCancelled, generation == self.navigationGeneration else { return }
+            self.searchReflectionTask = nil
+            self.reflectPendingSearchResults()
+        }
+    }
+
+    /// Adds every pending batch to the listing now.
+    /// - Parameter updatesListing: False when the results are sorted right after, so the found order is not shown.
+    private func reflectPendingSearchResults(updatesListing: Bool = true) {
+        searchReflectionTask?.cancel()
+        searchReflectionTask = nil
+        lastSearchReflection = ContinuousClock.now
+        let batches = pendingSearchBatches
+        pendingSearchBatches.removeAll()
+        var added: [MediaFile] = []
+        for (files, stream) in batches {
+            added.append(contentsOf: placeSearchResults(files, fromStream: stream))
+        }
+        appendSearchResults(added, updatesListing: updatesListing)
+    }
+
+    /// Drops results under moved folders and duplicates of listed results, rebases results for renames recorded
+    /// since that enumeration started, and records the rest in the search index (R63).
+    private func placeSearchResults(_ incoming: [MediaFile], fromStream index: Int) -> [MediaFile] {
         var batch = incoming.filter { !isMovedSearchPath($0.url) }
-        guard !batch.isEmpty else { return }
+        guard !batch.isEmpty else { return [] }
         if !searchLedger.isEmpty {
             var seen = Set<String>()
             batch = batch.compactMap { file in
@@ -1561,14 +1658,45 @@ public final class BrowserModel {
                 guard !listed, seen.insert(path).inserted else { return nil }
                 return moved
             }
-            guard !batch.isEmpty else { return }
         }
         batch = batch.map { $0.localizedKindName(using: kindNames) }
-        allFiles = sortedMerge(allFiles, sorted(batch, by: sortOrder), by: sortOrder)
         for file in batch {
             addToSearchIndex(file.url)
         }
+        return batch
+    }
+
+    /// Adds results to the listing. While the search order is pending, appends them at the end and filters only the
+    /// added rows, so one addition does not grow with the number of listed results (FR-085, FR-436). Otherwise merges
+    /// them into the sorted results (R36).
+    private func appendSearchResults(_ batch: [MediaFile], updatesListing: Bool) {
+        guard !batch.isEmpty else { return }
+        if isSearchOrderPending {
+            isAppendingSearchResults = true
+            allFiles.append(contentsOf: batch)
+            isAppendingSearchResults = false
+        } else {
+            allFiles = sortedMerge(allFiles, sorted(batch, by: sortOrder), by: sortOrder)
+        }
+        guard updatesListing else { return }
         listing.search?.totalCount = allFiles.count
+
+        if isSearchOrderPending, listing.state == .loaded, !nameFilterHidesAllRows {
+            // Rows are only added at the end, so the selection stays visible. The state stays loaded unless media
+            // arrive that the media type filter hides while no media is shown yet; that case rebuilds below. Search
+            // results are exempt from zip visibility (FR-278), and `..` is never shown for search results.
+            let filtered = mediaTypeFilter.apply(to: batch)
+            let staysLoaded = !batch.contains { $0.kind.isMedia }
+                || filtered.contains { $0.kind.isMedia }
+                || listing.files.contains { $0.kind.isMedia }
+            if staysLoaded {
+                let named = nameFilter.apply(to: filtered)
+                if !named.isEmpty {
+                    listing.files.append(contentsOf: named)
+                }
+                return
+            }
+        }
         rebuildListing()
 
         // Rows only increase, but restrict the selection so it does not keep rows hidden by the media type filter.
@@ -1579,6 +1707,51 @@ public final class BrowserModel {
             selection = restricted
         } else {
             setSelection(restricted.selected, focused: restricted.focused)
+        }
+    }
+
+    /// Ends the search once every enumeration has finished: adds pending results without showing the found order,
+    /// then sorts every result off the main thread (FR-437, EC-303).
+    private func finishSearch() {
+        reflectPendingSearchResults(updatesListing: false)
+        isFinishingSearch = true
+        sortSearchResults(finishing: true)
+    }
+
+    /// Sorts search results with the current order off the main thread and applies the result when nothing but
+    /// appends changed `allFiles` meanwhile; results appended meanwhile stay at the end. Sorts again when other changes
+    /// (renames, removals, kind names) happened. When `finishing`, also ends the search: marks it finished, stops
+    /// appending in found order, and advances `searchOrderGeneration` (FR-437, R4).
+    private func sortSearchResults(finishing: Bool) {
+        searchSortGeneration &+= 1
+        let generation = searchSortGeneration
+        let navigation = navigationGeneration
+        Task { [weak self] in
+            guard let self else { return }
+            while generation == self.searchSortGeneration, navigation == self.navigationGeneration {
+                let files = self.allFiles
+                let revision = self.searchOrderRevision
+                let order = self.sortOrder
+                let sortedFiles = await Task.detached(priority: .userInitiated) {
+                    sorted(files, by: order)
+                }.value
+                guard generation == self.searchSortGeneration, navigation == self.navigationGeneration else { return }
+                guard revision == self.searchOrderRevision, order == self.sortOrder else { continue }
+                // A rename that started another enumeration ends the search again when that enumeration finishes.
+                if finishing, self.activeSearchStreams != 0 { return }
+                self.allFiles = sortedFiles + self.allFiles.dropFirst(files.count)
+                if finishing {
+                    self.isSearchOrderPending = false
+                    self.isFinishingSearch = false
+                    self.listing.search?.phase = .finished
+                }
+                self.listing.search?.totalCount = self.allFiles.count
+                self.rebuildListing()
+                if finishing {
+                    self.searchOrderGeneration &+= 1
+                }
+                return
+            }
         }
     }
 

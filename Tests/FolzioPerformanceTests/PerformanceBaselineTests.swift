@@ -802,7 +802,7 @@ struct PerformanceBaselineTests {
         print("[perf] merge 256 into 10,000: sortedMerge \(mergeElapsed), BrowserModel \(modelElapsed)")
     }
 
-    @Test("Processes a 256-item batch against 50,000 items in under 100 ms (FR-085, SC-016)")
+    @Test("Adds a 256-item batch to 50,000 search results within 50 ms (FR-436, SC-253)")
     @MainActor
     func processingBatchIntoFiftyThousandWithinBudget() async throws {
         let order = SortOrder()
@@ -810,7 +810,7 @@ struct PerformanceBaselineTests {
         let batch = sorted(syntheticResults(count: 256, folders: 500, prefix: "photo", offset: 50_000), by: order)
 
         let elapsed = try await measureBatch(existing: existing, batch: batch)
-        #expect(elapsed < .milliseconds(100), "Processing one batch into 50,000 items takes less than 100 ms (measured: \(elapsed))")
+        #expect(elapsed < .milliseconds(50), "Adding one batch to 50,000 items takes at most 50 ms (measured: \(elapsed))")
         print("[perf] batch 256 into 50,000: \(elapsed)")
     }
 
@@ -829,6 +829,8 @@ struct PerformanceBaselineTests {
             settings: SettingsStore(defaults: defaults),
             searcher: searcher
         )
+        // Measure the addition itself, not the wait for the reflection interval (FR-085).
+        model.searchReflectionInterval = { _ in .zero }
         model.startSearch(try #require(SearchPattern(keyword: "*")), root: URL(fileURLWithPath: "/r", isDirectory: true))
         searcher.send(existing)
         let loaded = await waitUntil { model.listing.files.count == existing.count }
