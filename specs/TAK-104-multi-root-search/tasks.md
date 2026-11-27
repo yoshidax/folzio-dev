@@ -109,6 +109,11 @@
 - [X] T026 `scripts/dev/check-all.sh` を実行して通す（Cloud の検証ゲート）。コメントは英語（`docs_private/comment-translation-glossary.md`）
 - [X] T027 PR の CI（`swift build`・`swift test`・性能テスト）の成功を確かめる。性能テストはログの末尾の件数で確かめ、計測結果を PR に記載する
   - 2026-11-27: `b9751e9` で build・通常のテスト（1441 件）・性能テスト（29 件）が成功。SC-249 は 0.595 秒
+- [ ] T033 保守者の依頼で、quickstart.md の確認に使うテストデータの生成を追加する
+  - `Sources/FixtureKit/FixtureSets.swift` に `multiRootSearch(in:)` を足し、`makeAll` から呼ぶ
+  - `Sources/make-fixtures/main.swift` と `scripts/make-fixtures.sh` に、このデータだけを作る `--multi-root-search` を足す
+  - `Tests/FolzioCoreTests/MultiRootSearchFixtureTests.swift` で配置と、起点の整理・検索の結果を確かめる
+  - quickstart.md の準備をテストデータの表と手順に改める
 - [ ] T028 [MANUAL] 保守者が quickstart.md の「保守者のローカルでの確認」1〜10 を行い、結果を報告する（起動スモーク、SC-251・SC-252 を含む）
 - [ ] T029 保守者の報告を `checklists/validation.md` に記録する（実行日・OS・確認項目・合否）
 - [ ] T030 `speckit-converge` を実行し、追記されたタスクがあれば実装と検証を繰り返す
