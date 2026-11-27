@@ -556,7 +556,6 @@ final class ThumbnailModeView: NSView {
             let clamped = ViewSettings.clampThumbnailSize(newValue)
             guard clamped != storedThumbnailSize else { return }
             storedThumbnailSize = clamped
-            updateItemSize()
             flowLayout.invalidateLayout()
             needsLayout = true
             refreshVisibleThumbnails()
@@ -684,7 +683,6 @@ final class ThumbnailModeView: NSView {
         flowLayout.minimumInteritemSpacing = Self.spacing
         flowLayout.minimumLineSpacing = Self.spacing
         flowLayout.sectionInset = Self.sectionInset
-        updateItemSize()
 
         collectionView.collectionViewLayout = flowLayout
         scrollView.contentView.postsBoundsChangedNotifications = true
@@ -764,7 +762,6 @@ final class ThumbnailModeView: NSView {
         let width = max(0, contentSize.width)
         if abs(collectionView.frame.size.width - width) > 0.5 {
             collectionView.frame.size.width = width
-            updateItemSize()
             flowLayout.invalidateLayout()
         }
 
@@ -899,27 +896,6 @@ final class ThumbnailModeView: NSView {
         pruneRequests(keeping: Set(paths.map { files[$0.item].url }))
         for path in paths {
             requestThumbnail(for: files[path.item])
-        }
-    }
-
-    /// Every item has the same size, so the flow layout uses one item size instead of asking for each item, which
-    /// keeps layout cheap for tens of thousands of items (research.md R5).
-    private func updateItemSize() {
-        let available = Double(max(
-            0,
-            collectionView.bounds.width - Self.sectionInset.left - Self.sectionInset.right
-        ))
-        let result = ThumbnailGridLayout.columns(
-            availableWidth: available,
-            thumbnailSize: storedThumbnailSize,
-            spacing: Double(Self.spacing)
-        )
-        let size = NSSize(
-            width: CGFloat(max(1, result.cellWidth)),
-            height: CGFloat(storedThumbnailSize + 36)
-        )
-        if flowLayout.itemSize != size {
-            flowLayout.itemSize = size
         }
     }
 
@@ -1364,6 +1340,26 @@ extension ThumbnailModeView: NSCollectionViewDataSource {
 }
 
 extension ThumbnailModeView: NSCollectionViewDelegateFlowLayout {
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        layout collectionViewLayout: NSCollectionViewLayout,
+        sizeForItemAt indexPath: IndexPath
+    ) -> NSSize {
+        let available = Double(max(
+            0,
+            collectionView.bounds.width - Self.sectionInset.left - Self.sectionInset.right
+        ))
+        let result = ThumbnailGridLayout.columns(
+            availableWidth: available,
+            thumbnailSize: storedThumbnailSize,
+            spacing: Double(Self.spacing)
+        )
+        return NSSize(
+            width: CGFloat(max(1, result.cellWidth)),
+            height: CGFloat(storedThumbnailSize + 36)
+        )
+    }
+
     func collectionView(
         _ collectionView: NSCollectionView,
         pasteboardWriterForItemAt indexPath: IndexPath

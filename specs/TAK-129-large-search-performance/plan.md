@@ -91,6 +91,7 @@
 - `ThumbnailModeView.applyModel`: 新しい URL の列が前の列で始まり、長くなっただけなら、`insertItems(at:)` で末尾だけを足す。
   見えている項目を作り直さず、縮小画像を要求し直さない。それ以外は従来どおり `reloadData`
 - フローレイアウトの項目の大きさを、項目ごとの問い合わせ（`sizeForItemAt`）から、レイアウトの `itemSize` に移す（全項目が同じ大きさ）
+  - 実装中に取りやめた（既存のテストが失敗したため。research.md R5）
 - 検索中は、先読み（`prefetchItemsAt`）で要求しない。一覧が変わったら、見えている項目以外の要求を取り消す（`pruneRequests` を見えている
   項目で行う）。検索の終了（`searchOrderGeneration` の変化）で並べ替わった後は、見えている項目を要求し、以後の先読みを再開する
 - `ListModeView.applyModel`: 末尾への追加だけなら `noteNumberOfRowsChanged()` にし、見えている行を作り直さない。行頭の縮小画像は、

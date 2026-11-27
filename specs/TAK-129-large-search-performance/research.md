@@ -15,6 +15,17 @@
     余裕はない。列挙も速くする必要がある（R7）
 - 未計測: 表示側（`reloadData` とフローレイアウト）の時間、QuickLook の生成の数。GUI なしでは計れないので、R9 の性能テストと保守者の確認で補う
 
+### 実装の前の値（T004）
+
+- 記録: macOS Swift CI の run 46015966072（2026-11-27、7a299f1、`macos-15`、debug ビルド）の性能テストのログ。この run は後の push で
+  `cancelled` と表示されるが、通常のテスト（1,400 件成功）と性能テストは最後まで実行されていた
+  - `[perf] search 50,000 files: 3.217647334 seconds, matches 25000`（列挙だけ。SC-249 の 3 秒を超える）
+  - `[perf] model search 50,000 files: 4.618384041 seconds, rows 25000`（`BrowserModel` から検索して一覧が確定するまで。表示側は含まない）
+  - `[perf] main thread max gap during 50,000-file search: 0.087228125 seconds`（表示側を含まない `BrowserModel` だけの値）
+  - `[perf] batch 256 into 50,000: 0.075336416 seconds`（並べ替えて合流する1回の処理。SC-253 の 50ms を超える）
+- 読み取り: 列挙だけで 3 秒を超えるので、列挙を速くすること（R7）が SC-249 に必要。UI スレッドの空白は `BrowserModel` だけでは
+  100ms 未満で、保守者の観察（反応が遅い）の主な原因は表示側（`reloadData`・サムネイルの要求）にあると推定する（未計測）
+
 ## R2 検索中の並び順（FR-085（変更）・FR-437）
 
 - Decision: 検索中は並べ替えず、見つかった順に末尾へ足す。検索の終了時に1回だけ並べ替える（保守者の決定、2026-11-27）
@@ -49,6 +60,10 @@
   `BrowserModel` が「末尾に足した件数」を世代とともに渡す形に変える
 - フローレイアウト: 全項目が同じ大きさなので、`sizeForItemAt` を `itemSize` に置き換え、項目ごとの問い合わせをなくす。
   大きさは、サムネイルの大きさとペイン幅の変更時に更新する（今 `invalidateLayout` している箇所）
+  - **取りやめ（2026-11-27、実装中）**: 置き換えると、既存の App のテスト「A thumbnail successor below the viewport is revealed without
+    changing the first responder」が失敗した（CI run 46018851463、job 140573060492。実装の前の run 46015966072 では 0.07 秒で成功）。
+    一覧の幅が `updateCollectionViewFrame` を通らずに変わると `itemSize` が更新されず、項目が1行に詰まってスクロールしなくなったと
+    推定する。計測なしの最適化で、通常のフォルダの表示を変えない（A-269）ことを優先し、`sizeForItemAt` に戻した
 
 ## R6 検索中の縮小画像の要求（FR-435・SC-252）
 

@@ -30,10 +30,10 @@ CI で確かめる（Cloud では Swift を実行できない）。性能テス�
 
 **Purpose**: 実装の前に、5万件の階層を作る手段と、現状の値を記録する性能テストを用意する（research.md R1・R9）
 
-- [ ] T001 [P] `Sources/FixtureKit/FixtureSets.swift` に `public static func largeSearch(in directory: URL, folders: Int = 500, filesPerFolder: Int = 100) throws -> URL` を足す。`large-search/` の下に `folder-000`〜`folder-499` を作り、各フォルダに 8×8 の JPEG を `cat_000.jpg`（偶数）・`dog_001.jpg`（奇数）の形で `filesPerFolder` 個書く（SC-016 の性能テストと同じ形）。JPEG は1回だけ作って `Data` を書き込む。`makeAll` には含めない。戻り値は `large-search/` の URL
-- [ ] T002 `Sources/make-fixtures/main.swift` に `--large-search` の選択肢を足し、指定されたときに `FixtureSets.largeSearch(in:)` を呼ぶ。使い方の表示（usage）を `[--big] [--large-search]` にする（T001 に依存）
-- [ ] T003 `Tests/FolzioPerformanceTests/PerformanceBaselineTests.swift` に、5万件の性能テストを足す（T001 に依存）。(a) `FileNameSearcher` だけで `cat` を検索し、25,000 件と時間を `[perf] search 50,000 files: …` で出す。(b) 本物の `FileNameSearcher` を渡した `BrowserModel` で `startSearch` し、`listing.search?.phase == .finished` になるまでの時間と件数、終了時の `listing.files` が名前順であることを `[perf] model search 50,000 files: …` で出す。(c) (b) の間、UI スレッドで 10ms ごとに時刻を記録するタスクを動かし、隣り合う記録の最大の間隔を `[perf] main thread max gap: …` で出す。(a)〜(c) の基準は SC-249（3 秒）・SC-251（100ms）で `#expect` する（CI は参考。A-263）
-- [ ] T004 T001〜T003 をコミットして push し、CI の性能テストのログから (a)〜(c) の現状の値を `specs/TAK-129-large-search-performance/research.md` の R1 に追記する（実装の前の値）
+- [X] T001 [P] `Sources/FixtureKit/FixtureSets.swift` に `public static func largeSearch(in directory: URL, folders: Int = 500, filesPerFolder: Int = 100) throws -> URL` を足す。`large-search/` の下に `folder-000`〜`folder-499` を作り、各フォルダに 8×8 の JPEG を `cat_000.jpg`（偶数）・`dog_001.jpg`（奇数）の形で `filesPerFolder` 個書く（SC-016 の性能テストと同じ形）。JPEG は1回だけ作って `Data` を書き込む。`makeAll` には含めない。戻り値は `large-search/` の URL
+- [X] T002 `Sources/make-fixtures/main.swift` に `--large-search` の選択肢を足し、指定されたときに `FixtureSets.largeSearch(in:)` を呼ぶ。使い方の表示（usage）を `[--big] [--large-search]` にする（T001 に依存）
+- [X] T003 `Tests/FolzioPerformanceTests/PerformanceBaselineTests.swift` に、5万件の性能テストを足す（T001 に依存）。(a) `FileNameSearcher` だけで `cat` を検索し、25,000 件と時間を `[perf] search 50,000 files: …` で出す。(b) 本物の `FileNameSearcher` を渡した `BrowserModel` で `startSearch` し、`listing.search?.phase == .finished` になるまでの時間と件数、終了時の `listing.files` が名前順であることを `[perf] model search 50,000 files: …` で出す。(c) (b) の間、UI スレッドで 10ms ごとに時刻を記録するタスクを動かし、隣り合う記録の最大の間隔を `[perf] main thread max gap: …` で出す。(a)〜(c) の基準は SC-249（3 秒）・SC-251（100ms）で `#expect` する（CI は参考。A-263）
+- [X] T004 T001〜T003 をコミットして push し、CI の性能テストのログから (a)〜(c) の現状の値を `specs/TAK-129-large-search-performance/research.md` の R1 に追記する（実装の前の値）
 
 **Checkpoint**: 現状の値が記録され、以後の変更の効果を比べられる
 
@@ -85,7 +85,7 @@ CI で確かめる（Cloud では Swift を実行できない）。性能テス�
 ### Implementation for 表示側
 
 - [ ] T018 [US99] `Sources/FolzioApp/FileList/ThumbnailModeView.swift` の `applyModel` で、新しい URL の列が前の列で始まり長くなっただけなら `insertItems(at:)` で末尾だけを足し、それ以外は従来どおり `reloadData` する（research.md R5）
-- [ ] T019 [US99] 同じファイルのフローレイアウトで、`sizeForItemAt` をやめ、`flowLayout.itemSize` をサムネイルの大きさとペイン幅から決める。今 `invalidateLayout` している箇所（サムネイルの大きさ・幅の変更）で `itemSize` を更新する（research.md R5）
+- [X] T019 [US99] **取りやめ**（既存の App のテストが失敗したため `sizeForItemAt` に戻した。research.md R5）。元の内容: 同じファイルのフローレイアウトで、`sizeForItemAt` をやめ、`flowLayout.itemSize` をサムネイルの大きさとペイン幅から決める。今 `invalidateLayout` している箇所（サムネイルの大きさ・幅の変更）で `itemSize` を更新する（research.md R5）
 - [ ] T020 [US99] 同じファイルで、検索中（`model.listing.search?.phase == .searching`）は `prefetchItemsAt` で要求しない。一覧が変わったら、見えている項目以外の要求を取り消す。`searchOrderGeneration` が進んだら、フォーカス項目があればそれを、なければ先頭を表示し、見えている項目を要求する（FR-435・FR-437・EC-300〜EC-302）
 - [ ] T021 [US99] `Sources/FolzioApp/FileList/ListModeView.swift` の `applyModel` で、末尾への追加だけなら `noteNumberOfRowsChanged()` にし、`searchOrderGeneration` が進んだら、フォーカス行があればそれを、なければ先頭を表示する。検索中に末尾へ足しただけの更新では、フォーカス行への `scrollRowToVisible` を呼ばない（通常のフォルダと、それ以外の更新では従来どおり呼ぶ）
 
