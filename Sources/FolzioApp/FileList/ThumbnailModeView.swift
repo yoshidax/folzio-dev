@@ -447,11 +447,14 @@ final class ThumbnailModeView: NSView {
     private var selectionAnchor: Int?
     private var keepSelectionAnchorOnModelChange = false
     private var requests: [URL: ThumbnailRequest] = [:]
+    /// `BrowserModel.searchOrderGeneration` already applied (FR-437).
+    private var lastSearchOrderGeneration: Int
 
     init(model: BrowserModel, provider: any ThumbnailProviding) {
         self.model = model
         self.provider = provider
         self.storedThumbnailSize = ViewSettings.defaultThumbnailSize
+        self.lastSearchOrderGeneration = model.searchOrderGeneration
         super.init(frame: .zero)
         setup()
         applyModel()
@@ -553,6 +556,7 @@ final class ThumbnailModeView: NSView {
             let clamped = ViewSettings.clampThumbnailSize(newValue)
             guard clamped != storedThumbnailSize else { return }
             storedThumbnailSize = clamped
+            updateItemSize()
             flowLayout.invalidateLayout()
             needsLayout = true
             refreshVisibleThumbnails()
@@ -680,8 +684,16 @@ final class ThumbnailModeView: NSView {
         flowLayout.minimumInteritemSpacing = Self.spacing
         flowLayout.minimumLineSpacing = Self.spacing
         flowLayout.sectionInset = Self.sectionInset
+        updateItemSize()
 
         collectionView.collectionViewLayout = flowLayout
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(visibleRangeDidChange),
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.prefetchDataSource = self
@@ -752,6 +764,7 @@ final class ThumbnailModeView: NSView {
         let width = max(0, contentSize.width)
         if abs(collectionView.frame.size.width - width) > 0.5 {
             collectionView.frame.size.width = width
+            updateItemSize()
             flowLayout.invalidateLayout()
         }
 
@@ -770,6 +783,7 @@ final class ThumbnailModeView: NSView {
             _ = model.selection.focused
             _ = model.contentChangeGeneration
             _ = model.trashSelectionGeneration
+            _ = model.searchOrderGeneration
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.applyModel()
@@ -790,11 +804,23 @@ final class ThumbnailModeView: NSView {
         let urls = files.map(\.url)
 
         if urls != lastURLs {
+            let appended = appendedRows(from: lastURLs, to: urls)
             lastURLs = urls
             lastContentChangeGeneration = model.contentChangeGeneration
-            pruneRequests(keeping: Set(urls))
-            collectionView.reloadData()
-            flowLayout.invalidateLayout()
+            if let appended {
+                // Rows were only added at the end (a search adding results; FR-085). Keep the visible items and their
+                // thumbnails instead of reloading them (FR-436).
+                collectionView.insertItems(at: Set(appended.map { IndexPath(item: $0, section: 0) }))
+            } else {
+                pruneRequests(keeping: Set(urls))
+                collectionView.reloadData()
+                flowLayout.invalidateLayout()
+                if isSearching {
+                    // While searching, only visible items get thumbnails (FR-435).
+                    collectionView.layoutSubtreeIfNeeded()
+                    pruneRequests(keeping: visibleURLs())
+                }
+            }
             needsLayout = true
         } else if lastContentChangeGeneration != model.contentChangeGeneration {
             // Several changes may have happened while hidden; then only the latest set is known, so refresh all
@@ -830,6 +856,70 @@ final class ThumbnailModeView: NSView {
         if revealTrashSelection, let focused = model.selection.focused,
            let index = urls.firstIndex(of: focused) {
             scrollItemIntoView(at: index)
+        }
+
+        if lastSearchOrderGeneration != model.searchOrderGeneration {
+            // The finished search results were sorted: show the focused item, or the top of the list (FR-437).
+            lastSearchOrderGeneration = model.searchOrderGeneration
+            if let focused = model.selection.focused, let index = urls.firstIndex(of: focused) {
+                scrollItemIntoView(at: index)
+            } else {
+                restoreVisibleOrigin(.zero)
+            }
+        }
+    }
+
+    /// Whether a search is still running. Thumbnails are then made only for visible items (FR-435).
+    private var isSearching: Bool {
+        model.listing.search?.phase == .searching
+    }
+
+    /// URLs of items inside the visible rectangle. The collection view also prepares items just outside it, which
+    /// must not get thumbnails while searching (FR-435, SC-252).
+    private func visibleURLs() -> Set<URL> {
+        let files = model.listing.files
+        return Set(collectionView.indexPathsForVisibleItems().compactMap { path in
+            guard files.indices.contains(path.item), isInVisibleRect(path) else { return nil }
+            return files[path.item].url
+        })
+    }
+
+    private func isInVisibleRect(_ indexPath: IndexPath) -> Bool {
+        collectionView.frameForItem(at: indexPath.item).intersects(collectionView.visibleRect)
+    }
+
+    /// While searching, scrolling requests thumbnails for items that came into view and cancels those for items that
+    /// left it (EC-300).
+    @objc private func visibleRangeDidChange() {
+        guard isSearching, !isHidden else { return }
+        let files = model.listing.files
+        let paths = collectionView.indexPathsForVisibleItems().filter {
+            files.indices.contains($0.item) && isInVisibleRect($0)
+        }
+        pruneRequests(keeping: Set(paths.map { files[$0.item].url }))
+        for path in paths {
+            requestThumbnail(for: files[path.item])
+        }
+    }
+
+    /// Every item has the same size, so the flow layout uses one item size instead of asking for each item, which
+    /// keeps layout cheap for tens of thousands of items (research.md R5).
+    private func updateItemSize() {
+        let available = Double(max(
+            0,
+            collectionView.bounds.width - Self.sectionInset.left - Self.sectionInset.right
+        ))
+        let result = ThumbnailGridLayout.columns(
+            availableWidth: available,
+            thumbnailSize: storedThumbnailSize,
+            spacing: Double(Self.spacing)
+        )
+        let size = NSSize(
+            width: CGFloat(max(1, result.cellWidth)),
+            height: CGFloat(storedThumbnailSize + 36)
+        )
+        if flowLayout.itemSize != size {
+            flowLayout.itemSize = size
         }
     }
 
@@ -930,6 +1020,13 @@ final class ThumbnailModeView: NSView {
     }
 
     private func refreshVisibleThumbnails() {
+        if isSearching {
+            // Only items inside the visible rectangle while searching (FR-435, EC-301). Lay out first so the
+            // rectangle reflects a size change that has just been made.
+            layoutSubtreeIfNeeded()
+            visibleRangeDidChange()
+            return
+        }
         let files = model.listing.files
         for path in collectionView.indexPathsForVisibleItems()
         where files.indices.contains(path.item) {
@@ -1257,32 +1354,16 @@ extension ThumbnailModeView: NSCollectionViewDataSource {
         // In search results, show the location tooltip for same-named files that cannot be distinguished by name alone
         // (FR-084, R37).
         thumbnailItem.view.toolTip = model.listing.search?.location(of: file.url)
-        requestThumbnail(for: file)
+        // While searching, prepared items outside the visible rectangle wait until they are scrolled into view
+        // (FR-435, EC-300).
+        if !isSearching || isInVisibleRect(indexPath) {
+            requestThumbnail(for: file)
+        }
         return thumbnailItem
     }
 }
 
 extension ThumbnailModeView: NSCollectionViewDelegateFlowLayout {
-    func collectionView(
-        _ collectionView: NSCollectionView,
-        layout collectionViewLayout: NSCollectionViewLayout,
-        sizeForItemAt indexPath: IndexPath
-    ) -> NSSize {
-        let available = Double(max(
-            0,
-            collectionView.bounds.width - Self.sectionInset.left - Self.sectionInset.right
-        ))
-        let result = ThumbnailGridLayout.columns(
-            availableWidth: available,
-            thumbnailSize: storedThumbnailSize,
-            spacing: Double(Self.spacing)
-        )
-        return NSSize(
-            width: CGFloat(max(1, result.cellWidth)),
-            height: CGFloat(storedThumbnailSize + 36)
-        )
-    }
-
     func collectionView(
         _ collectionView: NSCollectionView,
         pasteboardWriterForItemAt indexPath: IndexPath
@@ -1329,6 +1410,8 @@ extension ThumbnailModeView: NSCollectionViewPrefetching {
         prefetchItemsAt indexPaths: [IndexPath]
     ) {
         guard window?.inLiveResize != true else { return }
+        // While searching, items that are not visible get no thumbnails yet (FR-435, SC-252).
+        guard !isSearching else { return }
         let files = model.listing.files
         for path in indexPaths where files.indices.contains(path.item) {
             requestThumbnail(for: files[path.item])

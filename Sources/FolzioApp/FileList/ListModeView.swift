@@ -178,6 +178,8 @@ final class ListModeView: NSView {
     private var lastURLs: [URL] = []
     /// `BrowserModel.contentChangeGeneration` already applied to the rows (FR-228).
     private var lastContentChangeGeneration = 0
+    /// `BrowserModel.searchOrderGeneration` already applied (FR-437).
+    private var lastSearchOrderGeneration: Int
     private var isApplyingSelection = false
     private var isSyncingSortDescriptors = false
     private var sortMenuInstalled = false
@@ -193,6 +195,7 @@ final class ListModeView: NSView {
     init(model: BrowserModel, provider: any ThumbnailProviding) {
         self.model = model
         self.provider = provider
+        self.lastSearchOrderGeneration = model.searchOrderGeneration
         super.init(frame: .zero)
         setup()
         NotificationCenter.default.addObserver(
@@ -372,6 +375,7 @@ final class ListModeView: NSView {
             _ = model.visibleColumns
             _ = model.listing.search
             _ = model.contentChangeGeneration
+            _ = model.searchOrderGeneration
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.applyModel()
@@ -399,13 +403,22 @@ final class ListModeView: NSView {
         let selected = SelectionIndex.indexes(of: model.selection.selected, in: urls)
 
         isApplyingSelection = true
+        var onlyAppended = false
         if urls != lastURLs {
-            if renamingURL != nil {
+            let appended = appendedRows(from: lastURLs, to: urls)
+            if renamingURL != nil, appended == nil {
                 finishRenaming(commit: false)
             }
             lastURLs = urls
             lastContentChangeGeneration = model.contentChangeGeneration
-            tableView.reloadData()
+            if appended != nil {
+                // Rows were only added at the end (a search adding results; FR-085). Keep the visible rows, their
+                // thumbnails, and a rename in progress instead of reloading them (FR-436).
+                tableView.noteNumberOfRowsChanged()
+                onlyAppended = true
+            } else {
+                tableView.reloadData()
+            }
         } else if lastContentChangeGeneration != model.contentChangeGeneration {
             // Several changes may have happened while hidden; then only the latest set is known, so reload all rows.
             let missedChanges = model.contentChangeGeneration &- lastContentChangeGeneration != 1
@@ -424,8 +437,16 @@ final class ListModeView: NSView {
         }
         isApplyingSelection = false
 
+        let sortedSearch = lastSearchOrderGeneration != model.searchOrderGeneration
+        lastSearchOrderGeneration = model.searchOrderGeneration
         if let focused = model.selection.focused, let row = urls.firstIndex(of: focused) {
-            tableView.scrollRowToVisible(row)
+            // Rows added at the end of a running search do not move the focused row, so do not scroll for them.
+            if !onlyAppended || sortedSearch {
+                tableView.scrollRowToVisible(row)
+            }
+        } else if sortedSearch, !urls.isEmpty {
+            // The finished search results were sorted and nothing is focused: show the top of the list (FR-437).
+            tableView.scrollRowToVisible(0)
         }
 
         syncSortDescriptors()
