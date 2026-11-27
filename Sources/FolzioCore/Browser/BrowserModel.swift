@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 
 /// Synchronous notification when `BrowserModel` changes location (R70).
 public enum LocationEvent: Sendable, Equatable {
@@ -793,6 +794,7 @@ public final class BrowserModel {
     }
 
     private func setSelection(_ urls: Set<URL>, focused: URL?) {
+        let start = ContinuousClock.now
         let previousFocused = selection.focused
         selection = SelectionState(selected: urls, focused: focused)
         if previousFocused != focused {
@@ -800,6 +802,14 @@ public final class BrowserModel {
         }
         loadPreview(for: focused)
         schedulePrefetch(around: focused)
+        if previousFocused != focused {
+            let name = focused?.lastPathComponent ?? "-"
+            let rows = listing.files.count
+            let elapsed = PerformanceLog.milliseconds(since: start)
+            PerformanceLog.logger.debug(
+                "[preview] focus \(name, privacy: .private(mask: .hash)) rows=\(rows) select took \(elapsed, format: .fixed(precision: 1)) ms"
+            )
+        }
     }
 
     /// Captures the original order before the first suspension of a file-list Move to Trash.
@@ -1969,11 +1979,19 @@ public final class BrowserModel {
     ) {
         previewTask = Task { [weak self] in
             guard let self else { return }
+            let start = ContinuousClock.now
             // The result of the inherited prefetch is in the cache when it succeeds (FR-285).
             await inheritedPrefetch?.value
             guard !Task.isCancelled, self.previewGeneration == generation else { return }
+            let waited = PerformanceLog.milliseconds(since: start)
             let result = await self.decodedImage(for: url, version: version)
             guard !Task.isCancelled, self.previewGeneration == generation else { return }
+            let name = url.lastPathComponent
+            let elapsed = PerformanceLog.milliseconds(since: start)
+            let inherited = inheritedPrefetch != nil
+            PerformanceLog.logger.debug(
+                "[preview] decoded \(name, privacy: .private(mask: .hash)) in \(elapsed, format: .fixed(precision: 1)) ms (waited for prefetch \(waited, format: .fixed(precision: 1)) ms, inherited \(inherited))"
+            )
 
             switch result {
             case let .success(image):

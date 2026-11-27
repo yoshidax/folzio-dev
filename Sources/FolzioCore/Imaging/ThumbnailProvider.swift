@@ -35,8 +35,9 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
         return sizeSteps[sizeSteps.count - 1]
     }
 
-    private final class CachedEntry {
+    private final class CachedEntry: ThumbnailCacheCostReporting {
         let image: CGImage
+        var cost: Int { image.width * image.height * 4 }
 
         init(image: CGImage) {
             self.image = image
@@ -70,6 +71,8 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
     private let archiveLimiter = ConcurrencyLimiter(limit: ThumbnailProvider.maxConcurrentArchiveReads)
     private let archiveVideoLimiter = ConcurrencyLimiter(limit: ThumbnailProvider.maxConcurrentArchiveVideoReads)
     private let cache = NSCache<NSString, CachedEntry>()
+    /// Logs evictions from `cache` and the approximate bytes kept (TAK-129 measurement).
+    private let cacheLog = ThumbnailCacheLog()
     private let lock = NSLock()
     private var inFlight: [UUID: InFlightRequest] = [:]
 
@@ -77,6 +80,7 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
         generator = QLThumbnailGenerator.shared
         self.archiveReader = archiveReader
         cache.totalCostLimit = MemoryLimits.thumbnailCacheBytes
+        cache.delegate = cacheLog
     }
 
     public func thumbnail(
@@ -89,6 +93,9 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
         let key = Self.cacheKey(for: url, pixelSize: pixelSize, version: version)
 
         if let cached = cache.object(forKey: key) {
+            PerformanceLog.logger.debug(
+                "[thumb] cache hit \(url.lastPathComponent, privacy: .private(mask: .hash)) px=\(pixelSize)"
+            )
             return cached.image
         }
 
@@ -123,13 +130,21 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
             }
         }
 
+        let start = ContinuousClock.now
         do {
             let representation = try await generator.generateBestRepresentation(for: request)
             let image = representation.cgImage
             let cost = image.width * image.height * 4
             cache.setObject(CachedEntry(image: image), forKey: key, cost: cost)
+            let kept = cacheLog.recordInsert(cost: cost)
+            PerformanceLog.logger.debug(
+                "[thumb] made \(url.lastPathComponent, privacy: .private(mask: .hash)) px=\(pixelSize) \(image.width)x\(image.height) in \(PerformanceLog.milliseconds(since: start), format: .fixed(precision: 1)) ms, kept ~\(kept / 1_048_576) MB"
+            )
             return image
         } catch {
+            PerformanceLog.logger.debug(
+                "[thumb] not made \(url.lastPathComponent, privacy: .private(mask: .hash)) px=\(pixelSize) after \(PerformanceLog.milliseconds(since: start), format: .fixed(precision: 1)) ms: \(String(describing: error), privacy: .public)"
+            )
             return nil
         }
     }
@@ -144,6 +159,9 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
 
     public func cancel(for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?) {
         let pixelSize = Self.pixelSize(forPointSize: pointSize, scale: scale)
+        PerformanceLog.logger.debug(
+            "[thumb] cancel \(url.lastPathComponent, privacy: .private(mask: .hash)) px=\(pixelSize)"
+        )
         let cancellations: [@Sendable () -> Void] = lock.withLock {
             let matches = inFlight.filter {
                 $0.value.url == url && $0.value.pixelSize == pixelSize && $0.value.version == version
@@ -209,6 +227,7 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
         }
         guard let image, !task.isCancelled else { return nil }
         cache.setObject(CachedEntry(image: image), forKey: key, cost: image.width * image.height * 4)
+        _ = cacheLog.recordInsert(cost: image.width * image.height * 4)
         return image
     }
 
@@ -309,4 +328,37 @@ private actor ConcurrencyLimiter {
         guard let index = waiters.firstIndex(where: { $0.id == id }) else { return }
         waiters.remove(at: index).continuation.resume(returning: false)
     }
+}
+
+/// Counts thumbnails evicted from the cache and the approximate bytes still kept, for the debug log (TAK-129).
+/// `NSCache` does not report what it keeps, so this adds the cost of each insertion and subtracts each eviction.
+private final class ThumbnailCacheLog: NSObject, NSCacheDelegate, @unchecked Sendable {
+    private let lock = NSLock()
+    private var keptBytes = 0
+    private var evictions = 0
+
+    /// Adds an inserted thumbnail and returns the approximate bytes kept.
+    func recordInsert(cost: Int) -> Int {
+        lock.withLock {
+            keptBytes += cost
+            return keptBytes
+        }
+    }
+
+    func cache(_ cache: NSCache<AnyObject, AnyObject>, willEvictObject obj: Any) {
+        let cost = (obj as? ThumbnailCacheCostReporting)?.cost ?? 0
+        let (count, kept) = lock.withLock {
+            evictions += 1
+            keptBytes = max(0, keptBytes - cost)
+            return (evictions, keptBytes)
+        }
+        PerformanceLog.logger.debug(
+            "[thumb] evicted #\(count) (\(cost / 1_024) KB), kept ~\(kept / 1_048_576) MB"
+        )
+    }
+}
+
+/// Lets the eviction log read the size of an evicted thumbnail.
+private protocol ThumbnailCacheCostReporting {
+    var cost: Int { get }
 }

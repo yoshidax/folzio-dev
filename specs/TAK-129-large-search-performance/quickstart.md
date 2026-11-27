@@ -56,3 +56,41 @@ open .build/Folzio.app
     サムネイル形式とリスト形式の両方で、先頭の項目に種類のアイコンが一瞬も出ず、前と同じ縮小画像がすぐに出る（FR-438、SC-254、US99-AS9）
 
 報告: 各項目の合否、2・3・4・9 の時間、macOS の版と Mac の機種。12 は、手順 1〜11 の確認と同じ版で行う。
+
+## 計測のためのログ（T034）
+
+原因を数値で確かめるためのログを取る。ログはこのアプリの中だけで記録され、外部へ送られない。ファイル名はハッシュで出る。
+
+1. UI スレッドの止まりの監視を有効にする（10ms ごとに測るので、計測の後に無効にする）
+
+   ```bash
+   defaults write local.folzio.Folzio FolzioLogMainThreadStalls -bool YES
+   ```
+
+2. アプリを作り直して起動する
+
+   ```bash
+   scripts/make-app.sh
+   ```
+
+   ```bash
+   open .build/Folzio.app
+   ```
+
+3. 別のターミナルでログを記録し始める
+
+   ```bash
+   log stream --level debug --style compact --predicate 'subsystem == "local.folzio.Folzio" AND category == "Performance"' > ~/folzio-perf.log
+   ```
+
+4. 次の操作を、間に数秒ずつ空けて順に行う
+   - `~/FolzioFixtures/large-search` を起点に `cat` を検索し、終わるまで待つ
+   - 検索結果のサムネイル形式で画像を 3 つ、1 つずつクリックして選ぶ（プレビューの遅れ）
+   - スクロールバーを摘んで一覧の中ほどまで動かし、先頭へ戻す（作り直し）
+   - 先頭の項目を選び、↓キーを押し続けて数画面分下へ移動し、↑キーを押し続けて先頭へ戻す（作り直し）
+5. ログの記録を Control-C で止め、`~/folzio-perf.log` を送る
+6. 監視を無効にする
+
+   ```bash
+   defaults delete local.folzio.Folzio FolzioLogMainThreadStalls
+   ```

@@ -111,6 +111,23 @@ CI で確かめる（Cloud では Swift を実行できない）。性能テス�
 
 ---
 
+## Phase 4c: 計測のためのデバッグログ（保守者の確認の後に追加）
+
+**Purpose**: 保守者の報告（検索結果が多いときのプレビューの遅れ、スクロールバーのドラッグとキーのリピートでの作り直し）の原因を、
+数値で確かめてから対策を決める（保守者の決定、2026-11-27。research.md R11）
+
+- [X] T031 `Sources/FolzioCore/Diagnostics/PerformanceLog.swift` を追加し、subsystem `local.folzio.Folzio`・category `Performance` の
+  デバッグ用のログ（`Logger` の debug レベル。ファイル名はハッシュ）を置く
+- [X] T032 サムネイルのログ: `ThumbnailProvider` に作成の時間・保持からの取り出し・取り消し・保持からの破棄（`NSCacheDelegate`）と保持の量の概算、
+  `ThumbnailModeView` に要求・取り消しの経路（item・prefetch・scroll・refresh・prune・endDisplay・reuse など）と項目の表示（kept・icon）、
+  `ListModeView` に行頭の縮小画像の表示（kept・icon）
+- [X] T033 プレビューと UI スレッドのログ: `BrowserModel` に選択の処理時間とデコードの時間、`PreviewViewController` に表示、
+  `ThumbnailModeView`・`ListModeView` の `applyModel` とスライドショーの可否の確認の時間（2ms 以上）、
+  `MainThreadStallMonitor`（`defaults` で有効にしたときだけ 10ms ごとに UI スレッドの止まりを測り、50ms 以上を記録）
+- [ ] T034 [MANUAL] 保守者が quickstart.md の「計測のためのログ」の手順でログを取り、送ってもらう。ログから原因を読み、対策を保守者と決める
+
+---
+
 ## Phase 5: 検証
 
 - [ ] T022 Cloud で `scripts/dev/check-all.sh` を実行し、終了コード 0 を確かめる（`scripts/dev/check-english-comments.sh` を含む）

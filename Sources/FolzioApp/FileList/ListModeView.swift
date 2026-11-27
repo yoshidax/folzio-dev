@@ -1,6 +1,7 @@
 import AppKit
 import FolzioCore
 import FolzioLocalization
+import os
 import Quartz
 
 @MainActor
@@ -390,6 +391,16 @@ final class ListModeView: NSView {
     }
 
     private func applyModel() {
+        let start = ContinuousClock.now
+        defer {
+            let elapsed = PerformanceLog.milliseconds(since: start)
+            if elapsed >= 2 {
+                let rows = model.listing.files.count
+                PerformanceLog.logger.debug(
+                    "[main] list applyModel \(elapsed, format: .fixed(precision: 1)) ms rows=\(rows)"
+                )
+            }
+        }
         updateLocationColumn()
         updateColumnVisibility()
         // For a hidden mode, defer row reloading and selection updates until it is shown (viewDidUnhide).
@@ -901,11 +912,14 @@ extension ListModeView: NSTableViewDelegate {
             let url = file.url
             let version = file.contentVersion
             let showsBadge = VideoBadgeLayout.isShown(kind: file.kind, showingRepresentativeFrame: true)
+            let name = file.name
             if let kept = provider.cachedThumbnail(for: url, pointSize: pointSize, scale: scale, version: version) {
                 // A thumbnail made earlier and still kept is shown at once, without the generic icon (FR-438).
+                PerformanceLog.logger.debug("[list] row \(name, privacy: .private(mask: .hash)) shows kept")
                 cell.iconView.image = Self.listIconImage(from: kept, pointSize: pointSize)
                 cell.iconView.showsVideoBadge = showsBadge
             } else {
+                PerformanceLog.logger.debug("[list] row \(name, privacy: .private(mask: .hash)) shows icon, request")
                 // The generic icon already shows the format, so no badge until the frame arrives (FR-418).
                 cell.iconView.showsVideoBadge = false
                 cell.iconView.image = file.kind.mediaKind.flatMap { IconCatalog.fallbackIcon(for: $0) }

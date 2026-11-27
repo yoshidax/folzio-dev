@@ -2,6 +2,7 @@ import AppKit
 import FolzioCore
 import FolzioLocalization
 import Observation
+import os
 
 private final class NotificationTokens: @unchecked Sendable {
     var tokens: [NSObjectProtocol] = []
@@ -408,9 +409,14 @@ final class MainSplitViewController: NSSplitViewController {
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
+                let start = ContinuousClock.now
                 self.slideshowCoordinator.listingDidChange()
                 self.onSlideshowAvailabilityChange?()
                 self.observeSlideshowData()
+                let elapsed = PerformanceLog.milliseconds(since: start)
+                if elapsed >= 2 {
+                    PerformanceLog.logger.debug("[main] slideshow availability \(elapsed, format: .fixed(precision: 1)) ms")
+                }
             }
         }
     }
