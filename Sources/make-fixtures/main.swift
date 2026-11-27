@@ -3,8 +3,9 @@ import FixtureKit
 
 let arguments = CommandLine.arguments
 let options = arguments.dropFirst(2)
-guard arguments.count >= 2, options.allSatisfy({ $0 == "--big" }) else {
-    FileHandle.standardError.write(Data("usage: make-fixtures <output-directory> [--big]\n".utf8))
+let knownOptions: Set<String> = ["--big", "--large-search"]
+guard arguments.count >= 2, options.allSatisfy({ knownOptions.contains($0) }) else {
+    FileHandle.standardError.write(Data("usage: make-fixtures <output-directory> [--big] [--large-search]\n".utf8))
     exit(2)
 }
 
@@ -14,6 +15,9 @@ do {
     try FixtureSets.makeAll(in: directory)
     if options.contains("--big") {
         try FixtureSets.bigVideoZips(in: directory)
+    }
+    if options.contains("--large-search") {
+        try FixtureSets.largeSearch(in: directory)
     }
     print("fixtures written to \(directory.path)")
 } catch {

@@ -714,6 +714,76 @@ struct PerformanceBaselineTests {
         print("[perf] search 10,000 files with folders: \(elapsed), folders \(folderCount), files \(fileCount)")
     }
 
+    @Test("Searches a 50,000-file hierarchy and settles the listing within three seconds (SC-249, SC-251)")
+    @MainActor
+    func searchingFiftyThousandFilesWithinBudget() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        // 500 folders × 100 files; half of the names contain "cat" (the SC-016 shape at five times the size).
+        let root = try FixtureSets.largeSearch(in: directory)
+        let pattern = try #require(SearchPattern(keyword: "cat"))
+
+        // (a) Enumeration only.
+        let enumerationStart = ContinuousClock.now
+        var enumerated = 0
+        for await batch in FileNameSearcher(kindNames: FixtureKit.kindNames).search(in: root, matching: pattern) {
+            enumerated += batch.count
+        }
+        let enumerationElapsed = ContinuousClock.now - enumerationStart
+        print("[perf] search 50,000 files: \(enumerationElapsed), matches \(enumerated)")
+        #expect(enumerated == 25_000, "Half of the items, 25,000, are found (actual: \(enumerated))")
+        #expect(
+            enumerationElapsed < .seconds(3),
+            "Enumerating a 50,000-file hierarchy takes at most 3 seconds (measured: \(enumerationElapsed))"
+        )
+
+        // (b) The whole search through BrowserModel until the listing is settled, and (c) the longest gap on the
+        // main thread meanwhile, sampled every 10 ms.
+        let suite = "PerformanceBaselineTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let model = BrowserModel(
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
+            decoder: ImageDecoder(),
+            cache: DecodedImageCache(),
+            settings: SettingsStore(defaults: defaults),
+            searcher: FileNameSearcher(kindNames: FixtureKit.kindNames)
+        )
+
+        let clock = ContinuousClock()
+        let gaps = MainThreadGapSampler()
+        let sampler = Task { @MainActor in
+            var last = clock.now
+            while gaps.isSampling {
+                try? await Task.sleep(for: .milliseconds(10))
+                let now = clock.now
+                gaps.maxGap = max(gaps.maxGap, now - last)
+                last = now
+            }
+        }
+
+        let start = clock.now
+        model.startSearch(pattern, root: root)
+        let finished = await waitUntil(timeout: .seconds(60)) { model.listing.search?.phase == .finished }
+        let elapsed = clock.now - start
+        gaps.isSampling = false
+        await sampler.value
+        let maxGap = gaps.maxGap
+
+        let files = model.listing.files
+        print("[perf] model search 50,000 files: \(elapsed), rows \(files.count)")
+        print("[perf] main thread max gap during 50,000-file search: \(maxGap)")
+        #expect(finished, "The search finishes")
+        #expect(files.count == 25_000, "25,000 rows are listed (actual: \(files.count))")
+        #expect(
+            files.map(\.url) == sorted(files, by: model.sortOrder).map(\.url),
+            "The settled listing follows the current sort order"
+        )
+        #expect(elapsed < .seconds(3), "The search settles within 3 seconds (measured: \(elapsed))")
+        #expect(maxGap < .milliseconds(100), "The main thread is never blocked for 100 ms or more (measured: \(maxGap))")
+    }
+
     @Test("Merges 256 items into 10,000 items within 0.05 seconds (FR-085)")
     @MainActor
     func mergingBatchIntoTenThousandWithinBudget() async throws {
@@ -865,6 +935,13 @@ private func waitForCache(
         try? await Task.sleep(for: .milliseconds(10))
     }
     return await cache.containsEntry(for: url)
+}
+
+/// Longest interval between samples taken on the main thread (a stand-in for how long operations would stall).
+@MainActor
+private final class MainThreadGapSampler {
+    var isSampling = true
+    var maxGap = Duration.zero
 }
 
 /// Searcher that emits results at any time from tests.

@@ -244,6 +244,34 @@ public enum FixtureSets {
         }
     }
 
+    /// Creates the large search hierarchy (`large-search/`) and returns its URL. Not called from `makeAll`.
+    /// Writes `folders` folders (`folder-000`, ...) with `filesPerFolder` 8×8 JPEGs each. Even-numbered files are
+    /// named `cat_NNN.jpg` and odd-numbered files `dog_NNN.jpg`, so searching for `cat` matches half of them
+    /// (the SC-016 shape at a larger scale; SC-249).
+    @discardableResult
+    public static func largeSearch(in directory: URL, folders: Int = 500, filesPerFolder: Int = 100) throws -> URL {
+        let root = try prepare(directory.appendingPathComponent("large-search", isDirectory: true))
+        let fileManager = FileManager.default
+
+        let scratch = try makeScratchDirectory()
+        defer { try? fileManager.removeItem(at: scratch) }
+        let jpeg = try imageData(scratch, "large-search.jpg") {
+            try ImageFixtures.jpeg(at: $0, width: 8, height: 8)
+        }
+
+        for folderIndex in 0..<max(0, folders) {
+            let folder = root.appendingPathComponent(String(format: "folder-%03d", folderIndex), isDirectory: true)
+            try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
+            for fileIndex in 0..<max(0, filesPerFolder) {
+                let name = fileIndex.isMultiple(of: 2)
+                    ? String(format: "cat_%03d.jpg", fileIndex)
+                    : String(format: "dog_%03d.jpg", fileIndex)
+                try jpeg.write(to: folder.appendingPathComponent(name))
+            }
+        }
+        return root
+    }
+
     public static func bigImage(in directory: URL) throws {
         let folder = try prepare(directory.appendingPathComponent("bigimage", isDirectory: true))
         try ImageFixtures.grayscalePNG(
