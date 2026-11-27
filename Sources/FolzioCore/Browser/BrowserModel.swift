@@ -222,10 +222,11 @@ public final class BrowserModel {
     private var movedSearchPaths: Set<String> = []
     /// Number of enumerations that have not finished in the current search. The search ends when it reaches 0 (R63).
     private var activeSearchStreams = 0
-    /// Search result batches received but not yet added to the listing, with the enumeration that produced each.
-    /// They are processed when added, so renames recorded meanwhile still apply to them (FR-085, R3).
-    @ObservationIgnored private var pendingSearchBatches: [(files: [MediaFile], stream: Int)] = []
-    /// Adds pending batches when the reflection interval has passed.
+    /// Number of search results at the end of `allFiles` that are not shown in the listing yet. Each batch is
+    /// processed and added to `allFiles` when it arrives; only showing them is grouped (FR-085, R3). Rebuilding the
+    /// listing shows every row, so it resets this to 0.
+    @ObservationIgnored private var unlistedSearchResults = 0
+    /// Shows the unlisted results when the reflection interval has passed.
     @ObservationIgnored private var searchReflectionTask: Task<Void, Never>?
     @ObservationIgnored private var lastSearchReflection: ContinuousClock.Instant?
     /// Interval between additions to the listing for the number of results already listed. Replaceable in tests.
@@ -1146,6 +1147,8 @@ public final class BrowserModel {
     /// inside a zip, and only when an enclosing level exists for regular folders (FR-070, 077). Does not add it for
     /// search results, and uses `.loading` while searching before any results arrive.
     private func rebuildListing() {
+        // Every row of `allFiles` is listed below, including search results waiting to be shown.
+        unlistedSearchResults = 0
         // Apply the zip visibility once after the media type filter. Does not change `allFiles` (FR-095, R46).
         // Search results are exempt: whether they contain zip files was decided when the search started, and
         // toggling the setting afterwards does not change existing results (FR-278).
@@ -1265,7 +1268,7 @@ public final class BrowserModel {
         activeSearchStreams = 0
         searchReflectionTask?.cancel()
         searchReflectionTask = nil
-        pendingSearchBatches.removeAll()
+        unlistedSearchResults = 0
         lastSearchReflection = nil
         isSearchOrderPending = false
         isFinishingSearch = false
@@ -1597,19 +1600,31 @@ public final class BrowserModel {
         }
     }
 
-    /// Keeps an incoming batch and adds pending batches to the listing once the reflection interval has passed, so
-    /// the listing is updated at most once per interval (FR-085, R3). The first batch also waits for the shortest
-    /// interval, so a search that finishes within it shows only the sorted results (EC-303).
+    /// Processes an incoming batch at once and adds it to the end of `allFiles`, as each batch arrives, so the work per
+    /// batch stays small (FR-436). Showing the added results in the listing waits for the reflection interval, so the
+    /// listing is updated at most once per interval (FR-085, R3). The first batch also waits for the shortest interval,
+    /// so a search that finishes within it shows only the sorted results (EC-303).
     private func receiveSearchResults(_ incoming: [MediaFile], fromStream index: Int) {
         guard isShowingSearchResults, !incoming.isEmpty else { return }
-        pendingSearchBatches.append((files: incoming, stream: index))
+        let placed = placeSearchResults(incoming, fromStream: index)
+        guard !placed.isEmpty else { return }
+        guard isSearchOrderPending else {
+            // Results that arrive after the final sort are merged in order.
+            appendSortedSearchResults(placed)
+            return
+        }
+        isAppendingSearchResults = true
+        allFiles.append(contentsOf: placed)
+        isAppendingSearchResults = false
+        unlistedSearchResults += placed.count
+
         let now = ContinuousClock.now
         guard let last = lastSearchReflection else {
             lastSearchReflection = now
             scheduleSearchReflection(at: now + searchReflectionInterval(0))
             return
         }
-        let due = last + searchReflectionInterval(allFiles.count)
+        let due = last + searchReflectionInterval(allFiles.count - unlistedSearchResults)
         if now >= due {
             reflectPendingSearchResults()
         } else {
@@ -1628,19 +1643,35 @@ public final class BrowserModel {
         }
     }
 
-    /// Adds every pending batch to the listing now.
+    /// Shows the results added since the last reflection.
     /// - Parameter updatesListing: False when the results are sorted right after, so the found order is not shown.
     private func reflectPendingSearchResults(updatesListing: Bool = true) {
         searchReflectionTask?.cancel()
         searchReflectionTask = nil
         lastSearchReflection = ContinuousClock.now
-        let batches = pendingSearchBatches
-        pendingSearchBatches.removeAll()
-        var added: [MediaFile] = []
-        for (files, stream) in batches {
-            added.append(contentsOf: placeSearchResults(files, fromStream: stream))
+        guard updatesListing, unlistedSearchResults > 0 else { return }
+        let added = Array(allFiles.suffix(min(unlistedSearchResults, allFiles.count)))
+        unlistedSearchResults = 0
+        listing.search?.totalCount = allFiles.count
+
+        if listing.state == .loaded, !nameFilterHidesAllRows {
+            // Rows are only added at the end, so the selection stays visible. The state stays loaded unless media
+            // arrive that the media type filter hides while no media is shown yet; that case rebuilds below. Search
+            // results are exempt from zip visibility (FR-278), and `..` is never shown for search results.
+            let filtered = mediaTypeFilter.apply(to: added)
+            let staysLoaded = !added.contains { $0.kind.isMedia }
+                || filtered.contains { $0.kind.isMedia }
+                || listing.files.contains { $0.kind.isMedia }
+            if staysLoaded {
+                let named = nameFilter.apply(to: filtered)
+                if !named.isEmpty {
+                    listing.files.append(contentsOf: named)
+                }
+                return
+            }
         }
-        appendSearchResults(added, updatesListing: updatesListing)
+        rebuildListing()
+        restrictSelectionAfterAddingSearchResults()
     }
 
     /// Drops results under moved folders and duplicates of listed results, rebases results for renames recorded
@@ -1666,41 +1697,17 @@ public final class BrowserModel {
         return batch
     }
 
-    /// Adds results to the listing. While the search order is pending, appends them at the end and filters only the
-    /// added rows, so one addition does not grow with the number of listed results (FR-085, FR-436). Otherwise merges
-    /// them into the sorted results (R36).
-    private func appendSearchResults(_ batch: [MediaFile], updatesListing: Bool) {
-        guard !batch.isEmpty else { return }
-        if isSearchOrderPending {
-            isAppendingSearchResults = true
-            allFiles.append(contentsOf: batch)
-            isAppendingSearchResults = false
-        } else {
-            allFiles = sortedMerge(allFiles, sorted(batch, by: sortOrder), by: sortOrder)
-        }
-        guard updatesListing else { return }
+    /// Merges results into the sorted results and shows them (R36). Used only when results arrive after the final sort.
+    private func appendSortedSearchResults(_ batch: [MediaFile]) {
+        allFiles = sortedMerge(allFiles, sorted(batch, by: sortOrder), by: sortOrder)
         listing.search?.totalCount = allFiles.count
-
-        if isSearchOrderPending, listing.state == .loaded, !nameFilterHidesAllRows {
-            // Rows are only added at the end, so the selection stays visible. The state stays loaded unless media
-            // arrive that the media type filter hides while no media is shown yet; that case rebuilds below. Search
-            // results are exempt from zip visibility (FR-278), and `..` is never shown for search results.
-            let filtered = mediaTypeFilter.apply(to: batch)
-            let staysLoaded = !batch.contains { $0.kind.isMedia }
-                || filtered.contains { $0.kind.isMedia }
-                || listing.files.contains { $0.kind.isMedia }
-            if staysLoaded {
-                let named = nameFilter.apply(to: filtered)
-                if !named.isEmpty {
-                    listing.files.append(contentsOf: named)
-                }
-                return
-            }
-        }
         rebuildListing()
+        restrictSelectionAfterAddingSearchResults()
+    }
 
-        // Rows only increase, but restrict the selection so it does not keep rows hidden by the media type filter.
-        // Do not reload the preview when the focus does not change.
+    /// Rows only increase, but restrict the selection so it does not keep rows hidden by the media type filter.
+    /// Does not reload the preview when the focus does not change.
+    private func restrictSelectionAfterAddingSearchResults() {
         guard !selection.selected.isEmpty || selection.focused != nil else { return }
         let restricted = selection.restricted(toVisible: listing.files.map(\.url))
         if restricted.focused == selection.focused {
