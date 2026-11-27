@@ -93,11 +93,29 @@ CI で確かめる（Cloud では Swift を実行できない）。性能テス�
 
 ---
 
+## Phase 4b: 保持している縮小画像をすぐに表示する（FR-438。保守者の確認の後に追加）
+
+**Purpose**: 一度作った縮小画像を表示し直すときに、種類のアイコンを挟まない（research.md R10）
+
+- [ ] T027 [P] [US99] `Tests/FolzioCoreTests/` の `ThumbnailProvider` のテスト（既存のファイルに足す）に、`cachedThumbnail` が、生成前は nil、
+  `thumbnail(for:...)` で作った後は同じ URL・大きさ・版で同じ画像を返し、版や大きさが違うときは nil を返すことを確かめるテストを足す
+- [ ] T028 [P] [US99] `Tests/FolzioAppTests/SearchThumbnailRequestTests.swift` に、保持している縮小画像を返す偽の `ThumbnailProviding` で、
+  サムネイル形式とリスト形式の両方で、表示した項目を表示範囲の外へスクロールして戻したとき、項目の画像が種類のアイコンにならず、
+  その項目の縮小画像を要求し直さないテストを足す（SC-254・US99-AS9）
+- [ ] T029 [US99] `Sources/FolzioCore/Imaging/ThumbnailProvider.swift` の `ThumbnailProviding` に `cachedThumbnail(for:pointSize:scale:version:)` を足し、
+  プロトコルの拡張に nil を返す既定の実装を置く。`ThumbnailProvider` は `NSCache` を同じキーで引いて返す
+- [ ] T030 [US99] `Sources/FolzioApp/FileList/ThumbnailModeView.swift` の `itemForRepresentedObject` と `ThumbnailItemView.configure` で、保持している縮小画像が
+  あれば種類のアイコンの代わりに設定し、要求しない。`Sources/FolzioApp/FileList/ListModeView.swift` の行頭の縮小画像のセルも同じにする（FR-438）
+
+**Checkpoint**: T027・T028 が CI で通る
+
+---
+
 ## Phase 5: 検証
 
 - [ ] T022 Cloud で `scripts/dev/check-all.sh` を実行し、終了コード 0 を確かめる（`scripts/dev/check-english-comments.sh` を含む）
 - [ ] T023 CI の通常のテストと性能テストのログを確かめ、T003 の (a)〜(c) と T012 の実装の前後の値を `specs/TAK-129-large-search-performance/research.md` の R1 に追記する（PR にも記載する。憲章の原則 II）
-- [ ] T024 [MANUAL] 保守者が quickstart.md の「保守者の GUI 確認」の 1〜11 を行い、合否と時間を報告する。報告を `specs/TAK-129-large-search-performance/checklists/validation.md` に記録する（SC-249〜SC-252、US99-AS1〜AS8、A-269）
+- [ ] T024 [MANUAL] 保守者が quickstart.md の「保守者の GUI 確認」の 1〜12 を行い、合否と時間を報告する。報告を `specs/TAK-129-large-search-performance/checklists/validation.md` に記録する（SC-249〜SC-252・SC-254、US99-AS1〜AS9、A-269）
 - [ ] T025 [MANUAL] 保守者が起動スモーク（`scripts/make-app.sh` の後に `open .build/Folzio.app` で 3 ペインが表示される）を行い、報告する
 
 ---
@@ -114,6 +132,7 @@ CI で確かめる（Cloud では Swift を実行できない）。性能テス�
 - Phase 2: テスト T005〜T007 → 実装 T008→T009→T010・T011。T012 は T008 の後
 - Phase 3（T013→T014→T015）は Phase 2 と独立（`FileNameSearcher` だけ）。Phase 2 の後に行う（BrowserModel の計測を先に安定させるため）
 - Phase 4 は Phase 2 に依存する（`searchOrderGeneration`・末尾への追加）。T018→T019→T020、T021 は T018 と独立
+- Phase 4b（T027・T028 → T029 → T030）は Phase 4 の後
 - Phase 5 → Phase 6
 
 ## Parallel Example

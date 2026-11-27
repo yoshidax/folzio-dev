@@ -98,6 +98,16 @@
   今も見えている行だけを要求しているので変えない
 - 終了時の並べ替えの後のスクロール: フォーカス項目があれば見える位置へ、なければ先頭へ（両方の表示形式）
 
+### 3b. 保持している縮小画像をすぐに表示する（FR-438・SC-254。research.md R10。保守者の確認の後に追加）
+
+- `ThumbnailProviding` に、保持している縮小画像を同期で返す `cachedThumbnail(for:pointSize:scale:version:) -> CGImage?` を足す。
+  プロトコルの拡張で既定の実装（nil）を置き、テストの偽の実装は変えずに済ませる
+- `ThumbnailProvider` は、既存の `NSCache`（スレッドから安全に読める）を同じキーで引く。ファイルを読まない
+- `ThumbnailModeView`: 項目を作るとき（`itemForRepresentedObject`）に保持している縮小画像があれば、種類のアイコンの代わりにそれを設定し、
+  要求しない。`ThumbnailItemView.configure` に、表示する縮小画像を渡せる引数を足す
+- `ListModeView`: 行頭の縮小画像のセルを設定するときに保持している縮小画像があれば、それを設定し、要求しない
+- 保持の上限（128MB）と、作る規則（先読み・同時実行数・検索中の規則）は変えない
+
 ### 4. 列挙を速くする（SC-249。research.md R7）
 
 - `FileNameSearcher` の列挙で、行に使う属性（作成日・変更日・サイズ・`FileContentVersion` のキー）も前もって読む（`includingPropertiesForKeys`）
