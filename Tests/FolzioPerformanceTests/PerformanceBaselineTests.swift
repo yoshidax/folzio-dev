@@ -664,6 +664,58 @@ struct PerformanceBaselineTests {
         print("[perf] search 10,000 files: \(elapsed)")
     }
 
+    @Test("Searches 10,000 files split across three roots within three seconds (SC-249)")
+    @MainActor
+    func searchingThreeRootsWithinBudget() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let templateURL = directory.appendingPathComponent("template.jpg")
+        try ImageFixtures.jpeg(at: templateURL, width: 8, height: 8)
+        let template = try Data(contentsOf: templateURL)
+        try FileManager.default.removeItem(at: templateURL)
+        // The same 100 folders × 100 files as SC-016, split into three roots that do not overlap (34 + 33 + 33 folders).
+        let roots = (0 ..< 3).map { directory.appendingPathComponent("root-\($0)", isDirectory: true) }
+        for folderIndex in 0 ..< 100 {
+            let folder = roots[folderIndex % 3]
+                .appendingPathComponent(String(format: "folder-%03d", folderIndex), isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            for fileIndex in 0 ..< 100 {
+                let name = fileIndex.isMultiple(of: 2)
+                    ? String(format: "cat_%03d.jpg", fileIndex)
+                    : String(format: "dog_%03d.jpg", fileIndex)
+                try template.write(to: folder.appendingPathComponent(name))
+            }
+        }
+
+        let suite = "PerformanceBaselineTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let model = BrowserModel(
+            kindNames: FixtureKit.kindNames,
+            lister: DirectoryLister(kindNames: FixtureKit.kindNames),
+            decoder: ImageDecoder(),
+            cache: DecodedImageCache(),
+            settings: SettingsStore(defaults: defaults)
+        )
+        model.setNavigationRoots([directory])
+        await model.selectFolder(directory)
+
+        let pattern = try #require(SearchPattern(keyword: "cat"))
+        let start = ContinuousClock.now
+        model.startSearch(pattern, roots: roots)
+        let deadline = start + .seconds(10)
+        while model.listing.search?.phase != .finished, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        let elapsed = ContinuousClock.now - start
+
+        #expect(model.listing.search?.phase == .finished)
+        #expect(model.listing.search?.totalCount == 5_000, "Half of the items, 5,000, are found (actual: \(model.listing.search?.totalCount ?? -1))")
+        #expect(elapsed < .seconds(3), "Searching 10,000 files across three roots takes at most 3 seconds (measured: \(elapsed))")
+        print("[perf] search 10,000 files across three roots: \(elapsed)")
+    }
+
     @Test("Searches a 10,000-file hierarchy including folder-name matching within three seconds (SC-054)")
     func searchingFoldersAndFilesWithinBudget() async throws {
         let directory = try makeTemporaryDirectory()
