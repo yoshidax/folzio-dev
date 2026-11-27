@@ -9,6 +9,18 @@ import QuickLookThumbnailing
 public protocol ThumbnailProviding: Sendable {
     func thumbnail(for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?) async -> CGImage?
     func cancel(for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?)
+    /// A thumbnail that was already made and is still kept, without reading the file or making one. Lets a view show
+    /// it right away instead of the kind icon when an item is shown again (FR-438).
+    func cachedThumbnail(for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?) -> CGImage?
+}
+
+extension ThumbnailProviding {
+    /// Providers that keep no thumbnails return nil.
+    public func cachedThumbnail(
+        for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?
+    ) -> CGImage? {
+        nil
+    }
 }
 
 public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
@@ -120,6 +132,14 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
         } catch {
             return nil
         }
+    }
+
+    public func cachedThumbnail(
+        for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?
+    ) -> CGImage? {
+        let pixelSize = Self.pixelSize(forPointSize: pointSize, scale: scale)
+        // NSCache can be read from any thread.
+        return cache.object(forKey: Self.cacheKey(for: url, pixelSize: pixelSize, version: version))?.image
     }
 
     public func cancel(for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?) {

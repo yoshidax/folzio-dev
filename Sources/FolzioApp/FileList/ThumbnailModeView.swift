@@ -233,7 +233,8 @@ final class ThumbnailItemView: NSCollectionViewItem {
         didSet { updateSelectionAppearance() }
     }
 
-    func configure(with file: MediaFile, iconPointSize: Double) {
+    /// - Parameter thumbnail: A kept thumbnail of the file. Shown right away instead of the kind icon (FR-438).
+    func configure(with file: MediaFile, iconPointSize: Double, thumbnail: CGImage? = nil) {
         if isRenaming, representedURL != file.url {
             endRenaming(commit: false, restoreFocus: false)
         }
@@ -252,6 +253,10 @@ final class ThumbnailItemView: NSCollectionViewItem {
                 nameLabel.setAccessibilityLabel(accessibilityName)
             }
             showListItemIcon(for: file.kind, pointSize: iconPointSize)
+        } else if let thumbnail {
+            thumbnailImageView.imageScaling = .scaleProportionallyUpOrDown
+            thumbnailImageView.contentTintColor = nil
+            setThumbnailImage(thumbnail)
         } else if urlChanged || thumbnailImageView.image == nil {
             thumbnailImageView.imageScaling = .scaleProportionallyUpOrDown
             thumbnailImageView.contentTintColor = nil
@@ -866,6 +871,11 @@ final class ThumbnailModeView: NSView {
         }
     }
 
+    /// Backing scale used for thumbnail requests.
+    private var thumbnailScale: Double {
+        Double(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2)
+    }
+
     /// Whether a search is still running. Thumbnails are then made only for visible items (FR-435).
     private var isSearching: Bool {
         model.listing.search?.phase == .searching
@@ -918,7 +928,7 @@ final class ThumbnailModeView: NSView {
             return
         }
         let pointSize = storedThumbnailSize
-        let scale = Double(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2)
+        let scale = thumbnailScale
         if let existing = requests[file.url],
            existing.pointSize == pointSize,
            existing.scale == scale,
@@ -1326,13 +1336,22 @@ extension ThumbnailModeView: NSCollectionViewDataSource {
         thumbnailItem.onCommitRename = { [weak self] url, newName in
             self?.commitRename(url: url, newName: newName)
         }
-        thumbnailItem.configure(with: file, iconPointSize: listItemIconPointSize)
+        // A thumbnail made earlier and still kept is shown at once, without the kind icon in between (FR-438).
+        let kept = file.kind.isMedia
+            ? provider.cachedThumbnail(
+                for: file.url,
+                pointSize: storedThumbnailSize,
+                scale: thumbnailScale,
+                version: file.contentVersion
+            )
+            : nil
+        thumbnailItem.configure(with: file, iconPointSize: listItemIconPointSize, thumbnail: kept)
         // In search results, show the location tooltip for same-named files that cannot be distinguished by name alone
         // (FR-084, R37).
         thumbnailItem.view.toolTip = model.listing.search?.location(of: file.url)
         // While searching, prepared items outside the visible rectangle wait until they are scrolled into view
         // (FR-435, EC-300).
-        if !isSearching || isInVisibleRect(indexPath) {
+        if kept == nil, !isSearching || isInVisibleRect(indexPath) {
             requestThumbnail(for: file)
         }
         return thumbnailItem

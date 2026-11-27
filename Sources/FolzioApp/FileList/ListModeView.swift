@@ -887,9 +887,6 @@ extension ListModeView: NSTableViewDelegate {
             cell.cancelIconRequest(using: provider)
             cell.representedURL = file.url
             cell.representedVersion = file.contentVersion
-            // The generic icon already shows the format, so no badge until the frame arrives (FR-418).
-            cell.iconView.showsVideoBadge = false
-            cell.iconView.image = file.kind.mediaKind.flatMap { IconCatalog.fallbackIcon(for: $0) }
 
             let scale = Double(
                 window?.backingScaleFactor
@@ -904,22 +901,32 @@ extension ListModeView: NSTableViewDelegate {
             let url = file.url
             let version = file.contentVersion
             let showsBadge = VideoBadgeLayout.isShown(kind: file.kind, showingRepresentativeFrame: true)
-            cell.iconTask = Task { [weak cell] in
-                let image = await provider.thumbnail(
-                    for: url,
-                    pointSize: pointSize,
-                    scale: scale,
-                    version: version
-                )
-                guard !Task.isCancelled,
-                      let cell,
-                      cell.representedURL == url,
-                      cell.representedVersion == version,
-                      let image else {
-                    return
-                }
-                cell.iconView.image = Self.listIconImage(from: image, pointSize: pointSize)
+            if let kept = provider.cachedThumbnail(for: url, pointSize: pointSize, scale: scale, version: version) {
+                // A thumbnail made earlier and still kept is shown at once, without the generic icon (FR-438).
+                cell.iconView.image = Self.listIconImage(from: kept, pointSize: pointSize)
                 cell.iconView.showsVideoBadge = showsBadge
+            } else {
+                // The generic icon already shows the format, so no badge until the frame arrives (FR-418).
+                cell.iconView.showsVideoBadge = false
+                cell.iconView.image = file.kind.mediaKind.flatMap { IconCatalog.fallbackIcon(for: $0) }
+
+                cell.iconTask = Task { [weak cell] in
+                    let image = await provider.thumbnail(
+                        for: url,
+                        pointSize: pointSize,
+                        scale: scale,
+                        version: version
+                    )
+                    guard !Task.isCancelled,
+                          let cell,
+                          cell.representedURL == url,
+                          cell.representedVersion == version,
+                          let image else {
+                        return
+                    }
+                    cell.iconView.image = Self.listIconImage(from: image, pointSize: pointSize)
+                    cell.iconView.showsVideoBadge = showsBadge
+                }
             }
         }
 

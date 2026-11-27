@@ -30,6 +30,45 @@ struct SearchThumbnailRequestTests {
         }
     }
 
+    /// Makes a thumbnail at once and keeps it, like `ThumbnailProvider` with its cache. Counts how often each URL
+    /// is made.
+    private final class CachingProvider: ThumbnailProviding, @unchecked Sendable {
+        static let size = (width: 77, height: 55)
+        private let lock = NSLock()
+        private var counts: [URL: Int] = [:]
+        private var kept: [URL: CGImage] = [:]
+        private let image: CGImage
+
+        init() throws {
+            let context = try #require(CGContext(
+                data: nil,
+                width: Self.size.width,
+                height: Self.size.height,
+                bitsPerComponent: 8,
+                bytesPerRow: 0,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ))
+            image = try #require(context.makeImage())
+        }
+
+        func count(for url: URL) -> Int { lock.withLock { counts[url, default: 0] } }
+
+        func thumbnail(for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?) async -> CGImage? {
+            lock.withLock {
+                counts[url, default: 0] += 1
+                kept[url] = image
+            }
+            return image
+        }
+
+        func cancel(for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?) {}
+
+        func cachedThumbnail(for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?) -> CGImage? {
+            lock.withLock { kept[url] }
+        }
+    }
+
     /// Searcher whose batches and completion the test controls.
     private final class ControlledSearcher: FileNameSearching, @unchecked Sendable {
         private let lock = NSLock()
@@ -295,5 +334,63 @@ struct SearchThumbnailRequestTests {
         let visibleRows = tableView.rows(in: tableView.visibleRect)
         #expect(visibleRows.contains(index), "The focused row \(index) is not visible: \(visibleRows)")
         #expect(fixture.model.selection.focused == focused)
+    }
+
+    @Test("A kept thumbnail is shown again at once without being made again after scrolling away and back (FR-438, SC-254)")
+    func keptThumbnailIsShownAgain() async throws {
+        let fixture = try makeFixture(count: 600)
+        defer { fixture.window.close() }
+        let provider = try CachingProvider()
+        let view = ThumbnailModeView(model: fixture.model, provider: provider)
+        install(view, in: fixture.window)
+        let collectionView = try #require(descendant(NSCollectionView.self, in: view))
+        let scrollView = try #require(descendant(NSScrollView.self, in: view))
+
+        await fixture.model.selectFolder(fixture.folder)
+        #expect(await wait { fixture.model.listing.files.count == 600 })
+        await settle(view)
+        let top = try #require(fixture.model.listing.files.first?.url)
+        #expect(await wait { provider.count(for: top) == 1 })
+
+        scrollView.contentView.scroll(to: NSPoint(x: 0, y: 8_000))
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+        await settle(view)
+        scrollView.contentView.scroll(to: .zero)
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+        await settle(view)
+
+        #expect(provider.count(for: top) == 1, "The kept thumbnail was made again")
+        let item = try #require(collectionView.visibleItems().compactMap { $0 as? ThumbnailItemView }
+            .first { $0.representedURL == top })
+        let imageView = try #require(descendant(VideoBadgeImageView.self, in: item.view))
+        #expect(imageView.image?.size == NSSize(width: CachingProvider.size.width, height: CachingProvider.size.height),
+                "The item shows \(String(describing: imageView.image?.size)) instead of the kept thumbnail")
+    }
+
+    @Test("A kept list icon thumbnail is shown again without being made again after scrolling away and back (FR-438, SC-254)")
+    func keptListIconIsShownAgain() async throws {
+        let fixture = try makeFixture(count: 600)
+        defer { fixture.window.close() }
+        let provider = try CachingProvider()
+        let view = ListModeView(model: fixture.model, provider: provider)
+        install(view, in: fixture.window)
+        let tableView = try #require(descendant(NSTableView.self, in: view))
+
+        await fixture.model.selectFolder(fixture.folder)
+        #expect(await wait { fixture.model.listing.files.count == 600 })
+        await settle(view)
+        let top = try #require(fixture.model.listing.files.first?.url)
+        #expect(await wait { provider.count(for: top) == 1 })
+
+        tableView.scrollRowToVisible(599)
+        await settle(view)
+        tableView.scrollRowToVisible(0)
+        await settle(view)
+
+        #expect(provider.count(for: top) == 1, "The kept thumbnail was made again")
+        let column = tableView.column(withIdentifier: NSUserInterfaceItemIdentifier("name"))
+        let cell = try #require(tableView.view(atColumn: column, row: 0, makeIfNecessary: false))
+        let imageView = try #require(descendant(VideoBadgeImageView.self, in: cell))
+        #expect(imageView.image != nil)
     }
 }
