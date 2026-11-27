@@ -10,7 +10,7 @@
 
 ## Phase 0: 設計レビュー
 
-- [ ] T000 [MANUAL] 保守者が `specs/TAK-104-multi-root-search/` の spec・plan・tasks と analyze の結果を確認し、実装の開始を承認する
+- [X] T000 [MANUAL] 保守者が `specs/TAK-104-multi-root-search/` の spec・plan・tasks と analyze の結果を確認し、実装の開始を承認する（2026-11-27、このチャット。2回目のレビューで FR-394 の英語の変更を加えた設計を承認）
 
 ## Phase 1: Foundational（Core の判断）
 

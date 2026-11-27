@@ -1777,6 +1777,124 @@ struct BrowserModelSearchTests {
         #expect(row.name == "bbb")
         #expect(path(row.url) == path(new))
     }
+
+    // MARK: - Several Roots (TAK-104; FR-438, FR-440)
+
+    @Test("Enumerates several roots one at a time and combines their results into one search (FR-438)")
+    func severalRootsInOrder() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let first = env.folder("trip/day1")
+        let second = env.folder("trip/day2")
+        env.model.startSearch(pattern(), roots: [first, second])
+
+        #expect(env.searcher.requests.count == 1)
+        #expect(path(env.searcher.requests.first?.root) == path(first))
+        #expect(env.model.listing.search?.roots.map(path) == [path(first), path(second)])
+
+        env.searcher.send([Env.result(env.url("trip/day1/a.jpg"))], to: 0)
+        #expect(await waitUntil { env.model.listing.search?.totalCount == 1 })
+        env.searcher.finish(at: 0)
+        #expect(await waitUntil { env.searcher.requests.count == 2 })
+        #expect(path(env.searcher.requests.last?.root) == path(second))
+        #expect(env.searcher.requests.last?.matchesRoot == false)
+        #expect(env.model.listing.search?.phase == .searching)
+
+        env.searcher.send([Env.result(env.url("trip/day2/b.jpg"))], to: 1)
+        #expect(await waitUntil { env.model.listing.search?.totalCount == 2 })
+        env.searcher.finish(at: 1)
+        #expect(await waitUntil { env.model.listing.search?.phase == .finished })
+        #expect(Set(names(env.model)) == ["a.jpg", "b.jpg"])
+        #expect(env.searcher.requests.count == 2)
+    }
+
+    @Test("A new search drops the waiting roots of the previous search")
+    func newSearchDropsWaitingRoots() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        env.model.startSearch(pattern(), roots: [env.folder("trip/day1"), env.folder("trip/day2")])
+        env.model.startSearch(pattern("b"), root: env.folder("empty"))
+        #expect(env.searcher.requests.count == 2)
+
+        env.searcher.finish(at: 0)
+        env.searcher.finish(at: 1)
+        #expect(await waitUntil { env.model.listing.search?.phase == .finished })
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(env.searcher.requests.count == 2)
+        #expect(env.model.listing.search?.roots.map(path) == [path(env.folder("empty"))])
+    }
+
+    @Test("Renaming a waiting root, or a folder inside it, only rewrites the root without an additional enumeration (FR-440)")
+    func renamingWaitingRoot() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        _ = try makeEmptyFolder(env, "trip/day2/sub")
+        env.model.startSearch(pattern(), roots: [env.folder("trip/day1"), env.folder("trip/day2")])
+
+        let (oldSub, newSub) = try renameFolder(env, "trip/day2/sub", to: "sub2")
+        env.model.didRenameFolder(from: oldSub, to: newSub)
+        #expect(env.searcher.requests.count == 1)
+
+        let (old, new) = try renameFolder(env, "trip/day2", to: "day2b")
+        env.model.didRenameFolder(from: old, to: new)
+        #expect(env.searcher.requests.count == 1)
+        #expect(env.model.listing.search?.roots.map(path) == [path(env.folder("trip/day1")), path(new)])
+
+        env.searcher.finish(at: 0)
+        #expect(await waitUntil { env.searcher.requests.count == 2 })
+        #expect(path(env.searcher.requests.last?.root) == path(new))
+    }
+
+    @Test("Renaming one started root rewrites only that root and its results (FR-440)")
+    func renamingOneOfSeveralRoots() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let photo = try env.makeResult("trip/day2/b.jpg")
+        env.model.startSearch(pattern(), roots: [env.folder("trip/day1"), env.folder("trip/day2")])
+        env.searcher.finish(at: 0)
+        #expect(await waitUntil { env.searcher.requests.count == 2 })
+        env.searcher.send([photo], to: 1)
+        #expect(await waitUntil { env.model.listing.search?.totalCount == 1 })
+        env.searcher.finish(at: 1)
+        #expect(await waitUntil { env.model.listing.search?.phase == .finished })
+
+        let (old, new) = try renameFolder(env, "trip/day2", to: "day2b")
+        env.model.didRenameFolder(from: old, to: new)
+
+        let search = try #require(env.model.listing.search)
+        #expect(search.roots.map(path) == [path(env.folder("trip/day1")), path(new)])
+        #expect(path(env.model.listing.files.first?.url) == path(new.appendingPathComponent("b.jpg")))
+        #expect(search.location(of: new.appendingPathComponent("b.jpg")) == "day2b")
+    }
+
+    @Test("A root that disappears removes only its own results; when every root is gone the results are empty (EC-306)")
+    func oneOfSeveralRootsDisappears() async throws {
+        let env = try makeEnv()
+        defer { env.cleanup() }
+        let firstRoot = env.folder("s1")
+        let secondRoot = env.folder("s2")
+        let kept = try env.makeResult("s1/x/a.jpg")
+        let gone = try env.makeResult("s2/y/b.jpg")
+        env.model.startSearch(pattern(), roots: [firstRoot, secondRoot])
+        env.searcher.send([kept], to: 0)
+        env.searcher.finish(at: 0)
+        #expect(await waitUntil { env.searcher.requests.count == 2 })
+        env.searcher.send([gone], to: 1)
+        #expect(await waitUntil { env.model.listing.search?.totalCount == 2 })
+        env.searcher.finish(at: 1)
+        #expect(await waitUntil { env.model.listing.search?.phase == .finished })
+
+        try FileManager.default.removeItem(at: secondRoot)
+        await env.model.handleFileSystemEvent([secondRoot])
+        #expect(env.model.isShowingSearchResults)
+        #expect(names(env.model) == ["a.jpg"])
+
+        try FileManager.default.removeItem(at: firstRoot)
+        await env.model.handleFileSystemEvent([firstRoot])
+        #expect(env.model.isShowingSearchResults)
+        #expect(env.model.listing.files.isEmpty)
+        #expect(env.model.listing.state == .empty)
+    }
 }
 
 /// Searcher that emits results in any order and at any time from tests. Records cancellation count.

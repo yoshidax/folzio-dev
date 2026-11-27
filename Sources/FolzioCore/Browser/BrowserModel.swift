@@ -205,8 +205,11 @@ public final class BrowserModel {
     /// Folder renames during the current search. Rebases URLs of results that arrive later (R63).
     private var searchLedger = SearchRenameLedger()
     private var movedSearchPaths: Set<String> = []
-    /// Number of enumerations that have not finished in the current search. The search ends when it reaches 0 (R63).
+    /// Number of enumerations that have not finished in the current search. When it reaches 0, the next waiting root
+    /// starts, or the search ends (R63, FR-438).
     private var activeSearchStreams = 0
+    /// Roots of the current search that have not started enumerating (FR-438).
+    private var searchRootPlan = SearchRootPlan()
     /// Folder renames after opening the current zip (including while opening). Index rows are built with the zip
     /// location at open time, so they are rebased on every level change (R62, EC-50).
     private var archiveRenames: [RenamedFolder] = []
@@ -344,25 +347,34 @@ public final class BrowserModel {
         }
     }
 
-    /// Starts a search and adds results to the list in the current sort order as they are found (FR-084, 085).
-    /// Returns without waiting for enumeration to finish. Does not change `listing.folder`, `lastFolder`, or
-    /// `treeSyncRequest`; when started inside a zip, discards the zip state.
+    /// Starts a search from one root (FR-084, 085).
     public func startSearch(_ pattern: SearchPattern, root: URL) {
+        startSearch(pattern, roots: [root])
+    }
+
+    /// Starts a search and adds results to the list in the current sort order as they are found (FR-084, 085, 438).
+    /// `roots` are validated and organized (FR-437) and are enumerated one at a time from the top. Returns without
+    /// waiting for enumeration to finish. Does not change `listing.folder`, `lastFolder`, or `treeSyncRequest`; when
+    /// started inside a zip, discards the zip state. Does nothing when `roots` is empty.
+    public func startSearch(_ pattern: SearchPattern, roots: [URL]) {
+        guard let first = roots.first else { return }
         resetForNavigation()
         archiveIndex = nil
         listing = FolderListing(
             folder: listing.folder,
             files: [],
             state: .loading,
-            search: SearchListing(keyword: pattern.keyword, root: root, phase: .searching, totalCount: 0)
+            search: SearchListing(keyword: pattern.keyword, roots: roots, phase: .searching, totalCount: 0)
         )
 
         searchPattern = pattern
         searchIncludesArchives = showsZipFiles
-        startSearchStream(in: root, matching: pattern)
+        searchRootPlan = SearchRootPlan(pending: Array(roots.dropFirst()))
+        startSearchStream(in: first, matching: pattern)
     }
 
-    /// Starts one enumeration. Ends the search when all enumerations finish (R63). Creates a match log per
+    /// Starts one enumeration. When all running enumerations finish, starts the next waiting root, or ends the search
+    /// when no root is waiting (R63, FR-438). Creates a match log per
     /// enumeration and registers it in the ledger; discards the whole ledger when the search stops (R2, R3).
     private func startSearchStream(in root: URL, matching pattern: SearchPattern, matchesRoot: Bool = false) {
         let generation = navigationGeneration
@@ -386,6 +398,10 @@ public final class BrowserModel {
             guard let self, !Task.isCancelled, generation == self.navigationGeneration else { return }
             self.activeSearchStreams -= 1
             guard self.activeSearchStreams == 0 else { return }
+            if let next = self.searchRootPlan.next(), let pattern = self.searchPattern {
+                self.startSearchStream(in: next, matching: pattern)
+                return
+            }
             self.listing.search?.phase = .finished
             self.rebuildListing()
         }
@@ -464,9 +480,15 @@ public final class BrowserModel {
             updated.archive = ArchiveLocation(archive: archive, directory: location.directory)
             changed = true
         }
-        let previousRoot = updated.search?.root
-        if let root = previousRoot, let rebasedRoot = renamed.rebase(root) {
-            updated.search?.root = rebasedRoot
+        let previousRoots = updated.search?.roots ?? []
+        var rootsChanged = false
+        let rebasedRoots = previousRoots.map { root -> URL in
+            guard let rebased = renamed.rebase(root) else { return root }
+            rootsChanged = true
+            return rebased
+        }
+        if rootsChanged {
+            updated.search?.roots = rebasedRoots
             changed = true
         }
 
@@ -514,23 +536,29 @@ public final class BrowserModel {
         // During a search, a rename below the root matters for results that arrive later even when it does not affect
         // displayed rows. Whether the folder was already matched determines whether the new location is matched as the
         // root itself (EC-94, R2, R3).
-        var additionalSearchRoot: URL?
-        var additionalMatchesRoot = false
-        if listing.search?.phase == .searching, let previousRoot {
-            if let rebasedRoot = renamed.rebase(previousRoot) {
-                // Renamed the root itself or an ancestor. Enumerate the new root again because the root is not a row.
+        // Roots that have not started enumerating only take the new path; their enumeration sees the new name by itself
+        // (FR-440, research.md R4).
+        var additionalSearches: [(root: URL, matchesRoot: Bool)] = []
+        if listing.search?.phase == .searching, !previousRoots.isEmpty {
+            let waiting = Set(searchRootPlan.pending.map(SearchPath.normalized))
+            let insideWaitingRoot = searchRootPlan.contains(oldURL)
+            searchRootPlan.rebase(renamed)
+            let started = previousRoots.filter { !waiting.contains(SearchPath.normalized($0)) }
+            let renamedRoots = started.compactMap { renamed.rebase($0) }
+            if !renamedRoots.isEmpty {
+                // Renamed a root itself or an ancestor. Enumerate the new root again because the root is not a row.
                 searchLedger.recordRename(renamed, visited: true)
-                additionalSearchRoot = rebasedRoot
-            } else if RenamedFolder(from: previousRoot, to: previousRoot).rebase(oldURL) != nil {
-                // A folder below the root. Enumerate only the folder's new location.
+                additionalSearches = renamedRoots.map { (root: $0, matchesRoot: false) }
+            } else if !insideWaitingRoot,
+                      started.contains(where: { RenamedFolder(from: $0, to: $0).rebase(oldURL) != nil }) {
+                // A folder below a started root. Enumerate only the folder's new location.
                 let visited = searchLedger.hasVisited(oldURL)
                 searchLedger.recordRename(renamed, visited: visited)
-                additionalSearchRoot = newURL
-                additionalMatchesRoot = !visited
+                additionalSearches = [(root: newURL, matchesRoot: !visited)]
             }
         }
 
-        guard changed || filesChanged || selectionChanged || additionalSearchRoot != nil else { return }
+        guard changed || filesChanged || selectionChanged || !additionalSearches.isEmpty else { return }
         invalidatePendingTrashSelection()
 
         let folderChanged = updated.folder != listing.folder
@@ -577,8 +605,10 @@ public final class BrowserModel {
             }
         }
 
-        if let additionalSearchRoot, let pattern = searchPattern {
-            startSearchStream(in: additionalSearchRoot, matching: pattern, matchesRoot: additionalMatchesRoot)
+        if let pattern = searchPattern {
+            for search in additionalSearches {
+                startSearchStream(in: search.root, matching: pattern, matchesRoot: search.matchesRoot)
+            }
         }
         // A folder row whose new name no longer matches the name filter is hidden, so it leaves the selection (EC-250).
         // A listing that is still loading has no rows yet, so it would drop the whole selection.
@@ -1217,6 +1247,7 @@ public final class BrowserModel {
         movedSearchPaths.removeAll()
         pendingSearchTreeSyncID = nil
         activeSearchStreams = 0
+        searchRootPlan.removeAll()
         searchResultsByFolder.removeAll()
         previewGeneration += 1
         previewTask?.cancel()
@@ -1618,8 +1649,8 @@ public final class BrowserModel {
         guard !targets.isEmpty else { return }
 
         let generation = navigationGeneration
-        // `listing` belongs to the main actor, so read the root before the detached task.
-        let searchRoot = listing.search?.root
+        // `listing` belongs to the main actor, so read the roots before the detached task.
+        let search = listing.search
         // Reads the content version together with the existence check, so results replaced at the same path are
         // refreshed like rows of a folder listing (FR-232, research.md R6).
         let (missing, versions, removedScopes) = await Task.detached(priority: .userInitiated) {
@@ -1637,7 +1668,9 @@ public final class BrowserModel {
             var known: [String: Bool] = [:]
             var removedScopes = Set<String>()
             for url in missing {
-                let scope = SearchRemovalScope.topmostMissing(url, root: searchRoot, known: &known) { candidate in
+                // Stop at the root that contains the result, so a missing root removes only its own results (FR-440).
+                let root = search?.root(containing: url)
+                let scope = SearchRemovalScope.topmostMissing(url, root: root, known: &known) { candidate in
                     FileManager.default.fileExists(atPath: candidate.path)
                 }
                 removedScopes.insert(scope.standardizedFileURL.path)
