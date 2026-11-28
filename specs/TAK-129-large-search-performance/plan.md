@@ -68,6 +68,8 @@
 
 ### 1. 検索中の追加（FR-085（変更）・FR-443。research.md R2・R3）
 
+- **実装中の変更**: 下の「ためてまとめて処理する」形は、UI スレッドの止まりが悪化したため、結果は届くたびに処理して画面の一覧への反映だけを
+  まとめる形（`unlistedSearchResults`）に変えた（research.md R3、data-model.md）
 - `BrowserModel.appendSearchResults` は、届いた結果を `pendingSearchResults` にためる。反映の時刻になったら、ためた結果を
   `allFiles` の末尾へ足す（`sortedMerge` を使わない）
 - 種類フィルタ・zip の表示・名前の絞り込みは、足す分だけに適用して `listing.files` の末尾へ足す（全件の `rebuildListing` をしない）
@@ -159,7 +161,7 @@ Sources/FixtureKit/FixtureSets.swift  # 5万件の階層（largeSearch）
 Sources/make-fixtures/main.swift      # --large-search の選択肢
 
 Sources/FolzioApp/FileList/
-├── ThumbnailModeView.swift           # 差分の挿入、itemSize、検索中の先読みの停止と要求の取り消し、終了時のスクロール
+├── ThumbnailModeView.swift           # 差分の挿入、検索中の先読みの停止と要求の取り消し、終了時のスクロール、要求の待ち（3c）。itemSize は取りやめ
 └── ListModeView.swift                # 差分の挿入、終了時のスクロール
 
 Tests/

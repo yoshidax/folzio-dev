@@ -4,6 +4,11 @@
 
 ## BrowserModel に足す状態
 
+> **実装中の変更（2026-11-27）**: 下の表の `pendingSearchResults`（届いた結果をためて、反映の時刻にまとめて処理する）は、CI の性能テストで
+> UI スレッドの止まりが 462ms に悪化したため（research.md R3）、`unlistedSearchResults`（`Int`。`allFiles` の末尾にあって、まだ画面の一覧に
+> 出していない結果の件数）に置き換えた。結果は届くたびに索引と `allFiles` へ足し、画面の一覧への反映だけを間隔ごとにまとめる。
+> 一覧を作り直すと 0 に戻す。そのほかの状態は表のとおり
+
 | 名前 | 型 | 意味 |
 |---|---|---|
 | `pendingSearchResults` | `[MediaFile]` | 届いて、まだ一覧へ反映していない結果。反映の時刻に `allFiles` の末尾へ足す |
@@ -35,6 +40,15 @@ startSearch
             ├─ kindFilesRevision が同じ → 適用。phase = finished、isSearchOrderPending = false、searchOrderGeneration を進める
             └─ 変わった → 並べ替えをやり直す
 ```
+
+## 縮小画像の保持と要求（計測の後に追加。research.md R12）
+
+| 名前 | 場所 | 意味 |
+|---|---|---|
+| `ThumbnailMemoryCache` | Core（`ThumbnailProvider` が持つ） | 上限 128MB。超えたら最後に使ったのが古いものから捨てる。メモリの不足の通知で空にする（FR-447） |
+| `PlainFileURL.make(_:)` | Core（`FileNameSearcher`・`DirectoryLister`） | 列挙が返す URL を、同じバイト列から作り直す。`==` とハッシュは元と一致する |
+| `thumbnailRequestDelay` | App（`ThumbnailModeView`） | 項目の表示・先読み・検索中のスクロールによる要求を待たせる時間（150ms。FR-446・A-275） |
+| `pendingRequests` | App（`ThumbnailModeView`） | 待っている要求。範囲から外れたら取り消し、待ち終えたときに範囲に残っているものだけ要求する |
 
 ## 表示側の判定
 

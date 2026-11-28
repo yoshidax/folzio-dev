@@ -178,3 +178,7 @@ T016（ThumbnailModeView のテスト）と T017（ListModeView のテスト）�
 2. Phase 2 で Core の追加と終了時の並べ替えを入れ、CI で (b)(c) の改善を確かめる（最も効果が大きい見込み。research.md R1）
 3. Phase 3 で列挙を速くし、Phase 4 で表示側を入れる
 4. 保守者の GUI 確認（T024）で、3 秒の基準を確かめる。満たさない場合は、計測の値をもとに保守者と次の手を決める
+
+## Phase 7: Convergence
+
+- [X] T039 `specs/TAK-129-large-search-performance/data-model.md` と `plan.md` に、実装中に変えた点の注記を足す（結果は届くたびに処理して画面への反映だけをまとめる `unlistedSearchResults`、`itemSize` への置き換えの取りやめ、`ThumbnailMemoryCache`・`PlainFileURL`・150ms の要求の待ち）per plan: 1. 検索中の追加 (partial)
