@@ -205,6 +205,7 @@ struct SearchThumbnailRequestTests {
         let fixture = try makeFixture(count: 2_000)
         defer { fixture.window.close() }
         let view = ThumbnailModeView(model: fixture.model, provider: fixture.provider)
+        view.thumbnailRequestDelay = .zero
         install(view, in: fixture.window)
         let collectionView = try #require(descendant(NSCollectionView.self, in: view))
         let scrollView = try #require(descendant(NSScrollView.self, in: view))
@@ -254,6 +255,7 @@ struct SearchThumbnailRequestTests {
         let fixture = try makeFixture(count: 600)
         defer { fixture.window.close() }
         let view = ThumbnailModeView(model: fixture.model, provider: fixture.provider)
+        view.thumbnailRequestDelay = .zero
         install(view, in: fixture.window)
         let collectionView = try #require(descendant(NSCollectionView.self, in: view))
         let scrollView = try #require(descendant(NSScrollView.self, in: view))
@@ -288,6 +290,7 @@ struct SearchThumbnailRequestTests {
         let fixture = try makeFixture(count: 300)
         defer { fixture.window.close() }
         let view = ThumbnailModeView(model: fixture.model, provider: fixture.provider)
+        view.thumbnailRequestDelay = .zero
         install(view, in: fixture.window)
         let collectionView = try #require(descendant(NSCollectionView.self, in: view))
 
@@ -342,6 +345,7 @@ struct SearchThumbnailRequestTests {
         defer { fixture.window.close() }
         let provider = try CachingProvider()
         let view = ThumbnailModeView(model: fixture.model, provider: provider)
+        view.thumbnailRequestDelay = .zero
         install(view, in: fixture.window)
         let collectionView = try #require(descendant(NSCollectionView.self, in: view))
         let scrollView = try #require(descendant(NSScrollView.self, in: view))
@@ -392,5 +396,40 @@ struct SearchThumbnailRequestTests {
         let cell = try #require(tableView.view(atColumn: column, row: 0, makeIfNecessary: false))
         let imageView = try #require(descendant(VideoBadgeImageView.self, in: cell))
         #expect(imageView.image != nil)
+    }
+
+    @Test("Items that only pass by while scrolling fast get no thumbnail request; items that stay get one (FR-439)")
+    func passingItemsGetNoRequest() async throws {
+        let fixture = try makeFixture(count: 2_000)
+        defer { fixture.window.close() }
+        let view = ThumbnailModeView(model: fixture.model, provider: fixture.provider)
+        view.thumbnailRequestDelay = .milliseconds(150)
+        install(view, in: fixture.window)
+        let collectionView = try #require(descendant(NSCollectionView.self, in: view))
+        let scrollView = try #require(descendant(NSScrollView.self, in: view))
+
+        await fixture.model.selectFolder(fixture.folder)
+        #expect(await wait { fixture.model.listing.files.count == 2_000 })
+        // Lay out without waiting long enough for the first screen's requests to become due.
+        view.layoutSubtreeIfNeeded()
+
+        // Scroll through the list quickly, as when dragging the scroll bar: each position is shown for a few ms.
+        var passed = Set<URL>()
+        for step in 1...20 {
+            scrollView.contentView.scroll(to: NSPoint(x: 0, y: CGFloat(step) * 1_000))
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+            view.layoutSubtreeIfNeeded()
+            passed.formUnion(visibleURLs(collectionView, fixture.model))
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        let stopped = visibleURLs(collectionView, fixture.model)
+        #expect(!stopped.isEmpty)
+
+        // Items that stayed in view are requested once the delay has passed.
+        #expect(await wait { stopped.isSubset(of: Set(fixture.provider.requested)) })
+        let requested = Set(fixture.provider.requested)
+        let passedOnly = passed.subtracting(stopped)
+        #expect(!passedOnly.isEmpty)
+        #expect(requested.isDisjoint(with: passedOnly), "Requested \(requested.intersection(passedOnly).count) items that only passed by")
     }
 }

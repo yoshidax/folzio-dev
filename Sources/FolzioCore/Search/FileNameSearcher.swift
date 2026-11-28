@@ -123,7 +123,9 @@ public struct FileNameSearcher: FileNameSearching {
     /// compares as the same place in history and result organization (R38).
     private static func rebaser(for root: URL) -> @Sendable (URL) -> URL {
         let rootPath = SearchPath.normalized(root)
-        guard rootPath != "/" else { return { $0 } }
+        // Result URLs not rebased to another form are rebuilt from their own bytes, so they are cheap to hash and
+        // compare on the main thread (PlainFileURL, TAK-129).
+        guard rootPath != "/" else { return { PlainFileURL.make($0) } }
 
         // Accept the original root form (`/var/...`), the resolved form (`/private/var/...`), and forms with
         // `/private` added or removed.
@@ -141,14 +143,14 @@ public struct FileNameSearcher: FileNameSearching {
         }
         prefixes.remove(rootPath + "/")
         let ordered = prefixes.sorted { $0.count > $1.count }
-        guard !ordered.isEmpty else { return { $0 } }
+        guard !ordered.isEmpty else { return { PlainFileURL.make($0) } }
 
         return { url in
             let path = url.path
             for prefix in ordered where path.hasPrefix(prefix) {
                 return URL(fileURLWithPath: rootPath + "/" + path.dropFirst(prefix.count), isDirectory: url.hasDirectoryPath)
             }
-            return url
+            return PlainFileURL.make(url)
         }
     }
 

@@ -108,6 +108,14 @@
 - `ListModeView`: 行頭の縮小画像のセルを設定するときに保持している縮小画像があれば、それを設定し、要求しない
 - 保持の上限（128MB）と、作る規則（先読み・同時実行数・検索中の規則）は変えない
 
+### 3c. 計測で見つかった原因の対策（FR-439・FR-440・SC-255。research.md R12。保守者の決定、2026-11-28）
+
+- 列挙が返す URL は、ハッシュと比較のたびにファイルシステムの表現からパスを作り直して遅いので、列挙の側（UI スレッドの外）で、属性を読んだ後に
+  同じバイト列から作り直す（`PlainFileURL`）。`FileNameSearcher` と `DirectoryLister.mediaFiles(in:)` の行に使う
+- 縮小画像の保持を `NSCache` から `ThumbnailMemoryCache`（最後に使ったのが古いものから捨てる、上限 128MB、メモリ不足の通知で空にする）に置き換える
+- `ThumbnailModeView` は、項目の表示・先読み・検索中のスクロールによる要求を 150ms 待たせ、範囲に残った項目だけ要求する。保持している縮小画像は
+  待たずに表示する。サムネイルの大きさの変更・内容の置き換えは待たない
+
 ### 4. 列挙を速くする（SC-249。research.md R7）
 
 - `FileNameSearcher` の列挙で、行に使う属性（作成日・変更日・サイズ・`FileContentVersion` のキー）も前もって読む（`includingPropertiesForKeys`）

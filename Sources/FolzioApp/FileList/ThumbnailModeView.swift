@@ -453,6 +453,13 @@ final class ThumbnailModeView: NSView {
     private var selectionAnchor: Int?
     private var keepSelectionAnchorOnModelChange = false
     private var requests: [URL: ThumbnailRequest] = [:]
+    /// How long an item must stay shown, or stay in the prefetch range, before its thumbnail is requested. Items that
+    /// only pass by while dragging the scroll bar or holding an arrow key get no request (FR-439, TAK-129). Tests set
+    /// zero to request at once.
+    var thumbnailRequestDelay: Duration = .milliseconds(150)
+    /// Requests waiting for `thumbnailRequestDelay`, with the time each became due.
+    private var pendingRequests: [URL: (file: MediaFile, due: ContinuousClock.Instant, reason: String)] = [:]
+    private var pendingRequestTask: Task<Void, Never>?
     /// `BrowserModel.searchOrderGeneration` already applied (FR-437).
     private var lastSearchOrderGeneration: Int
 
@@ -988,6 +995,49 @@ final class ThumbnailModeView: NSView {
             apply(kept, for: file.url)
             return
         }
+        // Items shown or prefetched while scrolling wait, so items that only pass by get no request (FR-439). Size
+        // changes and replaced content still request at once.
+        if Self.deferredReasons.contains(reason), thumbnailRequestDelay > .zero {
+            deferRequest(for: file, reason: reason)
+            return
+        }
+        startRequest(for: file, pointSize: pointSize, scale: scale, reason: reason)
+    }
+
+    /// Paths whose requests wait for `thumbnailRequestDelay`.
+    private static let deferredReasons: Set<String> = ["item", "prefetch", "scroll"]
+
+    private func deferRequest(for file: MediaFile, reason: String) {
+        guard pendingRequests[file.url] == nil else { return }
+        pendingRequests[file.url] = (file, ContinuousClock.now + thumbnailRequestDelay, reason)
+        schedulePendingRequests()
+    }
+
+    private func schedulePendingRequests() {
+        guard pendingRequestTask == nil, let due = pendingRequests.values.map(\.due).min() else { return }
+        pendingRequestTask = Task { [weak self] in
+            try? await Task.sleep(until: due, clock: .continuous)
+            guard let self, !Task.isCancelled else { return }
+            self.pendingRequestTask = nil
+            self.startDueRequests()
+        }
+    }
+
+    /// Requests thumbnails for pending items that are still shown (or still in the prefetch range) once they are due.
+    private func startDueRequests() {
+        let now = ContinuousClock.now
+        let due = pendingRequests.filter { $0.value.due <= now }
+        for (url, pending) in due {
+            pendingRequests[url] = nil
+            // A shown item that left the view no longer needs a thumbnail. A prefetch that left the prefetch range
+            // was already removed by `cancelPrefetchingForItemsAt` (through `cancelRequest`).
+            if pending.reason != "prefetch", !isVisible(url: url) { continue }
+            requestThumbnail(for: pending.file, reason: "due-\(pending.reason)")
+        }
+        schedulePendingRequests()
+    }
+
+    private func startRequest(for file: MediaFile, pointSize: Double, scale: Double, reason: String) {
         let requestedName = file.name
         PerformanceLog.logger.debug(
             "[list] request \(requestedName, privacy: .private(mask: .hash)) reason=\(reason, privacy: .public)"
@@ -1041,6 +1091,7 @@ final class ThumbnailModeView: NSView {
     }
 
     private func cancelRequest(for url: URL, reason: String) {
+        pendingRequests[url] = nil
         guard let request = requests[url] else { return }
         let name = url.lastPathComponent
         PerformanceLog.logger.debug("[list] cancel \(name, privacy: .private(mask: .hash)) reason=\(reason, privacy: .public)")

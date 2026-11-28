@@ -124,7 +124,20 @@ CI で確かめる（Cloud では Swift を実行できない）。性能テス�
 - [X] T033 プレビューと UI スレッドのログ: `BrowserModel` に選択の処理時間とデコードの時間、`PreviewViewController` に表示、
   `ThumbnailModeView`・`ListModeView` の `applyModel` とスライドショーの可否の確認の時間（2ms 以上）、
   `MainThreadStallMonitor`（`defaults` で有効にしたときだけ 10ms ごとに UI スレッドの止まりを測り、50ms 以上を記録）
-- [ ] T034 [MANUAL] 保守者が quickstart.md の「計測のためのログ」の手順でログを取り、送ってもらう。ログから原因を読み、対策を保守者と決める
+- [X] T034 [MANUAL] 保守者が quickstart.md の「計測のためのログ」の手順でログを取り、送ってもらう。ログから原因を読み、対策を保守者と決める
+  （2026-11-28、2 回計測した。結果と対策は research.md R12）
+
+---
+
+## Phase 4d: 計測で見つかった原因の対策（保守者の決定、2026-11-28）
+
+- [X] T035 `Sources/FolzioCore/FileSystem/PlainFileURL.swift` を追加し、`FileNameSearcher` の結果の URL と `DirectoryLister.mediaFiles(in:)` の行の URL を、
+  列挙の側で同じバイト列から作り直す。テスト `Tests/FolzioCoreTests/PlainFileURLTests.swift` と、5万件の性能テストに選択の位置の計算の時間を足す（SC-255）
+- [X] T036 `Sources/FolzioCore/Imaging/ThumbnailMemoryCache.swift` を追加し、`ThumbnailProvider` の保持を `NSCache` から置き換える（FR-440）。
+  テスト `Tests/FolzioCoreTests/ThumbnailMemoryCacheTests.swift`
+- [X] T037 `ThumbnailModeView` で、項目の表示・先読み・検索中のスクロールによる要求を `thumbnailRequestDelay`（150ms）待ち、範囲に残っている項目だけ
+  要求する（FR-439）。テスト `SearchThumbnailRequestTests.passingItemsGetNoRequest`
+- [ ] T038 [MANUAL] 保守者が quickstart.md の「計測の後の確認」を行い、報告する
 
 ---
 

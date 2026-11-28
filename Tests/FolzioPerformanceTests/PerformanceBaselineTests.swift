@@ -781,6 +781,19 @@ struct PerformanceBaselineTests {
             "The settled listing follows the current sort order"
         )
         #expect(elapsed < .seconds(3), "The search settles within 3 seconds (measured: \(elapsed))")
+
+        // Changing the selection maps the selected URLs to rows of every listed URL; with URLs as returned by the
+        // enumeration, this took about 580 ms for 47,925 rows on the main thread (TAK-129, research.md R12).
+        let rowURLs = files.map(\.url)
+        let selectionStart = clock.now
+        let indexes = SelectionIndex.indexes(of: [rowURLs[rowURLs.count / 2]], in: rowURLs)
+        let selectionElapsed = clock.now - selectionStart
+        print("[perf] selection index over 25,000 search results: \(selectionElapsed)")
+        #expect(indexes == IndexSet(integer: rowURLs.count / 2))
+        #expect(
+            selectionElapsed < .milliseconds(50),
+            "Mapping a selection to search result rows takes at most 50 ms (measured: \(selectionElapsed))"
+        )
         #expect(maxGap < .milliseconds(100), "The main thread is never blocked for 100 ms or more (measured: \(maxGap))")
     }
 
