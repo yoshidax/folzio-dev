@@ -34,6 +34,9 @@
   - `[perf] main thread max gap during 50,000-file search: 0.100089458 seconds`（実装の前 87ms。SC-255 の 100ms 未満をわずかに超える）
   - `[perf] batch 256 into 50,000: 0.010413041 seconds`（実装の前 75ms。SC-257 の 50ms 以内）
   - `[perf] search 10,000 files: 0.199744833 seconds`（実装の前 0.54 秒。SC-016 の列挙は遅くなっていない。T015）
+- 計測で見つかった原因の対策と master の取り込みの後の値: run 46137315967（2026-11-28、8a7ca82）
+  - `[perf] model search 50,000 files: 2.50887775 seconds`、`[perf] main thread max gap during 50,000-file search: 0.063465958 seconds`、
+    `[perf] selection index over 25,000 search results: 0.027949792 seconds`、`[perf] batch 256 into 50,000: 0.011930708 seconds`
 - 途中の値: run 46020819649（5a19af7、結果をまとめて処理していた版）では UI スレッドの最大の空白が 462ms だった（R3 の実装中の修正）
 - 未確認: UI スレッドの空白の 100ms 前後の原因（終了時の並べ替えの適用か、結果ごとの処理か）。表示側を含む値は保守者の手元のログで測る（R11）
 

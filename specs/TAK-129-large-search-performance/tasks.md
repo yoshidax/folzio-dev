@@ -144,9 +144,9 @@ CI で確かめる（Cloud では Swift を実行できない）。性能テス�
 ## Phase 5: 検証
 
 - [X] T022 Cloud で `scripts/dev/check-all.sh` を実行し、終了コード 0 を確かめる（`scripts/dev/check-english-comments.sh` を含む）
-- [ ] T023 CI の通常のテストと性能テストのログを確かめ、T003 の (a)〜(c) と T012 の実装の前後の値を `specs/TAK-129-large-search-performance/research.md` の R1 に追記する（PR にも記載する。憲章の原則 II）
-- [ ] T024 [MANUAL] 保守者が quickstart.md の「保守者の GUI 確認」の 1〜12 を行い、合否と時間を報告する。報告を `specs/TAK-129-large-search-performance/checklists/validation.md` に記録する（SC-253〜SC-256・SC-258、US102-AS1〜AS9、A-274）
-- [ ] T025 [MANUAL] 保守者が起動スモーク（`scripts/make-app.sh` の後に `open .build/Folzio.app` で 3 ペインが表示される）を行い、報告する
+- [X] T023 CI の通常のテストと性能テストのログを確かめ、T003 の (a)〜(c) と T012 の実装の前後の値を `specs/TAK-129-large-search-performance/research.md` の R1 に追記する（PR にも記載する。憲章の原則 II）
+- [X] T024 [MANUAL] 保守者が quickstart.md の「保守者の GUI 確認」の 1〜12 を行い、合否と時間を報告する。報告を `specs/TAK-129-large-search-performance/checklists/validation.md` に記録する（SC-253〜SC-256・SC-258、US102-AS1〜AS9、A-274）（2026-11-28、8a7ca82 の版で保守者が同等のテストを行い問題なし。checklists/validation.md）
+- [X] T025 [MANUAL] 保守者が起動スモーク（`scripts/make-app.sh` の後に `open .build/Folzio.app` で 3 ペインが表示される）を行い、報告する（2026-11-28、8a7ca82 の版。checklists/validation.md）
 
 ---
 
