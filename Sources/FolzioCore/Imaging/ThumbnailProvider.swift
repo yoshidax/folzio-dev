@@ -142,8 +142,12 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
             )
             return image
         } catch {
+            // Log only the error domain and code: the description can contain the file's full path.
+            let nsError = error as NSError
+            let domain = nsError.domain
+            let code = nsError.code
             PerformanceLog.logger.debug(
-                "[thumb] not made \(url.lastPathComponent, privacy: .private(mask: .hash)) px=\(pixelSize) after \(PerformanceLog.milliseconds(since: start), format: .fixed(precision: 1)) ms: \(String(describing: error), privacy: .public)"
+                "[thumb] not made \(url.lastPathComponent, privacy: .private(mask: .hash)) px=\(pixelSize) after \(PerformanceLog.milliseconds(since: start), format: .fixed(precision: 1)) ms: \(domain, privacy: .public) \(code)"
             )
             return nil
         }

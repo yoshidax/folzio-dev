@@ -804,27 +804,41 @@ final class ThumbnailModeView: NSView {
         // For a hidden mode, defer reloading and selection updates until it is shown (viewDidUnhide) (SC-015).
         guard !isHidden else { return }
         let start = ContinuousClock.now
+        // Time of each step and the path taken, for the debug log (TAK-129 measurement).
+        var steps: [(String, Double)] = []
+        var stepStart = start
+        func step(_ name: String) {
+            steps.append((name, PerformanceLog.milliseconds(since: stepStart)))
+            stepStart = ContinuousClock.now
+        }
+        var path = "none"
         defer {
             let elapsed = PerformanceLog.milliseconds(since: start)
             if elapsed >= 2 {
                 let rows = model.listing.files.count
+                let detail = steps.map { "\($0.0)=\(String(format: "%.1f", $0.1))" }.joined(separator: " ")
                 PerformanceLog.logger.debug(
-                    "[main] thumbnail applyModel \(elapsed, format: .fixed(precision: 1)) ms rows=\(rows)"
+                    "[main] thumbnail applyModel \(elapsed, format: .fixed(precision: 1)) ms rows=\(rows) path=\(path, privacy: .public) \(detail, privacy: .public)"
                 )
             }
         }
         let files = model.listing.files
         let urls = files.map(\.url)
+        step("urls")
+        let urlsChanged = urls != lastURLs
+        step("compare")
 
-        if urls != lastURLs {
+        if urlsChanged {
             let appended = appendedRows(from: lastURLs, to: urls)
             lastURLs = urls
             lastContentChangeGeneration = model.contentChangeGeneration
             if let appended {
                 // Rows were only added at the end (a search adding results; FR-085). Keep the visible items and their
                 // thumbnails instead of reloading them (FR-436).
+                path = "insert"
                 collectionView.insertItems(at: Set(appended.map { IndexPath(item: $0, section: 0) }))
             } else {
+                path = "reload"
                 pruneRequests(keeping: Set(urls))
                 collectionView.reloadData()
                 flowLayout.invalidateLayout()
@@ -835,12 +849,15 @@ final class ThumbnailModeView: NSView {
                 }
             }
             needsLayout = true
+            step("reload")
         } else if lastContentChangeGeneration != model.contentChangeGeneration {
+            path = "contentChange"
             // Several changes may have happened while hidden; then only the latest set is known, so refresh all
             // visible items.
             let missedChanges = model.contentChangeGeneration &- lastContentChangeGeneration != 1
             lastContentChangeGeneration = model.contentChangeGeneration
             refreshReplacedThumbnails(files: files, all: missedChanges)
+            step("refresh")
         }
 
         let selectedPaths = Set(
@@ -848,12 +865,14 @@ final class ThumbnailModeView: NSView {
                 IndexPath(item: $0, section: 0)
             }
         )
+        step("selIndex")
 
         isApplyingSelection = true
         if collectionView.selectionIndexPaths != selectedPaths {
             collectionView.selectionIndexPaths = selectedPaths
         }
         isApplyingSelection = false
+        step("setSel")
 
         let revealTrashSelection = lastTrashSelectionGeneration != model.trashSelectionGeneration
         lastTrashSelectionGeneration = model.trashSelectionGeneration
@@ -866,10 +885,12 @@ final class ThumbnailModeView: NSView {
         } else {
             selectionAnchor = nil
         }
+        step("anchor")
         if revealTrashSelection, let focused = model.selection.focused,
            let index = urls.firstIndex(of: focused) {
             scrollItemIntoView(at: index)
         }
+        step("reveal")
 
         if lastSearchOrderGeneration != model.searchOrderGeneration {
             // The finished search results were sorted: show the focused item, or the top of the list (FR-437).
