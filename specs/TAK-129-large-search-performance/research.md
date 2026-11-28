@@ -133,6 +133,10 @@
 - ログ: subsystem `local.folzio.Folzio`・category `Performance`、debug レベル（保存されず、`log stream` で見るときだけ出る）。
   ファイル名はハッシュで出す。行の頭の印で分ける: `[thumb]`（作成・保持・破棄）、`[list]`（一覧からの要求・取り消し・表示）、
   `[preview]`（選択・デコード・表示）、`[main]`（`applyModel` などの時間と UI スレッドの止まり）
+- 実装中の修正（2026-11-28、ローカル）: 保持からの破棄を数えるために `NSCache.delegate`（`NSCacheDelegate`）を設定したところ、作った縮小画像が
+  保持から返らなくなり、`ThumbnailProviderTests` の 3 件が手元で失敗した（`delegate` の行を外すと 12 件すべて成功）。理由は調べていない。
+  `delegate` は使わず、作った件数とバイト数の合計だけを記録する。同じファイル（同じハッシュ）の `[thumb] made` が 2 回以上出れば、
+  保持から捨てられて作り直したと読む
 
 ## R9 計測の手順
 
