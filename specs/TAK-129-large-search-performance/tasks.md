@@ -152,7 +152,7 @@ CI で確かめる（Cloud では Swift を実行できない）。性能テス�
 
 ## Phase 6: 仕様の反映（PR の最後）
 
-- [ ] T026 `git merge origin/master` で最新の `master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行する。spec.md の「反映先」の項目を `specs/product/search.md`（と `README.md` の件数）へ反映し、検索中の並び順に触れているほかの記述を `specs/product/` から探して直す。`python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を再実行し、feature の spec.md の冒頭に移行済み・凍結の注記を入れる。差分を保守者に示し、承認後にコミットする
+- [X] T026 `git merge origin/master` で最新の `master` を取り込み、`scripts/dev/check-spec-ids.sh` を実行する。spec.md の「反映先」の項目を `specs/product/search.md`（と `README.md` の件数）へ反映し、検索中の並び順に触れているほかの記述を `specs/product/` から探して直す。`python3 scripts/dev/check-spec-format.py` と `scripts/dev/check-spec-ids.sh` を再実行し、feature の spec.md の冒頭に移行済み・凍結の注記を入れる。差分を保守者に示し、承認後にコミットする
 
 ---
 
