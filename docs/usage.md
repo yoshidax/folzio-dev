@@ -469,9 +469,9 @@ The toolbar search field filters the list you are viewing by name. To look throu
 
 - Results appear in the file list as a single list that mixes files and folders.
   - While searching, they are added to the end of the list in the order they are found.
-  - When the search finishes, they are sorted by the current sort. Clicking a column header during a search sorts the results so far right away.
+  - When the search finishes, they are sorted by the current sort. A selected item stays in view.
   - When sorting by name, folders are grouped first.
-  - You can keep working while it searches.
+  - You can keep working while it searches. Changing the sort while searching sorts the results found so far.
 - List view gets a "Location" (場所) column, the folder relative to the start folder.
   It can also be used for sorting.
 - Thumbnail view shows the location as a tooltip.
