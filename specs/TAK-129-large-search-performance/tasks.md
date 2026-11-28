@@ -137,7 +137,7 @@ CI で確かめる（Cloud では Swift を実行できない）。性能テス�
   テスト `Tests/FolzioCoreTests/ThumbnailMemoryCacheTests.swift`
 - [X] T037 `ThumbnailModeView` で、項目の表示・先読み・検索中のスクロールによる要求を `thumbnailRequestDelay`（150ms）待ち、範囲に残っている項目だけ
   要求する（FR-439）。テスト `SearchThumbnailRequestTests.passingItemsGetNoRequest`
-- [ ] T038 [MANUAL] 保守者が quickstart.md の「計測の後の確認」を行い、報告する
+- [X] T038 [MANUAL] 保守者が quickstart.md の「計測の後の確認」を行い、報告する（2026-11-28、全項目 PASS。checklists/validation.md）
 
 ---
 
