@@ -346,6 +346,9 @@
 | シート（補足説明） | 下記 | 下記 |
 | シート | 検索キーワード（ラベル・プレースホルダ・アクセシビリティ） | Keyword |
 | シート | 検索起点ディレクトリ（ラベル・アクセシビリティ） | Search In |
+| シート（ワイルドカードの説明） | 下記 | 下記 |
+| シート | 起点を追加 / 削除 | Add Folder / Remove |
+| シート（行の番号付きのアクセシビリティ） | 下記 | 下記 |
 | シート | 選択… / 標準のフォルダ選択パネルを開きます（ヘルプ） | Choose… / Opens the standard folder selection panel |
 | シート | キャンセル / 検索 | Cancel / Search |
 | シート | エラー（アクセシビリティ） | Error |
@@ -355,8 +358,11 @@
 | 起点の検証 | / または ~ で始まるパスを入力してください | Enter a path that begins with / or ~ |
 | 起点の検証 | フォルダが見つかりません / フォルダではありません / フォルダを読み取れません | Folder not found / Not a folder / Can’t read the folder |
 | 起点の検証 | 利用できるフォルダが見つかりません | No available folder was found |
+| 起点の検証（行の番号付き） | {n} 番目の検索起点: {理由} | Folder {n}: {reason} |
 | 検索バー（完了） | 「{キーワード}」の検索結果 — {フォルダ名} — {件数の句} | Results for “{キーワード}” — {フォルダ名} — {件数の句} |
 | 検索バー（検索中） | 「{キーワード}」の検索結果 — {フォルダ名} — {件数の句} 検索中… | Results for “{キーワード}” — {フォルダ名} — {件数の句} Searching… |
+| 検索バー（複数の起点） | {フォルダ名} ほか {n} か所 | {folder} and {n} more |
+| 検索バー（ツールチップ） | 下記 | 下記 |
 | 件数の句 | {N} 件 | {N} item / {N} items（`count`） |
 | 件数の句（上限で打ち切り） | {全件} 件中 {表示} 件を表示 | Showing {表示} of {全件} item / items（`count` は全件） |
 
@@ -366,7 +372,22 @@
   （FR-394（search.md））。
   - 「検索起点ディレクトリとその下のすべてのサブフォルダから、名前が一致するファイルとフォルダを探します。」
 - **シート（補足説明）**（英語）: 次の文とする。
-  - `Finds files and folders whose names match, in the folder you search in and all of its subfolders.`
+  - `Finds files and folders whose names match, in the folders you search in and all of their subfolders.`
+- **シート（ワイルドカードの説明）**（日本語）: 検索キーワード欄の直下に表示する次の文とし、
+  キーワード欄のアクセシビリティの説明（ヘルプ）で補足説明に続けて加える（FR-441（search.md））。
+  - 「* は0文字以上の任意の文字、? は任意の1文字に一致します。* か ? を含むときは、名前全体と一致するものを探します。」
+- **シート（ワイルドカードの説明）**（英語）: 次の文とする。
+  - `* matches any number of characters and ? matches one character. With * or ?, the whole name must match.`
+- **シート（行の番号付きのアクセシビリティ）**（日本語）: 起点の行が2つ以上のとき、各行の起点欄・「選択…」・「削除」の
+  ラベルを「検索起点ディレクトリ {n}」「検索起点 {n} を選択」「検索起点 {n} を削除」とする（FR-435（search.md））。
+  - 起点の行が1つのときは、番号のない「検索起点ディレクトリ」「選択…」「削除」とする
+  - 起点の検証の理由も、行が1つのときは番号を付けない（FR-436（search.md））
+- **シート（行の番号付きのアクセシビリティ）**（英語）: 次のとおりとする。
+  - `Search In {n}`・`Choose Folder {n}`・`Remove Folder {n}`
+- **検索バー（ツールチップ）**（日本語）: 表示中の文の後に改行し、すべての起点の絶対パスを1行ずつ示す
+  （FR-439（search.md））。
+  - パスは翻訳・変形しない（FR-147（overview.md））
+- **検索バー（ツールチップ）**（英語）: 日本語と同じ構成とする。
 
 ### 確認モーダル・ダイアログ
 

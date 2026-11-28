@@ -3,7 +3,7 @@ import Dispatch
 import Foundation
 
 /// Thumbnails kept in memory up to a byte limit. When the limit is passed, the thumbnails used longest ago are
-/// removed first, so the ones on screen most recently stay (FR-438, TAK-129 research.md R12). `NSCache` does not
+/// removed first, so the ones on screen most recently stay (FR-447, TAK-129 research.md R12). `NSCache` does not
 /// promise this order. Reading a thumbnail counts as using it. Safe to use from any thread.
 ///
 /// The cache also empties itself when the system reports memory pressure, as `NSCache` does.

@@ -234,7 +234,7 @@ final class ThumbnailItemView: NSCollectionViewItem {
         didSet { updateSelectionAppearance() }
     }
 
-    /// - Parameter thumbnail: A kept thumbnail of the file. Shown right away instead of the kind icon (FR-438).
+    /// - Parameter thumbnail: A kept thumbnail of the file. Shown right away instead of the kind icon (FR-445).
     func configure(with file: MediaFile, iconPointSize: Double, thumbnail: CGImage? = nil) {
         if isRenaming, representedURL != file.url {
             endRenaming(commit: false, restoreFocus: false)
@@ -454,13 +454,13 @@ final class ThumbnailModeView: NSView {
     private var keepSelectionAnchorOnModelChange = false
     private var requests: [URL: ThumbnailRequest] = [:]
     /// How long an item must stay shown, or stay in the prefetch range, before its thumbnail is requested. Items that
-    /// only pass by while dragging the scroll bar or holding an arrow key get no request (FR-439, TAK-129). Tests set
+    /// only pass by while dragging the scroll bar or holding an arrow key get no request (FR-446, TAK-129). Tests set
     /// zero to request at once.
     var thumbnailRequestDelay: Duration = .milliseconds(150)
     /// Requests waiting for `thumbnailRequestDelay`, with the time each became due.
     private var pendingRequests: [URL: (file: MediaFile, due: ContinuousClock.Instant, reason: String)] = [:]
     private var pendingRequestTask: Task<Void, Never>?
-    /// `BrowserModel.searchOrderGeneration` already applied (FR-437).
+    /// `BrowserModel.searchOrderGeneration` already applied (FR-444).
     private var lastSearchOrderGeneration: Int
 
     init(model: BrowserModel, provider: any ThumbnailProviding) {
@@ -841,7 +841,7 @@ final class ThumbnailModeView: NSView {
             lastContentChangeGeneration = model.contentChangeGeneration
             if let appended {
                 // Rows were only added at the end (a search adding results; FR-085). Keep the visible items and their
-                // thumbnails instead of reloading them (FR-436).
+                // thumbnails instead of reloading them (FR-443).
                 path = "insert"
                 collectionView.insertItems(at: Set(appended.map { IndexPath(item: $0, section: 0) }))
             } else {
@@ -850,7 +850,7 @@ final class ThumbnailModeView: NSView {
                 collectionView.reloadData()
                 flowLayout.invalidateLayout()
                 if isSearching {
-                    // While searching, only visible items get thumbnails (FR-435).
+                    // While searching, only visible items get thumbnails (FR-442).
                     collectionView.layoutSubtreeIfNeeded()
                     pruneRequests(keeping: visibleURLs())
                 }
@@ -900,7 +900,7 @@ final class ThumbnailModeView: NSView {
         step("reveal")
 
         if lastSearchOrderGeneration != model.searchOrderGeneration {
-            // The finished search results were sorted: show the focused item, or the top of the list (FR-437).
+            // The finished search results were sorted: show the focused item, or the top of the list (FR-444).
             lastSearchOrderGeneration = model.searchOrderGeneration
             if let focused = model.selection.focused, let index = urls.firstIndex(of: focused) {
                 scrollItemIntoView(at: index)
@@ -915,13 +915,13 @@ final class ThumbnailModeView: NSView {
         Double(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2)
     }
 
-    /// Whether a search is still running. Thumbnails are then made only for visible items (FR-435).
+    /// Whether a search is still running. Thumbnails are then made only for visible items (FR-442).
     private var isSearching: Bool {
         model.listing.search?.phase == .searching
     }
 
     /// URLs of items inside the visible rectangle. The collection view also prepares items just outside it, which
-    /// must not get thumbnails while searching (FR-435, SC-252).
+    /// must not get thumbnails while searching (FR-442, SC-256).
     private func visibleURLs() -> Set<URL> {
         let files = model.listing.files
         return Set(collectionView.indexPathsForVisibleItems().compactMap { path in
@@ -935,7 +935,7 @@ final class ThumbnailModeView: NSView {
     }
 
     /// While searching, scrolling requests thumbnails for items that came into view and cancels those for items that
-    /// left it (EC-300).
+    /// left it (EC-310).
     @objc private func visibleRangeDidChange() {
         guard isSearching, !isHidden else { return }
         let files = model.listing.files
@@ -989,13 +989,13 @@ final class ThumbnailModeView: NSView {
             for: file.url, pointSize: pointSize, scale: scale, version: file.contentVersion
         ) {
             // Already made and still kept: show it without asking for it again, whichever path asked (prefetching,
-            // scrolling, or a size change; FR-438).
+            // scrolling, or a size change; FR-445).
             let name = file.name
             PerformanceLog.logger.debug("[list] kept \(name, privacy: .private(mask: .hash)) reason=\(reason, privacy: .public)")
             apply(kept, for: file.url)
             return
         }
-        // Items shown or prefetched while scrolling wait, so items that only pass by get no request (FR-439). Size
+        // Items shown or prefetched while scrolling wait, so items that only pass by get no request (FR-446). Size
         // changes and replaced content still request at once.
         if Self.deferredReasons.contains(reason), thumbnailRequestDelay > .zero {
             deferRequest(for: file, reason: reason)
@@ -1107,7 +1107,7 @@ final class ThumbnailModeView: NSView {
 
     private func refreshVisibleThumbnails() {
         if isSearching {
-            // Only items inside the visible rectangle while searching (FR-435, EC-301). Lay out first so the
+            // Only items inside the visible rectangle while searching (FR-442, EC-311). Lay out first so the
             // rectangle reflects a size change that has just been made.
             layoutSubtreeIfNeeded()
             visibleRangeDidChange()
@@ -1436,7 +1436,7 @@ extension ThumbnailModeView: NSCollectionViewDataSource {
         thumbnailItem.onCommitRename = { [weak self] url, newName in
             self?.commitRename(url: url, newName: newName)
         }
-        // A thumbnail made earlier and still kept is shown at once, without the kind icon in between (FR-438).
+        // A thumbnail made earlier and still kept is shown at once, without the kind icon in between (FR-445).
         let kept = file.kind.isMedia
             ? provider.cachedThumbnail(
                 for: file.url,
@@ -1458,7 +1458,7 @@ extension ThumbnailModeView: NSCollectionViewDataSource {
         // (FR-084, R37).
         thumbnailItem.view.toolTip = model.listing.search?.location(of: file.url)
         // While searching, prepared items outside the visible rectangle wait until they are scrolled into view
-        // (FR-435, EC-300).
+        // (FR-442, EC-310).
         if kept == nil, !isSearching || isInVisibleRect(indexPath) {
             requestThumbnail(for: file, reason: "item")
         }
@@ -1533,7 +1533,7 @@ extension ThumbnailModeView: NSCollectionViewPrefetching {
         prefetchItemsAt indexPaths: [IndexPath]
     ) {
         guard window?.inLiveResize != true else { return }
-        // While searching, items that are not visible get no thumbnails yet (FR-435, SC-252).
+        // While searching, items that are not visible get no thumbnails yet (FR-442, SC-256).
         guard !isSearching else { return }
         let files = model.listing.files
         for path in indexPaths where files.indices.contains(path.item) {

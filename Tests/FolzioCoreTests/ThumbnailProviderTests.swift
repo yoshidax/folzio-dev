@@ -204,7 +204,7 @@ struct ThumbnailProviderTests {
 
     // MARK: - Kept Thumbnails
 
-    @Test("cachedThumbnail returns a kept thumbnail only for the same URL, size, and version (FR-438)", .timeLimit(.minutes(1)))
+    @Test("cachedThumbnail returns a kept thumbnail only for the same URL, size, and version (FR-445)", .timeLimit(.minutes(1)))
     func cachedThumbnailReturnsKeptImage() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }

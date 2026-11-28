@@ -13,7 +13,7 @@ struct ThumbnailMemoryCacheTests {
         return try #require(context.makeImage())
     }
 
-    @Test("Passing the limit removes the least recently used thumbnails first, and reading counts as use (FR-438)")
+    @Test("Passing the limit removes the least recently used thumbnails first, and reading counts as use (FR-447)")
     func removesLeastRecentlyUsedFirst() throws {
         let cache = ThumbnailMemoryCache(costLimit: 30, watchesMemoryPressure: false)
         let picture = try image()

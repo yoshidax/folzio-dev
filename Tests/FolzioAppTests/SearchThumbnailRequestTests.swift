@@ -6,7 +6,7 @@ import Testing
 @testable import FolzioApp
 
 /// While a search is running, the file list makes thumbnails only for visible items, keeps visible items when results
-/// are appended, and shows the focused item or the top after the final sort (TAK-129: FR-435, FR-436, FR-437).
+/// are appended, and shows the focused item or the top after the final sort (TAK-129: FR-442, FR-443, FR-444).
 @Suite("Search thumbnail requests", .serialized)
 @MainActor
 struct SearchThumbnailRequestTests {
@@ -200,7 +200,7 @@ struct SearchThumbnailRequestTests {
         }
     }
 
-    @Test("While searching, only visible items get thumbnails, appended results keep them, and scrolling moves them (FR-435, FR-436, EC-300, EC-301, SC-252)")
+    @Test("While searching, only visible items get thumbnails, appended results keep them, and scrolling moves them (FR-442, FR-443, EC-310, EC-311, SC-256)")
     func thumbnailsWhileSearching() async throws {
         let fixture = try makeFixture(count: 2_000)
         defer { fixture.window.close() }
@@ -220,18 +220,18 @@ struct SearchThumbnailRequestTests {
         #expect(!firstVisible.isEmpty)
         #expect(Set(firstRequested) == firstVisible, "Requested items outside the visible rectangle")
 
-        // A prefetch while searching requests nothing (FR-435).
+        // A prefetch while searching requests nothing (FR-442).
         view.collectionView(collectionView, prefetchItemsAt: [IndexPath(item: 300, section: 0)])
         await settle(view)
         #expect(fixture.provider.requested.count == firstRequested.count)
 
-        // Appending results keeps the visible items and does not request their thumbnails again (FR-436).
+        // Appending results keeps the visible items and does not request their thumbnails again (FR-443).
         fixture.searcher.send(Array(fixture.rows[500..<1_000]))
         #expect(await wait { fixture.model.listing.files.count == 1_000 })
         await settle(view)
         #expect(fixture.provider.requested.count == firstRequested.count)
 
-        // Scrolling requests the newly visible items and cancels the ones that left (EC-300).
+        // Scrolling requests the newly visible items and cancels the ones that left (EC-310).
         scrollView.contentView.scroll(to: NSPoint(x: 0, y: 3_000))
         scrollView.reflectScrolledClipView(scrollView.contentView)
         await settle(view)
@@ -242,7 +242,7 @@ struct SearchThumbnailRequestTests {
         #expect(scrolledVisible.isSubset(of: Set(fixture.provider.requested)))
         #expect(firstVisible.subtracting(scrolledVisible).isSubset(of: Set(fixture.provider.cancelled)))
 
-        // Changing the thumbnail size while searching still requests only visible items (EC-301).
+        // Changing the thumbnail size while searching still requests only visible items (EC-311).
         let beforeResize = fixture.provider.requested.count
         view.thumbnailSize = 220
         await settle(view)
@@ -250,7 +250,7 @@ struct SearchThumbnailRequestTests {
         #expect(Set(fixture.provider.requested.dropFirst(beforeResize)).isSubset(of: resizedVisible))
     }
 
-    @Test("After the final sort, the top is shown and prefetching resumes (FR-437, US99-AS3, US99-AS8)")
+    @Test("After the final sort, the top is shown and prefetching resumes (FR-444, US102-AS3, US102-AS8)")
     func finalSortShowsTopAndResumesPrefetch() async throws {
         let fixture = try makeFixture(count: 600)
         defer { fixture.window.close() }
@@ -279,13 +279,13 @@ struct SearchThumbnailRequestTests {
         #expect(visibleURLs(collectionView, fixture.model).contains(topURL))
         #expect(fixture.provider.requested.contains(topURL))
 
-        // Prefetching works again after the search (FR-435, A-269).
+        // Prefetching works again after the search (FR-442, A-274).
         let target = fixture.model.listing.files[400].url
         view.collectionView(collectionView, prefetchItemsAt: [IndexPath(item: 400, section: 0)])
         #expect(await wait { fixture.provider.requested.contains(target) })
     }
 
-    @Test("A regular folder listing still prefetches thumbnails (A-269)")
+    @Test("A regular folder listing still prefetches thumbnails (A-274)")
     func regularFolderPrefetches() async throws {
         let fixture = try makeFixture(count: 300)
         defer { fixture.window.close() }
@@ -303,7 +303,7 @@ struct SearchThumbnailRequestTests {
         #expect(await wait { fixture.provider.requested.contains(target) })
     }
 
-    @Test("The list keeps visible rows when results are appended and shows the focused row after the final sort (FR-436, FR-437, US99-AS4)")
+    @Test("The list keeps visible rows when results are appended and shows the focused row after the final sort (FR-443, FR-444, US102-AS4)")
     func listKeepsRowsAndShowsFocusedRow() async throws {
         let fixture = try makeFixture(count: 400)
         defer { fixture.window.close() }
@@ -339,7 +339,7 @@ struct SearchThumbnailRequestTests {
         #expect(fixture.model.selection.focused == focused)
     }
 
-    @Test("A kept thumbnail is shown again at once without being made again after scrolling away and back (FR-438, SC-254)")
+    @Test("A kept thumbnail is shown again at once without being made again after scrolling away and back (FR-445, SC-258)")
     func keptThumbnailIsShownAgain() async throws {
         let fixture = try makeFixture(count: 600)
         defer { fixture.window.close() }
@@ -371,7 +371,7 @@ struct SearchThumbnailRequestTests {
                 "The item shows \(String(describing: imageView.image?.size)) instead of the kept thumbnail")
     }
 
-    @Test("A kept list icon thumbnail is shown again without being made again after scrolling away and back (FR-438, SC-254)")
+    @Test("A kept list icon thumbnail is shown again without being made again after scrolling away and back (FR-445, SC-258)")
     func keptListIconIsShownAgain() async throws {
         let fixture = try makeFixture(count: 600)
         defer { fixture.window.close() }
@@ -398,7 +398,7 @@ struct SearchThumbnailRequestTests {
         #expect(imageView.image != nil)
     }
 
-    @Test("Items that only pass by while scrolling fast get no thumbnail request; items that stay get one (FR-439)")
+    @Test("Items that only pass by while scrolling fast get no thumbnail request; items that stay get one (FR-446)")
     func passingItemsGetNoRequest() async throws {
         let fixture = try makeFixture(count: 2_000)
         defer { fixture.window.close() }

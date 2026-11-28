@@ -13,7 +13,52 @@ public enum FixtureSets {
         try search(in: directory)
         try folderSearch(in: directory)
         try searchFolderPicker(in: directory)
+        try multiRootSearch(in: directory)
         try zoom(in: directory)
+    }
+
+    /// Creates `multi-root-search/` for the maintainer checks in `TAK-104-multi-root-search/quickstart.md`.
+    /// Every name to be found contains `kyoto`.
+    ///
+    /// - `A/` and `B/`: two roots that do not overlap (US99). `A/C/` is a root below `A` (US100-AS2), and
+    ///   `A/.hidden/D/` is a root behind a hidden folder of `A` (US100-AS3).
+    /// - `link-to-A`: a symbolic link to `A` (US100-AS4).
+    /// - `same-name/tmp1/Photos/` and `same-name/tmp2/photos/`: roots whose names differ only in case (EC-305).
+    /// - `rows/01/` to `rows/10/`: ten roots for filling every row (US99-AS7, SC-252).
+    public static func multiRootSearch(in directory: URL) throws {
+        let root = try prepare(directory.appendingPathComponent("multi-root-search", isDirectory: true))
+        let fileManager = FileManager.default
+        func makeFolder(_ path: String) throws -> URL {
+            let url = root.appendingPathComponent(path, isDirectory: true)
+            try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
+            return url
+        }
+
+        let scratch = try makeScratchDirectory()
+        defer { try? fileManager.removeItem(at: scratch) }
+        let jpeg = try imageData(scratch, "image.jpg") { try ImageFixtures.jpeg(at: $0, width: 64, height: 48) }
+        let png = try imageData(scratch, "image.png") { try ImageFixtures.png(at: $0, width: 64, height: 48) }
+
+        let folders = [
+            "A/kyoto_folder_a", "A/C", "A/.hidden/D", "B/kyoto_folder_b",
+            "same-name/tmp1/Photos", "same-name/tmp2/photos",
+        ] + (1...10).map { String(format: "rows/%02d", $0) }
+        for path in folders { _ = try makeFolder(path) }
+
+        let jpegFiles = [
+            "A/kyoto_a.jpg", "A/other_a.jpg", "A/C/kyoto_c.jpg", "A/.hidden/D/kyoto_d.jpg",
+            "B/kyoto_b.jpg", "B/other_b.jpg",
+            "same-name/tmp1/Photos/kyoto_p1.jpg", "same-name/tmp2/photos/kyoto_p2.jpg",
+        ] + (1...10).map { String(format: "rows/%02d/kyoto_row%02d.jpg", $0, $0) }
+        for path in jpegFiles {
+            try jpeg.write(to: root.appendingPathComponent(path))
+        }
+        try png.write(to: root.appendingPathComponent("B/kyoto_folder_b/kyoto_b2.png"))
+
+        try fileManager.createSymbolicLink(
+            at: root.appendingPathComponent("link-to-A"),
+            withDestinationURL: root.appendingPathComponent("A", isDirectory: true)
+        )
     }
 
     /// Fixture data for `010-search-folder-picker/quickstart.md`.
@@ -247,7 +292,7 @@ public enum FixtureSets {
     /// Creates the large search hierarchy (`large-search/`) and returns its URL. Not called from `makeAll`.
     /// Writes `folders` folders (`folder-000`, ...) with `filesPerFolder` 8×8 JPEGs each. Even-numbered files are
     /// named `cat_NNN.jpg` and odd-numbered files `dog_NNN.jpg`, so searching for `cat` matches half of them
-    /// (the SC-016 shape at a larger scale; SC-249).
+    /// (the SC-016 shape at a larger scale; SC-253).
     @discardableResult
     public static func largeSearch(in directory: URL, folders: Int = 500, filesPerFolder: Int = 100) throws -> URL {
         let root = try prepare(directory.appendingPathComponent("large-search", isDirectory: true))

@@ -138,7 +138,7 @@ public final class BrowserModel {
 
             if isSearchOrderPending {
                 // While searching, sort the results found so far off the main thread; later results are appended at
-                // the end until the search finishes (FR-437, US99-AS7).
+                // the end until the search finishes (FR-444, US102-AS7).
                 sortSearchResults(finishing: isFinishingSearch)
                 return
             }
@@ -189,7 +189,7 @@ public final class BrowserModel {
     }
     @ObservationIgnored private var kindFilesRevision = 0
     /// Advances on every change to `allFiles` except appending search results at the end. Sorting search results off
-    /// the main thread keeps results appended meanwhile at the end instead of sorting again (FR-437, R4).
+    /// the main thread keeps results appended meanwhile at the end instead of sorting again (FR-444, R4).
     @ObservationIgnored private var searchOrderRevision = 0
     @ObservationIgnored private var isAppendingSearchResults = false
     @ObservationIgnored private var kindUpdateGeneration = 0
@@ -221,8 +221,11 @@ public final class BrowserModel {
     /// Folder renames during the current search. Rebases URLs of results that arrive later (R63).
     private var searchLedger = SearchRenameLedger()
     private var movedSearchPaths: Set<String> = []
-    /// Number of enumerations that have not finished in the current search. The search ends when it reaches 0 (R63).
+    /// Number of enumerations that have not finished in the current search. When it reaches 0, the next waiting root
+    /// starts, or the search ends (R63, FR-438).
     private var activeSearchStreams = 0
+    /// Roots of the current search that have not started enumerating (FR-438).
+    private var searchRootPlan = SearchRootPlan()
     /// Number of search results at the end of `allFiles` that are not shown in the listing yet. Each batch is
     /// processed and added to `allFiles` when it arrives; only showing them is grouped (FR-085, R3). Rebuilding the
     /// listing shows every row, so it resets this to 0.
@@ -233,7 +236,7 @@ public final class BrowserModel {
     /// Interval between additions to the listing for the number of results already listed. Replaceable in tests.
     @ObservationIgnored var searchReflectionInterval: (Int) -> Duration = SearchReflection.interval(forListedCount:)
     /// While true, `allFiles` holds search results in the order they were found and new results are appended at the
-    /// end (FR-085). Cleared when the search finishes and the results are sorted (FR-437).
+    /// end (FR-085). Cleared when the search finishes and the results are sorted (FR-444).
     @ObservationIgnored private(set) var isSearchOrderPending = false
     /// Identifies the latest request to sort search results off the main thread.
     @ObservationIgnored private var searchSortGeneration = 0
@@ -241,7 +244,7 @@ public final class BrowserModel {
     /// restarts the final sort instead of a sort that keeps the search running.
     @ObservationIgnored private var isFinishingSearch = false
     /// Advances each time the finished search results are sorted. Views show the focused item, or the top of the
-    /// listing when nothing is focused (FR-437).
+    /// listing when nothing is focused (FR-444).
     public private(set) var searchOrderGeneration = 0
     /// Folder renames after opening the current zip (including while opening). Index rows are built with the zip
     /// location at open time, so they are rebased on every level change (R62, EC-50).
@@ -384,27 +387,36 @@ public final class BrowserModel {
         }
     }
 
-    /// Starts a search and adds results to the end of the list in the order they are found, then sorts them once
-    /// with the current order when the search finishes (FR-084, FR-085, FR-437).
-    /// Returns without waiting for enumeration to finish. Does not change `listing.folder`, `lastFolder`, or
-    /// `treeSyncRequest`; when started inside a zip, discards the zip state.
+    /// Starts a search from one root (FR-084, 085).
     public func startSearch(_ pattern: SearchPattern, root: URL) {
+        startSearch(pattern, roots: [root])
+    }
+
+    /// Starts a search and adds results to the end of the list in the order they are found, then sorts them once
+    /// with the current order when the search finishes (FR-084, FR-085, FR-444).
+    /// `roots` are validated and organized (FR-437) and are enumerated one at a time from the top. Returns without
+    /// waiting for enumeration to finish. Does not change `listing.folder`, `lastFolder`, or `treeSyncRequest`; when
+    /// started inside a zip, discards the zip state. Does nothing when `roots` is empty.
+    public func startSearch(_ pattern: SearchPattern, roots: [URL]) {
+        guard let first = roots.first else { return }
         resetForNavigation()
         archiveIndex = nil
         listing = FolderListing(
             folder: listing.folder,
             files: [],
             state: .loading,
-            search: SearchListing(keyword: pattern.keyword, root: root, phase: .searching, totalCount: 0)
+            search: SearchListing(keyword: pattern.keyword, roots: roots, phase: .searching, totalCount: 0)
         )
 
         searchPattern = pattern
         searchIncludesArchives = showsZipFiles
         isSearchOrderPending = true
-        startSearchStream(in: root, matching: pattern)
+        searchRootPlan = SearchRootPlan(pending: Array(roots.dropFirst()))
+        startSearchStream(in: first, matching: pattern)
     }
 
-    /// Starts one enumeration. Ends the search when all enumerations finish (R63). Creates a match log per
+    /// Starts one enumeration. When all running enumerations finish, starts the next waiting root, or ends the search
+    /// when no root is waiting (R63, FR-438). Creates a match log per
     /// enumeration and registers it in the ledger; discards the whole ledger when the search stops (R2, R3).
     private func startSearchStream(in root: URL, matching pattern: SearchPattern, matchesRoot: Bool = false) {
         let generation = navigationGeneration
@@ -429,6 +441,10 @@ public final class BrowserModel {
             guard let self, !Task.isCancelled, generation == self.navigationGeneration else { return }
             self.activeSearchStreams -= 1
             guard self.activeSearchStreams == 0 else { return }
+            if let next = self.searchRootPlan.next(), let pattern = self.searchPattern {
+                self.startSearchStream(in: next, matching: pattern)
+                return
+            }
             self.finishSearch()
         }
         searchTasks.append(task)
@@ -464,7 +480,7 @@ public final class BrowserModel {
         renamed.typeDescription = (try? newURL.resourceValues(forKeys: [.localizedTypeDescriptionKey]))?
             .localizedTypeDescription ?? old.typeDescription
         // Only this row's sort key changes, so move just this row instead of sorting every result (R67). While the
-        // search is running, the row keeps its position until the results are sorted (EC-304).
+        // search is running, the row keeps its position until the results are sorted (EC-314).
         var files = allFiles
         files[index] = renamed
         if !isSearchOrderPending {
@@ -509,9 +525,15 @@ public final class BrowserModel {
             updated.archive = ArchiveLocation(archive: archive, directory: location.directory)
             changed = true
         }
-        let previousRoot = updated.search?.root
-        if let root = previousRoot, let rebasedRoot = renamed.rebase(root) {
-            updated.search?.root = rebasedRoot
+        let previousRoots = updated.search?.roots ?? []
+        var rootsChanged = false
+        let rebasedRoots = previousRoots.map { root -> URL in
+            guard let rebased = renamed.rebase(root) else { return root }
+            rootsChanged = true
+            return rebased
+        }
+        if rootsChanged {
+            updated.search?.roots = rebasedRoots
             changed = true
         }
 
@@ -559,23 +581,29 @@ public final class BrowserModel {
         // During a search, a rename below the root matters for results that arrive later even when it does not affect
         // displayed rows. Whether the folder was already matched determines whether the new location is matched as the
         // root itself (EC-94, R2, R3).
-        var additionalSearchRoot: URL?
-        var additionalMatchesRoot = false
-        if listing.search?.phase == .searching, let previousRoot {
-            if let rebasedRoot = renamed.rebase(previousRoot) {
-                // Renamed the root itself or an ancestor. Enumerate the new root again because the root is not a row.
+        // Roots that have not started enumerating only take the new path; their enumeration sees the new name by itself
+        // (FR-440, research.md R4).
+        var additionalSearches: [(root: URL, matchesRoot: Bool)] = []
+        if listing.search?.phase == .searching, !previousRoots.isEmpty {
+            let waiting = Set(searchRootPlan.pending.map(SearchPath.normalized))
+            let insideWaitingRoot = searchRootPlan.contains(oldURL)
+            searchRootPlan.rebase(renamed)
+            let started = previousRoots.filter { !waiting.contains(SearchPath.normalized($0)) }
+            let renamedRoots = started.compactMap { renamed.rebase($0) }
+            if !renamedRoots.isEmpty {
+                // Renamed a root itself or an ancestor. Enumerate the new root again because the root is not a row.
                 searchLedger.recordRename(renamed, visited: true)
-                additionalSearchRoot = rebasedRoot
-            } else if RenamedFolder(from: previousRoot, to: previousRoot).rebase(oldURL) != nil {
-                // A folder below the root. Enumerate only the folder's new location.
+                additionalSearches = renamedRoots.map { (root: $0, matchesRoot: false) }
+            } else if !insideWaitingRoot,
+                      started.contains(where: { RenamedFolder(from: $0, to: $0).rebase(oldURL) != nil }) {
+                // A folder below a started root. Enumerate only the folder's new location.
                 let visited = searchLedger.hasVisited(oldURL)
                 searchLedger.recordRename(renamed, visited: visited)
-                additionalSearchRoot = newURL
-                additionalMatchesRoot = !visited
+                additionalSearches = [(root: newURL, matchesRoot: !visited)]
             }
         }
 
-        guard changed || filesChanged || selectionChanged || additionalSearchRoot != nil else { return }
+        guard changed || filesChanged || selectionChanged || !additionalSearches.isEmpty else { return }
         invalidatePendingTrashSelection()
 
         let folderChanged = updated.folder != listing.folder
@@ -590,7 +618,7 @@ public final class BrowserModel {
         if filesChanged {
             // Files below the folder do not change names, so the order changes only when a row name changes or when
             // sorting by Location. A single renamed row moves by a binary search instead of sorting every row (R67).
-            // While the search is running, rows keep their positions until the results are sorted (EC-304).
+            // While the search is running, rows keep their positions until the results are sorted (EC-314).
             if isSearchOrderPending {
                 // Keep the found order.
             } else if sortOrder.column == .location || renamedRowIndices.count > 1 {
@@ -625,8 +653,10 @@ public final class BrowserModel {
             }
         }
 
-        if let additionalSearchRoot, let pattern = searchPattern {
-            startSearchStream(in: additionalSearchRoot, matching: pattern, matchesRoot: additionalMatchesRoot)
+        if let pattern = searchPattern {
+            for search in additionalSearches {
+                startSearchStream(in: search.root, matching: pattern, matchesRoot: search.matchesRoot)
+            }
         }
         // A folder row whose new name no longer matches the name filter is hidden, so it leaves the selection (EC-250).
         // A listing that is still loading has no rows yet, so it would drop the whole selection.
@@ -1283,6 +1313,7 @@ public final class BrowserModel {
         isSearchOrderPending = false
         isFinishingSearch = false
         searchSortGeneration &+= 1
+        searchRootPlan.removeAll()
         searchResultsByFolder.removeAll()
         previewGeneration += 1
         previewTask?.cancel()
@@ -1611,9 +1642,9 @@ public final class BrowserModel {
     }
 
     /// Processes an incoming batch at once and adds it to the end of `allFiles`, as each batch arrives, so the work per
-    /// batch stays small (FR-436). Showing the added results in the listing waits for the reflection interval, so the
+    /// batch stays small (FR-443). Showing the added results in the listing waits for the reflection interval, so the
     /// listing is updated at most once per interval (FR-085, R3). The first batch also waits for the shortest interval,
-    /// so a search that finishes within it shows only the sorted results (EC-303).
+    /// so a search that finishes within it shows only the sorted results (EC-313).
     private func receiveSearchResults(_ incoming: [MediaFile], fromStream index: Int) {
         guard isShowingSearchResults, !incoming.isEmpty else { return }
         let placed = placeSearchResults(incoming, fromStream: index)
@@ -1728,7 +1759,7 @@ public final class BrowserModel {
     }
 
     /// Ends the search once every enumeration has finished: adds pending results without showing the found order,
-    /// then sorts every result off the main thread (FR-437, EC-303).
+    /// then sorts every result off the main thread (FR-444, EC-313).
     private func finishSearch() {
         reflectPendingSearchResults(updatesListing: false)
         isFinishingSearch = true
@@ -1738,7 +1769,7 @@ public final class BrowserModel {
     /// Sorts search results with the current order off the main thread and applies the result when nothing but
     /// appends changed `allFiles` meanwhile; results appended meanwhile stay at the end. Sorts again when other changes
     /// (renames, removals, kind names) happened. When `finishing`, also ends the search: marks it finished, stops
-    /// appending in found order, and advances `searchOrderGeneration` (FR-437, R4).
+    /// appending in found order, and advances `searchOrderGeneration` (FR-444, R4).
     private func sortSearchResults(finishing: Bool) {
         searchSortGeneration &+= 1
         let generation = searchSortGeneration
@@ -1808,8 +1839,8 @@ public final class BrowserModel {
         guard !targets.isEmpty else { return }
 
         let generation = navigationGeneration
-        // `listing` belongs to the main actor, so read the root before the detached task.
-        let searchRoot = listing.search?.root
+        // `listing` belongs to the main actor, so read the roots before the detached task.
+        let search = listing.search
         // Reads the content version together with the existence check, so results replaced at the same path are
         // refreshed like rows of a folder listing (FR-232, research.md R6).
         let (missing, versions, removedScopes) = await Task.detached(priority: .userInitiated) {
@@ -1827,7 +1858,9 @@ public final class BrowserModel {
             var known: [String: Bool] = [:]
             var removedScopes = Set<String>()
             for url in missing {
-                let scope = SearchRemovalScope.topmostMissing(url, root: searchRoot, known: &known) { candidate in
+                // Stop at the root that contains the result, so a missing root removes only its own results (FR-440).
+                let root = search?.root(containing: url)
+                let scope = SearchRemovalScope.topmostMissing(url, root: root, known: &known) { candidate in
                     FileManager.default.fileExists(atPath: candidate.path)
                 }
                 removedScopes.insert(scope.standardizedFileURL.path)

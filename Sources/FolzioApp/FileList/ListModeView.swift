@@ -179,7 +179,7 @@ final class ListModeView: NSView {
     private var lastURLs: [URL] = []
     /// `BrowserModel.contentChangeGeneration` already applied to the rows (FR-228).
     private var lastContentChangeGeneration = 0
-    /// `BrowserModel.searchOrderGeneration` already applied (FR-437).
+    /// `BrowserModel.searchOrderGeneration` already applied (FR-444).
     private var lastSearchOrderGeneration: Int
     private var isApplyingSelection = false
     private var isSyncingSortDescriptors = false
@@ -424,7 +424,7 @@ final class ListModeView: NSView {
             lastContentChangeGeneration = model.contentChangeGeneration
             if appended != nil {
                 // Rows were only added at the end (a search adding results; FR-085). Keep the visible rows, their
-                // thumbnails, and a rename in progress instead of reloading them (FR-436).
+                // thumbnails, and a rename in progress instead of reloading them (FR-443).
                 tableView.noteNumberOfRowsChanged()
                 onlyAppended = true
             } else {
@@ -456,7 +456,7 @@ final class ListModeView: NSView {
                 tableView.scrollRowToVisible(row)
             }
         } else if sortedSearch, !urls.isEmpty {
-            // The finished search results were sorted and nothing is focused: show the top of the list (FR-437).
+            // The finished search results were sorted and nothing is focused: show the top of the list (FR-444).
             tableView.scrollRowToVisible(0)
         }
 
@@ -914,7 +914,7 @@ extension ListModeView: NSTableViewDelegate {
             let showsBadge = VideoBadgeLayout.isShown(kind: file.kind, showingRepresentativeFrame: true)
             let name = file.name
             if let kept = provider.cachedThumbnail(for: url, pointSize: pointSize, scale: scale, version: version) {
-                // A thumbnail made earlier and still kept is shown at once, without the generic icon (FR-438).
+                // A thumbnail made earlier and still kept is shown at once, without the generic icon (FR-445).
                 PerformanceLog.logger.debug("[list] row \(name, privacy: .private(mask: .hash)) shows kept")
                 cell.iconView.image = Self.listIconImage(from: kept, pointSize: pointSize)
                 cell.iconView.showsVideoBadge = showsBadge

@@ -1193,10 +1193,10 @@ final class MainSplitViewController: NSSplitViewController {
         let panel = SearchPanelController(
             keyword: keyword,
             rootPath: model.listing.folder.path
-        ) { [weak self] pattern, root in
+        ) { [weak self] pattern, roots in
             guard let self else { return }
             self.lastSearchKeyword = pattern.keyword
-            self.model.startSearch(pattern, root: root)
+            self.model.startSearch(pattern, roots: roots)
             // Move focus to the file list so the arrow keys can navigate the results.
             self.focusPane(self.fileListViewController.primaryFocusView)
         }

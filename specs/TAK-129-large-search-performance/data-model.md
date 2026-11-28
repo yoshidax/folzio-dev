@@ -30,7 +30,7 @@ interval(count) =
 startSearch
   → searching（isSearchOrderPending = true。結果を見つかった順に末尾へ足す）
       ├─ 並べ替えの列・向きの変更 → その時点の結果を UI スレッドの外で並べ替えて適用（以後の結果は末尾へ）
-      ├─ 検索を止める（FR-086・FR-140・新しい検索） → 並べ替えずに終わる（EC-302）
+      ├─ 検索を止める（FR-086・FR-140・新しい検索） → 並べ替えずに終わる（EC-312）
       └─ すべての列挙の終了 → ためた結果を反映 → UI スレッドの外で並べ替え
             ├─ kindFilesRevision が同じ → 適用。phase = finished、isSearchOrderPending = false、searchOrderGeneration を進める
             └─ 変わった → 並べ替えをやり直す

@@ -10,7 +10,7 @@ public protocol ThumbnailProviding: Sendable {
     func thumbnail(for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?) async -> CGImage?
     func cancel(for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?)
     /// A thumbnail that was already made and is still kept, without reading the file or making one. Lets a view show
-    /// it right away instead of the kind icon when an item is shown again (FR-438).
+    /// it right away instead of the kind icon when an item is shown again (FR-445).
     func cachedThumbnail(for url: URL, pointSize: Double, scale: Double, version: FileContentVersion?) -> CGImage?
 }
 
@@ -61,7 +61,7 @@ public final class ThumbnailProvider: ThumbnailProviding, @unchecked Sendable {
     private let archiveReader: (any ArchiveReading)?
     private let archiveLimiter = ConcurrencyLimiter(limit: ThumbnailProvider.maxConcurrentArchiveReads)
     private let archiveVideoLimiter = ConcurrencyLimiter(limit: ThumbnailProvider.maxConcurrentArchiveVideoReads)
-    /// Kept thumbnails. The least recently used are removed first when the limit is passed (FR-438).
+    /// Kept thumbnails. The least recently used are removed first when the limit is passed (FR-447).
     private let cache: ThumbnailMemoryCache
     private let lock = NSLock()
     private var inFlight: [UUID: InFlightRequest] = [:]
